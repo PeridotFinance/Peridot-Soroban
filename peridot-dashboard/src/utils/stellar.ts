@@ -77,21 +77,45 @@ export async function getXLMBalance(address: string): Promise<string> {
 
 // For now, we'll use API routes for contract interactions
 export async function getTokenBalance(address: string): Promise<string> {
+  // First try the direct SDK approach with enhanced logging
   try {
+    console.log(`Fetching PDOT token balance for address: ${address}`);
+    
+    // Check if TOKEN_CONTRACT_ID is available
+    if (!TOKEN_CONTRACT_ID) {
+      console.error('TOKEN_CONTRACT_ID is not defined in environment variables');
+      throw new Error('TOKEN_CONTRACT_ID not available');
+    }
+    
+    console.log(`Using TOKEN_CONTRACT_ID: ${TOKEN_CONTRACT_ID}`);
+    
     // Use Stellar SDK directly instead of API route
     const StellarSdk = await import('@stellar/stellar-sdk');
+    console.log('Stellar SDK imported successfully');
     
     // Use SorobanRpc server for contract interactions
     const rpc = new StellarSdk.rpc.Server('https://soroban-testnet.stellar.org');
+    console.log('RPC server created');
+    
+    // Validate address format
+    try {
+      StellarSdk.Address.fromString(address);
+      console.log('Address format validated');
+    } catch (addressError) {
+      console.error('Invalid address format:', addressError);
+      throw new Error(`Invalid address format: ${addressError}`);
+    }
     
     // Build the contract call
     const contract = new StellarSdk.Contract(TOKEN_CONTRACT_ID);
+    console.log('Contract instance created');
     
     // Build the operation to call balance function
     const operation = contract.call(
       'balance',
       StellarSdk.Address.fromString(address).toScVal() // id parameter
     );
+    console.log('Contract operation created');
 
     // We need to build a transaction to simulate the contract call
     // For read-only operations, we can use a dummy account
@@ -108,22 +132,31 @@ export async function getTokenBalance(address: string): Promise<string> {
       .addOperation(operation)
       .setTimeout(30)
       .build();
+    
+    console.log('Transaction built for simulation');
 
     // Simulate the transaction to get the result
+    console.log('Starting transaction simulation...');
     const simResult = await rpc.simulateTransaction(transaction);
+    console.log('Simulation completed:', simResult);
     
     // Check if simulation was successful
     if (StellarSdk.rpc.Api.isSimulationSuccess(simResult)) {
+      console.log('Simulation was successful');
+      
       // Parse the result - token balance should be returned as a ScVal
       const resultScVal = simResult.result?.retval;
       
       if (!resultScVal) {
         console.error('No result returned from token contract call');
-        return '0';
+        throw new Error('No result returned from contract');
       }
+      
+      console.log('Result ScVal:', resultScVal);
       
       // Convert ScVal to JavaScript value
       const balanceValue = StellarSdk.scValToNative(resultScVal);
+      console.log('Balance value (raw):', balanceValue);
       
       // Convert from contract units (9 decimals) to display units
       const balanceInUnits = parseInt(balanceValue.toString()) / 1000000000; // 9 decimals
@@ -131,12 +164,75 @@ export async function getTokenBalance(address: string): Promise<string> {
       console.log(`Direct PDOT token balance for ${address}:`, balanceInUnits.toString());
       return balanceInUnits.toString();
     } else {
-      console.error('Failed to get token balance:', simResult);
-      return '0';
+      console.error('Simulation failed. Full result:', JSON.stringify(simResult, null, 2));
+      
+      // Check if it's a specific type of failure
+      if ('error' in simResult) {
+        console.error('Simulation error details:', simResult.error);
+      }
+      
+      throw new Error('Contract simulation failed');
     }
-  } catch (error) {
-    console.error('Error fetching token balance directly:', error);
-    return '0';
+  } catch (sdkError) {
+    console.error('Direct SDK approach failed:', sdkError);
+    
+    // Log more details about the error
+    if (sdkError instanceof Error) {
+      console.error('SDK Error name:', sdkError.name);
+      console.error('SDK Error message:', sdkError.message);
+      console.error('SDK Error stack:', sdkError.stack);
+    }
+    
+    // Fallback: Try to use Horizon API for token balance (if it's a Stellar Classic token)
+    console.log('Attempting fallback approach using Horizon API...');
+    try {
+      const horizon = new Horizon.Server('https://horizon-testnet.stellar.org');
+      const account = await horizon.loadAccount(address);
+      
+      // Look for the token in the account balances
+      // This assumes the token contract ID corresponds to a classic token
+      const tokenBalance = account.balances.find(
+        (balance: any) => balance.asset_code === 'PDOT' || 
+                         balance.asset_issuer === TOKEN_CONTRACT_ID ||
+                         (balance.asset_type === 'credit_alphanum4' && balance.asset_code === 'PDOT')
+      );
+      
+      if (tokenBalance) {
+        console.log('Found token balance via Horizon:', tokenBalance.balance);
+        return parseFloat(tokenBalance.balance).toString();
+      } else {
+        console.log('Token not found in Horizon balances, returning 0');
+        return '0';
+      }
+    } catch (horizonError) {
+      console.error('Horizon fallback also failed:', horizonError);
+      
+      // Final fallback: Use the fallback API route for server-side processing
+      console.log('Attempting final fallback using API route...');
+      try {
+        const timestamp = Date.now();
+        const response = await fetch(`/api/token-balance-fallback?address=${address}&_t=${timestamp}`, {
+          cache: 'no-store'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API response not ok: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Fallback API response:', data);
+        
+        if (data.balance) {
+          return data.balance;
+        } else {
+          console.error('No balance in API response:', data);
+          return '0';
+        }
+      } catch (apiError) {
+        console.error('Final API fallback also failed:', apiError);
+        return '0';
+      }
+    }
   }
 }
 
