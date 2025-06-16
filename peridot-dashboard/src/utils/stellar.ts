@@ -87,7 +87,7 @@ export async function getTokenBalance(address: string): Promise<string> {
     // Build the contract call
     const contract = new StellarSdk.Contract(TOKEN_CONTRACT_ID);
     
-    // Build the operation to call balance
+    // Build the operation to call balance function
     const operation = contract.call(
       'balance',
       StellarSdk.Address.fromString(address).toScVal() // id parameter
@@ -118,7 +118,7 @@ export async function getTokenBalance(address: string): Promise<string> {
       const resultScVal = simResult.result?.retval;
       
       if (!resultScVal) {
-        console.error('No result returned from token balance contract call');
+        console.error('No result returned from token contract call');
         return '0';
       }
       
@@ -128,7 +128,7 @@ export async function getTokenBalance(address: string): Promise<string> {
       // Convert from contract units (9 decimals) to display units
       const balanceInUnits = parseInt(balanceValue.toString()) / 1000000000; // 9 decimals
       
-      console.log(`Direct token balance for ${address}:`, balanceInUnits.toString());
+      console.log(`Direct PDOT token balance for ${address}:`, balanceInUnits.toString());
       return balanceInUnits.toString();
     } else {
       console.error('Failed to get token balance:', simResult);
