@@ -3,9 +3,10 @@
 import { useState, useCallback } from 'react';
 import { Shield, Github, ExternalLink } from 'lucide-react';
 import ConnectWallet from '@/components/ConnectWallet';
-import TokenManager from '@/components/TokenManager';
 import VaultInterface from '@/components/VaultInterface';
 import VaultStats from '@/components/VaultStats';
+import ThemeToggle from '@/components/ThemeToggle';
+import DashboardWithCarousel from '@/components/DashboardWithCarousel';
 import { WalletInfo } from '@/utils/stellar';
 import Image from 'next/image';
 
@@ -21,15 +22,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  const handleTokensMinted = useCallback(async () => {
-    if (walletInfo?.address) {
-      // Refresh wallet balances after minting
-      const { getBalances } = await import('@/utils/stellar');
-      const updatedBalances = await getBalances(walletInfo.address);
-      setWalletInfo(updatedBalances);
-      setRefreshTrigger(prev => prev + 1);
-    }
-  }, [walletInfo?.address]);
+
 
   const handleTransactionComplete = useCallback(async () => {
     if (walletInfo?.address) {
@@ -45,9 +38,9 @@ export default function Dashboard() {
   }, [walletInfo?.address]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50">
-      {/* Header */}
-      <header className="bg-white border-b border-green-200 shadow-sm">
+    <div className="min-h-screen theme-bg">
+      {/* Floating Header */}
+      <header className="floating-header sticky top-4 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
@@ -61,22 +54,21 @@ export default function Dashboard() {
                 />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  Peridot Vault Dashboard
-                </h1>
-                <p className="text-xs text-gray-600">
-                  Testnet • DeFi Vault Protocol
+                <p className="text-xs text-slate-900 dark:text-slate-300">
+                Peridot • Testnet
                 </p>
               </div>
             </div>
             
-            {/* Links */}
+            {/* Links and Theme Toggle */}
             <div className="flex items-center space-x-4">
+              <ThemeToggle />
+              <div className="w-px h-6 bg-slate-400 dark:bg-slate-500"></div>
               <a
                 href="https://github.com/PeridotFinance/Peridot-Soroban/tree/main#"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
                 title="View on GitHub"
               >
                 <Github className="w-5 h-5" />
@@ -85,7 +77,7 @@ export default function Dashboard() {
                 href="https://peridot-finance.gitbook.io/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
                 title="Learn about Soroban"
               >
                 <ExternalLink className="w-5 h-5" />
@@ -96,18 +88,29 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-4">
         {/* Introduction */}
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Peridot DeFi Vault
-          </h2>
-          <p className="text-lg text-gray-600">
+          </h1>
+          <p className="text-lg text-slate-800 dark:text-slate-300">
             Deposit PDOT tokens and receive pTokens representing your share of the vault
           </p>
-          <div className="mt-4 inline-flex items-center px-3 py-1 bg-green-100 border border-green-200 rounded-full text-sm text-green-800">
-            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-            Connected to Stellar Testnet
+          <div className="mt-4 space-y-3">
+            <div className="inline-flex items-center px-4 py-2 glass border-emerald-200/50 dark:border-emerald-400/20 text-sm text-emerald-800 dark:text-emerald-200 rounded-full">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
+              Connected to Stellar Testnet
+            </div>
+            <div className="block">
+              <a 
+                href="/carousel" 
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <span className="mr-2">🎠</span>
+                View 3D Carousel Dashboard
+              </a>
+            </div>
           </div>
         </div>
 
@@ -116,32 +119,30 @@ export default function Dashboard() {
           {/* Left Column */}
           <div className="space-y-6">
             {/* Wallet Connection */}
-            <ConnectWallet 
-              walletInfo={walletInfo} 
-              onWalletChange={handleWalletChange} 
-            />
-
-            {/* Token Manager */}
-            {walletInfo?.isConnected && (
-              <TokenManager 
+            <div className="glass-card">
+              <ConnectWallet 
                 walletInfo={walletInfo} 
-                onTokensMinted={handleTokensMinted} 
+                onWalletChange={handleWalletChange} 
               />
-            )}
+            </div>
+
+
           </div>
 
           {/* Right Column */}
           <div className="space-y-6">
             {/* Vault Interface */}
-            <VaultInterface 
-              walletInfo={walletInfo} 
-              onTransactionComplete={handleTransactionComplete} 
-            />
+            <div className="glass-card">
+              <VaultInterface 
+                walletInfo={walletInfo} 
+                onTransactionComplete={handleTransactionComplete} 
+              />
+            </div>
           </div>
         </div>
 
         {/* Vault Stats - Full Width */}
-        <div className="mt-8">
+        <div className="mt-8 glass-card">
           <VaultStats 
             walletInfo={walletInfo} 
             refreshTrigger={refreshTrigger} 
@@ -149,69 +150,69 @@ export default function Dashboard() {
         </div>
 
         {/* Contract Information */}
-        <div className="mt-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="mt-8 glass-card">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
             Contract Information
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Vault Contract:</span>
-              <p className="font-mono text-xs text-gray-900 break-all">
+              <span className="text-slate-800 dark:text-slate-300">Vault Contract:</span>
+              <p className="font-mono text-xs text-slate-900 dark:text-slate-100 break-all mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
                 {process.env.NEXT_PUBLIC_VAULT_CONTRACT}
               </p>
             </div>
             <div>
-              <span className="text-gray-600">Token Contract:</span>
-              <p className="font-mono text-xs text-gray-900 break-all">
+              <span className="text-slate-800 dark:text-slate-300">Token Contract:</span>
+              <p className="font-mono text-xs text-slate-900 dark:text-slate-100 break-all mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
                 {process.env.NEXT_PUBLIC_TOKEN_CONTRACT}
               </p>
             </div>
             <div>
-              <span className="text-gray-600">Network:</span>
-              <p className="text-gray-900">Stellar Testnet</p>
+              <span className="text-slate-800 dark:text-slate-300">Network:</span>
+              <p className="text-slate-900 dark:text-slate-100 font-medium">Stellar Testnet</p>
             </div>
             <div>
-              <span className="text-gray-600">Protocol:</span>
-              <p className="text-gray-900">Soroban Smart Contracts</p>
+              <span className="text-slate-800 dark:text-slate-300">Protocol:</span>
+              <p className="text-slate-900 dark:text-slate-100 font-medium">Soroban Smart Contracts</p>
             </div>
           </div>
         </div>
 
         {/* User Guide */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">
+        <div className="mt-8 glass-card border-blue-200/50 dark:border-blue-400/20 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/30">
+          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
             How to Use the Vault
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="flex items-start space-x-3">
-              <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
                 1
               </div>
               <div>
-                <h4 className="font-medium text-blue-900">Connect Wallet</h4>
-                <p className="text-blue-700">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100">Connect Wallet</h4>
+                <p className="text-blue-800 dark:text-blue-300">
                   Connect your Freighter wallet to get started
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-3">
-              <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
                 2
               </div>
               <div>
-                <h4 className="font-medium text-blue-900">Get PDOT Tokens</h4>
-                <p className="text-blue-700">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100">Get PDOT Tokens</h4>
+                <p className="text-blue-800 dark:text-blue-300">
                   Mint free PDOT tokens for the testnet
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-3">
-              <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
                 3
               </div>
               <div>
-                <h4 className="font-medium text-blue-900">Deposit & Earn</h4>
-                <p className="text-blue-700">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100">Deposit & Earn</h4>
+                <p className="text-blue-800 dark:text-blue-300">
                   Deposit PDOT tokens to receive pTokens
                 </p>
               </div>
@@ -221,16 +222,16 @@ export default function Dashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-50 border-t border-gray-200 mt-12">
+      <footer className="glass border-t border-white/20 dark:border-white/10 mt-12 mx-4 mb-4 rounded-2xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="text-center text-sm text-gray-600">
+          <div className="text-center text-sm text-slate-800 dark:text-slate-400">
             <p>
               Built in Berlin by{' '}
               <a
                 href="https://github.com/PeridotFinance/Peridot-Soroban/tree/main#"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-green-600 hover:text-green-700 underline font-medium"
+                className="text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 underline font-medium transition-colors duration-200"
               >
                 Peridot
               </a>{' '}
@@ -239,7 +240,7 @@ export default function Dashboard() {
                 href="https://stellar.org/soroban"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-green-600 hover:text-green-700 underline"
+                className="text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 underline transition-colors duration-200"
               >
                 Soroban
               </a>{' '}
@@ -248,7 +249,7 @@ export default function Dashboard() {
                 href="https://stellar.org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-green-600 hover:text-green-700 underline"
+                className="text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 underline transition-colors duration-200"
               >
                 Stellar
               </a>
