@@ -242,7 +242,7 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-500/2 via-cyan-500/1 to-purple-500/2 dark:from-blue-400/3 dark:via-cyan-400/2 dark:to-purple-400/3 border border-blue-400/10 dark:border-blue-400/15 shadow-lg shadow-blue-500/3 backdrop-blur-2xl">
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400/30 via-cyan-400/30 to-purple-400/30"></div>
             <div className="relative flex items-center justify-between p-3">
-              <span className="text-sm font-semibold text-blue-700 dark:text-blue-300 font-mono uppercase tracking-wide">PTOKENS:</span>
+              <span className="text-sm font-semibold text-blue-700 dark:text-blue-300 font-mono uppercase tracking-wide">PTOKENS::</span>
               <span className="font-bold text-blue-800 dark:text-blue-200 font-mono">
                 {formatNumber(walletInfo.pTokenBalance)}
               </span>
