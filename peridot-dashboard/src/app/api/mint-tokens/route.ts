@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 const TOKEN_CONTRACT_ID = process.env.NEXT_PUBLIC_TOKEN_CONTRACT!;
 const ALICE_ADDRESS = process.env.NEXT_PUBLIC_ALICE_ADDRESS!;
+const ALICE_SECRET_KEY = process.env.ALICE_SECRET_KEY!;
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,81 +15,114 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!TOKEN_CONTRACT_ID || !ALICE_ADDRESS) {
+    if (!TOKEN_CONTRACT_ID || !ALICE_ADDRESS || !ALICE_SECRET_KEY) {
       return NextResponse.json(
-        { success: false, error: 'Server configuration error: Missing contract or Alice address' },
+        { success: false, error: 'Server configuration error: Missing contract ID, Alice address, or Alice secret key' },
         { status: 500 }
       );
     }
 
-    console.log(`Minting PDOT tokens for ${userAddress}`);
+    console.log(`Minting and transferring PDOT tokens to ${userAddress}`);
     
-    // Step 1: Mint tokens to Alice's account
-    // Amount: 1000000000000000 (1,000,000 PDOT with 9 decimals)
-    const mintCommand = `stellar contract invoke \\
-      --id ${TOKEN_CONTRACT_ID} \\
-      --source alice \\
-      --network testnet \\
-      -- \\
-      mint \\
-      --to ${ALICE_ADDRESS} \\
-      --amount 1000000000000000`;
-
-    console.log('Executing mint command...');
-    const mintResult = await execAsync(mintCommand);
-    console.log('Mint result:', mintResult.stdout);
-
-    // Step 2: Transfer 1,000 PDOT tokens from Alice to user
+    // Use Stellar SDK directly
+    const StellarSdk = await import('@stellar/stellar-sdk');
+    
+    // Use SorobanRpc server for contract interactions
+    const rpc = new StellarSdk.rpc.Server('https://soroban-testnet.stellar.org');
+    
+    // Create Alice's keypair from secret key
+    const aliceKeypair = StellarSdk.Keypair.fromSecret(ALICE_SECRET_KEY);
+    
+    // Get Alice's account
+    const aliceAccount = await rpc.getAccount(ALICE_ADDRESS);
+    
+    // Build the token contract
+    const tokenContract = new StellarSdk.Contract(TOKEN_CONTRACT_ID);
+    
+    console.log('Building transfer operation directly (skipping mint for now)...');
+    
+    // Let's try just doing a transfer from Alice to user directly
     // Amount: 1000000000000 (1,000 PDOT with 9 decimals)
-    const transferCommand = `stellar contract invoke \\
-      --id ${TOKEN_CONTRACT_ID} \\
-      --source alice \\
-      --network testnet \\
-      -- \\
-      transfer \\
-      --from ${ALICE_ADDRESS} \\
-      --to ${userAddress} \\
-      --amount 1000000000000`;
+    const transferOperation = tokenContract.call(
+      'transfer',
+      StellarSdk.Address.fromString(ALICE_ADDRESS).toScVal(), // from parameter
+      StellarSdk.Address.fromString(userAddress).toScVal(), // to parameter
+      StellarSdk.nativeToScVal(BigInt('1000000000000'), { type: 'i128' }) // amount parameter using i128
+    );
 
-    console.log('Executing transfer command...');
-    const transferResult = await execAsync(transferCommand);
-    console.log('Transfer result:', transferResult.stdout);
+    // Build the transfer transaction
+    const transferTransaction = new StellarSdk.TransactionBuilder(aliceAccount, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: StellarSdk.Networks.TESTNET,
+    })
+      .addOperation(transferOperation)
+      .setTimeout(30)
+      .build();
 
-    // Extract transaction hash from the output if available
-    const transactionHashMatch = transferResult.stdout.match(/transaction: ([a-f0-9]+)/i);
-    const transactionHash = transactionHashMatch ? transactionHashMatch[1] : 'completed';
-
-    return NextResponse.json({
-      success: true,
-      message: 'Successfully minted and transferred 1,000 PDOT tokens',
-      transactionHash: transactionHash,
-      details: {
-        mintOutput: mintResult.stdout,
-        transferOutput: transferResult.stdout
-      }
-    });
-
-  } catch (error) {
-    console.error('Mint tokens error:', error);
+    console.log('Simulating transfer transaction first...');
     
-    // Check if it's a command execution error
-    if (error instanceof Error && 'stdout' in error) {
-      const execError = error as any;
+    // First simulate the transaction to check for errors
+    const transferSimResult = await rpc.simulateTransaction(transferTransaction);
+    console.log('Transfer simulation result:', transferSimResult);
+    
+    if (!StellarSdk.rpc.Api.isSimulationSuccess(transferSimResult)) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Failed to execute Stellar commands',
-          details: {
-            stdout: execError.stdout,
-            stderr: execError.stderr
-          }
+          error: `Transfer simulation failed: ${JSON.stringify(transferSimResult)}`,
+          details: { transferSimResult }
         },
         { status: 500 }
       );
     }
 
+    console.log('Preparing transfer transaction...');
+    
+    // Prepare the transfer transaction for Soroban
+    const preparedTransferTransaction = await rpc.prepareTransaction(transferTransaction);
+    
+    // Sign the transfer transaction with Alice's keypair
+    preparedTransferTransaction.sign(aliceKeypair);
+    
+    console.log('Submitting transfer transaction...');
+    
+    // Submit the transfer transaction
+    const transferResult = await rpc.sendTransaction(preparedTransferTransaction);
+    console.log('Transfer transaction result:', transferResult);
+    
+    if (transferResult.status === 'ERROR') {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Transfer transaction failed: ${transferResult.errorResult || 'Unknown error'}`,
+          details: { transferResult }
+        },
+        { status: 500 }
+      );
+    }
+
+    // Wait for the transfer transaction to be confirmed
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    return NextResponse.json({
+      success: true,
+      message: 'Successfully transferred 1,000 PDOT tokens (mint skipped due to contract limitations)',
+      transactionHash: transferResult.hash,
+      details: {
+        transferResult: transferResult,
+        note: 'Mint operation was skipped due to contract function not being available. Only transfer was performed.'
+      }
+    });
+
+  } catch (error) {
+    console.error('Transfer tokens error:', error);
+    
     return NextResponse.json(
-      { success: false, error: 'Failed to mint tokens' },
+      { 
+        success: false, 
+        error: `Failed to transfer tokens: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        details: { error: error instanceof Error ? error.stack : error }
+      },
       { status: 500 }
     );
   }

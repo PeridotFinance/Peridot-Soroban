@@ -78,15 +78,64 @@ export async function getXLMBalance(address: string): Promise<string> {
 // For now, we'll use API routes for contract interactions
 export async function getTokenBalance(address: string): Promise<string> {
   try {
-    // Add cache-busting parameter to ensure fresh data
-    const timestamp = Date.now();
-    const response = await fetch(`/api/token-balance?address=${address}&_t=${timestamp}`, {
-      cache: 'no-store'
-    });
-    const data = await response.json();
-    return data.balance || '0';
+    // Use Stellar SDK directly instead of API route
+    const StellarSdk = await import('@stellar/stellar-sdk');
+    
+    // Use SorobanRpc server for contract interactions
+    const rpc = new StellarSdk.rpc.Server('https://soroban-testnet.stellar.org');
+    
+    // Build the contract call
+    const contract = new StellarSdk.Contract(TOKEN_CONTRACT_ID);
+    
+    // Build the operation to call balance
+    const operation = contract.call(
+      'balance',
+      StellarSdk.Address.fromString(address).toScVal() // id parameter
+    );
+
+    // We need to build a transaction to simulate the contract call
+    // For read-only operations, we can use a dummy account
+    const dummyAccount = new StellarSdk.Account(
+      'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', // Dummy account
+      '0'
+    );
+
+    // Build the transaction for simulation
+    const transaction = new StellarSdk.TransactionBuilder(dummyAccount, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: StellarSdk.Networks.TESTNET,
+    })
+      .addOperation(operation)
+      .setTimeout(30)
+      .build();
+
+    // Simulate the transaction to get the result
+    const simResult = await rpc.simulateTransaction(transaction);
+    
+    // Check if simulation was successful
+    if (StellarSdk.rpc.Api.isSimulationSuccess(simResult)) {
+      // Parse the result - token balance should be returned as a ScVal
+      const resultScVal = simResult.result?.retval;
+      
+      if (!resultScVal) {
+        console.error('No result returned from token balance contract call');
+        return '0';
+      }
+      
+      // Convert ScVal to JavaScript value
+      const balanceValue = StellarSdk.scValToNative(resultScVal);
+      
+      // Convert from contract units (9 decimals) to display units
+      const balanceInUnits = parseInt(balanceValue.toString()) / 1000000000; // 9 decimals
+      
+      console.log(`Direct token balance for ${address}:`, balanceInUnits.toString());
+      return balanceInUnits.toString();
+    } else {
+      console.error('Failed to get token balance:', simResult);
+      return '0';
+    }
   } catch (error) {
-    console.error('Error fetching token balance:', error);
+    console.error('Error fetching token balance directly:', error);
     return '0';
   }
 }
