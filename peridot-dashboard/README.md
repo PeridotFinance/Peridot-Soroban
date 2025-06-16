@@ -97,7 +97,7 @@ src/
 ### API Routes
 - `POST /api/mint-tokens` - Mint TEST tokens
 - `GET /api/token-balance` - Get token balance
-- `GET /api/ptoken-balance` - Get pToken balance
+- ~~`GET /api/ptoken-balance` - Get pToken balance~~ (Removed: now uses direct SDK calls)
 - `GET /api/vault-stats` - Get vault statistics
 - `POST /api/deposit` - Process deposits
 - `POST /api/withdraw` - Process withdrawals
