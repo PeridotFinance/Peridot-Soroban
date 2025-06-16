@@ -210,7 +210,7 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400/30 to-teal-400/30"></div>
               <div className="relative flex items-center justify-between p-3">
                 <div className="flex items-center space-x-3">
-                  <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300 font-mono uppercase tracking-wide">PDOT_BALANCE:</span>
+                  <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300 font-mono uppercase tracking-wide">PDOT_BALANCE::</span>
                   <span className="font-bold text-emerald-800 dark:text-emerald-200 font-mono">
                     {formatNumber(walletInfo.testTokenBalance)}
                   </span>
