@@ -14,7 +14,7 @@ export default function VaultInterface({ walletInfo, onTransactionComplete }: Va
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transactionStatus, setTransactionStatus] = useState<'idle' | 'building' | 'signing' | 'submitting' | 'success' | 'error'>('idle');
+  const [transactionStatus, setTransactionStatus] = useState<'idle' | 'building' | 'preparing' | 'signing' | 'submitting' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
   const handleDeposit = async () => {
@@ -83,16 +83,24 @@ export default function VaultInterface({ walletInfo, onTransactionComplete }: Va
 
     setIsProcessing(true);
     setError(null);
-    setTransactionStatus('idle');
+    setTransactionStatus('building');
 
     try {
-      const result = await withdrawFromVault(walletInfo.address, withdrawAmount);
+      // This will trigger the Freighter popup for signing
+      const result = await withdrawFromVault(
+        walletInfo.address, 
+        withdrawAmount,
+        (status) => setTransactionStatus(status as any)
+      );
       
       if (result.success) {
         setTransactionStatus('success');
         setWithdrawAmount('');
+        if (result.transactionHash) {
+          console.log('Withdraw transaction successful! Hash:', result.transactionHash);
+        }
         onTransactionComplete();
-        setTimeout(() => setTransactionStatus('idle'), 3000);
+        setTimeout(() => setTransactionStatus('idle'), 5000);
       } else {
         setTransactionStatus('error');
         setError(result.error || 'Withdrawal failed');
@@ -190,6 +198,26 @@ export default function VaultInterface({ walletInfo, onTransactionComplete }: Va
         </div>
       )}
 
+      {transactionStatus === 'preparing' && (
+        <div className="mb-6 relative overflow-hidden rounded-xl bg-gradient-to-r from-indigo-500/2 via-purple-500/1 to-pink-500/2 dark:from-indigo-400/3 dark:via-purple-400/2 dark:to-pink-400/3 border border-indigo-400/15 dark:border-indigo-400/25 shadow-lg shadow-indigo-500/5 backdrop-blur-2xl">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-400/40 via-purple-400/40 to-pink-400/40"></div>
+          <div className="relative p-6 flex flex-col items-center">
+            <svg className="pl mb-4" width="240" height="240" viewBox="0 0 240 240">
+              <circle className="pl__ring pl__ring--a" cx="120" cy="120" r="105" fill="none" strokeWidth="20" strokeDasharray="0 660" strokeDashoffset="-330" strokeLinecap="round"></circle>
+              <circle className="pl__ring pl__ring--b" cx="120" cy="120" r="35" fill="none" strokeWidth="20" strokeDasharray="0 220" strokeDashoffset="-110" strokeLinecap="round"></circle>
+              <circle className="pl__ring pl__ring--c" cx="85" cy="120" r="70" fill="none" strokeWidth="20" strokeDasharray="0 440" strokeLinecap="round"></circle>
+              <circle className="pl__ring pl__ring--d" cx="155" cy="120" r="70" fill="none" strokeWidth="20" strokeDasharray="0 440" strokeLinecap="round"></circle>
+            </svg>
+            <p className="text-lg font-bold text-indigo-700 dark:text-indigo-300 font-mono uppercase tracking-wide">
+              PREPARING_TRANSACTION...
+            </p>
+            <p className="text-sm text-indigo-600 dark:text-indigo-400 font-mono opacity-80 mt-1">
+              Simulating and optimizing contract call
+            </p>
+          </div>
+        </div>
+      )}
+
       {transactionStatus === 'signing' && (
         <div className="mb-6 relative overflow-hidden rounded-xl bg-gradient-to-r from-yellow-500/2 via-orange-500/1 to-red-500/2 dark:from-yellow-400/3 dark:via-orange-400/2 dark:to-red-400/3 border border-yellow-400/15 dark:border-yellow-400/25 shadow-lg shadow-yellow-500/5 backdrop-blur-2xl">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-yellow-400/40 via-orange-400/40 to-red-400/40"></div>
@@ -234,7 +262,10 @@ export default function VaultInterface({ walletInfo, onTransactionComplete }: Va
           <div className="flex items-center">
             <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mr-2" />
             <p className="text-sm text-emerald-800 dark:text-emerald-300">
-              Transaction completed successfully! You received pTokens.
+              {activeTab === 'deposit' 
+                ? 'Deposit completed successfully! You received pTokens.'
+                : 'Withdrawal completed successfully! You received PDOT tokens.'
+              }
             </p>
           </div>
         </div>
@@ -303,6 +334,7 @@ export default function VaultInterface({ walletInfo, onTransactionComplete }: Va
                   </svg>
                   <span className="text-lg font-bold text-white font-mono uppercase tracking-wide">
                     {transactionStatus === 'building' && 'BUILDING...'}
+                    {transactionStatus === 'preparing' && 'PREPARING...'}
                     {transactionStatus === 'signing' && 'SIGNING...'}
                     {transactionStatus === 'submitting' && 'SUBMITTING...'}
                     {(transactionStatus === 'idle' || !transactionStatus) && 'PROCESSING...'}
@@ -380,7 +412,11 @@ export default function VaultInterface({ walletInfo, onTransactionComplete }: Va
                     <circle className="pl__ring pl__ring--d" cx="38.75" cy="30" r="17.5" fill="none" strokeWidth="5" strokeDasharray="0 110" strokeLinecap="round"></circle>
                   </svg>
                   <span className="text-lg font-bold text-white font-mono uppercase tracking-wide">
-                    PROCESSING_WITHDRAWAL...
+                    {transactionStatus === 'building' && 'BUILDING...'}
+                    {transactionStatus === 'preparing' && 'PREPARING...'}
+                    {transactionStatus === 'signing' && 'SIGNING...'}
+                    {transactionStatus === 'submitting' && 'SUBMITTING...'}
+                    {(transactionStatus === 'idle' || !transactionStatus) && 'PROCESSING...'}
                   </span>
                 </>
               ) : (

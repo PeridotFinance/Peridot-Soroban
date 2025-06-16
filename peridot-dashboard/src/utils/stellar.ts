@@ -229,18 +229,107 @@ export async function depositToVault(
   }
 }
 
-export async function withdrawFromVault(userAddress: string, pTokenAmount: string): Promise<{ success: boolean; error?: string }> {
+export async function withdrawFromVault(
+  userAddress: string, 
+  pTokenAmount: string, 
+  statusCallback?: (status: string) => void
+): Promise<{ success: boolean; error?: string; transactionHash?: string }> {
   try {
-    const response = await fetch('/api/withdraw', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userAddress, pTokenAmount }),
+    statusCallback?.('building');
+    
+    // Build the transaction using SorobanRpc (not Horizon for contract calls)
+    const StellarSdk = await import('@stellar/stellar-sdk');
+    
+    // Use SorobanRpc server for contract interactions
+    const rpc = new StellarSdk.rpc.Server('https://soroban-testnet.stellar.org');
+    
+    // Convert pToken amount to contract units (9 decimals)
+    const pTokenAmountInUnits = Math.floor(parseFloat(pTokenAmount) * 1000000000).toString();
+    
+    // Get user account
+    const account = await rpc.getAccount(userAddress);
+    
+    // Contract addresses
+    const VAULT_CONTRACT_ID = process.env.NEXT_PUBLIC_VAULT_CONTRACT!;
+    
+    // Build the contract invocation operation
+    const contract = new StellarSdk.Contract(VAULT_CONTRACT_ID);
+    
+    const operation = contract.call(
+      'withdraw',
+      StellarSdk.Address.fromString(userAddress).toScVal(), // user parameter
+      StellarSdk.nativeToScVal(pTokenAmountInUnits, { type: 'u128' }) // ptoken_amount parameter
+    );
+
+    // Build the transaction
+    const transaction = new StellarSdk.TransactionBuilder(account, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: StellarSdk.Networks.TESTNET,
+    })
+      .addOperation(operation)
+      .setTimeout(30) // Shorter timeout for contract calls
+      .build();
+
+    statusCallback?.('preparing');
+    
+    // CRUCIAL: Prepare the transaction for Soroban
+    const preparedTransaction = await rpc.prepareTransaction(transaction);
+    
+    const transactionXdr = preparedTransaction.toXDR();
+    console.log('Prepared withdraw transaction XDR:', transactionXdr);
+
+    statusCallback?.('signing');
+    
+    // Sign the prepared transaction with Freighter
+    const { signTransaction } = await import('@stellar/freighter-api');
+    
+    const signedResult = await signTransaction(transactionXdr, {
+      networkPassphrase: 'Test SDF Network ; September 2015',
+      address: userAddress,
     });
 
-    const data = await response.json();
-    return data;
+    if (signedResult.error) {
+      return { success: false, error: `Transaction signing failed: ${signedResult.error}` };
+    }
+
+    statusCallback?.('submitting');
+
+    // Submit the signed transaction using SorobanRpc
+    try {
+      console.log('Signed withdraw transaction XDR:', signedResult.signedTxXdr);
+      
+      // Reconstruct the signed transaction from XDR
+      const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(
+        signedResult.signedTxXdr, 
+        StellarSdk.Networks.TESTNET
+      );
+      
+      // Submit via SorobanRpc
+      const txResult = await rpc.sendTransaction(signedTransaction);
+      console.log('Withdraw transaction result:', txResult);
+      
+      if (txResult.status === 'ERROR') {
+        return { 
+          success: false, 
+          error: `Transaction failed: ${txResult.errorResult || 'Unknown error'}` 
+        };
+      }
+      
+      // Wait for the transaction to be confirmed before returning
+      // This gives time for the ledger state to update
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      return { 
+        success: true, 
+        transactionHash: txResult.hash 
+      };
+    } catch (submitError: any) {
+      console.error('Withdraw transaction submission error:', submitError);
+      return { 
+        success: false, 
+        error: `Transaction submission failed: ${submitError.message || submitError}` 
+      };
+    }
   } catch (error) {
     console.error('Withdraw error:', error);
     return { success: false, error: `Withdraw failed: ${error}` };

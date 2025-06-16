@@ -103,7 +103,7 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
             {/* Pulsing ring */}
             <div className="absolute inset-0 rounded-xl border-2 border-emerald-400/50 animate-ping"></div>
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
               WALLET_CONNECTED
             </h3>
@@ -111,9 +111,27 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
               {'>'} freighter_protocol_active
             </p>
           </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={copyAddress}
+              className="group relative p-2 bg-gradient-to-r from-slate-600/20 to-slate-700/20 hover:from-slate-500/30 hover:to-slate-600/30 active:from-slate-700/40 active:to-slate-800/40 rounded-lg border border-slate-400/10 hover:border-slate-300/20 active:border-slate-300/30 focus:outline-none focus:ring-2 focus:ring-slate-400/30 transition-all duration-200 shadow-lg hover:shadow-slate-500/10 backdrop-blur-lg transform hover:scale-105 active:scale-95 touch-manipulation"
+              title={copied ? 'Copied!' : 'Copy address'}
+            >
+              {copied ? (
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <Copy className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors duration-200" />
+              )}
+            </button>
+            <button
+              onClick={openStellarExpert}
+              className="group relative p-2 bg-gradient-to-r from-blue-600/20 to-blue-700/20 hover:from-blue-500/30 hover:to-blue-600/30 active:from-blue-700/40 active:to-blue-800/40 rounded-lg border border-blue-400/10 hover:border-blue-300/20 active:border-blue-300/30 focus:outline-none focus:ring-2 focus:ring-blue-400/30 transition-all duration-200 shadow-lg hover:shadow-blue-500/10 backdrop-blur-lg transform hover:scale-105 active:scale-95 touch-manipulation"
+              title="View on Stellar Expert"
+            >
+              <ExternalLink className="w-4 h-4 text-blue-500 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-200" />
+            </button>
+          </div>
         </div>
-
-
 
         {/* Cyber Status Messages */}
         {mintingStatus === 'success' && (
@@ -154,15 +172,15 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
         <div className="space-y-3 mb-4">
           {/* Smart PDOT Tokens Section */}
           {parseFloat(walletInfo.testTokenBalance || '0') === 0 ? (
-            // Large mint button when no tokens
+            // Large mint button when no tokens - Enhanced responsiveness
             <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500/2 via-teal-500/1 to-cyan-500/2 dark:from-emerald-400/4 dark:via-teal-400/2 dark:to-cyan-400/4 border border-emerald-400/10 dark:border-emerald-400/15 shadow-xl shadow-emerald-500/3 backdrop-blur-2xl">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400/30 via-teal-400/30 to-cyan-400/30"></div>
               <button
                 onClick={handleMint}
                 disabled={isMinting}
-                className="w-full group relative overflow-hidden p-4 bg-gradient-to-r from-emerald-500/30 to-teal-500/30 hover:from-emerald-600/40 hover:to-teal-600/40 rounded-xl border-2 border-emerald-400/20 hover:border-emerald-300/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-emerald-500/10 backdrop-blur-xl"
+                className="w-full group relative overflow-hidden p-4 bg-gradient-to-r from-emerald-500/30 to-teal-500/30 hover:from-emerald-600/50 hover:to-teal-600/50 active:from-emerald-700/60 active:to-teal-700/60 rounded-xl border-2 border-emerald-400/20 hover:border-emerald-300/40 active:border-emerald-300/60 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-emerald-500/20 hover:shadow-xl active:shadow-emerald-500/30 backdrop-blur-xl transform hover:scale-[1.02] active:scale-[0.98] min-h-[64px] touch-manipulation"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/3 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-200"></div>
                 <div className="relative flex items-center justify-center space-x-3">
                   {isMinting ? (
                     <>
@@ -176,10 +194,10 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
                     </>
                   ) : (
                     <>
-                      <Zap className="w-6 h-6 text-white drop-shadow-lg" />
+                      <Zap className="w-6 h-6 text-white drop-shadow-lg group-hover:scale-110 group-active:scale-95 transition-transform duration-200" />
                       <div className="text-center">
-                        <div className="text-lg font-bold text-white font-mono uppercase tracking-wide">MINT_1000_PDOT</div>
-                        <div className="text-sm text-emerald-100 font-mono opacity-90">Initialize vault operations</div>
+                        <div className="text-lg font-bold text-white font-mono uppercase tracking-wide group-hover:text-emerald-100 transition-colors duration-200">MINT_1000_PDOT</div>
+                        <div className="text-sm text-emerald-100 font-mono opacity-90 group-hover:opacity-100 transition-opacity duration-200">Initialize vault operations</div>
                       </div>
                     </>
                   )}
@@ -187,7 +205,7 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
               </button>
             </div>
           ) : (
-            // Regular balance display with small mint button
+            // Regular balance display with small mint button - Enhanced responsiveness
             <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500/2 via-green-500/1 to-teal-500/2 dark:from-emerald-400/3 dark:via-green-400/2 dark:to-teal-400/3 border border-emerald-400/10 dark:border-emerald-400/15 shadow-lg shadow-emerald-500/3 backdrop-blur-2xl">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400/30 to-teal-400/30"></div>
               <div className="relative flex items-center justify-between p-3">
@@ -200,10 +218,10 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
                 <button
                   onClick={handleMint}
                   disabled={isMinting}
-                  className="group relative flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-500/40 hover:to-teal-500/40 text-white text-xs font-bold rounded-lg border border-emerald-400/15 hover:border-emerald-300/25 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-emerald-500/10 backdrop-blur-lg"
+                  className="group relative flex items-center space-x-1 px-4 py-2 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-500/50 hover:to-teal-500/50 active:from-emerald-700/60 active:to-teal-700/60 text-white text-xs font-bold rounded-lg border border-emerald-400/15 hover:border-emerald-300/30 active:border-emerald-300/50 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 disabled:opacity-50 transition-all duration-200 shadow-lg hover:shadow-emerald-500/20 hover:shadow-xl active:shadow-emerald-500/30 backdrop-blur-lg transform hover:scale-105 active:scale-95 min-h-[36px] touch-manipulation"
                   title="Mint more PDOT tokens"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/3 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-200 rounded-lg"></div>
                   {isMinting ? (
                     <svg className="relative w-4 h-4" viewBox="0 0 60 60">
                       <circle className="pl__ring pl__ring--a" cx="30" cy="30" r="26.25" fill="none" strokeWidth="5" strokeDasharray="0 165" strokeDashoffset="-82.5" strokeLinecap="round"></circle>
@@ -212,9 +230,9 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
                       <circle className="pl__ring pl__ring--d" cx="38.75" cy="30" r="17.5" fill="none" strokeWidth="5" strokeDasharray="0 110" strokeLinecap="round"></circle>
                     </svg>
                   ) : (
-                    <Coins className="relative w-3 h-3" />
+                    <Coins className="relative w-3 h-3 group-hover:scale-110 group-active:scale-90 transition-transform duration-200" />
                   )}
-                  <span className="relative font-mono">+1000</span>
+                  <span className="relative font-mono group-hover:text-emerald-100 transition-colors duration-200">+1000</span>
                 </button>
               </div>
             </div>
@@ -246,15 +264,15 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
           </div>
         )}
 
-        {/* Cyber Disconnect Button */}
+        {/* Cyber Disconnect Button - Enhanced responsiveness */}
         <button
           onClick={handleDisconnect}
-          className="w-full group relative overflow-hidden px-4 py-3 bg-gradient-to-r from-red-600/20 via-red-700/20 to-red-800/20 hover:from-red-500/30 hover:via-red-600/30 hover:to-red-700/30 rounded-xl border border-red-500/10 hover:border-red-400/20 focus:outline-none focus:ring-2 focus:ring-red-400/50 transition-all duration-300 shadow-lg hover:shadow-red-500/10 backdrop-blur-2xl"
+          className="w-full group relative overflow-hidden px-4 py-3 bg-gradient-to-r from-red-600/20 via-red-700/20 to-red-800/20 hover:from-red-500/40 hover:via-red-600/40 hover:to-red-700/40 active:from-red-600/50 active:via-red-700/50 active:to-red-800/50 rounded-xl border border-red-500/10 hover:border-red-400/25 active:border-red-400/40 focus:outline-none focus:ring-4 focus:ring-red-400/30 transition-all duration-200 shadow-lg hover:shadow-red-500/20 hover:shadow-xl active:shadow-red-500/30 backdrop-blur-2xl transform hover:scale-[1.02] active:scale-[0.98] min-h-[48px] touch-manipulation"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-white/1 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-white/2 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-200"></div>
           <div className="relative flex items-center justify-center space-x-2">
-            <LogOut className="w-4 h-4 text-white group-hover:text-red-100 transition-colors duration-300" />
-            <span className="text-sm font-semibold text-white group-hover:text-red-100 font-mono uppercase tracking-wide transition-colors duration-300">
+            <LogOut className="w-4 h-4 text-white group-hover:text-red-100 group-active:text-red-200 transition-all duration-200 group-hover:scale-110 group-active:scale-95" />
+            <span className="text-sm font-semibold text-white group-hover:text-red-100 group-active:text-red-200 font-mono uppercase tracking-wide transition-colors duration-200">
               DISCONNECT_WALLET
             </span>
           </div>
@@ -299,17 +317,17 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
           </div>
         )}
 
-        {/* Cyber Connect Button */}
+        {/* Cyber Connect Button - Enhanced responsiveness */}
         <button
           onClick={handleConnect}
           disabled={isConnecting}
-          className="w-full group relative overflow-hidden px-6 py-4 bg-gradient-to-r from-emerald-600/30 via-teal-600/30 to-cyan-600/30 hover:from-emerald-500/40 hover:via-teal-500/40 hover:to-cyan-500/40 rounded-xl border-2 border-emerald-400/20 hover:border-emerald-300/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-xl hover:shadow-emerald-500/10 backdrop-blur-2xl"
+          className="w-full group relative overflow-hidden px-6 py-4 bg-gradient-to-r from-emerald-600/30 via-teal-600/30 to-cyan-600/30 hover:from-emerald-500/50 hover:via-teal-500/50 hover:to-cyan-500/50 active:from-emerald-700/60 active:via-teal-700/60 active:to-cyan-700/60 rounded-xl border-2 border-emerald-400/20 hover:border-emerald-300/40 active:border-emerald-300/60 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-emerald-500/20 hover:shadow-2xl active:shadow-emerald-500/30 backdrop-blur-2xl transform hover:scale-[1.02] active:scale-[0.98] min-h-[64px] touch-manipulation"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-white/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-white/3 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-200"></div>
           
           {/* Scanning animation when connecting */}
           {isConnecting && (
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent animate-pulse"></div>
           )}
           
           <div className="relative flex items-center justify-center space-x-3">
@@ -322,8 +340,8 @@ export default function ConnectWallet({ walletInfo, onWalletChange }: ConnectWal
               </>
             ) : (
               <>
-                <Wallet className="w-6 h-6 text-white group-hover:text-emerald-100 transition-colors duration-300" />
-                <span className="text-lg font-bold text-white group-hover:text-emerald-100 font-mono uppercase tracking-wide transition-colors duration-300">
+                <Wallet className="w-6 h-6 text-white group-hover:text-emerald-100 group-active:text-emerald-200 transition-all duration-200 group-hover:scale-110 group-active:scale-95" />
+                <span className="text-lg font-bold text-white group-hover:text-emerald-100 group-active:text-emerald-200 font-mono uppercase tracking-wide transition-colors duration-200">
                   CONNECT_FREIGHTER
                 </span>
               </>

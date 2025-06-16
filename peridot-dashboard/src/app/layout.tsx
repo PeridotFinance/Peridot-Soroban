@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
@@ -25,16 +26,47 @@ export const metadata: Metadata = {
   },
 };
 
+// Theme initialization script - safer than dangerouslySetInnerHTML
+const themeScript = `
+(function() {
+  try {
+    const savedTheme = localStorage.getItem('theme');
+    const initialTheme = savedTheme || 'dark';
+    
+    document.documentElement.setAttribute('data-theme', initialTheme);
+    
+    if (initialTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+    }
+  } catch (e) {
+    // Fallback to dark mode if localStorage is not available
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.classList.add('dark');
+    document.body.classList.add('dark');
+  }
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" data-theme="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased dark`}
       >
+        <Script
+          id="theme-script"
+          strategy="beforeInteractive"
+        >
+          {themeScript}
+        </Script>
         <ThemeProvider>
           {children}
         </ThemeProvider>

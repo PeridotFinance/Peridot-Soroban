@@ -2,11 +2,11 @@
 
 import { useState, useCallback } from 'react';
 import { Shield, Github, ExternalLink } from 'lucide-react';
-import ConnectWallet from '@/components/ConnectWallet';
-import VaultInterface from '@/components/VaultInterface';
-import VaultStats from '@/components/VaultStats';
-import ThemeToggle from '@/components/ThemeToggle';
-import DashboardWithCarousel from '@/components/DashboardWithCarousel';
+  import ConnectWallet from '@/components/ConnectWallet';
+  import VaultInterface from '@/components/VaultInterface';
+  import VaultStats from '@/components/VaultStats';
+  import ThemeToggle from '@/components/ThemeToggle';
+  import DashboardWithCarousel from '@/components/DashboardWithCarousel';
 import { WalletInfo } from '@/utils/stellar';
 import Image from 'next/image';
 
@@ -20,11 +20,19 @@ export default function Dashboard() {
       // Trigger a refresh of stats when wallet connects
       setRefreshTrigger(prev => prev + 1);
     }
-  }, []);
-
-
-
-  const handleTransactionComplete = useCallback(async () => {
+      }, []);
+  
+    const handleTokensMinted = useCallback(async () => {
+      if (walletInfo?.address) {
+        // Refresh wallet balances after minting
+        const { getBalances } = await import('@/utils/stellar');
+        const updatedBalances = await getBalances(walletInfo.address);
+        setWalletInfo(updatedBalances);
+        setRefreshTrigger(prev => prev + 1);
+      }
+    }, [walletInfo?.address]);
+  
+    const handleTransactionComplete = useCallback(async () => {
     if (walletInfo?.address) {
       // Add a small delay to ensure ledger state has updated
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -92,23 +100,22 @@ export default function Dashboard() {
         {/* Introduction */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-            Peridot DeFi Vault
+            Peridot Stellar Lend & Earn
           </h1>
           <p className="text-lg text-slate-800 dark:text-slate-300">
             Deposit PDOT tokens and receive pTokens representing your share of the vault
           </p>
           <div className="mt-4 space-y-3">
-            <div className="inline-flex items-center px-4 py-2 glass border-emerald-200/50 dark:border-emerald-400/20 text-sm text-emerald-800 dark:text-emerald-200 rounded-full">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
-              Connected to Stellar Testnet
-            </div>
+
             <div className="block">
               <a 
                 href="/carousel" 
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="group relative inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600/20 via-blue-600/15 to-indigo-600/20 hover:from-purple-500/30 hover:via-blue-500/25 hover:to-indigo-500/30 active:from-purple-700/40 active:via-blue-700/35 active:to-indigo-700/40 rounded-lg border border-purple-400/10 hover:border-purple-300/20 active:border-purple-300/30 focus:outline-none focus:ring-2 focus:ring-purple-400/30 transition-all duration-200 shadow-md hover:shadow-purple-500/10 hover:shadow-lg active:shadow-purple-500/20 backdrop-blur-lg transform hover:scale-102 active:scale-98 touch-manipulation text-sm"
               >
-                <span className="mr-2">🎠</span>
-                View 3D Carousel Dashboard
+                <div className="absolute inset-0 bg-gradient-to-r from-white/2 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-200 rounded-lg"></div>
+                <span className="relative font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 group-active:text-slate-800 dark:group-active:text-slate-200 transition-colors duration-200">
+                  3D Dashboard
+                </span>
               </a>
             </div>
           </div>
@@ -119,15 +126,15 @@ export default function Dashboard() {
           {/* Left Column */}
           <div className="space-y-6">
             {/* Wallet Connection */}
-            <div className="glass-card">
-              <ConnectWallet 
-                walletInfo={walletInfo} 
-                onWalletChange={handleWalletChange} 
-              />
+                          <div className="glass-card">
+                <ConnectWallet 
+                  walletInfo={walletInfo} 
+                  onWalletChange={handleWalletChange} 
+                />
+              </div>
+ 
+
             </div>
-
-
-          </div>
 
           {/* Right Column */}
           <div className="space-y-6">
