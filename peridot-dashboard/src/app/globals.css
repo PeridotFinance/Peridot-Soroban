@@ -419,6 +419,95 @@ body {
   }
 }
 
+/* Custom Input Field - From Uiverse.io by VijinV */
+.inputbox {
+  position: relative;
+  width: 100%;
+}
+
+.inputbox .max-button {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 15;
+}
+
+.inputbox input {
+  position: relative;
+  width: 100%;
+  padding: 20px 10px 10px;
+  background: transparent;
+  outline: none;
+  box-shadow: none;
+  border: none;
+  color: #23242a;
+  font-size: 1em;
+  letter-spacing: 0.05em;
+  transition: 0.5s;
+  z-index: 10;
+}
+
+.inputbox input::-webkit-outer-spin-button,
+.inputbox input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.inputbox input[type=number] {
+  -moz-appearance: textfield;
+}
+
+[data-theme="dark"] .inputbox input {
+  color: #ffffff;
+}
+
+.inputbox span {
+  position: absolute;
+  left: 0;
+  padding: 20px 10px 10px;
+  font-size: 1em;
+  color: #64748b;
+  letter-spacing: 0.05em;
+  transition: 0.5s;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .inputbox span {
+  color: #94a3b8;
+}
+
+.inputbox input:valid ~ span,
+.inputbox input:focus ~ span {
+  color: #10b981;
+  transform: translateX(-10px) translateY(-34px);
+  font-size: 0.75em;
+}
+
+[data-theme="dark"] .inputbox input:valid ~ span,
+[data-theme="dark"] .inputbox input:focus ~ span {
+  color: #34d399;
+}
+
+.inputbox i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #10b981, #14b8a6);
+  border-radius: 4px;
+  transition: 0.5s;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.inputbox input:valid ~ i,
+.inputbox input:focus ~ i {
+  height: 44px;
+  background: linear-gradient(90deg, #10b981, #14b8a6, #06b6d4);
+}
+
 /* Custom scrollbar for webkit browsers */
 ::-webkit-scrollbar {
   width: 8px;

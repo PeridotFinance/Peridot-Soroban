@@ -108,16 +108,16 @@ export default function VaultStats({ walletInfo, refreshTrigger }: VaultStatsPro
       value: formatNumber(stats.totalPTokens),
       subtitle: 'Shares issued',
       icon: Target,
-      color: 'cyber-blue',
-      bgClass: 'bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-indigo-500/10 dark:from-blue-400/20 dark:via-cyan-400/10 dark:to-indigo-400/20',
-      borderClass: 'border border-blue-300/30 dark:border-blue-400/40',
-      shadowClass: 'shadow-lg shadow-blue-500/20 dark:shadow-blue-400/30',
-      glowClass: 'hover:shadow-blue-500/40 dark:hover:shadow-blue-400/50',
-      iconBg: 'bg-gradient-to-br from-blue-500 to-cyan-500',
+      color: 'liquid-glass',
+      bgClass: 'bg-gradient-to-br from-white/5 via-white/2 to-white/5 dark:from-slate-700/20 dark:via-slate-600/10 dark:to-slate-700/20',
+      borderClass: 'border border-white/20 dark:border-slate-600/30',
+      shadowClass: 'shadow-lg shadow-black/5 dark:shadow-black/20',
+      glowClass: 'hover:shadow-emerald-500/10 dark:hover:shadow-emerald-400/20',
+      iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600',
       iconClass: 'text-white',
-      textClass: 'text-blue-900 dark:text-blue-100',
-      subtitleClass: 'text-blue-700 dark:text-blue-300',
-      accentClass: 'bg-gradient-to-r from-blue-400 to-cyan-400'
+      textClass: 'text-slate-900 dark:text-slate-100',
+      subtitleClass: 'text-slate-600 dark:text-slate-400',
+      accentClass: 'bg-gradient-to-r from-emerald-400 to-teal-400'
     },
     {
       id: 'exchange-rate',
@@ -125,16 +125,16 @@ export default function VaultStats({ walletInfo, refreshTrigger }: VaultStatsPro
       value: `${stats.exchangeRate}:1`,
       subtitle: 'PDOT → pPDOT',
       icon: ArrowUpDown,
-      color: 'cyber-purple',
-      bgClass: 'bg-gradient-to-br from-purple-500/10 via-violet-500/5 to-fuchsia-500/10 dark:from-purple-400/20 dark:via-violet-400/10 dark:to-fuchsia-400/20',
-      borderClass: 'border border-purple-300/30 dark:border-purple-400/40',
-      shadowClass: 'shadow-lg shadow-purple-500/20 dark:shadow-purple-400/30',
-      glowClass: 'hover:shadow-purple-500/40 dark:hover:shadow-purple-400/50',
-      iconBg: 'bg-gradient-to-br from-purple-500 to-fuchsia-500',
+      color: 'liquid-glass',
+      bgClass: 'bg-gradient-to-br from-white/5 via-white/2 to-white/5 dark:from-slate-700/20 dark:via-slate-600/10 dark:to-slate-700/20',
+      borderClass: 'border border-white/20 dark:border-slate-600/30',
+      shadowClass: 'shadow-lg shadow-black/5 dark:shadow-black/20',
+      glowClass: 'hover:shadow-emerald-500/10 dark:hover:shadow-emerald-400/20',
+      iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600',
       iconClass: 'text-white',
-      textClass: 'text-purple-900 dark:text-purple-100',
-      subtitleClass: 'text-purple-700 dark:text-purple-300',
-      accentClass: 'bg-gradient-to-r from-purple-400 to-fuchsia-400'
+      textClass: 'text-slate-900 dark:text-slate-100',
+      subtitleClass: 'text-slate-600 dark:text-slate-400',
+      accentClass: 'bg-gradient-to-r from-emerald-400 to-teal-400'
     },
     {
       id: 'user-share',
@@ -142,16 +142,16 @@ export default function VaultStats({ walletInfo, refreshTrigger }: VaultStatsPro
       value: `${stats.userShare}%`,
       subtitle: walletInfo?.isConnected ? 'of total vault' : 'Connect wallet',
       icon: Wallet,
-      color: 'cyber-orange',
-      bgClass: 'bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-yellow-500/10 dark:from-orange-400/20 dark:via-amber-400/10 dark:to-yellow-400/20',
-      borderClass: 'border border-orange-300/30 dark:border-orange-400/40',
-      shadowClass: 'shadow-lg shadow-orange-500/20 dark:shadow-orange-400/30',
-      glowClass: 'hover:shadow-orange-500/40 dark:hover:shadow-orange-400/50',
-      iconBg: 'bg-gradient-to-br from-orange-500 to-amber-500',
+      color: 'liquid-glass',
+      bgClass: 'bg-gradient-to-br from-white/5 via-white/2 to-white/5 dark:from-slate-700/20 dark:via-slate-600/10 dark:to-slate-700/20',
+      borderClass: 'border border-white/20 dark:border-slate-600/30',
+      shadowClass: 'shadow-lg shadow-black/5 dark:shadow-black/20',
+      glowClass: 'hover:shadow-emerald-500/10 dark:hover:shadow-emerald-400/20',
+      iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600',
       iconClass: 'text-white',
-      textClass: 'text-orange-900 dark:text-orange-100',
-      subtitleClass: 'text-orange-700 dark:text-orange-300',
-      accentClass: 'bg-gradient-to-r from-orange-400 to-amber-400'
+      textClass: 'text-slate-900 dark:text-slate-100',
+      subtitleClass: 'text-slate-600 dark:text-slate-400',
+      accentClass: 'bg-gradient-to-r from-emerald-400 to-teal-400'
     }
   ];
 
@@ -203,7 +203,7 @@ export default function VaultStats({ walletInfo, refreshTrigger }: VaultStatsPro
          </div>
        )}
 
-             {/* Cyber Stats Grid */}
+             {/* Liquid Glass Stats Grid */}
        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
          {statisticsData.map((stat) => {
            const IconComponent = stat.icon;
@@ -211,10 +211,10 @@ export default function VaultStats({ walletInfo, refreshTrigger }: VaultStatsPro
              <div
                key={stat.id}
                className={`
-                 relative group p-3 md:p-4 rounded-lg md:rounded-xl border backdrop-blur-sm
+                 relative group p-3 md:p-4 rounded-xl md:rounded-2xl border backdrop-blur-2xl
                  transition-all duration-300 hover:scale-[1.02] cursor-pointer
                  ${stat.bgClass} ${stat.borderClass} ${stat.shadowClass} hover:${stat.glowClass}
-                 hover:border-opacity-60 dark:hover:border-opacity-80
+                 hover:border-emerald-400/30 dark:hover:border-emerald-400/40
                `}
              >
                {/* Neon accent line */}
@@ -254,26 +254,38 @@ export default function VaultStats({ walletInfo, refreshTrigger }: VaultStatsPro
          })}
        </div>
 
-       {/* Cyber Info Terminal */}
-       <div className="relative overflow-hidden rounded-lg md:rounded-xl bg-gradient-to-br from-slate-900/50 via-slate-800/40 to-slate-900/60 dark:from-slate-900/80 dark:via-slate-800/60 dark:to-slate-900/90 border border-slate-600/30 dark:border-slate-500/40 shadow-xl shadow-slate-900/20 backdrop-blur-sm">
-         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400"></div>
-         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5"></div>
-         <div className="relative p-3 md:p-4">
-           <div className="flex items-start space-x-3">
-             <div className="w-6 h-6 md:w-8 md:h-8 rounded-md md:rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shadow-lg flex-shrink-0">
-               <Info className="w-3 h-3 md:w-4 md:h-4 text-white drop-shadow-sm" />
+       {/* Peridot Liquid Glass Info Panel */}
+       <div className="relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br from-white/5 via-white/2 to-white/5 dark:from-slate-700/20 dark:via-slate-600/10 dark:to-slate-700/20 border border-white/20 dark:border-slate-600/30 shadow-xl shadow-black/5 dark:shadow-black/20 backdrop-blur-2xl">
+         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400/60 via-teal-400/60 to-cyan-400/60"></div>
+         <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/3 via-transparent to-teal-500/3"></div>
+         <div className="relative p-4 md:p-6">
+           <div className="flex items-start space-x-4">
+             <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg flex-shrink-0">
+               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl"></div>
+               <Info className="relative w-4 h-4 md:w-5 md:h-5 text-white drop-shadow-sm" />
              </div>
              <div className="flex-1">
-               <h4 className="text-xs md:text-sm font-semibold text-white dark:text-slate-100 mb-1 md:mb-2 font-mono uppercase tracking-wide">
+               <h4 className="text-sm md:text-base font-bold text-slate-900 dark:text-slate-100 mb-2 md:mb-3 font-mono uppercase tracking-wide">
                  VAULT_PROTOCOL.INFO
                </h4>
-               <p className="text-xs md:text-sm text-slate-300 dark:text-slate-400 leading-relaxed font-mono">
-                 {'> '} Deposit PDOT tokens → receive pTokens (vault shares)<br/>
-                 {'> '} 1:1 exchange ratio maintained • instant redemption
-               </p>
-               <div className="flex items-center space-x-2 mt-2">
-                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                 <span className="text-xs text-green-400 font-mono">SYSTEM_ONLINE</span>
+               <div className="space-y-1.5 md:space-y-2">
+                 <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+                   <span className="text-emerald-600 dark:text-emerald-400 font-mono">{'> '}</span>
+                   Deposit PDOT tokens → receive pTokens (vault shares)
+                 </p>
+                 <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+                   <span className="text-emerald-600 dark:text-emerald-400 font-mono">{'> '}</span>
+                   1:1 exchange ratio maintained • instant redemption
+                 </p>
+               </div>
+               <div className="flex items-center space-x-3 mt-3 md:mt-4">
+                 <div className="relative">
+                   <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full"></div>
+                   <div className="absolute inset-0 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
+                 </div>
+                 <span className="text-xs md:text-sm text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
+                   PROTOCOL_ACTIVE
+                 </span>
                </div>
              </div>
            </div>

@@ -288,29 +288,27 @@ export default function VaultInterface({ walletInfo, onTransactionComplete }: Va
             <span className="font-medium">{formatNumber(walletInfo.testTokenBalance)}</span>
           </div>
 
-          <div>
-            <label htmlFor="deposit-amount" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
-              Deposit Amount
-            </label>
-            <div className="flex space-x-2">
+          <div className="mb-4 sm:mb-6">
+            <div className="inputbox">
               <input
                 id="deposit-amount"
                 type="number"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
                 disabled={isProcessing}
+                required
               />
-              <button
-                onClick={() => setMaxAmount('deposit')}
-                className="px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/30 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                disabled={isProcessing || !hasTestTokens}
-              >
-                Max
-              </button>
+              <span>Enter PDOT amount</span>
+              <i></i>
+              <div className="max-button">
+                <button
+                  onClick={() => setMaxAmount('deposit')}
+                  className="px-2 py-1 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded border border-emerald-400/30 hover:from-emerald-500/30 hover:to-teal-500/30 hover:border-emerald-400/50 transition-all duration-300"
+                  disabled={isProcessing || !hasTestTokens}
+                >
+                  MAX
+                </button>
+              </div>
             </div>
             <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
               You will receive {depositAmount || '0'} pTokens (1:1 ratio)
@@ -367,29 +365,27 @@ export default function VaultInterface({ walletInfo, onTransactionComplete }: Va
             <span className="font-medium">{formatNumber(walletInfo.pTokenBalance)}</span>
           </div>
 
-          <div>
-            <label htmlFor="withdraw-amount" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
-              Withdraw Amount (pTokens)
-            </label>
-            <div className="flex space-x-2">
+          <div className="mb-4 sm:mb-6">
+            <div className="inputbox">
               <input
                 id="withdraw-amount"
                 type="number"
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
                 disabled={isProcessing}
+                required
               />
-              <button
-                onClick={() => setMaxAmount('withdraw')}
-                className="px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/30 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                disabled={isProcessing || !hasPTokens}
-              >
-                Max
-              </button>
+              <span>Enter pToken amount</span>
+              <i></i>
+              <div className="max-button">
+                <button
+                  onClick={() => setMaxAmount('withdraw')}
+                  className="px-2 py-1 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded border border-emerald-400/30 hover:from-emerald-500/30 hover:to-teal-500/30 hover:border-emerald-400/50 transition-all duration-300"
+                  disabled={isProcessing || !hasPTokens}
+                >
+                  MAX
+                </button>
+              </div>
             </div>
             <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
               You will receive {withdrawAmount || '0'} PDOT tokens (1:1 ratio)

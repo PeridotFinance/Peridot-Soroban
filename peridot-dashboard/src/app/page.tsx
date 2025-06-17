@@ -1,18 +1,20 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Shield, Github, ExternalLink } from 'lucide-react';
-  import ConnectWallet from '@/components/ConnectWallet';
-  import VaultInterface from '@/components/VaultInterface';
-  import VaultStats from '@/components/VaultStats';
-  import ThemeToggle from '@/components/ThemeToggle';
-  import DashboardWithCarousel from '@/components/DashboardWithCarousel';
+import { Shield, Github, ExternalLink, TrendingUp, Zap } from 'lucide-react';
+import ConnectWallet from '@/components/ConnectWallet';
+import VaultInterface from '@/components/VaultInterface';
+import VaultStats from '@/components/VaultStats';
+import VaultPerformanceChart from '@/components/VaultPerformanceChart';
+import ThemeToggle from '@/components/ThemeToggle';
+import DashboardWithCarousel from '@/components/DashboardWithCarousel';
 import { WalletInfo } from '@/utils/stellar';
 import Image from 'next/image';
 
 export default function Dashboard() {
   const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [activeTab, setActiveTab] = useState<'lending' | 'faucet'>('lending');
 
   const handleWalletChange = useCallback((info: WalletInfo | null) => {
     setWalletInfo(info);
@@ -20,19 +22,19 @@ export default function Dashboard() {
       // Trigger a refresh of stats when wallet connects
       setRefreshTrigger(prev => prev + 1);
     }
-      }, []);
+  }, []);
   
-    const handleTokensMinted = useCallback(async () => {
-      if (walletInfo?.address) {
-        // Refresh wallet balances after minting
-        const { getBalances } = await import('@/utils/stellar');
-        const updatedBalances = await getBalances(walletInfo.address);
-        setWalletInfo(updatedBalances);
-        setRefreshTrigger(prev => prev + 1);
-      }
-    }, [walletInfo?.address]);
+  const handleTokensMinted = useCallback(async () => {
+    if (walletInfo?.address) {
+      // Refresh wallet balances after minting
+      const { getBalances } = await import('@/utils/stellar');
+      const updatedBalances = await getBalances(walletInfo.address);
+      setWalletInfo(updatedBalances);
+      setRefreshTrigger(prev => prev + 1);
+    }
+  }, [walletInfo?.address]);
   
-    const handleTransactionComplete = useCallback(async () => {
+  const handleTransactionComplete = useCallback(async () => {
     if (walletInfo?.address) {
       // Add a small delay to ensure ledger state has updated
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -105,56 +107,192 @@ export default function Dashboard() {
           <p className="text-lg text-slate-800 dark:text-slate-300">
             Deposit PDOT tokens and receive pTokens representing your share of the vault
           </p>
-          <div className="mt-4 space-y-3">
+        </div>
 
-            <div className="block">
-              <a 
-                href="/carousel" 
-                className="group relative inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600/20 via-blue-600/15 to-indigo-600/20 hover:from-purple-500/30 hover:via-blue-500/25 hover:to-indigo-500/30 active:from-purple-700/40 active:via-blue-700/35 active:to-indigo-700/40 rounded-lg border border-purple-400/10 hover:border-purple-300/20 active:border-purple-300/30 focus:outline-none focus:ring-2 focus:ring-purple-400/30 transition-all duration-200 shadow-md hover:shadow-purple-500/10 hover:shadow-lg active:shadow-purple-500/20 backdrop-blur-lg transform hover:scale-102 active:scale-98 touch-manipulation text-sm"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/2 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-200 rounded-lg"></div>
-                <span className="relative font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 group-active:text-slate-800 dark:group-active:text-slate-200 transition-colors duration-200">
-                  3D Dashboard
-                </span>
-              </a>
-            </div>
+        {/* Glassy iOS-Style Tabs */}
+        <div className="flex justify-center mb-8">
+          <div className="relative backdrop-blur-2xl bg-white/10 dark:bg-white/5 rounded-3xl p-2 border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10">
+            <button
+              onClick={() => setActiveTab('lending')}
+              className="relative px-8 py-4 rounded-2xl font-semibold overflow-hidden group active:scale-95"
+              style={{
+                background: activeTab === 'lending' 
+                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))'
+                  : 'transparent',
+                backdropFilter: activeTab === 'lending' ? 'blur(20px)' : 'none',
+                border: activeTab === 'lending' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid transparent',
+                boxShadow: activeTab === 'lending' 
+                  ? '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  : 'none',
+                color: activeTab === 'lending' ? '#1e293b' : '#64748b',
+                transform: activeTab === 'lending' ? 'scale(1.02)' : 'scale(1)',
+                transition: activeTab === 'lending' 
+                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+                  : 'all 0.15s ease-out'
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform = activeTab === 'lending' ? 'scale(0.97)' : 'scale(0.95)';
+                e.currentTarget.style.transition = 'transform 0.1s ease-out';
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = activeTab === 'lending' ? 'scale(1.02)' : 'scale(1)';
+                e.currentTarget.style.transition = activeTab === 'lending' 
+                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+                  : 'all 0.15s ease-out';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = activeTab === 'lending' ? 'scale(1.02)' : 'scale(1)';
+                e.currentTarget.style.transition = activeTab === 'lending' 
+                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+                  : 'all 0.15s ease-out';
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+              <div className="relative flex items-center justify-center space-x-2">
+                <TrendingUp className="w-4 h-4" />
+                <span className="font-mono uppercase tracking-wide text-sm font-bold">Lending</span>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('faucet')}
+              className="relative px-8 py-4 rounded-2xl font-semibold overflow-hidden group active:scale-95"
+              style={{
+                background: activeTab === 'faucet' 
+                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))'
+                  : 'transparent',
+                backdropFilter: activeTab === 'faucet' ? 'blur(20px)' : 'none',
+                border: activeTab === 'faucet' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid transparent',
+                boxShadow: activeTab === 'faucet' 
+                  ? '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  : 'none',
+                color: activeTab === 'faucet' ? '#1e293b' : '#64748b',
+                transform: activeTab === 'faucet' ? 'scale(1.02)' : 'scale(1)',
+                transition: activeTab === 'faucet' 
+                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+                  : 'all 0.15s ease-out'
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform = activeTab === 'faucet' ? 'scale(0.97)' : 'scale(0.95)';
+                e.currentTarget.style.transition = 'transform 0.1s ease-out';
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = activeTab === 'faucet' ? 'scale(1.02)' : 'scale(1)';
+                e.currentTarget.style.transition = activeTab === 'faucet' 
+                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+                  : 'all 0.15s ease-out';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = activeTab === 'faucet' ? 'scale(1.02)' : 'scale(1)';
+                e.currentTarget.style.transition = activeTab === 'faucet' 
+                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+                  : 'all 0.15s ease-out';
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+              <div className="relative flex items-center justify-center space-x-2">
+                <Zap className="w-4 h-4" />
+                <span className="font-mono uppercase tracking-wide text-sm font-bold">Faucet</span>
+              </div>
+            </button>
           </div>
         </div>
 
-        {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column */}
-          <div className="space-y-6">
-            {/* Wallet Connection */}
-                          <div className="glass-card">
-                <ConnectWallet 
-                  walletInfo={walletInfo} 
-                  onWalletChange={handleWalletChange} 
-                />
-              </div>
- 
-
-            </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Vault Interface */}
+        {/* Tab Content */}
+        {activeTab === 'lending' ? (
+          // Lending & Borrowing Interface
+          <div className="max-w-6xl mx-auto space-y-8">
             <div className="glass-card">
-              <VaultInterface 
+              <ConnectWallet 
                 walletInfo={walletInfo} 
-                onTransactionComplete={handleTransactionComplete} 
+                onWalletChange={handleWalletChange}
+                mode="lending"
               />
             </div>
+            
+            {/* Vault Performance Chart - Only show when wallet is connected */}
+            {walletInfo && <VaultPerformanceChart walletInfo={walletInfo} />}
           </div>
-        </div>
+        ) : (
+          // Faucet Mode - Original Dashboard
+          <>
+            {/* User Guide - Moved to top */}
+            <div className="mb-8 glass-card border-slate-200/50 dark:border-slate-400/20 bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/30 dark:to-gray-950/30">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
+                How to Use the Vault
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                    1
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-900 dark:text-slate-100">Connect Wallet</h4>
+                    <p className="text-slate-700 dark:text-slate-300">
+                      Connect your Freighter wallet to get started
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-900 dark:text-slate-100">Get PDOT Tokens</h4>
+                    <p className="text-slate-700 dark:text-slate-300">
+                      Mint free PDOT tokens for the testnet
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-900 dark:text-slate-100">Deposit & Earn</h4>
+                    <p className="text-slate-700 dark:text-slate-300">
+                      Deposit PDOT tokens to receive pTokens
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        {/* Vault Stats - Full Width */}
-        <div className="mt-8 glass-card">
-          <VaultStats 
-            walletInfo={walletInfo} 
-            refreshTrigger={refreshTrigger} 
-          />
-        </div>
+            {/* Dashboard Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Column */}
+              <div className="space-y-6">
+                {/* Wallet Connection */}
+                <div className="glass-card">
+                  <ConnectWallet 
+                    walletInfo={walletInfo} 
+                    onWalletChange={handleWalletChange}
+                    mode="faucet"
+                  />
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                {/* Vault Interface */}
+                <div className="glass-card">
+                  <VaultInterface 
+                    walletInfo={walletInfo} 
+                    onTransactionComplete={handleTransactionComplete} 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Vault Stats - Full Width */}
+            <div className="mt-8 glass-card">
+              <VaultStats 
+                walletInfo={walletInfo} 
+                refreshTrigger={refreshTrigger} 
+              />
+            </div>
+          </>
+        )}
 
         {/* Contract Information */}
         <div className="mt-8 glass-card">
@@ -185,47 +323,24 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* User Guide */}
-        <div className="mt-8 glass-card border-blue-200/50 dark:border-blue-400/20 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/30">
-          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
-            How to Use the Vault
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
-                1
-              </div>
-              <div>
-                <h4 className="font-semibold text-blue-900 dark:text-blue-100">Connect Wallet</h4>
-                <p className="text-blue-800 dark:text-blue-300">
-                  Connect your Freighter wallet to get started
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
-                2
-              </div>
-              <div>
-                <h4 className="font-semibold text-blue-900 dark:text-blue-100">Get PDOT Tokens</h4>
-                <p className="text-blue-800 dark:text-blue-300">
-                  Mint free PDOT tokens for the testnet
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
-                3
-              </div>
-              <div>
-                <h4 className="font-semibold text-blue-900 dark:text-blue-100">Deposit & Earn</h4>
-                <p className="text-blue-800 dark:text-blue-300">
-                  Deposit PDOT tokens to receive pTokens
-                </p>
-              </div>
-            </div>
+        {/* 3D Dashboard Button - Bottom Section */}
+        <div className="mt-12 text-center">
+          <div className="block">
+            <a 
+              href="/carousel" 
+              className="group relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600/20 via-blue-600/15 to-indigo-600/20 hover:from-purple-500/30 hover:via-blue-500/25 hover:to-indigo-500/30 active:from-purple-700/40 active:via-blue-700/35 active:to-indigo-700/40 rounded-xl border border-purple-400/10 hover:border-purple-300/20 active:border-purple-300/30 focus:outline-none focus:ring-2 focus:ring-purple-400/30 transition-all duration-200 shadow-lg hover:shadow-purple-500/20 hover:shadow-xl active:shadow-purple-500/30 backdrop-blur-lg transform hover:scale-105 active:scale-95 touch-manipulation"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-200 rounded-xl"></div>
+              <span className="relative font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 group-active:text-slate-800 dark:group-active:text-slate-200 transition-colors duration-200">
+                🎯 Experience 3D Dashboard
+              </span>
+            </a>
           </div>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+            Explore our immersive 3D interface for advanced portfolio management
+          </p>
         </div>
+
       </main>
 
       {/* Footer */}
