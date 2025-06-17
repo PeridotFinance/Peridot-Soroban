@@ -281,21 +281,40 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
     setMintingStatus('idle');
 
     try {
+      console.log('Starting mint process for:', walletInfo.address);
       const result = await mintTestTokens(walletInfo.address);
       
       if (result.success) {
+        console.log('Mint successful:', result);
         setMintingStatus('success');
-        // Refresh wallet balances
-        const updatedBalances = await getBalances(walletInfo.address);
-        onWalletChange(updatedBalances);
+        // Refresh wallet balances after a brief delay
+        setTimeout(async () => {
+          const updatedBalances = await getBalances(walletInfo.address);
+          onWalletChange(updatedBalances);
+        }, 1000);
         setTimeout(() => setMintingStatus('idle'), 3000);
       } else {
+        console.error('Mint failed:', result.error);
         setMintingStatus('error');
-        setMintError(result.error || 'Minting failed');
+        // Provide more specific error messages
+        if (result.error?.includes('0x7D82D5')) {
+          setMintError('Authorization failed - server may be out of tokens');
+        } else if (result.error?.includes('configuration')) {
+          setMintError('Server configuration error');
+        } else if (result.error?.includes('UnreachableCodeReached') || result.error?.includes('implementation issues')) {
+          setMintError('Token contract issue - please contact support');
+        } else {
+          setMintError(result.error || 'Minting failed');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Mint exception:', err);
       setMintingStatus('error');
-      setMintError(`Minting failed: ${err}`);
+      if (err.message?.includes('fetch')) {
+        setMintError('Network error - please try again');
+      } else {
+        setMintError(`Minting failed: ${err.message || err}`);
+      }
     } finally {
       setIsMinting(false);
     }
@@ -385,13 +404,13 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
             </div>
           )}
 
-          {/* Cyber Connect Button - Enhanced responsiveness */}
+          {/* Professional Peridot Connect Button */}
           <button
             onClick={handleConnect}
             disabled={isConnecting}
-            className="w-full group relative overflow-hidden px-6 py-4 rounded-xl border-2 border-emerald-400/20 hover:border-emerald-300/40 active:border-emerald-300/60 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-emerald-500/20 hover:shadow-2xl active:shadow-emerald-500/30 backdrop-blur-2xl transform hover:scale-[1.02] active:scale-[0.98] min-h-[64px] touch-manipulation animate-fade-in-up animate-delay-400 bg-gradient-to-r from-emerald-500 to-blue-600"
+            className="w-full group relative overflow-hidden px-8 py-4 rounded-2xl border border-slate-200/20 dark:border-slate-700/30 hover:border-emerald-400/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-2xl hover:shadow-emerald-500/10 backdrop-blur-xl bg-white/5 dark:bg-slate-900/50 hover:bg-white/10 dark:hover:bg-slate-800/60 min-h-[68px] touch-manipulation animate-fade-in-up animate-delay-400"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/3 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-200"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
             
             {/* Scanning animation when connecting */}
             {isConnecting && (
@@ -401,16 +420,16 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
             <div className="relative flex items-center justify-center space-x-3">
               {isConnecting ? (
                 <>
-                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-lg font-bold text-white font-mono uppercase tracking-wide">
-                    CONNECTING...
+                  <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-lg font-semibold text-slate-700 dark:text-slate-200 tracking-wide">
+                    Connecting...
                   </span>
                 </>
               ) : (
                 <>
-                  <Wallet className="w-6 h-6 text-white group-hover:text-emerald-100 group-active:text-emerald-200 transition-all duration-200 group-hover:scale-110 group-active:scale-95" />
-                  <span className="text-lg font-bold text-white group-hover:text-emerald-100 group-active:text-emerald-200 font-mono uppercase tracking-wide transition-colors duration-200">
-                    CONNECT_FREIGHTER
+                  <Wallet className="w-5 h-5 text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-all duration-300" />
+                  <span className="text-lg font-semibold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white tracking-wide transition-colors duration-300">
+                    Connect Freighter Wallet
                   </span>
                 </>
               )}

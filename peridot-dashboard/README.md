@@ -42,6 +42,43 @@ npm run dev
 
 4. **Open [http://localhost:3000](http://localhost:3000)** in your browser
 
+## 🔧 Troubleshooting
+
+### Common Deployment Issues
+
+#### Error Code `0x7D82D5` (Authorization Failed)
+This error typically occurs during token minting when deployed. **Fixed in latest version** with simplified server-side transfer approach.
+
+**Solutions:**
+1. **Check Environment Variables**: Ensure all required env vars are set in production
+2. **Alice Account Balance**: Make sure Alice has sufficient tokens to transfer
+3. **Network Configuration**: Verify you're using the correct Stellar Testnet RPC
+4. **Secret Key**: Confirm ALICE_SECRET_KEY matches NEXT_PUBLIC_ALICE_ADDRESS
+
+**Quick Fixes:**
+- Clear browser cache and cookies
+- Retry the operation after a few seconds
+- Check server logs for specific error details
+
+#### Mint Button Not Working
+- Ensure Freighter wallet is connected
+- Check network connection
+- Verify contract addresses in environment variables
+- Look for JavaScript errors in browser console
+
+#### Transaction Timeouts
+- Increase transaction timeout in the code
+- Check Stellar network status
+- Retry with higher fee
+
+### Environment Variables Checklist
+- [ ] `NEXT_PUBLIC_VAULT_CONTRACT` - Vault contract address
+- [ ] `NEXT_PUBLIC_TOKEN_CONTRACT` - Token contract address  
+- [ ] `NEXT_PUBLIC_ALICE_ADDRESS` - Alice's public key
+- [ ] `ALICE_SECRET_KEY` - Alice's secret key (server-side only)
+
+**Important**: Never expose `ALICE_SECRET_KEY` in client-side code or public repositories.
+
 ## 🏗️ Architecture
 
 ### Smart Contracts (Testnet)
@@ -95,7 +132,7 @@ src/
 ## 🛠️ Development
 
 ### API Routes
-- `POST /api/mint-tokens` - Mint TEST tokens (Updated: now uses direct SDK calls)
+- `POST /api/mint-tokens` - Mint TEST tokens (Updated: simplified server-side transfer)
 - ~~`GET /api/token-balance` - Get token balance~~ (Removed: now uses direct SDK calls)
 - ~~`GET /api/ptoken-balance` - Get pToken balance~~ (Removed: now uses direct SDK calls)
 - `GET /api/vault-stats` - Get vault statistics (Updated: now uses direct SDK calls)
