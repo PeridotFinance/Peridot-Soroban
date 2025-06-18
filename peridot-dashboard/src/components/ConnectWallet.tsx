@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Wallet, LogOut, Copy, CheckCircle, AlertCircle, ExternalLink, Coins, Loader, Zap, TrendingUp, PiggyBank, ArrowUpCircle, ArrowDownCircle, BarChart3, DollarSign, Percent } from 'lucide-react';
 import { connectFreighter, getBalances, formatNumber, WalletInfo, mintTestTokens } from '@/utils/stellar';
 
@@ -166,6 +167,52 @@ const loadingStyles = `
     opacity: 0;
   }
 
+  /* New floating and elegant animations */
+  @keyframes float-in {
+    from {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes float-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-float-in {
+    animation: float-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-float-up {
+    animation: float-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
   /* Smooth gradient animations */
   @keyframes gradient-shift {
     0% {
@@ -188,6 +235,21 @@ const loadingStyles = `
       background-position: 100% 50%;
       opacity: 1;
     }
+  }
+
+  /* Input text visibility - hide when not focused to prevent overlap */
+  .inputbox input:not(:focus):not(:valid) {
+    color: transparent !important;
+  }
+  
+  .inputbox input:focus,
+  .inputbox input:valid {
+    color: #23242a !important;
+  }
+  
+  [data-theme="dark"] .inputbox input:focus,
+  [data-theme="dark"] .inputbox input:valid {
+    color: #ffffff !important;
   }
 `;
 
@@ -219,15 +281,46 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
   const [mintingStatus, setMintingStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [mintError, setMintError] = useState<string | null>(null);
 
+  // Token prices - centralized pricing data
+  const tokenPrices = {
+    PDOT: 0.85,
+    XLM: 0.12,
+    USDC: 1.00,
+    ETH: 2517.48,
+    SOL: 147.64
+  };
+
   // Lending/Borrowing functionality
-  const [selectedAsset, setSelectedAsset] = useState<'PDOT' | 'XLM' | 'USDC' | 'PTOKENS'>('PDOT');
+  const [selectedAsset, setSelectedAsset] = useState<'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL'>('PDOT');
   const [lendingMode, setLendingMode] = useState<'lend' | 'borrow'>('lend');
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Mock borrowed amounts - stored in localStorage
+  const [borrowedAmounts, setBorrowedAmounts] = useState<Record<string, number>>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`borrowed_amounts_${walletInfo?.address}`);
+      return stored ? JSON.parse(stored) : { PDOT: 0, XLM: 0, USDC: 0, ETH: 0, SOL: 0 };
+    }
+    return { PDOT: 0, XLM: 0, USDC: 0, ETH: 0, SOL: 0 };
+  });
+
+  // Save borrowed amounts to localStorage when they change
+  const updateBorrowedAmounts = (newAmounts: Record<string, number>) => {
+    setBorrowedAmounts(newAmounts);
+    if (typeof window !== 'undefined' && walletInfo?.address) {
+      localStorage.setItem(`borrowed_amounts_${walletInfo.address}`, JSON.stringify(newAmounts));
+    }
+  };
+  
+  // Earnings popup functionality
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showEarningsPopup, setShowEarningsPopup] = useState(false);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
   
   // Modal functionality
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalAsset, setModalAsset] = useState<'PDOT' | 'XLM' | 'USDC' | 'PTOKENS'>('PDOT');
+  const [modalAsset, setModalAsset] = useState<'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL'>('PDOT');
   const [modalAction, setModalAction] = useState<'withdraw' | 'repay'>('withdraw');
   const [modalAmount, setModalAmount] = useState('');
   const [isModalProcessing, setIsModalProcessing] = useState(false);
@@ -321,23 +414,276 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
   };
 
   // Mock data for lending interface
+  // pTokens represent supplied PDOT (1:1) and are used as collateral, not as a separate asset
+  const suppliedPDOT = walletInfo?.pTokenBalance || '0'; // pTokens = supplied PDOT
+  const availablePDOT = walletInfo?.testTokenBalance || '0'; // Available PDOT to supply
+  
+  // Calculate collateral value and borrowing power
+  const collateralValueUSD = parseFloat(suppliedPDOT) * tokenPrices.PDOT;
+  const maxBorrowingPowerUSD = collateralValueUSD * 0.8; // 80% of collateral
+  const totalBorrowedUSD = Object.keys(borrowedAmounts).reduce((total, asset) => {
+    return total + (borrowedAmounts[asset] * tokenPrices[asset as keyof typeof tokenPrices]);
+  }, 0);
+  const remainingBorrowingPowerUSD = Math.max(0, maxBorrowingPowerUSD - totalBorrowedUSD);
+  
   const assetData = {
-    PDOT: { balance: walletInfo?.testTokenBalance || '0', apy: '12.5', borrowed: '0', price: '0.85' },
-    XLM: { balance: '0', apy: '8.2', borrowed: '0', price: '0.12' },
-    USDC: { balance: '0', apy: '5.5', borrowed: '0', price: '1.00' },
-    PTOKENS: { balance: walletInfo?.pTokenBalance || '0', apy: '15.8', borrowed: '0', price: '1.20' }
+    PDOT: { 
+      balance: availablePDOT, 
+      lendApy: '12.5', 
+      borrowApy: '15.8', 
+      borrowed: borrowedAmounts.PDOT.toString(), 
+      price: tokenPrices.PDOT.toString() 
+    },
+    XLM: { 
+      balance: borrowedAmounts.XLM.toString(), 
+      lendApy: '8.2', 
+      borrowApy: '11.7', 
+      borrowed: borrowedAmounts.XLM.toString(), 
+      price: tokenPrices.XLM.toString() 
+    },
+    USDC: { 
+      balance: borrowedAmounts.USDC.toString(), 
+      lendApy: '5.5', 
+      borrowApy: '8.2', 
+      borrowed: borrowedAmounts.USDC.toString(), 
+      price: tokenPrices.USDC.toString() 
+    },
+    ETH: { 
+      balance: borrowedAmounts.ETH.toString(), 
+      lendApy: '4.8', 
+      borrowApy: '7.3', 
+      borrowed: borrowedAmounts.ETH.toString(), 
+      price: tokenPrices.ETH.toString() 
+    },
+    SOL: { 
+      balance: borrowedAmounts.SOL.toString(), 
+      lendApy: '6.3', 
+      borrowApy: '9.1', 
+      borrowed: borrowedAmounts.SOL.toString(), 
+      price: tokenPrices.SOL.toString() 
+    }
   };
 
   const handleLendingAction = async () => {
     if (!amount || !walletInfo?.address) return;
     
+    // Clear previous error messages
+    setError(null);
+    setMintingStatus('idle');
+    setMintError(null);
+    
+    // Validate amount
+    const amountNum = parseFloat(amount);
+    if (amountNum <= 0) {
+      setError('Amount must be greater than 0');
+      return;
+    }
+    
+    // Check if user has sufficient balance or collateral
+    if (lendingMode === 'lend' && selectedAsset === 'PDOT') {
+      const availableBalance = parseFloat(walletInfo?.testTokenBalance || '0');
+      if (amountNum > availableBalance) {
+        setError(`Insufficient PDOT balance. Available: ${availableBalance} PDOT`);
+        return;
+      }
+    } else if (lendingMode === 'borrow') {
+      // Check if user has sufficient collateral to borrow
+      if (parseFloat(suppliedPDOT) === 0) {
+        setError('You need to supply collateral before borrowing');
+        return;
+      }
+      
+      const assetPrice = parseFloat(assetData[selectedAsset].price);
+      const borrowValueUSD = amountNum * assetPrice;
+      const newTotalBorrowedUSD = totalBorrowedUSD + borrowValueUSD;
+      
+      if (newTotalBorrowedUSD > maxBorrowingPowerUSD) {
+        const maxBorrowableAmount = remainingBorrowingPowerUSD / assetPrice;
+        setError(`Exceeds borrowing limit. Max available: ${maxBorrowableAmount.toFixed(4)} ${selectedAsset} (${remainingBorrowingPowerUSD.toFixed(2)} USD)`);
+        return;
+      }
+    }
+    
     setIsProcessing(true);
     
-    // Simulate transaction
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      if (selectedAsset === 'PDOT') {
+        // PDOT operations use smart contracts
+        if (lendingMode === 'lend') {
+          // Deposit PDOT to vault and receive pTokens
+          const { depositToVault } = await import('@/utils/stellar');
+          
+          const result = await depositToVault(
+            walletInfo.address, 
+            amount,
+            (status: string) => {
+              console.log('Deposit status:', status);
+            }
+          );
+          
+          if (result.success) {
+            // Transaction successful - refresh balances with delay
+            setAmount('');
+            setMintingStatus('success');
+            
+            // Add delay to ensure ledger state has updated, then refresh multiple times
+            setTimeout(async () => {
+              const { getBalances } = await import('@/utils/stellar');
+              const updatedBalances = await getBalances(walletInfo.address);
+              onWalletChange(updatedBalances);
+            }, 1500);
+            
+            // Additional refresh after 3 seconds to ensure all updates are captured
+            setTimeout(async () => {
+              const { getBalances } = await import('@/utils/stellar');
+              const updatedBalances = await getBalances(walletInfo.address);
+              onWalletChange(updatedBalances);
+            }, 3000);
+            
+            setTimeout(() => setMintingStatus('idle'), 8000);
+          } else {
+            setError(result.error || 'Deposit failed');
+            setMintingStatus('error');
+            setMintError(result.error || 'Deposit failed');
+          }
+        } else {
+          // PDOT borrowing - TODO: Implement smart contract borrowing
+          setError('PDOT borrowing via smart contract not yet implemented');
+        }
+      } else {
+        // Other tokens (XLM, USDC, ETH, SOL) use mock localStorage
+        if (lendingMode === 'lend') {
+          // Mock lending for other assets - not implemented yet
+          setError('Lending ' + selectedAsset + ' is simulated and not yet implemented');
+        } else {
+          // Mock borrowing - update local state
+          const newBorrowedAmounts = {
+            ...borrowedAmounts,
+            [selectedAsset]: borrowedAmounts[selectedAsset] + amountNum
+          };
+          
+          updateBorrowedAmounts(newBorrowedAmounts);
+          setAmount('');
+          setMintingStatus('success');
+          setTimeout(() => setMintingStatus('idle'), 8000);
+        }
+      }
+    } catch (err: any) {
+      console.error('Lending action error:', err);
+      setError(`Transaction failed: ${err.message || err}`);
+      setMintingStatus('error');
+      setMintError(`Transaction failed: ${err.message || err}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!modalAmount || !walletInfo?.address) return;
     
-    setIsProcessing(false);
-    setAmount('');
+    // Clear previous error messages
+    setError(null);
+    setMintingStatus('idle');
+    setMintError(null);
+    
+    // Validate amount
+    const amountNum = parseFloat(modalAmount);
+    if (amountNum <= 0) {
+      setError('Amount must be greater than 0');
+      return;
+    }
+    
+    // Check if user has sufficient pTokens to withdraw
+    const availablePTokens = parseFloat(walletInfo?.pTokenBalance || '0');
+    if (amountNum > availablePTokens) {
+      setError(`Insufficient pTokens. Available: ${availablePTokens} pTokens`);
+      return;
+    }
+    
+    setIsModalProcessing(true);
+    
+    try {
+      // Withdraw using pTokens (1:1 with PDOT)
+      const { withdrawFromVault } = await import('@/utils/stellar');
+      
+      const result = await withdrawFromVault(
+        walletInfo.address, 
+        modalAmount, // pToken amount to withdraw
+        (status: string) => {
+          console.log('Withdraw status:', status);
+        }
+      );
+      
+      if (result.success) {
+        // Transaction successful - refresh balances with delay
+        setModalAmount('');
+        closeModal();
+        setMintingStatus('success');
+        
+        // Add delay to ensure ledger state has updated, then refresh multiple times
+        setTimeout(async () => {
+          const { getBalances } = await import('@/utils/stellar');
+          const updatedBalances = await getBalances(walletInfo.address);
+          onWalletChange(updatedBalances);
+        }, 1500);
+        
+        // Additional refresh after 3 seconds to ensure all updates are captured
+        setTimeout(async () => {
+          const { getBalances } = await import('@/utils/stellar');
+          const updatedBalances = await getBalances(walletInfo.address);
+          onWalletChange(updatedBalances);
+        }, 3000);
+        
+        setTimeout(() => setMintingStatus('idle'), 8000);
+      } else {
+        setError(result.error || 'Withdrawal failed');
+        setMintingStatus('error');
+        setMintError(result.error || 'Withdrawal failed');
+      }
+    } catch (err: any) {
+      console.error('Withdrawal error:', err);
+      setError(`Withdrawal failed: ${err.message || err}`);
+      setMintingStatus('error');
+      setMintError(`Withdrawal failed: ${err.message || err}`);
+    } finally {
+      setIsModalProcessing(false);
+    }
+  };
+
+  // Earnings/Interest calculation and popup handlers
+  const calculateProjectedValue = (inputAmount: string) => {
+    if (!inputAmount || isNaN(parseFloat(inputAmount))) return 0;
+    const numAmount = parseFloat(inputAmount);
+    const apy = parseFloat(lendingMode === 'borrow' ? assetData[selectedAsset].borrowApy : assetData[selectedAsset].lendApy);
+    const price = parseFloat(assetData[selectedAsset].price);
+    const monthlyRate = apy / 100 / 12; // Convert APY to monthly rate
+    const value = numAmount * monthlyRate * price; // Value in USD
+    return value;
+  };
+
+  const handleInputFocus = () => {
+    setIsInputFocused(true);
+    setShowEarningsPopup(true);
+  };
+
+  const handleInputBlur = () => {
+    setIsInputFocused(false);
+    // Delay hiding popup to allow for interaction
+    setTimeout(() => {
+      if (!isInputFocused) {
+        setShowEarningsPopup(false);
+      }
+    }, 300);
+  };
+
+  const handlePopupMouseEnter = () => {
+    setShowEarningsPopup(true);
+  };
+
+  const handlePopupMouseLeave = () => {
+    if (!isInputFocused) {
+      setShowEarningsPopup(false);
+    }
   };
 
   // Modal handlers
@@ -357,14 +703,67 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
   const handleModalAction = async () => {
     if (!modalAmount || !walletInfo?.address) return;
     
+    if (modalAction === 'withdraw') {
+      await handleWithdraw();
+    } else if (modalAction === 'repay') {
+      await handleRepay();
+    } else {
+      // For other modal actions
+      setIsModalProcessing(true);
+      
+      // Simulate transaction for other actions
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setIsModalProcessing(false);
+      setModalAmount('');
+      closeModal();
+    }
+  };
+
+  const handleRepay = async () => {
+    if (!modalAmount || !walletInfo?.address) return;
+    
+    // Clear previous error messages
+    setError(null);
+    setMintingStatus('idle');
+    setMintError(null);
+    
+    // Validate amount
+    const amountNum = parseFloat(modalAmount);
+    if (amountNum <= 0) {
+      setError('Amount must be greater than 0');
+      return;
+    }
+    
+    // Check if user has sufficient borrowed amount to repay
+    const currentBorrowed = borrowedAmounts[modalAsset];
+    if (amountNum > currentBorrowed) {
+      setError(`Cannot repay more than borrowed. Borrowed: ${currentBorrowed} ${modalAsset}`);
+      return;
+    }
+    
     setIsModalProcessing(true);
     
-    // Simulate transaction
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsModalProcessing(false);
-    setModalAmount('');
-    closeModal();
+    try {
+      // Mock repayment - reduce borrowed amount
+      const newBorrowedAmounts = {
+        ...borrowedAmounts,
+        [modalAsset]: Math.max(0, borrowedAmounts[modalAsset] - amountNum)
+      };
+      
+      updateBorrowedAmounts(newBorrowedAmounts);
+      setModalAmount('');
+      closeModal();
+      setMintingStatus('success');
+      setTimeout(() => setMintingStatus('idle'), 8000);
+    } catch (err: any) {
+      console.error('Repayment error:', err);
+      setError(`Repayment failed: ${err.message || err}`);
+      setMintingStatus('error');
+      setMintError(`Repayment failed: ${err.message || err}`);
+    } finally {
+      setIsModalProcessing(false);
+    }
   };
 
   if (!walletInfo?.isConnected) {
@@ -516,13 +915,23 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
       {/* Token Detail Modal */}
       {isModalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-lg animate-fade-in"
           onClick={closeModal}
         >
+          {/* Enhanced Mobile-First Elegant Modal */}
           <div 
-            className="w-full max-w-md bg-gradient-to-br from-white/95 via-white/98 to-white/95 dark:from-slate-800/40 dark:via-slate-700/20 dark:to-slate-800/40 border border-slate-200/60 dark:border-slate-600/30 rounded-3xl shadow-2xl backdrop-blur-3xl animate-fade-in-up max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-sm sm:max-w-md relative overflow-hidden bg-gradient-to-br from-white/98 via-slate-50/95 to-white/98 dark:from-slate-800/98 dark:via-slate-700/95 dark:to-slate-800/98 border border-white/60 dark:border-slate-600/50 rounded-3xl sm:rounded-4xl shadow-2xl backdrop-blur-3xl animate-float-up max-h-[85vh] sm:max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
+            style={{
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 8px 32px -8px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            }}
           >
+            {/* Peridot Liquid Glass Top Highlight */}
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent"></div>
+            <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-20 h-1 bg-gradient-to-r from-transparent via-white/60 to-transparent rounded-full blur-sm"></div>
+            
+            {/* Glass Reflection Effect */}
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white/10 via-white/5 to-transparent pointer-events-none"></div>
             <div className="relative p-6">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
@@ -543,27 +952,79 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
                 </button>
               </div>
 
-              {/* Token Stats */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="p-4 bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-purple-500/10 border border-blue-400/10 rounded-2xl backdrop-blur-xl">
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Your Balance</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{assetData[modalAsset].balance}</p>
-                  <p className="text-xs text-blue-500 font-semibold">{modalAsset}</p>
+              {/* Market Overview */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="p-4 bg-gradient-to-br from-emerald-500/8 via-emerald-400/4 to-teal-500/8 dark:from-emerald-400/12 dark:via-emerald-300/6 dark:to-teal-400/12 border border-emerald-400/20 dark:border-emerald-300/25 rounded-2xl backdrop-blur-3xl shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all duration-300 hover:border-emerald-300/40">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50"></div>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">Total Supplied</p>
+                  </div>
+                  <p className="text-xl font-bold text-emerald-800 dark:text-emerald-200 mb-1">
+                    {modalAsset === 'XLM' ? '20' : '15.7'}
+                  </p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold opacity-90">{modalAsset}</p>
                 </div>
-                <div className="p-4 bg-gradient-to-br from-emerald-500/10 via-green-500/5 to-teal-500/10 border border-emerald-400/10 rounded-2xl backdrop-blur-xl">
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Current APY</p>
-                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{assetData[modalAsset].apy}%</p>
-                  <p className="text-xs text-emerald-500 font-semibold">Annual</p>
+                
+                <div className="p-4 bg-gradient-to-br from-orange-500/8 via-amber-500/4 to-red-500/8 dark:from-orange-400/12 dark:via-amber-400/6 dark:to-red-400/12 border border-orange-400/20 dark:border-orange-300/25 rounded-2xl backdrop-blur-3xl shadow-lg shadow-orange-500/10 hover:shadow-orange-500/20 transition-all duration-300 hover:border-orange-300/40">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-orange-400 shadow-sm shadow-orange-400/50"></div>
+                    <p className="text-xs text-orange-700 dark:text-orange-300 font-medium">Total Borrowed</p>
+                  </div>
+                  <p className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-1">
+                    {modalAsset === 'XLM' ? '10.43' : '8.2'}
+                  </p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold opacity-90">{modalAsset}</p>
                 </div>
-                <div className="p-4 bg-gradient-to-br from-purple-500/10 via-indigo-500/5 to-blue-500/10 border border-purple-400/10 rounded-2xl backdrop-blur-xl">
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Price USD</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">${assetData[modalAsset].price}</p>
-                  <p className="text-xs text-purple-500 font-semibold">Market Rate</p>
+                
+                <div className="p-4 bg-gradient-to-br from-purple-500/8 via-indigo-500/4 to-blue-500/8 dark:from-purple-400/12 dark:via-indigo-400/6 dark:to-blue-400/12 border border-purple-400/20 dark:border-purple-300/25 rounded-2xl backdrop-blur-3xl shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20 transition-all duration-300 hover:border-purple-300/40">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-purple-400 shadow-sm shadow-purple-400/50"></div>
+                    <p className="text-xs text-purple-700 dark:text-purple-300 font-medium">Reserved</p>
+                  </div>
+                  <p className="text-xl font-bold text-purple-800 dark:text-purple-200 mb-1">
+                    {modalAsset === 'XLM' ? '2.04' : '1.85'}
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold opacity-90">{modalAsset}</p>
                 </div>
-                <div className="p-4 bg-gradient-to-br from-orange-500/10 via-yellow-500/5 to-red-500/10 border border-orange-400/10 rounded-2xl backdrop-blur-xl">
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Total Liquidity</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">$1.2M</p>
-                  <p className="text-xs text-orange-500 font-semibold">Available</p>
+                
+                <div className="p-4 bg-gradient-to-br from-cyan-500/8 via-blue-500/4 to-indigo-500/8 dark:from-cyan-400/12 dark:via-blue-400/6 dark:to-indigo-400/12 border border-cyan-400/20 dark:border-cyan-300/25 rounded-2xl backdrop-blur-3xl shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 transition-all duration-300 hover:border-cyan-300/40">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400/50"></div>
+                    <p className="text-xs text-cyan-700 dark:text-cyan-300 font-medium">Available to Borrow</p>
+                  </div>
+                  <p className="text-xl font-bold text-cyan-800 dark:text-cyan-200 mb-1">
+                    {modalAsset === 'XLM' ? '7' : '5.9'}
+                  </p>
+                  <p className="text-xs text-cyan-600 dark:text-cyan-400 font-semibold opacity-90">{modalAsset}</p>
+                </div>
+              </div>
+
+              {/* Your Position & Market Info */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="p-4 bg-gradient-to-br from-slate-50/60 via-white/40 to-slate-100/60 dark:from-slate-700/40 dark:via-slate-600/20 dark:to-slate-700/40 border border-slate-200/50 dark:border-slate-600/30 rounded-2xl backdrop-blur-3xl shadow-lg shadow-slate-500/5 hover:shadow-slate-500/15 transition-all duration-300 hover:border-emerald-300/30">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50"></div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                      {modalAction === 'withdraw' ? 'Supplied Balance' : 'Your Balance'}
+                    </p>
+                  </div>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                    {modalAsset === 'PDOT' && modalAction === 'withdraw' 
+                      ? formatNumber(suppliedPDOT) 
+                      : assetData[modalAsset].balance}
+                  </p>
+                  <p className="text-xs text-emerald-500 font-semibold">
+                    {modalAsset === 'PDOT' && modalAction === 'withdraw' ? 'pTokens' : modalAsset}
+                  </p>
+                </div>
+                
+                <div className="p-4 bg-gradient-to-br from-emerald-50/60 via-emerald-50/40 to-teal-50/60 dark:from-emerald-900/40 dark:via-emerald-800/20 dark:to-teal-900/40 border border-emerald-200/50 dark:border-emerald-600/30 rounded-2xl backdrop-blur-3xl shadow-lg shadow-emerald-500/5 hover:shadow-emerald-500/15 transition-all duration-300 hover:border-emerald-300/40">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50"></div>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">Current APY</p>
+                  </div>
+                  <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300 mb-1">{lendingMode === 'borrow' ? assetData[modalAsset].borrowApy : assetData[modalAsset].lendApy}%</p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold opacity-90">Annual</p>
                 </div>
               </div>
 
@@ -622,7 +1083,13 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
                     <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
                       <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{modalAsset}</span>
                       <button
-                        onClick={() => setModalAmount(assetData[modalAsset].balance)}
+                        onClick={() => {
+                          // For withdrawal, use pToken balance (supplied amount)
+                          const maxAmount = modalAsset === 'PDOT' && modalAction === 'withdraw' 
+                            ? suppliedPDOT 
+                            : assetData[modalAsset].balance;
+                          setModalAmount(maxAmount);
+                        }}
                         className="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold rounded-lg hover:from-blue-500/30 hover:to-cyan-500/30 transition-all duration-200"
                       >
                         MAX
@@ -639,19 +1106,25 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-slate-600 dark:text-slate-400">Total Supplied</span>
                       <span className="font-semibold text-slate-900 dark:text-white">
-                        {assetData[modalAsset].balance} {modalAsset}
+                        {modalAsset === 'PDOT' 
+                          ? `${formatNumber(suppliedPDOT)} PDOT` 
+                          : `${assetData[modalAsset].balance} ${modalAsset}`}
                       </span>
                     </div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-slate-600 dark:text-slate-400">Earnings (30d)</span>
                       <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        +{(parseFloat(assetData[modalAsset].balance) * 0.025).toFixed(2)} {modalAsset}
+                        +{modalAsset === 'PDOT' 
+                          ? (parseFloat(suppliedPDOT) * 0.025).toFixed(2) 
+                          : (parseFloat(assetData[modalAsset].balance) * 0.025).toFixed(2)} {modalAsset}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-slate-600 dark:text-slate-400">Next Interest</span>
                       <span className="font-semibold text-blue-600 dark:text-blue-400">
-                        +{(parseFloat(assetData[modalAsset].balance) * 0.001).toFixed(4)} {modalAsset}
+                        +{modalAsset === 'PDOT' 
+                          ? (parseFloat(suppliedPDOT) * 0.001).toFixed(4) 
+                          : (parseFloat(assetData[modalAsset].balance) * 0.001).toFixed(4)} {modalAsset}
                       </span>
                     </div>
                   </div>
@@ -724,84 +1197,295 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
   function renderLendingInterface() {
     return (
       <div className="space-y-6">
-        {/* Peridot-Style Liquid Glass Portfolio Cards */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 animate-fade-in-scale [&_*]:!transition-[transform,opacity]">
-          {/* Total Balance Card */}
-          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-500/2 via-cyan-500/1 to-indigo-500/2 dark:from-blue-400/3 dark:via-cyan-400/2 dark:to-indigo-400/3 border border-blue-400/10 dark:border-blue-400/15 hover:border-blue-300/30 shadow-lg shadow-blue-500/10 hover:shadow-blue-500/25 hover:shadow-xl backdrop-blur-2xl transition-all duration-300 transform hover:scale-[1.02] animate-slide-in-left animate-delay-100"
-               style={{ boxShadow: '0 4px 20px -4px rgba(59, 130, 246, 0.15), 0 8px 32px -8px rgba(0, 0, 0, 0.1)' }}>
-            
-            <div className="relative p-3 sm:p-4">
-              {/* Icon with refined styling */}
-              <div className="flex items-center justify-center mb-2 sm:mb-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-blue-500/40 to-indigo-500/40 backdrop-blur-md flex items-center justify-center shadow-lg group-hover:shadow-blue-500/25 transition-all duration-300">
-                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform duration-300" />
-                </div>
-              </div>
+        {/* Success Message - Modal-like Confirmation */}
+        {mintingStatus === 'success' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in">
+            <div className="w-full max-w-sm relative overflow-hidden rounded-3xl bg-gradient-to-br from-white/98 via-emerald-50/95 to-white/98 dark:from-slate-800/98 dark:via-emerald-900/95 dark:to-slate-800/98 border border-emerald-200/60 dark:border-emerald-600/40 shadow-2xl backdrop-blur-3xl animate-float-up"
+                 style={{ boxShadow: '0 25px 50px -12px rgba(16, 185, 129, 0.25)' }}>
+              {/* Liquid Glass Top Border */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent"></div>
               
-              {/* Content with improved typography */}
-              <div className="text-center space-y-1">
-                <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 font-mono uppercase tracking-wide">
-                  BALANCE
-                </p>
-                <p className="text-lg sm:text-xl font-bold text-blue-800 dark:text-blue-200 font-mono group-hover:text-blue-600 dark:group-hover:text-blue-100 transition-colors duration-300">
-                  $0.00
-                </p>
-                <div className="flex items-center justify-center space-x-1">
-                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                  <p className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 font-mono">+0.00%</p>
+              {/* Floating Highlight */}
+              <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-20 h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent rounded-full blur-sm"></div>
+              
+              <div className="relative p-6 text-center">
+                {/* Animated Success Icon */}
+                <div className="relative mx-auto mb-4 w-16 h-16">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/90 via-teal-500/85 to-emerald-600/90 backdrop-blur-xl flex items-center justify-center shadow-lg shadow-emerald-500/30 animate-scale-in">
+                    <CheckCircle className="w-8 h-8 text-white animate-fade-in animate-delay-200" />
+                  </div>
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-teal-400/20 animate-pulse"></div>
                 </div>
+                
+                {/* Message Content */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-300 mb-2 animate-slide-in-right animate-delay-100">
+                    Transaction Completed
+                  </h3>
+                  <p className="text-sm text-emerald-600/90 dark:text-emerald-400/90 animate-slide-in-right animate-delay-200">
+                    Vault operation completed successfully
+                  </p>
+                </div>
+                
+                {/* Close Button */}
+                <button
+                  onClick={() => setMintingStatus('idle')}
+                  className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500/90 to-teal-500/90 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold transition-all duration-200 backdrop-blur-sm shadow-lg"
+                >
+                  Continue
+                </button>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Total Lent Card */}
-          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500/2 via-green-500/1 to-teal-500/2 dark:from-emerald-400/3 dark:via-green-400/2 dark:to-teal-400/3 border border-emerald-400/10 dark:border-emerald-400/15 hover:border-emerald-300/30 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/25 hover:shadow-xl backdrop-blur-2xl transition-all duration-300 transform hover:scale-[1.02] animate-fade-in-up animate-delay-200"
-               style={{ boxShadow: '0 4px 20px -4px rgba(16, 185, 129, 0.15), 0 8px 32px -8px rgba(0, 0, 0, 0.1)' }}>
-            
-            <div className="relative p-3 sm:p-4">
-              <div className="flex items-center justify-center mb-2 sm:mb-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-emerald-500/40 to-teal-500/40 backdrop-blur-md flex items-center justify-center shadow-lg group-hover:shadow-emerald-500/25 transition-all duration-300">
-                  <ArrowUpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform duration-300" />
-                </div>
-              </div>
+        {/* Error Message - Modal-like Alert */}
+        {(mintingStatus === 'error' && mintError) || error ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in">
+            <div className="w-full max-w-sm relative overflow-hidden rounded-3xl bg-gradient-to-br from-white/98 via-red-50/95 to-white/98 dark:from-slate-800/98 dark:via-red-900/95 dark:to-slate-800/98 border border-red-200/60 dark:border-red-600/40 shadow-2xl backdrop-blur-3xl animate-float-up"
+                 style={{ boxShadow: '0 25px 50px -12px rgba(239, 68, 68, 0.25)' }}>
+              {/* Liquid Glass Top Border */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-400/60 to-transparent"></div>
               
-              <div className="text-center space-y-1">
-                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 font-mono uppercase tracking-wide">
-                  LENT
-                </p>
-                <p className="text-lg sm:text-xl font-bold text-emerald-800 dark:text-emerald-200 font-mono group-hover:text-emerald-600 dark:group-hover:text-emerald-100 transition-colors duration-300">
-                  $0.00
-                </p>
-                <div className="flex items-center justify-center space-x-1">
-                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                  <p className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 font-mono">APY</p>
+              {/* Floating Highlight */}
+              <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-20 h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent rounded-full blur-sm"></div>
+              
+              <div className="relative p-6 text-center">
+                {/* Animated Error Icon */}
+                <div className="relative mx-auto mb-4 w-16 h-16">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500/90 via-orange-500/85 to-red-600/90 backdrop-blur-xl flex items-center justify-center shadow-lg shadow-red-500/30 animate-scale-in">
+                    <AlertCircle className="w-8 h-8 text-white animate-fade-in animate-delay-200" />
+                  </div>
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-red-400/20 to-orange-400/20 animate-pulse"></div>
                 </div>
+                
+                {/* Message Content */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-red-700 dark:text-red-300 mb-2 animate-slide-in-right animate-delay-100">
+                    Transaction Failed
+                  </h3>
+                  <p className="text-sm text-red-600/90 dark:text-red-400/90 animate-slide-in-right animate-delay-200">
+                    {mintError || error || 'An error occurred'}
+                  </p>
+                </div>
+                
+                {/* Close Button */}
+                <button
+                  onClick={() => {
+                    setMintingStatus('idle');
+                    setMintError(null);
+                    setError(null);
+                  }}
+                  className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-red-500/90 to-orange-500/90 hover:from-red-500 hover:to-orange-500 text-white font-semibold transition-all duration-200 backdrop-blur-sm shadow-lg"
+                >
+                  Try Again
+                </button>
               </div>
             </div>
           </div>
+        ) : null}
 
-          {/* Total Borrowed Card */}
-          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-orange-500/2 via-red-500/1 to-pink-500/2 dark:from-orange-400/3 dark:via-red-400/2 dark:to-pink-400/3 border border-orange-400/10 dark:border-orange-400/15 hover:border-orange-300/30 shadow-lg shadow-orange-500/10 hover:shadow-orange-500/25 hover:shadow-xl backdrop-blur-2xl transition-all duration-300 transform hover:scale-[1.02] animate-slide-in-right animate-delay-300"
-               style={{ boxShadow: '0 4px 20px -4px rgba(249, 115, 22, 0.15), 0 8px 32px -8px rgba(0, 0, 0, 0.1)' }}>
-            
-            <div className="relative p-3 sm:p-4">
-              <div className="flex items-center justify-center mb-2 sm:mb-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-orange-500/40 to-red-500/40 backdrop-blur-md flex items-center justify-center shadow-lg group-hover:shadow-orange-500/25 transition-all duration-300">
-                  <ArrowDownCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform duration-300" />
+        {/* Compound-Style Portfolio Overview */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50/60 via-white/20 to-slate-100/40 dark:from-slate-900/60 dark:via-slate-800/20 dark:to-slate-700/40 border border-slate-200/30 dark:border-slate-700/30 shadow-2xl backdrop-blur-2xl mb-6 animate-fade-in-scale"
+             style={{ boxShadow: '0 20px 60px -12px rgba(0, 0, 0, 0.08), 0 8px 32px -8px rgba(0, 0, 0, 0.04)' }}>
+          
+          <div className="relative p-6 sm:p-8">
+            {/* Top Section - Responsive Layout */}
+            <div className="mb-8">
+              {/* Desktop Layout - Horizontal */}
+              <div className="hidden sm:flex items-center justify-between">
+                {/* Supply Balance - Based on supplied PDOT (pTokens) */}
+                <div className="text-left">
+                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-1 font-mono uppercase tracking-wide">
+                    Supply Balance
+                  </p>
+                  <p className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white font-mono">
+                    ${(parseFloat(suppliedPDOT) * 0.85).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 font-mono mt-1">
+                    {formatNumber(suppliedPDOT)} PDOT supplied
+                  </p>
+                </div>
+
+                {/* Dynamic APY Circle - Liquid Glass Design */}
+                <div className="flex flex-col items-center">
+                  <div className="relative w-24 h-24 sm:w-28 sm:h-28">
+                    {/* Outer Glass Ring with Multiple Layers */}
+                    <div className={`absolute inset-0 rounded-full backdrop-blur-3xl border border-white/40 shadow-2xl ${
+                      lendingMode === 'borrow' 
+                        ? 'bg-gradient-to-br from-white/30 via-orange-200/20 to-red-300/25' 
+                        : 'bg-gradient-to-br from-white/30 via-emerald-200/20 to-teal-300/25'
+                    }`}
+                         style={{ 
+                           boxShadow: lendingMode === 'borrow'
+                             ? '0 8px 32px rgba(249, 115, 22, 0.3), 0 4px 16px rgba(234, 88, 12, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                             : '0 8px 32px rgba(16, 185, 129, 0.3), 0 4px 16px rgba(20, 184, 166, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)' 
+                         }}>
+                    </div>
+                    
+                    {/* Middle Frosted Layer */}
+                    <div className={`absolute inset-1 rounded-full backdrop-blur-2xl shadow-inner ${
+                      lendingMode === 'borrow'
+                        ? 'bg-gradient-to-br from-orange-400/40 via-red-500/50 to-orange-600/40 border border-orange-300/50'
+                        : 'bg-gradient-to-br from-emerald-400/40 via-teal-500/50 to-emerald-600/40 border border-emerald-300/50'
+                    }`}
+                         style={{ 
+                           boxShadow: lendingMode === 'borrow'
+                             ? '0 4px 20px rgba(249, 115, 22, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.1), inset 0 -2px 4px rgba(0, 0, 0, 0.1)'
+                             : '0 4px 20px rgba(16, 185, 129, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.1), inset 0 -2px 4px rgba(0, 0, 0, 0.1)' 
+                         }}>
+                    </div>
+                    
+                    {/* Inner Content with Glass Effect */}
+                    <div className={`absolute inset-2 rounded-full backdrop-blur-xl shadow-inner flex flex-col items-center justify-center ${
+                      lendingMode === 'borrow'
+                        ? 'bg-gradient-to-br from-orange-600/90 via-red-600/85 to-orange-700/90 border border-orange-400/60'
+                        : 'bg-gradient-to-br from-emerald-600/90 via-teal-600/85 to-emerald-700/90 border border-emerald-400/60'
+                    }`}
+                         style={{ 
+                           boxShadow: lendingMode === 'borrow'
+                             ? 'inset 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 12px rgba(249, 115, 22, 0.5)'
+                             : 'inset 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 12px rgba(16, 185, 129, 0.5)' 
+                         }}>
+                      
+                      {/* Top Highlight */}
+                      <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-8 h-2 bg-gradient-to-b from-white/40 to-transparent rounded-full blur-sm"></div>
+                      
+                      <span className={`text-xs font-medium mb-0.5 font-mono uppercase tracking-wide drop-shadow-sm ${
+                        lendingMode === 'borrow' ? 'text-orange-100/90' : 'text-emerald-100/90'
+                      }`}>
+                        {lendingMode === 'borrow' ? 'BORROW APY' : 'SUPPLY APY'}
+                      </span>
+                      <span className="text-lg sm:text-xl font-bold text-white font-mono drop-shadow-md">
+                        {lendingMode === 'borrow' ? `-${assetData[selectedAsset].borrowApy}%` : `+${assetData[selectedAsset].lendApy}%`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Borrow Balance */}
+                <div className="text-right">
+                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-1 font-mono uppercase tracking-wide">
+                    Borrow Balance
+                  </p>
+                  <p className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white font-mono">
+                    ${totalBorrowedUSD.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 font-mono mt-1">
+                    {totalBorrowedUSD > 0 ? 'Active loans' : 'No active loans'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Mobile Layout - APY Circle Left, Balances Stacked Right */}
+              <div className="flex sm:hidden items-center space-x-4">
+                {/* Dynamic APY Circle - Mobile Liquid Glass */}
+                <div className="flex-shrink-0">
+                  <div className="relative w-20 h-20">
+                    {/* Outer Glass Ring with Multiple Layers */}
+                    <div className={`absolute inset-0 rounded-full backdrop-blur-3xl border border-white/40 shadow-2xl ${
+                      lendingMode === 'borrow' 
+                        ? 'bg-gradient-to-br from-white/30 via-orange-200/20 to-red-300/25' 
+                        : 'bg-gradient-to-br from-white/30 via-emerald-200/20 to-teal-300/25'
+                    }`}
+                         style={{ 
+                           boxShadow: lendingMode === 'borrow'
+                             ? '0 6px 24px rgba(249, 115, 22, 0.3), 0 3px 12px rgba(234, 88, 12, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                             : '0 6px 24px rgba(16, 185, 129, 0.3), 0 3px 12px rgba(20, 184, 166, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)' 
+                         }}>
+                    </div>
+                    
+                    {/* Middle Frosted Layer */}
+                    <div className={`absolute inset-0.5 rounded-full backdrop-blur-2xl shadow-inner ${
+                      lendingMode === 'borrow'
+                        ? 'bg-gradient-to-br from-orange-400/40 via-red-500/50 to-orange-600/40 border border-orange-300/50'
+                        : 'bg-gradient-to-br from-emerald-400/40 via-teal-500/50 to-emerald-600/40 border border-emerald-300/50'
+                    }`}
+                         style={{ 
+                           boxShadow: lendingMode === 'borrow'
+                             ? '0 3px 16px rgba(249, 115, 22, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.1), inset 0 -1px 3px rgba(0, 0, 0, 0.1)'
+                             : '0 3px 16px rgba(16, 185, 129, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.1), inset 0 -1px 3px rgba(0, 0, 0, 0.1)' 
+                         }}>
+                    </div>
+                    
+                    {/* Inner Content with Glass Effect */}
+                    <div className={`absolute inset-1.5 rounded-full backdrop-blur-xl shadow-inner flex flex-col items-center justify-center ${
+                      lendingMode === 'borrow'
+                        ? 'bg-gradient-to-br from-orange-600/90 via-red-600/85 to-orange-700/90 border border-orange-400/60'
+                        : 'bg-gradient-to-br from-emerald-600/90 via-teal-600/85 to-emerald-700/90 border border-emerald-400/60'
+                    }`}
+                         style={{ 
+                           boxShadow: lendingMode === 'borrow'
+                             ? 'inset 0 1px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 8px rgba(249, 115, 22, 0.5)'
+                             : 'inset 0 1px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 8px rgba(16, 185, 129, 0.5)' 
+                         }}>
+                      
+                      {/* Top Highlight */}
+                      <div className="absolute top-0.5 left-1/2 transform -translate-x-1/2 w-6 h-1.5 bg-gradient-to-b from-white/40 to-transparent rounded-full blur-sm"></div>
+                      
+                      <span className={`text-xs font-medium mb-0.5 font-mono uppercase tracking-wide drop-shadow-sm ${
+                        lendingMode === 'borrow' ? 'text-orange-100/90' : 'text-emerald-100/90'
+                      }`}>
+                        {lendingMode === 'borrow' ? 'BORROW APY' : 'SUPPLY APY'}
+                      </span>
+                      <span className="text-base font-bold text-white font-mono drop-shadow-md">
+                        {lendingMode === 'borrow' ? `-${assetData[selectedAsset].borrowApy}%` : `+${assetData[selectedAsset].lendApy}%`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Balances Stack */}
+                <div className="flex-1 space-y-4">
+                  {/* Supply Balance */}
+                  <div>
+                    <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-1 font-mono uppercase tracking-wide">
+                      Supply Balance
+                    </p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+                      ${(parseFloat(suppliedPDOT) * 0.85).toFixed(2)}
+                    </p>
+                  </div>
+
+                  {/* Borrow Balance */}
+                  <div>
+                    <p className="text-xs font-medium text-orange-600 dark:text-orange-400 mb-1 font-mono uppercase tracking-wide">
+                      Borrow Balance
+                    </p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+                      ${totalBorrowedUSD.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Borrow Limit Bar - Based on 80% of supplied collateral */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 font-mono">Borrow Limit (80% of collateral)</span>
+                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                  ${remainingBorrowingPowerUSD.toFixed(2)} available
+                </span>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="relative h-2 bg-slate-200/50 dark:bg-slate-700/50 rounded-full overflow-hidden backdrop-blur-sm">
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-200/30 to-slate-300/30 dark:from-slate-700/30 dark:to-slate-600/30"></div>
+                <div 
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-400 via-amber-500 to-orange-500 rounded-full shadow-lg transition-all duration-1000 ease-out"
+                  style={{ 
+                    width: maxBorrowingPowerUSD > 0 ? `${(totalBorrowedUSD / maxBorrowingPowerUSD * 100).toFixed(1)}%` : '0%',
+                    boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-white/20 rounded-full"></div>
                 </div>
               </div>
               
-              <div className="text-center space-y-1">
-                <p className="text-xs font-semibold text-orange-700 dark:text-orange-300 font-mono uppercase tracking-wide">
-                  BORROWED
-                </p>
-                <p className="text-lg sm:text-xl font-bold text-orange-800 dark:text-orange-200 font-mono group-hover:text-orange-600 dark:group-hover:text-orange-100 transition-colors duration-300">
-                  $0.00
-                </p>
-                <div className="flex items-center justify-center space-x-1">
-                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-orange-400 animate-pulse"></div>
-                  <p className="text-xs sm:text-sm font-semibold text-orange-600 dark:text-orange-400 font-mono">Interest</p>
-                </div>
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 font-mono">
+                <span>${totalBorrowedUSD.toFixed(2)} borrowed</span>
+                <span>${maxBorrowingPowerUSD.toFixed(2)} max</span>
               </div>
             </div>
           </div>
@@ -859,13 +1543,13 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
               </div>
             </div>
 
-            {/* Asset Selection */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+            {/* Asset Selection - Mobile First Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 sm:mb-6">
               {Object.entries(assetData).map(([asset, data]) => (
                 <button
                   key={asset}
-                  onClick={() => openModal(asset as typeof modalAsset)}
-                  className={`group relative overflow-hidden p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all duration-300 ease-out backdrop-blur-xl transform hover:scale-105 active:scale-95 cursor-pointer ${
+                  onClick={() => setSelectedAsset(asset as typeof selectedAsset)}
+                  className={`group relative overflow-hidden p-3 sm:p-4 rounded-xl border transition-all duration-300 ease-out backdrop-blur-xl transform hover:scale-105 active:scale-95 cursor-pointer ${
                     selectedAsset === asset
                       ? 'bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-cyan-500/20 border-emerald-400/30'
                       : 'bg-gradient-to-br from-white/5 via-white/2 to-white/5 dark:from-slate-700/20 dark:via-slate-600/10 dark:to-slate-700/20 border-white/10 dark:border-slate-600/20 hover:border-emerald-400/20'
@@ -875,66 +1559,195 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
                       ? '0 8px 32px -8px rgba(16, 185, 129, 0.25), 0 16px 48px -16px rgba(16, 185, 129, 0.15), 0 4px 16px -4px rgba(0, 0, 0, 0.1)'
                       : '0 4px 20px -4px rgba(0, 0, 0, 0.08), 0 8px 32px -8px rgba(0, 0, 0, 0.04), 0 12px 48px -12px rgba(0, 0, 0, 0.02)'
                   }}
-                  onMouseEnter={(e) => {
-                    if (selectedAsset !== asset) {
-                      e.currentTarget.style.boxShadow = '0 8px 32px -8px rgba(16, 185, 129, 0.12), 0 16px 48px -16px rgba(16, 185, 129, 0.08), 0 4px 16px -4px rgba(0, 0, 0, 0.15)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (selectedAsset !== asset) {
-                      e.currentTarget.style.boxShadow = '0 4px 20px -4px rgba(0, 0, 0, 0.08), 0 8px 32px -8px rgba(0, 0, 0, 0.04), 0 12px 48px -12px rgba(0, 0, 0, 0.02)';
-                    }
-                  }}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
-                  {/* Click indicator - always visible */}
-                  <div className="absolute top-2 right-2 opacity-40 group-hover:opacity-80 transition-opacity duration-300">
-                    <div className="w-4 h-4 rounded-full bg-emerald-500/15 group-hover:bg-emerald-500/25 flex items-center justify-center transition-colors duration-300">
-                      <ExternalLink className="w-2.5 h-2.5 text-emerald-400 group-hover:text-emerald-300 transition-colors duration-300" />
-                    </div>
-                  </div>
-                  
                   <div className="relative text-center">
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors duration-300">{asset}</h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
-                      {lendingMode === 'borrow' ? 'Borrowed:' : 'Balance:'} {lendingMode === 'borrow' ? data.borrowed : data.balance}
-                    </p>
-                    <div className="flex items-center justify-center space-x-1">
-                      <Percent className="w-3 h-3 text-emerald-500 group-hover:scale-110 transition-transform duration-300" />
-                      <span className="text-xs font-semibold text-emerald-500">{data.apy}% APY</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors duration-300">{asset}</h4>
+                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">${parseFloat(data.price).toFixed(asset === 'ETH' ? 0 : 2)}</span>
                     </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                      {lendingMode === 'borrow' ? 'Borrowed:' : 'Balance:'} {formatNumber(lendingMode === 'borrow' ? data.borrowed : data.balance)}
+                    </p>
+                    <div className="flex items-center justify-center space-x-1 mb-2">
+                      <Percent className="w-3 h-3 text-emerald-500 group-hover:scale-110 transition-transform duration-300" />
+                      <span className="text-xs font-semibold text-emerald-500">{lendingMode === 'borrow' ? data.borrowApy : data.lendApy}% APY</span>
+                    </div>
+                    
+                    {/* Repay/Withdraw button for borrowed assets */}
+                    {lendingMode === 'borrow' && parseFloat(data.borrowed) > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setModalAsset(asset as typeof modalAsset);
+                          setModalAction('repay');
+                          setModalAmount('');
+                          setIsModalOpen(true);
+                        }}
+                        className="w-full mt-2 px-2 py-1 bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-600 dark:text-orange-400 text-xs font-bold rounded hover:from-orange-500/30 hover:to-red-500/30 transition-all duration-200"
+                      >
+                        Repay
+                      </button>
+                    )}
                   </div>
                 </button>
               ))}
             </div>
 
             {/* Amount Input */}
-            <div className="mb-4 sm:mb-6">
+            <div className="mb-4 sm:mb-6 relative" ref={inputContainerRef}>
               <div className="inputbox">
                 <input
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                  placeholder=""
+                  step="any"
+                  min="0"
                   required
                 />
                 <span>Enter {selectedAsset} amount</span>
                 <i></i>
                 <div className="max-button">
-                  <button
-                    onClick={() => setAmount(assetData[selectedAsset].balance)}
+                                        <button
+                        onClick={() => {
+                          if (lendingMode === 'borrow') {
+                            // Calculate max borrowable amount for selected asset (80% of remaining borrowing power)
+                            // Subtract a small buffer (0.1%) to avoid floating point precision issues
+                            const assetPrice = parseFloat(assetData[selectedAsset].price);
+                            const maxBorrowable = (remainingBorrowingPowerUSD * 0.999) / assetPrice;
+                            setAmount(maxBorrowable.toFixed(4));
+                          } else {
+                            setAmount(assetData[selectedAsset].balance);
+                          }
+                        }}
                     className="px-2 py-1 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded border border-emerald-400/30 hover:from-emerald-500/30 hover:to-teal-500/30 hover:border-emerald-400/50 transition-all duration-300"
                   >
-                    MAX
+                    {lendingMode === 'borrow' ? '80%' : 'MAX'}
                   </button>
                 </div>
               </div>
+              
+              {/* Earnings/Interest Projection Popup */}
+              {(showEarningsPopup || isInputFocused) && amount && parseFloat(amount) > 0 && typeof document !== 'undefined' && createPortal(
+                <div 
+                  className="fixed inset-0 z-[9999] pointer-events-auto"
+                  onClick={() => {
+                    setShowEarningsPopup(false);
+                    setIsInputFocused(false);
+                  }}
+                >
+                  <div 
+                    className={`absolute w-80 max-w-sm transform transition-all duration-300 ease-out ${
+                      showEarningsPopup ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-2 opacity-0 scale-95'
+                    }`}
+                    style={{
+                      left: inputContainerRef.current ? Math.min(inputContainerRef.current.getBoundingClientRect().left, window.innerWidth - 320) : 0,
+                      top: inputContainerRef.current ? inputContainerRef.current.getBoundingClientRect().bottom + 12 : 0,
+                    }}
+                    onMouseEnter={handlePopupMouseEnter}
+                    onMouseLeave={handlePopupMouseLeave}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/95 via-white/98 to-white/95 dark:from-slate-800/90 dark:via-slate-700/85 dark:to-slate-800/90 border border-emerald-300/40 dark:border-emerald-400/30 shadow-2xl shadow-emerald-500/20 backdrop-blur-3xl">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${
+                        lendingMode === 'lend' 
+                          ? 'from-emerald-500/5 via-transparent to-cyan-500/5' 
+                          : 'from-orange-500/5 via-transparent to-red-500/5'
+                      }`}></div>
+                      <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${
+                        lendingMode === 'lend'
+                          ? 'from-emerald-400/60 via-teal-400/60 to-cyan-400/60'
+                          : 'from-orange-400/60 via-amber-400/60 to-red-400/60'
+                      }`}></div>
+                      
+                      <div className="relative p-4">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className={`w-8 h-8 rounded-xl backdrop-blur-sm flex items-center justify-center border ${
+                            lendingMode === 'lend'
+                              ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border-emerald-400/20'
+                              : 'bg-gradient-to-br from-orange-500/20 to-red-500/20 border-orange-400/20'
+                          }`}>
+                            <svg className={`w-4 h-4 ${
+                              lendingMode === 'lend' 
+                                ? 'text-emerald-600 dark:text-emerald-400' 
+                                : 'text-orange-600 dark:text-orange-400'
+                            }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                d={lendingMode === 'lend' ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" : "M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"} />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">30-Day Projection</h4>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              {lendingMode === 'lend' ? 'Estimated earnings' : 'Interest to pay'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Amount</span>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">{amount} {selectedAsset}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600 dark:text-slate-400">APY</span>
+                            <span className={`text-sm font-medium ${
+                              lendingMode === 'lend' 
+                                ? 'text-emerald-600 dark:text-emerald-400' 
+                                : 'text-orange-600 dark:text-orange-400'
+                            }`}>{lendingMode === 'borrow' ? assetData[selectedAsset].borrowApy : assetData[selectedAsset].lendApy}%</span>
+                          </div>
+                          <div className="h-px bg-gradient-to-r from-transparent via-slate-300/50 dark:via-slate-600/50 to-transparent"></div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                              {lendingMode === 'lend' ? 'Est. Earnings (30d)' : 'Interest Cost (30d)'}
+                            </span>
+                            <div className="text-right">
+                              <span className={`text-lg font-bold ${
+                                lendingMode === 'lend' 
+                                  ? 'text-emerald-600 dark:text-emerald-400' 
+                                  : 'text-orange-600 dark:text-orange-400'
+                              }`}>
+                                ${calculateProjectedValue(amount).toFixed(2)}
+                              </span>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {lendingMode === 'lend' ? '+' : '-'}{(calculateProjectedValue(amount) / parseFloat(assetData[selectedAsset].price)).toFixed(4)} {selectedAsset}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className={`mt-3 p-2 rounded-xl border ${
+                          lendingMode === 'lend'
+                            ? 'bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-cyan-500/10 border-emerald-400/20'
+                            : 'bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-red-500/10 border-orange-400/20'
+                        }`}>
+                          <p className={`text-xs text-center ${
+                            lendingMode === 'lend' 
+                              ? 'text-emerald-700 dark:text-emerald-300' 
+                              : 'text-orange-700 dark:text-orange-300'
+                          }`}>
+                            <span className="font-medium">
+                              {lendingMode === 'lend' ? 'Compound interest' : 'Interest rate'} 
+                            </span> calculated monthly
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>,
+                document.body
+              )}
             </div>
 
             {/* Action Button */}
             <button
               onClick={handleLendingAction}
-              disabled={!amount || isProcessing}
+              disabled={!amount || isProcessing || parseFloat(amount) <= 0}
               className="w-full group relative overflow-hidden px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl border border-emerald-400/20 hover:border-emerald-300/40 active:border-emerald-300/60 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-xl hover:shadow-emerald-500/20 hover:shadow-2xl backdrop-blur-2xl transform hover:scale-[1.02] active:scale-[0.98] text-white font-semibold text-base sm:text-lg bg-gradient-to-r from-emerald-500 to-cyan-500"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-300"></div>
@@ -942,21 +1755,59 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
                 {isProcessing ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Processing...</span>
+                    <span>
+                      {lendingMode === 'lend' && selectedAsset === 'PDOT' 
+                        ? 'Depositing to Vault...' 
+                        : 'Processing...'}
+                    </span>
                   </>
                 ) : (
                   <>
                     {lendingMode === 'lend' ? (
-                      <ArrowUpCircle className="w-5 h-5" />
+                      <PiggyBank className="w-5 h-5" />
                     ) : (
                       <ArrowDownCircle className="w-5 h-5" />
                     )}
-                    <span>{lendingMode === 'lend' ? 'Lend' : 'Borrow'} {selectedAsset}</span>
+                    <span>
+                      {lendingMode === 'lend' 
+                        ? `Supply ${selectedAsset} to Vault` 
+                        : `Borrow ${selectedAsset}`}
+                    </span>
                   </>
                 )}
               </div>
             </button>
 
+            {/* Withdraw Section - Only show if user has supplied PDOT */}
+            {lendingMode === 'lend' && selectedAsset === 'PDOT' && parseFloat(suppliedPDOT) > 0 && (
+              <div className="mt-6 pt-6 border-t border-slate-200/20 dark:border-slate-600/20">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Your Supply Position</h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">{formatNumber(suppliedPDOT)} PDOT supplied</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatNumber(suppliedPDOT)} pTokens</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">Receipt tokens</p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    setModalAsset('PDOT');
+                    setModalAction('withdraw');
+                    setModalAmount('');
+                    setIsModalOpen(true);
+                  }}
+                  className="w-full group relative overflow-hidden px-4 py-3 rounded-xl border border-orange-400/20 hover:border-orange-300/40 active:border-orange-300/60 focus:outline-none focus:ring-4 focus:ring-orange-400/30 transition-all duration-300 shadow-lg hover:shadow-orange-500/20 backdrop-blur-xl transform hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-orange-500/10 to-amber-500/10 hover:from-orange-500/20 hover:to-amber-500/20"
+                >
+                  <div className="relative flex items-center justify-center space-x-2">
+                    <ArrowUpCircle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                    <span className="text-sm font-semibold text-orange-700 dark:text-orange-300">Withdraw PDOT</span>
+                  </div>
+                </button>
+              </div>
+            )}
 
           </div>
         </div>
