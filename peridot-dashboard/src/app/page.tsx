@@ -268,7 +268,7 @@ export default function Dashboard() {
             Peridot Protocol
           </h1>
           <p className="text-lg text-slate-800 dark:text-slate-300">
-            The only true crosschain Lend & Borrow platform
+          The First Cross-Chain DeFi Platform Designed for Everyone
           </p>
         </div>
 

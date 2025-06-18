@@ -230,6 +230,58 @@ All contracts are deployed on **Stellar Testnet**:
 4. **Educational Value**: Clear, well-documented code for learning
 5. **Extensible Design**: Easy to add features like yield farming, governance, etc.
 
+## 🎨 UI/UX Enhancements
+
+The Peridot dashboard has evolved into a sophisticated, modern DeFi interface with multiple significant improvements:
+
+### 🔄 Multi-Mode Interface
+The application now features three distinct modes accessible via a glassmorphism tab switcher:
+
+- **💰 Lending Mode**: Advanced vault interface with asset selection (PDOT, XLM, USDC, ETH, SOL) and performance charts
+- **🚰 Faucet Mode**: Original token minting and basic vault functionality  
+- **🤖 AI Agent**: Intelligent assistant for automated DeFi operations and portfolio management
+
+### 🎭 Advanced Design System
+
+#### Glassmorphism UI Components
+- **Frosted Glass Cards**: Semi-transparent cards with backdrop blur effects
+- **Dynamic Tab Switcher**: iOS-style tabs with smooth animations and haptic feedback
+- **Floating Header**: Sticky navigation with adaptive content based on scroll position
+- **Responsive Layout**: Mobile-first design with progressive enhancement
+
+#### Theme System
+- **Dark/Light Mode**: Automatic theme detection with manual toggle
+- **Adaptive Colors**: Dynamic color schemes that adjust based on theme
+- **Consistent Branding**: Cohesive visual identity throughout the application
+
+### 📊 Data Visualization
+- **Vault Performance Charts**: Real-time visualization of vault metrics and performance
+- **Balance Tracking**: Live updates of token balances and pToken holdings
+- **Transaction History**: Visual feedback for all vault operations
+
+### 🔄 Smart State Management
+- **Wallet Integration**: Seamless Freighter wallet connection with persistent state
+- **Auto-refresh**: Automatic balance updates after transactions
+- **Loading States**: Smooth loading indicators and transaction feedback
+
+### 📱 Mobile-First Experience
+- **Responsive Design**: Optimized for all screen sizes
+- **Touch Interactions**: Mobile-friendly buttons and gestures
+- **Sticky Navigation**: Adaptive header that transforms on scroll
+- **Compact Modes**: Condensed layouts for smaller screens
+
+### 🚀 Performance Optimizations
+- **Code Splitting**: Lazy loading of components and routes
+- **Optimized Images**: Next.js Image optimization for logos and graphics
+- **Efficient Re-renders**: Smart use of React hooks and memoization
+- **Fast Navigation**: Client-side routing with smooth transitions
+
+### 🎯 User Experience Features
+- **Progressive Disclosure**: Information revealed as needed
+- **Visual Hierarchy**: Clear content organization and flow
+- **Interactive Feedback**: Hover states, animations, and micro-interactions
+- **Accessibility**: Keyboard navigation and screen reader support
+
 ## 🔮 Future Possibilities
 
 This foundation can be extended to build:
