@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingUp, BarChart3, PieChart as PieChartIcon, Filter, Calendar, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Eye, EyeOff, ChevronDown } from 'lucide-react';
+import { TrendingUp, BarChart3, PieChart as PieChartIcon, Filter, Calendar, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Eye, EyeOff, ChevronDown, Info, AlertTriangle, Shield, Settings } from 'lucide-react';
 
 interface VaultPerformanceChartProps {
   walletInfo: any;
+  selectedAsset: 'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL';
 }
 
 // Mock data - in production this would come from your API
@@ -20,9 +21,10 @@ const generateAPYData = (timeframe: '7d' | '30d' | '90d') => {
     data.push({
       date: date.toISOString().split('T')[0],
       'PDOT': 8.5 + Math.random() * 2 - 1,
-      'XLM (Stellar)': 6.2 + Math.random() * 1.5 - 0.75,
+      'XLM': 6.2 + Math.random() * 1.5 - 0.75,
       'USDC': 4.8 + Math.random() * 1 - 0.5,
-      'P-Tokens': 12.1 + Math.random() * 3 - 1.5,
+      'ETH': 5.2 + Math.random() * 2 - 1,
+      'SOL': 7.1 + Math.random() * 1.8 - 0.9,
     });
   }
   return data;
@@ -60,14 +62,91 @@ const vaultDistributionData = [
   { name: 'Stellar Lumens (XLM)', value: 10, color: '#8b5cf6', absoluteValue: 20357 },
 ];
 
-export default function VaultPerformanceChart({ walletInfo }: VaultPerformanceChartProps) {
+export default function VaultPerformanceChart({ walletInfo, selectedAsset }: VaultPerformanceChartProps) {
   const [activeChart, setActiveChart] = useState<'apy' | 'performance' | 'distribution'>('apy');
-  const [selectedAssets, setSelectedAssets] = useState<string[]>(['PDOT', 'XLM (Stellar)', 'USDC', 'P-Tokens']);
+  const [selectedAssets, setSelectedAssets] = useState<string[]>(['PDOT', 'XLM', 'USDC', 'ETH', 'SOL']);
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
   const [apyData, setApyData] = useState(generateAPYData('30d'));
   const [performanceData, setPerformanceData] = useState(generatePerformanceData('30d'));
   const [showTooltip, setShowTooltip] = useState(true);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
+
+  // Get real user data
+  const userSuppliedPDOT = parseFloat(walletInfo?.pTokenBalance || '0');
+  const borrowedAmountsFromStorage = typeof window !== 'undefined' ? 
+    JSON.parse(localStorage.getItem(`borrowed_amounts_${walletInfo?.address}`) || '{"PDOT": 0, "XLM": 0, "USDC": 0, "ETH": 0, "SOL": 0}') :
+    {"PDOT": 0, "XLM": 0, "USDC": 0, "ETH": 0, "SOL": 0};
+
+  // Asset-specific reserve configuration with real data
+  const assetConfig = {
+    PDOT: {
+      name: 'Peridot Token',
+      totalSupply: userSuppliedPDOT + 50000, // User supply + protocol liquidity
+      totalBorrowed: borrowedAmountsFromStorage.PDOT + 25000, // User borrowed + others
+      reserveFactor: 15,
+      utilizationRate: userSuppliedPDOT > 0 ? ((borrowedAmountsFromStorage.PDOT + 25000) / (userSuppliedPDOT + 50000) * 100) : 50.0,
+      liquidationThreshold: 80,
+      ltv: 75,
+      status: 'active' as const,
+      borrowCap: 200000,
+      supplyCap: 500000,
+      reserveSize: Math.floor((borrowedAmountsFromStorage.PDOT + 25000) * 0.15)
+    },
+    XLM: {
+      name: 'Stellar Lumens',
+      totalSupply: borrowedAmountsFromStorage.XLM + 40000,
+      totalBorrowed: borrowedAmountsFromStorage.XLM,
+      reserveFactor: 20,
+      utilizationRate: borrowedAmountsFromStorage.XLM > 0 ? (borrowedAmountsFromStorage.XLM / (borrowedAmountsFromStorage.XLM + 40000) * 100) : 0,
+      liquidationThreshold: 85,
+      ltv: 80,
+      status: 'active' as const,
+      borrowCap: 100000,
+      supplyCap: 200000,
+      reserveSize: Math.floor(borrowedAmountsFromStorage.XLM * 0.2)
+    },
+    USDC: {
+      name: 'USD Coin',
+      totalSupply: borrowedAmountsFromStorage.USDC + 20000,
+      totalBorrowed: borrowedAmountsFromStorage.USDC,
+      reserveFactor: 10,
+      utilizationRate: borrowedAmountsFromStorage.USDC > 0 ? (borrowedAmountsFromStorage.USDC / (borrowedAmountsFromStorage.USDC + 20000) * 100) : 0,
+      liquidationThreshold: 90,
+      ltv: 85,
+      status: 'active' as const,
+      borrowCap: 50000,
+      supplyCap: 100000,
+      reserveSize: Math.floor(borrowedAmountsFromStorage.USDC * 0.1)
+    },
+    ETH: {
+      name: 'Ethereum',
+      totalSupply: borrowedAmountsFromStorage.ETH + 8000,
+      totalBorrowed: borrowedAmountsFromStorage.ETH,
+      reserveFactor: 15,
+      utilizationRate: borrowedAmountsFromStorage.ETH > 0 ? (borrowedAmountsFromStorage.ETH / (borrowedAmountsFromStorage.ETH + 8000) * 100) : 0,
+      liquidationThreshold: 82,
+      ltv: 77,
+      status: 'active' as const,
+      borrowCap: 20000,
+      supplyCap: 40000,
+      reserveSize: Math.floor(borrowedAmountsFromStorage.ETH * 0.15)
+    },
+    SOL: {
+      name: 'Solana',
+      totalSupply: borrowedAmountsFromStorage.SOL + 12000,
+      totalBorrowed: borrowedAmountsFromStorage.SOL,
+      reserveFactor: 20,
+      utilizationRate: borrowedAmountsFromStorage.SOL > 0 ? (borrowedAmountsFromStorage.SOL / (borrowedAmountsFromStorage.SOL + 12000) * 100) : 0,
+      liquidationThreshold: 78,
+      ltv: 73,
+      status: 'active' as const,
+      borrowCap: 30000,
+      supplyCap: 60000,
+      reserveSize: Math.floor(borrowedAmountsFromStorage.SOL * 0.2)
+    }
+  };
+
+  const currentAssetConfig = assetConfig[selectedAsset];
 
   // Update data when timeframe changes
   useEffect(() => {
@@ -77,9 +156,10 @@ export default function VaultPerformanceChart({ walletInfo }: VaultPerformanceCh
 
   const assetColors = {
     'PDOT': '#10b981',
-    'XLM (Stellar)': '#3b82f6', 
+    'XLM': '#3b82f6', 
     'USDC': '#8b5cf6',
-    'P-Tokens': '#f59e0b'
+    'ETH': '#f59e0b',
+    'SOL': '#ec4899'
   };
 
   const toggleAsset = (asset: string) => {
@@ -156,10 +236,10 @@ export default function VaultPerformanceChart({ walletInfo }: VaultPerformanceCh
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight">
-                Vault Analytics
+                {currentAssetConfig.name} Analytics
               </h3>
               <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 leading-tight">
-                Performance & distribution
+                Reserve status & performance
               </p>
             </div>
           </div>
@@ -171,6 +251,92 @@ export default function VaultPerformanceChart({ walletInfo }: VaultPerformanceCh
           >
             {showTooltip ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
           </button>
+        </div>
+
+        {/* Reserve Status & Configuration */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-gradient-to-br from-slate-50/50 via-white/30 to-slate-100/50 dark:from-slate-800/50 dark:via-slate-700/30 dark:to-slate-800/50 border border-slate-200/30 dark:border-slate-600/20 backdrop-blur-lg">
+          <div className="group relative">
+            <div className="flex items-center space-x-2 mb-1">
+              <Settings className="w-3 h-3 text-blue-500" />
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Utilization</span>
+              <div className="group/tooltip relative">
+                <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-help" />
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap z-10">
+                  Total borrowed / Total supplied
+                </div>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">{currentAssetConfig.utilizationRate}%</p>
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${currentAssetConfig.utilizationRate}%` }}
+              ></div>
+            </div>
+          </div>
+
+          <div className="group relative">
+            <div className="flex items-center space-x-2 mb-1">
+              <Shield className="w-3 h-3 text-emerald-500" />
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">LTV</span>
+              <div className="group/tooltip relative">
+                <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-help" />
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap z-10">
+                  Max loan-to-value ratio
+                </div>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{currentAssetConfig.ltv}%</p>
+          </div>
+
+          <div className="group relative">
+            <div className="flex items-center space-x-2 mb-1">
+              <AlertTriangle className="w-3 h-3 text-orange-500" />
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Liq. Threshold</span>
+              <div className="group/tooltip relative">
+                <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-help" />
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap z-10">
+                  Liquidation threshold
+                </div>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-orange-600 dark:text-orange-400">{currentAssetConfig.liquidationThreshold}%</p>
+          </div>
+
+          <div className="group relative">
+            <div className="flex items-center space-x-2 mb-1">
+              <DollarSign className="w-3 h-3 text-violet-500" />
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Reserve</span>
+              <div className="group/tooltip relative">
+                <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-help" />
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap z-10">
+                  Protocol reserve size
+                </div>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-violet-600 dark:text-violet-400">{currentAssetConfig.reserveSize.toLocaleString()}</p>
+          </div>
+        </div>
+
+        {/* Market Overview */}
+        <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-gradient-to-br from-slate-50/30 via-white/20 to-slate-100/30 dark:from-slate-800/30 dark:via-slate-700/20 dark:to-slate-800/30 border border-slate-200/20 dark:border-slate-600/15 backdrop-blur-lg">
+          <div className="text-center">
+            <div className="flex items-center justify-center space-x-1 mb-1">
+              <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Total Supply</span>
+            </div>
+            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{currentAssetConfig.totalSupply.toLocaleString()}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Cap: {currentAssetConfig.supplyCap.toLocaleString()}</p>
+          </div>
+          
+          <div className="text-center">
+            <div className="flex items-center justify-center space-x-1 mb-1">
+              <ArrowDownRight className="w-3 h-3 text-orange-500" />
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Total Borrowed</span>
+            </div>
+            <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{currentAssetConfig.totalBorrowed.toLocaleString()}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Cap: {currentAssetConfig.borrowCap.toLocaleString()}</p>
+          </div>
         </div>
 
         {/* Chart Type Selector - Mobile Optimized */}

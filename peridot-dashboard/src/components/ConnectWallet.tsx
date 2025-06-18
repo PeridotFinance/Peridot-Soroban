@@ -257,9 +257,17 @@ interface ConnectWalletProps {
   walletInfo: WalletInfo | null;
   onWalletChange: (info: WalletInfo | null) => void;
   mode?: 'lending' | 'faucet';
+  selectedAsset?: 'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL';
+  onSelectedAssetChange?: (asset: 'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL') => void;
 }
 
-export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'faucet' }: ConnectWalletProps) {
+export default function ConnectWallet({ 
+  walletInfo, 
+  onWalletChange, 
+  mode = 'faucet', 
+  selectedAsset: propSelectedAsset = 'PDOT',
+  onSelectedAssetChange 
+}: ConnectWalletProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -290,8 +298,17 @@ export default function ConnectWallet({ walletInfo, onWalletChange, mode = 'fauc
     SOL: 147.64
   };
 
-  // Lending/Borrowing functionality
-  const [selectedAsset, setSelectedAsset] = useState<'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL'>('PDOT');
+  // Lending/Borrowing functionality - use prop or local state
+  const [localSelectedAsset, setLocalSelectedAsset] = useState<'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL'>('PDOT');
+  const selectedAsset = mode === 'lending' && propSelectedAsset ? propSelectedAsset : localSelectedAsset;
+  
+  const setSelectedAsset = (asset: 'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL') => {
+    if (mode === 'lending' && onSelectedAssetChange) {
+      onSelectedAssetChange(asset);
+    } else {
+      setLocalSelectedAsset(asset);
+    }
+  };
   const [lendingMode, setLendingMode] = useState<'lend' | 'borrow'>('lend');
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);

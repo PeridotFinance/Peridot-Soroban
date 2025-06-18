@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeTab, setActiveTab] = useState<'lending' | 'faucet'>('lending');
+  const [selectedAsset, setSelectedAsset] = useState<'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL'>('PDOT');
 
   const handleWalletChange = useCallback((info: WalletInfo | null) => {
     setWalletInfo(info);
@@ -207,11 +208,13 @@ export default function Dashboard() {
                 walletInfo={walletInfo} 
                 onWalletChange={handleWalletChange}
                 mode="lending"
+                selectedAsset={selectedAsset}
+                onSelectedAssetChange={setSelectedAsset}
               />
             </div>
             
             {/* Vault Performance Chart - Only show when wallet is connected */}
-            {walletInfo && <VaultPerformanceChart walletInfo={walletInfo} />}
+            {walletInfo && <VaultPerformanceChart walletInfo={walletInfo} selectedAsset={selectedAsset} />}
           </div>
         ) : (
           // Faucet Mode - Original Dashboard
