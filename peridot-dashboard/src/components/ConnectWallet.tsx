@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Wallet, LogOut, Copy, CheckCircle, AlertCircle, ExternalLink, Coins, Loader, Zap, TrendingUp, PiggyBank, ArrowUpCircle, ArrowDownCircle, BarChart3, DollarSign, Percent } from 'lucide-react';
+import { Wallet, LogOut, Copy, CheckCircle, AlertCircle, ExternalLink, Coins, Loader, Zap, TrendingUp, PiggyBank, ArrowUpCircle, ArrowDownCircle, BarChart3, DollarSign, Percent, Bell, Mail, MessageCircle } from 'lucide-react';
 import { connectFreighter, getBalances, formatNumber, WalletInfo, mintTestTokens } from '@/utils/stellar';
 
 // Add the CSS styles for loading animations and blend-in effects
@@ -342,6 +342,13 @@ export default function ConnectWallet({
   const [modalAmount, setModalAmount] = useState('');
   const [isModalProcessing, setIsModalProcessing] = useState(false);
 
+  // Alert subscription modal
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [alertType, setAlertType] = useState<'email' | 'telegram'>('email');
+  const [alertContact, setAlertContact] = useState('');
+  const [isAlertSubmitting, setIsAlertSubmitting] = useState(false);
+  const [alertSubmissionStatus, setAlertSubmissionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
   const handleConnect = async () => {
     setIsConnecting(true);
     setError(null);
@@ -380,6 +387,39 @@ export default function ConnectWallet({
   const openStellarExpert = () => {
     if (walletInfo?.address) {
       window.open(`https://testnet.steexp.com/account/${walletInfo.address}`, '_blank');
+    }
+  };
+
+  const openAlertModal = () => {
+    setIsAlertModalOpen(true);
+    setAlertSubmissionStatus('idle');
+    setAlertContact('');
+  };
+
+  const closeAlertModal = () => {
+    setIsAlertModalOpen(false);
+    setAlertContact('');
+    setAlertSubmissionStatus('idle');
+  };
+
+  const handleAlertSubmission = async () => {
+    if (!alertContact.trim()) return;
+
+    setIsAlertSubmitting(true);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mock success for demo
+      setAlertSubmissionStatus('success');
+      setTimeout(() => {
+        closeAlertModal();
+      }, 2000);
+    } catch (error) {
+      setAlertSubmissionStatus('error');
+    } finally {
+      setIsAlertSubmitting(false);
     }
   };
 
@@ -460,22 +500,22 @@ export default function ConnectWallet({
     },
     USDC: { 
       balance: borrowedAmounts.USDC.toString(), 
-      lendApy: '5.5', 
-      borrowApy: '8.2', 
+      lendApy: '3.5', 
+      borrowApy: '4.2', 
       borrowed: borrowedAmounts.USDC.toString(), 
       price: tokenPrices.USDC.toString() 
     },
     ETH: { 
       balance: borrowedAmounts.ETH.toString(), 
-      lendApy: '4.8', 
-      borrowApy: '7.3', 
+      lendApy: '2.8', 
+      borrowApy: '4.3', 
       borrowed: borrowedAmounts.ETH.toString(), 
       price: tokenPrices.ETH.toString() 
     },
     SOL: { 
       balance: borrowedAmounts.SOL.toString(), 
-      lendApy: '6.3', 
-      borrowApy: '9.1', 
+      lendApy: '3.3', 
+      borrowApy: '6.1', 
       borrowed: borrowedAmounts.SOL.toString(), 
       price: tokenPrices.SOL.toString() 
     }
@@ -911,8 +951,15 @@ export default function ConnectWallet({
             )}
           </button>
           <button
+            onClick={openAlertModal}
+            className="group relative p-2 bg-gradient-to-r from-emerald-600/20 to-emerald-700/20 hover:from-emerald-500/30 hover:to-emerald-600/30 active:from-emerald-700/40 active:to-emerald-800/40 rounded-lg border border-emerald-400/10 hover:border-emerald-300/20 active:border-emerald-300/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 transition-all duration-200 shadow-lg hover:shadow-emerald-500/10 backdrop-blur-lg transform hover:scale-105 active:scale-95 touch-manipulation"
+            title="Set up custom alerts"
+          >
+            <Bell className="w-4 h-4 text-emerald-500 dark:text-emerald-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors duration-200" />
+          </button>
+          <button
             onClick={openStellarExpert}
-            className="group relative p-2 bg-gradient-to-r from-blue-600/20 to-blue-700/20 hover:from-blue-500/30 hover:to-blue-600/30 active:from-blue-700/40 active:to-blue-800/40 rounded-lg border border-blue-400/10 hover:border-blue-300/20 active:border-blue-300/30 focus:outline-none focus:ring-2 focus:ring-blue-400/30 transition-all duration-200 shadow-lg hover:shadow-blue-500/10 backdrop-blur-lg transform hover:scale-105 active:scale-95 touch-manipulation"
+            className="hidden sm:block group relative p-2 bg-gradient-to-r from-blue-600/20 to-blue-700/20 hover:from-blue-500/30 hover:to-blue-600/30 active:from-blue-700/40 active:to-blue-800/40 rounded-lg border border-blue-400/10 hover:border-blue-300/20 active:border-blue-300/30 focus:outline-none focus:ring-2 focus:ring-blue-400/30 transition-all duration-200 shadow-lg hover:shadow-blue-500/10 backdrop-blur-lg transform hover:scale-105 active:scale-95 touch-manipulation"
             title="View on Stellar Expert"
           >
             <ExternalLink className="w-4 h-4 text-blue-500 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-200" />
@@ -1194,6 +1241,180 @@ export default function ConnectWallet({
         </div>
       )}
 
+      {/* Alert Subscription Modal */}
+      {isAlertModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-lg animate-fade-in"
+          onClick={closeAlertModal}
+        >
+          <div 
+            className="w-full max-w-md relative overflow-hidden bg-gradient-to-br from-white/98 via-emerald-50/95 to-white/98 dark:from-slate-800/98 dark:via-emerald-900/95 dark:to-slate-800/98 border border-emerald-200/60 dark:border-emerald-600/50 rounded-3xl shadow-2xl backdrop-blur-3xl animate-float-up"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              boxShadow: '0 25px 50px -12px rgba(16, 185, 129, 0.25), 0 8px 32px -8px rgba(16, 185, 129, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            {/* Liquid Glass Top Highlight */}
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent"></div>
+            <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-20 h-1 bg-gradient-to-r from-transparent via-white/60 to-transparent rounded-full blur-sm"></div>
+            
+            {/* Glass Reflection Effect */}
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white/10 via-white/5 to-transparent pointer-events-none"></div>
+            
+            <div className="relative p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-emerald-400/20 bg-gradient-to-r from-emerald-500/90 to-teal-500/90 shadow-lg shadow-emerald-500/30">
+                    <Bell className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Custom Alerts</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Get notified about your vault activity</p>
+                  </div>
+                </div>
+                <button
+                  onClick={closeAlertModal}
+                  className="p-2 rounded-xl bg-gradient-to-r from-slate-200/60 to-slate-300/60 hover:from-slate-300/80 hover:to-slate-400/80 dark:from-slate-600/20 dark:to-slate-700/20 dark:hover:from-slate-500/30 dark:hover:to-slate-600/30 border border-slate-400/20 hover:border-slate-500/30 dark:border-slate-400/10 dark:hover:border-slate-300/20 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300 transition-all duration-200"
+                >
+                  <span className="text-xl">×</span>
+                </button>
+              </div>
+
+              {/* Alert Type Selector */}
+              <div className="mb-6">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Choose notification method:</p>
+                <div className="flex items-center justify-center">
+                  <div className="relative p-1 bg-gradient-to-r from-slate-100/80 via-slate-50/90 to-slate-100/80 dark:from-slate-700/50 dark:via-slate-600/30 dark:to-slate-700/50 rounded-2xl backdrop-blur-2xl border border-slate-300/40 dark:border-slate-600/30">
+                    <div className="flex relative">
+                      <div 
+                        className={`absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-emerald-200/60 via-emerald-100/70 to-emerald-200/60 dark:from-emerald-600/20 dark:via-emerald-500/10 dark:to-emerald-600/20 rounded-xl shadow-lg transition-all duration-500 ease-out backdrop-blur-xl ${
+                          alertType === 'email' ? 'left-0' : 'left-1/2'
+                        }`}
+                      />
+                      
+                      <button
+                        onClick={() => setAlertType('email')}
+                        className={`relative px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out ${
+                          alertType === 'email'
+                            ? 'text-emerald-900 dark:text-emerald-100 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Mail className="w-4 h-4" />
+                          <span>Email</span>
+                        </div>
+                      </button>
+                      
+                      <button
+                        onClick={() => setAlertType('telegram')}
+                        className={`relative px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out ${
+                          alertType === 'telegram'
+                            ? 'text-emerald-900 dark:text-emerald-100 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <MessageCircle className="w-4 h-4" />
+                          <span>Telegram</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Information Section */}
+              <div className="mb-6 p-4 bg-gradient-to-br from-emerald-500/8 via-emerald-400/4 to-teal-500/8 dark:from-emerald-400/12 dark:via-emerald-300/6 dark:to-teal-400/12 border border-emerald-400/20 dark:border-emerald-300/25 rounded-2xl backdrop-blur-xl">
+                <h4 className="font-semibold text-emerald-800 dark:text-emerald-200 mb-2">You'll receive alerts for:</h4>
+                <ul className="text-sm text-emerald-700 dark:text-emerald-300 space-y-1">
+                  <li>• Deposit confirmations</li>
+                  <li>• Withdrawal notifications</li>
+                  <li>• Interest rate changes</li>
+                  <li>• Liquidation warnings</li>
+                  <li>• Protocol updates</li>
+                </ul>
+              </div>
+
+              {/* Contact Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  {alertType === 'email' ? 'Email Address' : 'Telegram Handle'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={alertType === 'email' ? 'email' : 'text'}
+                    value={alertContact}
+                    onChange={(e) => setAlertContact(e.target.value)}
+                    placeholder={alertType === 'email' ? 'your@email.com' : '@your_telegram_handle'}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-slate-50/90 via-white/95 to-slate-50/90 dark:from-slate-700/30 dark:via-slate-600/20 dark:to-slate-700/30 border border-slate-300/50 dark:border-slate-600/30 rounded-xl backdrop-blur-xl text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400/50 transition-all duration-300"
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {alertType === 'email' ? (
+                      <Mail className="w-4 h-4 text-slate-400" />
+                    ) : (
+                      <MessageCircle className="w-4 h-4 text-slate-400" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Success/Error States */}
+              {alertSubmissionStatus === 'success' && (
+                <div className="mb-6 p-4 bg-gradient-to-br from-emerald-500/20 via-green-500/10 to-teal-500/20 border border-emerald-400/30 rounded-xl backdrop-blur-xl flex items-center space-x-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  <span className="text-emerald-800 dark:text-emerald-200 font-medium">
+                    Alert subscription activated successfully!
+                  </span>
+                </div>
+              )}
+
+              {alertSubmissionStatus === 'error' && (
+                <div className="mb-6 p-4 bg-gradient-to-br from-red-500/20 via-orange-500/10 to-red-500/20 border border-red-400/30 rounded-xl backdrop-blur-xl flex items-center space-x-3">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  <span className="text-red-800 dark:text-red-200 font-medium">
+                    Failed to set up alerts. Please try again.
+                  </span>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                onClick={handleAlertSubmission}
+                disabled={!alertContact.trim() || isAlertSubmitting || alertSubmissionStatus === 'success'}
+                className="w-full group relative overflow-hidden px-6 py-4 rounded-2xl border border-emerald-400/20 hover:border-emerald-300/40 active:border-emerald-300/60 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-xl hover:shadow-emerald-500/20 hover:shadow-2xl backdrop-blur-2xl transform hover:scale-[1.02] active:scale-[0.98] text-white font-semibold text-lg bg-gradient-to-r from-emerald-500 to-teal-500"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 group-active:opacity-50 transition-opacity duration-300"></div>
+                <div className="relative flex items-center justify-center space-x-3">
+                  {isAlertSubmitting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Setting up alerts...</span>
+                    </>
+                  ) : alertSubmissionStatus === 'success' ? (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      <span>Alerts Activated</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="w-5 h-5" />
+                      <span>Subscribe to Alerts</span>
+                    </>
+                  )}
+                </div>
+              </button>
+
+              {/* Privacy Notice */}
+              <p className="mt-4 text-xs text-slate-500 dark:text-slate-400 text-center">
+                We respect your privacy. Your contact information is encrypted and only used for notifications.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Disconnect Button */}
       <button
         onClick={handleDisconnect}
@@ -1398,7 +1619,7 @@ export default function ConnectWallet({
               <div className="flex sm:hidden items-center space-x-4">
                 {/* Dynamic APY Circle - Mobile Liquid Glass */}
                 <div className="flex-shrink-0">
-                  <div className="relative w-20 h-20">
+                  <div className="relative w-24 h-24">
                     {/* Outer Glass Ring with Multiple Layers */}
                     <div className={`absolute inset-0 rounded-full backdrop-blur-3xl border border-white/40 shadow-2xl ${
                       lendingMode === 'borrow' 
@@ -1407,45 +1628,50 @@ export default function ConnectWallet({
                     }`}
                          style={{ 
                            boxShadow: lendingMode === 'borrow'
-                             ? '0 6px 24px rgba(249, 115, 22, 0.3), 0 3px 12px rgba(234, 88, 12, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                             : '0 6px 24px rgba(16, 185, 129, 0.3), 0 3px 12px rgba(20, 184, 166, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)' 
+                             ? '0 8px 32px rgba(249, 115, 22, 0.3), 0 4px 16px rgba(234, 88, 12, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                             : '0 8px 32px rgba(16, 185, 129, 0.3), 0 4px 16px rgba(20, 184, 166, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)' 
                          }}>
                     </div>
                     
                     {/* Middle Frosted Layer */}
-                    <div className={`absolute inset-0.5 rounded-full backdrop-blur-2xl shadow-inner ${
+                    <div className={`absolute inset-1 rounded-full backdrop-blur-2xl shadow-inner ${
                       lendingMode === 'borrow'
                         ? 'bg-gradient-to-br from-orange-400/40 via-red-500/50 to-orange-600/40 border border-orange-300/50'
                         : 'bg-gradient-to-br from-emerald-400/40 via-teal-500/50 to-emerald-600/40 border border-emerald-300/50'
                     }`}
                          style={{ 
                            boxShadow: lendingMode === 'borrow'
-                             ? '0 3px 16px rgba(249, 115, 22, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.1), inset 0 -1px 3px rgba(0, 0, 0, 0.1)'
-                             : '0 3px 16px rgba(16, 185, 129, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.1), inset 0 -1px 3px rgba(0, 0, 0, 0.1)' 
+                             ? '0 4px 20px rgba(249, 115, 22, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.1), inset 0 -2px 4px rgba(0, 0, 0, 0.1)'
+                             : '0 4px 20px rgba(16, 185, 129, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.1), inset 0 -2px 4px rgba(0, 0, 0, 0.1)' 
                          }}>
                     </div>
                     
                     {/* Inner Content with Glass Effect */}
-                    <div className={`absolute inset-1.5 rounded-full backdrop-blur-xl shadow-inner flex flex-col items-center justify-center ${
+                    <div className={`absolute inset-2 rounded-full backdrop-blur-xl shadow-inner flex flex-col items-center justify-center ${
                       lendingMode === 'borrow'
                         ? 'bg-gradient-to-br from-orange-600/90 via-red-600/85 to-orange-700/90 border border-orange-400/60'
                         : 'bg-gradient-to-br from-emerald-600/90 via-teal-600/85 to-emerald-700/90 border border-emerald-400/60'
                     }`}
                          style={{ 
                            boxShadow: lendingMode === 'borrow'
-                             ? 'inset 0 1px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 8px rgba(249, 115, 22, 0.5)'
-                             : 'inset 0 1px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 8px rgba(16, 185, 129, 0.5)' 
+                             ? 'inset 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 12px rgba(249, 115, 22, 0.5)'
+                             : 'inset 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 12px rgba(16, 185, 129, 0.5)' 
                          }}>
                       
                       {/* Top Highlight */}
-                      <div className="absolute top-0.5 left-1/2 transform -translate-x-1/2 w-6 h-1.5 bg-gradient-to-b from-white/40 to-transparent rounded-full blur-sm"></div>
+                      <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-6 h-1.5 bg-gradient-to-b from-white/40 to-transparent rounded-full blur-sm"></div>
                       
-                      <span className={`text-xs font-medium mb-0.5 font-mono uppercase tracking-wide drop-shadow-sm ${
+                      <span className={`text-[10px] font-medium leading-tight font-mono uppercase tracking-wider drop-shadow-sm ${
                         lendingMode === 'borrow' ? 'text-orange-100/90' : 'text-emerald-100/90'
                       }`}>
-                        {lendingMode === 'borrow' ? 'BORROW APY' : 'SUPPLY APY'}
+                        {lendingMode === 'borrow' ? 'BORROW' : 'SUPPLY'}
                       </span>
-                      <span className="text-base font-bold text-white font-mono drop-shadow-md">
+                      <span className={`text-[10px] font-medium leading-tight font-mono uppercase tracking-wider drop-shadow-sm ${
+                        lendingMode === 'borrow' ? 'text-orange-100/90' : 'text-emerald-100/90'
+                      }`}>
+                        APY
+                      </span>
+                      <span className="text-sm font-bold text-white font-mono drop-shadow-md leading-none mt-0.5">
                         {lendingMode === 'borrow' ? `-${assetData[selectedAsset].borrowApy}%` : `+${assetData[selectedAsset].lendApy}%`}
                       </span>
                     </div>

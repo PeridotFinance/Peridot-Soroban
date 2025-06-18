@@ -1,21 +1,24 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Shield, Github, ExternalLink, TrendingUp, Zap } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Shield, Github, ExternalLink, TrendingUp, Zap, Bot } from 'lucide-react';
 import ConnectWallet from '@/components/ConnectWallet';
 import VaultInterface from '@/components/VaultInterface';
 import VaultStats from '@/components/VaultStats';
 import VaultPerformanceChart from '@/components/VaultPerformanceChart';
 import ThemeToggle from '@/components/ThemeToggle';
 import DashboardWithCarousel from '@/components/DashboardWithCarousel';
+import AIAgent from '@/components/AIAgent';
 import { WalletInfo } from '@/utils/stellar';
 import Image from 'next/image';
 
 export default function Dashboard() {
   const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState<'lending' | 'faucet'>('lending');
+  const [activeTab, setActiveTab] = useState<'lending' | 'faucet' | 'ai-agent'>('lending');
   const [selectedAsset, setSelectedAsset] = useState<'PDOT' | 'XLM' | 'USDC' | 'ETH' | 'SOL'>('PDOT');
+  const [isTabSwitcherSticky, setIsTabSwitcherSticky] = useState(false);
+  const tabSwitcherRef = useRef<HTMLDivElement>(null);
 
   const handleWalletChange = useCallback((info: WalletInfo | null) => {
     setWalletInfo(info);
@@ -48,6 +51,151 @@ export default function Dashboard() {
     }
   }, [walletInfo?.address]);
 
+  // Handle scroll detection for sticky tab switcher
+  useEffect(() => {
+    const handleScroll = () => {
+      if (tabSwitcherRef.current) {
+        const rect = tabSwitcherRef.current.getBoundingClientRect();
+        const isSticky = rect.top <= 80; // Account for header height
+        setIsTabSwitcherSticky(isSticky);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Reusable tab switcher component
+  const TabSwitcher = ({ isCompact = false }: { isCompact?: boolean }) => (
+    <div className={`relative backdrop-blur-2xl bg-white/10 dark:bg-white/5 rounded-3xl p-2 border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 flex flex-row ${isCompact ? 'scale-75 sm:scale-75 scale-[0.6] origin-center' : ''}`}>
+      <button
+        onClick={() => setActiveTab('lending')}
+        className={`relative ${isCompact ? 'px-4 py-2' : 'px-8 py-4'} rounded-2xl font-semibold overflow-hidden group active:scale-95`}
+        style={{
+          background: activeTab === 'lending' 
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))'
+            : 'transparent',
+          backdropFilter: activeTab === 'lending' ? 'blur(20px)' : 'none',
+          border: activeTab === 'lending' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid transparent',
+          boxShadow: activeTab === 'lending' 
+            ? '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+            : 'none',
+          color: activeTab === 'lending' ? '#1e293b' : '#64748b',
+          transform: activeTab === 'lending' ? 'scale(1.02)' : 'scale(1)',
+          transition: activeTab === 'lending' 
+            ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+            : 'all 0.15s ease-out'
+        }}
+        onMouseDown={(e) => {
+          e.currentTarget.style.transform = activeTab === 'lending' ? 'scale(0.97)' : 'scale(0.95)';
+          e.currentTarget.style.transition = 'transform 0.1s ease-out';
+        }}
+        onMouseUp={(e) => {
+          e.currentTarget.style.transform = activeTab === 'lending' ? 'scale(1.02)' : 'scale(1)';
+          e.currentTarget.style.transition = activeTab === 'lending' 
+            ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+            : 'all 0.15s ease-out';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = activeTab === 'lending' ? 'scale(1.02)' : 'scale(1)';
+          e.currentTarget.style.transition = activeTab === 'lending' 
+            ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+            : 'all 0.15s ease-out';
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+        <div className="relative flex items-center justify-center space-x-2">
+          <TrendingUp className="w-4 h-4" />
+          <span className="font-mono uppercase tracking-wide text-sm font-bold">Lending</span>
+        </div>
+      </button>
+      
+      <button
+        onClick={() => setActiveTab('faucet')}
+        className={`relative ${isCompact ? 'px-4 py-2' : 'px-8 py-4'} rounded-2xl font-semibold overflow-hidden group active:scale-95`}
+        style={{
+          background: activeTab === 'faucet' 
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))'
+            : 'transparent',
+          backdropFilter: activeTab === 'faucet' ? 'blur(20px)' : 'none',
+          border: activeTab === 'faucet' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid transparent',
+          boxShadow: activeTab === 'faucet' 
+            ? '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+            : 'none',
+          color: activeTab === 'faucet' ? '#1e293b' : '#64748b',
+          transform: activeTab === 'faucet' ? 'scale(1.02)' : 'scale(1)',
+          transition: activeTab === 'faucet' 
+            ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+            : 'all 0.15s ease-out'
+        }}
+        onMouseDown={(e) => {
+          e.currentTarget.style.transform = activeTab === 'faucet' ? 'scale(0.97)' : 'scale(0.95)';
+          e.currentTarget.style.transition = 'transform 0.1s ease-out';
+        }}
+        onMouseUp={(e) => {
+          e.currentTarget.style.transform = activeTab === 'faucet' ? 'scale(1.02)' : 'scale(1)';
+          e.currentTarget.style.transition = activeTab === 'faucet' 
+            ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+            : 'all 0.15s ease-out';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = activeTab === 'faucet' ? 'scale(1.02)' : 'scale(1)';
+          e.currentTarget.style.transition = activeTab === 'faucet' 
+            ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+            : 'all 0.15s ease-out';
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+        <div className="relative flex items-center justify-center space-x-2">
+          <Zap className="w-4 h-4" />
+          <span className="font-mono uppercase tracking-wide text-sm font-bold">Faucet</span>
+        </div>
+      </button>
+      
+      <button
+        onClick={() => setActiveTab('ai-agent')}
+        className={`relative ${isCompact ? 'px-4 py-2' : 'px-8 py-4'} rounded-2xl font-semibold overflow-hidden group active:scale-95`}
+        style={{
+          background: activeTab === 'ai-agent' 
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))'
+            : 'transparent',
+          backdropFilter: activeTab === 'ai-agent' ? 'blur(20px)' : 'none',
+          border: activeTab === 'ai-agent' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid transparent',
+          boxShadow: activeTab === 'ai-agent' 
+            ? '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+            : 'none',
+          color: activeTab === 'ai-agent' ? '#1e293b' : '#64748b',
+          transform: activeTab === 'ai-agent' ? 'scale(1.02)' : 'scale(1)',
+          transition: activeTab === 'ai-agent' 
+            ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+            : 'all 0.15s ease-out'
+        }}
+        onMouseDown={(e) => {
+          e.currentTarget.style.transform = activeTab === 'ai-agent' ? 'scale(0.97)' : 'scale(0.95)';
+          e.currentTarget.style.transition = 'transform 0.1s ease-out';
+        }}
+        onMouseUp={(e) => {
+          e.currentTarget.style.transform = activeTab === 'ai-agent' ? 'scale(1.02)' : 'scale(1)';
+          e.currentTarget.style.transition = activeTab === 'ai-agent' 
+            ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+            : 'all 0.15s ease-out';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = activeTab === 'ai-agent' ? 'scale(1.02)' : 'scale(1)';
+          e.currentTarget.style.transition = activeTab === 'ai-agent' 
+            ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+            : 'all 0.15s ease-out';
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+        <div className="relative flex items-center justify-center space-x-2">
+          <Bot className="w-4 h-4" />
+          <span className="font-mono uppercase tracking-wide text-sm font-bold">AI Agent</span>
+        </div>
+      </button>
+    </div>
+  );
+
   return (
     <div className="min-h-screen theme-bg">
       {/* Floating Header */}
@@ -71,28 +219,42 @@ export default function Dashboard() {
               </div>
             </div>
             
-            {/* Links and Theme Toggle */}
-            <div className="flex items-center space-x-4">
-              <ThemeToggle />
-              <div className="w-px h-6 bg-slate-400 dark:bg-slate-500"></div>
-              <a
-                href="https://github.com/PeridotFinance/Peridot-Soroban/tree/main#"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
-                title="View on GitHub"
-              >
-                <Github className="w-5 h-5" />
-              </a>
-              <a
-                href="https://peridot-finance.gitbook.io/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
-                title="Learn about Soroban"
-              >
-                <ExternalLink className="w-5 h-5" />
-              </a>
+            {/* Sticky Tab Switcher and Links */}
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Sticky Tab Switcher - show on mobile when sticky */}
+              {isTabSwitcherSticky && (
+                <div className="block">
+                  <TabSwitcher isCompact />
+                </div>
+              )}
+              
+              {/* Theme Toggle - hide on mobile when tab switcher is sticky */}
+              <div className={`transition-opacity duration-300 ${isTabSwitcherSticky ? 'hidden sm:block' : 'block'}`}>
+                <ThemeToggle />
+              </div>
+              
+              {/* Links - hidden on mobile, visible on desktop */}
+              <div className="hidden sm:flex items-center space-x-4">
+                <div className="w-px h-6 bg-slate-400 dark:bg-slate-500"></div>
+                <a
+                  href="https://github.com/PeridotFinance/Peridot-Soroban/tree/main#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
+                  title="View on GitHub"
+                >
+                  <Github className="w-5 h-5" />
+                </a>
+                <a
+                  href="https://peridot-finance.gitbook.io/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
+                  title="Learn about Soroban"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -106,97 +268,13 @@ export default function Dashboard() {
             Peridot Protocol
           </h1>
           <p className="text-lg text-slate-800 dark:text-slate-300">
-            Lend & Borrow Crypto across chains
+            The only true crosschain Lend & Borrow platform
           </p>
         </div>
 
         {/* Glassy iOS-Style Tabs */}
-        <div className="flex justify-center mb-8">
-          <div className="relative backdrop-blur-2xl bg-white/10 dark:bg-white/5 rounded-3xl p-2 border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10">
-            <button
-              onClick={() => setActiveTab('lending')}
-              className="relative px-8 py-4 rounded-2xl font-semibold overflow-hidden group active:scale-95"
-              style={{
-                background: activeTab === 'lending' 
-                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))'
-                  : 'transparent',
-                backdropFilter: activeTab === 'lending' ? 'blur(20px)' : 'none',
-                border: activeTab === 'lending' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid transparent',
-                boxShadow: activeTab === 'lending' 
-                  ? '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                  : 'none',
-                color: activeTab === 'lending' ? '#1e293b' : '#64748b',
-                transform: activeTab === 'lending' ? 'scale(1.02)' : 'scale(1)',
-                transition: activeTab === 'lending' 
-                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
-                  : 'all 0.15s ease-out'
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = activeTab === 'lending' ? 'scale(0.97)' : 'scale(0.95)';
-                e.currentTarget.style.transition = 'transform 0.1s ease-out';
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = activeTab === 'lending' ? 'scale(1.02)' : 'scale(1)';
-                e.currentTarget.style.transition = activeTab === 'lending' 
-                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
-                  : 'all 0.15s ease-out';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = activeTab === 'lending' ? 'scale(1.02)' : 'scale(1)';
-                e.currentTarget.style.transition = activeTab === 'lending' 
-                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
-                  : 'all 0.15s ease-out';
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-              <div className="relative flex items-center justify-center space-x-2">
-                <TrendingUp className="w-4 h-4" />
-                <span className="font-mono uppercase tracking-wide text-sm font-bold">Lending</span>
-              </div>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('faucet')}
-              className="relative px-8 py-4 rounded-2xl font-semibold overflow-hidden group active:scale-95"
-              style={{
-                background: activeTab === 'faucet' 
-                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))'
-                  : 'transparent',
-                backdropFilter: activeTab === 'faucet' ? 'blur(20px)' : 'none',
-                border: activeTab === 'faucet' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid transparent',
-                boxShadow: activeTab === 'faucet' 
-                  ? '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                  : 'none',
-                color: activeTab === 'faucet' ? '#1e293b' : '#64748b',
-                transform: activeTab === 'faucet' ? 'scale(1.02)' : 'scale(1)',
-                transition: activeTab === 'faucet' 
-                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
-                  : 'all 0.15s ease-out'
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = activeTab === 'faucet' ? 'scale(0.97)' : 'scale(0.95)';
-                e.currentTarget.style.transition = 'transform 0.1s ease-out';
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = activeTab === 'faucet' ? 'scale(1.02)' : 'scale(1)';
-                e.currentTarget.style.transition = activeTab === 'faucet' 
-                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
-                  : 'all 0.15s ease-out';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = activeTab === 'faucet' ? 'scale(1.02)' : 'scale(1)';
-                e.currentTarget.style.transition = activeTab === 'faucet' 
-                  ? 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
-                  : 'all 0.15s ease-out';
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-              <div className="relative flex items-center justify-center space-x-2">
-                <Zap className="w-4 h-4" />
-                <span className="font-mono uppercase tracking-wide text-sm font-bold">Faucet</span>
-              </div>
-            </button>
-          </div>
+        <div ref={tabSwitcherRef} className={`flex justify-center mb-8 transition-opacity duration-300 ${isTabSwitcherSticky ? 'opacity-0' : 'opacity-100'}`}>
+          <TabSwitcher />
         </div>
 
         {/* Tab Content */}
@@ -216,6 +294,9 @@ export default function Dashboard() {
             {/* Vault Performance Chart - Only show when wallet is connected */}
             {walletInfo && <VaultPerformanceChart walletInfo={walletInfo} selectedAsset={selectedAsset} />}
           </div>
+        ) : activeTab === 'ai-agent' ? (
+          // AI Agent Interface
+          <AIAgent walletInfo={walletInfo} />
         ) : (
           // Faucet Mode - Original Dashboard
           <>
@@ -262,7 +343,7 @@ export default function Dashboard() {
             </div>
 
             {/* Dashboard Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1  gap-8">
               {/* Left Column */}
               <div className="space-y-6">
                 {/* Wallet Connection */}
@@ -275,16 +356,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Right Column */}
-              <div className="space-y-6">
-                {/* Vault Interface */}
-                <div className="glass-card">
-                  <VaultInterface 
-                    walletInfo={walletInfo} 
-                    onTransactionComplete={handleTransactionComplete} 
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Vault Stats - Full Width */}

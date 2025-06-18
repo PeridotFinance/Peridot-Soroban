@@ -84,7 +84,7 @@ export default function VaultPerformanceChart({ walletInfo, selectedAsset }: Vau
       totalSupply: userSuppliedPDOT + 50000, // User supply + protocol liquidity
       totalBorrowed: borrowedAmountsFromStorage.PDOT + 25000, // User borrowed + others
       reserveFactor: 15,
-      utilizationRate: userSuppliedPDOT > 0 ? ((borrowedAmountsFromStorage.PDOT + 25000) / (userSuppliedPDOT + 50000) * 100) : 50.0,
+              utilizationRate: userSuppliedPDOT > 0 ? Math.round(((borrowedAmountsFromStorage.PDOT + 25000) / (userSuppliedPDOT + 50000) * 100) * 100) / 100 : 50.0,
       liquidationThreshold: 80,
       ltv: 75,
       status: 'active' as const,
@@ -97,7 +97,7 @@ export default function VaultPerformanceChart({ walletInfo, selectedAsset }: Vau
       totalSupply: borrowedAmountsFromStorage.XLM + 40000,
       totalBorrowed: borrowedAmountsFromStorage.XLM,
       reserveFactor: 20,
-      utilizationRate: borrowedAmountsFromStorage.XLM > 0 ? (borrowedAmountsFromStorage.XLM / (borrowedAmountsFromStorage.XLM + 40000) * 100) : 0,
+              utilizationRate: borrowedAmountsFromStorage.XLM > 0 ? Math.max(0.01, Math.round((borrowedAmountsFromStorage.XLM / (borrowedAmountsFromStorage.XLM + 40000) * 100) * 100) / 100) : 0,
       liquidationThreshold: 85,
       ltv: 80,
       status: 'active' as const,
@@ -110,7 +110,7 @@ export default function VaultPerformanceChart({ walletInfo, selectedAsset }: Vau
       totalSupply: borrowedAmountsFromStorage.USDC + 20000,
       totalBorrowed: borrowedAmountsFromStorage.USDC,
       reserveFactor: 10,
-      utilizationRate: borrowedAmountsFromStorage.USDC > 0 ? (borrowedAmountsFromStorage.USDC / (borrowedAmountsFromStorage.USDC + 20000) * 100) : 0,
+              utilizationRate: borrowedAmountsFromStorage.USDC > 0 ? Math.max(0.01, Math.round((borrowedAmountsFromStorage.USDC / (borrowedAmountsFromStorage.USDC + 20000) * 100) * 100) / 100) : 0,
       liquidationThreshold: 90,
       ltv: 85,
       status: 'active' as const,
@@ -123,7 +123,7 @@ export default function VaultPerformanceChart({ walletInfo, selectedAsset }: Vau
       totalSupply: borrowedAmountsFromStorage.ETH + 8000,
       totalBorrowed: borrowedAmountsFromStorage.ETH,
       reserveFactor: 15,
-      utilizationRate: borrowedAmountsFromStorage.ETH > 0 ? (borrowedAmountsFromStorage.ETH / (borrowedAmountsFromStorage.ETH + 8000) * 100) : 0,
+              utilizationRate: borrowedAmountsFromStorage.ETH > 0 ? Math.max(0.01, Math.round((borrowedAmountsFromStorage.ETH / (borrowedAmountsFromStorage.ETH + 8000) * 100) * 100) / 100) : 0,
       liquidationThreshold: 82,
       ltv: 77,
       status: 'active' as const,
@@ -136,7 +136,7 @@ export default function VaultPerformanceChart({ walletInfo, selectedAsset }: Vau
       totalSupply: borrowedAmountsFromStorage.SOL + 12000,
       totalBorrowed: borrowedAmountsFromStorage.SOL,
       reserveFactor: 20,
-      utilizationRate: borrowedAmountsFromStorage.SOL > 0 ? (borrowedAmountsFromStorage.SOL / (borrowedAmountsFromStorage.SOL + 12000) * 100) : 0,
+              utilizationRate: borrowedAmountsFromStorage.SOL > 0 ? Math.max(0.01, Math.round((borrowedAmountsFromStorage.SOL / (borrowedAmountsFromStorage.SOL + 12000) * 100) * 100) / 100) : 0,
       liquidationThreshold: 78,
       ltv: 73,
       status: 'active' as const,
@@ -266,7 +266,11 @@ export default function VaultPerformanceChart({ walletInfo, selectedAsset }: Vau
                 </div>
               </div>
             </div>
-            <p className="text-lg font-bold text-slate-900 dark:text-white">{currentAssetConfig.utilizationRate}%</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">
+              {currentAssetConfig.utilizationRate < 0.01 && currentAssetConfig.utilizationRate > 0 
+                ? "< 0.01%" 
+                : `${currentAssetConfig.utilizationRate}%`}
+            </p>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
               <div 
                 className="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-500"
