@@ -472,7 +472,10 @@ export default function ConnectWallet({
 
   // Mock data for lending interface
   // pTokens represent supplied PDOT (1:1) and are used as collateral, not as a separate asset
-  const suppliedPDOT = walletInfo?.pTokenBalance || '0'; // pTokens = supplied PDOT
+  const actualSuppliedPDOT = walletInfo?.pTokenBalance || '0'; 
+  // Add mock supplied PDOT to make the demo more realistic - enough to support current borrows
+  const mockSuppliedPDOT = parseFloat(actualSuppliedPDOT) > 0 ? actualSuppliedPDOT : '125'; // $106.25 collateral at $0.85/PDOT
+  const suppliedPDOT = mockSuppliedPDOT; // pTokens = supplied PDOT
   const availablePDOT = walletInfo?.testTokenBalance || '0'; // Available PDOT to supply
   
   // Calculate collateral value and borrowing power

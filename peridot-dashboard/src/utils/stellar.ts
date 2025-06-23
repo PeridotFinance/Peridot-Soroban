@@ -7,10 +7,10 @@ import {
   getNetwork 
 } from '@stellar/freighter-api';
 
-// Constants
-const VAULT_CONTRACT_ID = process.env.NEXT_PUBLIC_VAULT_CONTRACT!;
-const TOKEN_CONTRACT_ID = process.env.NEXT_PUBLIC_TOKEN_CONTRACT!;
-const ALICE_ADDRESS = process.env.NEXT_PUBLIC_ALICE_ADDRESS!;
+// Constants - with fallback values from README
+const VAULT_CONTRACT_ID = process.env.NEXT_PUBLIC_VAULT_CONTRACT || 'CBJABFTHC6HASPK4VZFNWRRTXQKOBUEA4VIAE4G36W4C2S4LU2C5GSTH';
+const TOKEN_CONTRACT_ID = process.env.NEXT_PUBLIC_TOKEN_CONTRACT || 'CAQYNJBC2BWWMQPM5567OX2DMS4QC46ZJDH3JCOPDH635KTYTXDEUSJI';
+const ALICE_ADDRESS = process.env.NEXT_PUBLIC_ALICE_ADDRESS || 'GA5RKTCFMDLSW2BYRMLGVXPCNCXDQMNFV3RZRRVLZ2R5IWASDYZGNPXN';
 
 // Network configuration
 const server = new Horizon.Server('https://horizon-testnet.stellar.org');
