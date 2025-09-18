@@ -9,6 +9,7 @@ pub enum DataKey {
     UnderlyingToken,
     UserDeposits(Address),    // Keep for now (will remove in later steps)
     PTokenBalances(Address),  // New: receipt token balances
+    PTokenAllowances(Address, Address), // allowances[owner][spender] -> u128
     TotalDeposited,
     TotalPTokens,            // New: total receipt tokens issued
     InterestRatePerSecond,   // u128, scaled by 1_000_000 (6 decimals)
@@ -22,9 +23,12 @@ pub enum DataKey {
     BorrowYearlyRateScaled,     // u128, scaled 1e6
     CollateralFactorScaled,     // u128, scaled 1e6 (e.g., 500_000 = 50%)
     Admin,                      // Address
-    Comptroller,                // Address (optional)
+    Peridottroller,                // Address (optional)
     InterestModel,              // Address (optional)
     ReserveFactorScaled,        // u128 (scaled 1e6), defaults 0
+    TotalReserves,              // u128 accumulated reserves
+    SupplyCap,                  // u128, max total underlying (principal + interest)
+    BorrowCap,                  // u128, max total borrowed
 }
 
 #[contracttype]
@@ -40,15 +44,6 @@ const INDEX_SCALE_1E18: u128 = 1_000_000_000_000_000_000u128; // 1e18
 #[contract]
 pub struct ReceiptVault;
 
-// This is a sample contract. Replace this placeholder with your own contract logic.
-// A corresponding test example is available in `test.rs`.
-//
-// For comprehensive examples, visit <https://github.com/stellar/soroban-examples>.
-// The repository includes use cases for the Stellar ecosystem, such as data storage on
-// the blockchain, token swaps, liquidity pools, and more.
-//
-// Refer to the official documentation:
-// <https://developers.stellar.org/docs/build/smart-contracts/overview>.
 #[contractimpl]
 impl ReceiptVault {
     /// Initialize the vault with underlying token, supply yearly rate, borrow yearly rate, and admin
@@ -101,6 +96,10 @@ impl ReceiptVault {
 
         // Default reserve factor 0
         env.storage().persistent().set(&DataKey::ReserveFactorScaled, &0u128);
+        env.storage().persistent().set(&DataKey::TotalReserves, &0u128);
+        // Default caps unset (0 means disabled)
+        env.storage().persistent().set(&DataKey::SupplyCap, &0u128);
+        env.storage().persistent().set(&DataKey::BorrowCap, &0u128);
     }
 
     /// Deposit tokens into the vault and receive pTokens
@@ -109,6 +108,11 @@ impl ReceiptVault {
         Self::update_interest(env.clone());
         // Require authorization from the user
         user.require_auth();
+        // Rewards: accrue user in this market
+        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Peridottroller) {
+            use soroban_sdk::IntoVal;
+            let _: () = env.invoke_contract(&comp_addr, &Symbol::new(&env, "accrue_user_market"), (user.clone(), env.current_contract_address()).into_val(&env));
+        }
 
         // Get the underlying token
         let token_address: Address = env.storage()
@@ -116,8 +120,25 @@ impl ReceiptVault {
             .get(&DataKey::UnderlyingToken)
             .expect("Vault not initialized");
 
+        
+
+        // Pause: consult peridottroller if set
+        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Peridottroller) {
+            use soroban_sdk::IntoVal;
+            let paused: bool = env.invoke_contract(&comp_addr, &Symbol::new(&env, "is_deposit_paused"), (env.current_contract_address(),).into_val(&env));
+            if paused { panic!("deposit paused"); }
+        }
+
         // Create token client
         let token_client = token::Client::new(&env, &token_address);
+
+        // Enforce supply cap if set (cap applies to total underlying after deposit)
+        let cap: u128 = env.storage().persistent().get(&DataKey::SupplyCap).unwrap_or(0u128);
+        if cap > 0 {
+            let total_underlying_before = Self::get_total_underlying(env.clone());
+            let total_underlying_after = total_underlying_before.saturating_add(amount);
+            if total_underlying_after > cap { panic!("supply cap exceeded"); }
+        }
 
         // Transfer tokens from user to contract
         token_client.transfer(&user, &env.current_contract_address(), &(amount as i128));
@@ -175,6 +196,11 @@ impl ReceiptVault {
         Self::update_interest(env.clone());
         // Require authorization from the user
         user.require_auth();
+        // Rewards accrue
+        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Peridottroller) {
+            use soroban_sdk::IntoVal;
+            let _: () = env.invoke_contract(&comp_addr, &Symbol::new(&env, "accrue_user_market"), (user.clone(), env.current_contract_address()).into_val(&env));
+        }
 
         // Check user has sufficient pTokens
         let current_ptokens = env.storage()
@@ -202,6 +228,48 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::UnderlyingToken)
             .expect("Vault not initialized");
+
+        // USD-based redeem gating via peridottroller, if set
+        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Peridottroller) {
+            use soroban_sdk::IntoVal;
+            // Pause check via peridottroller
+            let paused: bool = env.invoke_contract(&comp_addr, &Symbol::new(&env, "is_redeem_paused"), (env.current_contract_address(),).into_val(&env));
+            if paused { panic!("redeem paused"); }
+            // Other markets collateral in USD
+            let other_collateral_usd: u128 = env.invoke_contract(
+                &comp_addr,
+                &Symbol::new(&env, "get_collateral_excl_usd"),
+                (user.clone(), env.current_contract_address()).into_val(&env),
+            );
+            // Price of this underlying
+            let price_opt: Option<(u128, u128)> = env.invoke_contract(
+                &comp_addr,
+                &Symbol::new(&env, "get_price_usd"),
+                (token_address.clone(),).into_val(&env),
+            );
+            if price_opt.is_none() { panic!("Price unavailable"); }
+            let (price, scale) = price_opt.unwrap();
+            let cf: u128 = env.storage().persistent().get(&DataKey::CollateralFactorScaled).unwrap_or(500_000u128);
+
+            // Local remaining collateral after this redeem
+            let remaining_ptokens = current_ptokens - ptoken_amount;
+            let remaining_underlying = (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
+            let remaining_discounted = (remaining_underlying.saturating_mul(cf)) / SCALE_1E6;
+            let local_collateral_usd = (remaining_discounted.saturating_mul(price)) / scale;
+
+            // Borrows USD: other markets + local market
+            let other_borrows_usd: u128 = env.invoke_contract(
+                &comp_addr,
+                &Symbol::new(&env, "get_borrows_excl"),
+                (user.clone(), env.current_contract_address()).into_val(&env),
+            );
+            let local_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
+            let local_debt_usd = (local_debt.saturating_mul(price)) / scale;
+
+            let total_collateral_usd = other_collateral_usd.saturating_add(local_collateral_usd);
+            let total_borrow_usd = other_borrows_usd.saturating_add(local_debt_usd);
+            if total_collateral_usd < total_borrow_usd { panic!("Insufficient collateral"); }
+        }
 
         // Create token client
         let token_client = token::Client::new(&env, &token_address);
@@ -273,6 +341,56 @@ impl ReceiptVault {
             .unwrap_or(0u128)
     }
 
+    // ERC20-like pToken API
+    pub fn approve(env: Env, owner: Address, spender: Address, amount: u128) {
+        owner.require_auth();
+        env.storage().persistent().set(&DataKey::PTokenAllowances(owner.clone(), spender.clone()), &amount);
+        env.events().publish((Symbol::new(&env, "approve"),), (owner, spender, amount));
+    }
+
+    pub fn allowance(env: Env, owner: Address, spender: Address) -> u128 {
+        env.storage().persistent().get(&DataKey::PTokenAllowances(owner, spender)).unwrap_or(0u128)
+    }
+
+    pub fn transfer(env: Env, from: Address, to: Address, amount: u128) {
+        from.require_auth();
+        Self::transfer_internal(env, from, to, amount, false);
+    }
+
+    pub fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: u128) {
+        spender.require_auth();
+        let allowed: u128 = env.storage().persistent().get(&DataKey::PTokenAllowances(owner.clone(), spender.clone())).unwrap_or(0u128);
+        if allowed < amount { panic!("insufficient allowance"); }
+        // deduct allowance
+        env.storage().persistent().set(&DataKey::PTokenAllowances(owner.clone(), spender.clone()), &(allowed - amount));
+        Self::transfer_internal(env, owner, to, amount, true);
+    }
+
+    fn transfer_internal(env: Env, from: Address, to: Address, amount: u128, via_spender: bool) {
+        if amount == 0 { return; }
+        // Gating: if peridottroller wired, consult redeem pause and health for from-user
+        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Peridottroller) {
+            use soroban_sdk::IntoVal;
+            // Pause check
+            let paused: bool = env.invoke_contract(&comp_addr, &Symbol::new(&env, "is_redeem_paused"), (env.current_contract_address(),).into_val(&env));
+            if paused { panic!("redeem paused"); }
+            // Health check: ensure reducing `from` pTokens by amount keeps account healthy
+            let pbal: u128 = env.storage().persistent().get(&DataKey::PTokenBalances(from.clone())).unwrap_or(0u128);
+            if pbal < amount { panic!("Insufficient pTokens"); }
+            // Check via preview_redeem_max
+            let max_ptokens: u128 = env.invoke_contract(&comp_addr, &Symbol::new(&env, "preview_redeem_max"), (from.clone(), env.current_contract_address()).into_val(&env));
+            if amount > max_ptokens { panic!("Insufficient collateral"); }
+        }
+        // balances update
+        let from_bal: u128 = env.storage().persistent().get(&DataKey::PTokenBalances(from.clone())).unwrap_or(0u128);
+        if from_bal < amount { panic!("Insufficient pTokens"); }
+        let to_bal: u128 = env.storage().persistent().get(&DataKey::PTokenBalances(to.clone())).unwrap_or(0u128);
+        env.storage().persistent().set(&DataKey::PTokenBalances(from.clone()), &(from_bal - amount));
+        env.storage().persistent().set(&DataKey::PTokenBalances(to.clone()), &(to_bal.saturating_add(amount)));
+        let evt = if via_spender { Symbol::new(&env, "transfer_from") } else { Symbol::new(&env, "transfer") };
+        env.events().publish((evt,), (from, to, amount));
+    }
+
     /// Get total amount deposited in the vault
     pub fn get_total_deposited(env: Env) -> u128 {
         env.storage()
@@ -288,6 +406,23 @@ impl ReceiptVault {
             .get(&DataKey::TotalPTokens)
             .unwrap_or(0u128)
     }
+
+    /// Admin: upgrade contract code
+    pub fn upgrade_wasm(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
+        admin.require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
+
+    /// Admin: transfer admin to new address
+    pub fn set_admin(env: Env, new_admin: Address) {
+        let old: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
+        old.require_auth();
+        env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.events().publish((Symbol::new(&env, "admin_set"),), new_admin);
+    }
+
+    
 
     /// Get the exchange rate (pToken to underlying ratio) scaled by 1e6
     pub fn get_exchange_rate(env: Env) -> u128 {
@@ -316,12 +451,12 @@ impl ReceiptVault {
         env.storage().persistent().get(&DataKey::CollateralFactorScaled).unwrap_or(500_000u128)
     }
 
-    /// Admin: set comptroller address
-    pub fn set_comptroller(env: Env, comptroller: Address) {
+    /// Admin: set peridottroller address
+    pub fn set_peridottroller(env: Env, peridottroller: Address) {
         let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
         admin.require_auth();
-        env.storage().persistent().set(&DataKey::Comptroller, &comptroller);
-        env.events().publish((Symbol::new(&env, "comptroller_set"),), comptroller);
+        env.storage().persistent().set(&DataKey::Peridottroller, &peridottroller);
+        env.events().publish((Symbol::new(&env, "peridottroller_set"),), peridottroller);
     }
 
     /// Admin: set interest rate model address
@@ -339,6 +474,41 @@ impl ReceiptVault {
         if reserve_factor_scaled > 1_000_000u128 { panic!("Invalid reserve factor"); }
         env.storage().persistent().set(&DataKey::ReserveFactorScaled, &reserve_factor_scaled);
         env.events().publish((Symbol::new(&env, "reserve_factor_set"),), reserve_factor_scaled);
+    }
+
+    /// Admin: set supply cap (0 disables)
+    pub fn set_supply_cap(env: Env, cap: u128) {
+        let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
+        admin.require_auth();
+        env.storage().persistent().set(&DataKey::SupplyCap, &cap);
+        env.events().publish((Symbol::new(&env, "supply_cap_set"),), cap);
+    }
+
+    /// Admin: set borrow cap (0 disables)
+    pub fn set_borrow_cap(env: Env, cap: u128) {
+        let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
+        admin.require_auth();
+        env.storage().persistent().set(&DataKey::BorrowCap, &cap);
+        env.events().publish((Symbol::new(&env, "borrow_cap_set"),), cap);
+    }
+
+    /// Get total reserves
+    pub fn get_total_reserves(env: Env) -> u128 {
+        env.storage().persistent().get(&DataKey::TotalReserves).unwrap_or(0u128)
+    }
+
+    /// Admin: reduce reserves and transfer to admin
+    pub fn reduce_reserves(env: Env, amount: u128) {
+        let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
+        admin.require_auth();
+        let reserves: u128 = env.storage().persistent().get(&DataKey::TotalReserves).unwrap_or(0u128);
+        if amount > reserves { panic!("Insufficient reserves"); }
+        env.storage().persistent().set(&DataKey::TotalReserves, &reserves.saturating_sub(amount));
+        // Transfer underlying to admin
+        let token_address: Address = env.storage().persistent().get(&DataKey::UnderlyingToken).expect("Vault not initialized");
+        let token_client = token::Client::new(&env, &token_address);
+        token_client.transfer(&env.current_contract_address(), &admin, &(amount as i128));
+        env.events().publish((Symbol::new(&env, "reserves_reduced"),), amount);
     }
 
     //
@@ -397,7 +567,7 @@ impl ReceiptVault {
             );
         }
 
-        // Borrow interest accrual via global index
+        // Borrow interest accrual via global index (split to reserves and suppliers)
         let tb_prior: u128 = env.storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
@@ -418,9 +588,19 @@ impl ReceiptVault {
                 .saturating_mul(borrow_yearly_rate_scaled)
                 .saturating_mul(elapsed);
             let denominator = seconds_per_year.saturating_mul(SCALE_1E6);
-            let borrow_interest = numerator / denominator;
+            let borrow_interest_total = numerator / denominator;
 
-            let tb_after = tb_prior.saturating_add(borrow_interest);
+            // Split between reserves and suppliers based on reserve factor
+            let rf: u128 = env.storage().persistent().get(&DataKey::ReserveFactorScaled).unwrap_or(0u128);
+            let to_reserves = (borrow_interest_total.saturating_mul(rf)) / SCALE_1E6;
+            let to_suppliers = borrow_interest_total.saturating_sub(to_reserves);
+
+            // Update total reserves
+            let current_reserves: u128 = env.storage().persistent().get(&DataKey::TotalReserves).unwrap_or(0u128);
+            env.storage().persistent().set(&DataKey::TotalReserves, &current_reserves.saturating_add(to_reserves));
+
+            // Increase total borrowed by total interest; suppliers' share increases total underlying via accumulated_interest path below
+            let tb_after = tb_prior.saturating_add(borrow_interest_total);
             env.storage().persistent().set(&DataKey::TotalBorrowed, &tb_after);
 
             // Update borrow index: delta = old_index * borrow_interest / tb_prior
@@ -428,9 +608,13 @@ impl ReceiptVault {
                 .persistent()
                 .get(&DataKey::BorrowIndex)
                 .unwrap_or(INDEX_SCALE_1E18);
-            let delta_index = (old_index.saturating_mul(borrow_interest)) / tb_prior;
+            let delta_index = (old_index.saturating_mul(borrow_interest_total)) / tb_prior;
             let new_index = old_index.saturating_add(delta_index);
             env.storage().persistent().set(&DataKey::BorrowIndex, &new_index);
+
+            // Credit suppliers' share into accumulated interest (increasing exchange rate)
+            let acc_prev: u128 = env.storage().persistent().get(&DataKey::AccumulatedInterest).unwrap_or(0u128);
+            env.storage().persistent().set(&DataKey::AccumulatedInterest, &acc_prev.saturating_add(to_suppliers));
         }
 
         // Move time forward
@@ -531,6 +715,11 @@ impl ReceiptVault {
         total_underlying.saturating_sub(total_borrowed)
     }
 
+    /// Get total borrowed outstanding
+    pub fn get_total_borrowed(env: Env) -> u128 {
+        env.storage().persistent().get(&DataKey::TotalBorrowed).unwrap_or(0u128)
+    }
+
     /// Get user's collateral value in underlying terms
     pub fn get_user_collateral_value(env: Env, user: Address) -> u128 {
         let pbal: u128 = env.storage()
@@ -546,10 +735,17 @@ impl ReceiptVault {
     pub fn borrow(env: Env, user: Address, amount: u128) {
         Self::update_interest(env.clone());
         user.require_auth();
-
-        // Cross-market enforcement via comptroller (USD); fall back to local-only if no comptroller
-        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Comptroller) {
+        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Peridottroller) {
             use soroban_sdk::IntoVal;
+            let _: () = env.invoke_contract(&comp_addr, &Symbol::new(&env, "accrue_user_market"), (user.clone(), env.current_contract_address()).into_val(&env));
+        }
+
+        // Cross-market enforcement via peridottroller (USD); fall back to local-only if no peridottroller
+        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Peridottroller) {
+            use soroban_sdk::IntoVal;
+            // Pause check via peridottroller
+            let paused: bool = env.invoke_contract(&comp_addr, &Symbol::new(&env, "is_borrow_paused"), (env.current_contract_address(),).into_val(&env));
+            if paused { panic!("borrow paused"); }
             let underlying_token: Address = env.storage().persistent().get(&DataKey::UnderlyingToken).expect("Vault not initialized");
             let (_liq, shortfall): (u128, u128) = env.invoke_contract(
                 &comp_addr,
@@ -571,6 +767,13 @@ impl ReceiptVault {
         let available = Self::get_available_liquidity(env.clone());
         if available < amount { panic!("Not enough liquidity to borrow"); }
 
+        // Borrow cap check
+        let bcap: u128 = env.storage().persistent().get(&DataKey::BorrowCap).unwrap_or(0u128);
+        if bcap > 0 {
+            let tb: u128 = env.storage().persistent().get(&DataKey::TotalBorrowed).unwrap_or(0u128);
+            if tb.saturating_add(amount) > bcap { panic!("borrow cap exceeded"); }
+        }
+
         // Update totals and user snapshot
         let new_principal = Self::get_user_borrow_balance(env.clone(), user.clone()).saturating_add(amount);
         Self::write_borrow_snapshot(&env, user.clone(), new_principal);
@@ -590,6 +793,10 @@ impl ReceiptVault {
     pub fn repay(env: Env, user: Address, amount: u128) {
         Self::update_interest(env.clone());
         user.require_auth();
+        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Peridottroller) {
+            use soroban_sdk::IntoVal;
+            let _: () = env.invoke_contract(&comp_addr, &Symbol::new(&env, "accrue_user_market"), (user.clone(), env.current_contract_address()).into_val(&env));
+        }
 
         let current_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
         if current_debt == 0 { return; }
@@ -608,6 +815,46 @@ impl ReceiptVault {
         env.storage().persistent().set(&DataKey::TotalBorrowed, &tb_after);
 
         env.events().publish((Symbol::new(&env, "repay"), user.clone()), repay_amount);
+    }
+
+    /// Repay on behalf during liquidation; only callable by peridottroller/peridottroller
+    pub fn repay_on_behalf(env: Env, liquidator: Address, borrower: Address, amount: u128) {
+        // Accrue and auth via peridottroller/peridottroller
+        Self::update_interest(env.clone());
+        let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);
+        let Some(_comp_addr) = comp else { panic!("no peridottroller"); };
+
+        let current_debt = Self::get_user_borrow_balance(env.clone(), borrower.clone());
+        if current_debt == 0 { return; }
+        let repay_amount = if amount > current_debt { current_debt } else { amount };
+
+        // Transfer tokens from liquidator
+        let token_address: Address = env.storage().persistent().get(&DataKey::UnderlyingToken).expect("Vault not initialized");
+        let token_client = token::Client::new(&env, &token_address);
+        token_client.transfer(&liquidator, &env.current_contract_address(), &(repay_amount as i128));
+
+        // Update borrower snapshot and totals
+        let new_principal = current_debt - repay_amount;
+        Self::write_borrow_snapshot(&env, borrower.clone(), new_principal);
+        let tb: u128 = env.storage().persistent().get(&DataKey::TotalBorrowed).unwrap_or(0u128);
+        let tb_after = tb - repay_amount;
+        env.storage().persistent().set(&DataKey::TotalBorrowed, &tb_after);
+        env.events().publish((Symbol::new(&env, "repay_on_behalf"),), (borrower, repay_amount));
+    }
+
+    /// Seize pTokens from borrower to liquidator; only callable by peridottroller/peridottroller
+    pub fn seize(env: Env, borrower: Address, liquidator: Address, ptoken_amount: u128) {
+        let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);
+        let Some(_comp_addr) = comp else { panic!("no peridottroller"); };
+
+        // reduce borrower pTokens and increase liquidator pTokens
+        let bbal: u128 = env.storage().persistent().get(&DataKey::PTokenBalances(borrower.clone())).unwrap_or(0u128);
+        if bbal < ptoken_amount { panic!("insufficient borrower ptokens"); }
+        let lbal: u128 = env.storage().persistent().get(&DataKey::PTokenBalances(liquidator.clone())).unwrap_or(0u128);
+        env.storage().persistent().set(&DataKey::PTokenBalances(borrower.clone()), &(bbal - ptoken_amount));
+        env.storage().persistent().set(&DataKey::PTokenBalances(liquidator.clone()), &(lbal.saturating_add(ptoken_amount)));
+
+        env.events().publish((Symbol::new(&env, "seize"),), (borrower, liquidator, ptoken_amount));
     }
 }
 

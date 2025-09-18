@@ -6,7 +6,10 @@ use soroban_sdk::{
     token, Address, Env,
 };
 use soroban_sdk::testutils::Ledger;
+use soroban_sdk::{contract, contractimpl, contracttype};
+use soroban_sdk::BytesN;
 use crate as rv;
+use simple_peridottroller::SimplePeridottroller;
 
 fn create_test_token<'a>(env: &'a Env, admin: &'a Address) -> (Address, token::Client<'a>, token::StellarAssetClient<'a>) {
     let contract_address = env.register_stellar_asset_contract_v2(admin.clone()).address();
@@ -257,6 +260,54 @@ fn test_zero_balance_users() {
 }
 
 #[test]
+fn test_reserve_accrual_and_reduce() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    // Mint tokens to the user for liquidity and collateral
+    token_admin_client.mint(&user, &10_000i128);
+
+    // Deploy vault
+    let vault_contract_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_contract_id);
+
+    // Initialize: 0% supply, 100% borrow; admin is admin
+    vault.initialize(&token_address, &0u128, &1_000_000u128, &admin);
+
+    // Set reserve factor to 20%
+    vault.set_reserve_factor(&200_000u128);
+
+    // Set CF to 100%
+    vault.set_collateral_factor(&1_000_000u128);
+
+    // Provide liquidity and collateral
+    vault.deposit(&user, &200u128);
+
+    // Borrow 100
+    vault.borrow(&user, &100u128);
+
+    // Advance 1 year and trigger interest accrual via setting same borrow rate
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault.set_borrow_rate(&1_000_000u128);
+
+    // With 100% yearly borrow rate on 100 borrowed, interest = 100
+    // Reserves should get 20, suppliers 80
+    assert_eq!(vault.get_total_reserves(), 20u128);
+
+    // Reduce reserves by 5 to admin
+    let admin_balance_before = token_client.balance(&admin);
+    vault.reduce_reserves(&5u128);
+    assert_eq!(vault.get_total_reserves(), 15u128);
+    let admin_balance_after = token_client.balance(&admin);
+    assert_eq!(admin_balance_after - admin_balance_before, 5i128);
+}
+
+#[test]
 fn test_borrow_and_repay_flow() {
     let env = Env::default();
     env.mock_all_auths();
@@ -327,6 +378,159 @@ fn test_borrow_interest_accrues_and_index_updates() {
 
     let debt_after = vault_client.get_user_borrow_balance(&user);
     assert!(debt_after > debt_before);
+}
+
+#[test]
+#[should_panic(expected = "supply cap exceeded")]
+fn test_supply_cap_enforced_on_deposit() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    // Mint to user
+    token_admin_client.mint(&user, &1_000i128);
+
+    // Vault
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // Set cap to 150
+    vault.set_supply_cap(&150u128);
+
+    // Deposit 100 ok
+    vault.deposit(&user, &100u128);
+    // Deposit another 60 -> exceeds cap (total underlying after deposit = 160)
+    vault.deposit(&user, &60u128);
+}
+
+#[test]
+#[should_panic(expected = "borrow cap exceeded")]
+fn test_borrow_cap_enforced_on_borrow() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    // Mint to user and to a lender for liquidity
+    token_admin_client.mint(&user, &1_000i128);
+    let lender = Address::generate(&env);
+    token_admin_client.mint(&lender, &1_000i128);
+
+    // Vault
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // Provide liquidity and collateral; CF=100%
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&lender, &500u128);
+    vault.deposit(&user, &300u128);
+
+    // Set borrow cap to 100 total
+    vault.set_borrow_cap(&100u128);
+
+    // Borrow 80 ok
+    vault.borrow(&user, &80u128);
+    // Borrow additional 30 -> would exceed cap (total 110)
+    vault.borrow(&user, &30u128);
+}
+
+// Mock rate model providing constant yearly rates
+#[contract]
+struct MockRateModel;
+
+#[contracttype]
+enum MRKey { Supply, Borrow }
+
+#[contractimpl]
+impl MockRateModel {
+    pub fn initialize(env: Env, supply_yearly_scaled: u128, borrow_yearly_scaled: u128) {
+        env.storage().persistent().set(&MRKey::Supply, &supply_yearly_scaled);
+        env.storage().persistent().set(&MRKey::Borrow, &borrow_yearly_scaled);
+    }
+    pub fn get_supply_rate(env: Env, _cash: u128, _borrows: u128, _reserves: u128, _reserve_factor: u128) -> u128 {
+        env.storage().persistent().get(&MRKey::Supply).unwrap_or(0u128)
+    }
+    pub fn get_borrow_rate(env: Env, _cash: u128, _borrows: u128, _reserves: u128) -> u128 {
+        env.storage().persistent().get(&MRKey::Borrow).unwrap_or(0u128)
+    }
+}
+
+#[test]
+fn test_interest_model_supply_accrual() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // Model: 10% supply, 0% borrow
+    let model_id = env.register(MockRateModel, ());
+    let model = MockRateModelClient::new(&env, &model_id);
+    model.initialize(&100_000u128, &0u128);
+    vault.set_interest_model(&model_id);
+
+    vault.deposit(&user, &100u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    // Trigger accrual directly
+    vault.update_interest();
+
+    assert_eq!(vault.get_total_underlying(), 110u128);
+    assert!(vault.get_exchange_rate() > 1_000_000u128);
+}
+
+#[test]
+fn test_interest_model_borrow_accrual_and_reserves() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &10_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // Reserve factor 20%
+    vault.set_reserve_factor(&200_000u128);
+
+    // Model: 0% supply, 100% borrow
+    let model_id = env.register(MockRateModel, ());
+    let model = MockRateModelClient::new(&env, &model_id);
+    model.initialize(&0u128, &1_000_000u128);
+    vault.set_interest_model(&model_id);
+
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&user, &200u128);
+    vault.borrow(&user, &100u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    // Trigger accrual directly
+    vault.update_interest();
+
+    // Interest 100 -> reserves 20, suppliers 80
+    assert_eq!(vault.get_total_reserves(), 20u128);
+    assert_eq!(vault.get_total_borrowed(), 200u128);
+    assert_eq!(vault.get_total_underlying(), 280u128);
 }
 
 #[test]
@@ -405,4 +609,82 @@ fn test_admin_setters_guarded() {
     vault_client.set_borrow_rate(&100_000u128);
 }
 
-// (cross-market collateral tests moved to simple-comptroller crate to avoid circular deps)
+#[test]
+fn test_vault_set_admin_transfers_admin() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    assert_eq!(vault.get_admin(), admin);
+    vault.set_admin(&new_admin);
+    assert_eq!(vault.get_admin(), new_admin);
+}
+
+#[test]
+#[should_panic]
+fn test_ptoken_transfer_and_approve_with_gating() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let other = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    // Vault
+    let v_id = env.register(ReceiptVault, ());
+    let v = ReceiptVaultClient::new(&env, &v_id);
+    v.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // Fund and deposit
+    token_admin_client.mint(&user, &1_000i128);
+    v.set_collateral_factor(&1_000_000u128);
+    v.deposit(&user, &200u128); // user has 200 pTokens
+
+    // Transfer 50 pTokens to other -> healthy
+    v.transfer(&user, &other, &50u128);
+    assert_eq!(v.get_ptoken_balance(&user), 150u128);
+    assert_eq!(v.get_ptoken_balance(&other), 50u128);
+
+    // Approve and transfer_from 50 pTokens from user to other
+    v.approve(&user, &other, &50u128);
+    v.transfer_from(&other, &user, &other, &50u128);
+    assert_eq!(v.get_ptoken_balance(&user), 100u128);
+    assert_eq!(v.get_ptoken_balance(&other), 100u128);
+
+    // Borrow to reduce headroom (local-only)
+    v.borrow(&user, &100u128);
+    
+    // Now wire a minimal peridottroller (no oracle set -> preview_redeem_max=0)
+    let comp_id = env.register(SimplePeridottroller, ());
+    v.set_peridottroller(&comp_id);
+
+    // Attempt transfer 101 -> should panic via peridottroller gating
+    v.transfer(&user, &other, &101u128);
+}
+
+#[test]
+#[should_panic]
+fn test_vault_upgrade_requires_admin() {
+    let env = Env::default();
+    // no mock_all_auths to enforce auth
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // Attempt upgrade without admin authorization
+    let hash = BytesN::from_array(&env, &[0u8; 32]);
+    vault.upgrade_wasm(&hash);
+}
+
+// (cross-market collateral tests moved to simple-peridottroller crate to avoid circular deps)
