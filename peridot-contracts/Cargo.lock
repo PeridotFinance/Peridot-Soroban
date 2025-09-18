@@ -928,6 +928,7 @@ dependencies = [
 name = "receipt-vault"
 version = "0.2.0"
 dependencies = [
+ "jump-rate-model",
  "simple-peridottroller",
  "soroban-sdk",
 ]

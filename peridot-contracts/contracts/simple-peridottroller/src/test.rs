@@ -237,6 +237,7 @@ fn test_oracle_gating_allows_within_limit() {
     comp.initialize(&admin);
     comp.add_market(&vault_a_id);
     comp.add_market(&vault_b_id);
+    comp.set_market_cf(&vault_b_id, &1_000_000u128);
     comp.enter_market(&user, &vault_a_id);
     comp.enter_market(&user, &vault_b_id);
 
@@ -724,6 +725,7 @@ fn test_preview_helpers_extended() {
     comp.initialize(&admin);
     comp.add_market(&va_id);
     comp.add_market(&vb_id);
+    comp.set_market_cf(&vb_id, &1_000_000u128);
     comp.enter_market(&borrower, &va_id);
     comp.enter_market(&borrower, &vb_id);
     va.set_peridottroller(&comp_id);
@@ -922,6 +924,7 @@ fn test_pause_deposit_blocks_deposit() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&v_id);
+    comp.set_market_cf(&v_id, &1_000_000u128);
     comp.enter_market(&user, &v_id);
     v.set_peridottroller(&comp_id);
 
@@ -961,6 +964,7 @@ fn test_pause_deposit_blocks_deposit_guardian() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&v_id);
+    comp.set_market_cf(&v_id, &1_000_000u128);
     comp.enter_market(&user, &v_id);
     v.set_peridottroller(&comp_id);
 
@@ -1185,6 +1189,7 @@ fn test_oracle_decimals_normalization() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&v_id);
+    comp.set_market_cf(&v_id, &1_000_000u128);
     comp.enter_market(&user, &v_id);
     v.set_peridottroller(&comp_id);
 
@@ -1285,6 +1290,7 @@ fn test_rewards_accrual_and_claim() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&v_id);
+    comp.set_market_cf(&v_id, &1_000_000u128);
     comp.enter_market(&user, &v_id);
     v.set_peridottroller(&comp_id);
 

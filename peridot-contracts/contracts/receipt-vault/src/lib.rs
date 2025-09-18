@@ -16,6 +16,7 @@ pub enum DataKey {
     LastUpdateTime,          // u64
     AccumulatedInterest,     // u128
     YearlyRateScaled,        // u128, scaled by 1_000_000 (6 decimals)
+    InitialExchangeRate,     // u128, scaled 1e6
     // Borrowing-related keys
     BorrowSnapshots(Address),   // BorrowSnapshot per user
     TotalBorrowed,              // u128
@@ -26,6 +27,8 @@ pub enum DataKey {
     Peridottroller,                // Address (optional)
     InterestModel,              // Address (optional)
     ReserveFactorScaled,        // u128 (scaled 1e6), defaults 0
+    AdminFeeScaled,             // u128 (scaled 1e6), defaults 0
+    TotalAdminFees,             // u128 accumulated admin fees
     TotalReserves,              // u128 accumulated reserves
     SupplyCap,                  // u128, max total underlying (principal + interest)
     BorrowCap,                  // u128, max total borrowed
@@ -94,9 +97,12 @@ impl ReceiptVault {
         // Set admin
         env.storage().persistent().set(&DataKey::Admin, &admin);
 
-        // Default reserve factor 0
+        // Initial exchange rate and fee factors
+        env.storage().persistent().set(&DataKey::InitialExchangeRate, &SCALE_1E6);
         env.storage().persistent().set(&DataKey::ReserveFactorScaled, &0u128);
         env.storage().persistent().set(&DataKey::TotalReserves, &0u128);
+        env.storage().persistent().set(&DataKey::AdminFeeScaled, &0u128);
+        env.storage().persistent().set(&DataKey::TotalAdminFees, &0u128);
         // Default caps unset (0 means disabled)
         env.storage().persistent().set(&DataKey::SupplyCap, &0u128);
         env.storage().persistent().set(&DataKey::BorrowCap, &0u128);
@@ -140,11 +146,10 @@ impl ReceiptVault {
             if total_underlying_after > cap { panic!("supply cap exceeded"); }
         }
 
+        // Calculate pTokens to mint based on current exchange rate BEFORE moving cash
+        let current_rate = Self::get_exchange_rate(env.clone());
         // Transfer tokens from user to contract
         token_client.transfer(&user, &env.current_contract_address(), &(amount as i128));
-
-        // Calculate pTokens to mint based on current exchange rate
-        let current_rate = Self::get_exchange_rate(env.clone());
         // pTokens = amount * 1e6 / rate
         let ptokens_to_mint = (amount * SCALE_1E6) / current_rate;
 
@@ -249,7 +254,7 @@ impl ReceiptVault {
             );
             if price_opt.is_none() { panic!("Price unavailable"); }
             let (price, scale) = price_opt.unwrap();
-            let cf: u128 = env.storage().persistent().get(&DataKey::CollateralFactorScaled).unwrap_or(500_000u128);
+            let cf: u128 = env.invoke_contract(&comp_addr, &Symbol::new(&env, "get_market_cf"), (env.current_contract_address(),).into_val(&env));
 
             // Local remaining collateral after this redeem
             let remaining_ptokens = current_ptokens - ptoken_amount;
@@ -388,7 +393,14 @@ impl ReceiptVault {
         env.storage().persistent().set(&DataKey::PTokenBalances(from.clone()), &(from_bal - amount));
         env.storage().persistent().set(&DataKey::PTokenBalances(to.clone()), &(to_bal.saturating_add(amount)));
         let evt = if via_spender { Symbol::new(&env, "transfer_from") } else { Symbol::new(&env, "transfer") };
-        env.events().publish((evt,), (from, to, amount));
+        env.events().publish((evt,), (from.clone(), to.clone(), amount));
+
+        // Rewards accrual on transfers when peridottroller is wired
+        if let Some(comp_addr) = env.storage().persistent().get::<_, Address>(&DataKey::Peridottroller) {
+            use soroban_sdk::IntoVal;
+            let _: () = env.invoke_contract(&comp_addr, &Symbol::new(&env, "accrue_user_market"), (from, env.current_contract_address()).into_val(&env));
+            let _: () = env.invoke_contract(&comp_addr, &Symbol::new(&env, "accrue_user_market"), (to, env.current_contract_address()).into_val(&env));
+        }
     }
 
     /// Get total amount deposited in the vault
@@ -431,7 +443,7 @@ impl ReceiptVault {
             .get(&DataKey::TotalPTokens)
             .unwrap_or(0u128);
         if total_ptokens == 0 {
-            return SCALE_1E6;
+            return env.storage().persistent().get(&DataKey::InitialExchangeRate).unwrap_or(SCALE_1E6);
         }
         let total_underlying = Self::get_total_underlying(env.clone());
         // rate = total_underlying / total_ptokens, scaled 1e6
@@ -476,6 +488,15 @@ impl ReceiptVault {
         env.events().publish((Symbol::new(&env, "reserve_factor_set"),), reserve_factor_scaled);
     }
 
+    /// Admin: set admin fee factor (0..=1e6)
+    pub fn set_admin_fee(env: Env, admin_fee_scaled: u128) {
+        let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
+        admin.require_auth();
+        if admin_fee_scaled > 1_000_000u128 { panic!("Invalid admin fee"); }
+        env.storage().persistent().set(&DataKey::AdminFeeScaled, &admin_fee_scaled);
+        env.events().publish((Symbol::new(&env, "admin_fee_set"),), admin_fee_scaled);
+    }
+
     /// Admin: set supply cap (0 disables)
     pub fn set_supply_cap(env: Env, cap: u128) {
         let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
@@ -497,6 +518,11 @@ impl ReceiptVault {
         env.storage().persistent().get(&DataKey::TotalReserves).unwrap_or(0u128)
     }
 
+    /// Get total admin fees
+    pub fn get_total_admin_fees(env: Env) -> u128 {
+        env.storage().persistent().get(&DataKey::TotalAdminFees).unwrap_or(0u128)
+    }
+
     /// Admin: reduce reserves and transfer to admin
     pub fn reduce_reserves(env: Env, amount: u128) {
         let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
@@ -509,6 +535,20 @@ impl ReceiptVault {
         let token_client = token::Client::new(&env, &token_address);
         token_client.transfer(&env.current_contract_address(), &admin, &(amount as i128));
         env.events().publish((Symbol::new(&env, "reserves_reduced"),), amount);
+    }
+
+    /// Admin: reduce admin fees and transfer to admin
+    pub fn reduce_admin_fees(env: Env, amount: u128) {
+        let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
+        admin.require_auth();
+        let fees: u128 = env.storage().persistent().get(&DataKey::TotalAdminFees).unwrap_or(0u128);
+        if amount > fees { panic!("Insufficient admin fees"); }
+        env.storage().persistent().set(&DataKey::TotalAdminFees, &fees.saturating_sub(amount));
+        // Transfer underlying to admin
+        let token_address: Address = env.storage().persistent().get(&DataKey::UnderlyingToken).expect("Vault not initialized");
+        let token_client = token::Client::new(&env, &token_address);
+        token_client.transfer(&env.current_contract_address(), &admin, &(amount as i128));
+        env.events().publish((Symbol::new(&env, "admin_fees_reduced"),), amount);
     }
 
     //
@@ -541,8 +581,8 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalDeposited)
             .unwrap_or(0u128);
-        // Supply interest accrual
-        if total_deposited > 0 && yearly_rate_scaled > 0 {
+        // Supply interest accrual only when no external interest model is set
+        if env.storage().persistent().get::<_, Address>(&DataKey::InterestModel).is_none() && total_deposited > 0 && yearly_rate_scaled > 0 {
             // new_interest = total_deposited * yearly_rate * elapsed / (SECONDS_PER_YEAR * 1e6)
             let seconds_per_year: u128 = 365 * 24 * 60 * 60;
             let numerator = total_deposited
@@ -567,7 +607,7 @@ impl ReceiptVault {
             );
         }
 
-        // Borrow interest accrual via global index (split to reserves and suppliers)
+        // Borrow interest accrual via global index (split to reserves, admin fees, and suppliers)
         let tb_prior: u128 = env.storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
@@ -590,14 +630,18 @@ impl ReceiptVault {
             let denominator = seconds_per_year.saturating_mul(SCALE_1E6);
             let borrow_interest_total = numerator / denominator;
 
-            // Split between reserves and suppliers based on reserve factor
+            // Split between reserves, admin fees and suppliers based on factors
             let rf: u128 = env.storage().persistent().get(&DataKey::ReserveFactorScaled).unwrap_or(0u128);
+            let af: u128 = env.storage().persistent().get(&DataKey::AdminFeeScaled).unwrap_or(0u128);
             let to_reserves = (borrow_interest_total.saturating_mul(rf)) / SCALE_1E6;
-            let to_suppliers = borrow_interest_total.saturating_sub(to_reserves);
+            let to_admin = (borrow_interest_total.saturating_mul(af)) / SCALE_1E6;
+            let _to_suppliers = borrow_interest_total.saturating_sub(to_reserves).saturating_sub(to_admin);
 
-            // Update total reserves
+            // Update total reserves and admin fees
             let current_reserves: u128 = env.storage().persistent().get(&DataKey::TotalReserves).unwrap_or(0u128);
             env.storage().persistent().set(&DataKey::TotalReserves, &current_reserves.saturating_add(to_reserves));
+            let current_fees: u128 = env.storage().persistent().get(&DataKey::TotalAdminFees).unwrap_or(0u128);
+            env.storage().persistent().set(&DataKey::TotalAdminFees, &current_fees.saturating_add(to_admin));
 
             // Increase total borrowed by total interest; suppliers' share increases total underlying via accumulated_interest path below
             let tb_after = tb_prior.saturating_add(borrow_interest_total);
@@ -612,9 +656,8 @@ impl ReceiptVault {
             let new_index = old_index.saturating_add(delta_index);
             env.storage().persistent().set(&DataKey::BorrowIndex, &new_index);
 
-            // Credit suppliers' share into accumulated interest (increasing exchange rate)
-            let acc_prev: u128 = env.storage().persistent().get(&DataKey::AccumulatedInterest).unwrap_or(0u128);
-            env.storage().persistent().set(&DataKey::AccumulatedInterest, &acc_prev.saturating_add(to_suppliers));
+            // Do not credit suppliers here when using model-driven accrual to avoid double counting.
+            // Suppliers' share will be reflected implicitly via exchange rate from underlying math if needed.
         }
 
         // Move time forward
@@ -623,15 +666,17 @@ impl ReceiptVault {
 
     /// Get total underlying, including accumulated interest
     pub fn get_total_underlying(env: Env) -> u128 {
-        let total_deposited: u128 = env.storage()
-            .persistent()
-            .get(&DataKey::TotalDeposited)
-            .unwrap_or(0u128);
-        let accumulated: u128 = env.storage()
-            .persistent()
-            .get(&DataKey::AccumulatedInterest)
-            .unwrap_or(0u128);
-        total_deposited.saturating_add(accumulated)
+        // cash + borrows - reserves - admin_fees
+        let token_address: Address = env.storage().persistent().get(&DataKey::UnderlyingToken).expect("Vault not initialized");
+        let token_client = token::Client::new(&env, &token_address);
+        let cash_i: i128 = token_client.balance(&env.current_contract_address());
+        let cash: u128 = if cash_i < 0 { 0u128 } else { cash_i as u128 };
+        let borrows: u128 = env.storage().persistent().get(&DataKey::TotalBorrowed).unwrap_or(0u128);
+        let reserves: u128 = env.storage().persistent().get(&DataKey::TotalReserves).unwrap_or(0u128);
+        let admin_fees: u128 = env.storage().persistent().get(&DataKey::TotalAdminFees).unwrap_or(0u128);
+        cash.saturating_add(borrows)
+            .saturating_sub(reserves)
+            .saturating_sub(admin_fees)
     }
 
     /// Admin: update yearly interest rate (scaled 1e6). Applies after accruing with old rate.
@@ -839,7 +884,7 @@ impl ReceiptVault {
         let tb: u128 = env.storage().persistent().get(&DataKey::TotalBorrowed).unwrap_or(0u128);
         let tb_after = tb - repay_amount;
         env.storage().persistent().set(&DataKey::TotalBorrowed, &tb_after);
-        env.events().publish((Symbol::new(&env, "repay_on_behalf"),), (borrower, repay_amount));
+        env.events().publish((Symbol::new(&env, "repay_on_behalf"),), (borrower.clone(), repay_amount));
     }
 
     /// Seize pTokens from borrower to liquidator; only callable by peridottroller/peridottroller
@@ -854,7 +899,7 @@ impl ReceiptVault {
         env.storage().persistent().set(&DataKey::PTokenBalances(borrower.clone()), &(bbal - ptoken_amount));
         env.storage().persistent().set(&DataKey::PTokenBalances(liquidator.clone()), &(lbal.saturating_add(ptoken_amount)));
 
-        env.events().publish((Symbol::new(&env, "seize"),), (borrower, liquidator, ptoken_amount));
+        env.events().publish((Symbol::new(&env, "seize"),), (borrower.clone(), liquidator.clone(), ptoken_amount));
     }
 }
 

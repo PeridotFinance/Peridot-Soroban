@@ -18,6 +18,8 @@ pub enum DataKey {
     PauseDeposit,                // Map<Address, bool>
     LiquidationFeeScaled,        // u128 scaled 1e6, portion to reserves
     OracleMaxAgeMultiplier,      // u64 multiplier of resolution (default 2)
+    // Collateral factors per market (scaled 1e6)
+    MarketCF(Address),
     // Rewards
     PeridotToken,
     SupplySpeed(Address),
@@ -91,6 +93,19 @@ impl SimplePeridottroller {
         if li_scaled < 1_000_000u128 { panic!("invalid incentive"); }
         env.storage().persistent().set(&DataKey::LiquidationIncentiveScaled, &li_scaled);
         env.events().publish((Symbol::new(&env, "li_incentive_set"),), li_scaled);
+    }
+
+    // Market collateral factor admin setter/getter
+    pub fn set_market_cf(env: Env, market: Address, cf_scaled: u128) {
+        require_admin(env.clone());
+        if cf_scaled > 1_000_000u128 { panic!("invalid collateral factor"); }
+        env.storage().persistent().set(&DataKey::MarketCF(market.clone()), &cf_scaled);
+        env.events().publish((Symbol::new(&env, "market_cf_set"), market), cf_scaled);
+    }
+
+    pub fn get_market_cf(env: Env, market: Address) -> u128 {
+        // Default to 50% unless explicitly set (Compound v2 default)
+        env.storage().persistent().get(&DataKey::MarketCF(market)).unwrap_or(500_000u128)
     }
 
     pub fn set_liquidation_fee(env: Env, fee_scaled: u128) {
@@ -380,7 +395,7 @@ impl SimplePeridottroller {
 
     // Hypothetical liquidity after borrowing `borrow_amount` of `market` underlying
     pub fn hypothetical_liquidity(env: Env, user: Address, market: Address, borrow_amount: u128, underlying: Address) -> (u128, u128) {
-        // Exclude current market to avoid re-entry
+        // Exclude current market to avoid re-entry from that market during borrow path
         let (collateral_usd, mut borrow_usd) = Self::sum_positions_usd(env.clone(), user.clone(), Some(market.clone()));
         // Add hypothetical borrow in USD using provided underlying token
         if let Some((price, scale)) = Self::get_price_usd(env.clone(), underlying.clone()) {
@@ -431,7 +446,7 @@ impl SimplePeridottroller {
         let pbal: u128 = env.invoke_contract(&market, &Symbol::new(&env, "get_ptoken_balance"), (user.clone(),).into_val(&env));
         if pbal == 0 { return 0u128; }
         let rate: u128 = env.invoke_contract(&market, &Symbol::new(&env, "get_exchange_rate"), ().into_val(&env));
-        let cf: u128 = env.invoke_contract(&market, &Symbol::new(&env, "get_collateral_factor"), ().into_val(&env));
+        let cf: u128 = Self::get_market_cf(env.clone(), market.clone());
         let underlying_token: Address = env.invoke_contract(&market, &Symbol::new(&env, "get_underlying_token"), ().into_val(&env));
         let Some((price, scale)) = Self::get_price_usd(env.clone(), underlying_token) else { return 0u128; };
         // Current local underlying
@@ -585,7 +600,7 @@ impl SimplePeridottroller {
             let pbal: u128 = env.invoke_contract(&m, &Symbol::new(&env, "get_ptoken_balance"), (user.clone(),).into_val(&env));
             if pbal > 0 {
                 let rate: u128 = env.invoke_contract(&m, &Symbol::new(&env, "get_exchange_rate"), ().into_val(&env));
-                let cf: u128 = env.invoke_contract(&m, &Symbol::new(&env, "get_collateral_factor"), ().into_val(&env));
+                let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
                 let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
                 let discounted = (underlying_amount.saturating_mul(cf)) / 1_000_000u128;
                 let usd = (discounted.saturating_mul(price)) / scale;
@@ -719,6 +734,54 @@ impl SimplePeridottroller {
             env.storage().persistent().set(&DataKey::Accrued(user.clone()), &acc.saturating_add(add));
         }
         env.storage().persistent().set(&DataKey::UserBorrowIndex(user, market), &idx);
+    }
+
+    // UX: allow claiming for many users at once (permissionless)
+    pub fn claim_all(env: Env, users: Vec<Address>) {
+        for i in 0..users.len() {
+            let u = users.get(i).unwrap();
+            Self::claim(env.clone(), u);
+        }
+    }
+
+    // UX: user-authenticated convenience for claiming own rewards
+    pub fn claim_self(env: Env, user: Address) {
+        user.require_auth();
+        Self::claim(env, user);
+    }
+
+    // UX: portfolio view summarizing per-market balances and USD totals
+    // Returns (per_market: Vec<(market, ptoken_balance, debt, collateral_usd, borrow_usd)>, totals: (collateral_usd, borrow_usd))
+    pub fn portfolio(env: Env, user: Address) -> (Vec<(Address, u128, u128, u128, u128)>, (u128, u128)) {
+        let mut rows: Vec<(Address, u128, u128, u128, u128)> = Vec::new(&env);
+        let mut coll_total: u128 = 0u128;
+        let mut debt_total: u128 = 0u128;
+        let markets = Self::get_user_markets(env.clone(), user.clone());
+        for i in 0..markets.len() {
+            let m = markets.get(i).unwrap();
+            use soroban_sdk::IntoVal;
+            let pbal: u128 = env.invoke_contract(&m, &Symbol::new(&env, "get_ptoken_balance"), (user.clone(),).into_val(&env));
+            let debt: u128 = env.invoke_contract(&m, &Symbol::new(&env, "get_user_borrow_balance"), (user.clone(),).into_val(&env));
+            // defaults
+            let mut coll_usd: u128 = 0u128;
+            let mut debt_usd: u128 = 0u128;
+            // price & rate
+            let token: Address = env.invoke_contract(&m, &Symbol::new(&env, "get_underlying_token"), ().into_val(&env));
+            if let Some((price, scale)) = Self::get_price_usd(env.clone(), token) {
+                if pbal > 0 {
+                    let rate: u128 = env.invoke_contract(&m, &Symbol::new(&env, "get_exchange_rate"), ().into_val(&env));
+                    let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
+                    let underlying = (pbal.saturating_mul(rate)) / 1_000_000u128;
+                    let discounted = (underlying.saturating_mul(cf)) / 1_000_000u128;
+                    coll_usd = (discounted.saturating_mul(price)) / scale;
+                }
+                if debt > 0 { debt_usd = (debt.saturating_mul(price)) / scale; }
+            }
+            rows.push_back((m, pbal, debt, coll_usd, debt_usd));
+            coll_total = coll_total.saturating_add(coll_usd);
+            debt_total = debt_total.saturating_add(debt_usd);
+        }
+        (rows, (coll_total, debt_total))
     }
 }
 

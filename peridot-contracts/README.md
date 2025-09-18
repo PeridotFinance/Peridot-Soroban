@@ -168,6 +168,39 @@ Run all tests:
 cd /home/josh/soroban/peridot-lending/receipt-vault && cargo test
 ```
 
+## Deployment (sandbox)
+
+Build WASMs and deploy to Soroban sandbox:
+
+```bash
+bash scripts/build_wasm.sh
+bash scripts/deploy_sandbox.sh
+```
+
+The deploy script:
+
+- Deploys `SimplePeridottroller`, `JumpRateModel`, `PeridotToken`, and two `ReceiptVault` markets
+- Initializes PERI and wires it to the controller
+- Adds markets to the controller, wires controller to vaults
+- Configures CF and reward speeds
+
+Update `TOKEN_A`/`TOKEN_B` placeholders in `scripts/deploy_sandbox.sh` with real asset contract addresses.
+
+## Deployment (testnet)
+
+Set up a testnet identity and deploy:
+
+```bash
+soroban config identity generate myadmin
+export IDENTITY=myadmin
+export TOKEN_A=<asset_contract_address_A_on_testnet>
+export TOKEN_B=<asset_contract_address_B_on_testnet>
+bash scripts/build_wasm.sh
+bash scripts/deploy_testnet.sh
+```
+
+The script uses `IDENTITY`, `TOKEN_A`, and `TOKEN_B` environment variables. Replace placeholders with real contract addresses before running.
+
 ## Notes
 
 - Events use a single-topic tuple: `(Symbol("event_name"),)` per Soroban topics requirements.
@@ -236,4 +269,69 @@ Liquidation fee routing:
 ```rust
 peridottroller.set_liquidation_fee(&200_000u128); // 20%
 peridottroller.set_reserve_recipient(&reserve_addr);
+```
+
+### Wiring a Jump Rate Model (dynamic APR with kink)
+
+```rust
+// Deploy a JumpRateModel and wire to a vault
+use jump_rate_model as jrm;
+let model_id = env.register(jrm::JumpRateModel, ());
+let model = jrm::JumpRateModelClient::new(&env, &model_id);
+// base=2%, multiplier=18%, jump=400%, kink=80%
+model.initialize(&20_000u128, &180_000u128, &4_000_000u128, &800_000u128);
+
+// Point the vault at the model to enable dynamic rates
+vault.set_interest_model(&model_id);
+
+// Thereafter, each `update_interest()` computes supply/borrow APR from utilization and kink.
+```
+
+### Controller-managed market parameters
+
+- Collateral factor is stored in the `SimplePeridottroller` per market and used for all USD risk checks.
+
+```rust
+// Set CF to 60% for a market (admin-only)
+peridottroller.set_market_cf(&market_id, &600_000u128);
+
+// Read CF used in risk checks
+let cf = peridottroller.get_market_cf(&market_id);
+```
+
+### Admin fee and reserves
+
+Borrow interest is split into reserves, admin fee, and supplier growth.
+
+```rust
+// Vault-side configuration (admin-only)
+vault.set_reserve_factor(&200_000u128); // 20%
+vault.set_admin_fee(&50_000u128);      // 5%
+
+// Read totals
+let reserves = vault.get_total_reserves();
+let admin_fees = vault.get_total_admin_fees();
+
+// Withdraw
+vault.reduce_reserves(&amount);
+vault.reduce_admin_fees(&amount);
+```
+
+### UX helpers
+
+- Multi-claim and self-claim:
+
+```rust
+// Claim for a batch of users (permissionless)
+peridottroller.claim_all(&vec![user1, user2, user3]);
+
+// User claims their own rewards (auth required for user)
+peridottroller.claim_self(&user);
+```
+
+- Portfolio view:
+
+```rust
+let (rows, (coll_usd, debt_usd)) = peridottroller.portfolio(&user);
+// rows: Vec<(market, ptoken_balance, debt, collateral_usd, borrow_usd)>
 ```
