@@ -1,7 +1,8 @@
 {
   "generators": {
     "address": 1,
-    "nonce": 0
+    "nonce": 0,
+    "mux_id": 0
   },
   "auth": [
     [],
@@ -11,7 +12,7 @@
     []
   ],
   "ledger": {
-    "protocol_version": 22,
+    "protocol_version": 23,
     "sequence_number": 0,
     "timestamp": 0,
     "network_id": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -50,10 +51,7 @@
                 },
                 "durability": "persistent",
                 "val": {
-                  "u128": {
-                    "hi": 0,
-                    "lo": 20000
-                  }
+                  "u128": "20000"
                 }
               }
             },
@@ -92,10 +90,7 @@
                 },
                 "durability": "persistent",
                 "val": {
-                  "u128": {
-                    "hi": 0,
-                    "lo": 4000000
-                  }
+                  "u128": "4000000"
                 }
               }
             },
@@ -134,10 +129,7 @@
                 },
                 "durability": "persistent",
                 "val": {
-                  "u128": {
-                    "hi": 0,
-                    "lo": 800000
-                  }
+                  "u128": "800000"
                 }
               }
             },
@@ -176,10 +168,7 @@
                 },
                 "durability": "persistent",
                 "val": {
-                  "u128": {
-                    "hi": 0,
-                    "lo": 180000
-                  }
+                  "u128": "180000"
                 }
               }
             },

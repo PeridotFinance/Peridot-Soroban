@@ -1,24 +1,80 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{
-    testutils::Address as _,
-    token, Address, Env,
-};
-use soroban_sdk::testutils::Ledger;
-use soroban_sdk::{contract, contractimpl, contracttype};
-use soroban_sdk::BytesN;
-use crate as rv;
-use simple_peridottroller::SimplePeridottroller;
 use jump_rate_model as jrm;
+use simple_peridottroller::SimplePeridottroller;
+use soroban_sdk::testutils::Ledger;
+use soroban_sdk::BytesN;
+use soroban_sdk::{contract, contractimpl, contracttype};
+use soroban_sdk::{testutils::Address as _, token, Address, Bytes, Env};
 
-fn create_test_token<'a>(env: &'a Env, admin: &'a Address) -> (Address, token::Client<'a>, token::StellarAssetClient<'a>) {
-    let contract_address = env.register_stellar_asset_contract_v2(admin.clone()).address();
+fn create_test_token<'a>(
+    env: &'a Env,
+    admin: &'a Address,
+) -> (Address, token::Client<'a>, token::StellarAssetClient<'a>) {
+    let contract_address = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     (
         contract_address.clone(),
         token::Client::new(env, &contract_address),
         token::StellarAssetClient::new(env, &contract_address),
     )
+}
+
+#[contract]
+pub struct FlashLoanRepayer;
+
+#[contracttype]
+#[derive(Clone)]
+enum ReceiverDataKey {
+    Underlying,
+}
+
+#[contractimpl]
+impl FlashLoanRepayer {
+    pub fn configure(env: Env, underlying: Address) {
+        env.storage()
+            .persistent()
+            .set(&ReceiverDataKey::Underlying, &underlying);
+    }
+
+    pub fn on_flash_loan(env: Env, vault: Address, amount: u128, fee: u128, _data: Bytes) {
+        let token_address: Address = env
+            .storage()
+            .persistent()
+            .get(&ReceiverDataKey::Underlying)
+            .expect("underlying not set");
+        let token_client = token::Client::new(&env, &token_address);
+        let repay_total = amount.saturating_add(fee);
+        token_client.transfer(
+            &env.current_contract_address(),
+            &vault,
+            &to_i128(repay_total),
+        );
+    }
+}
+
+#[contract]
+pub struct FlashLoanRenegade;
+
+#[contractimpl]
+impl FlashLoanRenegade {
+    pub fn configure(env: Env, underlying: Address) {
+        env.storage()
+            .persistent()
+            .set(&ReceiverDataKey::Underlying, &underlying);
+    }
+
+    pub fn on_flash_loan(env: Env, vault: Address, amount: u128, _fee: u128, _data: Bytes) {
+        let token_address: Address = env
+            .storage()
+            .persistent()
+            .get(&ReceiverDataKey::Underlying)
+            .expect("underlying not set");
+        let token_client = token::Client::new(&env, &token_address);
+        token_client.transfer(&env.current_contract_address(), &vault, &to_i128(amount));
+    }
 }
 
 #[test]
@@ -97,7 +153,7 @@ fn test_withdraw_with_ptokens() {
     // Verify partial withdraw
     assert_eq!(vault_client.get_ptoken_balance(&user), 70u128); // 100 - 30 pTokens
     assert_eq!(vault_client.get_user_balance(&user), 70u128); // Original tracking
-    // TotalDeposited tracks remaining principal
+                                                              // TotalDeposited tracks remaining principal
     assert_eq!(vault_client.get_total_deposited(), 70u128);
     assert_eq!(vault_client.get_total_ptokens(), 70u128);
     assert_eq!(token_client.balance(&vault_contract_id), 70i128);
@@ -152,7 +208,7 @@ fn test_multiple_users_with_ptokens() {
     // Verify balances after user1 withdraw
     assert_eq!(vault_client.get_ptoken_balance(&user1), 150u128); // 200 - 50
     assert_eq!(vault_client.get_ptoken_balance(&user2), 150u128); // unchanged
-    // TotalDeposited reduced by withdrawn amount
+                                                                  // TotalDeposited reduced by withdrawn amount
     assert_eq!(vault_client.get_total_deposited(), 300u128);
     assert_eq!(vault_client.get_total_ptokens(), 300u128);
 
@@ -197,6 +253,46 @@ fn test_exchange_rate_accrues_with_interest() {
     // Exchange rate moves with cash+borrows-reserves-admin; with no borrows, supply-only accrual increases cash
     let rate = vault_client.get_exchange_rate();
     assert!(rate >= 1_000_000u128);
+}
+
+#[test]
+fn test_interest_model_accrual_updates_accumulated_interest() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &2_000i128);
+
+    let vault_contract_id = env.register(ReceiptVault, ());
+    let vault_client = ReceiptVaultClient::new(&env, &vault_contract_id);
+    vault_client.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // Deploy and wire a jump rate model to drive dynamic interest.
+    let model_id = env.register(jrm::JumpRateModel, ());
+    let model_client = jrm::JumpRateModelClient::new(&env, &model_id);
+    model_client.initialize(&20_000u128, &180_000u128, &4_000_000u128, &800_000u128);
+    vault_client.set_interest_model(&model_id);
+
+    // Provide liquidity and create an outstanding borrow so interest can accrue.
+    vault_client.deposit(&user, &500u128);
+    vault_client.borrow(&user, &200u128);
+
+    // Advance time and force an interest update.
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 30 * 24 * 60 * 60);
+    vault_client.update_interest();
+
+    // Accumulated interest should grow when the external model is active.
+    let accrued: u128 = env.as_contract(&vault_contract_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::AccumulatedInterest)
+            .unwrap_or(0u128)
+    });
+    assert!(accrued > 0);
 }
 
 #[test]
@@ -447,19 +543,38 @@ fn test_borrow_cap_enforced_on_borrow() {
 struct MockRateModel;
 
 #[contracttype]
-enum MRKey { Supply, Borrow }
+enum MRKey {
+    Supply,
+    Borrow,
+}
 
 #[contractimpl]
 impl MockRateModel {
     pub fn initialize(env: Env, supply_yearly_scaled: u128, borrow_yearly_scaled: u128) {
-        env.storage().persistent().set(&MRKey::Supply, &supply_yearly_scaled);
-        env.storage().persistent().set(&MRKey::Borrow, &borrow_yearly_scaled);
+        env.storage()
+            .persistent()
+            .set(&MRKey::Supply, &supply_yearly_scaled);
+        env.storage()
+            .persistent()
+            .set(&MRKey::Borrow, &borrow_yearly_scaled);
     }
-    pub fn get_supply_rate(env: Env, _cash: u128, _borrows: u128, _reserves: u128, _reserve_factor: u128) -> u128 {
-        env.storage().persistent().get(&MRKey::Supply).unwrap_or(0u128)
+    pub fn get_supply_rate(
+        env: Env,
+        _cash: u128,
+        _borrows: u128,
+        _reserves: u128,
+        _reserve_factor: u128,
+    ) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&MRKey::Supply)
+            .unwrap_or(0u128)
     }
     pub fn get_borrow_rate(env: Env, _cash: u128, _borrows: u128, _reserves: u128) -> u128 {
-        env.storage().persistent().get(&MRKey::Borrow).unwrap_or(0u128)
+        env.storage()
+            .persistent()
+            .get(&MRKey::Borrow)
+            .unwrap_or(0u128)
     }
 }
 
@@ -587,6 +702,73 @@ fn test_borrow_insufficient_liquidity() {
 
     // Try to borrow over collateral cap to ensure guard triggers
     vault_client.borrow(&user_a, &600u128);
+}
+
+#[test]
+fn test_flash_loan_successfully_repaid() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    token_admin_client.mint(&depositor, &1_000i128);
+    vault.deposit(&depositor, &500u128);
+
+    let fee_scaled = 20_000u128; // 2%
+    vault.set_flash_loan_fee(&fee_scaled);
+
+    let receiver_id = env.register(FlashLoanRepayer, ());
+    let receiver_client = FlashLoanRepayerClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+    token_admin_client.mint(&receiver_id, &50i128);
+
+    let amount = 100u128;
+    let expected_fee = (amount * fee_scaled) / 1_000_000u128;
+    let data = Bytes::new(&env);
+
+    vault.flash_loan(&receiver_id, &amount, &data);
+
+    assert_eq!(vault.get_total_reserves(), expected_fee);
+    assert_eq!(
+        token_client.balance(&vault_id),
+        (500 + expected_fee) as i128
+    );
+    assert_eq!(
+        token_client.balance(&receiver_id),
+        50i128 - expected_fee as i128
+    );
+}
+
+#[test]
+#[should_panic(expected = "flash loan not repaid")]
+fn test_flash_loan_missing_fee_panics() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    token_admin_client.mint(&depositor, &1_000i128);
+    vault.deposit(&depositor, &500u128);
+    vault.set_flash_loan_fee(&50_000u128);
+
+    let receiver_id = env.register(FlashLoanRenegade, ());
+    let receiver_client = FlashLoanRenegadeClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+    let data = Bytes::new(&env);
+
+    vault.flash_loan(&receiver_id, &100u128, &data);
 }
 
 #[test]
@@ -755,7 +937,7 @@ fn test_ptoken_transfer_and_approve_with_gating() {
 
     // Borrow to reduce headroom (local-only)
     v.borrow(&user, &100u128);
-    
+
     // Now wire a minimal peridottroller (no oracle set -> preview_redeem_max=0)
     let comp_id = env.register(SimplePeridottroller, ());
     v.set_peridottroller(&comp_id);

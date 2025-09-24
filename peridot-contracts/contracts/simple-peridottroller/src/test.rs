@@ -1,11 +1,11 @@
 #![cfg(test)]
 use super::*;
-use soroban_sdk::{testutils::Address as _, Address, Env};
-use soroban_sdk::testutils::Ledger;
 use receipt_vault as rv;
+use soroban_sdk::testutils::Ledger;
 use soroban_sdk::token;
-use soroban_sdk::{contract, contractimpl, contracttype};
 use soroban_sdk::BytesN;
+use soroban_sdk::{contract, contractimpl, contracttype};
+use soroban_sdk::{testutils::Address as _, Address, Env};
 
 #[test]
 fn test_peridottroller_add_and_enter_market() {
@@ -17,7 +17,9 @@ fn test_peridottroller_add_and_enter_market() {
     let _lender = Address::generate(&env);
     // Use a real vault as market to satisfy safety checks
     let token_admin = Address::generate(&env);
-    let token = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
     let market_vault_id = env.register(rv::ReceiptVault, ());
     let market_vault = rv::ReceiptVaultClient::new(&env, &market_vault_id);
     market_vault.initialize(&token, &0u128, &0u128, &admin);
@@ -56,10 +58,14 @@ fn test_total_collateral_and_borrows_across_markets() {
 
     // Token A
     let token_admin = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
     // Token B
     let token_admin_b = Address::generate(&env);
-    let token_b = env.register_stellar_asset_contract_v2(token_admin_b.clone()).address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
 
     // Deploy two vaults
     let vault_a_id = env.register(rv::ReceiptVault, ());
@@ -110,7 +116,6 @@ fn test_total_collateral_and_borrows_across_markets() {
     assert_eq!(total_borrows, 150u128);
 }
 
-
 // Mock Reflector oracle for tests
 #[contract]
 struct MockOracle;
@@ -130,24 +135,40 @@ struct OraclePrice {
 #[contractimpl]
 impl MockOracle {
     pub fn initialize(env: Env, decimals: u32) {
-        env.storage().persistent().set(&OracleKey::Decimals, &decimals);
+        env.storage()
+            .persistent()
+            .set(&OracleKey::Decimals, &decimals);
     }
     pub fn set_price(env: Env, asset: Address, price: i128) {
-        env.storage().persistent().set(&OracleKey::Price(asset), &OraclePrice { price });
+        env.storage()
+            .persistent()
+            .set(&OracleKey::Price(asset), &OraclePrice { price });
     }
     pub fn decimals(env: Env) -> u32 {
-        env.storage().persistent().get(&OracleKey::Decimals).unwrap_or(6u32)
+        env.storage()
+            .persistent()
+            .get(&OracleKey::Decimals)
+            .unwrap_or(6u32)
     }
-    pub fn lastprice(env: Env, asset: crate::reflector::Asset) -> Option<crate::reflector::PriceData> {
+    pub fn lastprice(
+        env: Env,
+        asset: crate::reflector::Asset,
+    ) -> Option<crate::reflector::PriceData> {
         match asset {
             crate::reflector::Asset::Stellar(addr) => {
-                let rec: Option<OraclePrice> = env.storage().persistent().get(&OracleKey::Price(addr));
-                rec.map(|r| crate::reflector::PriceData { price: r.price, timestamp: env.ledger().timestamp() })
+                let rec: Option<OraclePrice> =
+                    env.storage().persistent().get(&OracleKey::Price(addr));
+                rec.map(|r| crate::reflector::PriceData {
+                    price: r.price,
+                    timestamp: env.ledger().timestamp(),
+                })
             }
             _ => None,
         }
     }
-    pub fn resolution(_env: Env) -> u32 { 300 }
+    pub fn resolution(_env: Env) -> u32 {
+        300
+    }
 }
 
 #[test]
@@ -161,9 +182,13 @@ fn test_oracle_gating_prevents_over_borrow() {
 
     // Tokens
     let token_admin_a = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin_a.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
     let token_admin_b = Address::generate(&env);
-    let token_b = env.register_stellar_asset_contract_v2(token_admin_b.clone()).address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
 
     // Vaults
     let vault_a_id = env.register(rv::ReceiptVault, ());
@@ -219,9 +244,13 @@ fn test_oracle_gating_allows_within_limit() {
 
     // Tokens
     let token_admin_a = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin_a.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
     let token_admin_b = Address::generate(&env);
-    let token_b = env.register_stellar_asset_contract_v2(token_admin_b.clone()).address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
 
     // Vaults
     let vault_a_id = env.register(rv::ReceiptVault, ());
@@ -279,7 +308,9 @@ fn test_redeem_gating_prevents_over_withdraw() {
 
     // Tokens
     let token_admin_a = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin_a.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
 
     // Vault
     let vault_id = env.register(rv::ReceiptVault, ());
@@ -330,9 +361,13 @@ fn test_redeem_gating_allows_within_limit() {
 
     // Tokens
     let token_admin_a = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin_a.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
     let token_admin_b = Address::generate(&env);
-    let token_b = env.register_stellar_asset_contract_v2(token_admin_b.clone()).address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
 
     // Vaults
     let vault_id = env.register(rv::ReceiptVault, ());
@@ -394,9 +429,13 @@ fn test_liquidation_flow_basic() {
 
     // Tokens
     let token_admin_a = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin_a.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
     let token_admin_b = Address::generate(&env);
-    let token_b = env.register_stellar_asset_contract_v2(token_admin_b.clone()).address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
 
     // Vaults
     let vault_a_id = env.register(rv::ReceiptVault, ()); // borrow market
@@ -468,9 +507,13 @@ fn test_liquidation_capped_by_close_factor() {
 
     // Tokens
     let token_admin_a = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin_a.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
     let token_admin_b = Address::generate(&env);
-    let token_b = env.register_stellar_asset_contract_v2(token_admin_b.clone()).address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
 
     // Vaults
     let vault_a_id = env.register(rv::ReceiptVault, ());
@@ -541,9 +584,13 @@ fn test_liquidation_no_shortfall_panics() {
 
     // Tokens
     let token_admin_a = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin_a.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
     let token_admin_b = Address::generate(&env);
-    let token_b = env.register_stellar_asset_contract_v2(token_admin_b.clone()).address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
 
     // Vaults
     let vault_a_id = env.register(rv::ReceiptVault, ());
@@ -601,9 +648,13 @@ fn test_liquidation_zero_repay_panics() {
     let liquidator = Address::generate(&env);
 
     let token_admin_a = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin_a.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
     let token_admin_b = Address::generate(&env);
-    let token_b = env.register_stellar_asset_contract_v2(token_admin_b.clone()).address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
 
     let vault_a_id = env.register(rv::ReceiptVault, ());
     let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
@@ -656,7 +707,9 @@ fn test_preview_helpers_basic() {
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
     let token_admin = Address::generate(&env);
-    let token = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
 
     // Single market
     let vault_id = env.register(rv::ReceiptVault, ());
@@ -709,9 +762,13 @@ fn test_preview_helpers_extended() {
 
     // Tokens + markets (A=borrow, B=collateral)
     let t_admin_a = Address::generate(&env);
-    let t_a = env.register_stellar_asset_contract_v2(t_admin_a.clone()).address();
+    let t_a = env
+        .register_stellar_asset_contract_v2(t_admin_a.clone())
+        .address();
     let t_admin_b = Address::generate(&env);
-    let t_b = env.register_stellar_asset_contract_v2(t_admin_b.clone()).address();
+    let t_b = env
+        .register_stellar_asset_contract_v2(t_admin_b.clone())
+        .address();
     let va_id = env.register(rv::ReceiptVault, ());
     let va = rv::ReceiptVaultClient::new(&env, &va_id);
     let vb_id = env.register(rv::ReceiptVault, ());
@@ -747,7 +804,7 @@ fn test_preview_helpers_extended() {
     mint_b.mint(&borrower, &1_000i128);
     vb.set_collateral_factor(&1_000_000u128);
     vb.deposit(&borrower, &200u128); // collateral in B
-    va.deposit(&liquid, &500u128);   // liquidity in A
+    va.deposit(&liquid, &500u128); // liquidity in A
 
     // Borrow 120
     va.borrow(&borrower, &120u128);
@@ -799,7 +856,9 @@ fn test_pause_borrow_blocks_borrow() {
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
     let token_admin = Address::generate(&env);
-    let token = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
     let vault_id = env.register(rv::ReceiptVault, ());
     let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
     vault.initialize(&token, &0u128, &0u128, &admin);
@@ -832,7 +891,9 @@ fn test_pause_redeem_blocks_withdraw() {
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
     let token_admin = Address::generate(&env);
-    let token = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
     let vault_id = env.register(rv::ReceiptVault, ());
     let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
     vault.initialize(&token, &0u128, &0u128, &admin);
@@ -863,9 +924,13 @@ fn test_pause_liquidation_blocks_liquidate() {
     let user = Address::generate(&env);
     // Markets A (borrow) and B (collateral)
     let t_admin_a = Address::generate(&env);
-    let t_a = env.register_stellar_asset_contract_v2(t_admin_a.clone()).address();
+    let t_a = env
+        .register_stellar_asset_contract_v2(t_admin_a.clone())
+        .address();
     let t_admin_b = Address::generate(&env);
-    let t_b = env.register_stellar_asset_contract_v2(t_admin_b.clone()).address();
+    let t_b = env
+        .register_stellar_asset_contract_v2(t_admin_b.clone())
+        .address();
     let va_id = env.register(rv::ReceiptVault, ());
     let va = rv::ReceiptVaultClient::new(&env, &va_id);
     let vb_id = env.register(rv::ReceiptVault, ());
@@ -902,7 +967,7 @@ fn test_pause_liquidation_blocks_liquidate() {
     // Pause liquidation on repay market A and create shortfall by dropping collateral price
     comp.set_pause_liquidation(&va_id, &true);
     oracle.set_price(&t_b, &100_000i128); // $0.10
-    // Should panic
+                                          // Should panic
     comp.liquidate(&user, &va_id, &vb_id, &10u128, &admin);
 }
 
@@ -914,7 +979,9 @@ fn test_pause_deposit_blocks_deposit() {
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
     let t_admin = Address::generate(&env);
-    let t = env.register_stellar_asset_contract_v2(t_admin.clone()).address();
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
@@ -955,7 +1022,9 @@ fn test_pause_deposit_blocks_deposit_guardian() {
     let guardian = Address::generate(&env);
     let user = Address::generate(&env);
     let t_admin = Address::generate(&env);
-    let t = env.register_stellar_asset_contract_v2(t_admin.clone()).address();
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
@@ -997,9 +1066,13 @@ fn test_liquidation_fee_routed_to_reserves() {
 
     // Tokens
     let t_admin_a = Address::generate(&env);
-    let t_a = env.register_stellar_asset_contract_v2(t_admin_a.clone()).address();
+    let t_a = env
+        .register_stellar_asset_contract_v2(t_admin_a.clone())
+        .address();
     let t_admin_b = Address::generate(&env);
-    let t_b = env.register_stellar_asset_contract_v2(t_admin_b.clone()).address();
+    let t_b = env
+        .register_stellar_asset_contract_v2(t_admin_b.clone())
+        .address();
 
     // Vaults
     let va_id = env.register(rv::ReceiptVault, ());
@@ -1071,8 +1144,7 @@ fn test_liquidation_fee_routed_to_reserves() {
 }
 
 #[test]
-#[should_panic(expected = "insufficient borrower ptokens")]
-fn test_liquidation_seize_exceeds_ptokens_panics() {
+fn test_liquidation_seize_clamps_to_available_ptokens() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -1081,9 +1153,13 @@ fn test_liquidation_seize_exceeds_ptokens_panics() {
     let liquidator = Address::generate(&env);
 
     let token_admin_a = Address::generate(&env);
-    let token_a = env.register_stellar_asset_contract_v2(token_admin_a.clone()).address();
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
     let token_admin_b = Address::generate(&env);
-    let token_b = env.register_stellar_asset_contract_v2(token_admin_b.clone()).address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
 
     let vault_a_id = env.register(rv::ReceiptVault, ());
     let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
@@ -1125,9 +1201,13 @@ fn test_liquidation_seize_exceeds_ptokens_panics() {
     // Borrow 50 allowed (discounted collateral = 50*0.5*5 = $125)
     vault_a.borrow(&borrower, &50u128);
 
-    // Now drop price to $0.5; close factor=50% caps repay to 25; 2x LI => seize = 25*2/0.5 = 100 > 50 -> panic
+    // Now drop price to $0.5; close factor=50% caps repay to 25; 2x LI => seize = 25*2/0.5 = 100 > 50 -> clamp to 50
     oracle.set_price(&token_b, &500_000i128);
     comp.liquidate(&borrower, &vault_a_id, &vault_b_id, &50u128, &liquidator);
+
+    // Borrower collateral pTokens fully seized (50), liquidator receives 50 since no fee configured
+    assert_eq!(vault_b.get_ptoken_balance(&borrower), 0u128);
+    assert_eq!(vault_b.get_ptoken_balance(&liquidator), 50u128);
 }
 
 #[test]
@@ -1140,7 +1220,9 @@ fn test_oracle_missing_price_allows_borrow_with_zero_priced_assets() {
 
     // Token + markets
     let t_admin = Address::generate(&env);
-    let t = env.register_stellar_asset_contract_v2(t_admin.clone()).address();
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
@@ -1180,7 +1262,9 @@ fn test_oracle_decimals_normalization() {
 
     // Token + market
     let t_admin = Address::generate(&env);
-    let t = env.register_stellar_asset_contract_v2(t_admin.clone()).address();
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
@@ -1229,7 +1313,9 @@ fn test_vault_repay_on_behalf_requires_peridottroller() {
     let liquidator = Address::generate(&env);
 
     let t_admin = Address::generate(&env);
-    let t = env.register_stellar_asset_contract_v2(t_admin.clone()).address();
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
@@ -1256,7 +1342,9 @@ fn test_vault_seize_requires_peridottroller() {
     let liquidator = Address::generate(&env);
 
     let t_admin = Address::generate(&env);
-    let t = env.register_stellar_asset_contract_v2(t_admin.clone()).address();
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
@@ -1280,7 +1368,9 @@ fn test_rewards_accrual_and_claim() {
 
     // Token + market
     let t_admin = Address::generate(&env);
-    let t = env.register_stellar_asset_contract_v2(t_admin.clone()).address();
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
@@ -1305,7 +1395,12 @@ fn test_rewards_accrual_and_claim() {
     use peridot_token as pt;
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
-    peri.initialize(&soroban_sdk::String::from_str(&env, "Peridot"), &soroban_sdk::String::from_str(&env, "P"), &6u32, &comp_id);
+    peri.initialize(
+        &soroban_sdk::String::from_str(&env, "Peridot"),
+        &soroban_sdk::String::from_str(&env, "P"),
+        &6u32,
+        &comp_id,
+    );
     comp.set_peridot_token(&peri_id);
 
     // Supply reward speed = 10 PERI/sec
@@ -1338,8 +1433,12 @@ fn test_borrow_side_rewards_and_claim() {
     // Tokens + markets (A=borrow, B=collateral)
     let ta_admin = Address::generate(&env);
     let tb_admin = Address::generate(&env);
-    let ta = env.register_stellar_asset_contract_v2(ta_admin.clone()).address();
-    let tb = env.register_stellar_asset_contract_v2(tb_admin.clone()).address();
+    let ta = env
+        .register_stellar_asset_contract_v2(ta_admin.clone())
+        .address();
+    let tb = env
+        .register_stellar_asset_contract_v2(tb_admin.clone())
+        .address();
     let va_id = env.register(rv::ReceiptVault, ());
     let va = rv::ReceiptVaultClient::new(&env, &va_id);
     let vb_id = env.register(rv::ReceiptVault, ());
@@ -1370,7 +1469,12 @@ fn test_borrow_side_rewards_and_claim() {
     use peridot_token as pt;
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
-    peri.initialize(&soroban_sdk::String::from_str(&env, "Peridot"), &soroban_sdk::String::from_str(&env, "P"), &6u32, &comp_id);
+    peri.initialize(
+        &soroban_sdk::String::from_str(&env, "Peridot"),
+        &soroban_sdk::String::from_str(&env, "P"),
+        &6u32,
+        &comp_id,
+    );
     comp.set_peridot_token(&peri_id);
 
     // Borrow speed 7 P/sec on market A
@@ -1382,8 +1486,8 @@ fn test_borrow_side_rewards_and_claim() {
     mint_a.mint(&lender, &1_000i128);
     mint_b.mint(&borrower, &1_000i128);
     vb.set_collateral_factor(&1_000_000u128);
-    va.deposit(&lender, &300u128);    // liquidity in A
-    vb.deposit(&borrower, &100u128);  // collateral in B
+    va.deposit(&lender, &300u128); // liquidity in A
+    vb.deposit(&borrower, &100u128); // collateral in B
 
     // Borrow 50 -> single borrower => all borrow rewards to borrower
     va.borrow(&borrower, &50u128);
@@ -1406,8 +1510,12 @@ fn test_multi_market_supply_rewards() {
     // Two tokens and markets
     let ta_admin = Address::generate(&env);
     let tb_admin = Address::generate(&env);
-    let ta = env.register_stellar_asset_contract_v2(ta_admin.clone()).address();
-    let tb = env.register_stellar_asset_contract_v2(tb_admin.clone()).address();
+    let ta = env
+        .register_stellar_asset_contract_v2(ta_admin.clone())
+        .address();
+    let tb = env
+        .register_stellar_asset_contract_v2(tb_admin.clone())
+        .address();
     let va_id = env.register(rv::ReceiptVault, ());
     let va = rv::ReceiptVaultClient::new(&env, &va_id);
     let vb_id = env.register(rv::ReceiptVault, ());
@@ -1438,7 +1546,12 @@ fn test_multi_market_supply_rewards() {
     use peridot_token as pt;
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
-    peri.initialize(&soroban_sdk::String::from_str(&env, "Peridot"), &soroban_sdk::String::from_str(&env, "P"), &6u32, &comp_id);
+    peri.initialize(
+        &soroban_sdk::String::from_str(&env, "Peridot"),
+        &soroban_sdk::String::from_str(&env, "P"),
+        &6u32,
+        &comp_id,
+    );
     comp.set_peridot_token(&peri_id);
 
     // Speeds: A=5, B=3 P/sec

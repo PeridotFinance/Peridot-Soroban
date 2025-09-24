@@ -57,6 +57,10 @@ soroban contract invoke $NETWORK --id "$VA_ID" -- \
 soroban contract invoke $NETWORK --id "$VB_ID" -- \
   initialize --token "$TOKEN_B" --supply_yearly_rate_scaled 0 --borrow_yearly_rate_scaled 0 --admin "$ADMIN"
 
+echo "Configure flash loan fee (2%) on both vaults..."
+soroban contract invoke $NETWORK --id "$VA_ID" -- set_flash_loan_fee --fee_scaled 20000
+soroban contract invoke $NETWORK --id "$VB_ID" -- set_flash_loan_fee --fee_scaled 20000
+
 echo "Wire controller + markets..."
 soroban contract invoke $NETWORK --id "$VA_ID" -- set_peridottroller --peridottroller "$CTRL_ID"
 soroban contract invoke $NETWORK --id "$VB_ID" -- set_peridottroller --peridottroller "$CTRL_ID"
@@ -70,5 +74,4 @@ soroban contract invoke $NETWORK --id "$CTRL_ID" -- set_supply_speed --market "$
 soroban contract invoke $NETWORK --id "$CTRL_ID" -- set_borrow_speed --market "$VA_ID" --speed_per_sec 3
 
 echo "Done. Controller=$CTRL_ID VA=$VA_ID VB=$VB_ID JRM=$JRM_ID PERI=$PERI_ID"
-
 

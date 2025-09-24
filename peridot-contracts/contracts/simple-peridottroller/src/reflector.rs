@@ -12,7 +12,12 @@ pub trait Contract {
     fn prices(e: Env, asset: Asset, records: u32) -> Option<Vec<PriceData>>;
     fn x_last_price(e: Env, base_asset: Asset, quote_asset: Asset) -> Option<PriceData>;
     fn x_price(e: Env, base_asset: Asset, quote_asset: Asset, timestamp: u64) -> Option<PriceData>;
-    fn x_prices(e: Env, base_asset: Asset, quote_asset: Asset, records: u32) -> Option<Vec<PriceData>>;
+    fn x_prices(
+        e: Env,
+        base_asset: Asset,
+        quote_asset: Asset,
+        records: u32,
+    ) -> Option<Vec<PriceData>>;
     fn twap(e: Env, asset: Asset, records: u32) -> Option<i128>;
     fn x_twap(e: Env, base_asset: Asset, quote_asset: Asset, records: u32) -> Option<i128>;
     fn resolution(e: Env) -> u32;
@@ -35,5 +40,3 @@ pub struct PriceData {
     pub price: i128,
     pub timestamp: u64,
 }
-
-

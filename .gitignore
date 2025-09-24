@@ -1,0 +1,25 @@
+# Global ignores
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+.idea/
+.vscode/
+
+# Next.js app (peridot-dashboard)
+peridot-dashboard/node_modules/
+peridot-dashboard/.next/
+peridot-dashboard/.turbo/
+peridot-dashboard/.vercel/
+peridot-dashboard/out/
+peridot-dashboard/.cache/
+
+# Rust contracts (peridot-contracts)
+peridot-contracts/target/
+peridot-contracts/.soroban/
+peridot-contracts/.stellar/
+peridot-contracts/contracts/jump-rate-model/test_snapshots
+peridot-contracts/contracts/peridot-token/test_snapshots
+peridot-contracts/contracts/receipt-vault/test_snapshots
+peridot-contracts/contracts/simple-peridottroller/test_snapshots

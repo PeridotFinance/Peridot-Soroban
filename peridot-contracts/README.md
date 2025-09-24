@@ -24,6 +24,7 @@ Peridot lending protocol on Soroban. It consists of:
   - `set_collateral_factor(admin, factor_scaled)`
   - `set_interest_model(admin, model_addr)`
   - `set_reserve_factor(admin, factor_scaled)`
+  - `set_flash_loan_fee(admin, fee_scaled)`
   - `set_supply_cap(admin, cap)`
   - `set_borrow_cap(admin, cap)`
   - `reduce_reserves(admin, amount)`
@@ -33,6 +34,10 @@ Peridot lending protocol on Soroban. It consists of:
   - `withdraw(user, ptoken_amount)` → burns pTokens, returns underlying (USD-gated when peridottroller set)
   - `borrow(user, amount)` → USD risk check via peridottroller; liquidity-guarded
   - `repay(user, amount)`
+- Flash loans
+  - `flash_loan(receiver, amount, data)` → transfers underlying to `receiver`, then expects repayment of `amount + fee` (fee = `amount * flash_loan_fee_scaled / 1e6`).
+  - `receiver` must implement `on_flash_loan(vault: Address, amount: u128, fee: u128, data: Bytes)`; the vault reverts if the callback fails or does not return the required funds.
+  - Flash loan fees accrue to reserves after repayment and respect peridottroller pause checks and liquidity guards.
 - pToken (ERC20-like)
   - `approve(owner, spender, amount)`
   - `allowance(owner, spender) -> u128`
@@ -200,6 +205,28 @@ bash scripts/deploy_testnet.sh
 ```
 
 The script uses `IDENTITY`, `TOKEN_A`, and `TOKEN_B` environment variables. Replace placeholders with real contract addresses before running.
+
+### Verify (testnet)
+
+After deployment, verify controller and vault state:
+
+```bash
+export CTRL_ID=<controller_id>
+export VA_ID=<vault_a_id>
+export VB_ID=<vault_b_id>
+bash scripts/verify_testnet.sh
+```
+
+### Teardown (testnet)
+
+To pause markets and zero reward speeds (safe teardown/reset):
+
+```bash
+export CTRL_ID=<controller_id>
+export VA_ID=<vault_a_id>
+export VB_ID=<vault_b_id>
+bash scripts/teardown_testnet.sh
+```
 
 ## Notes
 
