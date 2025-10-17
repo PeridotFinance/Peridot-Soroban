@@ -196,8 +196,8 @@ Update `TOKEN_A`/`TOKEN_B` placeholders in `scripts/deploy_sandbox.sh` with real
 Set up a testnet identity and deploy:
 
 ```bash
-soroban config identity generate myadmin
-export IDENTITY=myadmin
+soroban config identity generate dev
+export IDENTITY=dev
 export TOKEN_A=<asset_contract_address_A_on_testnet>
 export TOKEN_B=<asset_contract_address_B_on_testnet>
 bash scripts/build_wasm.sh

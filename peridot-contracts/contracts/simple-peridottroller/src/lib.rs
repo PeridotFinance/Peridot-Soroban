@@ -19,6 +19,7 @@ pub enum DataKey {
     PauseDeposit,               // Map<Address, bool>
     LiquidationFeeScaled,       // u128 scaled 1e6, portion to reserves
     OracleMaxAgeMultiplier,     // u64 multiplier of resolution (default 2)
+    OracleAssetSymbol(Address), // Optional Reflector symbol override
     // Collateral factors per market (scaled 1e6)
     MarketCF(Address),
     // Rewards
@@ -85,6 +86,14 @@ pub struct OracleMaxAgeMultiplierUpdated {
 pub struct ReserveRecipientUpdated {
     #[topic]
     pub recipient: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OracleAssetSymbolMapped {
+    #[topic]
+    pub token: Address,
+    pub symbol: Option<Symbol>,
 }
 
 #[contractevent]
@@ -329,6 +338,21 @@ impl SimplePeridottroller {
             .persistent()
             .set(&DataKey::OracleMaxAgeMultiplier, &k);
         OracleMaxAgeMultiplierUpdated { multiplier: k }.publish(&env);
+    }
+
+    pub fn set_oracle_asset_symbol(env: Env, token: Address, symbol: Option<Symbol>) {
+        require_admin(env.clone());
+        match symbol.clone() {
+            Some(sym) => env
+                .storage()
+                .persistent()
+                .set(&DataKey::OracleAssetSymbol(token.clone()), &sym),
+            None => env
+                .storage()
+                .persistent()
+                .remove(&DataKey::OracleAssetSymbol(token.clone())),
+        }
+        OracleAssetSymbolMapped { token, symbol }.publish(&env);
     }
 
     pub fn set_reserve_recipient(env: Env, recipient: Address) {
@@ -1301,7 +1325,14 @@ impl SimplePeridottroller {
         let client = crate::reflector::ReflectorClient::new(&env, &oracle_addr);
         let dec = client.decimals();
         let scale = pow10_u128(dec);
-        let asset = crate::reflector::Asset::Stellar(token);
+        let asset = match env
+            .storage()
+            .persistent()
+            .get::<_, Symbol>(&DataKey::OracleAssetSymbol(token.clone()))
+        {
+            Some(sym) => crate::reflector::Asset::Other(sym),
+            None => crate::reflector::Asset::Stellar(token),
+        };
         let pd_opt = client.lastprice(&asset);
         match pd_opt {
             Some(pd) if pd.price >= 0 => {

@@ -4,26 +4,40 @@ This guide covers end-to-end deployment of the Peridot lending protocol contract
 
 ### Prerequisites
 
-- Rust toolchain and wasm target:
-  - `rustup target add wasm32-unknown-unknown`
-- Soroban CLI installed and on PATH.
-- For testnet:
-  - A funded testnet account and soroban identity configured (e.g., `soroban config identity generate myadmin`).
+- Rust toolchain installed.
+- Stellar CLI installed and on PATH (`stellar` command). If needed, install via your package manager or cargo.
+- Testnet network configured in the CLI:
+  ```bash
+  stellar config network add testnet \
+    --rpc-url https://soroban-testnet.stellar.org \
+    --network-passphrase "Test SDF Future Network ; October 2022"
+  ```
+- A funded testnet account (identity) for deployments. You can generate and fund in one step:
+  ```bash
+  stellar keys generate --global dev --network testnet --fund
+  ```
 
-### Build Artifacts
+### Build Artifacts (for Testnet)
 
-From `receipt-vault` root directory:
+Testnet requires the v1 Wasm target (wasm32v1-none). Build each contract with the Stellar CLI from its contract directory:
 
 ```bash
-bash scripts/build_wasm.sh
+# ReceiptVault
+cd contracts/receipt-vault && stellar contract build && cd -
+# SimplePeridottroller
+cd contracts/simple-peridottroller && stellar contract build && cd -
+# JumpRateModel
+cd contracts/jump-rate-model && stellar contract build && cd -
+# PeridotToken
+cd contracts/peridot-token && stellar contract build && cd -
 ```
 
-Artifacts are emitted to `target/wasm32-unknown-unknown/release/`:
+Artifacts are emitted per contract to `contracts/<name>/target/wasm32v1-none/release/`:
 
-- `simple-peridottroller.wasm`
-- `receipt-vault.wasm`
-- `jump-rate-model.wasm`
-- `peridot-token.wasm`
+- `receipt_vault.wasm`
+- `simple_peridottroller.wasm`
+- `jump_rate_model.wasm`
+- `peridot_token.wasm`
 
 ### Deploy to Sandbox
 
@@ -50,36 +64,138 @@ What the script does:
 
 Script output prints the deployed contract IDs for controller (`CTRL_ID`), jump model, vaults (`VA_ID`, `VB_ID`), and PERI token.
 
-### Deploy to Testnet
+### Deploy to Testnet (step-by-step)
 
-Configure identity and token addresses, then run:
+Below is the canonical, CLI-aligned flow (matching the Stellar docs). Replace placeholders where noted.
+
+1. Set identity and capture admin address
 
 ```bash
-soroban config identity generate myadmin   # if not already created
-export IDENTITY=myadmin
-export TOKEN_A=<asset_contract_address_A_on_testnet>
-export TOKEN_B=<asset_contract_address_B_on_testnet>
-bash scripts/build_wasm.sh
-bash scripts/deploy_testnet.sh
+IDENTITY=dev
+ADMIN=$(stellar keys address "$IDENTITY" --network testnet)
+echo "Admin: $ADMIN"
 ```
 
-What the script does:
+2. Deploy ReceiptVault (market)
 
-- Uses `IDENTITY` to derive `ADMIN` address.
-- Deploys and initializes `SimplePeridottroller` with `ADMIN`.
-- Deploys `JumpRateModel` and configures base/mult/jump/kink.
-- Deploys `Peridot Token` (symbol `P`, 6 decimals) and points controller to it (`set_peridot_token`).
-- Deploys two `ReceiptVault` markets and initializes with `TOKEN_A` and `TOKEN_B` (placeholders must be real contract addresses).
-- Wires vaults to controller, adds markets, sets CF (e.g., 1_000_000 on `VB_ID`) and reward speeds on `VA_ID`.
-- Configures flash-loan premium on each vault (`set_flash_loan_fee`); default uses `FLASH_FEE` env var (2% if unset).
+```bash
+RV_WASM=contracts/receipt-vault/target/wasm32v1-none/release/receipt_vault.wasm
+RV_ID=$(stellar contract deploy \
+  --wasm "$RV_WASM" \
+  --source-account "$IDENTITY" \
+  --network testnet \
+  --alias peridot_vault)
+echo "ReceiptVault: $RV_ID"
+```
 
-Environment variables:
+3. Initialize ReceiptVault with an underlying token
 
-- `IDENTITY`: soroban identity name (default `myadmin`).
-- `TOKEN_A`, `TOKEN_B`: underlying asset contract IDs for the two vaults.
-- `FLASH_FEE`: flash-loan premium scaled by 1e6 (defaults to `20000`, i.e., 2%).
+```bash
+TOKEN_A=<asset_contract_id_on_testnet>
 
-The script prints IDs: `CTRL_ID`, `VA_ID`, `VB_ID`, `JRM_ID`, `PERI_ID`.
+stellar contract invoke \
+  --id peridot_vault \
+  --source-account "$IDENTITY" \
+  --network testnet \
+  -- \
+  initialize \
+  --token "$TOKEN_A" \
+  --supply_yearly_rate_scaled 0 \
+  --borrow_yearly_rate_scaled 0 \
+  --admin "$ADMIN"
+```
+
+4. Deploy and configure JumpRateModel (dynamic APR)
+
+```bash
+JRM_WASM=contracts/jump-rate-model/target/wasm32v1-none/release/jump_rate_model.wasm
+JRM_ID=$(stellar contract deploy \
+  --wasm "$JRM_WASM" \
+  --source-account "$IDENTITY" \
+  --network testnet \
+  --alias peridot_jrm)
+
+stellar contract invoke --id "$JRM_ID" --source-account "$IDENTITY" --network testnet -- \
+  initialize --base 20000 --multiplier 180000 --jump 4000000 --kink 800000
+
+stellar contract invoke --id peridot_vault --source-account "$IDENTITY" --network testnet -- \
+  set_interest_model --model "$JRM_ID"
+```
+
+5. Deploy controller and wire market
+
+```bash
+CTRL_WASM=contracts/simple-peridottroller/target/wasm32v1-none/release/simple_peridottroller.wasm
+CTRL_ID=$(stellar contract deploy \
+  --wasm "$CTRL_WASM" \
+  --source-account "$IDENTITY" \
+  --network testnet \
+  --alias peridot_ctrl)
+
+stellar contract invoke --id "$CTRL_ID" --source-account "$IDENTITY" --network testnet -- \
+  initialize --admin "$ADMIN"
+
+# Wire vault → controller and add market
+stellar contract invoke --id peridot_vault --source-account "$IDENTITY" --network testnet -- \
+  set_peridottroller --peridottroller "$CTRL_ID"
+
+stellar contract invoke --id "$CTRL_ID" --source-account "$IDENTITY" --network testnet -- \
+  add_market --market peridot_vault
+
+# Set collateral factor (example: 60%)
+stellar contract invoke --id "$CTRL_ID" --source-account "$IDENTITY" --network testnet -- \
+  set_market_cf --market peridot_vault --cf_scaled 600000
+```
+
+6. Deploy and configure Peridot reward token (optional but recommended)
+
+```bash
+PERI_WASM=contracts/peridot-token/target/wasm32v1-none/release/peridot_token.wasm
+PERI_ID=$(stellar contract deploy \
+  --wasm "$PERI_WASM" \
+  --source-account "$IDENTITY" \
+  --network testnet \
+  --alias peridot_peri)
+
+stellar contract invoke --id "$PERI_ID" --source-account "$IDENTITY" --network testnet -- \
+  initialize --name Peridot --symbol P --decimals 6 --admin "$CTRL_ID"
+
+stellar contract invoke --id "$CTRL_ID" --source-account "$IDENTITY" --network testnet -- \
+  set_peridot_token --token "$PERI_ID"
+```
+
+7. (Optional) Add a second market and/or set reward speeds on controller
+
+```bash
+# Second vault for TOKEN_B
+RV2_WASM=$RV_WASM
+RV2_ID=$(stellar contract deploy \
+  --wasm "$RV2_WASM" \
+  --source-account "$IDENTITY" \
+  --network testnet \
+  --alias peridot_vault_b)
+
+TOKEN_B=<asset_contract_id_on_testnet>
+stellar contract invoke --id "$RV2_ID" --source-account "$IDENTITY" --network testnet -- \
+  initialize --token "$TOKEN_B" --supply_yearly_rate_scaled 0 --borrow_yearly_rate_scaled 0 --admin "$ADMIN"
+
+stellar contract invoke --id "$RV2_ID" --source-account "$IDENTITY" --network testnet -- \
+  set_peridottroller --peridottroller "$CTRL_ID"
+
+stellar contract invoke --id "$CTRL_ID" --source-account "$IDENTITY" --network testnet -- \
+  add_market --market "$RV2_ID"
+
+# Example reward speeds
+stellar contract invoke --id "$CTRL_ID" --source-account "$IDENTITY" --network testnet -- \
+  set_supply_speed --market peridot_vault --speed_per_sec 5
+stellar contract invoke --id "$CTRL_ID" --source-account "$IDENTITY" --network testnet -- \
+  set_borrow_speed --market peridot_vault --speed_per_sec 3
+```
+
+Notes:
+
+- All `invoke` commands require the `--` separator before the function and its arguments.
+- If your identity is not funded, the CLI will fail with "Account not found". Re-run the `stellar keys generate ... --fund` step or fund via friendbot.
 
 ### Verify Deployment (testnet)
 
@@ -89,7 +205,7 @@ Use the provided verification script to read controller and vault configuration:
 export CTRL_ID=<controller_id>
 export VA_ID=<vault_a_id>
 export VB_ID=<vault_b_id>
-bash scripts/verify_testnet.sh
+bash scripts/verify_testnet.sh   # uses stellar CLI under the hood
 ```
 
 This prints:
@@ -120,23 +236,30 @@ Actions performed:
 - Set oracle on controller:
 
 ```bash
-soroban contract invoke --network testnet --id "$CTRL_ID" -- set_oracle --oracle <reflector_oracle_id>
-soroban contract invoke --network testnet --id "$CTRL_ID" -- set_oracle_max_age_multiplier --k 3
+stellar contract invoke --network testnet --id "$CTRL_ID" -- \
+  set_oracle --oracle <reflector_oracle_id>
+stellar contract invoke --network testnet --id "$CTRL_ID" -- \
+  set_oracle_max_age_multiplier --k 3
 ```
 
 - Point vault to JumpRateModel (instead of static rates):
 
 ```bash
-soroban contract invoke --network testnet --id "$VA_ID" -- set_interest_model --model "$JRM_ID"
-soroban contract invoke --network testnet --id "$VB_ID" -- set_interest_model --model "$JRM_ID"
+stellar contract invoke --network testnet --id "$VA_ID" -- \
+  set_interest_model --model "$JRM_ID"
+stellar contract invoke --network testnet --id "$VB_ID" -- \
+  set_interest_model --model "$JRM_ID"
 ```
 
 - Reserve routing and liquidation fee:
 
 ```bash
-soroban contract invoke --network testnet --id "$CTRL_ID" -- set_reserve_recipient --recipient <address_or_contract>
-soroban contract invoke --network testnet --id "$CTRL_ID" -- set_liquidation_fee --fee_scaled 50000   # 5%
-soroban contract invoke --network testnet --id "$VA_ID" -- set_flash_loan_fee --fee_scaled 20000       # 2%
+stellar contract invoke --network testnet --id "$CTRL_ID" -- \
+  set_reserve_recipient --recipient <address_or_contract>
+stellar contract invoke --network testnet --id "$CTRL_ID" -- \
+  set_liquidation_fee --fee_scaled 50000   # 5%
+stellar contract invoke --network testnet --id "$VA_ID" -- \
+  set_flash_loan_fee --fee_scaled 20000     # 2%
 ```
 
 ### Operational Tips
@@ -148,8 +271,9 @@ soroban contract invoke --network testnet --id "$VA_ID" -- set_flash_loan_fee --
 
 ### Troubleshooting
 
-- Missing or wrong token addresses on testnet: the vault `initialize` will succeed but you won’t be able to move assets. Ensure `TOKEN_A` and `TOKEN_B` are correct.
+- "HostError: reference-types not enabled": you built the wrong target. Rebuild with `stellar contract build` to produce `wasm32v1-none` artifacts and redeploy.
+- "Account not found": your identity isn’t funded. Run `stellar keys generate --global <name> --network testnet --fund` or fund via friendbot.
+- Missing or wrong token addresses: vault `initialize` may succeed but transfers will fail. Ensure underlying token contract IDs are valid on testnet.
 - Paused actions: if actions revert, check pause flags via `verify_testnet.sh`.
-- Collateral factor not set: controller defaults to 50% if unset; set explicitly with `set_market_cf`.
-- Re-entry errors during hypothetical checks: ensure you are not calling cross-market flows from within a market callback.
-- Identity issues on testnet: verify identity and address with `soroban keys address <identity> --network testnet`.
+- Collateral factor not set: controller defaults to 50% (500_000). Set explicitly with `set_market_cf`.
+- Re-entry issues during hypothetical checks: avoid calling cross-market flows from within a market callback.

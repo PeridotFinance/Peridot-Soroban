@@ -7,9 +7,9 @@ set -euo pipefail
 #   VA_ID     - market A id (vault)
 #   VB_ID     - market B id (vault)
 # Optional:
-#   IDENTITY  - soroban identity (defaults to myadmin)
+#   IDENTITY  - soroban identity (defaults to dev)
 
-IDENTITY=${IDENTITY:-myadmin}
+IDENTITY=${IDENTITY:-dev}
 NETWORK="--network testnet"
 
 if [[ -z "${CTRL_ID:-}" || -z "${VA_ID:-}" || -z "${VB_ID:-}" ]]; then
