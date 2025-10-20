@@ -706,9 +706,6 @@ impl ReceiptVault {
                 .unwrap_or(SCALE_1E6);
         }
         let total_underlying = Self::get_total_underlying(env.clone());
-        if total_ptokens == 0 {
-            return SCALE_1E6;
-        }
         // rate = total_underlying / total_ptokens, scaled 1e6
         (total_underlying * SCALE_1E6) / total_ptokens
     }
@@ -737,6 +734,12 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        let _: bool = call_contract_or_panic::<bool, _>(
+            &env,
+            &peridottroller,
+            "is_deposit_paused",
+            (env.current_contract_address(),),
+        );
         env.storage()
             .persistent()
             .set(&DataKey::Peridottroller, &peridottroller.clone());
@@ -751,6 +754,19 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        // Basic interface check to ensure the target contract exposes the expected entrypoints
+        let _ = call_contract_or_panic::<u128, _>(
+            &env,
+            &model,
+            "get_borrow_rate",
+            (0u128, 0u128, 0u128),
+        );
+        let _ = call_contract_or_panic::<u128, _>(
+            &env,
+            &model,
+            "get_supply_rate",
+            (0u128, 0u128, 0u128, 0u128),
+        );
         env.storage()
             .persistent()
             .set(&DataKey::InterestModel, &model.clone());
@@ -1681,7 +1697,7 @@ fn checked_interest_product(amount: u128, yearly_rate_scaled: u128, elapsed: u12
     amount
         .checked_mul(yearly_rate_scaled)
         .and_then(|v| v.checked_mul(elapsed))
-        .expect("interest overflow")
+        .unwrap_or(u128::MAX)
 }
 
 fn call_contract_or_panic<T, A>(env: &Env, contract: &Address, func: &str, args: A) -> T
