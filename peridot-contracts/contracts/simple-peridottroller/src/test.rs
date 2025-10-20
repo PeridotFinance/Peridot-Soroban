@@ -94,6 +94,16 @@ fn test_total_collateral_and_borrows_across_markets() {
     comp.add_market(&vault_b_id);
     comp.enter_market(&user, &vault_a_id);
     comp.enter_market(&user, &vault_b_id);
+    comp.set_market_cf(&vault_a_id, &1_000_000u128);
+    comp.set_market_cf(&vault_b_id, &1_000_000u128);
+
+    // Oracle with USD prices for both assets
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    oracle.set_price(&token_a, &1_000_000i128);
+    oracle.set_price(&token_b, &1_000_000i128);
+    comp.set_oracle(&oracle_id);
 
     // (Exit guard tested in previous test with real vault; here focus on totals and borrows)
 
@@ -1211,45 +1221,62 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
 }
 
 #[test]
-fn test_oracle_missing_price_allows_borrow_with_zero_priced_assets() {
+#[should_panic(expected = "price unavailable")]
+fn test_oracle_missing_price_panics() {
     let env = Env::default();
     env.mock_all_auths();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
+    let lender = Address::generate(&env);
 
-    // Token + markets
-    let t_admin = Address::generate(&env);
-    let t = env
-        .register_stellar_asset_contract_v2(t_admin.clone())
+    // Collateral token/market (missing price) and borrow token/market
+    let coll_admin = Address::generate(&env);
+    let coll_token = env
+        .register_stellar_asset_contract_v2(coll_admin.clone())
         .address();
-    let v_id = env.register(rv::ReceiptVault, ());
-    let v = rv::ReceiptVaultClient::new(&env, &v_id);
-    v.initialize(&t, &0u128, &0u128, &admin);
+    let borrow_admin = Address::generate(&env);
+    let borrow_token = env
+        .register_stellar_asset_contract_v2(borrow_admin.clone())
+        .address();
 
-    // Peridottroller
+    let coll_vault_id = env.register(rv::ReceiptVault, ());
+    let coll_vault = rv::ReceiptVaultClient::new(&env, &coll_vault_id);
+    let borrow_vault_id = env.register(rv::ReceiptVault, ());
+    let borrow_vault = rv::ReceiptVaultClient::new(&env, &borrow_vault_id);
+    coll_vault.initialize(&coll_token, &0u128, &0u128, &admin);
+    borrow_vault.initialize(&borrow_token, &0u128, &0u128, &admin);
+
+    // Peridottroller wiring
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
-    comp.add_market(&v_id);
-    comp.enter_market(&user, &v_id);
-    v.set_peridottroller(&comp_id);
+    comp.add_market(&coll_vault_id);
+    comp.add_market(&borrow_vault_id);
+    comp.set_market_cf(&coll_vault_id, &1_000_000u128);
+    comp.enter_market(&user, &coll_vault_id);
+    comp.enter_market(&user, &borrow_vault_id);
+    coll_vault.set_peridottroller(&comp_id);
+    borrow_vault.set_peridottroller(&comp_id);
 
-    // Oracle configured but no price set -> treated as missing price
+    // Oracle with price only for borrow token; collateral token missing
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
+    oracle.set_price(&borrow_token, &1_000_000i128);
     comp.set_oracle(&oracle_id);
 
-    // Provide liquidity & deposit to get into borrow path
-    let mint = token::StellarAssetClient::new(&env, &t);
-    mint.mint(&user, &1_000i128);
-    v.set_collateral_factor(&1_000_000u128);
-    v.deposit(&user, &100u128);
+    // Mint tokens and set up positions
+    let coll_mint = token::StellarAssetClient::new(&env, &coll_token);
+    let borrow_mint = token::StellarAssetClient::new(&env, &borrow_token);
+    coll_mint.mint(&user, &1_000i128);
+    borrow_mint.mint(&lender, &1_000i128);
 
-    // With missing price, risk calc ignores values (treated as zero USD), so borrow path won't shortfall
-    v.borrow(&user, &1u128);
-    assert_eq!(v.get_user_borrow_balance(&user), 1u128);
+    coll_vault.set_collateral_factor(&1_000_000u128);
+    coll_vault.deposit(&user, &100u128);
+    borrow_vault.deposit(&lender, &200u128);
+
+    borrow_vault.borrow(&user, &1u128);
 }
 
 #[test]

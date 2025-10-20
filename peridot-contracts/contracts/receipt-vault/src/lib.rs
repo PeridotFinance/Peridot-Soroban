@@ -1,7 +1,8 @@
 #![no_std]
 use core::convert::TryFrom;
 use soroban_sdk::{
-    contract, contractevent, contractimpl, contracttype, token, Address, Bytes, Env, String, Symbol,
+    contract, contractevent, contractimpl, contracttype, token, Address, Bytes, Env, IntoVal,
+    String,
 };
 use stellar_tokens::fungible::Base as TokenBase;
 
@@ -43,6 +44,7 @@ pub struct BorrowSnapshot {
 const SCALE_1E6: u128 = 1_000_000u128;
 const INDEX_SCALE_1E18: u128 = 1_000_000_000_000_000_000u128; // 1e18
 const PTOKEN_DECIMALS: u32 = 6;
+const MAX_YEARLY_RATE_SCALED: u128 = 10_000_000u128; // 1000% APY cap to prevent overflow
 
 // ################## EVENTS ##################
 
@@ -228,6 +230,12 @@ impl ReceiptVault {
             panic!("already initialized");
         }
         admin.require_auth();
+        if supply_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("invalid supply rate");
+        }
+        if borrow_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("invalid borrow rate");
+        }
         // Store the underlying token address
         env.storage()
             .persistent()
@@ -310,11 +318,11 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
-            let _: () = env.invoke_contract(
+            call_contract_or_panic::<(), _>(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "accrue_user_market"),
-                (user.clone(), env.current_contract_address()).into_val(&env),
+                "accrue_user_market",
+                (user.clone(), env.current_contract_address()),
             );
         }
 
@@ -331,11 +339,11 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
-            let paused: bool = env.invoke_contract(
+            let paused: bool = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "is_deposit_paused"),
-                (env.current_contract_address(),).into_val(&env),
+                "is_deposit_paused",
+                (env.current_contract_address(),),
             );
             if paused {
                 panic!("deposit paused");
@@ -396,11 +404,11 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
-            let _: () = env.invoke_contract(
+            call_contract_or_panic::<(), _>(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "accrue_user_market"),
-                (user.clone(), env.current_contract_address()).into_val(&env),
+                "accrue_user_market",
+                (user.clone(), env.current_contract_address()),
             );
         }
 
@@ -435,36 +443,35 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
             // Pause check via peridottroller
-            let paused: bool = env.invoke_contract(
+            let paused: bool = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "is_redeem_paused"),
-                (env.current_contract_address(),).into_val(&env),
+                "is_redeem_paused",
+                (env.current_contract_address(),),
             );
             if paused {
                 panic!("redeem paused");
             }
             // Other markets collateral in USD
-            let other_collateral_usd: u128 = env.invoke_contract(
+            let other_collateral_usd: u128 = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "get_collateral_excl_usd"),
-                (user.clone(), env.current_contract_address()).into_val(&env),
+                "get_collateral_excl_usd",
+                (user.clone(), env.current_contract_address()),
             );
             // Price of this underlying
-            let price_opt: Option<(u128, u128)> = env.invoke_contract(
-                &comp_addr,
-                &Symbol::new(&env, "get_price_usd"),
-                (token_address.clone(),).into_val(&env),
-            );
+            let price_opt: Option<(u128, u128)> =
+                call_contract_or_panic(&env, &comp_addr, "get_price_usd", (token_address.clone(),));
             if price_opt.is_none() {
                 panic!("Price unavailable");
             }
             let (price, scale) = price_opt.unwrap();
-            let cf: u128 = env.invoke_contract(
+            let cf: u128 = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "get_market_cf"),
-                (env.current_contract_address(),).into_val(&env),
+                "get_market_cf",
+                (env.current_contract_address(),),
             );
 
             // Local remaining collateral after this redeem
@@ -474,10 +481,11 @@ impl ReceiptVault {
             let local_collateral_usd = (remaining_discounted.saturating_mul(price)) / scale;
 
             // Borrows USD: other markets + local market
-            let other_borrows_usd: u128 = env.invoke_contract(
+            let other_borrows_usd: u128 = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "get_borrows_excl"),
-                (user.clone(), env.current_contract_address()).into_val(&env),
+                "get_borrows_excl",
+                (user.clone(), env.current_contract_address()),
             );
             let local_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
             let local_debt_usd = (local_debt.saturating_mul(price)) / scale;
@@ -591,12 +599,12 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
             // Pause check
-            let paused: bool = env.invoke_contract(
+            let paused: bool = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "is_redeem_paused"),
-                (env.current_contract_address(),).into_val(&env),
+                "is_redeem_paused",
+                (env.current_contract_address(),),
             );
             if paused {
                 panic!("redeem paused");
@@ -606,10 +614,11 @@ impl ReceiptVault {
                 panic!("Insufficient pTokens");
             }
             // Check via preview_redeem_max
-            let max_ptokens: u128 = env.invoke_contract(
+            let max_ptokens: u128 = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "preview_redeem_max"),
-                (from.clone(), env.current_contract_address()).into_val(&env),
+                "preview_redeem_max",
+                (from.clone(), env.current_contract_address()),
             );
             if amount > max_ptokens {
                 panic!("Insufficient collateral");
@@ -635,16 +644,17 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
-            let _: () = env.invoke_contract(
+            call_contract_or_panic::<(), _>(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "accrue_user_market"),
-                (from.clone(), env.current_contract_address()).into_val(&env),
+                "accrue_user_market",
+                (from.clone(), env.current_contract_address()),
             );
-            let _: () = env.invoke_contract(
+            call_contract_or_panic::<(), _>(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "accrue_user_market"),
-                (to, env.current_contract_address()).into_val(&env),
+                "accrue_user_market",
+                (to, env.current_contract_address()),
             );
         }
     }
@@ -696,6 +706,9 @@ impl ReceiptVault {
                 .unwrap_or(SCALE_1E6);
         }
         let total_underlying = Self::get_total_underlying(env.clone());
+        if total_ptokens == 0 {
+            return SCALE_1E6;
+        }
         // rate = total_underlying / total_ptokens, scaled 1e6
         (total_underlying * SCALE_1E6) / total_ptokens
     }
@@ -947,7 +960,6 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::InterestModel)
         {
-            use soroban_sdk::IntoVal;
             let cash = Self::get_available_liquidity(env.clone());
             let borrows: u128 = env
                 .storage()
@@ -959,10 +971,11 @@ impl ReceiptVault {
                 .persistent()
                 .get(&DataKey::ReserveFactorScaled)
                 .unwrap_or(0u128);
-            env.invoke_contract(
+            call_contract_or_panic(
+                &env,
                 &model,
-                &Symbol::new(&env, "get_supply_rate"),
-                (cash, borrows, pooled_reserves, rf).into_val(&env),
+                "get_supply_rate",
+                (cash, borrows, pooled_reserves, rf),
             )
         } else {
             env.storage()
@@ -979,9 +992,7 @@ impl ReceiptVault {
         if total_deposited > 0 && yearly_rate_scaled > 0 {
             // new_interest = total_deposited * yearly_rate * elapsed / (SECONDS_PER_YEAR * 1e6)
             let seconds_per_year: u128 = 365 * 24 * 60 * 60;
-            let numerator = total_deposited
-                .saturating_mul(yearly_rate_scaled)
-                .saturating_mul(elapsed);
+            let numerator = checked_interest_product(total_deposited, yearly_rate_scaled, elapsed);
             let denominator = seconds_per_year.saturating_mul(SCALE_1E6);
             let new_interest = numerator / denominator;
 
@@ -1017,13 +1028,13 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::InterestModel)
         {
-            use soroban_sdk::IntoVal;
             let cash = Self::get_available_liquidity(env.clone());
             let borrows: u128 = tb_prior;
-            env.invoke_contract(
+            call_contract_or_panic(
+                &env,
                 &model,
-                &Symbol::new(&env, "get_borrow_rate"),
-                (cash, borrows, pooled_reserves).into_val(&env),
+                "get_borrow_rate",
+                (cash, borrows, pooled_reserves),
             )
         } else {
             env.storage()
@@ -1033,9 +1044,7 @@ impl ReceiptVault {
         };
         if tb_prior > 0 && borrow_yearly_rate_scaled > 0 {
             let seconds_per_year: u128 = 365 * 24 * 60 * 60;
-            let numerator = tb_prior
-                .saturating_mul(borrow_yearly_rate_scaled)
-                .saturating_mul(elapsed);
+            let numerator = checked_interest_product(tb_prior, borrow_yearly_rate_scaled, elapsed);
             let denominator = seconds_per_year.saturating_mul(SCALE_1E6);
             let borrow_interest_total = numerator / denominator;
             interest_accumulated_event = borrow_interest_total;
@@ -1154,6 +1163,9 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        if yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("invalid supply rate");
+        }
         // Accrue with old rate first
         Self::update_interest(env.clone());
         env.storage()
@@ -1174,6 +1186,9 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        if yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("invalid borrow rate");
+        }
         Self::update_interest(env.clone());
         env.storage()
             .persistent()
@@ -1288,11 +1303,11 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
-            let _: () = env.invoke_contract(
+            call_contract_or_panic::<(), _>(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "accrue_user_market"),
-                (user.clone(), env.current_contract_address()).into_val(&env),
+                "accrue_user_market",
+                (user.clone(), env.current_contract_address()),
             );
         }
 
@@ -1302,12 +1317,12 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
             // Pause check via peridottroller
-            let paused: bool = env.invoke_contract(
+            let paused: bool = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "is_borrow_paused"),
-                (env.current_contract_address(),).into_val(&env),
+                "is_borrow_paused",
+                (env.current_contract_address(),),
             );
             if paused {
                 panic!("borrow paused");
@@ -1317,16 +1332,16 @@ impl ReceiptVault {
                 .persistent()
                 .get(&DataKey::UnderlyingToken)
                 .expect("Vault not initialized");
-            let (_liq, shortfall): (u128, u128) = env.invoke_contract(
+            let (_liq, shortfall): (u128, u128) = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "hypothetical_liquidity"),
+                "hypothetical_liquidity",
                 (
                     user.clone(),
                     env.current_contract_address(),
                     amount,
                     underlying_token,
-                )
-                    .into_val(&env),
+                ),
             );
             if shortfall > 0 {
                 panic!("Insufficient collateral");
@@ -1412,11 +1427,11 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
-            let _: () = env.invoke_contract(
+            call_contract_or_panic::<(), _>(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "accrue_user_market"),
-                (user.clone(), env.current_contract_address()).into_val(&env),
+                "accrue_user_market",
+                (user.clone(), env.current_contract_address()),
             );
         }
 
@@ -1478,11 +1493,11 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
-            use soroban_sdk::IntoVal;
-            let paused: bool = env.invoke_contract(
+            let paused: bool = call_contract_or_panic(
+                &env,
                 &comp_addr,
-                &Symbol::new(&env, "is_borrow_paused"),
-                (env.current_contract_address(),).into_val(&env),
+                "is_borrow_paused",
+                (env.current_contract_address(),),
             );
             if paused {
                 panic!("borrow paused");
@@ -1516,15 +1531,13 @@ impl ReceiptVault {
 
         token_client.transfer(&env.current_contract_address(), &receiver, &to_i128(amount));
 
-        {
-            use soroban_sdk::IntoVal;
-            // Receiver contract executes its logic and must return funds before this call unwinds.
-            let _: () = env.invoke_contract(
-                &receiver,
-                &Symbol::new(&env, "on_flash_loan"),
-                (env.current_contract_address(), amount, fee, data).into_val(&env),
-            );
-        }
+        // Receiver contract executes its logic and must return funds before this call unwinds.
+        call_contract_or_panic::<(), _>(
+            &env,
+            &receiver,
+            "on_flash_loan",
+            (env.current_contract_address(), amount, fee, data.clone()),
+        );
 
         let balance_after_i: i128 = token_client.balance(&env.current_contract_address());
         if balance_after_i < 0 {
@@ -1618,6 +1631,9 @@ impl ReceiptVault {
             panic!("no peridottroller");
         };
         comp_addr.require_auth();
+        if ptoken_amount == 0 {
+            panic!("invalid seize amount");
+        }
 
         let borrower_bal = ptoken_balance(&env, &borrower);
         if borrower_bal < ptoken_amount {
@@ -1659,4 +1675,27 @@ fn total_ptokens_supply(env: &Env) -> u128 {
         panic!("negative supply");
     }
     supply as u128
+}
+
+fn checked_interest_product(amount: u128, yearly_rate_scaled: u128, elapsed: u128) -> u128 {
+    amount
+        .checked_mul(yearly_rate_scaled)
+        .and_then(|v| v.checked_mul(elapsed))
+        .expect("interest overflow")
+}
+
+fn call_contract_or_panic<T, A>(env: &Env, contract: &Address, func: &str, args: A) -> T
+where
+    T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>,
+    A: IntoVal<Env, soroban_sdk::Vec<soroban_sdk::Val>>,
+{
+    use soroban_sdk::{InvokeError, Symbol, Val, Vec};
+    let symbol = Symbol::new(env, func);
+    let args_val: Vec<Val> = args.into_val(env);
+    match env.try_invoke_contract::<T, InvokeError>(contract, &symbol, args_val) {
+        Ok(Ok(val)) => val,
+        Ok(Err(_)) => panic!("invalid return from {}", func),
+        Err(Ok(err)) => panic!("{} call failed: {:?}", func, err),
+        Err(Err(err)) => panic!("{} call failed: {:?}", func, err),
+    }
 }

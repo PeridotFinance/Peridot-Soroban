@@ -99,6 +99,37 @@ fn test_initialize() {
 }
 
 #[test]
+#[should_panic(expected = "invalid supply rate")]
+fn test_initialize_rejects_large_supply_rate() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_contract_id = env.register(ReceiptVault, ());
+    let vault_client = ReceiptVaultClient::new(&env, &vault_contract_id);
+
+    vault_client.initialize(&token_address, &11_000_000u128, &0u128, &admin);
+}
+
+#[test]
+#[should_panic(expected = "invalid borrow rate")]
+fn test_set_borrow_rate_rejects_large_value() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_contract_id = env.register(ReceiptVault, ());
+    let vault_client = ReceiptVaultClient::new(&env, &vault_contract_id);
+
+    vault_client.initialize(&token_address, &0u128, &0u128, &admin);
+    vault_client.set_borrow_rate(&12_000_000u128);
+}
+
+#[test]
 fn test_deposit_receives_ptokens() {
     let env = Env::default();
     env.mock_all_auths();
