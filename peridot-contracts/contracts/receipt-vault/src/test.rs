@@ -6,7 +6,10 @@ use simple_peridottroller::SimplePeridottroller;
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
-use soroban_sdk::{testutils::Address as _, token, Address, Bytes, Env};
+use soroban_sdk::{
+    testutils::{Address as _, MockAuth, MockAuthInvoke},
+    token, Address, Bytes, Env,
+};
 
 fn create_test_token<'a>(
     env: &'a Env,
@@ -304,6 +307,22 @@ fn test_interest_model_accrual_updates_accumulated_interest() {
     // Deploy and wire a jump rate model to drive dynamic interest.
     let model_id = env.register(jrm::JumpRateModel, ());
     let model_client = jrm::JumpRateModelClient::new(&env, &model_id);
+    env.mock_auths(&[MockAuth {
+        address: &admin,
+        invoke: &MockAuthInvoke {
+            contract: &model_client.address,
+            fn_name: "initialize",
+            args: (
+                20_000u128,
+                180_000u128,
+                4_000_000u128,
+                800_000u128,
+                admin.clone(),
+            )
+                .into_val(&env),
+            sub_invokes: &[],
+        },
+    }]);
     model_client.initialize(
         &20_000u128,
         &180_000u128,
@@ -311,6 +330,7 @@ fn test_interest_model_accrual_updates_accumulated_interest() {
         &800_000u128,
         &admin,
     );
+    env.mock_all_auths();
     vault_client.set_interest_model(&model_id);
 
     // Provide liquidity and create an outstanding borrow so interest can accrue.
@@ -866,14 +886,31 @@ fn test_jump_model_dynamic_borrow_apr_accrual() {
 
     // Wire jump rate model: base=2%, multiplier=18%, jump=400%, kink=80%
     let model_id = env.register(jrm::JumpRateModel, ());
-    let model = jrm::JumpRateModelClient::new(&env, &model_id);
-    model.initialize(
+    let model_client = jrm::JumpRateModelClient::new(&env, &model_id);
+    env.mock_auths(&[MockAuth {
+        address: &admin,
+        invoke: &MockAuthInvoke {
+            contract: &model_client.address,
+            fn_name: "initialize",
+            args: (
+                20_000u128,
+                180_000u128,
+                4_000_000u128,
+                800_000u128,
+                admin.clone(),
+            )
+                .into_val(&env),
+            sub_invokes: &[],
+        },
+    }]);
+    model_client.initialize(
         &20_000u128,
         &180_000u128,
         &4_000_000u128,
         &800_000u128,
         &admin,
     );
+    env.mock_all_auths();
     vault.set_interest_model(&model_id);
 
     // Provide liquidity and collateral
@@ -922,14 +959,31 @@ fn test_jump_model_dynamic_supply_apr_accrual() {
 
     // Wire jump rate model as above
     let model_id = env.register(jrm::JumpRateModel, ());
-    let model = jrm::JumpRateModelClient::new(&env, &model_id);
-    model.initialize(
+    let model_client = jrm::JumpRateModelClient::new(&env, &model_id);
+    env.mock_auths(&[MockAuth {
+        address: &admin,
+        invoke: &MockAuthInvoke {
+            contract: &model_client.address,
+            fn_name: "initialize",
+            args: (
+                20_000u128,
+                180_000u128,
+                4_000_000u128,
+                800_000u128,
+                admin.clone(),
+            )
+                .into_val(&env),
+            sub_invokes: &[],
+        },
+    }]);
+    model_client.initialize(
         &20_000u128,
         &180_000u128,
         &4_000_000u128,
         &800_000u128,
         &admin,
     );
+    env.mock_all_auths();
     vault.set_interest_model(&model_id);
 
     // Deposit and borrow to 10% util

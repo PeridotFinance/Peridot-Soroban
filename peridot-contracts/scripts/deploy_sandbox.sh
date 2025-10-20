@@ -35,7 +35,7 @@ echo "JRM: $JRM_ID"
 
 echo "Configuring JRM (base=2%, mult=18%, jump=400%, kink=80%)..."
 "$SOROBAN_BIN" contract invoke $NETWORK --id "$JRM_ID" -- \
-  initialize --base 20000 --multiplier 180000 --jump 4000000 --kink 800000 --admin "$CTRL_ID"
+  initialize --base 20000 --multiplier 180000 --jump 4000000 --kink 800000
 
 echo "Deploying Peridot Token..."
 PERI_ID=$("$SOROBAN_BIN" contract deploy $NETWORK --wasm "$WASM_PERI")
