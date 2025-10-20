@@ -370,7 +370,8 @@ impl ReceiptVault {
         // Calculate pTokens to mint based on current exchange rate BEFORE moving cash
         let current_rate = Self::get_exchange_rate(env.clone());
         // Transfer tokens from user to contract
-        token_client.transfer(&user, &env.current_contract_address(), &(amount as i128));
+        let amount_i128 = to_i128(amount);
+        token_client.transfer(&user, &env.current_contract_address(), &amount_i128);
         // pTokens = amount * 1e6 / rate
         let ptokens_to_mint = (amount * SCALE_1E6) / current_rate;
 
@@ -530,11 +531,8 @@ impl ReceiptVault {
             .set(&DataKey::AccumulatedInterest, &accumulated);
 
         // Transfer tokens back to user
-        token_client.transfer(
-            &env.current_contract_address(),
-            &user,
-            &(underlying_to_return as i128),
-        );
+        let underlying_i128 = to_i128(underlying_to_return);
+        token_client.transfer(&env.current_contract_address(), &user, &underlying_i128);
 
         // Emit Compound-style Redeem event
         Redeem {
@@ -900,7 +898,8 @@ impl ReceiptVault {
             .get(&DataKey::UnderlyingToken)
             .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
-        token_client.transfer(&env.current_contract_address(), &admin, &(amount as i128));
+        let amount_i128 = to_i128(amount);
+        token_client.transfer(&env.current_contract_address(), &admin, &amount_i128);
         ReservesReduced {
             reduce_amount: amount,
             total_reserves: updated_reserves,
@@ -935,7 +934,8 @@ impl ReceiptVault {
             .get(&DataKey::UnderlyingToken)
             .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
-        token_client.transfer(&env.current_contract_address(), &admin, &(amount as i128));
+        let amount_i128 = to_i128(amount);
+        token_client.transfer(&env.current_contract_address(), &admin, &amount_i128);
         AdminFeesReduced {
             reduce_amount: amount,
             total_admin_fees: updated_fees,
@@ -1165,7 +1165,13 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalAdminFees)
             .unwrap_or(0u128);
+        let accumulated_interest: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::AccumulatedInterest)
+            .unwrap_or(0u128);
         cash.saturating_add(borrows)
+            .saturating_add(accumulated_interest)
             .saturating_sub(reserves)
             .saturating_sub(admin_fees)
     }
@@ -1272,6 +1278,12 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::BorrowIndex)
             .unwrap_or(INDEX_SCALE_1E18);
+        if principal == 0 {
+            env.storage()
+                .persistent()
+                .remove(&DataKey::BorrowSnapshots(user));
+            return;
+        }
         let snap = BorrowSnapshot {
             principal,
             interest_index: current_index,
@@ -1422,7 +1434,8 @@ impl ReceiptVault {
             .get(&DataKey::UnderlyingToken)
             .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
-        token_client.transfer(&env.current_contract_address(), &user, &(amount as i128));
+        let amount_i128 = to_i128(amount);
+        token_client.transfer(&env.current_contract_address(), &user, &amount_i128);
 
         // Emit event
         BorrowEvent {
@@ -1468,11 +1481,8 @@ impl ReceiptVault {
             .get(&DataKey::UnderlyingToken)
             .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
-        token_client.transfer(
-            &user,
-            &env.current_contract_address(),
-            &(repay_amount as i128),
-        );
+        let repay_i128 = to_i128(repay_amount);
+        token_client.transfer(&user, &env.current_contract_address(), &repay_i128);
 
         // Update snapshot and totals
         let new_principal = current_debt - repay_amount;
@@ -1612,11 +1622,8 @@ impl ReceiptVault {
             .get(&DataKey::UnderlyingToken)
             .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
-        token_client.transfer(
-            &liquidator,
-            &env.current_contract_address(),
-            &(repay_amount as i128),
-        );
+        let repay_i128 = to_i128(repay_amount);
+        token_client.transfer(&liquidator, &env.current_contract_address(), &repay_i128);
 
         // Update borrower snapshot and totals
         let new_principal = current_debt - repay_amount;

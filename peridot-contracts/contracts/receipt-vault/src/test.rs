@@ -643,8 +643,8 @@ fn test_interest_model_supply_accrual() {
     // Trigger accrual directly
     vault.update_interest();
 
-    // With model set, supply accrual in vault is disabled to avoid double counting; no borrows means no growth
-    assert_eq!(vault.get_total_underlying(), 100u128);
+    // With model set, supply interest accrues to the vault balance; 10% APR on 100 over a year => 110
+    assert_eq!(vault.get_total_underlying(), 110u128);
     assert!(vault.get_exchange_rate() >= 1_000_000u128);
 }
 
