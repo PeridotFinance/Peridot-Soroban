@@ -831,11 +831,7 @@ impl SimplePeridottroller {
                 &Symbol::new(&env, "get_underlying_token"),
                 ().into_val(&env),
             );
-            let (price, scale) =
-                Self::get_price_usd(env.clone(), token).expect("price unavailable");
-            if price == 0 {
-                panic!("price zero");
-            }
+            let (price, scale) = Self::require_price(env.clone(), token);
             let usd = (debt.saturating_mul(price)) / scale;
             total = total.saturating_add(usd);
         }
@@ -871,13 +867,9 @@ impl SimplePeridottroller {
         let (collateral_usd, mut borrow_usd) =
             Self::sum_positions_usd(env.clone(), user.clone(), Some(market.clone()));
         // Add hypothetical borrow in USD using provided underlying token
-        if let Some((price, scale)) = Self::get_price_usd(env.clone(), underlying.clone()) {
-            if price == 0 {
-                panic!("price zero");
-            }
-            let extra = (borrow_amount.saturating_mul(price)) / scale;
-            borrow_usd = borrow_usd.saturating_add(extra);
-        }
+        let (price, scale) = Self::require_price(env.clone(), underlying.clone());
+        let extra = (borrow_amount.saturating_mul(price)) / scale;
+        borrow_usd = borrow_usd.saturating_add(extra);
         if collateral_usd >= borrow_usd {
             (collateral_usd - borrow_usd, 0u128)
         } else {
@@ -899,12 +891,7 @@ impl SimplePeridottroller {
             &Symbol::new(&env, "get_underlying_token"),
             ().into_val(&env),
         );
-        let Some((price, scale)) = Self::get_price_usd(env.clone(), underlying.clone()) else {
-            return 0u128;
-        };
-        if price == 0 {
-            panic!("price zero");
-        }
+        let (price, scale) = Self::require_price(env.clone(), underlying.clone());
         // Convert USD cushion to underlying
         let by_collateral = (liquidity_usd.saturating_mul(scale)) / price;
         // Clamp by market available liquidity
@@ -980,9 +967,7 @@ impl SimplePeridottroller {
             &Symbol::new(&env, "get_underlying_token"),
             ().into_val(&env),
         );
-        let Some((price, scale)) = Self::get_price_usd(env.clone(), underlying_token) else {
-            return 0u128;
-        };
+        let (price, scale) = Self::require_price(env.clone(), underlying_token);
         // Current local underlying
         let underlying_local = (pbal.saturating_mul(rate)) / 1_000_000u128;
         // Compute max redeemable underlying so that remaining discounted >= required
@@ -1056,11 +1041,8 @@ impl SimplePeridottroller {
             ().into_val(&env),
         );
         // prices
-        let (pb, sb) = Self::get_price_usd(env.clone(), borrow_token).expect("price borrow");
-        let (pc, sc) = Self::get_price_usd(env.clone(), coll_token).expect("price collat");
-        if pb == 0 || pc == 0 {
-            panic!("price zero");
-        }
+        let (pb, sb) = Self::require_price(env.clone(), borrow_token);
+        let (pc, sc) = Self::require_price(env.clone(), coll_token);
         let repay_usd = (repay_amount.saturating_mul(pb)) / sb;
         let li_scaled: u128 = env
             .storage()
@@ -1088,6 +1070,16 @@ impl SimplePeridottroller {
     ) {
         // top-level auth for liquidator, to allow token transfer from liquidator in nested calls
         liquidator.require_auth();
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if !supported.get(repay_market.clone()).unwrap_or(false)
+            || !supported.get(collateral_market.clone()).unwrap_or(false)
+        {
+            panic!("market not supported");
+        }
         if repay_market == collateral_market {
             panic!("invalid markets");
         }
@@ -1146,12 +1138,8 @@ impl SimplePeridottroller {
             &Symbol::new(&env, "get_underlying_token"),
             ().into_val(&env),
         );
-        let (pb, sb) =
-            Self::get_price_usd(env.clone(), borrow_token.clone()).expect("price borrow");
-        let (pc, sc) = Self::get_price_usd(env.clone(), coll_token.clone()).expect("price collat");
-        if pb == 0 || pc == 0 {
-            panic!("price zero");
-        }
+        let (pb, sb) = Self::require_price(env.clone(), borrow_token.clone());
+        let (pc, sc) = Self::require_price(env.clone(), coll_token.clone());
         let repay_usd = (repay.saturating_mul(pb)) / sb;
         let seize_underlying_usd = (repay_usd.saturating_mul(li_scaled)) / 1_000_000u128;
         let seize_underlying = (seize_underlying_usd.saturating_mul(sc)) / pc;
@@ -1314,11 +1302,7 @@ impl SimplePeridottroller {
             if pbal == 0 && debt == 0 {
                 continue;
             }
-            let (price, scale) =
-                Self::get_price_usd(env.clone(), token.clone()).expect("price unavailable");
-            if price == 0 {
-                panic!("price zero");
-            }
+            let (price, scale) = Self::require_price(env.clone(), token.clone());
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
             if pbal > 0 {
@@ -1381,6 +1365,18 @@ impl SimplePeridottroller {
                 Some((pd.price as u128, scale))
             }
             _ => None,
+        }
+    }
+
+    fn require_price(env: Env, token: Address) -> (u128, u128) {
+        match Self::get_price_usd(env, token) {
+            Some((price, scale)) => {
+                if price == 0 {
+                    panic!("price zero");
+                }
+                (price, scale)
+            }
+            None => panic!("price unavailable"),
         }
     }
 }
@@ -1616,11 +1612,7 @@ impl SimplePeridottroller {
                 ().into_val(&env),
             );
             if pbal > 0 || debt > 0 {
-                let (price, scale) =
-                    Self::get_price_usd(env.clone(), token).expect("price unavailable");
-                if price == 0 {
-                    panic!("price zero");
-                }
+                let (price, scale) = Self::require_price(env.clone(), token);
                 if pbal > 0 {
                     let rate: u128 = env.invoke_contract(
                         &m,
