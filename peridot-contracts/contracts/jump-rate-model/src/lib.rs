@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Env};
+use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env};
 
 const SCALE_1E6: u128 = 1_000_000u128;
 
@@ -9,6 +9,7 @@ pub enum DataKey {
     MultiplierPerYear,     // u128 scaled 1e6
     JumpMultiplierPerYear, // u128 scaled 1e6
     Kink,                  // u128 scaled 1e6
+    Admin,                 // Address
 }
 
 #[contract]
@@ -25,7 +26,24 @@ pub struct ModelInitialized {
 
 #[contractimpl]
 impl JumpRateModel {
-    pub fn initialize(env: Env, base: u128, multiplier: u128, jump: u128, kink: u128) {
+    pub fn initialize(
+        env: Env,
+        base: u128,
+        multiplier: u128,
+        jump: u128,
+        kink: u128,
+        admin: Address,
+    ) {
+        if env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::Admin)
+            .is_some()
+        {
+            panic!("already initialized");
+        }
+        admin.require_auth();
+        env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage()
             .persistent()
             .set(&DataKey::BaseRatePerYear, &base);
@@ -105,13 +123,22 @@ impl JumpRateModel {
 #[cfg(test)]
 mod test {
     use super::*;
+    use soroban_sdk::testutils::Address as _;
 
     #[test]
     fn model_rates() {
         let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::generate(&env);
         let id = env.register(JumpRateModel, ());
         let client = JumpRateModelClient::new(&env, &id);
-        client.initialize(&20_000u128, &180_000u128, &4_000_000u128, &800_000u128);
+        client.initialize(
+            &20_000u128,
+            &180_000u128,
+            &4_000_000u128,
+            &800_000u128,
+            &admin,
+        );
         let br_low = client.get_borrow_rate(&1_000u128, &100u128, &0u128);
         let br_high = client.get_borrow_rate(&10u128, &1_000u128, &0u128);
         assert!(br_high > br_low);

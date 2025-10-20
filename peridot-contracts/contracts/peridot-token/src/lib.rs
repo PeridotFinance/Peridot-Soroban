@@ -14,6 +14,15 @@ pub struct PeridotToken;
 #[contractimpl]
 impl PeridotToken {
     pub fn initialize(env: Env, name: String, symbol: String, decimals: u32, admin: Address) {
+        if env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::Admin)
+            .is_some()
+        {
+            panic!("already initialized");
+        }
+        admin.require_auth();
         TokenBase::set_metadata(&env, decimals, name, symbol);
         env.storage().persistent().set(&DataKey::Admin, &admin);
     }
@@ -49,11 +58,17 @@ impl PeridotToken {
 
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         from.require_auth();
+        if amount <= 0 {
+            panic!("bad amount");
+        }
         TokenBase::transfer(&env, &from, &to, amount);
     }
 
     pub fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: i128) {
         spender.require_auth();
+        if amount <= 0 {
+            panic!("bad amount");
+        }
         TokenBase::transfer_from(&env, &spender, &owner, &to, amount);
     }
 

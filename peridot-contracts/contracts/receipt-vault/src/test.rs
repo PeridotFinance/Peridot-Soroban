@@ -273,7 +273,13 @@ fn test_interest_model_accrual_updates_accumulated_interest() {
     // Deploy and wire a jump rate model to drive dynamic interest.
     let model_id = env.register(jrm::JumpRateModel, ());
     let model_client = jrm::JumpRateModelClient::new(&env, &model_id);
-    model_client.initialize(&20_000u128, &180_000u128, &4_000_000u128, &800_000u128);
+    model_client.initialize(
+        &20_000u128,
+        &180_000u128,
+        &4_000_000u128,
+        &800_000u128,
+        &admin,
+    );
     vault_client.set_interest_model(&model_id);
 
     // Provide liquidity and create an outstanding borrow so interest can accrue.
@@ -830,7 +836,13 @@ fn test_jump_model_dynamic_borrow_apr_accrual() {
     // Wire jump rate model: base=2%, multiplier=18%, jump=400%, kink=80%
     let model_id = env.register(jrm::JumpRateModel, ());
     let model = jrm::JumpRateModelClient::new(&env, &model_id);
-    model.initialize(&20_000u128, &180_000u128, &4_000_000u128, &800_000u128);
+    model.initialize(
+        &20_000u128,
+        &180_000u128,
+        &4_000_000u128,
+        &800_000u128,
+        &admin,
+    );
     vault.set_interest_model(&model_id);
 
     // Provide liquidity and collateral
@@ -880,7 +892,13 @@ fn test_jump_model_dynamic_supply_apr_accrual() {
     // Wire jump rate model as above
     let model_id = env.register(jrm::JumpRateModel, ());
     let model = jrm::JumpRateModelClient::new(&env, &model_id);
-    model.initialize(&20_000u128, &180_000u128, &4_000_000u128, &800_000u128);
+    model.initialize(
+        &20_000u128,
+        &180_000u128,
+        &4_000_000u128,
+        &800_000u128,
+        &admin,
+    );
     vault.set_interest_model(&model_id);
 
     // Deposit and borrow to 10% util

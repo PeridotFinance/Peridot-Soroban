@@ -219,6 +219,15 @@ impl ReceiptVault {
         borrow_yearly_rate_scaled: u128,
         admin: Address,
     ) {
+        if env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::UnderlyingToken)
+            .is_some()
+        {
+            panic!("already initialized");
+        }
+        admin.require_auth();
         // Store the underlying token address
         env.storage()
             .persistent()
@@ -1552,9 +1561,10 @@ impl ReceiptVault {
         // Accrue and auth via peridottroller/peridottroller
         Self::update_interest(env.clone());
         let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);
-        let Some(_comp_addr) = comp else {
+        let Some(comp_addr) = comp else {
             panic!("no peridottroller");
         };
+        comp_addr.require_auth();
 
         let current_debt = Self::get_user_borrow_balance(env.clone(), borrower.clone());
         if current_debt == 0 {
@@ -1604,9 +1614,10 @@ impl ReceiptVault {
     /// Seize pTokens from borrower to liquidator; only callable by peridottroller/peridottroller
     pub fn seize(env: Env, borrower: Address, liquidator: Address, ptoken_amount: u128) {
         let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);
-        let Some(_comp_addr) = comp else {
+        let Some(comp_addr) = comp else {
             panic!("no peridottroller");
         };
+        comp_addr.require_auth();
 
         let borrower_bal = ptoken_balance(&env, &borrower);
         if borrower_bal < ptoken_amount {

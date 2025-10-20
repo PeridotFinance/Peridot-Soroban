@@ -194,6 +194,15 @@ pub struct SimplePeridottroller;
 #[contractimpl]
 impl SimplePeridottroller {
     pub fn initialize(env: Env, admin: Address) {
+        if env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::Admin)
+            .is_some()
+        {
+            panic!("already initialized");
+        }
+        admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &admin);
         let markets: Map<Address, bool> = Map::new(&env);
         env.storage()
@@ -1068,6 +1077,9 @@ impl SimplePeridottroller {
     ) {
         // top-level auth for liquidator, to allow token transfer from liquidator in nested calls
         liquidator.require_auth();
+        if repay_market == collateral_market {
+            panic!("invalid markets");
+        }
         // Check pause flags
         if Self::is_liquidation_paused(env.clone(), repay_market.clone())
             || Self::is_liquidation_paused(env.clone(), collateral_market.clone())

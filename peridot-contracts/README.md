@@ -305,8 +305,15 @@ peridottroller.set_reserve_recipient(&reserve_addr);
 use jump_rate_model as jrm;
 let model_id = env.register(jrm::JumpRateModel, ());
 let model = jrm::JumpRateModelClient::new(&env, &model_id);
+let admin = Address::generate(&env); // authorized maintainer
 // base=2%, multiplier=18%, jump=400%, kink=80%
-model.initialize(&20_000u128, &180_000u128, &4_000_000u128, &800_000u128);
+model.initialize(
+    &20_000u128,
+    &180_000u128,
+    &4_000_000u128,
+    &800_000u128,
+    &admin,
+);
 
 // Point the vault at the model to enable dynamic rates
 vault.set_interest_model(&model_id);
