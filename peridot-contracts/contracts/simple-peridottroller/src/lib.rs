@@ -987,6 +987,9 @@ impl SimplePeridottroller {
                 &Symbol::new(&env, "get_exchange_rate"),
                 ().into_val(&env),
             );
+            if rate == 0 {
+                return 0u128;
+            }
             let available: u128 = env.invoke_contract(
                 &market,
                 &Symbol::new(&env, "get_available_liquidity"),
@@ -1022,6 +1025,9 @@ impl SimplePeridottroller {
             &Symbol::new(&env, "get_exchange_rate"),
             ().into_val(&env),
         );
+        if rate == 0 {
+            return 0u128;
+        }
         let cf: u128 = Self::get_market_cf(env.clone(), market.clone());
         let underlying_token: Address = env.invoke_contract(
             &market,
@@ -1104,6 +1110,9 @@ impl SimplePeridottroller {
         // prices
         let (pb, sb) = Self::require_price(env.clone(), borrow_token);
         let (pc, sc) = Self::require_price(env.clone(), coll_token);
+        if sb == 0 || pc == 0 {
+            return 0u128;
+        }
         let repay_usd = (repay_amount.saturating_mul(pb)) / sb;
         let li_scaled: u128 = env
             .storage()
@@ -1117,6 +1126,9 @@ impl SimplePeridottroller {
             &Symbol::new(&env, "get_exchange_rate"),
             ().into_val(&env),
         );
+        if rate == 0 {
+            return 0u128;
+        }
         (seize_underlying.saturating_mul(1_000_000u128)) / rate
     }
 
@@ -1541,9 +1553,18 @@ impl SimplePeridottroller {
                         .persistent()
                         .get(&DataKey::SupplyIndex(market.clone()))
                         .unwrap_or(INDEX_SCALE_1E18);
-                    let delta = ((speed.saturating_mul(dt_s as u128))
-                        .saturating_mul(INDEX_SCALE_1E18))
-                        / total_ptokens;
+                    let product = speed
+                        .checked_mul(dt_s as u128)
+                        .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
+                    let delta = match product {
+                        Some(total) => total / total_ptokens,
+                        None => {
+                            env.storage()
+                                .persistent()
+                                .set(&DataKey::SupplySpeed(market.clone()), &0u128);
+                            0u128
+                        }
+                    };
                     idx = idx.saturating_add(delta);
                     env.storage()
                         .persistent()
@@ -1580,9 +1601,18 @@ impl SimplePeridottroller {
                         .persistent()
                         .get(&DataKey::BorrowIndex(market.clone()))
                         .unwrap_or(INDEX_SCALE_1E18);
-                    let delta = ((speed.saturating_mul(dt_b as u128))
-                        .saturating_mul(INDEX_SCALE_1E18))
-                        / total_borrowed;
+                    let product = speed
+                        .checked_mul(dt_b as u128)
+                        .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
+                    let delta = match product {
+                        Some(total) => total / total_borrowed,
+                        None => {
+                            env.storage()
+                                .persistent()
+                                .set(&DataKey::BorrowSpeed(market.clone()), &0u128);
+                            0u128
+                        }
+                    };
                     idx = idx.saturating_add(delta);
                     env.storage()
                         .persistent()

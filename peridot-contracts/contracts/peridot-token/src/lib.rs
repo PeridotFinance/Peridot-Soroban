@@ -6,6 +6,7 @@ use stellar_tokens::fungible::Base as TokenBase;
 #[contracttype]
 pub enum DataKey {
     Admin,
+    MaxSupply,
 }
 
 #[contract]
@@ -13,7 +14,14 @@ pub struct PeridotToken;
 
 #[contractimpl]
 impl PeridotToken {
-    pub fn initialize(env: Env, name: String, symbol: String, decimals: u32, admin: Address) {
+    pub fn initialize(
+        env: Env,
+        name: String,
+        symbol: String,
+        decimals: u32,
+        admin: Address,
+        max_supply: i128,
+    ) {
         if env
             .storage()
             .persistent()
@@ -23,8 +31,14 @@ impl PeridotToken {
             panic!("already initialized");
         }
         admin.require_auth();
+        if max_supply <= 0 {
+            panic!("invalid max supply");
+        }
         TokenBase::set_metadata(&env, decimals, name, symbol);
         env.storage().persistent().set(&DataKey::Admin, &admin);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MaxSupply, &max_supply);
     }
 
     pub fn name(env: Env) -> String {
@@ -80,11 +94,20 @@ impl PeridotToken {
         if amount <= 0 {
             panic!("bad amount");
         }
+        let max_supply: i128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MaxSupply)
+            .expect("max supply not set");
+        let supply = TokenBase::total_supply(&env);
+        if amount > max_supply.saturating_sub(supply) {
+            panic!("max supply exceeded");
+        }
         TokenBase::mint(&env, &to, amount);
     }
 
     pub fn burn(env: Env, from: Address, amount: i128) {
-        require_admin(&env);
+        from.require_auth();
         if amount <= 0 {
             panic!("bad amount");
         }

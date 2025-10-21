@@ -312,7 +312,7 @@ impl ReceiptVault {
         // Always update interest first
         Self::update_interest(env.clone());
         // Require authorization from the user
-        user.require_auth();
+        ensure_user_auth(&env, &user);
         // Rewards: accrue user in this market
         if let Some(comp_addr) = env
             .storage()
@@ -494,7 +494,6 @@ impl ReceiptVault {
 
         // Burn pTokens and update totals
         TokenBase::burn(&env, &user, to_i128(ptoken_amount));
-
         // Update totals
         let mut total_deposited: u128 = env
             .storage()
@@ -1327,7 +1326,7 @@ impl ReceiptVault {
     pub fn borrow(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
         Self::update_interest(env.clone());
-        user.require_auth();
+        ensure_user_auth(&env, &user);
         if let Some(comp_addr) = env
             .storage()
             .persistent()
@@ -1443,7 +1442,7 @@ impl ReceiptVault {
     pub fn repay(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
         Self::update_interest(env.clone());
-        user.require_auth();
+        ensure_user_auth(&env, &user);
         if let Some(comp_addr) = env
             .storage()
             .persistent()
@@ -1685,6 +1684,13 @@ fn ensure_initialized(env: &Env) -> Address {
         .persistent()
         .get(&DataKey::UnderlyingToken)
         .expect("Vault not initialized")
+}
+
+fn ensure_user_auth(env: &Env, user: &Address) {
+    let already = env.auths().into_iter().any(|(addr, _)| addr == *user);
+    if !already {
+        user.require_auth();
+    }
 }
 
 fn checked_interest_product(amount: u128, yearly_rate_scaled: u128, elapsed: u128) -> u128 {

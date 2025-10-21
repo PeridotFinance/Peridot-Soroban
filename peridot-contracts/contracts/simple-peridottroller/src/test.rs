@@ -1427,6 +1427,7 @@ fn test_rewards_accrual_and_claim() {
         &soroban_sdk::String::from_str(&env, "P"),
         &6u32,
         &comp_id,
+        &1_000_000_000i128,
     );
     comp.set_peridot_token(&peri_id);
 
@@ -1501,6 +1502,7 @@ fn test_borrow_side_rewards_and_claim() {
         &soroban_sdk::String::from_str(&env, "P"),
         &6u32,
         &comp_id,
+        &1_000_000_000i128,
     );
     comp.set_peridot_token(&peri_id);
 
@@ -1578,6 +1580,7 @@ fn test_multi_market_supply_rewards() {
         &soroban_sdk::String::from_str(&env, "P"),
         &6u32,
         &comp_id,
+        &1_000_000_000i128,
     );
     comp.set_peridot_token(&peri_id);
 

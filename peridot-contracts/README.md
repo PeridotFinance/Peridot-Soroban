@@ -130,7 +130,13 @@ Peridot lending protocol on Soroban. It consists of:
 use peridot_token as pt;
 let peri_id = env.register(pt::PeridotToken, ());
 let peri = pt::PeridotTokenClient::new(&env, &peri_id);
-peri.initialize(&String::from_str(&env, "Peridot"), &String::from_str(&env, "P"), &6u32, &peridottroller_id);
+peri.initialize(
+    &String::from_str(&env, "Peridot"),
+    &String::from_str(&env, "P"),
+    &6u32,
+    &peridottroller_id,
+    &1_000_000_000i128, // max supply
+);
 
 // Tell peridottroller which token to mint for rewards
 peridottroller.set_peridot_token(&peri_id);

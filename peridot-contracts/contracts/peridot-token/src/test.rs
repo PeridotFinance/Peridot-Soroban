@@ -14,7 +14,13 @@ fn test_token_mint_transfer_burn() {
     let id = env.register(PeridotToken, ());
     let c = PeridotTokenClient::new(&env, &id);
 
-    c.initialize(&String::from_str(&env, "Peridot"), &String::from_str(&env, "P"), &6u32, &admin);
+    c.initialize(
+        &String::from_str(&env, "Peridot"),
+        &String::from_str(&env, "P"),
+        &6u32,
+        &admin,
+        &1_000_000_000i128,
+    );
 
     // Mint
     c.mint(&a, &1000i128);
