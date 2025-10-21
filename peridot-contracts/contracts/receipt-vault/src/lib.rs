@@ -1704,7 +1704,7 @@ fn checked_interest_product(amount: u128, yearly_rate_scaled: u128, elapsed: u12
     amount
         .checked_mul(yearly_rate_scaled)
         .and_then(|v| v.checked_mul(elapsed))
-        .unwrap_or(0u128)
+        .expect("interest calculation overflow")
 }
 
 fn call_contract_or_panic<T, A>(env: &Env, contract: &Address, func: &str, args: A) -> T

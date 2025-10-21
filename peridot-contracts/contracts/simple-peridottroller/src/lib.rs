@@ -1127,7 +1127,7 @@ impl SimplePeridottroller {
             ().into_val(&env),
         );
         if rate == 0 {
-            return 0u128;
+            panic!("invalid exchange rate");
         }
         (seize_underlying.saturating_mul(1_000_000u128)) / rate
     }
