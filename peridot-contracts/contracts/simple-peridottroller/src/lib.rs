@@ -33,6 +33,8 @@ pub enum DataKey {
     UserSupplyIndex(Address, Address),
     UserBorrowIndex(Address, Address),
     Accrued(Address),
+    PriceCache(Address),
+    FallbackPrice(Address),
 }
 
 #[contractevent]
@@ -158,6 +160,15 @@ pub struct MarketRemoved {
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FallbackPriceUpdated {
+    #[topic]
+    pub token: Address,
+    pub price: Option<u128>,
+    pub scale: Option<u128>,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MarketEntered {
     #[topic]
     pub account: Address,
@@ -190,6 +201,24 @@ pub struct LiquidateBorrow {
 
 #[contract]
 pub struct SimplePeridottroller;
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CachedPrice {
+    pub price: u128,
+    pub scale: u128,
+    pub timestamp: u64,
+    pub resolution: u32,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FallbackPrice {
+    pub price: u128,
+    pub scale: u128,
+}
+
+const FALLBACK_STALE_MULTIPLIER: u64 = 3;
 
 #[contractimpl]
 impl SimplePeridottroller {
@@ -362,6 +391,38 @@ impl SimplePeridottroller {
                 .remove(&DataKey::OracleAssetSymbol(token.clone())),
         }
         OracleAssetSymbolMapped { token, symbol }.publish(&env);
+    }
+
+    pub fn set_price_fallback(env: Env, token: Address, price: Option<(u128, u128)>) {
+        require_admin(env.clone());
+        match price {
+            Some((p, s)) => {
+                if p == 0 || s == 0 {
+                    panic!("invalid fallback price");
+                }
+                env.storage().persistent().set(
+                    &DataKey::FallbackPrice(token.clone()),
+                    &FallbackPrice { price: p, scale: s },
+                );
+                FallbackPriceUpdated {
+                    token,
+                    price: Some(p),
+                    scale: Some(s),
+                }
+                .publish(&env);
+            }
+            None => {
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::FallbackPrice(token.clone()));
+                FallbackPriceUpdated {
+                    token,
+                    price: None,
+                    scale: None,
+                }
+                .publish(&env);
+            }
+        }
     }
 
     pub fn set_reserve_recipient(env: Env, recipient: Address) {
@@ -1346,7 +1407,7 @@ impl SimplePeridottroller {
             .get::<_, Symbol>(&DataKey::OracleAssetSymbol(token.clone()))
         {
             Some(sym) => crate::reflector::Asset::Other(sym),
-            None => crate::reflector::Asset::Stellar(token),
+            None => crate::reflector::Asset::Stellar(token.clone()),
         };
         let pd_opt = client.lastprice(&asset);
         match pd_opt {
@@ -1364,22 +1425,63 @@ impl SimplePeridottroller {
                 if pd.timestamp + max_age < now {
                     return None;
                 }
-                Some((pd.price as u128, scale))
+                let price = pd.price as u128;
+                env.storage().persistent().set(
+                    &DataKey::PriceCache(token.clone()),
+                    &CachedPrice {
+                        price,
+                        scale,
+                        timestamp: pd.timestamp,
+                        resolution: client.resolution(),
+                    },
+                );
+                Some((price, scale))
             }
             _ => None,
         }
     }
 
     fn require_price(env: Env, token: Address) -> (u128, u128) {
-        match Self::get_price_usd(env, token) {
-            Some((price, scale)) => {
-                if price == 0 {
-                    panic!("price zero");
-                }
-                (price, scale)
+        if let Some((price, scale)) = Self::get_price_usd(env.clone(), token.clone()) {
+            if price > 0 {
+                return (price, scale);
             }
-            None => panic!("price unavailable"),
         }
+        if let Some(cached) = env
+            .storage()
+            .persistent()
+            .get::<_, CachedPrice>(&DataKey::PriceCache(token.clone()))
+        {
+            if cached.price > 0
+                && Self::cached_price_fresh(&env, cached.timestamp, cached.resolution)
+            {
+                return (cached.price, cached.scale);
+            }
+        }
+        if let Some(fallback) = env
+            .storage()
+            .persistent()
+            .get::<_, FallbackPrice>(&DataKey::FallbackPrice(token.clone()))
+        {
+            if fallback.price > 0 {
+                return (fallback.price, fallback.scale);
+            }
+        }
+        panic!("price unavailable");
+    }
+
+    fn cached_price_fresh(env: &Env, cached_timestamp: u64, cached_resolution: u32) -> bool {
+        let now = env.ledger().timestamp();
+        let k: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::OracleMaxAgeMultiplier)
+            .unwrap_or(2u64);
+        let res = cached_resolution as u64;
+        let grace = res
+            .saturating_mul(k)
+            .saturating_mul(FALLBACK_STALE_MULTIPLIER.max(1));
+        cached_timestamp + grace >= now
     }
 }
 
