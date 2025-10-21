@@ -423,9 +423,9 @@ impl ReceiptVault {
         // underlying = ptoken_amount * rate / 1e6
         let underlying_to_return = (ptoken_amount * current_rate) / SCALE_1E6;
 
-        // Check we have enough total underlying (principal + interest)
-        let total_underlying_available = Self::get_total_underlying(env.clone());
-        if total_underlying_available < underlying_to_return {
+        // Check we have enough liquid underlying (cash)
+        let available_underlying = Self::get_available_liquidity(env.clone());
+        if available_underlying < underlying_to_return {
             panic!("Not enough liquidity");
         }
 
@@ -999,6 +999,9 @@ impl ReceiptVault {
                 .get(&DataKey::YearlyRateScaled)
                 .unwrap_or(0u128)
         };
+        if yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("interest rate out of bounds");
+        }
 
         let total_deposited: u128 = env
             .storage()
@@ -1058,6 +1061,9 @@ impl ReceiptVault {
                 .get(&DataKey::BorrowYearlyRateScaled)
                 .unwrap_or(0u128)
         };
+        if borrow_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("interest rate out of bounds");
+        }
         if tb_prior > 0 && borrow_yearly_rate_scaled > 0 {
             let seconds_per_year: u128 = 365 * 24 * 60 * 60;
             let numerator = checked_interest_product(tb_prior, borrow_yearly_rate_scaled, elapsed);
@@ -1600,6 +1606,7 @@ impl ReceiptVault {
         };
 
         // Transfer tokens from liquidator
+        liquidator.require_auth();
         let token_client = token::Client::new(&env, &token_address);
         let repay_i128 = to_i128(repay_amount);
         token_client.transfer(&liquidator, &env.current_contract_address(), &repay_i128);
