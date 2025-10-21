@@ -395,6 +395,7 @@ impl ReceiptVault {
     /// Withdraw tokens using pTokens
     pub fn withdraw(env: Env, user: Address, ptoken_amount: u128) {
         let token_address = ensure_initialized(&env);
+        user.require_auth();
         // Always update interest first
         Self::update_interest(env.clone());
         // Rewards accrue

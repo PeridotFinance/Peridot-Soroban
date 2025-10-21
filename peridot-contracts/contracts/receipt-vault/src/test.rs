@@ -120,7 +120,7 @@ fn test_initialize_rejects_large_supply_rate() {
 #[should_panic(expected = "invalid borrow rate")]
 fn test_set_borrow_rate_rejects_large_value() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
@@ -135,7 +135,7 @@ fn test_set_borrow_rate_rejects_large_value() {
 #[test]
 fn test_deposit_receives_ptokens() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -209,7 +209,7 @@ fn test_withdraw_with_ptokens() {
 #[test]
 fn test_multiple_users_with_ptokens() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user1 = Address::generate(&env);
@@ -255,7 +255,7 @@ fn test_multiple_users_with_ptokens() {
 #[test]
 fn test_exchange_rate_accrues_with_interest() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -292,7 +292,7 @@ fn test_exchange_rate_accrues_with_interest() {
 #[test]
 fn test_interest_model_accrual_updates_accumulated_interest() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -330,7 +330,7 @@ fn test_interest_model_accrual_updates_accumulated_interest() {
         &800_000u128,
         &admin,
     );
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
     vault_client.set_interest_model(&model_id);
 
     // Provide liquidity and create an outstanding borrow so interest can accrue.
@@ -356,7 +356,7 @@ fn test_interest_model_accrual_updates_accumulated_interest() {
 #[should_panic(expected = "Insufficient pTokens")]
 fn test_withdraw_insufficient_ptokens() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -382,7 +382,7 @@ fn test_withdraw_insufficient_ptokens() {
 #[should_panic(expected = "Vault not initialized")]
 fn test_deposit_uninitialized_vault() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let user = Address::generate(&env);
 
@@ -396,7 +396,7 @@ fn test_deposit_uninitialized_vault() {
 #[test]
 fn test_zero_balance_users() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -416,7 +416,7 @@ fn test_zero_balance_users() {
 #[test]
 fn test_reserve_accrual_and_reduce() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -464,7 +464,7 @@ fn test_reserve_accrual_and_reduce() {
 #[test]
 fn test_borrow_and_repay_flow() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -500,7 +500,7 @@ fn test_borrow_and_repay_flow() {
 #[test]
 fn test_borrow_interest_accrues_and_index_updates() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -538,7 +538,7 @@ fn test_borrow_interest_accrues_and_index_updates() {
 #[should_panic(expected = "supply cap exceeded")]
 fn test_supply_cap_enforced_on_deposit() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -565,7 +565,7 @@ fn test_supply_cap_enforced_on_deposit() {
 #[should_panic(expected = "borrow cap exceeded")]
 fn test_borrow_cap_enforced_on_borrow() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -638,7 +638,7 @@ impl MockRateModel {
 #[test]
 fn test_interest_model_supply_accrual() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -671,7 +671,7 @@ fn test_interest_model_supply_accrual() {
 #[test]
 fn test_interest_model_borrow_accrual_and_reserves() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -712,7 +712,7 @@ fn test_interest_model_borrow_accrual_and_reserves() {
 #[should_panic(expected = "Insufficient collateral")]
 fn test_borrow_insufficient_collateral() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -736,7 +736,7 @@ fn test_borrow_insufficient_collateral() {
 #[should_panic(expected = "Insufficient collateral")]
 fn test_borrow_insufficient_liquidity() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user_a = Address::generate(&env);
@@ -764,7 +764,7 @@ fn test_borrow_insufficient_liquidity() {
 #[test]
 fn test_flash_loan_successfully_repaid() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let depositor = Address::generate(&env);
@@ -806,7 +806,7 @@ fn test_flash_loan_successfully_repaid() {
 #[should_panic(expected = "flash loan not repaid")]
 fn test_flash_loan_missing_fee_panics() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let depositor = Address::generate(&env);
@@ -831,7 +831,7 @@ fn test_flash_loan_missing_fee_panics() {
 #[test]
 fn test_admin_setters_guarded() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -854,7 +854,7 @@ fn test_admin_setters_guarded() {
 #[test]
 fn test_vault_set_admin_transfers_admin() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let new_admin = Address::generate(&env);
@@ -871,7 +871,7 @@ fn test_vault_set_admin_transfers_admin() {
 #[test]
 fn test_jump_model_dynamic_borrow_apr_accrual() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -910,7 +910,7 @@ fn test_jump_model_dynamic_borrow_apr_accrual() {
         &800_000u128,
         &admin,
     );
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
     vault.set_interest_model(&model_id);
 
     // Provide liquidity and collateral
@@ -943,7 +943,7 @@ fn test_jump_model_dynamic_borrow_apr_accrual() {
 #[test]
 fn test_jump_model_dynamic_supply_apr_accrual() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
@@ -983,7 +983,7 @@ fn test_jump_model_dynamic_supply_apr_accrual() {
         &800_000u128,
         &admin,
     );
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
     vault.set_interest_model(&model_id);
 
     // Deposit and borrow to 10% util
@@ -1010,7 +1010,7 @@ fn test_jump_model_dynamic_supply_apr_accrual() {
 #[should_panic]
 fn test_ptoken_transfer_and_approve_with_gating() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);

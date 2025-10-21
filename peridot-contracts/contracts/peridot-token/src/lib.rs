@@ -25,6 +25,14 @@ impl PeridotToken {
         if env
             .storage()
             .persistent()
+            .get::<_, i128>(&DataKey::MaxSupply)
+            .is_some()
+        {
+            panic!("already initialized");
+        }
+        if env
+            .storage()
+            .persistent()
             .get::<_, Address>(&DataKey::Admin)
             .is_some()
         {
