@@ -1423,7 +1423,7 @@ impl SimplePeridottroller {
         };
         let pd_opt = client.lastprice(&asset);
         match pd_opt {
-            Some(pd) if pd.price >= 0 => {
+            Some(pd) if pd.price > 0 => {
                 // Staleness check per Reflector best practices
                 let res = client.resolution() as u64; // seconds
                 let now = env.ledger().timestamp();
@@ -1437,7 +1437,12 @@ impl SimplePeridottroller {
                 if pd.timestamp + max_age < now {
                     return None;
                 }
-                let price = pd.price as u128;
+                let Ok(price) = u128::try_from(pd.price) else {
+                    return None;
+                };
+                if price == 0 {
+                    return None;
+                }
                 env.storage().persistent().set(
                     &DataKey::PriceCache(token.clone()),
                     &CachedPrice {
