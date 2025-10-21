@@ -1660,7 +1660,10 @@ impl ReceiptVault {
 mod test;
 
 fn to_i128(amount: u128) -> i128 {
-    i128::try_from(amount).expect("amount exceeds i128")
+    if amount > i128::MAX as u128 {
+        panic!("amount exceeds i128");
+    }
+    amount as i128
 }
 
 fn ptoken_balance(env: &Env, addr: &Address) -> u128 {
@@ -1686,11 +1689,8 @@ fn ensure_initialized(env: &Env) -> Address {
         .expect("Vault not initialized")
 }
 
-fn ensure_user_auth(env: &Env, user: &Address) {
-    let already = env.auths().into_iter().any(|(addr, _)| addr == *user);
-    if !already {
-        user.require_auth();
-    }
+fn ensure_user_auth(_env: &Env, user: &Address) {
+    user.require_auth();
 }
 
 fn checked_interest_product(amount: u128, yearly_rate_scaled: u128, elapsed: u128) -> u128 {

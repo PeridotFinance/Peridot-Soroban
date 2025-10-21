@@ -64,6 +64,7 @@ impl JumpRateModel {
     }
 
     pub fn get_borrow_rate(env: Env, cash: u128, borrows: u128, reserves: u128) -> u128 {
+        ensure_initialized(&env);
         let util = Self::utilization(cash, borrows, reserves);
         let base: u128 = env
             .storage()
@@ -101,6 +102,7 @@ impl JumpRateModel {
         reserves: u128,
         reserve_factor: u128,
     ) -> u128 {
+        ensure_initialized(&env);
         let one_minus_rf = SCALE_1E6.saturating_sub(reserve_factor);
         let borrow_rate = Self::get_borrow_rate(env.clone(), cash, borrows, reserves);
         let rate_to_pool = borrow_rate.saturating_mul(one_minus_rf) / SCALE_1E6;
@@ -117,6 +119,17 @@ impl JumpRateModel {
             return 0;
         }
         borrows.saturating_mul(SCALE_1E6) / denom
+    }
+}
+
+fn ensure_initialized(env: &Env) {
+    if env
+        .storage()
+        .persistent()
+        .get::<_, Address>(&DataKey::Admin)
+        .is_none()
+    {
+        panic!("model not initialized");
     }
 }
 
