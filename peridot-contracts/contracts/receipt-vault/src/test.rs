@@ -8,7 +8,7 @@ use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
 use soroban_sdk::{
     testutils::{Address as _, MockAuth, MockAuthInvoke},
-    token, Address, Bytes, Env,
+    token, Address, Bytes, Env, IntoVal,
 };
 
 fn create_test_token<'a>(

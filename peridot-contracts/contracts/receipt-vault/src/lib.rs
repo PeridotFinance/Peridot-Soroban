@@ -308,6 +308,7 @@ impl ReceiptVault {
 
     /// Deposit tokens into the vault and receive pTokens
     pub fn deposit(env: Env, user: Address, amount: u128) {
+        let token_address = ensure_initialized(&env);
         // Always update interest first
         Self::update_interest(env.clone());
         // Require authorization from the user
@@ -327,12 +328,6 @@ impl ReceiptVault {
         }
 
         // Get the underlying token
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("Vault not initialized");
-
         // Pause: consult peridottroller if set
         if let Some(comp_addr) = env
             .storage()
@@ -397,6 +392,7 @@ impl ReceiptVault {
 
     /// Withdraw tokens using pTokens
     pub fn withdraw(env: Env, user: Address, ptoken_amount: u128) {
+        let token_address = ensure_initialized(&env);
         // Always update interest first
         Self::update_interest(env.clone());
         // Rewards accrue
@@ -430,13 +426,6 @@ impl ReceiptVault {
         if total_underlying_available < underlying_to_return {
             panic!("Not enough liquidity");
         }
-
-        // Get the underlying token
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("Vault not initialized");
 
         // USD-based redeem gating via peridottroller, if set
         if let Some(comp_addr) = env
@@ -588,6 +577,7 @@ impl ReceiptVault {
         amount: u128,
         spender: Option<Address>,
     ) {
+        ensure_initialized(&env);
         if amount == 0 {
             return;
         }
@@ -704,6 +694,9 @@ impl ReceiptVault {
                 .unwrap_or(SCALE_1E6);
         }
         let total_underlying = Self::get_total_underlying(env.clone());
+        if total_underlying == 0 {
+            panic!("invalid exchange rate state");
+        }
         // rate = total_underlying / total_ptokens, scaled 1e6
         (total_underlying * SCALE_1E6) / total_ptokens
     }
@@ -879,6 +872,7 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        let token_address = ensure_initialized(&env);
         let reserves: u128 = env
             .storage()
             .persistent()
@@ -892,11 +886,6 @@ impl ReceiptVault {
             .persistent()
             .set(&DataKey::TotalReserves, &updated_reserves);
         // Transfer underlying to admin
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
         let amount_i128 = to_i128(amount);
         token_client.transfer(&env.current_contract_address(), &admin, &amount_i128);
@@ -915,6 +904,7 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        let token_address = ensure_initialized(&env);
         let fees: u128 = env
             .storage()
             .persistent()
@@ -928,11 +918,6 @@ impl ReceiptVault {
             .persistent()
             .set(&DataKey::TotalAdminFees, &updated_fees);
         // Transfer underlying to admin
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
         let amount_i128 = to_i128(amount);
         token_client.transfer(&env.current_contract_address(), &admin, &amount_i128);
@@ -947,6 +932,14 @@ impl ReceiptVault {
 
     /// Update interest based on elapsed time and current per-second rate
     pub fn update_interest(env: Env) {
+        if env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::UnderlyingToken)
+            .is_none()
+        {
+            return;
+        }
         let last_time: u64 = env
             .storage()
             .persistent()
@@ -1324,6 +1317,7 @@ impl ReceiptVault {
 
     /// Borrow tokens against pToken collateral
     pub fn borrow(env: Env, user: Address, amount: u128) {
+        let token_address = ensure_initialized(&env);
         Self::update_interest(env.clone());
         user.require_auth();
         if let Some(comp_addr) = env
@@ -1355,11 +1349,6 @@ impl ReceiptVault {
             if paused {
                 panic!("borrow paused");
             }
-            let underlying_token: Address = env
-                .storage()
-                .persistent()
-                .get(&DataKey::UnderlyingToken)
-                .expect("Vault not initialized");
             let (_liq, shortfall): (u128, u128) = call_contract_or_panic(
                 &env,
                 &comp_addr,
@@ -1368,7 +1357,7 @@ impl ReceiptVault {
                     user.clone(),
                     env.current_contract_address(),
                     amount,
-                    underlying_token,
+                    token_address.clone(),
                 ),
             );
             if shortfall > 0 {
@@ -1428,11 +1417,6 @@ impl ReceiptVault {
             .set(&DataKey::TotalBorrowed, &total_borrows);
 
         // Transfer tokens to user
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
         let amount_i128 = to_i128(amount);
         token_client.transfer(&env.current_contract_address(), &user, &amount_i128);
@@ -1449,6 +1433,7 @@ impl ReceiptVault {
 
     /// Repay borrowed tokens
     pub fn repay(env: Env, user: Address, amount: u128) {
+        let token_address = ensure_initialized(&env);
         Self::update_interest(env.clone());
         user.require_auth();
         if let Some(comp_addr) = env
@@ -1475,11 +1460,6 @@ impl ReceiptVault {
         };
 
         // Transfer tokens from user
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
         let repay_i128 = to_i128(repay_amount);
         token_client.transfer(&user, &env.current_contract_address(), &repay_i128);
@@ -1512,6 +1492,7 @@ impl ReceiptVault {
         if amount == 0 {
             panic!("invalid flash amount");
         }
+        let token_address = ensure_initialized(&env);
         Self::update_interest(env.clone());
 
         if let Some(comp_addr) = env
@@ -1542,11 +1523,6 @@ impl ReceiptVault {
             .unwrap_or(0u128);
         let fee = (amount.saturating_mul(fee_scaled)) / SCALE_1E6;
 
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
 
         let balance_before_i: i128 = token_client.balance(&env.current_contract_address());
@@ -1597,6 +1573,7 @@ impl ReceiptVault {
 
     /// Repay on behalf during liquidation; only callable by peridottroller/peridottroller
     pub fn repay_on_behalf(env: Env, liquidator: Address, borrower: Address, amount: u128) {
+        let token_address = ensure_initialized(&env);
         // Accrue and auth via peridottroller/peridottroller
         Self::update_interest(env.clone());
         let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);
@@ -1616,11 +1593,6 @@ impl ReceiptVault {
         };
 
         // Transfer tokens from liquidator
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("Vault not initialized");
         let token_client = token::Client::new(&env, &token_address);
         let repay_i128 = to_i128(repay_amount);
         token_client.transfer(&liquidator, &env.current_contract_address(), &repay_i128);
@@ -1700,11 +1672,18 @@ fn total_ptokens_supply(env: &Env) -> u128 {
     supply as u128
 }
 
+fn ensure_initialized(env: &Env) -> Address {
+    env.storage()
+        .persistent()
+        .get(&DataKey::UnderlyingToken)
+        .expect("Vault not initialized")
+}
+
 fn checked_interest_product(amount: u128, yearly_rate_scaled: u128, elapsed: u128) -> u128 {
     amount
         .checked_mul(yearly_rate_scaled)
         .and_then(|v| v.checked_mul(elapsed))
-        .unwrap_or(u128::MAX)
+        .unwrap_or_else(|| panic!("interest calculation overflow"))
 }
 
 fn call_contract_or_panic<T, A>(env: &Env, contract: &Address, func: &str, args: A) -> T

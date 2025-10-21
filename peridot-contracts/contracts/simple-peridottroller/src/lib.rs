@@ -1234,23 +1234,25 @@ impl SimplePeridottroller {
         if accrued == 0 {
             return;
         }
-        if let Some(token) = env
+        let Some(token) = env
             .storage()
             .persistent()
             .get::<_, Address>(&DataKey::PeridotToken)
-        {
-            use soroban_sdk::IntoVal;
-            let amt: i128 = if accrued > i128::MAX as u128 {
-                i128::MAX
-            } else {
-                accrued as i128
-            };
-            let _: () = env.invoke_contract(
-                &token,
-                &Symbol::new(&env, "mint"),
-                (user.clone(), amt).into_val(&env),
-            );
-        }
+        else {
+            // Reward token not configured; keep accrued balance intact.
+            return;
+        };
+        use soroban_sdk::IntoVal;
+        let amt: i128 = if accrued > i128::MAX as u128 {
+            i128::MAX
+        } else {
+            accrued as i128
+        };
+        let _: () = env.invoke_contract(
+            &token,
+            &Symbol::new(&env, "mint"),
+            (user.clone(), amt).into_val(&env),
+        );
         env.storage()
             .persistent()
             .set(&DataKey::Accrued(user), &0u128);
