@@ -4,6 +4,7 @@ use soroban_sdk::{
     contract, contractevent, contractimpl, contracttype, token, Address, Bytes, Env, IntoVal,
     String,
 };
+use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
 
 // Storage key types for the contract
@@ -228,6 +229,11 @@ impl ReceiptVault {
             .is_some()
         {
             panic!("already initialized");
+        }
+        if let Some((caller, _)) = env.auths().first() {
+            if caller != &admin {
+                panic!("initializer mismatch");
+            }
         }
         admin.require_auth();
         if supply_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
@@ -493,8 +499,10 @@ impl ReceiptVault {
         // Create token client
         let token_client = token::Client::new(&env, &token_address);
 
-        // Burn pTokens and update totals
-        TokenBase::burn(&env, &user, to_i128(ptoken_amount));
+        let burn_i128 = to_i128(ptoken_amount);
+        // Burn pTokens without implicit auth (already required above)
+        TokenBase::update(&env, Some(&user), None, burn_i128);
+        emit_burn(&env, &user, burn_i128);
         // Update totals
         let mut total_deposited: u128 = env
             .storage()
@@ -733,12 +741,64 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        let token_address: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UnderlyingToken)
+            .expect("Vault not initialized");
         let _: bool = call_contract_or_panic::<bool, _>(
             &env,
             &peridottroller,
             "is_deposit_paused",
             (env.current_contract_address(),),
         );
+        let _: bool = call_contract_or_panic::<bool, _>(
+            &env,
+            &peridottroller,
+            "is_redeem_paused",
+            (env.current_contract_address(),),
+        );
+        let _: bool = call_contract_or_panic::<bool, _>(
+            &env,
+            &peridottroller,
+            "is_borrow_paused",
+            (env.current_contract_address(),),
+        );
+        let _: () = call_contract_or_panic::<(), _>(
+            &env,
+            &peridottroller,
+            "accrue_user_market",
+            (
+                env.current_contract_address(),
+                env.current_contract_address(),
+            ),
+        );
+        let _: u128 = call_contract_or_panic::<u128, _>(
+            &env,
+            &peridottroller,
+            "get_market_cf",
+            (env.current_contract_address(),),
+        );
+        let _: u128 = call_contract_or_panic::<u128, _>(
+            &env,
+            &peridottroller,
+            "get_collateral_excl_usd",
+            (
+                env.current_contract_address(),
+                env.current_contract_address(),
+            ),
+        );
+        let _: u128 = call_contract_or_panic::<u128, _>(
+            &env,
+            &peridottroller,
+            "get_borrows_excl",
+            (
+                env.current_contract_address(),
+                env.current_contract_address(),
+            ),
+        );
+        let _price_check: Option<(u128, u128)> =
+            call_contract_or_panic(&env, &peridottroller, "get_price_usd", (token_address,));
         env.storage()
             .persistent()
             .set(&DataKey::Peridottroller, &peridottroller.clone());
