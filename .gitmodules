@@ -1,0 +1,3 @@
+[submodule "stellar-lending-app"]
+	path = stellar-lending-app
+	url = https://github.com/AsyncSan/peristellapp.git
