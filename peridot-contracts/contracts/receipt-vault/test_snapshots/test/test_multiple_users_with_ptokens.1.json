@@ -187,6 +187,34 @@
     [],
     [],
     [],
+    [
+      [
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
+        {
+          "function": {
+            "contract_fn": {
+              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM",
+              "function_name": "withdraw",
+              "args": [
+                {
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
+                },
+                {
+                  "u128": "50"
+                }
+              ]
+            }
+          },
+          "sub_invocations": []
+        }
+      ]
+    ],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
     []
   ],
   "ledger": {
@@ -395,6 +423,39 @@
       [
         {
           "contract_data": {
+            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
+            "key": {
+              "ledger_key_nonce": {
+                "nonce": "8370022561469687789"
+              }
+            },
+            "durability": "temporary"
+          }
+        },
+        [
+          {
+            "last_modified_ledger_seq": 0,
+            "data": {
+              "contract_data": {
+                "ext": "v0",
+                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
+                "key": {
+                  "ledger_key_nonce": {
+                    "nonce": "8370022561469687789"
+                  }
+                },
+                "durability": "temporary",
+                "val": "void"
+              }
+            },
+            "ext": "v0"
+          },
+          6311999
+        ]
+      ],
+      [
+        {
+          "contract_data": {
             "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
             "key": {
               "ledger_key_nonce": {
@@ -578,7 +639,7 @@
                 },
                 "durability": "persistent",
                 "val": {
-                  "i128": "200"
+                  "i128": "150"
                 }
               }
             },
@@ -1052,7 +1113,7 @@
                 },
                 "durability": "persistent",
                 "val": {
-                  "u128": "350"
+                  "u128": "300"
                 }
               }
             },
@@ -1243,7 +1304,7 @@
                           ]
                         },
                         "val": {
-                          "i128": "350"
+                          "i128": "300"
                         }
                       }
                     ]
@@ -1298,7 +1359,7 @@
                         "symbol": "amount"
                       },
                       "val": {
-                        "i128": "300"
+                        "i128": "350"
                       }
                     },
                     {
@@ -1438,7 +1499,7 @@
                         "symbol": "amount"
                       },
                       "val": {
-                        "i128": "350"
+                        "i128": "300"
                       }
                     },
                     {
