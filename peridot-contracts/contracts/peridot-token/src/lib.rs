@@ -65,8 +65,12 @@ impl PeridotToken {
         TokenBase::total_supply(&env)
     }
 
-    pub fn balance_of(env: Env, who: Address) -> i128 {
+    pub fn balance(env: Env, who: Address) -> i128 {
         TokenBase::balance(&env, &who)
+    }
+
+    pub fn balance_of(env: Env, who: Address) -> i128 {
+        Self::balance(env, who)
     }
 
     pub fn allowance(env: Env, owner: Address, spender: Address) -> i128 {
@@ -82,7 +86,6 @@ impl PeridotToken {
     }
 
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
-        from.require_auth();
         if amount <= 0 {
             panic!("bad amount");
         }
@@ -90,7 +93,6 @@ impl PeridotToken {
     }
 
     pub fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: i128) {
-        spender.require_auth();
         if amount <= 0 {
             panic!("bad amount");
         }

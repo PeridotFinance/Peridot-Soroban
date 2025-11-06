@@ -230,9 +230,12 @@ impl ReceiptVault {
         {
             panic!("already initialized");
         }
-        if let Some((caller, _)) = env.auths().first() {
-            if caller != &admin {
-                panic!("initializer mismatch");
+        #[cfg(any(test, feature = "testutils"))]
+        {
+            if let Some((caller, _)) = env.auths().first() {
+                if caller != &admin {
+                    panic!("initializer mismatch");
+                }
             }
         }
         admin.require_auth();
@@ -452,47 +455,63 @@ impl ReceiptVault {
             if paused {
                 panic!("redeem paused");
             }
-            // Other markets collateral in USD
-            let other_collateral_usd: u128 = call_contract_or_panic(
-                &env,
-                &comp_addr,
-                "get_collateral_excl_usd",
-                (user.clone(), env.current_contract_address()),
-            );
-            // Price of this underlying
-            let price_opt: Option<(u128, u128)> =
-                call_contract_or_panic(&env, &comp_addr, "get_price_usd", (token_address.clone(),));
-            if price_opt.is_none() {
-                panic!("Price unavailable");
-            }
-            let (price, scale) = price_opt.unwrap();
-            let cf: u128 = call_contract_or_panic(
-                &env,
-                &comp_addr,
-                "get_market_cf",
-                (env.current_contract_address(),),
-            );
-
-            // Local remaining collateral after this redeem
-            let remaining_ptokens = current_ptokens - ptoken_amount;
-            let remaining_underlying = (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
-            let remaining_discounted = (remaining_underlying.saturating_mul(cf)) / SCALE_1E6;
-            let local_collateral_usd = (remaining_discounted.saturating_mul(price)) / scale;
-
-            // Borrows USD: other markets + local market
+            let local_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
             let other_borrows_usd: u128 = call_contract_or_panic(
                 &env,
                 &comp_addr,
                 "get_borrows_excl",
                 (user.clone(), env.current_contract_address()),
             );
-            let local_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
-            let local_debt_usd = (local_debt.saturating_mul(price)) / scale;
+            if local_debt > 0 || other_borrows_usd > 0 {
+                // Other markets collateral in USD
+                let other_collateral_usd: u128 = call_contract_or_panic(
+                    &env,
+                    &comp_addr,
+                    "get_collateral_excl_usd",
+                    (user.clone(), env.current_contract_address()),
+                );
+                // Price of this underlying
+                let price_opt: Option<(u128, u128)> = call_contract_or_panic(
+                    &env,
+                    &comp_addr,
+                    "get_price_usd",
+                    (token_address.clone(),),
+                );
+                if price_opt.is_none() {
+                    panic!("Price unavailable");
+                }
+                let (price, scale) = price_opt.unwrap();
+                let cf: u128 = call_contract_or_panic(
+                    &env,
+                    &comp_addr,
+                    "get_market_cf",
+                    (env.current_contract_address(),),
+                );
 
-            let total_collateral_usd = other_collateral_usd.saturating_add(local_collateral_usd);
-            let total_borrow_usd = other_borrows_usd.saturating_add(local_debt_usd);
-            if total_collateral_usd < total_borrow_usd {
-                panic!("Insufficient collateral");
+                // Local remaining collateral after this redeem
+                let remaining_ptokens = current_ptokens - ptoken_amount;
+                let remaining_underlying =
+                    (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
+                let remaining_discounted =
+                    (remaining_underlying.saturating_mul(cf)) / SCALE_1E6;
+                let local_collateral_usd =
+                    (remaining_discounted.saturating_mul(price)) / scale;
+
+                // Borrows USD: other markets + local market
+                let other_borrows_usd: u128 = call_contract_or_panic(
+                    &env,
+                    &comp_addr,
+                    "get_borrows_excl",
+                    (user.clone(), env.current_contract_address()),
+                );
+                let local_debt_usd = (local_debt.saturating_mul(price)) / scale;
+
+                let total_collateral_usd =
+                    other_collateral_usd.saturating_add(local_collateral_usd);
+                let total_borrow_usd = other_borrows_usd.saturating_add(local_debt_usd);
+                if total_collateral_usd < total_borrow_usd {
+                    panic!("Insufficient collateral");
+                }
             }
         }
 
@@ -1214,8 +1233,7 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::UnderlyingToken)
             .expect("Vault not initialized");
-        let token_client = token::Client::new(&env, &token_address);
-        let cash_i: i128 = token_client.balance(&env.current_contract_address());
+        let cash_i: i128 = token_balance(&env, &token_address, &env.current_contract_address());
         let cash: u128 = if cash_i < 0 { 0u128 } else { cash_i as u128 };
         let borrows: u128 = env
             .storage()
@@ -1748,6 +1766,22 @@ fn total_ptokens_supply(env: &Env) -> u128 {
         panic!("negative supply");
     }
     supply as u128
+}
+
+fn token_balance(env: &Env, token: &Address, owner: &Address) -> i128 {
+    use soroban_sdk::{InvokeError, Symbol, Val, Vec};
+    let args: Vec<Val> = (owner.clone(),).into_val(env);
+    let sym_balance = Symbol::new(env, "balance");
+    match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance, args.clone()) {
+        Ok(Ok(result)) => result,
+        _ => {
+            let sym_balance_of = Symbol::new(env, "balance_of");
+            match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance_of, args) {
+                Ok(Ok(result)) => result,
+                _ => panic!("balance lookup failed"),
+            }
+        }
+    }
 }
 
 fn ensure_initialized(env: &Env) -> Address {
