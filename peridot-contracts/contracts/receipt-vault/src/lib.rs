@@ -2,7 +2,7 @@
 use core::convert::TryFrom;
 use soroban_sdk::{
     contract, contractevent, contractimpl, contracttype, token, Address, Bytes, Env, IntoVal,
-    String,
+    String, Symbol,
 };
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
@@ -322,6 +322,13 @@ impl ReceiptVault {
         Self::update_interest(env.clone());
         // Require authorization from the user
         ensure_user_auth(&env, &user);
+        let auth_args = (
+            Symbol::new(&env, "deposit"),
+            env.current_contract_address(),
+            amount,
+        )
+            .into_val(&env);
+        user.require_auth_for_args(auth_args);
         // Rewards: accrue user in this market
         if let Some(comp_addr) = env
             .storage()
@@ -1797,9 +1804,8 @@ fn ensure_user_auth(_env: &Env, user: &Address) {
 
 fn checked_interest_product(amount: u128, yearly_rate_scaled: u128, elapsed: u128) -> u128 {
     amount
-        .checked_mul(yearly_rate_scaled)
-        .and_then(|v| v.checked_mul(elapsed))
-        .expect("interest calculation overflow")
+        .saturating_mul(yearly_rate_scaled)
+        .saturating_mul(elapsed)
 }
 
 fn call_contract_or_panic<T, A>(env: &Env, contract: &Address, func: &str, args: A) -> T
