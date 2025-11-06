@@ -37,6 +37,15 @@ pub enum DataKey {
     FallbackPrice(Address),
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AccrualHint {
+    pub total_ptokens: Option<u128>,
+    pub total_borrowed: Option<u128>,
+    pub user_ptokens: Option<u128>,
+    pub user_borrowed: Option<u128>,
+}
+
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OracleUpdated {
@@ -1293,11 +1302,9 @@ impl SimplePeridottroller {
         let markets = Self::get_user_markets(env.clone(), user.clone());
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
-            Self::accrue_market(env.clone(), m.clone());
-            // distribute supply
-            Self::distribute_supply(env.clone(), user.clone(), m.clone());
-            // distribute borrow
-            Self::distribute_borrow(env.clone(), user.clone(), m.clone());
+            Self::accrue_market(env.clone(), m.clone(), None, None);
+            Self::distribute_supply(env.clone(), user.clone(), m.clone(), None);
+            Self::distribute_borrow(env.clone(), user.clone(), m.clone(), None);
         }
         let accrued: u128 = env
             .storage()
@@ -1339,10 +1346,31 @@ impl SimplePeridottroller {
     }
 
     // Public: accrue indexes for a market and distribute to a single user (no mint)
-    pub fn accrue_user_market(env: Env, user: Address, market: Address) {
-        Self::accrue_market(env.clone(), market.clone());
-        Self::distribute_supply(env.clone(), user.clone(), market.clone());
-        Self::distribute_borrow(env, user, market);
+    pub fn accrue_user_market(
+        env: Env,
+        user: Address,
+        market: Address,
+        hint: Option<AccrualHint>,
+    ) {
+        let hint = hint.unwrap_or(AccrualHint {
+            total_ptokens: None,
+            total_borrowed: None,
+            user_ptokens: None,
+            user_borrowed: None,
+        });
+        Self::accrue_market(
+            env.clone(),
+            market.clone(),
+            hint.total_ptokens,
+            hint.total_borrowed,
+        );
+        Self::distribute_supply(
+            env.clone(),
+            user.clone(),
+            market.clone(),
+            hint.user_ptokens,
+        );
+        Self::distribute_borrow(env, user, market, hint.user_borrowed);
     }
 
     fn sum_positions_usd(env: Env, user: Address, exclude_market: Option<Address>) -> (u128, u128) {
@@ -1530,7 +1558,12 @@ fn require_admin(env: Env) {
 const INDEX_SCALE_1E18: u128 = 1_000_000_000_000_000_000u128;
 
 impl SimplePeridottroller {
-    fn accrue_market(env: Env, market: Address) {
+    fn accrue_market(
+        env: Env,
+        market: Address,
+        total_ptokens_hint: Option<u128>,
+        total_borrowed_hint: Option<u128>,
+    ) {
         let now = env.ledger().timestamp();
         // supply
         let last_s: u64 = env
@@ -1547,11 +1580,13 @@ impl SimplePeridottroller {
                 .unwrap_or(0u128);
             if speed > 0 {
                 use soroban_sdk::IntoVal;
-                let total_ptokens: u128 = env.invoke_contract(
-                    &market,
-                    &Symbol::new(&env, "get_total_ptokens"),
-                    ().into_val(&env),
-                );
+                let total_ptokens: u128 = total_ptokens_hint.unwrap_or_else(|| {
+                    env.invoke_contract(
+                        &market,
+                        &Symbol::new(&env, "get_total_ptokens"),
+                        ().into_val(&env),
+                    )
+                });
                 if total_ptokens > 0 {
                     let mut idx: u128 = env
                         .storage()
@@ -1595,11 +1630,13 @@ impl SimplePeridottroller {
                 .unwrap_or(0u128);
             if speed > 0 {
                 use soroban_sdk::IntoVal;
-                let total_borrowed: u128 = env.invoke_contract(
-                    &market,
-                    &Symbol::new(&env, "get_total_borrowed"),
-                    ().into_val(&env),
-                );
+                let total_borrowed: u128 = total_borrowed_hint.unwrap_or_else(|| {
+                    env.invoke_contract(
+                        &market,
+                        &Symbol::new(&env, "get_total_borrowed"),
+                        ().into_val(&env),
+                    )
+                });
                 if total_borrowed > 0 {
                     let mut idx: u128 = env
                         .storage()
@@ -1630,7 +1667,12 @@ impl SimplePeridottroller {
         }
     }
 
-    fn distribute_supply(env: Env, user: Address, market: Address) {
+    fn distribute_supply(
+        env: Env,
+        user: Address,
+        market: Address,
+        user_ptokens_hint: Option<u128>,
+    ) {
         use soroban_sdk::IntoVal;
         let idx: u128 = env
             .storage()
@@ -1645,11 +1687,13 @@ impl SimplePeridottroller {
         if idx == uidx {
             return;
         }
-        let pbal: u128 = env.invoke_contract(
-            &market,
-            &Symbol::new(&env, "get_ptoken_balance"),
-            (user.clone(),).into_val(&env),
-        );
+        let pbal: u128 = user_ptokens_hint.unwrap_or_else(|| {
+            env.invoke_contract(
+                &market,
+                &Symbol::new(&env, "get_ptoken_balance"),
+                (user.clone(),).into_val(&env),
+            )
+        });
         if pbal > 0 {
             let delta_index = idx.saturating_sub(uidx);
             let add = (pbal.saturating_mul(delta_index)) / INDEX_SCALE_1E18;
@@ -1667,7 +1711,12 @@ impl SimplePeridottroller {
             .set(&DataKey::UserSupplyIndex(user, market), &idx);
     }
 
-    fn distribute_borrow(env: Env, user: Address, market: Address) {
+    fn distribute_borrow(
+        env: Env,
+        user: Address,
+        market: Address,
+        user_borrowed_hint: Option<u128>,
+    ) {
         use soroban_sdk::IntoVal;
         let idx: u128 = env
             .storage()
@@ -1682,11 +1731,13 @@ impl SimplePeridottroller {
         if idx == uidx {
             return;
         }
-        let debt: u128 = env.invoke_contract(
-            &market,
-            &Symbol::new(&env, "get_user_borrow_balance"),
-            (user.clone(),).into_val(&env),
-        );
+        let debt: u128 = user_borrowed_hint.unwrap_or_else(|| {
+            env.invoke_contract(
+                &market,
+                &Symbol::new(&env, "get_user_borrow_balance"),
+                (user.clone(),).into_val(&env),
+            )
+        });
         if debt > 0 {
             let delta_index = idx.saturating_sub(uidx);
             let add = (debt.saturating_mul(delta_index)) / INDEX_SCALE_1E18;

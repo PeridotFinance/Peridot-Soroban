@@ -1,8 +1,7 @@
 #![no_std]
-use core::convert::TryFrom;
 use soroban_sdk::{
     contract, contractevent, contractimpl, contracttype, token, Address, Bytes, Env, IntoVal,
-    String, Symbol,
+    String,
 };
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
@@ -41,6 +40,15 @@ pub enum DataKey {
 pub struct BorrowSnapshot {
     pub principal: u128,
     pub interest_index: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ControllerAccrualHint {
+    total_ptokens: Option<u128>,
+    total_borrowed: Option<u128>,
+    user_ptokens: Option<u128>,
+    user_borrowed: Option<u128>,
 }
 
 const SCALE_1E6: u128 = 1_000_000u128;
@@ -334,24 +342,35 @@ impl ReceiptVault {
         Self::update_interest(env.clone());
         // Require authorization from the user
         ensure_user_auth(&env, &user);
-        let auth_args = (
-            Symbol::new(&env, "deposit"),
-            env.current_contract_address(),
-            amount,
-        )
-            .into_val(&env);
-        user.require_auth_for_args(auth_args);
         // Rewards: accrue user in this market
         if let Some(comp_addr) = env
             .storage()
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
+            let total_ptokens_before = total_ptokens_supply(&env);
+            let total_borrowed_before: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowed)
+                .unwrap_or(0u128);
+            let user_ptokens_before = ptoken_balance(&env, &user);
+            let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
+            let hint = ControllerAccrualHint {
+                total_ptokens: Some(total_ptokens_before),
+                total_borrowed: Some(total_borrowed_before),
+                user_ptokens: Some(user_ptokens_before),
+                user_borrowed: Some(user_borrow_before),
+            };
             call_contract_or_panic::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (user.clone(), env.current_contract_address()),
+                (
+                    user.clone(),
+                    env.current_contract_address(),
+                    Some(hint),
+                ),
             );
         }
 
@@ -426,23 +445,39 @@ impl ReceiptVault {
         user.require_auth();
         // Always update interest first
         Self::update_interest(env.clone());
+        let current_ptokens = ptoken_balance(&env, &user);
         // Rewards accrue
         if let Some(comp_addr) = env
             .storage()
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
+            let total_ptokens_before = total_ptokens_supply(&env);
+            let total_borrowed_before: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowed)
+                .unwrap_or(0u128);
+            let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
+            let hint = ControllerAccrualHint {
+                total_ptokens: Some(total_ptokens_before),
+                total_borrowed: Some(total_borrowed_before),
+                user_ptokens: Some(current_ptokens),
+                user_borrowed: Some(user_borrow_before),
+            };
             call_contract_or_panic::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (user.clone(), env.current_contract_address()),
+                (
+                    user.clone(),
+                    env.current_contract_address(),
+                    Some(hint),
+                ),
             );
         }
 
         // Check user has sufficient pTokens
-        let current_ptokens = ptoken_balance(&env, &user);
-
         if current_ptokens < ptoken_amount {
             panic!("Insufficient pTokens");
         }
@@ -680,17 +715,39 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
+            let total_ptokens_now = total_ptokens_supply(&env);
+            let total_borrowed_now: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowed)
+                .unwrap_or(0u128);
+            let from_hint = ControllerAccrualHint {
+                total_ptokens: Some(total_ptokens_now),
+                total_borrowed: Some(total_borrowed_now),
+                user_ptokens: Some(ptoken_balance(&env, &from)),
+                user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), from.clone())),
+            };
             call_contract_or_panic::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (from.clone(), env.current_contract_address()),
+                (
+                    from.clone(),
+                    env.current_contract_address(),
+                    Some(from_hint),
+                ),
             );
+            let to_hint = ControllerAccrualHint {
+                total_ptokens: Some(total_ptokens_now),
+                total_borrowed: Some(total_borrowed_now),
+                user_ptokens: Some(ptoken_balance(&env, &to)),
+                user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), to.clone())),
+            };
             call_contract_or_panic::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (to, env.current_contract_address()),
+                (to, env.current_contract_address(), Some(to_hint)),
             );
         }
     }
@@ -809,6 +866,7 @@ impl ReceiptVault {
             (
                 env.current_contract_address(),
                 env.current_contract_address(),
+                Option::<ControllerAccrualHint>::None,
             ),
         );
         let _: u128 = call_contract_or_panic::<u128, _>(
@@ -1436,11 +1494,29 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
+            let total_ptokens_before = total_ptokens_supply(&env);
+            let total_borrowed_before: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowed)
+                .unwrap_or(0u128);
+            let user_ptokens_before = ptoken_balance(&env, &user);
+            let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
+            let hint = ControllerAccrualHint {
+                total_ptokens: Some(total_ptokens_before),
+                total_borrowed: Some(total_borrowed_before),
+                user_ptokens: Some(user_ptokens_before),
+                user_borrowed: Some(user_borrow_before),
+            };
             call_contract_or_panic::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (user.clone(), env.current_contract_address()),
+                (
+                    user.clone(),
+                    env.current_contract_address(),
+                    Some(hint),
+                ),
             );
         }
 
@@ -1547,20 +1623,37 @@ impl ReceiptVault {
         let token_address = ensure_initialized(&env);
         Self::update_interest(env.clone());
         ensure_user_auth(&env, &user);
+        let current_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
         if let Some(comp_addr) = env
             .storage()
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
         {
+            let total_ptokens_before = total_ptokens_supply(&env);
+            let total_borrowed_before: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowed)
+                .unwrap_or(0u128);
+            let user_ptokens_before = ptoken_balance(&env, &user);
+            let hint = ControllerAccrualHint {
+                total_ptokens: Some(total_ptokens_before),
+                total_borrowed: Some(total_borrowed_before),
+                user_ptokens: Some(user_ptokens_before),
+                user_borrowed: Some(current_debt),
+            };
             call_contract_or_panic::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (user.clone(), env.current_contract_address()),
+                (
+                    user.clone(),
+                    env.current_contract_address(),
+                    Some(hint),
+                ),
             );
         }
 
-        let current_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
         if current_debt == 0 {
             return;
         }

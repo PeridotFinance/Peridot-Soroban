@@ -12,8 +12,6 @@ pub enum DataKey {
 #[contract]
 pub struct PeridotToken;
 
-const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
-
 #[contractimpl]
 impl PeridotToken {
     pub fn initialize(
@@ -24,11 +22,11 @@ impl PeridotToken {
         admin: Address,
         max_supply: i128,
     ) {
-        let expected_admin_str =
-            option_env!("PERIDOT_TOKEN_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
-        let expected_admin = Address::from_str(&env, expected_admin_str);
-        if admin != expected_admin {
-            panic!("unexpected admin");
+        if let Some(expected_admin_str) = option_env!("PERIDOT_TOKEN_INIT_ADMIN") {
+            let expected_admin = Address::from_str(&env, expected_admin_str);
+            if admin != expected_admin {
+                panic!("unexpected admin");
+            }
         }
         if env
             .storage()

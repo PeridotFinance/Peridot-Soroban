@@ -1,6 +1,7 @@
 #![cfg(test)]
 use super::*;
 use receipt_vault as rv;
+use peridot_token as pt;
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::token;
 use soroban_sdk::BytesN;
@@ -1419,7 +1420,6 @@ fn test_rewards_accrual_and_claim() {
     comp.set_oracle(&oracle_id);
 
     // PERI token under comptroller admin
-    use peridot_token as pt;
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
     peri.initialize(
@@ -1494,7 +1494,6 @@ fn test_borrow_side_rewards_and_claim() {
     comp.set_oracle(&oracle_id);
 
     // PERI token
-    use peridot_token as pt;
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
     peri.initialize(
