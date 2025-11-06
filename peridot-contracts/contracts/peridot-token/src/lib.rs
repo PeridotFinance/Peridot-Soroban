@@ -1,7 +1,12 @@
 #![no_std]
+#[cfg(test)]
+extern crate std;
 use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String};
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
+
+pub const DEFAULT_INIT_ADMIN: &str =
+    "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 
 #[contracttype]
 pub enum DataKey {
@@ -22,11 +27,11 @@ impl PeridotToken {
         admin: Address,
         max_supply: i128,
     ) {
-        if let Some(expected_admin_str) = option_env!("PERIDOT_TOKEN_INIT_ADMIN") {
-            let expected_admin = Address::from_str(&env, expected_admin_str);
-            if admin != expected_admin {
-                panic!("unexpected admin");
-            }
+        let expected_admin_str =
+            option_env!("PERIDOT_TOKEN_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin = Address::from_string(&String::from_str(&env, expected_admin_str));
+        if admin != expected_admin {
+            panic!("unexpected admin");
         }
         if env
             .storage()

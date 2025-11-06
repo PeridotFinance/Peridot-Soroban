@@ -1,4 +1,6 @@
 #![no_std]
+#[cfg(test)]
+extern crate std;
 use soroban_sdk::{
     contract, contractevent, contractimpl, contracttype, Address, Env, IntoVal, Map, Symbol, Vec,
 };

@@ -7,13 +7,15 @@ fn test_token_mint_transfer_burn() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let admin = Address::generate(&env);
+    let admin =
+        Address::from_string(&String::from_str(&env, super::DEFAULT_INIT_ADMIN));
     let a = Address::generate(&env);
     let b = Address::generate(&env);
 
     let id = env.register(PeridotToken, ());
     let c = PeridotTokenClient::new(&env, &id);
 
+    std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", super::DEFAULT_INIT_ADMIN);
     c.initialize(
         &String::from_str(&env, "Peridot"),
         &String::from_str(&env, "P"),
