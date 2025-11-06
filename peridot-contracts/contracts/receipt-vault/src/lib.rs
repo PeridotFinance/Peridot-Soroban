@@ -33,6 +33,7 @@ pub enum DataKey {
     TotalReserves,            // u128 accumulated reserves
     SupplyCap,                // u128, max total underlying (principal + interest)
     BorrowCap,                // u128, max total borrowed
+    Initialized,              // bool flag to prevent re-initialization
 }
 
 #[contracttype]
@@ -225,6 +226,14 @@ impl ReceiptVault {
         if env
             .storage()
             .persistent()
+            .get::<_, bool>(&DataKey::Initialized)
+            .unwrap_or(false)
+        {
+            panic!("already initialized");
+        }
+        if env
+            .storage()
+            .persistent()
             .get::<_, Address>(&DataKey::UnderlyingToken)
             .is_some()
         {
@@ -313,6 +322,9 @@ impl ReceiptVault {
             String::from_str(&env, "Peridot Receipt"),
             String::from_str(&env, "pPRT"),
         );
+        env.storage()
+            .persistent()
+            .set(&DataKey::Initialized, &true);
     }
 
     /// Deposit tokens into the vault and receive pTokens
@@ -1792,10 +1804,22 @@ fn token_balance(env: &Env, token: &Address, owner: &Address) -> i128 {
 }
 
 fn ensure_initialized(env: &Env) -> Address {
-    env.storage()
+    let token: Address = env
+        .storage()
         .persistent()
         .get(&DataKey::UnderlyingToken)
-        .expect("Vault not initialized")
+        .expect("Vault not initialized");
+    if !env
+        .storage()
+        .persistent()
+        .get::<_, bool>(&DataKey::Initialized)
+        .unwrap_or(false)
+    {
+        env.storage()
+            .persistent()
+            .set(&DataKey::Initialized, &true);
+    }
+    token
 }
 
 fn ensure_user_auth(_env: &Env, user: &Address) {
