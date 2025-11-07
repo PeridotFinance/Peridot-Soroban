@@ -1,7 +1,7 @@
 #![cfg(test)]
 use super::*;
-use receipt_vault as rv;
 use peridot_token as pt;
+use receipt_vault as rv;
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::token;
 use soroban_sdk::BytesN;
@@ -13,8 +13,7 @@ fn test_peridottroller_add_and_enter_market() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
-    let admin =
-        Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    let admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
     let user = Address::generate(&env);
     let _lender = Address::generate(&env);
     // Use a real vault as market to satisfy safety checks
@@ -55,8 +54,7 @@ fn test_total_collateral_and_borrows_across_markets() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
-    let admin =
-        Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    let admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
     let user = Address::generate(&env);
 
     // Token A
@@ -190,8 +188,7 @@ fn test_oracle_gating_prevents_over_borrow() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
-    let admin =
-        Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    let admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
     let user = Address::generate(&env);
 
     // Tokens
@@ -1426,8 +1423,7 @@ fn test_rewards_accrual_and_claim() {
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
     std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
-    let token_admin =
-        Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
     peri.initialize(
         &soroban_sdk::String::from_str(&env, "Peridot"),
         &soroban_sdk::String::from_str(&env, "P"),
@@ -1503,8 +1499,7 @@ fn test_borrow_side_rewards_and_claim() {
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
     std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
-    let token_admin =
-        Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
     peri.initialize(
         &soroban_sdk::String::from_str(&env, "Peridot"),
         &soroban_sdk::String::from_str(&env, "P"),
@@ -1584,8 +1579,7 @@ fn test_multi_market_supply_rewards() {
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
     std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
-    let token_admin =
-        Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
     peri.initialize(
         &soroban_sdk::String::from_str(&env, "Peridot"),
         &soroban_sdk::String::from_str(&env, "P"),

@@ -5,8 +5,7 @@ use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String};
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
 
-pub const DEFAULT_INIT_ADMIN: &str =
-    "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 
 #[contracttype]
 pub enum DataKey {

@@ -1,7 +1,7 @@
 #![no_std]
 use soroban_sdk::{
     contract, contractevent, contractimpl, contracttype, token, Address, Bytes, Env, IntoVal,
-    String,
+    String, Symbol,
 };
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
@@ -217,6 +217,18 @@ pub struct FlashLoan {
     pub fee_paid: u128,
 }
 
+/// Records recoverable vs fatal external contract call failures.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExternalCallFailed {
+    #[topic]
+    pub contract: Address,
+    #[topic]
+    pub function: Symbol,
+    pub recoverable: bool,
+    pub failure_kind: u32,
+}
+
 #[contract]
 pub struct ReceiptVault;
 
@@ -351,16 +363,14 @@ impl ReceiptVault {
                 user_ptokens: Some(user_ptokens_before),
                 user_borrowed: Some(user_borrow_before),
             };
-            call_contract_or_panic::<(), _>(
+            if let Err(err) = try_call_contract::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (
-                    user.clone(),
-                    env.current_contract_address(),
-                    Some(hint),
-                ),
-            );
+                (user.clone(), env.current_contract_address(), Some(hint)),
+            ) {
+                emit_external_call_failure(&env, &comp_addr, &err, true);
+            }
         }
 
         // Get the underlying token
@@ -454,16 +464,14 @@ impl ReceiptVault {
                 user_ptokens: Some(current_ptokens),
                 user_borrowed: Some(user_borrow_before),
             };
-            call_contract_or_panic::<(), _>(
+            if let Err(err) = try_call_contract::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (
-                    user.clone(),
-                    env.current_contract_address(),
-                    Some(hint),
-                ),
-            );
+                (user.clone(), env.current_contract_address(), Some(hint)),
+            ) {
+                emit_external_call_failure(&env, &comp_addr, &err, true);
+            }
         }
 
         // Check user has sufficient pTokens
@@ -535,10 +543,8 @@ impl ReceiptVault {
                 let remaining_ptokens = current_ptokens - ptoken_amount;
                 let remaining_underlying =
                     (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
-                let remaining_discounted =
-                    (remaining_underlying.saturating_mul(cf)) / SCALE_1E6;
-                let local_collateral_usd =
-                    (remaining_discounted.saturating_mul(price)) / scale;
+                let remaining_discounted = (remaining_underlying.saturating_mul(cf)) / SCALE_1E6;
+                let local_collateral_usd = (remaining_discounted.saturating_mul(price)) / scale;
 
                 // Borrows USD: other markets + local market
                 let other_borrows_usd: u128 = call_contract_or_panic(
@@ -716,7 +722,7 @@ impl ReceiptVault {
                 user_ptokens: Some(ptoken_balance(&env, &from)),
                 user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), from.clone())),
             };
-            call_contract_or_panic::<(), _>(
+            if let Err(err) = try_call_contract::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
@@ -725,19 +731,23 @@ impl ReceiptVault {
                     env.current_contract_address(),
                     Some(from_hint),
                 ),
-            );
+            ) {
+                emit_external_call_failure(&env, &comp_addr, &err, true);
+            }
             let to_hint = ControllerAccrualHint {
                 total_ptokens: Some(total_ptokens_now),
                 total_borrowed: Some(total_borrowed_now),
                 user_ptokens: Some(ptoken_balance(&env, &to)),
                 user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), to.clone())),
             };
-            call_contract_or_panic::<(), _>(
+            if let Err(err) = try_call_contract::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
                 (to, env.current_contract_address(), Some(to_hint)),
-            );
+            ) {
+                emit_external_call_failure(&env, &comp_addr, &err, true);
+            }
         }
     }
 
@@ -1497,16 +1507,14 @@ impl ReceiptVault {
                 user_ptokens: Some(user_ptokens_before),
                 user_borrowed: Some(user_borrow_before),
             };
-            call_contract_or_panic::<(), _>(
+            if let Err(err) = try_call_contract::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (
-                    user.clone(),
-                    env.current_contract_address(),
-                    Some(hint),
-                ),
-            );
+                (user.clone(), env.current_contract_address(), Some(hint)),
+            ) {
+                emit_external_call_failure(&env, &comp_addr, &err, true);
+            }
         }
 
         // Cross-market enforcement via peridottroller (USD); fall back to local-only if no peridottroller
@@ -1631,16 +1639,14 @@ impl ReceiptVault {
                 user_ptokens: Some(user_ptokens_before),
                 user_borrowed: Some(current_debt),
             };
-            call_contract_or_panic::<(), _>(
+            if let Err(err) = try_call_contract::<(), _>(
                 &env,
                 &comp_addr,
                 "accrue_user_market",
-                (
-                    user.clone(),
-                    env.current_contract_address(),
-                    Some(hint),
-                ),
-            );
+                (user.clone(), env.current_contract_address(), Some(hint)),
+            ) {
+                emit_external_call_failure(&env, &comp_addr, &err, true);
+            }
         }
 
         if current_debt == 0 {
@@ -1897,9 +1903,7 @@ fn ensure_initialized(env: &Env) -> Address {
         .get::<_, bool>(&DataKey::Initialized)
         .unwrap_or(false)
     {
-        env.storage()
-            .persistent()
-            .set(&DataKey::Initialized, &true);
+        env.storage().persistent().set(&DataKey::Initialized, &true);
     }
     token
 }
@@ -1910,11 +1914,47 @@ fn ensure_user_auth(_env: &Env, user: &Address) {
 
 fn checked_interest_product(amount: u128, yearly_rate_scaled: u128, elapsed: u128) -> u128 {
     amount
-        .saturating_mul(yearly_rate_scaled)
-        .saturating_mul(elapsed)
+        .checked_mul(yearly_rate_scaled)
+        .and_then(|v| v.checked_mul(elapsed))
+        .expect("interest calculation overflow")
 }
 
-fn call_contract_or_panic<T, A>(env: &Env, contract: &Address, func: &str, args: A) -> T
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CallErrorKind {
+    ContractRevert,
+    HostError,
+}
+
+impl CallErrorKind {
+    fn as_code(&self) -> u32 {
+        match self {
+            CallErrorKind::ContractRevert => 0,
+            CallErrorKind::HostError => 1,
+        }
+    }
+}
+
+struct CallError {
+    function: Symbol,
+    kind: CallErrorKind,
+}
+
+fn emit_external_call_failure(env: &Env, contract: &Address, error: &CallError, recoverable: bool) {
+    ExternalCallFailed {
+        contract: contract.clone(),
+        function: error.function.clone(),
+        recoverable,
+        failure_kind: error.kind.as_code(),
+    }
+    .publish(env);
+}
+
+fn try_call_contract<T, A>(
+    env: &Env,
+    contract: &Address,
+    func: &str,
+    args: A,
+) -> Result<T, CallError>
 where
     T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>,
     A: IntoVal<Env, soroban_sdk::Vec<soroban_sdk::Val>>,
@@ -1923,9 +1963,28 @@ where
     let symbol = Symbol::new(env, func);
     let args_val: Vec<Val> = args.into_val(env);
     match env.try_invoke_contract::<T, InvokeError>(contract, &symbol, args_val) {
-        Ok(Ok(val)) => val,
-        Ok(Err(_)) => panic!("invalid return from {}", func),
-        Err(Ok(err)) => panic!("{} call failed: {:?}", func, err),
-        Err(Err(err)) => panic!("{} call failed: {:?}", func, err),
+        Ok(Ok(val)) => Ok(val),
+        Ok(Err(_)) => Err(CallError {
+            function: symbol,
+            kind: CallErrorKind::ContractRevert,
+        }),
+        Err(Ok(_)) | Err(Err(_)) => Err(CallError {
+            function: symbol,
+            kind: CallErrorKind::HostError,
+        }),
+    }
+}
+
+fn call_contract_or_panic<T, A>(env: &Env, contract: &Address, func: &str, args: A) -> T
+where
+    T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>,
+    A: IntoVal<Env, soroban_sdk::Vec<soroban_sdk::Val>>,
+{
+    match try_call_contract(env, contract, func, args) {
+        Ok(val) => val,
+        Err(err) => {
+            emit_external_call_failure(env, contract, &err, false);
+            panic!("{} call failed", func);
+        }
     }
 }

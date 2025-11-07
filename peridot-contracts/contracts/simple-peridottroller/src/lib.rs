@@ -1348,12 +1348,7 @@ impl SimplePeridottroller {
     }
 
     // Public: accrue indexes for a market and distribute to a single user (no mint)
-    pub fn accrue_user_market(
-        env: Env,
-        user: Address,
-        market: Address,
-        hint: Option<AccrualHint>,
-    ) {
+    pub fn accrue_user_market(env: Env, user: Address, market: Address, hint: Option<AccrualHint>) {
         let hint = hint.unwrap_or(AccrualHint {
             total_ptokens: None,
             total_borrowed: None,
@@ -1366,12 +1361,7 @@ impl SimplePeridottroller {
             hint.total_ptokens,
             hint.total_borrowed,
         );
-        Self::distribute_supply(
-            env.clone(),
-            user.clone(),
-            market.clone(),
-            hint.user_ptokens,
-        );
+        Self::distribute_supply(env.clone(), user.clone(), market.clone(), hint.user_ptokens);
         Self::distribute_borrow(env, user, market, hint.user_borrowed);
     }
 
