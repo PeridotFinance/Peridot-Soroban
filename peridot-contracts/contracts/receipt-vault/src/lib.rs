@@ -410,7 +410,10 @@ impl ReceiptVault {
 
         // Calculate pTokens to mint based on current exchange rate BEFORE moving cash
         let current_rate = Self::get_exchange_rate(env.clone());
-        let ptokens_to_mint = (amount.saturating_mul(SCALE_1E6)) / current_rate;
+        let scaled_amount = amount
+            .checked_mul(SCALE_1E6)
+            .expect("ptoken calculation overflow");
+        let ptokens_to_mint = scaled_amount / current_rate;
         if ptokens_to_mint == 0 {
             panic!("amount below minimum");
         }
@@ -808,7 +811,10 @@ impl ReceiptVault {
                 .unwrap_or(SCALE_1E6);
         }
         // rate = total_underlying / total_ptokens, scaled 1e6
-        (total_underlying * SCALE_1E6) / total_ptokens
+        let scaled_underlying = total_underlying
+            .checked_mul(SCALE_1E6)
+            .expect("exchange rate overflow");
+        scaled_underlying / total_ptokens
     }
 
     /// Get the underlying token address
