@@ -231,23 +231,15 @@ impl ReceiptVault {
         borrow_yearly_rate_scaled: u128,
         admin: Address,
     ) {
-        if env
-            .storage()
-            .persistent()
+        let storage = env.storage().persistent();
+        if storage
             .get::<_, bool>(&DataKey::Initialized)
             .unwrap_or(false)
         {
             panic!("already initialized");
         }
-        if env
-            .storage()
-            .persistent()
-            .get::<_, Address>(&DataKey::UnderlyingToken)
-            .is_some()
-        {
-            panic!("already initialized");
-        }
-        #[cfg(any(test, feature = "testutils"))]
+        storage.set(&DataKey::Initialized, &true);
+        #[cfg(test)]
         {
             if let Some((caller, _)) = env.auths().first() {
                 if caller != &admin {
@@ -330,9 +322,6 @@ impl ReceiptVault {
             String::from_str(&env, "Peridot Receipt"),
             String::from_str(&env, "pPRT"),
         );
-        env.storage()
-            .persistent()
-            .set(&DataKey::Initialized, &true);
     }
 
     /// Deposit tokens into the vault and receive pTokens
