@@ -1360,7 +1360,7 @@ fn test_vault_repay_on_behalf_requires_peridottroller() {
 }
 
 #[test]
-#[should_panic(expected = "no peridottroller")]
+#[should_panic(expected = "no_comp")]
 fn test_vault_seize_requires_peridottroller() {
     let env = Env::default();
     env.mock_all_auths();
@@ -1383,7 +1383,7 @@ fn test_vault_seize_requires_peridottroller() {
     v.deposit(&borrower, &100u128);
 
     // Direct seize without peridottroller wired -> should panic
-    v.seize(&borrower, &liquidator, &10u128);
+    v.seize(&borrower, &liquidator, &10u128, &None);
 }
 
 #[test]
@@ -1529,6 +1529,142 @@ fn test_borrow_side_rewards_and_claim() {
     env.ledger().set_timestamp(now + 6);
     comp.claim(&borrower);
     assert_eq!(peri.balance_of(&borrower), 42i128); // 7*6
+}
+
+// Security test: Verify that accrue_user_market rejects hints from non-market callers
+// This prevents attackers from inflating reward indexes with malicious hint values
+#[test]
+#[should_panic] // Panics due to failed auth when attacker provides hints
+fn test_accrue_user_market_rejects_external_hints() {
+    let env = Env::default();
+    // DO NOT mock_all_auths - we want auth to be enforced
+    
+    let admin = Address::generate(&env);
+    let attacker = Address::generate(&env);
+
+    // Token + market
+    let t_admin = Address::generate(&env);
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
+    let v_id = env.register(rv::ReceiptVault, ());
+    let v = rv::ReceiptVaultClient::new(&env, &v_id);
+    
+    // Mock only specific auths needed for setup (not for the attack)
+    env.mock_all_auths();
+    v.initialize(&t, &0u128, &0u128, &admin);
+
+    // Comptroller
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&v_id);
+    v.set_peridottroller(&comp_id);
+    
+    // Set up reward speeds so accrual matters
+    comp.set_supply_speed(&v_id, &1000u128);
+    
+    // PERI token for rewards
+    let peri_id = env.register(pt::PeridotToken, ());
+    let peri = pt::PeridotTokenClient::new(&env, &peri_id);
+    std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
+    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    peri.initialize(
+        &soroban_sdk::String::from_str(&env, "Peridot"),
+        &soroban_sdk::String::from_str(&env, "P"),
+        &6u32,
+        &token_admin,
+        &1_000_000_000i128,
+    );
+    comp.set_peridot_token(&peri_id);
+    
+    // Advance time so accrual produces rewards
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 100);
+
+    // Stop mocking all auths - now the attacker cannot satisfy market.require_auth()
+    env.set_auths(&[]);
+    
+    // Attacker tries to call accrue_user_market with malicious hints:
+    // - tiny total_ptokens to inflate the index
+    // - huge user_ptokens to get massive accrual
+    let malicious_hint = AccrualHint {
+        total_ptokens: Some(1u128),        // tiny -> inflates index
+        total_borrowed: Some(0u128),
+        user_ptokens: Some(1_000_000_000u128), // huge -> massive accrual
+        user_borrowed: Some(0u128),
+    };
+    
+    // This should PANIC because attacker can't auth as the market
+    comp.accrue_user_market(&attacker, &v_id, &Some(malicious_hint));
+}
+
+// Security test: Verify that accrue_user_market works WITHOUT hints (safe path)
+#[test]
+fn test_accrue_user_market_allows_no_hints() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    // Token + market
+    let t_admin = Address::generate(&env);
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
+    let v_id = env.register(rv::ReceiptVault, ());
+    let v = rv::ReceiptVaultClient::new(&env, &v_id);
+    v.initialize(&t, &0u128, &0u128, &admin);
+
+    // Comptroller
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&v_id);
+    comp.enter_market(&user, &v_id);
+    v.set_peridottroller(&comp_id);
+    
+    // Oracle with $1 price
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    oracle.set_price(&t, &1_000_000i128);
+    comp.set_oracle(&oracle_id);
+    
+    // Set up reward speeds
+    comp.set_supply_speed(&v_id, &10u128);
+    
+    // PERI token
+    let peri_id = env.register(pt::PeridotToken, ());
+    let peri = pt::PeridotTokenClient::new(&env, &peri_id);
+    std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
+    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    peri.initialize(
+        &soroban_sdk::String::from_str(&env, "Peridot"),
+        &soroban_sdk::String::from_str(&env, "P"),
+        &6u32,
+        &token_admin,
+        &1_000_000_000i128,
+    );
+    comp.set_peridot_token(&peri_id);
+    
+    // Fund and deposit
+    let mint = token::StellarAssetClient::new(&env, &t);
+    mint.mint(&user, &1_000i128);
+    v.deposit(&user, &100u128);
+    
+    // Advance time
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 5);
+    
+    // Call accrue_user_market WITHOUT hints (None) - this should succeed
+    // because it fetches values on-chain instead of trusting hints
+    comp.accrue_user_market(&user, &v_id, &None);
+    
+    // Verify accrual happened (user should have some accrued rewards)
+    let accrued = comp.get_accrued(&user);
+    assert!(accrued > 0u128, "Should have accrued rewards");
 }
 
 #[test]

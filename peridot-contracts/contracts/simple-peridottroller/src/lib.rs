@@ -48,6 +48,18 @@ pub struct AccrualHint {
     pub user_borrowed: Option<u128>,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SeizeContext {
+    pub liquidity: u128,
+    pub shortfall: u128,
+    pub max_redeem_ptokens: u128,
+    pub seize_ptokens: u128,
+    pub fee_recipient: Option<Address>,
+    pub fee_ptokens: u128,
+    pub expires_at: u64,
+}
+
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OracleUpdated {
@@ -1249,43 +1261,44 @@ impl SimplePeridottroller {
         if seize_ptokens > borrower_pbal {
             seize_ptokens = borrower_pbal;
         }
-        // Route fee to reserve recipient if configured
         let liq_fee: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::LiquidationFeeScaled)
             .unwrap_or(0u128);
-        if liq_fee > 0 {
-            let fee_ptokens = (seize_ptokens.saturating_mul(liq_fee)) / 1_000_000u128;
-            if fee_ptokens > 0 {
-                if let Some(recipient) = env
-                    .storage()
-                    .persistent()
-                    .get::<_, Address>(&DataKey::ReserveRecipient)
-                {
-                    let _: () = env.invoke_contract(
-                        &collateral_market,
-                        &Symbol::new(&env, "seize"),
-                        (borrower.clone(), recipient, fee_ptokens).into_val(&env),
-                    );
-                }
-            }
-            let remainder = seize_ptokens
-                .saturating_sub((seize_ptokens.saturating_mul(liq_fee)) / 1_000_000u128);
-            if remainder > 0 {
-                let _: () = env.invoke_contract(
-                    &collateral_market,
-                    &Symbol::new(&env, "seize"),
-                    (borrower.clone(), liquidator.clone(), remainder).into_val(&env),
-                );
-            }
+        let mut fee_ptokens = (seize_ptokens.saturating_mul(liq_fee)) / 1_000_000u128;
+        let fee_recipient = if fee_ptokens > 0 {
+            env.storage()
+                .persistent()
+                .get::<_, Address>(&DataKey::ReserveRecipient)
         } else {
-            let _: () = env.invoke_contract(
-                &collateral_market,
-                &Symbol::new(&env, "seize"),
-                (borrower.clone(), liquidator.clone(), seize_ptokens).into_val(&env),
-            );
+            None
+        };
+        if fee_recipient.is_none() {
+            fee_ptokens = 0;
         }
+        let max_redeem_ptokens =
+            Self::preview_redeem_max(env.clone(), borrower.clone(), collateral_market.clone());
+        let seize_ctx = SeizeContext {
+            liquidity: _liq,
+            shortfall,
+            max_redeem_ptokens,
+            seize_ptokens,
+            fee_recipient,
+            fee_ptokens,
+            expires_at: env.ledger().timestamp() + 5,
+        };
+        let _: () = env.invoke_contract(
+            &collateral_market,
+            &Symbol::new(&env, "seize"),
+            (
+                borrower.clone(),
+                liquidator.clone(),
+                seize_ptokens,
+                Some(seize_ctx),
+            )
+                .into_val(&env),
+        );
 
         LiquidateBorrow {
             liquidator,
@@ -1348,7 +1361,18 @@ impl SimplePeridottroller {
     }
 
     // Public: accrue indexes for a market and distribute to a single user (no mint)
+    // SECURITY: When hints are provided, require market contract authorization to prevent
+    // attackers from supplying malicious hint values that could inflate reward distributions.
+    // Without hints (None), values are fetched on-chain which is safe but more expensive.
     pub fn accrue_user_market(env: Env, user: Address, market: Address, hint: Option<AccrualHint>) {
+        // When hints are provided, require authorization from the market contract.
+        // This prevents external attackers from manipulating total_ptokens/total_borrowed
+        // to inflate reward indexes, or user_ptokens/user_borrowed to inflate accruals.
+        // The ReceiptVault contract satisfies this when calling during user operations.
+        if hint.is_some() {
+            market.require_auth();
+        }
+
         let hint = hint.unwrap_or(AccrualHint {
             total_ptokens: None,
             total_borrowed: None,

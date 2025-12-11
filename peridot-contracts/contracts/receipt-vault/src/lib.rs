@@ -229,6 +229,39 @@ pub struct ExternalCallFailed {
     pub failure_kind: u32,
 }
 
+/// Emits when interest math saturates to avoid panic.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InterestOverflow {
+    pub amount: u128,
+    pub yearly_rate_scaled: u128,
+    pub elapsed: u128,
+}
+
+/// Logs failed liquidation attempts for monitoring.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InvalidSeizeAttempt {
+    #[topic]
+    pub borrower: Address,
+    #[topic]
+    pub liquidator: Address,
+    pub requested: u128,
+    pub reason: Symbol,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SeizeContext {
+    pub liquidity: u128,
+    pub shortfall: u128,
+    pub max_redeem_ptokens: u128,
+    pub seize_ptokens: u128,
+    pub fee_recipient: Option<Address>,
+    pub fee_ptokens: u128,
+    pub expires_at: u64,
+}
+
 #[contract]
 pub struct ReceiptVault;
 
@@ -485,7 +518,11 @@ impl ReceiptVault {
         // Calculate underlying tokens to return based on current exchange rate
         let current_rate = Self::get_exchange_rate(env.clone());
         // underlying = ptoken_amount * rate / 1e6
-        let underlying_to_return = (ptoken_amount * current_rate) / SCALE_1E6;
+        // SECURITY: Use checked_mul to prevent silent overflow in release builds
+        let underlying_to_return = ptoken_amount
+            .checked_mul(current_rate)
+            .expect("withdraw calculation overflow")
+            / SCALE_1E6;
 
         // Check we have enough liquid underlying (cash)
         let available_underlying = Self::get_available_liquidity(env.clone());
@@ -493,7 +530,7 @@ impl ReceiptVault {
             panic!("Not enough liquidity");
         }
 
-        // USD-based redeem gating via peridottroller, if set
+        // USD-based redeem gating via peridottroller, if set; otherwise local-only check
         if let Some(comp_addr) = env
             .storage()
             .persistent()
@@ -562,6 +599,29 @@ impl ReceiptVault {
                     other_collateral_usd.saturating_add(local_collateral_usd);
                 let total_borrow_usd = other_borrows_usd.saturating_add(local_debt_usd);
                 if total_collateral_usd < total_borrow_usd {
+                    panic!("Insufficient collateral");
+                }
+            }
+        } else {
+            // SECURITY: Local-only collateral check when no Peridottroller is configured.
+            // Without this, users could withdraw all collateral while having outstanding debt,
+            // creating undercollateralized positions and bad debt.
+            let local_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
+            if local_debt > 0 {
+                // Compute remaining collateral after this withdrawal
+                let remaining_ptokens = current_ptokens - ptoken_amount;
+                let remaining_underlying =
+                    (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
+                let local_cf: u128 = env
+                    .storage()
+                    .persistent()
+                    .get(&DataKey::CollateralFactorScaled)
+                    .unwrap_or(500_000u128);
+                // remaining_max_borrow = remaining_underlying * CF / 1e6
+                let remaining_max_borrow =
+                    (remaining_underlying.saturating_mul(local_cf)) / SCALE_1E6;
+                // User's debt must not exceed their remaining borrowing capacity
+                if local_debt > remaining_max_borrow {
                     panic!("Insufficient collateral");
                 }
             }
@@ -1173,7 +1233,8 @@ impl ReceiptVault {
         if total_deposited > 0 && yearly_rate_scaled > 0 {
             // new_interest = total_deposited * yearly_rate * elapsed / (SECONDS_PER_YEAR * 1e6)
             let seconds_per_year: u128 = 365 * 24 * 60 * 60;
-            let numerator = checked_interest_product(total_deposited, yearly_rate_scaled, elapsed);
+            let numerator =
+                checked_interest_product(&env, total_deposited, yearly_rate_scaled, elapsed);
             let denominator = seconds_per_year.saturating_mul(SCALE_1E6);
             let new_interest = numerator / denominator;
 
@@ -1228,7 +1289,8 @@ impl ReceiptVault {
         }
         if tb_prior > 0 && borrow_yearly_rate_scaled > 0 {
             let seconds_per_year: u128 = 365 * 24 * 60 * 60;
-            let numerator = checked_interest_product(tb_prior, borrow_yearly_rate_scaled, elapsed);
+            let numerator =
+                checked_interest_product(&env, tb_prior, borrow_yearly_rate_scaled, elapsed);
             let denominator = seconds_per_year.saturating_mul(SCALE_1E6);
             let borrow_interest_total = numerator / denominator;
             interest_accumulated_event = borrow_interest_total;
@@ -1826,37 +1888,92 @@ impl ReceiptVault {
     }
 
     /// Seize pTokens from borrower to liquidator; only callable by peridottroller/peridottroller
-    pub fn seize(env: Env, borrower: Address, liquidator: Address, ptoken_amount: u128) {
+    pub fn seize(
+        env: Env,
+        borrower: Address,
+        liquidator: Address,
+        ptoken_amount: u128,
+        ctx: Option<SeizeContext>,
+    ) {
         let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);
         let Some(comp_addr) = comp else {
-            panic!("no peridottroller");
+            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "no_comp");
         };
         comp_addr.require_auth();
         if ptoken_amount == 0 {
-            panic!("invalid seize amount");
+            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "zero_amt");
         }
-
+        if ctx.is_none() {
+            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "missing_ctx");
+        }
+        let seize_ctx = ctx.unwrap();
+        if seize_ctx.seize_ptokens != ptoken_amount {
+            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "ctx_mismatch");
+        }
+        if seize_ctx.fee_ptokens > ptoken_amount {
+            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "fee_gt_total");
+        }
+        if seize_ctx.fee_ptokens > 0 && seize_ctx.fee_recipient.is_none() {
+            abort_seize(
+                &env,
+                &borrower,
+                &liquidator,
+                ptoken_amount,
+                "fee_missing_recipient",
+            );
+        }
+        if seize_ctx.shortfall == 0 {
+            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "solvent");
+        }
+        if seize_ctx.max_redeem_ptokens >= ptoken_amount {
+            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "voluntary");
+        }
+        if seize_ctx.expires_at < env.ledger().timestamp() {
+            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "stale_ctx");
+        }
         let borrower_bal = ptoken_balance(&env, &borrower);
         if borrower_bal < ptoken_amount {
-            panic!("insufficient borrower ptokens");
+            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "insufficient");
         }
-        TokenBase::update(
-            &env,
-            Some(&borrower),
-            Some(&liquidator),
-            to_i128(ptoken_amount),
-        );
-
-        stellar_tokens::fungible::emit_transfer(
-            &env,
-            &borrower,
-            &liquidator,
-            to_i128(ptoken_amount),
-        );
+        let mut remaining = ptoken_amount;
+        if seize_ctx.fee_ptokens > 0 {
+            if let Some(recipient) = seize_ctx.fee_recipient {
+                let fee_i128 = to_i128(seize_ctx.fee_ptokens);
+                TokenBase::update(&env, Some(&borrower), Some(&recipient), fee_i128);
+                stellar_tokens::fungible::emit_transfer(&env, &borrower, &recipient, fee_i128);
+                remaining = remaining.saturating_sub(seize_ctx.fee_ptokens);
+            }
+        }
+        if remaining > 0 {
+            TokenBase::update(&env, Some(&borrower), Some(&liquidator), to_i128(remaining));
+            stellar_tokens::fungible::emit_transfer(
+                &env,
+                &borrower,
+                &liquidator,
+                to_i128(remaining),
+            );
+        }
     }
 }
 
 mod test;
+
+fn abort_seize(
+    env: &Env,
+    borrower: &Address,
+    liquidator: &Address,
+    amount: u128,
+    reason: &str,
+) -> ! {
+    InvalidSeizeAttempt {
+        borrower: borrower.clone(),
+        liquidator: liquidator.clone(),
+        requested: amount,
+        reason: Symbol::new(env, reason),
+    }
+    .publish(env);
+    panic!("{}", reason);
+}
 
 fn to_i128(amount: u128) -> i128 {
     if amount > i128::MAX as u128 {
@@ -1918,11 +2035,24 @@ fn ensure_user_auth(_env: &Env, user: &Address) {
     user.require_auth();
 }
 
-fn checked_interest_product(amount: u128, yearly_rate_scaled: u128, elapsed: u128) -> u128 {
+fn checked_interest_product(
+    env: &Env,
+    amount: u128,
+    yearly_rate_scaled: u128,
+    elapsed: u128,
+) -> u128 {
     amount
         .checked_mul(yearly_rate_scaled)
         .and_then(|v| v.checked_mul(elapsed))
-        .expect("interest calculation overflow")
+        .unwrap_or_else(|| {
+            InterestOverflow {
+                amount,
+                yearly_rate_scaled,
+                elapsed,
+            }
+            .publish(env);
+            u128::MAX
+        })
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

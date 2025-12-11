@@ -1067,4 +1067,109 @@ fn test_vault_upgrade_requires_admin() {
     vault.upgrade_wasm(&hash);
 }
 
+// Security test: Verify local-only collateral check blocks withdrawals that would
+// leave position undercollateralized when no Peridottroller is configured
+#[test]
+#[should_panic(expected = "Insufficient collateral")]
+fn test_withdraw_local_only_blocks_undercollateralized_position() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+
+    // Initialize WITHOUT setting a Peridottroller (local-only mode)
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // Set collateral factor to 50% (default)
+    vault.set_collateral_factor(&500_000u128);
+
+    // User deposits 100 underlying -> gets 100 pTokens
+    // Max borrow = 100 * 50% = 50
+    vault.deposit(&user, &100u128);
+    assert_eq!(vault.get_ptoken_balance(&user), 100u128);
+
+    // User borrows 40 (under the 50 limit)
+    vault.borrow(&user, &40u128);
+    assert_eq!(vault.get_user_borrow_balance(&user), 40u128);
+
+    // Now try to withdraw 30 pTokens
+    // After withdrawal: remaining collateral = 70, max borrow = 70 * 50% = 35
+    // But user has 40 debt > 35 max borrow -> should PANIC
+    vault.withdraw(&user, &30u128);
+}
+
+// Security test: Verify withdrawal is allowed when position remains healthy
+#[test]
+fn test_withdraw_local_only_allows_healthy_position() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+
+    // Initialize WITHOUT setting a Peridottroller (local-only mode)
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // Set collateral factor to 50%
+    vault.set_collateral_factor(&500_000u128);
+
+    // User deposits 100 underlying -> gets 100 pTokens
+    vault.deposit(&user, &100u128);
+
+    // User borrows 40 (under the 50 limit)
+    vault.borrow(&user, &40u128);
+
+    // Withdraw 10 pTokens -> remaining collateral = 90, max borrow = 45
+    // User has 40 debt <= 45 max borrow -> should SUCCEED
+    vault.withdraw(&user, &10u128);
+
+    assert_eq!(vault.get_ptoken_balance(&user), 90u128);
+    // Start: 1000
+    // After deposit 100: 900
+    // After borrow 40: 940
+    // After withdraw 10 underlying (10 pTokens at 1:1 rate): 950
+    assert_eq!(token_client.balance(&user), 950i128);
+}
+
+// Security test: Verify withdrawal is unrestricted when user has no debt
+#[test]
+fn test_withdraw_local_only_unrestricted_with_no_debt() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+
+    // Initialize WITHOUT setting a Peridottroller (local-only mode)
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    // User deposits 100 underlying
+    vault.deposit(&user, &100u128);
+
+    // User has no debt, so can withdraw everything
+    vault.withdraw(&user, &100u128);
+
+    assert_eq!(vault.get_ptoken_balance(&user), 0u128);
+    assert_eq!(token_client.balance(&user), 1000i128);
+}
+
 // (cross-market collateral tests moved to simple-peridottroller crate to avoid circular deps)
