@@ -1,12 +1,18 @@
 [workspace]
 resolver = "2"
 members = [
-  "contracts/*",
+  "contracts/receipt-vault",
+  "contracts/simple-peridottroller",
+  "contracts/jump-rate-model",
   "contracts/peridot-token",
+  "contracts/swap-adapter",
+  "contracts/margin-controller",
+  "contracts/mocks/mock-token",
+  "contracts/mocks/mock-lending-vault",
 ]
 
 [workspace.dependencies]
-soroban-sdk = "23.0.0"
+soroban-sdk = "25.0.0"
 stellar-tokens = { path = "../../openzeppelin-stellar-contracts/packages/tokens" }
 stellar-contract-utils = { path = "../../openzeppelin-stellar-contracts/packages/contract-utils" }
 

@@ -8,12 +8,24 @@ use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
 use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
+fn set_price_and_cache(
+    comp: &SimplePeridottrollerClient,
+    oracle: &MockOracleClient,
+    oracle_id: &Address,
+    token: &Address,
+    price: i128,
+) {
+    comp.set_oracle(oracle_id);
+    oracle.set_price(token, &price);
+    comp.cache_price(token);
+}
+
 #[test]
 fn test_peridottroller_add_and_enter_market() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
-    let admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    let admin = Address::generate(&env);
     let user = Address::generate(&env);
     let _lender = Address::generate(&env);
     // Use a real vault as market to satisfy safety checks
@@ -54,7 +66,7 @@ fn test_total_collateral_and_borrows_across_markets() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
-    let admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    let admin = Address::generate(&env);
     let user = Address::generate(&env);
 
     // Token A
@@ -102,8 +114,8 @@ fn test_total_collateral_and_borrows_across_markets() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&token_a, &1_000_000i128);
-    oracle.set_price(&token_b, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // (Exit guard tested in previous test with real vault; here focus on totals and borrows)
@@ -188,7 +200,7 @@ fn test_oracle_gating_prevents_over_borrow() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
-    let admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    let admin = Address::generate(&env);
     let user = Address::generate(&env);
 
     // Tokens
@@ -223,8 +235,8 @@ fn test_oracle_gating_prevents_over_borrow() {
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
     // Prices: token_a $1, token_b $0.10
-    oracle.set_price(&token_a, &1_000_000i128);
-    oracle.set_price(&token_b, &100_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 100_000i128);
     comp.set_oracle(&oracle_id);
 
     // Wire peridottroller in vaults
@@ -286,8 +298,8 @@ fn test_oracle_gating_allows_within_limit() {
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
     // Prices: token_a $1, token_b $0.10
-    oracle.set_price(&token_a, &1_000_000i128);
-    oracle.set_price(&token_b, &100_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 100_000i128);
     comp.set_oracle(&oracle_id);
 
     // Wire peridottroller in vaults
@@ -340,7 +352,7 @@ fn test_redeem_gating_prevents_over_withdraw() {
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
     // token_a $1
-    oracle.set_price(&token_a, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // Wire peridottroller
@@ -402,8 +414,8 @@ fn test_redeem_gating_allows_within_limit() {
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
     // token_a $1, token_b $1
-    oracle.set_price(&token_a, &1_000_000i128);
-    oracle.set_price(&token_b, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // Wire peridottroller
@@ -470,8 +482,8 @@ fn test_liquidation_flow_basic() {
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
     // token_a $1, token_b $1
-    oracle.set_price(&token_a, &1_000_000i128);
-    oracle.set_price(&token_b, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // Wire peridottroller
@@ -493,7 +505,7 @@ fn test_liquidation_flow_basic() {
     vault_a.borrow(&borrower, &50u128);
 
     // Now push price of collateral down by 50% to cause shortfall
-    oracle.set_price(&token_b, &500_000i128); // $0.50
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 500_000i128); // $0.50
 
     // Liquidate up to close factor (default 50%): repay 25, seize collateral with 8% bonus
     // Call liquidate
@@ -505,6 +517,54 @@ fn test_liquidation_flow_basic() {
     // Liquidator should have received some pTokens from B
     let p_liq = vault_b.get_ptoken_balance(&liquidator);
     assert!(p_liq > 0u128);
+}
+
+#[test]
+fn test_repay_on_behalf_for_liquidator() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let token_client = token::Client::new(&env, &token);
+    let token_admin_client = token::StellarAssetClient::new(&env, &token);
+
+    let vault_id = env.register(rv::ReceiptVault, ());
+    let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token, &0u128, &0u128, &admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    vault.set_peridottroller(&comp_id);
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_id);
+    comp.enter_market(&borrower, &vault_id);
+    comp.set_market_cf(&vault_id, &500_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128);
+
+    token_admin_client.mint(&admin, &1_000i128);
+    vault.deposit(&admin, &1_000u128);
+    token_admin_client.mint(&borrower, &200i128);
+    vault.deposit(&borrower, &200u128);
+
+    vault.borrow(&borrower, &100u128);
+    assert_eq!(vault.get_user_borrow_balance(&borrower), 100u128);
+
+    token_admin_client.mint(&liquidator, &200i128);
+    comp.repay_on_behalf_for_liquidator(&borrower, &vault_id, &40u128, &liquidator);
+
+    assert_eq!(vault.get_user_borrow_balance(&borrower), 60u128);
+    assert_eq!(token_client.balance(&liquidator), 160i128);
 }
 
 #[test]
@@ -547,8 +607,8 @@ fn test_liquidation_capped_by_close_factor() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&token_a, &1_000_000i128); // $1
-    oracle.set_price(&token_b, &1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128); // $1
     comp.set_oracle(&oracle_id);
 
     // Wire peridottroller
@@ -569,7 +629,7 @@ fn test_liquidation_capped_by_close_factor() {
     vault_a.borrow(&borrower, &100u128); // debt 100
 
     // Cause shortfall: drop collateral price to $0.40
-    oracle.set_price(&token_b, &400_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 400_000i128);
 
     // Attempt to liquidate 80 but CF=50% caps at 50
     comp.liquidate(&borrower, &vault_a_id, &vault_b_id, &80u128, &liquidator);
@@ -624,8 +684,8 @@ fn test_liquidation_no_shortfall_panics() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&token_a, &1_000_000i128);
-    oracle.set_price(&token_b, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // Wire peridottroller
@@ -686,8 +746,8 @@ fn test_liquidation_zero_repay_panics() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&token_a, &1_000_000i128);
-    oracle.set_price(&token_b, &1_000_000i128); // start healthy to allow borrow
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128); // start healthy to allow borrow
     comp.set_oracle(&oracle_id);
 
     vault_a.set_peridottroller(&comp_id);
@@ -705,7 +765,7 @@ fn test_liquidation_zero_repay_panics() {
     vault_a.borrow(&borrower, &50u128);
 
     // Now cause shortfall by dropping collateral price
-    oracle.set_price(&token_b, &500_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 500_000i128);
     // zero repay -> panic
     comp.liquidate(&borrower, &vault_a_id, &vault_b_id, &0u128, &liquidator);
 }
@@ -738,7 +798,7 @@ fn test_preview_helpers_basic() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&token, &1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128); // $1
     comp.set_oracle(&oracle_id);
 
     // Wire and fund
@@ -804,8 +864,8 @@ fn test_preview_helpers_extended() {
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
     oracle.initialize(&6u32);
-    oracle.set_price(&t_a, &1_000_000i128);
-    oracle.set_price(&t_b, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_b, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // Fund
@@ -882,7 +942,7 @@ fn test_pause_borrow_blocks_borrow() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&token, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128);
     comp.set_oracle(&oracle_id);
     let mint = token::StellarAssetClient::new(&env, &token);
     mint.mint(&user, &1_000i128);
@@ -917,7 +977,7 @@ fn test_pause_redeem_blocks_withdraw() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&token, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128);
     comp.set_oracle(&oracle_id);
     let mint = token::StellarAssetClient::new(&env, &token);
     mint.mint(&user, &1_000i128);
@@ -962,8 +1022,8 @@ fn test_pause_liquidation_blocks_liquidate() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&t_a, &1_000_000i128); // $1
-    oracle.set_price(&t_b, &1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_a, 1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_b, 1_000_000i128); // $1
     comp.set_oracle(&oracle_id);
     // Fund and positions
     let mint_a = token::StellarAssetClient::new(&env, &t_a);
@@ -977,7 +1037,7 @@ fn test_pause_liquidation_blocks_liquidate() {
     va.borrow(&user, &50u128);
     // Pause liquidation on repay market A and create shortfall by dropping collateral price
     comp.set_pause_liquidation(&va_id, &true);
-    oracle.set_price(&t_b, &100_000i128); // $0.10
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_b, 100_000i128); // $0.10
                                           // Should panic
     comp.liquidate(&user, &va_id, &vb_id, &10u128, &admin);
 }
@@ -1010,7 +1070,7 @@ fn test_pause_deposit_blocks_deposit() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&t, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // Mint user tokens
@@ -1056,7 +1116,7 @@ fn test_pause_deposit_blocks_deposit_guardian() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&t, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // Mint and attempt deposit
@@ -1106,8 +1166,8 @@ fn test_liquidation_fee_routed_to_reserves() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&t_a, &1_000_000i128); // $1
-    oracle.set_price(&t_b, &1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_a, 1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_b, 1_000_000i128); // $1
     comp.set_oracle(&oracle_id);
     comp.set_liquidation_fee(&200_000u128); // 20%
     comp.set_reserve_recipient(&reserve);
@@ -1130,7 +1190,7 @@ fn test_liquidation_fee_routed_to_reserves() {
     va.borrow(&borrower, &50u128);
 
     // Create shortfall by dropping price
-    oracle.set_price(&t_b, &500_000i128); // $0.5
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_b, 500_000i128); // $0.5
 
     // Liquidate repay 25 -> seize_ptokens computed with 8% incentive; 20% of seize goes to reserve
     comp.liquidate(&borrower, &va_id, &vb_id, &25u128, &liquidator);
@@ -1191,8 +1251,8 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&token_a, &1_000_000i128); // $1
-    oracle.set_price(&token_b, &5_000_000i128); // $5 initial to allow borrow
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 5_000_000i128); // $5 initial to allow borrow
     comp.set_oracle(&oracle_id);
     // Increase liquidation incentive to 2.0x
     comp.set_liquidation_incentive(&2_000_000u128);
@@ -1213,7 +1273,7 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
     vault_a.borrow(&borrower, &50u128);
 
     // Now drop price to $0.5; close factor=50% caps repay to 25; 2x LI => seize = 25*2/0.5 = 100 > 50 -> clamp to 50
-    oracle.set_price(&token_b, &500_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 500_000i128);
     comp.liquidate(&borrower, &vault_a_id, &vault_b_id, &50u128, &liquidator);
 
     // Borrower collateral pTokens fully seized (50), liquidator receives 50 since no fee configured
@@ -1264,7 +1324,7 @@ fn test_oracle_missing_price_panics() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&borrow_token, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &borrow_token, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // Mint tokens and set up positions
@@ -1310,7 +1370,7 @@ fn test_oracle_decimals_normalization() {
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&8u32);
     // Price 1.00 with 8 decimals = 100_000_000
-    oracle.set_price(&t, &100_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t, 100_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // Fund
@@ -1416,7 +1476,7 @@ fn test_rewards_accrual_and_claim() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&t, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // PERI token under comptroller admin
@@ -1491,8 +1551,8 @@ fn test_borrow_side_rewards_and_claim() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&ta, &1_000_000i128);
-    oracle.set_price(&tb, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &ta, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &tb, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // PERI token
@@ -1629,7 +1689,7 @@ fn test_accrue_user_market_allows_no_hints() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&t, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t, 1_000_000i128);
     comp.set_oracle(&oracle_id);
     
     // Set up reward speeds
@@ -1706,8 +1766,8 @@ fn test_multi_market_supply_rewards() {
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
-    oracle.set_price(&ta, &1_000_000i128);
-    oracle.set_price(&tb, &1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &ta, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &tb, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
     // PERI token

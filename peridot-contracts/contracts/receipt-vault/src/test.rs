@@ -2,14 +2,82 @@
 
 use super::*;
 use jump_rate_model as jrm;
-use simple_peridottroller::SimplePeridottroller;
+use simple_peridottroller::{SimplePeridottroller, SimplePeridottrollerClient};
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
 use soroban_sdk::{
     testutils::{Address as _, MockAuth, MockAuthInvoke},
-    token, Address, Bytes, Env, IntoVal,
+    token, Address, Bytes, Env, IntoVal, Symbol, Val, Vec,
 };
+use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
+
+fn assert_budget_under(env: &Env, max_cpu: u64, max_mem: u64) {
+    let budget = env.cost_estimate().budget();
+    let cpu = budget.cpu_instruction_cost();
+    let mem = budget.memory_bytes_cost();
+    assert!(cpu <= max_cpu, "cpu cost {cpu} exceeds {max_cpu}");
+    assert!(mem <= max_mem, "mem cost {mem} exceeds {max_mem}");
+}
+
+#[contract]
+struct MockOracle;
+
+#[contracttype]
+enum OracleKey {
+    Price,
+    Decimals,
+    Resolution,
+}
+
+#[contracttype(export = false)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum OracleAsset {
+    Stellar(Address),
+    Other(Symbol),
+}
+
+#[contracttype(export = false)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct OraclePriceData {
+    pub price: i128,
+    pub timestamp: u64,
+}
+
+#[contractimpl]
+impl MockOracle {
+    pub fn initialize(env: Env, decimals: u32, price: i128) {
+        env.storage()
+            .persistent()
+            .set(&OracleKey::Decimals, &decimals);
+        env.storage().persistent().set(&OracleKey::Price, &price);
+        env.storage()
+            .persistent()
+            .set(&OracleKey::Resolution, &1u32);
+    }
+
+    pub fn decimals(env: Env) -> u32 {
+        env.storage()
+            .persistent()
+            .get(&OracleKey::Decimals)
+            .unwrap_or(7u32)
+    }
+
+    pub fn resolution(env: Env) -> u32 {
+        env.storage()
+            .persistent()
+            .get(&OracleKey::Resolution)
+            .unwrap_or(1u32)
+    }
+
+    pub fn lastprice(env: Env, _asset: OracleAsset) -> Option<OraclePriceData> {
+        let price: i128 = env.storage().persistent().get(&OracleKey::Price).unwrap_or(0);
+        Some(OraclePriceData {
+            price,
+            timestamp: env.ledger().timestamp(),
+        })
+    }
+}
 
 fn create_test_token<'a>(
     env: &'a Env,
@@ -23,6 +91,31 @@ fn create_test_token<'a>(
         token::Client::new(env, &contract_address),
         token::StellarAssetClient::new(env, &contract_address),
     )
+}
+
+fn setup_peridottroller_with_fallback<'a>(
+    env: &'a Env,
+    admin: &'a Address,
+    vault_id: &'a Address,
+    token: &'a Address,
+    cf: u128,
+    price: u128,
+    scale: u128,
+) -> SimplePeridottrollerClient<'a> {
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(env, &oracle_id);
+    oracle.initialize(&7u32, &1_0000000i128);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(env, &comp_id);
+    comp.initialize(admin);
+    comp.set_oracle(&oracle_id);
+    comp.add_market(vault_id);
+    comp.set_market_cf(vault_id, &cf);
+    comp.set_price_fallback(token, &Some((price, scale)));
+    let vault = ReceiptVaultClient::new(env, vault_id);
+    vault.set_peridottroller(&comp_id);
+    comp
 }
 
 #[contract]
@@ -79,6 +172,8 @@ impl FlashLoanRenegade {
         token_client.transfer(&env.current_contract_address(), &vault, &to_i128(amount));
     }
 }
+
+
 
 #[test]
 fn test_initialize() {
@@ -495,6 +590,238 @@ fn test_borrow_and_repay_flow() {
     // Repay remainder
     vault_client.repay(&user, &1000u128);
     assert_eq!(vault_client.get_user_borrow_balance(&user), 0u128);
+}
+
+#[test]
+fn test_borrow_with_peridottroller_same_market_hint() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.ledger().with_mut(|l| l.timestamp = 100);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.set_collateral_factor(&500_000u128);
+
+    setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        500_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    token_admin.mint(&admin, &to_i128(1_000_000u128));
+    vault.deposit(&admin, &1_000_000u128);
+
+    token_admin.mint(&user, &to_i128(200u128));
+    vault.deposit(&user, &200u128);
+
+    vault.borrow(&user, &80u128);
+    assert_eq!(vault.get_user_borrow_balance(&user), 80u128);
+}
+
+#[test]
+fn test_repay_on_behalf_via_peridottroller_auth() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &500i128);
+    token_admin_client.mint(&liquidator, &500i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    let comp = setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        800_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    vault.deposit(&user, &200u128);
+    vault.borrow(&user, &100u128);
+
+    let debt_before = vault.get_user_borrow_balance(&user);
+    assert_eq!(debt_before, 100u128);
+
+    let comp_id = comp.address.clone();
+    env.as_contract(&comp_id, || {
+        let repay_args: Vec<Val> = (liquidator.clone(), user.clone(), 40u128).into_val(&env);
+        let mut auths = Vec::new(&env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: vault_id.clone(),
+                fn_name: Symbol::new(&env, "repay_on_behalf"),
+                args: repay_args,
+            },
+            sub_invocations: Vec::new(&env),
+        }));
+        env.authorize_as_current_contract(auths);
+        let vault_client = ReceiptVaultClient::new(&env, &vault_id);
+        vault_client.repay_on_behalf(&liquidator, &user, &40u128);
+    });
+
+    let debt_after = vault.get_user_borrow_balance(&user);
+    assert_eq!(debt_after, 60u128);
+
+    let liquidator_balance = token_client.balance(&liquidator);
+    assert_eq!(liquidator_balance, 460i128);
+}
+
+
+
+#[test]
+fn test_borrow_budget_peridottroller_same_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.ledger().with_mut(|l| l.timestamp = 100);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.set_collateral_factor(&500_000u128);
+
+    setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        500_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    token_admin.mint(&admin, &to_i128(1_000_000u128));
+    vault.deposit(&admin, &1_000_000u128);
+
+    token_admin.mint(&user, &to_i128(200u128));
+    vault.deposit(&user, &200u128);
+
+    vault.borrow(&user, &80u128);
+    assert_budget_under(&env, 5_000_000, 450_000);
+}
+
+#[test]
+fn test_borrow_with_peridottroller_same_market_exact_threshold() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.set_collateral_factor(&500_000u128);
+
+    setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        500_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    token_admin.mint(&admin, &to_i128(1_000_000u128));
+    vault.deposit(&admin, &1_000_000u128);
+
+    token_admin.mint(&user, &to_i128(200u128));
+    vault.deposit(&user, &200u128);
+
+    vault.borrow(&user, &100u128);
+    assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+}
+
+#[test]
+#[should_panic(expected = "Insufficient collateral")]
+fn test_borrow_with_peridottroller_same_market_exceeds_threshold() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.set_collateral_factor(&500_000u128);
+
+    setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        500_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    token_admin.mint(&admin, &to_i128(1_000_000u128));
+    vault.deposit(&admin, &1_000_000u128);
+
+    token_admin.mint(&user, &to_i128(200u128));
+    vault.deposit(&user, &200u128);
+
+    vault.borrow(&user, &101u128);
+}
+
+#[test]
+#[should_panic(expected = "Insufficient collateral")]
+fn test_withdraw_with_peridottroller_same_market_blocks_undercollateralized() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.set_collateral_factor(&500_000u128);
+
+    setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        500_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    token_admin.mint(&admin, &to_i128(1_000_000u128));
+    vault.deposit(&admin, &1_000_000u128);
+
+    token_admin.mint(&user, &to_i128(200u128));
+    vault.deposit(&user, &200u128);
+    vault.borrow(&user, &100u128);
+
+    vault.withdraw(&user, &1u128);
 }
 
 #[test]

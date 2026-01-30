@@ -7,7 +7,7 @@ echo "Building all contract WASMs (wasm32v1-none release)..."
 
 pushd "$ROOT_DIR" >/dev/null
 
-for crate in receipt-vault simple-peridottroller jump-rate-model peridot-token; do
+for crate in receipt-vault simple-peridottroller jump-rate-model peridot-token mock-token mock-lending-vault swap-adapter margin-controller; do
   echo "→ $crate"
   stellar contract build --package "$crate"
 done
@@ -17,5 +17,3 @@ ls -lh target/wasm32v1-none/release/*.wasm || true
 
 popd >/dev/null
 echo "Done."
-
-

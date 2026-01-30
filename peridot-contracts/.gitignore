@@ -5,3 +5,6 @@ target
 .soroban
 .stellar
 /test_snapshots
+/gitbook
+CLAUDE.md
+.claude

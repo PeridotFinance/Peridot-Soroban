@@ -4,12 +4,14 @@ This document explains how the frontend can interact with the Peridot Soroban co
 
 ## 1. High-Level Architecture
 
-- **Controller (`SimplePeridottroller`)** – central risk engine. Contract ID: `CAWEZM3CRRMBUAGYMCCFHXI6ZKCLVMQTVE4LPXQCH7MM3ZU2PMQTKUXM`
-- **ReceiptVault (XLM market)** – contract ID: `CCBRKJ5ZZZB6A7GSAPVPDWFEOJXZZ43F65RL6NJGJX7AQJ2JS64DGU7G`
-- **ReceiptVault (USDC market)** – contract ID: `CDNSMCOHX4NJTIYEILEVEBAS5LKPJRDH6CPLWJ4SQ2YUB4LVNQWPXG3L`
-- **Jump Rate Model** – contract ID: `CDUDTFQYPSGMXYAEGA5Y27USF3IEQ6L3XUUHZC3V3IACAKU4HVE2XNLH`
-- **Peridot Reward Token (`P`)** – contract ID: see latest entry in `addresses.md`
+- **Controller (`SimplePeridottroller`)** – central risk engine. Contract ID: `CDKBJC5E44FEZVVETYU2IZZLUVKN2BUH4XOMEMKTYKM4SBSRT5ZR34V3`
+- **ReceiptVault (XLM market)** – contract ID: `CCPQYPFNAGQPQTMPAEBGNPNSQJ4FAJYPX6WLYBKE5SO5ZONXANCUEYE7`
+- **ReceiptVault (USDT market)** – contract ID: `CDM37TMZO2QQQP6CIMU7E6OIBR6IQMM46P5PCSQ5D7AX6GMEFQX7NTKL`
+- **Jump Rate Model** – contract ID: `CD43R6PGESRAKAUYHRDNMSS7PHU6TT26D3WAAHYEKMDGHB5FALTHMFEI`
+- **Peridot Reward Token (`P`)** – contract ID: `CBTHWQJX2766UIH4J6TGRU3XVRVDMOX33RWT5IP36HB3D5RGD7XBPSR5`
+- **Mock USDT (open mint)** – contract ID: `CBX3DOZH4HUR3EJS6LAKHXN6RARXKMUT33OUMVVSUW5HCXEIECD4WT75`
 - **Reflector Oracle** – contract ID: `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63`
+- **Margin Manager (leveraged trading)** – contract ID: pending deploy via `scripts/deploy_margin_testnet.sh`
 
 Your frontend will mainly call the controller and the vault contracts. The controller handles account liquidity checks, oracle pricing, and incentives; each vault exposes ERC20-like `deposit`, `withdraw`, `borrow`, `repay`, and `transfer` entrypoints.
 
@@ -120,14 +122,14 @@ Store the known asset addresses in your config file:
 export const markets = [
   {
     symbol: "XLM",
-    vaultId: "CCBRKJ5ZZZB6A7GSAPVPDWFEOJXZZ43F65RL6NJGJX7AQJ2JS64DGU7G",
+    vaultId: "CCPQYPFNAGQPQTMPAEBGNPNSQJ4FAJYPX6WLYBKE5SO5ZONXANCUEYE7",
     underlying: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
     decimals: 7,
   },
   {
-    symbol: "USDC",
-    vaultId: "CDNSMCOHX4NJTIYEILEVEBAS5LKPJRDH6CPLWJ4SQ2YUB4LVNQWPXG3L",
-    underlying: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    symbol: "USDT",
+    vaultId: "CDM37TMZO2QQQP6CIMU7E6OIBR6IQMM46P5PCSQ5D7AX6GMEFQX7NTKL",
+    underlying: "CBX3DOZH4HUR3EJS6LAKHXN6RARXKMUT33OUMVVSUW5HCXEIECD4WT75",
     decimals: 6,
   },
 ];
@@ -149,13 +151,29 @@ For per-market views, call `portfolio(user)` on the controller to get `[market, 
 
 The controller calls the Reflector oracle synchronously. If `get_price_usd` returns `None`, the UI should warn that the oracle is stale or missing. Poll once per page load and cache responses for a few seconds; the oracle updates roughly every 5 minutes.
 
-## 8. Testing
+## 8. Leveraged Margin (Optional)
+
+Margin trading uses `margin-manager` with multi-op transactions (invoke + classic path payment). The manager pulls prices from Reflector and coordinates peridottroller-backed vault borrows.
+
+Core calls:
+- `deposit_collateral(user, asset, amount)`
+- `open_position(user, side, size, leverage)`
+- `finalize_open(user, pending_id)` after swap output is transferred to the manager
+- `close_position(user, position_id)` + `finalize_close` after repayment funds are transferred
+- `get_health_factor(user)`
+
+When wiring the frontend, store:
+- `marginManagerId` (from `scripts/deploy_margin_testnet.sh` output)
+- `oracleId` (Reflector)
+- vault IDs and underlying token IDs (as above)
+
+## 9. Testing
 
 - Use the scripts (`build_wasm.sh`, `deploy_testnet.sh`, `verify_testnet.sh`) to keep the contracts in sync with the frontend environment.
 - For local development, you can target the sandbox (`deploy_sandbox.sh`) and point the frontend RPC to `http://localhost:8000`.
 - Consider adding mock data layers for unit testing UI components without hitting the network.
 
-## 9. Checklist
+## 10. Checklist
 
 - [ ] Configure RPC + network passphrase
 - [ ] Generate TypeScript bindings for controller and vaults
@@ -164,6 +182,7 @@ The controller calls the Reflector oracle synchronously. If `get_price_usd` retu
 - [ ] Create reusable hooks/services for `deposit`, `withdraw`, `borrow`, `repay`, `claim`
 - [ ] Render health factor and liquidity data via controller reads
 - [ ] Handle oracle stale/missing states gracefully
+- [ ] If using margin, add multi-op transaction builder for swaps
 - [ ] Test flows on testnet before mainnet deployment
 
 With these pieces, you can recreate a Compound-like experience on Stellar Soroban, showing supply/borrow balances, USD valuations, and liquidation status in real time.

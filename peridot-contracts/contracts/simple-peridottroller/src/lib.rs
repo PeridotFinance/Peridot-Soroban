@@ -2,8 +2,10 @@
 #[cfg(test)]
 extern crate std;
 use soroban_sdk::{
-    contract, contractevent, contractimpl, contracttype, Address, Env, IntoVal, Map, Symbol, Vec,
+    contract, contractevent, contractimpl, contracttype, Address, Env, IntoVal, Map, Symbol, Val,
+    Vec,
 };
+use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
 
 #[contracttype]
 pub enum DataKey {
@@ -46,6 +48,14 @@ pub struct AccrualHint {
     pub total_borrowed: Option<u128>,
     pub user_ptokens: Option<u128>,
     pub user_borrowed: Option<u128>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MarketLiquidityHint {
+    pub ptoken_balance: u128,
+    pub user_borrowed: u128,
+    pub exchange_rate: u128,
 }
 
 #[contracttype]
@@ -961,6 +971,40 @@ impl SimplePeridottroller {
         }
     }
 
+    // Hypothetical liquidity using local market hints to avoid re-entry.
+    pub fn hypothetical_liquidity_with_hint(
+        env: Env,
+        user: Address,
+        market: Address,
+        borrow_amount: u128,
+        underlying: Address,
+        hint: MarketLiquidityHint,
+    ) -> (u128, u128) {
+        // Exclude current market, then add hinted collateral and debt.
+        let (mut collateral_usd, mut borrow_usd) =
+            Self::sum_positions_usd(env.clone(), user.clone(), Some(market.clone()));
+        let (price, scale) = Self::require_price(env.clone(), underlying);
+        if hint.ptoken_balance > 0 {
+            let cf: u128 = Self::get_market_cf(env.clone(), market);
+            let underlying_amount = (hint.ptoken_balance.saturating_mul(hint.exchange_rate))
+                / 1_000_000u128;
+            let discounted = (underlying_amount.saturating_mul(cf)) / 1_000_000u128;
+            let usd = (discounted.saturating_mul(price)) / scale;
+            collateral_usd = collateral_usd.saturating_add(usd);
+        }
+        if hint.user_borrowed > 0 {
+            let usd = (hint.user_borrowed.saturating_mul(price)) / scale;
+            borrow_usd = borrow_usd.saturating_add(usd);
+        }
+        let extra = (borrow_amount.saturating_mul(price)) / scale;
+        borrow_usd = borrow_usd.saturating_add(extra);
+        if collateral_usd >= borrow_usd {
+            (collateral_usd - borrow_usd, 0u128)
+        } else {
+            (0u128, borrow_usd - collateral_usd)
+        }
+    }
+
     // Preview the maximum additional borrow in underlying units for a given market
     pub fn preview_borrow_max(env: Env, user: Address, market: Address) -> u128 {
         // Account-level cushion in USD
@@ -1246,6 +1290,19 @@ impl SimplePeridottroller {
         );
         let mut seize_ptokens = (seize_underlying.saturating_mul(1_000_000u128)) / rate;
 
+        // authorize repay_on_behalf as current contract
+        let repay_args: Vec<Val> = (liquidator.clone(), borrower.clone(), repay).into_val(&env);
+        let mut auths = Vec::new(&env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: repay_market.clone(),
+                fn_name: Symbol::new(&env, "repay_on_behalf"),
+                args: repay_args,
+            },
+            sub_invocations: Vec::new(&env),
+        }));
+        env.authorize_as_current_contract(auths);
+
         // perform repay on behalf and seize
         let _: () = env.invoke_contract(
             &repay_market,
@@ -1288,6 +1345,25 @@ impl SimplePeridottroller {
             fee_ptokens,
             expires_at: env.ledger().timestamp() + 5,
         };
+        // authorize seize as current contract
+        let seize_args: Vec<Val> = (
+            borrower.clone(),
+            liquidator.clone(),
+            seize_ptokens,
+            Some(seize_ctx.clone()),
+        )
+            .into_val(&env);
+        let mut auths = Vec::new(&env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: collateral_market.clone(),
+                fn_name: Symbol::new(&env, "seize"),
+                args: seize_args,
+            },
+            sub_invocations: Vec::new(&env),
+        }));
+        env.authorize_as_current_contract(auths);
+
         let _: () = env.invoke_contract(
             &collateral_market,
             &Symbol::new(&env, "seize"),
@@ -1309,6 +1385,47 @@ impl SimplePeridottroller {
             seize_tokens: seize_ptokens,
         }
         .publish(&env);
+    }
+
+    /// Repay on behalf via peridottroller auth (no seize).
+    pub fn repay_on_behalf_for_liquidator(
+        env: Env,
+        borrower: Address,
+        repay_market: Address,
+        repay_amount: u128,
+        liquidator: Address,
+    ) {
+        liquidator.require_auth();
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if !supported.get(repay_market.clone()).unwrap_or(false) {
+            panic!("market not supported");
+        }
+        if repay_amount == 0 {
+            panic!("repay too small");
+        }
+
+        let repay_args: Vec<Val> =
+            (liquidator.clone(), borrower.clone(), repay_amount).into_val(&env);
+        let mut auths = Vec::new(&env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: repay_market.clone(),
+                fn_name: Symbol::new(&env, "repay_on_behalf"),
+                args: repay_args,
+            },
+            sub_invocations: Vec::new(&env),
+        }));
+        env.authorize_as_current_contract(auths);
+
+        let _: () = env.invoke_contract(
+            &repay_market,
+            &Symbol::new(&env, "repay_on_behalf"),
+            (liquidator, borrower, repay_amount).into_val(&env),
+        );
     }
 
     // Claim accrued rewards and mint PERI to user
@@ -1448,8 +1565,32 @@ impl SimplePeridottroller {
 
     // Note: we avoid calling back into the current market during hypothetical checks to prevent re-entry
 
-    // Price quotation via Reflector oracle (returns (price, 10^decimals)) if oracle set
+    // Price quotation via cached oracle data or fallback (no on-chain oracle call).
     pub fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)> {
+        if let Some(cached) = env
+            .storage()
+            .persistent()
+            .get::<_, CachedPrice>(&DataKey::PriceCache(token.clone()))
+        {
+            if cached.price > 0 && Self::cached_price_fresh(&env, cached.timestamp, cached.resolution)
+            {
+                return Some((cached.price, cached.scale));
+            }
+        }
+        if let Some(fallback) = env
+            .storage()
+            .persistent()
+            .get::<_, FallbackPrice>(&DataKey::FallbackPrice(token.clone()))
+        {
+            if fallback.price > 0 {
+                return Some((fallback.price, fallback.scale));
+            }
+        }
+        None
+    }
+
+    // Public helper to pre-warm the price cache (intended for UI/keepers).
+    pub fn cache_price(env: Env, token: Address) -> Option<(u128, u128)> {
         let oracle: Option<Address> = env.storage().persistent().get(&DataKey::Oracle);
         let Some(oracle_addr) = oracle else {
             return None;

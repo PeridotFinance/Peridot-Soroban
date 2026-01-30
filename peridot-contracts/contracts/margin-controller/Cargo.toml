@@ -1,0 +1,20 @@
+[package]
+name = "margin-controller"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+receipt-vault = { path = "../receipt-vault" }
+simple-peridottroller = { path = "../simple-peridottroller" }
+swap-adapter = { path = "../swap-adapter" }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+mock-token = { path = "../mocks/mock-token" }
+receipt-vault = { path = "../receipt-vault" }
+simple-peridottroller = { path = "../simple-peridottroller" }
+swap-adapter = { path = "../swap-adapter" }

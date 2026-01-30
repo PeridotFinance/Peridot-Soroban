@@ -16,9 +16,10 @@ WASM_CONTROLLER="$ROOT_DIR/target/wasm32v1-none/release/simple_peridottroller.wa
 WASM_VAULT="$ROOT_DIR/target/wasm32v1-none/release/receipt_vault.wasm"
 WASM_JRM="$ROOT_DIR/target/wasm32v1-none/release/jump_rate_model.wasm"
 WASM_PERI="$ROOT_DIR/target/wasm32v1-none/release/peridot_token.wasm"
+WASM_MOCK="$ROOT_DIR/target/wasm32v1-none/release/mock_token.wasm"
 
 echo "Using identity: $IDENTITY (testnet)"
-ADMIN=$(stellar keys address "$IDENTITY" $NETWORK)
+ADMIN=$(stellar keys public-key "$IDENTITY")
 echo "Admin address: $ADMIN"
 
 echo "Deploying SimplePeridottroller..."
@@ -49,7 +50,7 @@ stellar contract invoke \
   --source-account "$IDENTITY" \
   $NETWORK \
   -- \
-  initialize --base 20000 --multiplier 180000 --jump 4000000 --kink 800000
+  initialize --base 20000 --multiplier 180000 --jump 4000000 --kink 800000 --admin "$ADMIN"
 
 echo "Deploying Peridot Token..."
 PERI_ID=$(stellar contract deploy \
@@ -58,13 +59,22 @@ PERI_ID=$(stellar contract deploy \
   $NETWORK)
 echo "PERI: $PERI_ID"
 
-echo "Initialize Peridot Token (admin=controller)..."
+PERI_MAX_SUPPLY=${PERI_MAX_SUPPLY:-1000000000000}
+echo "Initialize Peridot Token (admin=$ADMIN, max_supply=$PERI_MAX_SUPPLY)..."
 stellar contract invoke \
   --id "$PERI_ID" \
   --source-account "$IDENTITY" \
   $NETWORK \
   -- \
-  initialize --name Peridot --symbol P --decimals 6 --admin "$CTRL_ID"
+  initialize --name Peridot --symbol P --decimals 6 --admin "$ADMIN" --max_supply "$PERI_MAX_SUPPLY"
+
+echo "Set PERI admin to controller..."
+stellar contract invoke \
+  --id "$PERI_ID" \
+  --source-account "$IDENTITY" \
+  $NETWORK \
+  -- \
+  set_admin --new_admin "$CTRL_ID"
 
 echo "Point controller to PERI..."
 stellar contract invoke \
@@ -73,6 +83,21 @@ stellar contract invoke \
   $NETWORK \
   -- \
   set_peridot_token --token "$PERI_ID"
+
+echo "Deploying Mock USDT Token..."
+USDT_ID=$(stellar contract deploy \
+  --wasm "$WASM_MOCK" \
+  --source-account "$IDENTITY" \
+  $NETWORK)
+echo "USDT: $USDT_ID"
+
+echo "Initialize Mock USDT Token..."
+stellar contract invoke \
+  --id "$USDT_ID" \
+  --source-account "$IDENTITY" \
+  $NETWORK \
+  -- \
+  initialize --name "Mock USDT" --symbol USDT --decimals 6
 
 echo "Deploying two ReceiptVault markets..."
 VA_ID=$(stellar contract deploy \
@@ -86,9 +111,11 @@ VB_ID=$(stellar contract deploy \
 echo "VA: $VA_ID"
 echo "VB: $VB_ID"
 
-# TODO: Replace TOKEN_A and TOKEN_B with real asset contract addresses on testnet
-TOKEN_A=${TOKEN_A:-GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA} # placeholder
-TOKEN_B=${TOKEN_B:-GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB} # placeholder
+TOKEN_A=${TOKEN_A:-$(stellar contract id asset --asset native $NETWORK)}
+TOKEN_B=${TOKEN_B:-$USDT_ID}
+
+echo "Using TOKEN_A (XLM native): $TOKEN_A"
+echo "Using TOKEN_B (USDT mock): $TOKEN_B"
 
 echo "Initialize vaults (0% rates, admin=$ADMIN)."
 stellar contract invoke \
@@ -96,13 +123,13 @@ stellar contract invoke \
   --source-account "$IDENTITY" \
   $NETWORK \
   -- \
-  initialize --token "$TOKEN_A" --supply_yearly_rate_scaled 0 --borrow_yearly_rate_scaled 0 --admin "$ADMIN"
+  initialize --token_address "$TOKEN_A" --supply_yearly_rate_scaled 0 --borrow_yearly_rate_scaled 0 --admin "$ADMIN"
 stellar contract invoke \
   --id "$VB_ID" \
   --source-account "$IDENTITY" \
   $NETWORK \
   -- \
-  initialize --token "$TOKEN_B" --supply_yearly_rate_scaled 0 --borrow_yearly_rate_scaled 0 --admin "$ADMIN"
+  initialize --token_address "$TOKEN_B" --supply_yearly_rate_scaled 0 --borrow_yearly_rate_scaled 0 --admin "$ADMIN"
 
 FLASH_FEE=${FLASH_FEE:-20000} # default 2%
 echo "Configure flash loan fee (${FLASH_FEE}/1e6) on both vaults..."
@@ -167,4 +194,3 @@ stellar contract invoke \
   set_borrow_speed --market "$VA_ID" --speed_per_sec 3
 
 echo "Done. Controller=$CTRL_ID VA=$VA_ID VB=$VB_ID JRM=$JRM_ID PERI=$PERI_ID"
-

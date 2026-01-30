@@ -5,6 +5,23 @@ Peridot lending protocol on Soroban. It consists of:
 - `receipt-vault`: per-market vault holding the underlying token, minting/burning pTokens, and handling deposit/withdraw, borrow/repay, interest, reserves, and liquidation hooks.
 - `simple-peridottroller`: cross-market risk manager handling supported markets, oracle pricing, account liquidity, liquidation, previews, pause flags, pause guardian, and optional liquidation fee.
 
+## Two Product Stacks
+
+This repo contains two distinct but complementary stacks:
+
+1) Lending/Borrowing (spot-style)
+   - `receipt-vault`: core lending vault (deposit/borrow/repay/withdraw).
+   - `simple-peridottroller`: risk manager (collateral factors, gating, liquidation).
+   - `jump-rate-model`: interest rate model for dynamic borrow/supply rates.
+   - `peridot-token`: governance/reward token (if used by your deployment).
+
+2) True Margin Trading (DEX-based via Aquarius)
+   - `margin-controller`: margin positions using real borrows + on-chain swaps.
+   - `swap-adapter`: Aquarius router wrapper used by margin-controller.
+   - Uses Reflector oracle prices via peridottroller for health factor checks.
+
+Mocks (for tests only) live under `contracts/mocks/`.
+
 ## Key Concepts
 
 - Fixed-point scaling: `SCALE_1E6 = 1_000_000` for rates and exchange rates; `BorrowIndex` uses `1e18`.
@@ -204,13 +221,25 @@ Set up a testnet identity and deploy:
 ```bash
 soroban config identity generate dev
 export IDENTITY=dev
-export TOKEN_A=<asset_contract_address_A_on_testnet>
-export TOKEN_B=<asset_contract_address_B_on_testnet>
 bash scripts/build_wasm.sh
 bash scripts/deploy_testnet.sh
 ```
 
-The script uses `IDENTITY`, `TOKEN_A`, and `TOKEN_B` environment variables. Replace placeholders with real contract addresses before running.
+The script uses `IDENTITY` and will auto-create an open-mint USDT mock and the native XLM asset contract for the two markets. You can override with `TOKEN_A`/`TOKEN_B` if needed.
+
+### Leveraged Margin (testnet)
+
+Deploy the margin manager after the lending markets are live:
+
+```bash
+export ORACLE_ID=<reflector_oracle_contract_id>
+export CTRL_ID=<controller_id>
+export BASE_TOKEN=<xlm_asset_contract_id>
+export QUOTE_TOKEN=<usdt_mock_contract_id>
+export BASE_VAULT=<vault_a_id>
+export QUOTE_VAULT=<vault_b_id>
+bash scripts/deploy_margin_testnet.sh
+```
 
 ### Verify (testnet)
 

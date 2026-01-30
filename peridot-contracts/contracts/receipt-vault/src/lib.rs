@@ -37,6 +37,14 @@ pub enum DataKey {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MarketLiquidityHint {
+    pub ptoken_balance: u128,
+    pub user_borrowed: u128,
+    pub exchange_rate: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BorrowSnapshot {
     pub principal: u128,
     pub interest_index: u128,
@@ -1556,6 +1564,9 @@ impl ReceiptVault {
         let token_address = ensure_initialized(&env);
         Self::update_interest(env.clone());
         ensure_user_auth(&env, &user);
+        let mut user_ptokens_before: u128 = 0;
+        let mut user_borrow_before: u128 = 0;
+        let mut exchange_rate: u128 = 0;
         if let Some(comp_addr) = env
             .storage()
             .persistent()
@@ -1567,8 +1578,9 @@ impl ReceiptVault {
                 .persistent()
                 .get(&DataKey::TotalBorrowed)
                 .unwrap_or(0u128);
-            let user_ptokens_before = ptoken_balance(&env, &user);
-            let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
+            user_ptokens_before = ptoken_balance(&env, &user);
+            user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
+            exchange_rate = Self::get_exchange_rate(env.clone());
             let hint = ControllerAccrualHint {
                 total_ptokens: Some(total_ptokens_before),
                 total_borrowed: Some(total_borrowed_before),
@@ -1601,15 +1613,21 @@ impl ReceiptVault {
             if paused {
                 panic!("borrow paused");
             }
+            let liq_hint = MarketLiquidityHint {
+                ptoken_balance: user_ptokens_before,
+                user_borrowed: user_borrow_before,
+                exchange_rate,
+            };
             let (_liq, shortfall): (u128, u128) = call_contract_or_panic(
                 &env,
                 &comp_addr,
-                "hypothetical_liquidity",
+                "hypothetical_liquidity_with_hint",
                 (
                     user.clone(),
                     env.current_contract_address(),
                     amount,
                     token_address.clone(),
+                    liq_hint,
                 ),
             );
             if shortfall > 0 {
@@ -1841,7 +1859,7 @@ impl ReceiptVault {
     /// Repay on behalf during liquidation; only callable by peridottroller/peridottroller
     pub fn repay_on_behalf(env: Env, liquidator: Address, borrower: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
-        // Accrue and auth via peridottroller/peridottroller
+        // Accrue and auth via peridottroller or allowlisted liquidator
         Self::update_interest(env.clone());
         let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);
         let Some(comp_addr) = comp else {
