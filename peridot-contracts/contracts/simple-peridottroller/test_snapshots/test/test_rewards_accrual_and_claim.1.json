@@ -1923,7 +1923,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 200000
       },
       {
         "entry": {
@@ -1974,7 +1974,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 200000
       },
       {
         "entry": {
@@ -2028,6 +2028,18 @@
                       "key": {
                         "vec": [
                           {
+                            "symbol": "Initialized"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "bool": true
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
                             "symbol": "TotalSupply"
                           }
                         ]
@@ -2043,7 +2055,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 200000
       },
       {
         "entry": {
@@ -2264,7 +2276,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 200000
       }
     ]
   },

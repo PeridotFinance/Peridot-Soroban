@@ -11,6 +11,7 @@ pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIA
 pub enum DataKey {
     Admin,
     MaxSupply,
+    Initialized,
 }
 
 #[contract]
@@ -26,6 +27,9 @@ impl PeridotToken {
         admin: Address,
         max_supply: i128,
     ) {
+        if env.storage().instance().has(&DataKey::Initialized) {
+            panic!("already initialized");
+        }
         let expected_admin_str =
             option_env!("PERIDOT_TOKEN_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
         let expected_admin = Address::from_string(&String::from_str(&env, expected_admin_str));
@@ -57,25 +61,32 @@ impl PeridotToken {
         env.storage()
             .persistent()
             .set(&DataKey::MaxSupply, &max_supply);
+        env.storage().instance().set(&DataKey::Initialized, &true);
+        bump_critical_ttl(&env);
     }
 
     pub fn name(env: Env) -> String {
+        bump_critical_ttl(&env);
         TokenBase::name(&env)
     }
 
     pub fn symbol(env: Env) -> String {
+        bump_critical_ttl(&env);
         TokenBase::symbol(&env)
     }
 
     pub fn decimals(env: Env) -> u32 {
+        bump_critical_ttl(&env);
         TokenBase::decimals(&env)
     }
 
     pub fn total_supply(env: Env) -> i128 {
+        bump_critical_ttl(&env);
         TokenBase::total_supply(&env)
     }
 
     pub fn balance(env: Env, who: Address) -> i128 {
+        bump_critical_ttl(&env);
         TokenBase::balance(&env, &who)
     }
 
@@ -84,10 +95,12 @@ impl PeridotToken {
     }
 
     pub fn allowance(env: Env, owner: Address, spender: Address) -> i128 {
+        bump_critical_ttl(&env);
         TokenBase::allowance(&env, &owner, &spender)
     }
 
     pub fn approve(env: Env, owner: Address, spender: Address, amount: i128) {
+        bump_critical_ttl(&env);
         owner.require_auth();
         if amount < 0 {
             panic!("bad amount");
@@ -96,6 +109,7 @@ impl PeridotToken {
     }
 
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
+        bump_critical_ttl(&env);
         if amount <= 0 {
             panic!("bad amount");
         }
@@ -103,6 +117,7 @@ impl PeridotToken {
     }
 
     pub fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: i128) {
+        bump_critical_ttl(&env);
         if amount <= 0 {
             panic!("bad amount");
         }
@@ -110,6 +125,7 @@ impl PeridotToken {
     }
 
     pub fn mint(env: Env, to: Address, amount: i128) {
+        bump_critical_ttl(&env);
         require_admin(&env);
         if amount <= 0 {
             panic!("bad amount");
@@ -127,6 +143,7 @@ impl PeridotToken {
     }
 
     pub fn burn(env: Env, from: Address, amount: i128) {
+        bump_critical_ttl(&env);
         from.require_auth();
         if amount <= 0 {
             panic!("bad amount");
@@ -140,10 +157,14 @@ impl PeridotToken {
     }
 
     pub fn set_admin(env: Env, new_admin: Address) {
+        bump_critical_ttl(&env);
         require_admin(&env);
         env.storage().persistent().set(&DataKey::Admin, &new_admin);
     }
 }
+
+const TTL_THRESHOLD: u32 = 100_000;
+const TTL_EXTEND_TO: u32 = 200_000;
 
 fn require_admin(env: &Env) -> Address {
     let admin: Address = env
@@ -151,6 +172,22 @@ fn require_admin(env: &Env) -> Address {
         .persistent()
         .get(&DataKey::Admin)
         .expect("no admin");
+    bump_critical_ttl(env);
     admin.require_auth();
     admin
+}
+
+fn bump_critical_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::Admin) {
+        persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::MaxSupply) {
+        persistent.extend_ttl(&DataKey::MaxSupply, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if env.storage().instance().has(&DataKey::Initialized) {
+        env.storage()
+            .instance()
+            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }

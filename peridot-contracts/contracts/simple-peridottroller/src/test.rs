@@ -6,7 +6,7 @@ use soroban_sdk::testutils::Ledger;
 use soroban_sdk::token;
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
-use soroban_sdk::{testutils::Address as _, Address, Env, String};
+use soroban_sdk::{testutils::Address as _, Address, Env, IntoVal, String, Symbol};
 
 fn set_price_and_cache(
     comp: &SimplePeridottrollerClient,
@@ -517,6 +517,137 @@ fn test_liquidation_flow_basic() {
     // Liquidator should have received some pTokens from B
     let p_liq = vault_b.get_ptoken_balance(&liquidator);
     assert!(p_liq > 0u128);
+}
+
+#[test]
+#[should_panic(expected = "collateral market not entered")]
+fn test_liquidate_rejects_non_entered_collateral() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let t_admin_a = Address::generate(&env);
+    let t_a = env
+        .register_stellar_asset_contract_v2(t_admin_a.clone())
+        .address();
+    let t_admin_b = Address::generate(&env);
+    let t_b = env
+        .register_stellar_asset_contract_v2(t_admin_b.clone())
+        .address();
+    let t_admin_c = Address::generate(&env);
+    let t_c = env
+        .register_stellar_asset_contract_v2(t_admin_c.clone())
+        .address();
+
+    let va_id = env.register(rv::ReceiptVault, ());
+    let va = rv::ReceiptVaultClient::new(&env, &va_id);
+    let vb_id = env.register(rv::ReceiptVault, ());
+    let vb = rv::ReceiptVaultClient::new(&env, &vb_id);
+    let vc_id = env.register(rv::ReceiptVault, ());
+    let vc = rv::ReceiptVaultClient::new(&env, &vc_id);
+
+    va.initialize(&t_a, &0u128, &0u128, &admin);
+    vb.initialize(&t_b, &0u128, &0u128, &admin);
+    vc.initialize(&t_c, &0u128, &0u128, &admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&va_id);
+    comp.add_market(&vb_id);
+    comp.add_market(&vc_id);
+    comp.enter_market(&borrower, &va_id);
+    comp.enter_market(&borrower, &vb_id);
+    va.set_peridottroller(&comp_id);
+    vb.set_peridottroller(&comp_id);
+    vc.set_peridottroller(&comp_id);
+    comp.set_market_cf(&vb_id, &500_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_b, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_c, 1_000_000i128);
+
+    let mint_a = token::StellarAssetClient::new(&env, &t_a);
+    let mint_b = token::StellarAssetClient::new(&env, &t_b);
+    let mint_c = token::StellarAssetClient::new(&env, &t_c);
+    mint_a.mint(&admin, &1_000i128);
+    mint_b.mint(&borrower, &200i128);
+    mint_c.mint(&borrower, &200i128);
+
+    va.deposit(&admin, &1_000u128);
+    vb.deposit(&borrower, &100u128);
+    vc.deposit(&borrower, &100u128); // not entered
+
+    va.borrow(&borrower, &50u128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_b, 500_000i128);
+
+    comp.liquidate(&borrower, &va_id, &vc_id, &25u128, &liquidator);
+}
+
+#[test]
+fn test_preview_redeem_max_non_entered_market_allows_full_redeem() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let t_admin_a = Address::generate(&env);
+    let t_a = env
+        .register_stellar_asset_contract_v2(t_admin_a.clone())
+        .address();
+    let t_admin_c = Address::generate(&env);
+    let t_c = env
+        .register_stellar_asset_contract_v2(t_admin_c.clone())
+        .address();
+
+    let va_id = env.register(rv::ReceiptVault, ());
+    let va = rv::ReceiptVaultClient::new(&env, &va_id);
+    let vc_id = env.register(rv::ReceiptVault, ());
+    let vc = rv::ReceiptVaultClient::new(&env, &vc_id);
+    va.initialize(&t_a, &0u128, &0u128, &admin);
+    vc.initialize(&t_c, &0u128, &0u128, &admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&va_id);
+    comp.add_market(&vc_id);
+    comp.enter_market(&user, &va_id);
+    va.set_peridottroller(&comp_id);
+    vc.set_peridottroller(&comp_id);
+    comp.set_market_cf(&va_id, &500_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &t_c, 1_000_000i128);
+
+    let mint_a = token::StellarAssetClient::new(&env, &t_a);
+    let mint_c = token::StellarAssetClient::new(&env, &t_c);
+    mint_a.mint(&admin, &1_000i128);
+    mint_a.mint(&user, &200i128);
+    mint_c.mint(&user, &200i128);
+
+    va.deposit(&admin, &1_000u128);
+    va.deposit(&user, &200u128);
+    vc.deposit(&user, &100u128); // not entered
+    va.borrow(&user, &50u128);
+
+    let pbal: u128 = env.invoke_contract(
+        &vc_id,
+        &Symbol::new(&env, "get_ptoken_balance"),
+        (user.clone(),).into_val(&env),
+    );
+    let redeem_max = comp.preview_redeem_max(&user, &vc_id);
+    assert_eq!(redeem_max, pbal);
 }
 
 #[test]
