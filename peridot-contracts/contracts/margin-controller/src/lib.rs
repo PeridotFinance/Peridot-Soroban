@@ -143,6 +143,13 @@ impl MarginController {
             .set(&DataKey::LiquidationBonus, &liquidation_bonus_scaled);
     }
 
+    pub fn set_swap_adapter(env: Env, admin: Address, swap_adapter: Address) {
+        require_admin(&env, &admin);
+        env.storage()
+            .persistent()
+            .set(&DataKey::SwapAdapter, &swap_adapter);
+    }
+
     pub fn deposit_collateral(env: Env, user: Address, asset: Address, amount: u128) {
         user.require_auth();
         let vault = get_market(&env, &asset);

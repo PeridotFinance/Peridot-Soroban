@@ -2,6 +2,8 @@
 use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env};
 
 const SCALE_1E6: u128 = 1_000_000u128;
+const TTL_THRESHOLD: u32 = 10_000_000;
+const TTL_EXTEND_TO: u32 = 20_000_000;
 
 #[contracttype]
 pub enum DataKey {
@@ -42,6 +44,12 @@ impl JumpRateModel {
         {
             panic!("already initialized");
         }
+        if kink > SCALE_1E6 {
+            panic!("invalid kink");
+        }
+        if multiplier > 10_000_000u128 || jump > 10_000_000u128 {
+            panic!("invalid rate params");
+        }
         admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage()
@@ -54,6 +62,7 @@ impl JumpRateModel {
             .persistent()
             .set(&DataKey::JumpMultiplierPerYear, &jump);
         env.storage().persistent().set(&DataKey::Kink, &kink);
+        bump_ttl(&env);
         ModelInitialized {
             base_rate: base,
             multiplier,
@@ -65,6 +74,7 @@ impl JumpRateModel {
 
     pub fn get_borrow_rate(env: Env, cash: u128, borrows: u128, reserves: u128) -> u128 {
         ensure_initialized(&env);
+        bump_ttl(&env);
         let util = Self::utilization(cash, borrows, reserves);
         let base: u128 = env
             .storage()
@@ -103,6 +113,7 @@ impl JumpRateModel {
         reserve_factor: u128,
     ) -> u128 {
         ensure_initialized(&env);
+        bump_ttl(&env);
         let one_minus_rf = SCALE_1E6.saturating_sub(reserve_factor);
         let borrow_rate = Self::get_borrow_rate(env.clone(), cash, borrows, reserves);
         let rate_to_pool = borrow_rate.saturating_mul(one_minus_rf) / SCALE_1E6;
@@ -130,6 +141,25 @@ fn ensure_initialized(env: &Env) {
         .is_none()
     {
         panic!("model not initialized");
+    }
+}
+
+fn bump_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::Admin) {
+        persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BaseRatePerYear) {
+        persistent.extend_ttl(&DataKey::BaseRatePerYear, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::MultiplierPerYear) {
+        persistent.extend_ttl(&DataKey::MultiplierPerYear, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::JumpMultiplierPerYear) {
+        persistent.extend_ttl(&DataKey::JumpMultiplierPerYear, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::Kink) {
+        persistent.extend_ttl(&DataKey::Kink, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 
