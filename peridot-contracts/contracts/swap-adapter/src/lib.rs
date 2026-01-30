@@ -17,6 +17,7 @@ pub trait AquariusRouter {
 pub enum DataKey {
     Admin,
     Router,
+    Initialized,
 }
 
 #[contract]
@@ -25,15 +26,21 @@ pub struct SwapAdapter;
 #[contractimpl]
 impl SwapAdapter {
     pub fn initialize(env: Env, admin: Address, router: Address) {
+        if env.storage().instance().has(&DataKey::Initialized) {
+            panic!("already initialized");
+        }
         if env.storage().persistent().get::<_, Address>(&DataKey::Admin).is_some() {
             panic!("already initialized");
         }
         admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage().persistent().set(&DataKey::Router, &router);
+        env.storage().instance().set(&DataKey::Initialized, &true);
+        bump_critical_ttl(&env);
     }
 
     pub fn set_router(env: Env, admin: Address, router: Address) {
+        bump_critical_ttl(&env);
         require_admin(&env, &admin);
         env.storage().persistent().set(&DataKey::Router, &router);
     }
@@ -46,6 +53,7 @@ impl SwapAdapter {
         in_amount: u128,
         out_min: u128,
     ) -> u128 {
+        bump_critical_ttl(&env);
         let router: Address = env
             .storage()
             .persistent()
@@ -59,6 +67,12 @@ impl SwapAdapter {
             &out_min,
         )
     }
+
+    pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
 }
 
 fn require_admin(env: &Env, admin: &Address) {
@@ -70,5 +84,24 @@ fn require_admin(env: &Env, admin: &Address) {
     if stored != *admin {
         panic!("not admin");
     }
+    bump_critical_ttl(env);
     admin.require_auth();
+}
+
+const TTL_THRESHOLD: u32 = 100_000;
+const TTL_EXTEND_TO: u32 = 200_000;
+
+fn bump_critical_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::Admin) {
+        persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::Router) {
+        persistent.extend_ttl(&DataKey::Router, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if env.storage().instance().has(&DataKey::Initialized) {
+        env.storage()
+            .instance()
+            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }

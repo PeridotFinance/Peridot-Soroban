@@ -39,6 +39,7 @@ pub trait SwapAdapterContract {
 }
 
 const SCALE_1E6: u128 = 1_000_000u128;
+const MAX_USER_POSITIONS: u32 = 64;
 
 #[contracttype]
 pub enum DataKey {
@@ -152,6 +153,11 @@ impl MarginController {
         user.require_auth();
         let vault = get_market(&env, &asset);
         ReceiptVaultClient::new(&env, &vault).withdraw(&user, &ptoken_amount);
+    }
+
+    pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
+        require_admin(&env, &admin);
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
     pub fn open_position(
@@ -408,7 +414,7 @@ fn get_market(env: &Env, asset: &Address) -> Address {
     env.storage()
         .persistent()
         .get(&DataKey::Market(asset.clone()))
-        .expect("market not set")
+        .expect("unsupported market")
 }
 
 fn get_peridottroller(env: &Env) -> PeridottrollerClient<'_> {
@@ -458,6 +464,9 @@ fn push_user_position(env: &Env, user: &Address, id: u64) {
         .persistent()
         .get(&DataKey::UserPositions(user.clone()))
         .unwrap_or(Vec::new(env));
+    if positions.len() >= MAX_USER_POSITIONS {
+        panic!("too many positions");
+    }
     positions.push_back(id);
     env.storage()
         .persistent()

@@ -1,7 +1,7 @@
 #![no_std]
 #[cfg(test)]
 extern crate std;
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String};
+use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, String};
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
 
@@ -160,6 +160,12 @@ impl PeridotToken {
         bump_critical_ttl(&env);
         require_admin(&env);
         env.storage().persistent().set(&DataKey::Admin, &new_admin);
+    }
+
+    pub fn upgrade_wasm(env: Env, new_wasm_hash: BytesN<32>) {
+        bump_critical_ttl(&env);
+        require_admin(&env);
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
 
