@@ -3,6 +3,7 @@ use soroban_sdk::{contracttype, Address, Env};
 #[contracttype]
 pub enum DataKey {
     Admin,
+    Initialized,
     PauseGuardian,              // Address (optional)
     SupportedMarkets,           // Map<Address, bool>
     UserMarkets(Address),       // Vec<Address>
@@ -85,11 +86,66 @@ pub fn require_admin(env: Env) {
         .persistent()
         .get(&DataKey::Admin)
         .expect("admin not set");
+    bump_core_ttl(&env);
     admin.require_auth();
 }
 
+const TTL_THRESHOLD: u32 = 100_000_000;
+const TTL_EXTEND_TO: u32 = 200_000_000;
+const MAX_DECIMALS: u32 = 38;
+
+pub fn bump_core_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::Admin) {
+        persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::SupportedMarkets) {
+        persistent.extend_ttl(&DataKey::SupportedMarkets, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::Oracle) {
+        persistent.extend_ttl(&DataKey::Oracle, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::CloseFactorScaled) {
+        persistent.extend_ttl(&DataKey::CloseFactorScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::LiquidationIncentiveScaled) {
+        persistent.extend_ttl(&DataKey::LiquidationIncentiveScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::ReserveRecipient) {
+        persistent.extend_ttl(&DataKey::ReserveRecipient, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PauseBorrow) {
+        persistent.extend_ttl(&DataKey::PauseBorrow, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PauseRedeem) {
+        persistent.extend_ttl(&DataKey::PauseRedeem, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PauseLiquidation) {
+        persistent.extend_ttl(&DataKey::PauseLiquidation, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PauseDeposit) {
+        persistent.extend_ttl(&DataKey::PauseDeposit, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::LiquidationFeeScaled) {
+        persistent.extend_ttl(&DataKey::LiquidationFeeScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::OracleMaxAgeMultiplier) {
+        persistent.extend_ttl(&DataKey::OracleMaxAgeMultiplier, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PeridotToken) {
+        persistent.extend_ttl(&DataKey::PeridotToken, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if env.storage().instance().has(&DataKey::Initialized) {
+        env.storage()
+            .instance()
+            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn pow10_u128(decimals: u32) -> u128 {
-    // conservative pow that avoids overflow for reasonable decimals (<= 20)
+    if decimals > MAX_DECIMALS {
+        panic!("decimals too large");
+    }
     let mut result: u128 = 1;
     let mut i = 0u32;
     while i < decimals {

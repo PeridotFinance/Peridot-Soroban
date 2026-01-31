@@ -722,7 +722,7 @@ fn test_borrow_budget_peridottroller_same_market() {
     vault.deposit(&user, &200u128);
 
     vault.borrow(&user, &80u128);
-    assert_budget_under(&env, 5_000_000, 450_000);
+    assert_budget_under(&env, 5_000_000, 600_000);
 }
 
 #[test]

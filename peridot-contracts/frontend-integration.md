@@ -4,16 +4,18 @@ This document explains how the frontend can interact with the Peridot Soroban co
 
 ## 1. High-Level Architecture
 
-- **Controller (`SimplePeridottroller`)** – central risk engine. Contract ID: `CDKBJC5E44FEZVVETYU2IZZLUVKN2BUH4XOMEMKTYKM4SBSRT5ZR34V3`
-- **ReceiptVault (XLM market)** – contract ID: `CCPQYPFNAGQPQTMPAEBGNPNSQJ4FAJYPX6WLYBKE5SO5ZONXANCUEYE7`
-- **ReceiptVault (USDT market)** – contract ID: `CDM37TMZO2QQQP6CIMU7E6OIBR6IQMM46P5PCSQ5D7AX6GMEFQX7NTKL`
-- **Jump Rate Model** – contract ID: `CD43R6PGESRAKAUYHRDNMSS7PHU6TT26D3WAAHYEKMDGHB5FALTHMFEI`
-- **Peridot Reward Token (`P`)** – contract ID: `CBTHWQJX2766UIH4J6TGRU3XVRVDMOX33RWT5IP36HB3D5RGD7XBPSR5`
-- **Mock USDT (open mint)** – contract ID: `CBX3DOZH4HUR3EJS6LAKHXN6RARXKMUT33OUMVVSUW5HCXEIECD4WT75`
+- **Controller (`SimplePeridottroller`)** – central risk engine. Contract ID: `CCBAEMMG4STILW6SYTNCIVG44OF4TQDDCYPU7GS3ZOEKLTC75ONTLCI2`
+- **ReceiptVault (XLM market)** – contract ID: `CCHBN5RRP7KH4O7ICSIQTSYFFZBYFEBCF35UOQBGDI7GZZKKWXWVLLPX`
+- **ReceiptVault (USDT market)** – contract ID: `CBP2U7FVTQ2EIAQ474CTYN74KCEU6YLCCGH6KRY2RAMQEDSKREKSAGSO`
+- **Jump Rate Model** – contract ID: `CCIDO7HBNBPUKFWEI3PRA6O6QU2JXUKVIZAERCZWBNGGK7LO7MFBKKOA`
+- **Peridot Reward Token (`P`)** – contract ID: `CBCA56UIBQA3WT2JUIIG2BHW325CMLNAC7CKL33T37GHN25RCGR6SXPB`
+- **Mock USDT (open mint)** – contract ID: `CDBWTU527WNACRCET2NF6RZFQ3WAPJOQM3OQ5VLUNHJRDQ6ICVO2JTJP`
 - **Reflector Oracle** – contract ID: `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63`
-- **Swap Adapter (Aquarius router wrapper)** – contract ID: from `scripts/deploy_margin_controller_testnet.sh`
-- **Margin Controller (true margin trading)** – contract ID: from `scripts/deploy_margin_controller_testnet.sh`
-- **Aquarius Router (AMM)** – `CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK`
+- **Swap Adapter (Aquarius router wrapper)** – contract ID: `CAGLARN3MUMRGCRNKXZ3SH7NVCZ3P3CDGHL2FQEEXIC4MPAGTQTACY6S`
+- **Margin Controller (true margin trading)** – contract ID: `CAZQWGJDKG2JQYV66VV3ONBDLYAE77YVKSBUNWUY7MV6WVLLHT4URFX7`
+- **Soroswap Router (AMM)** – `CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD`
+- **Soroswap Factory** – `CDP3HMUH6SMS3S7NPGNDJLULCOXXEPSHY4JKUKMBNQMATHDHWXRRJTBY`
+- **Soroswap Aggregator** – `CC74XDT7UVLUZCELKBIYXFYIX6A6LGPWURJVUXGRPQO745RWX7WEURMA`
 
 Your frontend will mainly call the controller and the vault contracts. The controller handles account liquidity checks, oracle pricing, and incentives; each vault exposes ERC20-like `deposit`, `withdraw`, `borrow`, `repay`, and `transfer` entrypoints.
 
@@ -155,22 +157,54 @@ The controller calls the Reflector oracle synchronously. If `get_price_usd` retu
 
 ## 8. Leveraged Margin (True Borrow/Swap)
 
-Margin trading uses real vault borrows + AMM swaps (Aquarius) coordinated by `margin-controller` and `swap-adapter`.
+Margin trading uses real vault borrows + AMM swaps (Soroswap) coordinated by `margin-controller` and `swap-adapter`.
 
 Core calls:
-- `open_position(user, collateral_asset, base_asset, collateral_amount, leverage, side, swaps_chain, out_min)`
-- `close_position(user, position_id, swaps_chain, out_min)`
+- `open_position(user, collateral_asset, base_asset, collateral_amount, leverage, side, path, amount_out_min, deadline)`
+- `open_position_no_swap(user, collateral_asset, debt_asset, collateral_amount, borrow_amount, leverage, side)`
+- `close_position(user, position_id, path, amount_out_min, deadline)`
 - `liquidate_position(liquidator, position_id)` (liquidation uses peridottroller liquidation + vaults)
 
 Key notes for frontend engineers:
-- **`swaps_chain`** is the Aquarius multi-hop route payload (max 4 pools). Build it off-chain using Aquarius “find path” APIs and pass it through to `open_position` / `close_position`.
-- **`out_min`** enforces user slippage. Compute `out_min = quoted_out * (1 - slippage_bps/10_000)`.
+- **`path`** is the Soroswap route vector of token addresses (e.g., `[USDC, XLM]`).
+- **`amount_out_min`** enforces user slippage. Compute `amount_out_min = quoted_out * (1 - slippage_bps/10_000)`.
+- **`deadline`** is a unix timestamp cutoff for swap execution (e.g., now + 5 minutes).
 - **`side`** is `Long` or `Short`.
 
 Recommended UX flow for open/close:
-1. Fetch best route off-chain (Aquarius Find Path).
-2. Compute `out_min`.
-3. Call `open_position`/`close_position` with `swaps_chain` and `out_min`.
+1. Fetch best route off-chain (Soroswap API) and extract `path`.
+2. Compute `amount_out_min`.
+3. Call `open_position`/`close_position` with `path`, `amount_out_min`, `deadline`.
+
+Budget‑safe open flow (recommended for testnet limits):
+1. User swaps USDC→XLM directly via Soroswap router (outside MarginController).
+2. Call `open_position_no_swap` to deposit XLM collateral and borrow USDC (no router call).
+
+CLI example (two‑step, USDC → XLM → open):
+```bash
+# Step 1: swap USDC -> XLM via Soroswap router
+deadline=$(($(date +%s)+600))
+stellar contract invoke --id "CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD" \
+  --source-account dev --network testnet -- \
+  swap_exact_tokens_for_tokens \
+  --amount_in 10000000 --amount_out_min 1 \
+  --path '["USDC_CONTRACT","XLM_CONTRACT"]' \
+  --to "USER_ADDRESS" --deadline "$deadline"
+
+# Step 2: open position without swap
+stellar contract invoke --id "MARGIN_CONTROLLER_ID" --source-account dev --network testnet -- \
+  open_position_no_swap \
+  --user "USER_ADDRESS" \
+  --collateral_asset "XLM_CONTRACT" \
+  --debt_asset "USDC_CONTRACT" \
+  --collateral_amount 15123603 \
+  --borrow_amount 2000000 \
+  --leverage 2 --side Long
+```
+
+Notes:
+- Set `amount_out_min` based on your slippage tolerance.
+- Use the swap output as `collateral_amount`.
 
 Liquidation helper (peridottroller):
 - `repay_on_behalf_for_liquidator(borrower, repay_market, repay_amount, liquidator)`

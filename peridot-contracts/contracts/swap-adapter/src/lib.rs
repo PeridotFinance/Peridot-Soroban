@@ -3,16 +3,16 @@ use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, St
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 
-#[soroban_sdk::contractclient(name = "AquariusRouterClient")]
-pub trait AquariusRouter {
-    fn swap_chained(
+#[soroban_sdk::contractclient(name = "SoroswapRouterClient")]
+pub trait SoroswapRouter {
+    fn swap_exact_tokens_for_tokens(
         env: Env,
-        user: Address,
-        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
-        token_in: Address,
-        in_amount: u128,
-        out_min: u128,
-    ) -> u128;
+        amount_in: i128,
+        amount_out_min: i128,
+        path: Vec<Address>,
+        to: Address,
+        deadline: u64,
+    ) -> Vec<i128>;
 }
 
 #[contracttype]
@@ -53,13 +53,13 @@ impl SwapAdapter {
         env.storage().persistent().set(&DataKey::Router, &router);
     }
 
-    pub fn swap_chained(
+    pub fn swap_exact_tokens_for_tokens(
         env: Env,
         user: Address,
-        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
-        token_in: Address,
-        in_amount: u128,
-        out_min: u128,
+        amount_in: u128,
+        amount_out_min: u128,
+        path: Vec<Address>,
+        deadline: u64,
     ) -> u128 {
         bump_critical_ttl(&env);
         user.require_auth();
@@ -68,13 +68,18 @@ impl SwapAdapter {
             .persistent()
             .get(&DataKey::Router)
             .expect("router not set");
-        AquariusRouterClient::new(&env, &router).swap_chained(
+        let amounts = SoroswapRouterClient::new(&env, &router).swap_exact_tokens_for_tokens(
+            &amount_in.try_into().unwrap(),
+            &amount_out_min.try_into().unwrap(),
+            &path,
             &user,
-            &swaps_chain,
-            &token_in,
-            &in_amount,
-            &out_min,
-        )
+            &deadline,
+        );
+        let last = amounts.get(amounts.len() - 1).unwrap();
+        if last < 0 {
+            panic!("invalid swap output");
+        }
+        last.try_into().unwrap()
     }
 
     pub fn bump_ttl(env: Env) {
@@ -103,6 +108,9 @@ fn require_admin(env: &Env, admin: &Address) {
 
 const TTL_THRESHOLD: u32 = 100_000_000;
 const TTL_EXTEND_TO: u32 = 200_000_000;
+
+#[cfg(test)]
+mod test;
 
 fn bump_critical_ttl(env: &Env) {
     let persistent = env.storage().persistent();

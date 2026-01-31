@@ -1,8 +1,8 @@
 use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::ReceiptVault;
-use soroban_sdk::testutils::{Address as _, BytesN as _};
-use soroban_sdk::{contract, contractimpl, contracttype, BytesN, Env, IntoVal, Symbol};
+use soroban_sdk::testutils::Address as _;
+use soroban_sdk::{contract, contractimpl, contracttype, Env, IntoVal, Symbol};
 use simple_peridottroller::SimplePeridottroller;
 use soroban_sdk::testutils::Ledger;
 
@@ -74,18 +74,17 @@ struct MockSwapAdapter;
 
 #[contractimpl]
 impl MockSwapAdapter {
-    pub fn swap_chained(
+    pub fn swap_exact_tokens_for_tokens(
         env: Env,
         user: Address,
-        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
-        _token_in: Address,
-        in_amount: u128,
-        _out_min: u128,
+        amount_in: u128,
+        _amount_out_min: u128,
+        path: Vec<Address>,
+        _deadline: u64,
     ) -> u128 {
-        let last = swaps_chain.get(swaps_chain.len() - 1).unwrap();
-        let token_out = last.2.clone();
-        MockTokenClient::new(&env, &token_out).mint(&user, &(in_amount as i128));
-        in_amount
+        let token_out = path.get(path.len() - 1).unwrap();
+        MockTokenClient::new(&env, &token_out).mint(&user, &(amount_in as i128));
+        amount_in
     }
 }
 fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Address) {
@@ -145,6 +144,12 @@ fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Addres
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
 
+    // Enter markets so peridottroller counts collateral across vaults
+    comp.enter_market(&user, &usdt_vault_id);
+    comp.enter_market(&user, &xlm_vault_id);
+    comp.enter_market(&lender, &usdt_vault_id);
+    comp.enter_market(&lender, &xlm_vault_id);
+
     (
         env,
         controller_id,
@@ -163,13 +168,7 @@ fn open_and_close_long() {
         setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    // simple 1-hop swaps
-    let hop = (
-        Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]),
-        BytesN::random(&env),
-        xlm_id.clone(),
-    );
-    let swaps = Vec::from_array(&env, [hop]);
+    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
 
     let position_id = controller.open_position(
         &user,
@@ -178,21 +177,351 @@ fn open_and_close_long() {
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &swaps,
+        &path,
         &0u128,
+        &env.ledger().timestamp().saturating_add(300),
     );
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
 
-    // close using reverse hop
-    let hop_close = (
-        Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]),
-        BytesN::random(&env),
-        usdt_id.clone(),
+    let path_close = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    controller.close_position(
+        &user,
+        &position_id,
+        &path_close,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
     );
-    let swaps_close = Vec::from_array(&env, [hop_close]);
-    controller.close_position(&user, &position_id, &swaps_close, &0u128);
 
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Closed);
+}
+
+#[test]
+#[should_panic(expected = "already initialized")]
+fn test_initialize_twice_panics() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let admin = Address::generate(&env);
+    let comp = Address::generate(&env);
+    let swap = Address::generate(&env);
+    controller.initialize(&admin, &comp, &swap, &5u128, &50_000u128);
+}
+
+#[test]
+fn test_set_market_and_params() {
+    let (env, _controller_id, usdt_id, _, _, _, usdt_vault_id, _) = setup();
+    let admin = Address::generate(&env);
+
+    // Re-initialize a fresh controller to test set_market and set_params
+    let fresh_id = env.register(MarginController, ());
+    let fresh = MarginControllerClient::new(&env, &fresh_id);
+    let comp = Address::generate(&env);
+    let swap = Address::generate(&env);
+    fresh.initialize(&admin, &comp, &swap, &3u128, &10_000u128);
+    fresh.set_market(&admin, &usdt_id, &usdt_vault_id);
+
+    // Update params
+    fresh.set_params(&admin, &5u128, &50_000u128);
+}
+
+#[test]
+#[should_panic(expected = "not admin")]
+fn test_set_params_non_admin_panics() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let non_admin = Address::generate(&env);
+    controller.set_params(&non_admin, &3u128, &10_000u128);
+}
+
+#[test]
+fn test_open_position_no_swap() {
+    let (env, controller_id, usdt_id, _xlm_id, user, _lender, _usdt_vault_id, _xlm_vault_id) =
+        setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    // Use same asset for collateral and debt so deposit+borrow hit the same vault
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &usdt_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Open);
+    assert_eq!(pos.side, PositionSide::Long);
+    assert_eq!(pos.owner, user);
+}
+
+#[test]
+fn test_open_short_position() {
+    let (env, controller_id, usdt_id, xlm_id, user, _lender, _usdt_vault_id, _xlm_vault_id) =
+        setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let path = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    let position_id = controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Short,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Open);
+    assert_eq!(pos.side, PositionSide::Short);
+}
+
+#[test]
+#[should_panic(expected = "bad leverage")]
+fn test_open_position_bad_leverage_panics() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &0u128, // leverage=0 invalid
+        &PositionSide::Long,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+}
+
+#[test]
+#[should_panic(expected = "bad leverage")]
+fn test_open_position_leverage_exceeds_max_panics() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &100u128, // far exceeds max_leverage=5
+        &PositionSide::Long,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+}
+
+#[test]
+#[should_panic(expected = "bad collateral")]
+fn test_open_position_zero_collateral_panics() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &0u128, // zero collateral
+        &2u128,
+        &PositionSide::Long,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+}
+
+#[test]
+#[should_panic(expected = "not owner")]
+fn test_close_position_not_owner_panics() {
+    let (env, controller_id, usdt_id, xlm_id, user, _lender, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let position_id = controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+
+    let other_user = Address::generate(&env);
+    let path_close = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    controller.close_position(
+        &other_user,
+        &position_id,
+        &path_close,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+}
+
+#[test]
+#[should_panic(expected = "not open")]
+fn test_close_position_already_closed_panics() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let position_id = controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+
+    let path_close = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    controller.close_position(
+        &user,
+        &position_id,
+        &path_close,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+
+    // Try closing again
+    let path_close2 = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    controller.close_position(
+        &user,
+        &position_id,
+        &path_close2,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+}
+
+#[test]
+fn test_get_position_and_user_positions() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let position_id = controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.owner, user);
+    assert_eq!(pos.side, PositionSide::Long);
+    assert_eq!(pos.status, PositionStatus::Open);
+
+    let user_positions = controller.get_user_positions(&user);
+    assert_eq!(user_positions.len(), 1);
+    assert_eq!(user_positions.get(0).unwrap(), position_id);
+}
+
+#[test]
+fn test_get_health_factor() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let position_id = controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+
+    let health = controller.get_health_factor(&position_id);
+    // With 1:1 prices and 2x leverage, health factor should be > 0
+    assert!(health > 0);
+}
+
+#[test]
+fn test_multiple_positions() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let id1 = controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+
+    let id2 = controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &path,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+
+    assert_ne!(id1, id2);
+    let user_positions = controller.get_user_positions(&user);
+    assert_eq!(user_positions.len(), 2);
+
+    // Close first position, should be removed from user positions
+    let path_close = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    controller.close_position(
+        &user,
+        &id1,
+        &path_close,
+        &0u128,
+        &env.ledger().timestamp().saturating_add(300),
+    );
+    let user_positions = controller.get_user_positions(&user);
+    assert_eq!(user_positions.len(), 1);
+    assert_eq!(user_positions.get(0).unwrap(), id2);
+}
+
+#[test]
+fn test_deposit_and_withdraw_collateral() {
+    let (env, controller_id, usdt_id, _xlm_id, user, _, usdt_vault_id, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    // Deposit collateral through controller
+    controller.deposit_collateral(&user, &usdt_id, &100u128);
+
+    // Check ptoken balance via vault
+    let vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    let ptokens = vault.get_ptoken_balance(&user);
+    assert!(ptokens > 0);
+
+    // Withdraw collateral
+    controller.withdraw_collateral(&user, &usdt_id, &ptokens);
+    let ptokens_after = vault.get_ptoken_balance(&user);
+    assert_eq!(ptokens_after, 0);
 }
