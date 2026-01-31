@@ -11,7 +11,9 @@ This document explains how the frontend can interact with the Peridot Soroban co
 - **Peridot Reward Token (`P`)** – contract ID: `CBTHWQJX2766UIH4J6TGRU3XVRVDMOX33RWT5IP36HB3D5RGD7XBPSR5`
 - **Mock USDT (open mint)** – contract ID: `CBX3DOZH4HUR3EJS6LAKHXN6RARXKMUT33OUMVVSUW5HCXEIECD4WT75`
 - **Reflector Oracle** – contract ID: `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63`
-- **Margin Manager (leveraged trading)** – contract ID: pending deploy via `scripts/deploy_margin_testnet.sh`
+- **Swap Adapter (Aquarius router wrapper)** – contract ID: from `scripts/deploy_margin_controller_testnet.sh`
+- **Margin Controller (true margin trading)** – contract ID: from `scripts/deploy_margin_controller_testnet.sh`
+- **Aquarius Router (AMM)** – `CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK`
 
 Your frontend will mainly call the controller and the vault contracts. The controller handles account liquidity checks, oracle pricing, and incentives; each vault exposes ERC20-like `deposit`, `withdraw`, `borrow`, `repay`, and `transfer` entrypoints.
 
@@ -156,9 +158,19 @@ The controller calls the Reflector oracle synchronously. If `get_price_usd` retu
 Margin trading uses real vault borrows + AMM swaps (Aquarius) coordinated by `margin-controller` and `swap-adapter`.
 
 Core calls:
-- `open_position(user, collateral_asset, debt_asset, collateral_amount, leverage, swaps_chain, out_min)`
+- `open_position(user, collateral_asset, base_asset, collateral_amount, leverage, side, swaps_chain, out_min)`
 - `close_position(user, position_id, swaps_chain, out_min)`
-- `liquidate_position(liquidator, position_id, swaps_chain, out_min)` (if enabled in margin controller)
+- `liquidate_position(liquidator, position_id)` (liquidation uses peridottroller liquidation + vaults)
+
+Key notes for frontend engineers:
+- **`swaps_chain`** is the Aquarius multi-hop route payload (max 4 pools). Build it off-chain using Aquarius “find path” APIs and pass it through to `open_position` / `close_position`.
+- **`out_min`** enforces user slippage. Compute `out_min = quoted_out * (1 - slippage_bps/10_000)`.
+- **`side`** is `Long` or `Short`.
+
+Recommended UX flow for open/close:
+1. Fetch best route off-chain (Aquarius Find Path).
+2. Compute `out_min`.
+3. Call `open_position`/`close_position` with `swaps_chain` and `out_min`.
 
 Liquidation helper (peridottroller):
 - `repay_on_behalf_for_liquidator(borrower, repay_market, repay_amount, liquidator)`

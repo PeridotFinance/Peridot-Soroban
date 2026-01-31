@@ -100,8 +100,8 @@ fn require_admin(env: &Env, admin: &Address) {
     admin.require_auth();
 }
 
-const TTL_THRESHOLD: u32 = 10_000_000;
-const TTL_EXTEND_TO: u32 = 20_000_000;
+const TTL_THRESHOLD: u32 = 100_000_000;
+const TTL_EXTEND_TO: u32 = 200_000_000;
 
 fn bump_critical_ttl(env: &Env) {
     let persistent = env.storage().persistent();

@@ -1,9 +1,12 @@
 #![no_std]
-use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env};
+use soroban_sdk::{
+    contract, contractevent, contractimpl, contracttype, Address, BytesN, Env, String,
+};
 
 const SCALE_1E6: u128 = 1_000_000u128;
-const TTL_THRESHOLD: u32 = 10_000_000;
-const TTL_EXTEND_TO: u32 = 20_000_000;
+pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+const TTL_THRESHOLD: u32 = 100_000_000;
+const TTL_EXTEND_TO: u32 = 200_000_000;
 
 #[contracttype]
 pub enum DataKey {
@@ -44,6 +47,7 @@ impl JumpRateModel {
         {
             panic!("already initialized");
         }
+        assert_expected_admin(&env, &admin);
         if kink > SCALE_1E6 {
             panic!("invalid kink");
         }
@@ -121,6 +125,11 @@ impl JumpRateModel {
         util.saturating_mul(rate_to_pool) / SCALE_1E6
     }
 
+    pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
+        require_admin(&env, &admin);
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
+
     fn utilization(cash: u128, borrows: u128, reserves: u128) -> u128 {
         if borrows == 0 {
             return 0;
@@ -142,6 +151,31 @@ fn ensure_initialized(env: &Env) {
     {
         panic!("model not initialized");
     }
+}
+
+fn assert_expected_admin(_env: &Env, _admin: &Address) {
+    #[cfg(not(test))]
+    {
+        let expected_admin_str =
+            option_env!("JUMP_RATE_MODEL_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin = Address::from_string(&String::from_str(_env, expected_admin_str));
+        if _admin != &expected_admin {
+            panic!("unexpected admin");
+        }
+    }
+}
+
+fn require_admin(env: &Env, admin: &Address) {
+    let stored: Address = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Admin)
+        .expect("admin not set");
+    bump_ttl(env);
+    if stored != *admin {
+        panic!("not admin");
+    }
+    admin.require_auth();
 }
 
 fn bump_ttl(env: &Env) {
@@ -166,13 +200,12 @@ fn bump_ttl(env: &Env) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use soroban_sdk::testutils::Address as _;
 
     #[test]
     fn model_rates() {
         let env = Env::default();
         env.mock_all_auths();
-        let admin = Address::generate(&env);
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
         let id = env.register(JumpRateModel, ());
         let client = JumpRateModelClient::new(&env, &id);
         client.initialize(

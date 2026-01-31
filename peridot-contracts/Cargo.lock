@@ -1035,6 +1035,7 @@ name = "receipt-vault"
 version = "0.2.0"
 dependencies = [
  "jump-rate-model",
+ "mock-token",
  "simple-peridottroller",
  "soroban-sdk",
  "stellar-tokens",

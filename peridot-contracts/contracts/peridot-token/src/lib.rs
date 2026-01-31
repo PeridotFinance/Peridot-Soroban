@@ -110,6 +110,7 @@ impl PeridotToken {
 
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         bump_critical_ttl(&env);
+        from.require_auth();
         if amount <= 0 {
             panic!("bad amount");
         }
@@ -169,8 +170,8 @@ impl PeridotToken {
     }
 }
 
-const TTL_THRESHOLD: u32 = 100_000;
-const TTL_EXTEND_TO: u32 = 200_000;
+const TTL_THRESHOLD: u32 = 100_000_000;
+const TTL_EXTEND_TO: u32 = 200_000_000;
 
 fn require_admin(env: &Env) -> Address {
     let admin: Address = env

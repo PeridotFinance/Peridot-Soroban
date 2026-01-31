@@ -6,6 +6,11 @@ This guide covers end-to-end deployment of the Peridot lending protocol contract
 
 - Rust toolchain installed.
 - Stellar CLI installed and on PATH (`stellar` command). If needed, install via your package manager or cargo.
+- For init-gated contracts, set expected admin env vars before build/deploy:
+  - `PERIDOT_TOKEN_INIT_ADMIN`
+  - `SWAP_ADAPTER_INIT_ADMIN`
+  - `JUMP_RATE_MODEL_INIT_ADMIN`
+  - These must match the admin address you will pass to `initialize`.
 - Testnet network configured in the CLI:
   ```bash
   stellar config network add testnet \
@@ -116,7 +121,7 @@ JRM_ID=$(stellar contract deploy \
   --alias peridot_jrm)
 
 stellar contract invoke --id "$JRM_ID" --source-account "$IDENTITY" --network testnet -- \
-  initialize --base 20000 --multiplier 180000 --jump 4000000 --kink 800000
+  initialize --base 20000 --multiplier 180000 --jump 4000000 --kink 800000 --admin "$ADMIN"
 
 stellar contract invoke --id peridot_vault --source-account "$IDENTITY" --network testnet -- \
   set_interest_model --model "$JRM_ID"
@@ -268,6 +273,36 @@ stellar contract invoke --network testnet --id "$VA_ID" -- \
 - Keep a log of printed IDs from deploy scripts; export them in your shell for subsequent commands.
 - Use the verify script after any change to confirm expected configuration.
 - For upgrades: both `ReceiptVault` and `SimplePeridottroller` expose `upgrade_wasm` (admin-only). Upload the new code and pass the 32-byte wasm hash.
+- For margin trading: `MarginController`, `SwapAdapter`, `PeridotToken`, and `JumpRateModel` also expose `upgrade_wasm` (admin-only).
+- Use deploy scripts that initialize immediately after deploy to avoid front-run initialization.
+
+### Init Admin Expectations
+
+Some contracts enforce an expected admin at initialization time. This prevents third‑party initialization if a contract is deployed but not initialized immediately.
+
+Set these env vars **before building/deploying** so `initialize` accepts your admin:
+
+```bash
+export PERIDOT_TOKEN_INIT_ADMIN="$ADMIN"
+export SWAP_ADAPTER_INIT_ADMIN="$ADMIN"
+export JUMP_RATE_MODEL_INIT_ADMIN="$ADMIN"
+```
+
+If these are not set, contracts default to the hardcoded dev admin value.
+
+### TTL Maintenance (State Archival)
+
+Soroban expires persistent storage entries if they are not extended. We bump TTLs inside core entrypoints, but **admin should still ensure periodic traffic** so state does not expire.
+
+Recommended practice:
+- Schedule a small “keepalive” job (daily or weekly) that calls:
+  - `swap-adapter.bump_ttl`
+  - any frequent read/write on `margin-controller` (e.g., `get_user_positions`) to bump its critical keys
+  - `peridot-token.name` or `symbol` (bumps its critical keys)
+  - `jump-rate-model.get_borrow_rate` (bumps its critical keys)
+- For high-availability, run this keepalive even when user activity is low.
+
+If critical keys expire, the contract can become unusable or, in worst cases, allow re‑initialization. TTL bumping prevents that.
 
 ### Troubleshooting
 

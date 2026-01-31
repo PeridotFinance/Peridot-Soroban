@@ -40,6 +40,8 @@ pub trait SwapAdapterContract {
 
 const SCALE_1E6: u128 = 1_000_000u128;
 const MAX_USER_POSITIONS: u32 = 64;
+const TTL_THRESHOLD: u32 = 100_000_000;
+const TTL_EXTEND_TO: u32 = 200_000_000;
 
 #[contracttype]
 pub enum DataKey {
@@ -53,6 +55,7 @@ pub enum DataKey {
     Position(u64),
     UserPositions(Address),
     DebtSharesTotal(Address, Address), // (user, debt_asset)
+    Initialized,
 }
 
 #[contracttype]
@@ -97,6 +100,9 @@ impl MarginController {
         max_leverage: u128,
         liquidation_bonus_scaled: u128,
     ) {
+        if env.storage().instance().has(&DataKey::Initialized) {
+            panic!("already initialized");
+        }
         if env.storage().persistent().get::<_, Address>(&DataKey::Admin).is_some() {
             panic!("already initialized");
         }
@@ -118,11 +124,17 @@ impl MarginController {
             .persistent()
             .set(&DataKey::LiquidationBonus, &liquidation_bonus_scaled);
         env.storage().persistent().set(&DataKey::PositionCounter, &0u64);
+        env.storage().instance().set(&DataKey::Initialized, &true);
+        bump_core_ttl(&env);
     }
 
     pub fn set_market(env: Env, admin: Address, asset: Address, vault: Address) {
+        bump_core_ttl(&env);
         require_admin(&env, &admin);
-        env.storage().persistent().set(&DataKey::Market(asset), &vault);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Market(asset.clone()), &vault);
+        bump_market_ttl(&env, &asset);
     }
 
     pub fn set_params(
@@ -131,6 +143,7 @@ impl MarginController {
         max_leverage: u128,
         liquidation_bonus_scaled: u128,
     ) {
+        bump_core_ttl(&env);
         require_admin(&env, &admin);
         if max_leverage < 1 {
             panic!("invalid leverage");
@@ -144,6 +157,7 @@ impl MarginController {
     }
 
     pub fn set_swap_adapter(env: Env, admin: Address, swap_adapter: Address) {
+        bump_core_ttl(&env);
         require_admin(&env, &admin);
         env.storage()
             .persistent()
@@ -151,18 +165,21 @@ impl MarginController {
     }
 
     pub fn deposit_collateral(env: Env, user: Address, asset: Address, amount: u128) {
+        bump_core_ttl(&env);
         user.require_auth();
         let vault = get_market(&env, &asset);
         ReceiptVaultClient::new(&env, &vault).deposit(&user, &amount);
     }
 
     pub fn withdraw_collateral(env: Env, user: Address, asset: Address, ptoken_amount: u128) {
+        bump_core_ttl(&env);
         user.require_auth();
         let vault = get_market(&env, &asset);
         ReceiptVaultClient::new(&env, &vault).withdraw(&user, &ptoken_amount);
     }
 
     pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
+        bump_core_ttl(&env);
         require_admin(&env, &admin);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
@@ -178,6 +195,7 @@ impl MarginController {
         swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
         out_min: u128,
     ) -> u64 {
+        bump_core_ttl(&env);
         user.require_auth();
         let max_leverage = get_max_leverage(&env);
         if leverage < 1 || leverage > max_leverage {
@@ -271,6 +289,7 @@ impl MarginController {
         env.storage()
             .persistent()
             .set(&DataKey::Position(id), &position);
+        bump_position_ttl(&env, id);
         push_user_position(&env, &user, id);
         id
     }
@@ -282,6 +301,7 @@ impl MarginController {
         swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
         out_min: u128,
     ) {
+        bump_core_ttl(&env);
         user.require_auth();
         let mut position = get_position(&env, position_id);
         if position.owner != user {
@@ -325,6 +345,7 @@ impl MarginController {
         env.storage()
             .persistent()
             .set(&DataKey::Position(position_id), &position);
+        bump_position_ttl(&env, position_id);
         remove_user_position(&env, &user, position_id);
 
         // Any remaining swap output stays with the user as profit
@@ -336,6 +357,7 @@ impl MarginController {
         liquidator: Address,
         position_id: u64,
     ) {
+        bump_core_ttl(&env);
         liquidator.require_auth();
         let mut position = get_position(&env, position_id);
         if position.status != PositionStatus::Open {
@@ -368,14 +390,19 @@ impl MarginController {
         env.storage()
             .persistent()
             .set(&DataKey::Position(position_id), &position);
+        bump_position_ttl(&env, position_id);
         remove_user_position(&env, &position.owner, position_id);
     }
 
     pub fn get_position(env: Env, position_id: u64) -> Option<Position> {
+        bump_core_ttl(&env);
+        bump_position_ttl(&env, position_id);
         env.storage().persistent().get(&DataKey::Position(position_id))
     }
 
     pub fn get_user_positions(env: Env, user: Address) -> Vec<u64> {
+        bump_core_ttl(&env);
+        bump_user_positions_ttl(&env, &user);
         env.storage()
             .persistent()
             .get(&DataKey::UserPositions(user))
@@ -383,6 +410,7 @@ impl MarginController {
     }
 
     pub fn get_health_factor(env: Env, position_id: u64) -> u128 {
+        bump_core_ttl(&env);
         let position = get_position(&env, position_id);
         let (debt_amount, total_shares, _total_debt) =
             debt_for_shares(&env, &position.owner, &position.debt_asset, position.debt_shares);
@@ -411,13 +439,42 @@ fn require_admin(env: &Env, admin: &Address) {
         .persistent()
         .get(&DataKey::Admin)
         .expect("admin not set");
+    bump_core_ttl(env);
     if stored != *admin {
         panic!("not admin");
     }
     admin.require_auth();
 }
 
+fn bump_core_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::Admin) {
+        persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::Peridottroller) {
+        persistent.extend_ttl(&DataKey::Peridottroller, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::SwapAdapter) {
+        persistent.extend_ttl(&DataKey::SwapAdapter, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::MaxLeverage) {
+        persistent.extend_ttl(&DataKey::MaxLeverage, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::LiquidationBonus) {
+        persistent.extend_ttl(&DataKey::LiquidationBonus, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PositionCounter) {
+        persistent.extend_ttl(&DataKey::PositionCounter, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if env.storage().instance().has(&DataKey::Initialized) {
+        env.storage()
+            .instance()
+            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 fn get_market(env: &Env, asset: &Address) -> Address {
+    bump_market_ttl(env, asset);
     env.storage()
         .persistent()
         .get(&DataKey::Market(asset.clone()))
@@ -478,6 +535,7 @@ fn push_user_position(env: &Env, user: &Address, id: u64) {
     env.storage()
         .persistent()
         .set(&DataKey::UserPositions(user.clone()), &positions);
+    bump_user_positions_ttl(env, user);
 }
 
 fn remove_user_position(env: &Env, user: &Address, id: u64) {
@@ -495,9 +553,11 @@ fn remove_user_position(env: &Env, user: &Address, id: u64) {
     env.storage()
         .persistent()
         .set(&DataKey::UserPositions(user.clone()), &out);
+    bump_user_positions_ttl(env, user);
 }
 
 fn get_debt_shares_total(env: &Env, user: &Address, debt_asset: &Address) -> u128 {
+    bump_debt_shares_ttl(env, user, debt_asset);
     env.storage()
         .persistent()
         .get(&DataKey::DebtSharesTotal(user.clone(), debt_asset.clone()))
@@ -508,6 +568,7 @@ fn set_debt_shares_total(env: &Env, user: &Address, debt_asset: &Address, value:
     env.storage()
         .persistent()
         .set(&DataKey::DebtSharesTotal(user.clone(), debt_asset.clone()), &value);
+    bump_debt_shares_ttl(env, user, debt_asset);
 }
 
 fn debt_for_shares(
@@ -527,10 +588,43 @@ fn debt_for_shares(
 }
 
 fn get_position(env: &Env, position_id: u64) -> Position {
+    bump_position_ttl(env, position_id);
     env.storage()
         .persistent()
         .get(&DataKey::Position(position_id))
         .expect("position missing")
+}
+
+fn bump_market_ttl(env: &Env, asset: &Address) {
+    let key = DataKey::Market(asset.clone());
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_position_ttl(env: &Env, position_id: u64) {
+    let key = DataKey::Position(position_id);
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_user_positions_ttl(env: &Env, user: &Address) {
+    let key = DataKey::UserPositions(user.clone());
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_debt_shares_ttl(env: &Env, user: &Address, debt_asset: &Address) {
+    let key = DataKey::DebtSharesTotal(user.clone(), debt_asset.clone());
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }
 
 #[cfg(test)]
