@@ -39,7 +39,7 @@ pub fn checked_interest_product(
                 elapsed,
             }
             .publish(env);
-            u128::MAX
+            panic!("interest overflow");
         })
 }
 

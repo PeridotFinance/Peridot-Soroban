@@ -2,7 +2,7 @@ use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::ReceiptVault;
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{contract, contractimpl, contracttype, Env, IntoVal, Symbol};
+use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, IntoVal, Symbol, Vec};
 use simple_peridottroller::SimplePeridottroller;
 use soroban_sdk::testutils::Ledger;
 
@@ -253,6 +253,26 @@ fn test_open_position_no_swap() {
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
     assert_eq!(pos.side, PositionSide::Long);
+    assert_eq!(pos.owner, user);
+}
+
+#[test]
+fn test_open_position_no_swap_short() {
+    let (env, controller_id, usdt_id, xlm_id, user, _lender, _usdt_vault_id, _xlm_vault_id) =
+        setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let position_id = controller.open_position_no_swap_short(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &50u128,
+        &2u128,
+    );
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Open);
+    assert_eq!(pos.side, PositionSide::Short);
     assert_eq!(pos.owner, user);
 }
 
