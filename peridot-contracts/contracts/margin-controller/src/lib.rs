@@ -40,7 +40,7 @@ pub trait SwapAdapterContract {
 
 const SCALE_1E6: u128 = 1_000_000u128;
 const MAX_USER_POSITIONS: u32 = 64;
-const MAX_LEVERAGE_CAP: u128 = 100;
+const MAX_LEVERAGE_CAP: u128 = 10;
 const TTL_THRESHOLD: u32 = 100_000_000;
 const TTL_EXTEND_TO: u32 = 200_000_000;
 
@@ -363,6 +363,9 @@ impl MarginController {
         let mut position = get_position(&env, position_id);
         if position.status != PositionStatus::Open {
             panic!("not open");
+        }
+        if liquidator == position.owner {
+            panic!("self liquidation");
         }
         let (liq, shortfall) = get_peridottroller(&env).account_liquidity(&position.owner);
         if shortfall == 0 || liq > 0 {
