@@ -236,7 +236,12 @@ impl MarginController {
         let new_shares = if shares_before == 0 || debt_before == 0 {
             borrow_amount
         } else {
-            borrow_amount.saturating_mul(shares_before) / debt_before
+            let numerator = borrow_amount.saturating_mul(shares_before);
+            let mut shares = numerator / debt_before;
+            if numerator > 0 && shares == 0 {
+                shares = 1;
+            }
+            shares
         };
         ReceiptVaultClient::new(&env, &debt_vault).borrow(&user, &borrow_amount);
         set_debt_shares_total(
