@@ -62,6 +62,7 @@ impl SwapAdapter {
         out_min: u128,
     ) -> u128 {
         bump_critical_ttl(&env);
+        user.require_auth();
         let router: Address = env
             .storage()
             .persistent()
