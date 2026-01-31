@@ -1,5 +1,7 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, Vec};
+use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, String, Vec};
+
+pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 
 #[soroban_sdk::contractclient(name = "AquariusRouterClient")]
 pub trait AquariusRouter {
@@ -31,6 +33,12 @@ impl SwapAdapter {
         }
         if env.storage().persistent().get::<_, Address>(&DataKey::Admin).is_some() {
             panic!("already initialized");
+        }
+        let expected_admin_str =
+            option_env!("SWAP_ADAPTER_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin = Address::from_string(&String::from_str(&env, expected_admin_str));
+        if admin != expected_admin {
+            panic!("unexpected admin");
         }
         admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &admin);
