@@ -51,7 +51,7 @@ impl JumpRateModel {
         if kink > SCALE_1E6 {
             panic!("invalid kink");
         }
-        if multiplier > 10_000_000u128 || jump > 10_000_000u128 {
+        if base > 10_000_000u128 || multiplier > 10_000_000u128 || jump > 10_000_000u128 {
             panic!("invalid rate params");
         }
         admin.require_auth();
