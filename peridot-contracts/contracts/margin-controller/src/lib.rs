@@ -40,6 +40,7 @@ pub trait SwapAdapterContract {
 
 const SCALE_1E6: u128 = 1_000_000u128;
 const MAX_USER_POSITIONS: u32 = 64;
+const MAX_LEVERAGE_CAP: u128 = 100;
 const TTL_THRESHOLD: u32 = 100_000_000;
 const TTL_EXTEND_TO: u32 = 200_000_000;
 
@@ -107,7 +108,7 @@ impl MarginController {
             panic!("already initialized");
         }
         admin.require_auth();
-        if max_leverage < 1 {
+        if max_leverage < 1 || max_leverage > MAX_LEVERAGE_CAP {
             panic!("invalid leverage");
         }
         env.storage().persistent().set(&DataKey::Admin, &admin);
@@ -145,7 +146,7 @@ impl MarginController {
     ) {
         bump_core_ttl(&env);
         require_admin(&env, &admin);
-        if max_leverage < 1 {
+        if max_leverage < 1 || max_leverage > MAX_LEVERAGE_CAP {
             panic!("invalid leverage");
         }
         env.storage()
