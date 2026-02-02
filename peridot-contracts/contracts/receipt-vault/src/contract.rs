@@ -648,6 +648,30 @@ impl ReceiptVault {
             if amount > max_ptokens {
                 panic!("Insufficient collateral");
             }
+        } else {
+            // Local-only collateral check when Peridottroller is not configured.
+            // Prevents users with debt from transferring away collateral pTokens.
+            let local_debt = Self::get_user_borrow_balance(env.clone(), from.clone());
+            if local_debt > 0 {
+                let current_rate = Self::get_exchange_rate(env.clone());
+                let current_ptokens = ptoken_balance(&env, &from);
+                if current_ptokens < amount {
+                    panic!("Insufficient pTokens");
+                }
+                let remaining_ptokens = current_ptokens - amount;
+                let remaining_underlying =
+                    (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
+                let local_cf: u128 = env
+                    .storage()
+                    .persistent()
+                    .get(&DataKey::CollateralFactorScaled)
+                    .unwrap_or(500_000u128);
+                let remaining_max_borrow =
+                    (remaining_underlying.saturating_mul(local_cf)) / SCALE_1E6;
+                if local_debt > remaining_max_borrow {
+                    panic!("Insufficient collateral");
+                }
+            }
         }
         let from_bal = ptoken_balance(&env, &from);
         if from_bal < amount {

@@ -151,6 +151,7 @@ impl SimplePeridottroller {
 
     pub fn get_market_cf(env: Env, market: Address) -> u128 {
         bump_core_ttl(&env);
+        storage::bump_market_cf_ttl(&env, &market);
         // Default to 50% unless explicitly set (Compound v2 default)
         env.storage()
             .persistent()
@@ -554,6 +555,7 @@ impl SimplePeridottroller {
                 .persistent()
                 .set(&DataKey::UserMarkets(user.clone()), &entered);
         }
+        storage::bump_user_markets_ttl(&env, &user);
         MarketEntered {
             account: user.clone(),
             market: market.clone(),
@@ -563,6 +565,7 @@ impl SimplePeridottroller {
 
     pub fn get_user_markets(env: Env, user: Address) -> Vec<Address> {
         bump_core_ttl(&env);
+        storage::bump_user_markets_ttl(&env, &user);
         env.storage()
             .persistent()
             .get(&DataKey::UserMarkets(user))
@@ -572,6 +575,7 @@ impl SimplePeridottroller {
     pub fn exit_market(env: Env, user: Address, market: Address) {
         bump_core_ttl(&env);
         user.require_auth();
+        storage::bump_user_markets_ttl(&env, &user);
         let entered: Vec<Address> = env
             .storage()
             .persistent()
@@ -1405,6 +1409,7 @@ impl SimplePeridottroller {
     // Price quotation via cached oracle data or fallback (no on-chain oracle call).
     pub fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)> {
         bump_core_ttl(&env);
+        storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()
             .persistent()
@@ -1415,6 +1420,7 @@ impl SimplePeridottroller {
                 return Some((cached.price, cached.scale));
             }
         }
+        storage::bump_fallback_price_ttl(&env, &token);
         if let Some(fallback) = env
             .storage()
             .persistent()
@@ -1437,6 +1443,7 @@ impl SimplePeridottroller {
         let client = crate::reflector::ReflectorClient::new(&env, &oracle_addr);
         let dec = client.decimals();
         let scale = pow10_u128(dec);
+        storage::bump_oracle_asset_symbol_ttl(&env, &token);
         let asset = match env
             .storage()
             .persistent()
@@ -1476,6 +1483,7 @@ impl SimplePeridottroller {
                         resolution: client.resolution(),
                     },
                 );
+                storage::bump_price_cache_ttl(&env, &token);
                 Some((price, scale))
             }
             _ => None,
@@ -1488,6 +1496,7 @@ impl SimplePeridottroller {
                 return (price, scale);
             }
         }
+        storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()
             .persistent()
@@ -1499,6 +1508,7 @@ impl SimplePeridottroller {
                 return (cached.price, cached.scale);
             }
         }
+        storage::bump_fallback_price_ttl(&env, &token);
         if let Some(fallback) = env
             .storage()
             .persistent()

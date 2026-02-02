@@ -142,6 +142,46 @@ pub fn bump_core_ttl(env: &Env) {
     }
 }
 
+pub fn bump_user_markets_ttl(env: &Env, user: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::UserMarkets(user.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_market_cf_ttl(env: &Env, market: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarketCF(market.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_price_cache_ttl(env: &Env, token: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::PriceCache(token.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_fallback_price_ttl(env: &Env, token: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::FallbackPrice(token.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_oracle_asset_symbol_ttl(env: &Env, token: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::OracleAssetSymbol(token.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn pow10_u128(decimals: u32) -> u128 {
     if decimals > MAX_DECIMALS {
         panic!("decimals too large");

@@ -69,6 +69,7 @@ impl BasicSmartAccount {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
         }
+        owner.require_auth();
         env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage()
             .instance()

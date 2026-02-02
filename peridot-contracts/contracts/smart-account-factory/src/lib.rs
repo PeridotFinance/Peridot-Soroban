@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, BytesN, Env};
+use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, BytesN, Env, String};
 
 #[soroban_sdk::contractclient(name = "BasicSmartAccountClient")]
 pub trait BasicSmartAccount {
@@ -46,6 +46,8 @@ pub struct AccountCreated {
     pub account: Address,
 }
 
+pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+
 const TTL_THRESHOLD: u32 = 100_000_000;
 const TTL_EXTEND_TO: u32 = 200_000_000;
 
@@ -54,6 +56,12 @@ impl SmartAccountFactory {
     pub fn initialize(env: Env, admin: Address) {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
+        }
+        let expected_admin_str =
+            option_env!("SMART_ACCOUNT_FACTORY_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin = Address::from_string(&String::from_str(&env, expected_admin_str));
+        if admin != expected_admin {
+            panic!("unexpected admin");
         }
         admin.require_auth();
         env.storage().instance().set(&DataKey::Admin, &admin);
@@ -76,7 +84,7 @@ impl SmartAccountFactory {
         config.owner.require_auth();
         if env
             .storage()
-            .instance()
+            .persistent()
             .has(&DataKey::UserAccount(config.owner.clone()))
         {
             panic!("account exists");
@@ -104,16 +112,18 @@ impl SmartAccountFactory {
         }
 
         env.storage()
-            .instance()
+            .persistent()
             .set(&DataKey::UserAccount(config.owner.clone()), &deployed_address);
+        bump_user_account_ttl(&env, &config.owner);
 
         let mut count: u64 = env
             .storage()
-            .instance()
+            .persistent()
             .get(&DataKey::AccountCount)
             .unwrap_or(0u64);
         count = count.saturating_add(1);
-        env.storage().instance().set(&DataKey::AccountCount, &count);
+        env.storage().persistent().set(&DataKey::AccountCount, &count);
+        bump_account_count_ttl(&env);
         AccountCreated {
             owner: config.owner,
             account: deployed_address.clone(),
@@ -125,7 +135,8 @@ impl SmartAccountFactory {
 
     pub fn get_account(env: Env, user: Address) -> Option<Address> {
         bump_ttl(&env);
-        env.storage().instance().get(&DataKey::UserAccount(user))
+        bump_user_account_ttl(&env, &user);
+        env.storage().persistent().get(&DataKey::UserAccount(user))
     }
 
     pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
@@ -156,6 +167,21 @@ fn bump_ttl(env: &Env) {
     }
 }
 
+fn bump_user_account_ttl(env: &Env, user: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::UserAccount(user.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_account_count_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::AccountCount) {
+        persistent.extend_ttl(&DataKey::AccountCount, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -165,7 +191,8 @@ mod test {
     fn test_initialize_and_set_wasm_hash() {
         let env = Env::default();
         env.mock_all_auths();
-        let admin = Address::generate(&env);
+        let admin =
+            Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
 
         let contract_id = env.register(SmartAccountFactory, ());
         let client = SmartAccountFactoryClient::new(&env, &contract_id);
@@ -180,7 +207,8 @@ mod test {
     fn test_set_wasm_hash_non_admin_panics() {
         let env = Env::default();
         env.mock_all_auths();
-        let admin = Address::generate(&env);
+        let admin =
+            Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
         let non_admin = Address::generate(&env);
 
         let contract_id = env.register(SmartAccountFactory, ());
