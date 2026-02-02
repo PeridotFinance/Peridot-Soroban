@@ -22,6 +22,44 @@ impl MockSoroswapRouter {
     }
 }
 
+#[contract]
+struct MockAquariusRouter;
+
+#[contractimpl]
+impl MockAquariusRouter {
+    pub fn swap_chained(
+        _env: Env,
+        _user: Address,
+        _swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        _token_in: Address,
+        _amount: u128,
+        amount_with_slippage: u128,
+    ) -> u128 {
+        amount_with_slippage
+    }
+}
+
+#[contract]
+struct MockAquariusPool;
+
+#[contractimpl]
+impl MockAquariusPool {
+    pub fn estimate_swap(_env: Env, _in_idx: u32, _out_idx: u32, amount_in: u128) -> u128 {
+        amount_in
+    }
+
+    pub fn swap(
+        _env: Env,
+        _user: Address,
+        _in_idx: u32,
+        _out_idx: u32,
+        _amount_in: u128,
+        amount_out_min: u128,
+    ) -> u128 {
+        amount_out_min
+    }
+}
+
 fn default_admin(env: &Env) -> Address {
     Address::from_string(&String::from_str(env, DEFAULT_INIT_ADMIN))
 }
@@ -118,6 +156,44 @@ fn test_swap_exact_tokens() {
 
     let token_b = MockTokenClient::new(&env, &token_b_id);
     assert_eq!(token_b.balance(&user), 500i128);
+}
+
+#[test]
+fn test_swap_chained() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = default_admin(&env);
+    let user = Address::generate(&env);
+
+    let router_id = env.register(MockAquariusRouter, ());
+    let adapter_id = env.register(SwapAdapter, ());
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    adapter.initialize(&admin, &router_id);
+
+    let swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)> = Vec::new(&env);
+    let token_in = Address::generate(&env);
+    let out = adapter.swap_chained(&user, &swaps_chain, &token_in, &10u128, &9u128);
+    assert_eq!(out, 9u128);
+}
+
+#[test]
+fn test_swap_pool_and_estimate() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = default_admin(&env);
+    let user = Address::generate(&env);
+
+    let router_id = env.register(MockAquariusRouter, ());
+    let pool_id = env.register(MockAquariusPool, ());
+    let adapter_id = env.register(SwapAdapter, ());
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    adapter.initialize(&admin, &router_id);
+
+    let est = adapter.estimate_pool_swap(&pool_id, &0u32, &1u32, &123u128);
+    assert_eq!(est, 123u128);
+
+    let out = adapter.swap_pool(&user, &pool_id, &0u32, &1u32, &100u128, &99u128);
+    assert_eq!(out, 99u128);
 }
 
 #[test]

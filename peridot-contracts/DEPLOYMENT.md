@@ -304,6 +304,52 @@ Recommended practice:
 
 If critical keys expire, the contract can become unusable or, in worst cases, allow re‑initialization. TTL bumping prevents that.
 
+### Smart Accounts (Basic) Deployment
+
+Build:
+- `contracts/smart-account-basic`
+- `contracts/smart-account-factory`
+
+Deploy and initialize (example flow):
+1) Deploy the factory WASM and call `initialize(admin)`.
+2) Upload the Basic account WASM and call `set_wasm_hash(AccountType::Basic, wasm_hash)` on the factory.
+3) Call `create_account(config, salt)` where:
+   - `owner` = user address
+   - `signer` = ed25519 public key (BytesN<32>)
+   - `peridottroller` = controller ID
+   - `margin_controller` = margin controller ID
+
+The returned account address is used as the `user`/`borrower` in vault and margin calls. It intercepts `require_auth` and verifies signatures.
+
+### Boosted Markets (DeFindex)
+
+To enable a boosted market, set the DeFindex vault address on the target ReceiptVault:
+
+```bash
+VAULT=<RECEIPT_VAULT_ID>
+DEFINDEX_VAULT=<DEFINDEX_VAULT_ID>
+ADMIN=<ADMIN_ADDRESS>
+
+stellar contract invoke --id "$VAULT" --source-account dev --network testnet -- \
+  set_boosted_vault --admin "$ADMIN" --boosted_vault "$DEFINDEX_VAULT"
+```
+
+Quick testnet helpers:
+- Deploy factory + set wasm hash:
+  - `bash scripts/deploy_smart_accounts_testnet.sh`
+- Create a Basic smart account (auto-generates signer + salt):
+  - `PERIDOTTROLLER_ID=<CTRL_ID> MARGIN_CONTROLLER_ID=<MARGIN_ID> bash scripts/create_smart_account_testnet.sh`
+  - Output includes signer public key and salt used.
+
+Example: borrow via Smart Account address (testnet)
+```bash
+SMART_ACCOUNT="<SMART_ACCOUNT_ADDRESS>"
+VAULT="<RECEIPT_VAULT_ID>"
+
+stellar contract invoke --id "$VAULT" --source-account dev --network testnet -- \
+  borrow --user "$SMART_ACCOUNT" --amount 1000000
+```
+
 ### Troubleshooting
 
 - "HostError: reference-types not enabled": you built the wrong target. Rebuild with `stellar contract build` to produce `wasm32v1-none` artifacts and redeploy.

@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, Env, Vec};
+use soroban_sdk::{contracttype, Address, BytesN, Env, Vec};
 
 use crate::helpers::{bump_core_ttl, bump_market_ttl};
 
@@ -29,13 +29,13 @@ pub trait PeridottrollerContract {
 
 #[soroban_sdk::contractclient(name = "SwapAdapterClient")]
 pub trait SwapAdapterContract {
-    fn swap_exact_tokens_for_tokens(
+    fn swap_chained(
         env: Env,
         user: Address,
-        amount_in: u128,
-        amount_out_min: u128,
-        path: Vec<Address>,
-        deadline: u64,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        token_in: Address,
+        amount: u128,
+        amount_with_slippage: u128,
     ) -> u128;
 }
 

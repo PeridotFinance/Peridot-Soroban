@@ -11,11 +11,9 @@ This document explains how the frontend can interact with the Peridot Soroban co
 - **Peridot Reward Token (`P`)** – contract ID: `CBCA56UIBQA3WT2JUIIG2BHW325CMLNAC7CKL33T37GHN25RCGR6SXPB`
 - **Mock USDT (open mint)** – contract ID: `CDBWTU527WNACRCET2NF6RZFQ3WAPJOQM3OQ5VLUNHJRDQ6ICVO2JTJP`
 - **Reflector Oracle** – contract ID: `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63`
-- **Swap Adapter (Aquarius router wrapper)** – contract ID: `CAGLARN3MUMRGCRNKXZ3SH7NVCZ3P3CDGHL2FQEEXIC4MPAGTQTACY6S`
+- **Swap Adapter (Aquarius)** – contract ID: `CAGLARN3MUMRGCRNKXZ3SH7NVCZ3P3CDGHL2FQEEXIC4MPAGTQTACY6S`
 - **Margin Controller (true margin trading)** – contract ID: `CAZQWGJDKG2JQYV66VV3ONBDLYAE77YVKSBUNWUY7MV6WVLLHT4URFX7`
-- **Soroswap Router (AMM)** – `CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD`
-- **Soroswap Factory** – `CDP3HMUH6SMS3S7NPGNDJLULCOXXEPSHY4JKUKMBNQMATHDHWXRRJTBY`
-- **Soroswap Aggregator** – `CC74XDT7UVLUZCELKBIYXFYIX6A6LGPWURJVUXGRPQO745RWX7WEURMA`
+- **Aquarius Router (AMM)** – `CBCFTQSPDBAIZ6R6PJQKSQWKNKWH2QIV3I4J72SHWBIK3ADRRAM5A6GD`
 
 Your frontend will mainly call the controller and the vault contracts. The controller handles account liquidity checks, oracle pricing, and incentives; each vault exposes ERC20-like `deposit`, `withdraw`, `borrow`, `repay`, and `transfer` entrypoints.
 
@@ -39,6 +37,23 @@ stellar contract bindings typescript \
 ```
 
 Each generated package exports a class with strongly typed methods. Import them into your frontend and pass the contract ID plus RPC details.
+
+## 2.1. Smart Accounts (Basic)
+
+Peridot supports Basic Smart Accounts (contract accounts) that can sign and enforce policy via `__check_auth`. Use the factory to create a smart account for a user, then use that smart account address as the `user`/`borrower` in vault and margin calls.
+
+Factory calls:
+- `initialize(admin)`
+- `set_wasm_hash(account_type=Basic, wasm_hash)`
+- `create_account(config, salt)` → returns smart account address
+
+Basic account constructor config:
+- `owner` (user Address)
+- `signer` (ed25519 public key BytesN<32>)
+- `peridottroller` (SimplePeridottroller contract ID)
+- `margin_controller` (MarginController contract ID)
+
+Once created, the smart account intercepts `require_auth` and verifies signatures. The protocol does not require changes.
 
 ## 3. RPC Configuration
 
@@ -157,39 +172,62 @@ The controller calls the Reflector oracle synchronously. If `get_price_usd` retu
 
 ## 8. Leveraged Margin (True Borrow/Swap)
 
-Margin trading uses real vault borrows + AMM swaps (Soroswap) coordinated by `margin-controller` and `swap-adapter`.
+Margin trading uses real vault borrows + AMM swaps (Aquarius) coordinated by `margin-controller` and `swap-adapter`.
 
 Core calls:
-- `open_position(user, collateral_asset, base_asset, collateral_amount, leverage, side, path, amount_out_min, deadline)`
+- `open_position(user, collateral_asset, base_asset, collateral_amount, leverage, side, swaps_chain, amount_with_slippage)`
 - `open_position_no_swap(user, collateral_asset, debt_asset, collateral_amount, borrow_amount, leverage, side)`
-- `close_position(user, position_id, path, amount_out_min, deadline)`
+- `open_position_no_swap_short(user, collateral_asset, debt_asset, collateral_amount, borrow_amount, leverage)`
+- `close_position(user, position_id, swaps_chain, amount_with_slippage)`
 - `liquidate_position(liquidator, position_id)` (liquidation uses peridottroller liquidation + vaults)
 
 Key notes for frontend engineers:
-- **`path`** is the Soroswap route vector of token addresses (e.g., `[USDC, XLM]`).
-- **`amount_out_min`** enforces user slippage. Compute `amount_out_min = quoted_out * (1 - slippage_bps/10_000)`.
-- **`deadline`** is a unix timestamp cutoff for swap execution (e.g., now + 5 minutes).
+- **`swaps_chain`** is the Aquarius route payload from find‑path (strict‑send).
+- **`amount_with_slippage`** is the quoted output after applying slippage tolerance.
 - **`side`** is `Long` or `Short`.
 
-Recommended UX flow for open/close:
-1. Fetch best route off-chain (Soroswap API) and extract `path`.
-2. Compute `amount_out_min`.
-3. Call `open_position`/`close_position` with `path`, `amount_out_min`, `deadline`.
+Recommended UX flow for open/close (Aquarius):
+1. Use Aquarius find‑path off‑chain to get `swaps_chain`.
+2. Compute `amount_with_slippage`.
+3. Call `open_position`/`close_position` with `swaps_chain` and `amount_with_slippage`.
 
 Budget‑safe open flow (recommended for testnet limits):
-1. User swaps USDC→XLM directly via Soroswap router (outside MarginController).
+1. User swaps USDC→XLM directly via Aquarius (outside MarginController).
 2. Call `open_position_no_swap` to deposit XLM collateral and borrow USDC (no router call).
+
+Budget‑safe short flow:
+1. Call `open_position_no_swap_short` to deposit USDC collateral and borrow XLM.
+2. Swap XLM→USDC via Aquarius in a separate tx.
+
+## 10. Boosted Markets (DeFindex Vaults)
+
+Peridot vaults can be configured to forward deposits into a DeFindex vault to earn external yield. This is opt‑in per ReceiptVault via admin.
+
+Admin calls:
+- `set_boosted_vault(admin, defindex_vault_address)`
+- `get_boosted_vault()` (view)
+
+Behavior:
+- On deposit, underlying is forwarded to the DeFindex vault (single‑asset) and the ReceiptVault keeps DeFindex shares.
+- On withdraw, if local cash is insufficient, the ReceiptVault withdraws from DeFindex first.
+- `get_total_underlying` includes the DeFindex‑managed portion for correct exchange‑rate math.
+
+Note: DeFindex vault addresses are in `addresses.md` (BLEND USDC vault for USDC, XLM vault for XLM).
+
+Non‑boosted markets:
+- Do nothing. If `set_boosted_vault` is never called, the ReceiptVault behaves as a normal market.
 
 CLI example (two‑step, USDC → XLM → open):
 ```bash
-# Step 1: swap USDC -> XLM via Soroswap router
-deadline=$(($(date +%s)+600))
-stellar contract invoke --id "CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD" \
-  --source-account dev --network testnet -- \
-  swap_exact_tokens_for_tokens \
-  --amount_in 10000000 --amount_out_min 1 \
-  --path '["USDC_CONTRACT","XLM_CONTRACT"]' \
-  --to "USER_ADDRESS" --deadline "$deadline"
+# Step 1: swap USDC -> XLM via Aquarius off‑chain find‑path + swap_chained
+# (frontend/bot fetches swaps_chain from Aquarius find‑path API)
+stellar contract invoke --id "$SWAP_ADAPTER" --source-account dev --network testnet -- \
+  swap_chained \
+  --user "USER_ADDRESS" \
+  --swaps_chain "$SWAPS_CHAIN" \
+  --token_in "USDC_CONTRACT" \
+  --in_amount 10000000 \
+  --out_min 1
 
 # Step 2: open position without swap
 stellar contract invoke --id "MARGIN_CONTROLLER_ID" --source-account dev --network testnet -- \

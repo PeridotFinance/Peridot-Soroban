@@ -28,6 +28,7 @@ pub enum DataKey {
     SupplyCap,                // u128, max total underlying (principal + interest)
     BorrowCap,                // u128, max total borrowed
     Initialized,              // bool flag to prevent re-initialization
+    BoostedVault,             // Optional DeFindex vault address for boosted markets
 }
 
 #[contracttype]

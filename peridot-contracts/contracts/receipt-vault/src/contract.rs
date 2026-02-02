@@ -1,4 +1,7 @@
-use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
+use soroban_sdk::{
+    auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
+    contract, contractimpl, token, Address, Bytes, Env, IntoVal, String, Symbol, Val, Vec,
+};
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
 
@@ -114,6 +117,27 @@ impl ReceiptVault {
         );
     }
 
+    /// Admin: set boosted vault address (DeFindex).
+    pub fn set_boosted_vault(env: Env, admin: Address, boosted_vault: Address) {
+        let stored: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if stored != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+        env.storage()
+            .persistent()
+            .set(&DataKey::BoostedVault, &boosted_vault);
+    }
+
+    /// View: get boosted vault (if set)
+    pub fn get_boosted_vault(env: Env) -> Option<Address> {
+        env.storage().persistent().get(&DataKey::BoostedVault)
+    }
+
     /// Deposit tokens into the vault and receive pTokens
     pub fn deposit(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
@@ -198,6 +222,70 @@ impl ReceiptVault {
         // Transfer tokens from user to contract
         let amount_i128 = to_i128(amount);
         token_client.transfer(&user, &env.current_contract_address(), &amount_i128);
+
+        // If boosted, deposit into DeFindex vault (single-asset)
+        if let Some(boosted) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::BoostedVault)
+        {
+            let mut amounts_desired: Vec<i128> = Vec::new(&env);
+            let mut amounts_min: Vec<i128> = Vec::new(&env);
+            amounts_desired.push_back(amount_i128);
+            amounts_min.push_back(amount_i128);
+            let args: Vec<Val> = (
+                amounts_desired.clone(),
+                amounts_min.clone(),
+                env.current_contract_address(),
+                true,
+            )
+                .into_val(&env);
+            let mut auths = Vec::new(&env);
+            let mut sub_invocations: Vec<InvokerContractAuthEntry> = Vec::new(&env);
+            let transfer_args: Vec<Val> = (
+                env.current_contract_address(),
+                boosted.clone(),
+                amount_i128,
+            )
+                .into_val(&env);
+            // Root transfer auth (in case vault expects a flat auth entry)
+            auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+                context: ContractContext {
+                    contract: token_address.clone(),
+                    fn_name: Symbol::new(&env, "transfer"),
+                    args: transfer_args.clone(),
+                },
+                sub_invocations: Vec::new(&env),
+            }));
+            sub_invocations.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+                context: ContractContext {
+                    contract: token_address.clone(),
+                    fn_name: Symbol::new(&env, "transfer"),
+                    args: transfer_args,
+                },
+                sub_invocations: Vec::new(&env),
+            }));
+            auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+                context: ContractContext {
+                    contract: boosted.clone(),
+                    fn_name: Symbol::new(&env, "deposit"),
+                    args,
+                },
+                sub_invocations,
+            }));
+            env.authorize_as_current_contract(auths);
+            let _: Val = env.invoke_contract(
+                &boosted,
+                &Symbol::new(&env, "deposit"),
+                (
+                    amounts_desired,
+                    amounts_min,
+                    env.current_contract_address(),
+                    true,
+                )
+                    .into_val(&env),
+            );
+        }
 
         // Mint pTokens and update totals
         TokenBase::mint(&env, &user, to_i128(ptokens_to_mint));
@@ -404,6 +492,69 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::AccumulatedInterest, &accumulated);
+
+        // If boosted and cash is insufficient, withdraw from DeFindex vault
+        if let Some(boosted) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::BoostedVault)
+        {
+            let cash_i: i128 =
+                token_balance(&env, &token_address, &env.current_contract_address());
+            let cash: u128 = if cash_i < 0 { 0u128 } else { cash_i as u128 };
+            if cash < underlying_to_return {
+                    let total_shares_i: i128 =
+                        call_contract_or_panic(&env, &boosted, "total_supply", ());
+                if total_shares_i > 0 {
+                    let total_shares = total_shares_i as u128;
+                    let total_amounts: Vec<i128> = call_contract_or_panic(
+                        &env,
+                        &boosted,
+                        "get_asset_amounts_per_shares",
+                        (total_shares as i128,),
+                    );
+                    let total_underlying_i = total_amounts.get(0).unwrap_or(0);
+                    if total_underlying_i > 0 {
+                        let total_underlying = total_underlying_i as u128;
+                        let mut shares_to_withdraw =
+                            underlying_to_return.saturating_mul(total_shares) / total_underlying;
+                        if underlying_to_return.saturating_mul(total_shares) % total_underlying
+                            != 0
+                        {
+                            shares_to_withdraw = shares_to_withdraw.saturating_add(1);
+                        }
+                        let mut min_amounts_out: Vec<i128> = Vec::new(&env);
+                        min_amounts_out.push_back(0);
+                        let args: Vec<Val> = (
+                            shares_to_withdraw as i128,
+                            min_amounts_out.clone(),
+                            env.current_contract_address(),
+                        )
+                            .into_val(&env);
+                        let mut auths = Vec::new(&env);
+                        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+                            context: ContractContext {
+                                contract: boosted.clone(),
+                                fn_name: Symbol::new(&env, "withdraw"),
+                                args,
+                            },
+                            sub_invocations: Vec::new(&env),
+                        }));
+                        env.authorize_as_current_contract(auths);
+                        let _: Val = env.invoke_contract(
+                            &boosted,
+                            &Symbol::new(&env, "withdraw"),
+                            (
+                                shares_to_withdraw as i128,
+                                min_amounts_out,
+                                env.current_contract_address(),
+                            )
+                                .into_val(&env),
+                        );
+                    }
+                }
+            }
+        }
 
         // Transfer tokens back to user
         let underlying_i128 = to_i128(underlying_to_return);
@@ -1144,7 +1295,34 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::AccumulatedInterest)
             .unwrap_or(0u128);
-        cash.saturating_add(borrows)
+        let boosted_underlying = if let Some(boosted) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::BoostedVault)
+        {
+            let shares_i = token::TokenClient::new(&env, &boosted)
+                .balance(&env.current_contract_address());
+            if shares_i > 0 {
+                let amounts: Vec<i128> = call_contract_or_panic(
+                    &env,
+                    &boosted,
+                    "get_asset_amounts_per_shares",
+                    (shares_i,),
+                );
+                let amt_i = amounts.get(0).unwrap_or(0);
+                if amt_i > 0 {
+                    amt_i as u128
+                } else {
+                    0u128
+                }
+            } else {
+                0u128
+            }
+        } else {
+            0u128
+        };
+        cash.saturating_add(boosted_underlying)
+            .saturating_add(borrows)
             .saturating_add(accumulated_interest)
             .saturating_sub(reserves)
             .saturating_sub(admin_fees)

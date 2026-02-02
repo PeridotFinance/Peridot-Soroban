@@ -20,6 +20,11 @@ This repo contains two distinct but complementary stacks:
    - `swap-adapter`: Aquarius router wrapper used by margin-controller.
    - Uses Reflector oracle prices via peridottroller for health factor checks.
 
+3) Smart Accounts + Boosted Markets (optional)
+   - `smart-account-basic`: contract account that intercepts `require_auth` and delegates risk checks to Peridot.
+   - `smart-account-factory`: deploys Basic smart accounts and stores wasm hashes.
+   - Boosted markets: ReceiptVault can forward deposits into DeFindex vaults (single-asset) for yield.
+
 Mocks (for tests only) live under `contracts/mocks/`.
 
 ## Key Concepts
@@ -35,6 +40,8 @@ Mocks (for tests only) live under `contracts/mocks/`.
 
 - Initialization and admin
   - `initialize(token, supply_yearly_rate_scaled, borrow_yearly_rate_scaled, admin)`
+  - `set_boosted_vault(admin, defindex_vault)` (optional)
+  - `get_boosted_vault()`
   - `set_admin(new_admin)` / `get_admin()`
   - `set_interest_rate(admin, yearly_rate_scaled)`
   - `set_borrow_rate(admin, yearly_rate_scaled)`
@@ -117,6 +124,35 @@ Mocks (for tests only) live under `contracts/mocks/`.
 - Admin setters require `admin.require_auth()`.
 - User actions require `user.require_auth()`.
 - Liquidation requires `liquidator.require_auth()` in the peridottroller; vault hooks `repay_on_behalf` and `seize` are callable only when the vault is wired to a Peridottroller.
+
+## Boosted Markets (DeFindex)
+
+ReceiptVaults can optionally forward deposits into a DeFindex vault (single-asset) to earn external yield.
+This is opt‑in per vault. If you do nothing, the market remains standard.
+
+Admin:
+- `set_boosted_vault(admin, defindex_vault)`
+- `get_boosted_vault()` (view)
+
+Behavior:
+- Deposits forward underlying into the DeFindex vault; ReceiptVault holds DeFindex shares.
+- Withdraws pull from DeFindex if local cash is insufficient.
+- Exchange rate includes DeFindex‑managed assets.
+
+CLI example (enable / disable):
+```bash
+VAULT=<RECEIPT_VAULT_ID>
+DEFINDEX_VAULT=<DEFINDEX_VAULT_ID>
+ADMIN=<ADMIN_ADDRESS>
+
+# Enable boosted vault
+stellar contract invoke --id "$VAULT" --source-account dev --network testnet -- \
+  set_boosted_vault --admin "$ADMIN" --boosted_vault "$DEFINDEX_VAULT"
+
+# Disable (set to zero address)
+stellar contract invoke --id "$VAULT" --source-account dev --network testnet -- \
+  set_boosted_vault --admin "$ADMIN" --boosted_vault "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"
+```
 
 ## Oracle Behavior
 

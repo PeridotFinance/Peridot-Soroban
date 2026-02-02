@@ -15,6 +15,31 @@ pub trait SoroswapRouter {
     ) -> Vec<i128>;
 }
 
+#[soroban_sdk::contractclient(name = "AquariusRouterClient")]
+pub trait AquariusRouter {
+    fn swap_chained(
+        env: Env,
+        user: Address,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        token_in: Address,
+        amount: u128,
+        amount_with_slippage: u128,
+    ) -> u128;
+}
+
+#[soroban_sdk::contractclient(name = "AquariusPoolClient")]
+pub trait AquariusPool {
+    fn estimate_swap(env: Env, in_idx: u32, out_idx: u32, amount_in: u128) -> u128;
+    fn swap(
+        env: Env,
+        user: Address,
+        in_idx: u32,
+        out_idx: u32,
+        amount_in: u128,
+        amount_out_min: u128,
+    ) -> u128;
+}
+
 #[contracttype]
 pub enum DataKey {
     Admin,
@@ -80,6 +105,65 @@ impl SwapAdapter {
             panic!("invalid swap output");
         }
         last.try_into().unwrap()
+    }
+
+    pub fn swap_chained(
+        env: Env,
+        user: Address,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        token_in: Address,
+        amount: u128,
+        amount_with_slippage: u128,
+    ) -> u128 {
+        bump_critical_ttl(&env);
+        user.require_auth();
+        let router: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Router)
+            .expect("router not set");
+        AquariusRouterClient::new(&env, &router).swap_chained(
+            &user,
+            &swaps_chain,
+            &token_in,
+            &amount,
+            &amount_with_slippage,
+        )
+    }
+
+    pub fn estimate_pool_swap(
+        env: Env,
+        pool: Address,
+        in_idx: u32,
+        out_idx: u32,
+        amount_in: u128,
+    ) -> u128 {
+        bump_critical_ttl(&env);
+        AquariusPoolClient::new(&env, &pool).estimate_swap(
+            &in_idx,
+            &out_idx,
+            &amount_in,
+        )
+    }
+
+    pub fn swap_pool(
+        env: Env,
+        user: Address,
+        pool: Address,
+        in_idx: u32,
+        out_idx: u32,
+        amount_in: u128,
+        amount_out_min: u128,
+    ) -> u128 {
+        bump_critical_ttl(&env);
+        user.require_auth();
+        AquariusPoolClient::new(&env, &pool).swap(
+            &user,
+            &in_idx,
+            &out_idx,
+            &amount_in,
+            &amount_out_min,
+        )
     }
 
     pub fn bump_ttl(env: Env) {

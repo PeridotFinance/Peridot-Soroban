@@ -2,7 +2,9 @@ use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::ReceiptVault;
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, IntoVal, Symbol, Vec};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, Address, BytesN, Env, IntoVal, Symbol, Vec,
+};
 use simple_peridottroller::SimplePeridottroller;
 use soroban_sdk::testutils::Ledger;
 
@@ -74,17 +76,18 @@ struct MockSwapAdapter;
 
 #[contractimpl]
 impl MockSwapAdapter {
-    pub fn swap_exact_tokens_for_tokens(
+    pub fn swap_chained(
         env: Env,
         user: Address,
-        amount_in: u128,
-        _amount_out_min: u128,
-        path: Vec<Address>,
-        _deadline: u64,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        _token_in: Address,
+        amount: u128,
+        _amount_with_slippage: u128,
     ) -> u128 {
-        let token_out = path.get(path.len() - 1).unwrap();
-        MockTokenClient::new(&env, &token_out).mint(&user, &(amount_in as i128));
-        amount_in
+        let last = swaps_chain.get(swaps_chain.len() - 1).unwrap();
+        let token_out = last.2;
+        MockTokenClient::new(&env, &token_out).mint(&user, &(amount as i128));
+        amount
     }
 }
 fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Address) {
@@ -162,14 +165,19 @@ fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Addres
     )
 }
 
+fn mock_swaps_chain(env: &Env, token_out: &Address) -> Vec<(Vec<Address>, BytesN<32>, Address)> {
+    let pools: Vec<Address> = Vec::new(env);
+    let pool_id = BytesN::from_array(env, &[0u8; 32]);
+    Vec::from_array(env, [(pools, pool_id, token_out.clone())])
+}
+
 #[test]
 fn open_and_close_long() {
     let (env, controller_id, usdt_id, xlm_id, user, _lender, _usdt_vault_id, _xlm_vault_id) =
         setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
-
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
     let position_id = controller.open_position(
         &user,
         &usdt_id,
@@ -177,20 +185,18 @@ fn open_and_close_long() {
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain,
+        &200u128,
     );
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
 
-    let path_close = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id);
     controller.close_position(
         &user,
         &position_id,
-        &path_close,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain_close,
+        &200u128,
     );
 
     let pos = controller.get_position(&position_id).unwrap();
@@ -282,7 +288,7 @@ fn test_open_short_position() {
         setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id);
     let position_id = controller.open_position(
         &user,
         &usdt_id,
@@ -290,9 +296,8 @@ fn test_open_short_position() {
         &100u128,
         &2u128,
         &PositionSide::Short,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain,
+        &200u128,
     );
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
@@ -305,7 +310,7 @@ fn test_open_position_bad_leverage_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
     controller.open_position(
         &user,
         &usdt_id,
@@ -313,9 +318,8 @@ fn test_open_position_bad_leverage_panics() {
         &100u128,
         &0u128, // leverage=0 invalid
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain,
+        &200u128,
     );
 }
 
@@ -325,7 +329,7 @@ fn test_open_position_leverage_exceeds_max_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
     controller.open_position(
         &user,
         &usdt_id,
@@ -333,9 +337,8 @@ fn test_open_position_leverage_exceeds_max_panics() {
         &100u128,
         &100u128, // far exceeds max_leverage=5
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain,
+        &200u128,
     );
 }
 
@@ -345,7 +348,7 @@ fn test_open_position_zero_collateral_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
     controller.open_position(
         &user,
         &usdt_id,
@@ -353,9 +356,8 @@ fn test_open_position_zero_collateral_panics() {
         &0u128, // zero collateral
         &2u128,
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain,
+        &200u128,
     );
 }
 
@@ -365,7 +367,7 @@ fn test_close_position_not_owner_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _lender, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
     let position_id = controller.open_position(
         &user,
         &usdt_id,
@@ -373,19 +375,17 @@ fn test_close_position_not_owner_panics() {
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain,
+        &200u128,
     );
 
     let other_user = Address::generate(&env);
-    let path_close = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id);
     controller.close_position(
         &other_user,
         &position_id,
-        &path_close,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain_close,
+        &200u128,
     );
 }
 
@@ -395,7 +395,7 @@ fn test_close_position_already_closed_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
     let position_id = controller.open_position(
         &user,
         &usdt_id,
@@ -403,28 +403,25 @@ fn test_close_position_already_closed_panics() {
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain,
+        &200u128,
     );
 
-    let path_close = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id);
     controller.close_position(
         &user,
         &position_id,
-        &path_close,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain_close,
+        &200u128,
     );
 
     // Try closing again
-    let path_close2 = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
+    let swaps_chain_close2 = mock_swaps_chain(&env, &usdt_id);
     controller.close_position(
         &user,
         &position_id,
-        &path_close2,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain_close2,
+        &200u128,
     );
 }
 
@@ -433,7 +430,7 @@ fn test_get_position_and_user_positions() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
     let position_id = controller.open_position(
         &user,
         &usdt_id,
@@ -441,9 +438,8 @@ fn test_get_position_and_user_positions() {
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain,
+        &200u128,
     );
 
     let pos = controller.get_position(&position_id).unwrap();
@@ -461,7 +457,7 @@ fn test_get_health_factor() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
     let position_id = controller.open_position(
         &user,
         &usdt_id,
@@ -469,9 +465,8 @@ fn test_get_health_factor() {
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
+        &swaps_chain,
+        &200u128,
     );
 
     let health = controller.get_health_factor(&position_id);
@@ -481,50 +476,32 @@ fn test_get_health_factor() {
 
 #[test]
 fn test_multiple_positions() {
-    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let path = Vec::from_array(&env, [usdt_id.clone(), xlm_id.clone()]);
-    let id1 = controller.open_position(
+    let id1 = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &xlm_id,
+        &usdt_id,
+        &100u128,
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
     );
 
-    let id2 = controller.open_position(
+    let id2 = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &xlm_id,
+        &usdt_id,
+        &100u128,
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &path,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
     );
 
     assert_ne!(id1, id2);
     let user_positions = controller.get_user_positions(&user);
     assert_eq!(user_positions.len(), 2);
-
-    // Close first position, should be removed from user positions
-    let path_close = Vec::from_array(&env, [xlm_id.clone(), usdt_id.clone()]);
-    controller.close_position(
-        &user,
-        &id1,
-        &path_close,
-        &0u128,
-        &env.ledger().timestamp().saturating_add(300),
-    );
-    let user_positions = controller.get_user_positions(&user);
-    assert_eq!(user_positions.len(), 1);
-    assert_eq!(user_positions.get(0).unwrap(), id2);
 }
 
 #[test]

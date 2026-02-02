@@ -526,18 +526,22 @@
                 {
                   "vec": [
                     {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                    },
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
+                      "vec": [
+                        {
+                          "vec": []
+                        },
+                        {
+                          "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
+                        },
+                        {
+                          "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
+                        }
+                      ]
                     }
                   ]
                 },
                 {
-                  "u128": "0"
-                },
-                {
-                  "u64": "301"
+                  "u128": "200"
                 }
               ]
             }
@@ -659,18 +663,22 @@
                 {
                   "vec": [
                     {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
-                    },
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                      "vec": [
+                        {
+                          "vec": []
+                        },
+                        {
+                          "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
+                        },
+                        {
+                          "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                        }
+                      ]
                     }
                   ]
                 },
                 {
-                  "u128": "0"
-                },
-                {
-                  "u64": "301"
+                  "u128": "200"
                 }
               ]
             }

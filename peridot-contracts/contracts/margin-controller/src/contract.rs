@@ -124,9 +124,8 @@ impl MarginController {
         collateral_amount: u128,
         leverage: u128,
         side: PositionSide,
-        path: Vec<Address>,
-        amount_out_min: u128,
-        deadline: u64,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        amount_with_slippage: u128,
     ) -> u64 {
         bump_core_ttl(&env);
         user.require_auth();
@@ -137,8 +136,8 @@ impl MarginController {
         if collateral_amount == 0 {
             panic!("bad collateral");
         }
-        if path.len() == 0 || path.len() > MAX_SWAP_PATH_LEN {
-            panic!("bad path");
+        if swaps_chain.len() == 0 {
+            panic!("bad swaps");
         }
         let (debt_asset, position_asset) = match side {
             PositionSide::Long => (collateral_asset.clone(), base_asset.clone()),
@@ -196,14 +195,13 @@ impl MarginController {
 
         // Swap borrowed debt asset to position asset via Aquarius
         let swap_adapter = get_swap_adapter(&env);
-        let received =
-            SwapAdapterClient::new(&env, &swap_adapter).swap_exact_tokens_for_tokens(
-                &user,
-                &borrow_amount,
-                &amount_out_min,
-                &path,
-                &deadline,
-            );
+        let received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
+            &user,
+            &swaps_chain,
+            &debt_asset,
+            &borrow_amount,
+            &amount_with_slippage,
+        );
         if received == 0 {
             panic!("swap failed");
         }
@@ -389,9 +387,8 @@ impl MarginController {
         env: Env,
         user: Address,
         position_id: u64,
-        path: Vec<Address>,
-        amount_out_min: u128,
-        deadline: u64,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        amount_with_slippage: u128,
     ) {
         bump_core_ttl(&env);
         user.require_auth();
@@ -416,14 +413,13 @@ impl MarginController {
         ReceiptVaultClient::new(&env, &vault).withdraw(&user, &position.collateral_ptokens);
 
         let swap_adapter = get_swap_adapter(&env);
-        let received =
-            SwapAdapterClient::new(&env, &swap_adapter).swap_exact_tokens_for_tokens(
-                &user,
-                &collateral_underlying,
-                &amount_out_min,
-                &path,
-                &deadline,
-            );
+        let received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
+            &user,
+            &swaps_chain,
+            &position.collateral_asset,
+            &collateral_underlying,
+            &amount_with_slippage,
+        );
         if received < debt_amount {
             panic!("insufficient swap output");
         }
