@@ -19,7 +19,6 @@ peridot-dashboard/.cache/
 peridot-contracts/target/
 peridot-contracts/.soroban/
 peridot-contracts/.stellar/
-peridot-contracts/contracts/jump-rate-model/test_snapshots
-peridot-contracts/contracts/peridot-token/test_snapshots
-peridot-contracts/contracts/receipt-vault/test_snapshots
-peridot-contracts/contracts/simple-peridottroller/test_snapshots
+
+# Test snapshots (all contracts)
+**/test_snapshots/
