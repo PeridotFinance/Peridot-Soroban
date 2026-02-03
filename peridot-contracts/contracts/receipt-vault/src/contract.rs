@@ -15,6 +15,19 @@ pub struct ReceiptVault;
 
 #[contractimpl]
 impl ReceiptVault {
+    fn ensure_user_borrow_flag(env: &Env, user: &Address) {
+        if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&DataKey::HasBorrowed(user.clone()))
+            .is_none()
+        {
+            env.storage()
+                .persistent()
+                .set(&DataKey::HasBorrowed(user.clone()), &false);
+        }
+        bump_has_borrowed_ttl(env, user);
+    }
     /// Initialize the vault with underlying token, supply yearly rate, borrow yearly rate, and admin
     /// Rates are scaled by 1e6 (e.g., 10% = 100_000)
     pub fn initialize(
@@ -146,6 +159,7 @@ impl ReceiptVault {
         // Always update interest first
         Self::update_interest(env.clone());
         // Require authorization from the user
+        Self::ensure_user_borrow_flag(&env, &user);
         ensure_user_auth(&env, &user);
         // Rewards: accrue user in this market
         if let Some(comp_addr) = env
@@ -313,6 +327,7 @@ impl ReceiptVault {
     pub fn withdraw(env: Env, user: Address, ptoken_amount: u128) {
         let token_address = ensure_initialized(&env);
         user.require_auth();
+        Self::ensure_user_borrow_flag(&env, &user);
         // Always update interest first
         Self::update_interest(env.clone());
         let current_ptokens = ptoken_balance(&env, &user);
@@ -617,6 +632,8 @@ impl ReceiptVault {
         spender: Option<Address>,
     ) {
         ensure_initialized(&env);
+        Self::ensure_user_borrow_flag(&env, &from);
+        Self::ensure_user_borrow_flag(&env, &to);
         if amount == 0 {
             return;
         }
@@ -1448,11 +1465,15 @@ impl ReceiptVault {
     /// Get user's current borrow balance (principal adjusted by index)
     pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
         let _ = ensure_initialized(&env);
-        let has_borrowed: bool = env
+        let total_borrowed: u128 = env
             .storage()
             .persistent()
-            .get(&DataKey::HasBorrowed(user.clone()))
-            .unwrap_or(false);
+            .get(&DataKey::TotalBorrowed)
+            .expect("total borrowed missing");
+        let has_borrowed: Option<bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::HasBorrowed(user.clone()));
         bump_borrow_snapshot_ttl(&env, &user);
         bump_has_borrowed_ttl(&env, &user);
         let snap: Option<BorrowSnapshot> = env
@@ -1460,7 +1481,10 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::BorrowSnapshots(user.clone()));
         let Some(snapshot) = snap else {
-            if has_borrowed {
+            if has_borrowed.unwrap_or(false) {
+                panic!("borrow snapshot missing");
+            }
+            if total_borrowed > 0 {
                 panic!("borrow snapshot missing");
             }
             return 0u128;
@@ -1540,6 +1564,7 @@ impl ReceiptVault {
     /// Borrow tokens against pToken collateral
     pub fn borrow(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_user_borrow_flag(&env, &user);
         Self::update_interest(env.clone());
         ensure_user_auth(&env, &user);
         let mut user_ptokens_before: u128 = 0;
@@ -1682,6 +1707,7 @@ impl ReceiptVault {
     /// Repay borrowed tokens
     pub fn repay(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_user_borrow_flag(&env, &user);
         Self::update_interest(env.clone());
         ensure_user_auth(&env, &user);
         let current_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
@@ -1837,6 +1863,7 @@ impl ReceiptVault {
     /// Repay on behalf during liquidation; only callable by peridottroller/peridottroller
     pub fn repay_on_behalf(env: Env, liquidator: Address, borrower: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_user_borrow_flag(&env, &borrower);
         // Accrue and auth via peridottroller or allowlisted liquidator
         Self::update_interest(env.clone());
         let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);

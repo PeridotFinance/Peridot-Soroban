@@ -407,8 +407,7 @@ fn test_open_position_no_swap() {
 
 #[test]
 fn test_open_position_no_swap_short() {
-    let (env, controller_id, usdt_id, xlm_id, user, _lender, _usdt_vault_id, _xlm_vault_id) =
-        setup();
+    let (env, controller_id, usdt_id, xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap_short(
