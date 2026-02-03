@@ -71,8 +71,8 @@ pub enum Error {
     NotInitialized = 4,
 }
 
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
+const TTL_THRESHOLD: u32 = 100_000;
+const TTL_EXTEND_TO: u32 = 200_000;
 
 #[contractimpl]
 impl BasicSmartAccount {
