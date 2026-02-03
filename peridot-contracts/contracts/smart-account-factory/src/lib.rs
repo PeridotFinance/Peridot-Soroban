@@ -1,8 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractevent, contractimpl, contracttype, vec, Address, BytesN, Env, IntoVal, String,
-    Symbol,
+    contract, contractevent, contractimpl, contracttype, vec, Address, Bytes, BytesN, Env, IntoVal,
+    String, Symbol,
 };
 
 #[soroban_sdk::contractclient(name = "BasicSmartAccountClient")]
@@ -116,9 +116,17 @@ impl SmartAccountFactory {
             .get(&DataKey::WasmHash(config.account_type))
             .expect("wasm hash not set");
 
+        // Derive a unique, owner-scoped salt to prevent address squatting.
+        let owner_str = config.owner.to_string();
+        let owner_bytes: Bytes = owner_str.to_bytes();
+        let derived_hash = env.crypto().sha256(&owner_bytes);
+        let derived_salt = BytesN::from_array(&env, &derived_hash.to_array());
+        if salt != derived_salt {
+            panic!("bad salt");
+        }
         let deployed_address = env
             .deployer()
-            .with_current_contract(salt)
+            .with_current_contract(derived_salt)
             .deploy_v2(wasm_hash, ());
 
         match config.account_type {

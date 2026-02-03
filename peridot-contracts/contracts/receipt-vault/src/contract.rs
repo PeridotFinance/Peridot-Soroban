@@ -15,6 +15,29 @@ pub struct ReceiptVault;
 
 #[contractimpl]
 impl ReceiptVault {
+    fn ensure_user_borrow_flag(env: &Env, user: &Address) {
+        let has_snapshot = env
+            .storage()
+            .persistent()
+            .get::<_, BorrowSnapshot>(&DataKey::BorrowSnapshots(user.clone()))
+            .is_some();
+        if has_snapshot {
+            env.storage()
+                .persistent()
+                .set(&DataKey::HasBorrowed(user.clone()), &true);
+            bump_borrow_snapshot_ttl(env, user);
+        } else if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&DataKey::HasBorrowed(user.clone()))
+            .is_none()
+        {
+            env.storage()
+                .persistent()
+                .set(&DataKey::HasBorrowed(user.clone()), &false);
+        }
+        bump_has_borrowed_ttl(env, user);
+    }
     /// Initialize the vault with underlying token, supply yearly rate, borrow yearly rate, and admin
     /// Rates are scaled by 1e6 (e.g., 10% = 100_000)
     pub fn initialize(
@@ -146,6 +169,7 @@ impl ReceiptVault {
         // Always update interest first
         Self::update_interest(env.clone());
         // Require authorization from the user
+        Self::ensure_user_borrow_flag(&env, &user);
         ensure_user_auth(&env, &user);
         // Rewards: accrue user in this market
         if let Some(comp_addr) = env
@@ -158,7 +182,7 @@ impl ReceiptVault {
                 .storage()
                 .persistent()
                 .get(&DataKey::TotalBorrowed)
-                .unwrap_or(0u128);
+                .expect("total borrowed missing");
             let user_ptokens_before = ptoken_balance(&env, &user);
             let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
             let hint = ControllerAccrualHint {
@@ -295,7 +319,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::TotalDeposited)
-            .unwrap_or(0u128);
+            .expect("total deposited missing");
         env.storage()
             .persistent()
             .set(&DataKey::TotalDeposited, &(total_deposited + amount));
@@ -313,6 +337,7 @@ impl ReceiptVault {
     pub fn withdraw(env: Env, user: Address, ptoken_amount: u128) {
         let token_address = ensure_initialized(&env);
         user.require_auth();
+        Self::ensure_user_borrow_flag(&env, &user);
         // Always update interest first
         Self::update_interest(env.clone());
         let current_ptokens = ptoken_balance(&env, &user);
@@ -327,7 +352,7 @@ impl ReceiptVault {
                 .storage()
                 .persistent()
                 .get(&DataKey::TotalBorrowed)
-                .unwrap_or(0u128);
+                .expect("total borrowed missing");
             let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
             let hint = ControllerAccrualHint {
                 total_ptokens: Some(total_ptokens_before),
@@ -479,7 +504,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::AccumulatedInterest)
-            .unwrap_or(0u128);
+                .expect("accumulated interest missing");
         // Reduce principal first, then interest if needed
         if underlying_to_return > total_deposited {
             let from_interest = underlying_to_return - total_deposited;
@@ -620,6 +645,8 @@ impl ReceiptVault {
         if amount == 0 {
             return;
         }
+        Self::ensure_user_borrow_flag(&env, &from);
+        Self::ensure_user_borrow_flag(&env, &to);
         // Gating: if peridottroller wired, consult redeem pause and health for from-user
         if let Some(comp_addr) = env
             .storage()
@@ -700,7 +727,7 @@ impl ReceiptVault {
                 .storage()
                 .persistent()
                 .get(&DataKey::TotalBorrowed)
-                .unwrap_or(0u128);
+                .expect("total borrowed missing");
             let from_hint = ControllerAccrualHint {
                 total_ptokens: Some(total_ptokens_now),
                 total_borrowed: Some(total_borrowed_now),
@@ -1109,11 +1136,12 @@ impl ReceiptVault {
         {
             return;
         }
+        bump_borrow_state_ttl(&env);
         let last_time: u64 = env
             .storage()
             .persistent()
             .get(&DataKey::LastUpdateTime)
-            .unwrap_or(env.ledger().timestamp());
+            .expect("last update missing");
         let now = env.ledger().timestamp();
         if now <= last_time {
             return;
@@ -1143,7 +1171,7 @@ impl ReceiptVault {
                 .storage()
                 .persistent()
                 .get(&DataKey::TotalBorrowed)
-                .unwrap_or(0u128);
+                .expect("total borrowed missing");
             let rf: u128 = env
                 .storage()
                 .persistent()
@@ -1159,7 +1187,7 @@ impl ReceiptVault {
             env.storage()
                 .persistent()
                 .get(&DataKey::YearlyRateScaled)
-                .unwrap_or(0u128)
+                .expect("yearly rate missing")
         };
         if yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
             panic!("interest rate out of bounds");
@@ -1180,7 +1208,7 @@ impl ReceiptVault {
                     .storage()
                     .persistent()
                     .get(&DataKey::AccumulatedInterest)
-                    .unwrap_or(0u128);
+                    .expect("accumulated interest missing");
                 let updated_accumulated = accumulated.saturating_add(new_interest);
                 env.storage()
                     .persistent()
@@ -1193,13 +1221,13 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-            .unwrap_or(0u128);
+            .expect("total borrowed missing");
         let mut interest_accumulated_event: u128 = 0u128;
         let mut event_borrow_index: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::BorrowIndex)
-            .unwrap_or(INDEX_SCALE_1E18);
+            .expect("borrow index missing");
         let mut event_total_borrows: u128 = tb_prior;
         // Determine borrow yearly rate from model if set, else static
         let borrow_yearly_rate_scaled: u128 = if let Some(model) = env
@@ -1219,7 +1247,7 @@ impl ReceiptVault {
             env.storage()
                 .persistent()
                 .get(&DataKey::BorrowYearlyRateScaled)
-                .unwrap_or(0u128)
+                .expect("borrow yearly rate missing")
         };
         if borrow_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
             panic!("interest rate out of bounds");
@@ -1278,7 +1306,7 @@ impl ReceiptVault {
                 .storage()
                 .persistent()
                 .get(&DataKey::BorrowIndex)
-                .unwrap_or(INDEX_SCALE_1E18);
+                .expect("borrow index missing");
             let delta_index = (old_index.saturating_mul(borrow_interest_total)) / tb_prior;
             let new_index = old_index.saturating_add(delta_index);
             env.storage()
@@ -1303,6 +1331,61 @@ impl ReceiptVault {
             .set(&DataKey::LastUpdateTime, &now);
     }
 
+    /// Admin-only recovery for missing core state after TTL expiry.
+    /// Sets missing rate/index/time fields to safe defaults.
+    pub fn recover_state(
+        env: Env,
+        admin: Address,
+        supply_yearly_rate_scaled: u128,
+        borrow_yearly_rate_scaled: u128,
+    ) {
+        let stored_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if stored_admin != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+        if supply_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("invalid supply rate");
+        }
+        if borrow_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("invalid borrow rate");
+        }
+        let storage = env.storage().persistent();
+        if storage.get::<_, u128>(&DataKey::YearlyRateScaled).is_none() {
+            storage.set(&DataKey::YearlyRateScaled, &supply_yearly_rate_scaled);
+        }
+        if storage
+            .get::<_, u128>(&DataKey::BorrowYearlyRateScaled)
+            .is_none()
+        {
+            storage.set(&DataKey::BorrowYearlyRateScaled, &borrow_yearly_rate_scaled);
+        }
+        if storage.get::<_, u128>(&DataKey::BorrowIndex).is_none() {
+            storage.set(&DataKey::BorrowIndex, &INDEX_SCALE_1E18);
+        }
+        if storage.get::<_, u128>(&DataKey::TotalBorrowed).is_none() {
+            storage.set(&DataKey::TotalBorrowed, &0u128);
+        }
+        if storage.get::<_, u128>(&DataKey::TotalDeposited).is_none() {
+            storage.set(&DataKey::TotalDeposited, &0u128);
+        }
+        if storage
+            .get::<_, u128>(&DataKey::AccumulatedInterest)
+            .is_none()
+        {
+            storage.set(&DataKey::AccumulatedInterest, &0u128);
+        }
+        if storage.get::<_, u64>(&DataKey::LastUpdateTime).is_none() {
+            storage.set(&DataKey::LastUpdateTime, &env.ledger().timestamp());
+        }
+        bump_core_ttl(&env);
+        bump_borrow_state_ttl(&env);
+    }
+
     /// Get total underlying, including accumulated interest
     pub fn get_total_underlying(env: Env) -> u128 {
         // cash + borrows - reserves - admin_fees
@@ -1317,7 +1400,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-            .unwrap_or(0u128);
+            .expect("total borrowed missing");
         let reserves: u128 = env
             .storage()
             .persistent()
@@ -1332,7 +1415,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::AccumulatedInterest)
-            .unwrap_or(0u128);
+            .expect("accumulated interest missing");
         let boosted_underlying = if let Some(boosted) = env
             .storage()
             .persistent()
@@ -1446,11 +1529,21 @@ impl ReceiptVault {
 
     /// Get user's current borrow balance (principal adjusted by index)
     pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
+        let _ = ensure_initialized(&env);
+        let has_borrowed: Option<bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::HasBorrowed(user.clone()));
+        bump_borrow_snapshot_ttl(&env, &user);
+        bump_has_borrowed_ttl(&env, &user);
         let snap: Option<BorrowSnapshot> = env
             .storage()
             .persistent()
             .get(&DataKey::BorrowSnapshots(user.clone()));
         let Some(snapshot) = snap else {
+            if has_borrowed.unwrap_or(false) {
+                panic!("borrow snapshot missing");
+            }
             return 0u128;
         };
         if snapshot.principal == 0 {
@@ -1460,7 +1553,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::BorrowIndex)
-            .unwrap_or(INDEX_SCALE_1E18);
+            .expect("borrow index missing");
         // principal * current_index / user_index
         (snapshot.principal.saturating_mul(current_index)) / snapshot.interest_index
     }
@@ -1471,20 +1564,22 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::BorrowIndex)
-            .unwrap_or(INDEX_SCALE_1E18);
-        if principal == 0 {
-            env.storage()
-                .persistent()
-                .remove(&DataKey::BorrowSnapshots(user));
-            return;
-        }
+            .expect("borrow index missing");
         let snap = BorrowSnapshot {
             principal,
             interest_index: current_index,
         };
         env.storage()
             .persistent()
-            .set(&DataKey::BorrowSnapshots(user), &snap);
+            .set(&DataKey::BorrowSnapshots(user.clone()), &snap);
+        env.storage()
+            .persistent()
+            .set(&DataKey::HasBorrowed(user.clone()), &true);
+        bump_borrow_snapshot_ttl(env, &user);
+        bump_has_borrowed_ttl(env, &user);
+        if principal == 0 {
+            return;
+        }
     }
 
     /// Get available liquidity = total_underlying - total_borrowed
@@ -1494,7 +1589,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-            .unwrap_or(0u128);
+                .expect("total borrowed missing");
         total_underlying.saturating_sub(total_borrowed)
     }
 
@@ -1503,7 +1598,7 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-            .unwrap_or(0u128)
+                .expect("total borrowed missing")
     }
 
     /// Get user's collateral value in underlying terms
@@ -1519,6 +1614,7 @@ impl ReceiptVault {
     /// Borrow tokens against pToken collateral
     pub fn borrow(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_user_borrow_flag(&env, &user);
         Self::update_interest(env.clone());
         ensure_user_auth(&env, &user);
         let mut user_ptokens_before: u128 = 0;
@@ -1534,7 +1630,7 @@ impl ReceiptVault {
                 .storage()
                 .persistent()
                 .get(&DataKey::TotalBorrowed)
-                .unwrap_or(0u128);
+                .expect("total borrowed missing");
             user_ptokens_before = ptoken_balance(&env, &user);
             user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
             exchange_rate = Self::get_exchange_rate(env.clone());
@@ -1623,7 +1719,7 @@ impl ReceiptVault {
                 .storage()
                 .persistent()
                 .get(&DataKey::TotalBorrowed)
-                .unwrap_or(0u128);
+                .expect("total borrowed missing");
             if tb.saturating_add(amount) > bcap {
                 panic!("borrow cap exceeded");
             }
@@ -1637,7 +1733,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-            .unwrap_or(0u128);
+                .expect("total borrowed missing");
         let total_borrows = tb.saturating_add(amount);
         env.storage()
             .persistent()
@@ -1661,6 +1757,7 @@ impl ReceiptVault {
     /// Repay borrowed tokens
     pub fn repay(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_user_borrow_flag(&env, &user);
         Self::update_interest(env.clone());
         ensure_user_auth(&env, &user);
         let current_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
@@ -1674,7 +1771,7 @@ impl ReceiptVault {
                 .storage()
                 .persistent()
                 .get(&DataKey::TotalBorrowed)
-                .unwrap_or(0u128);
+                .expect("total borrowed missing");
             let user_ptokens_before = ptoken_balance(&env, &user);
             let hint = ControllerAccrualHint {
                 total_ptokens: Some(total_ptokens_before),
@@ -1713,7 +1810,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-            .unwrap_or(0u128);
+                .expect("total borrowed missing");
         let tb_after = tb - repay_amount;
         env.storage()
             .persistent()
@@ -1816,6 +1913,7 @@ impl ReceiptVault {
     /// Repay on behalf during liquidation; only callable by peridottroller/peridottroller
     pub fn repay_on_behalf(env: Env, liquidator: Address, borrower: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_user_borrow_flag(&env, &borrower);
         // Accrue and auth via peridottroller or allowlisted liquidator
         Self::update_interest(env.clone());
         let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);
@@ -1847,7 +1945,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-            .unwrap_or(0u128);
+                .expect("total borrowed missing");
         let tb_after = tb - repay_amount;
         env.storage()
             .persistent()

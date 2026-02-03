@@ -7,6 +7,8 @@ use soroban_sdk::{
     String, Symbol, TryIntoVal, Vec,
 };
 
+pub const DEFAULT_FACTORY_ID: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+
 #[soroban_sdk::contractclient(name = "PeridottrollerClient")]
 pub trait Peridottroller {
     fn hypothetical_liquidity(
@@ -52,6 +54,7 @@ pub enum DataKey {
     Peridottroller,
     MarginController,
     Initialized,
+    InitPersistent,
 }
 
 #[contracttype]
@@ -69,9 +72,10 @@ pub enum Error {
     NotInitialized = 4,
 }
 
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
-pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+const TTL_THRESHOLD: u32 = 100_000;
+const TTL_EXTEND_TO: u32 = 200_000;
+const PERSIST_TTL_THRESHOLD: u32 = 100_000;
+const PERSIST_TTL_EXTEND_TO: u32 = 200_000;
 
 #[contractimpl]
 impl BasicSmartAccount {
@@ -86,15 +90,27 @@ impl BasicSmartAccount {
         peridottroller: Address,
         margin_controller: Address,
     ) {
-        if env.storage().instance().has(&DataKey::Initialized) {
+        if env.storage().instance().has(&DataKey::Initialized)
+            || env.storage().persistent().has(&DataKey::InitPersistent)
+        {
             panic!("already initialized");
         }
-        // If a factory id is configured at build time, require it to authorize initialization.
-        if let Some(factory_str) = option_env!("SMART_ACCOUNT_FACTORY_ID") {
-            let factory =
-                Address::from_string(&String::from_str(&env, factory_str));
-            factory.require_auth();
-        }
+        // Require factory authorization for initialization (prevents takeover).
+        let factory_str = match option_env!("SMART_ACCOUNT_FACTORY_ID") {
+            Some(val) => val,
+            None => {
+                #[cfg(test)]
+                {
+                    DEFAULT_FACTORY_ID
+                }
+                #[cfg(not(test))]
+                {
+                    panic!("SMART_ACCOUNT_FACTORY_ID not set");
+                }
+            }
+        };
+        let factory = Address::from_string(&String::from_str(&env, factory_str));
+        factory.require_auth();
         owner.require_auth();
         env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage()
@@ -107,6 +123,10 @@ impl BasicSmartAccount {
             .instance()
             .set(&DataKey::MarginController, &margin_controller);
         env.storage().instance().set(&DataKey::Initialized, &true);
+        env.storage()
+            .persistent()
+            .set(&DataKey::InitPersistent, &true);
+        bump_persistent_ttl(&env);
         bump_ttl(&env);
     }
 
@@ -157,6 +177,7 @@ impl BasicSmartAccount {
     }
 
     pub fn bump_ttl(env: Env) {
+        bump_persistent_ttl(&env);
         bump_ttl(&env);
     }
 
@@ -279,6 +300,17 @@ fn bump_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_persistent_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::InitPersistent) {
+        persistent.extend_ttl(
+            &DataKey::InitPersistent,
+            PERSIST_TTL_THRESHOLD,
+            PERSIST_TTL_EXTEND_TO,
+        );
     }
 }
 

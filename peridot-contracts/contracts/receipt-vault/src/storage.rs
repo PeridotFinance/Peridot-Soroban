@@ -13,6 +13,7 @@ pub enum DataKey {
     InitialExchangeRate,   // u128, scaled 1e6
     // Borrowing-related keys
     BorrowSnapshots(Address), // BorrowSnapshot per user
+    HasBorrowed(Address),     // bool flag per user
     TotalBorrowed,            // u128
     BorrowIndex,              // u128 (scaled 1e18)
     BorrowYearlyRateScaled,   // u128, scaled 1e6
@@ -31,8 +32,8 @@ pub enum DataKey {
     BoostedVault,             // Optional DeFindex vault address for boosted markets
 }
 
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
+const TTL_THRESHOLD: u32 = 100_000;
+const TTL_EXTEND_TO: u32 = 200_000;
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -99,6 +100,47 @@ pub fn bump_core_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::Initialized) {
         persistent.extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_borrow_snapshot_ttl(env: &Env, user: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::BorrowSnapshots(user.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::HasBorrowed(user.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_borrow_state_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::YearlyRateScaled) {
+        persistent.extend_ttl(&DataKey::YearlyRateScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BorrowYearlyRateScaled) {
+        persistent.extend_ttl(&DataKey::BorrowYearlyRateScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalBorrowed) {
+        persistent.extend_ttl(&DataKey::TotalBorrowed, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BorrowIndex) {
+        persistent.extend_ttl(&DataKey::BorrowIndex, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::LastUpdateTime) {
+        persistent.extend_ttl(&DataKey::LastUpdateTime, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::AccumulatedInterest) {
+        persistent.extend_ttl(&DataKey::AccumulatedInterest, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalDeposited) {
+        persistent.extend_ttl(&DataKey::TotalDeposited, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

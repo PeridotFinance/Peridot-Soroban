@@ -10,6 +10,7 @@ This guide covers end-to-end deployment of the Peridot lending protocol contract
   - `PERIDOT_TOKEN_INIT_ADMIN`
   - `SWAP_ADAPTER_INIT_ADMIN`
   - `JUMP_RATE_MODEL_INIT_ADMIN`
+  - `MARGIN_CONTROLLER_INIT_ADMIN`
   - These must match the admin address you will pass to `initialize`.
 - Testnet network configured in the CLI:
   ```bash
@@ -286,6 +287,7 @@ Set these env vars **before building/deploying** so `initialize` accepts your ad
 export PERIDOT_TOKEN_INIT_ADMIN="$ADMIN"
 export SWAP_ADAPTER_INIT_ADMIN="$ADMIN"
 export JUMP_RATE_MODEL_INIT_ADMIN="$ADMIN"
+export MARGIN_CONTROLLER_INIT_ADMIN="$ADMIN"
 export SMART_ACCOUNT_FACTORY_INIT_ADMIN="$ADMIN"
 export SMART_ACCOUNT_FACTORY_ID="<FACTORY_CONTRACT_ID>"
 ```

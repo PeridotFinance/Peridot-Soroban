@@ -218,3 +218,31 @@ fn bump_critical_ttl(env: &Env) {
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use soroban_sdk::testutils::Address as _;
+
+    #[test]
+    fn test_initialize_and_mint() {
+        let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let id = env.register(PeridotToken, ());
+        let client = PeridotTokenClient::new(&env, &id);
+        client.initialize(
+            &String::from_str(&env, "Peridot"),
+            &String::from_str(&env, "P"),
+            &6u32,
+            &admin,
+            &1_000_000i128,
+        );
+
+        let user = Address::generate(&env);
+        client.mint(&user, &100i128);
+        assert_eq!(client.balance(&user), 100i128);
+        assert_eq!(client.total_supply(), 100i128);
+    }
+
+}
