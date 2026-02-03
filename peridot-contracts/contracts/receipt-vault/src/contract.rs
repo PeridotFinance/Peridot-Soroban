@@ -632,11 +632,11 @@ impl ReceiptVault {
         spender: Option<Address>,
     ) {
         ensure_initialized(&env);
-        Self::ensure_user_borrow_flag(&env, &from);
-        Self::ensure_user_borrow_flag(&env, &to);
         if amount == 0 {
             return;
         }
+        Self::ensure_user_borrow_flag(&env, &from);
+        Self::ensure_user_borrow_flag(&env, &to);
         // Gating: if peridottroller wired, consult redeem pause and health for from-user
         if let Some(comp_addr) = env
             .storage()
@@ -1465,11 +1465,6 @@ impl ReceiptVault {
     /// Get user's current borrow balance (principal adjusted by index)
     pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
         let _ = ensure_initialized(&env);
-        let total_borrowed: u128 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::TotalBorrowed)
-            .expect("total borrowed missing");
         let has_borrowed: Option<bool> = env
             .storage()
             .persistent()
@@ -1482,9 +1477,6 @@ impl ReceiptVault {
             .get(&DataKey::BorrowSnapshots(user.clone()));
         let Some(snapshot) = snap else {
             if has_borrowed.unwrap_or(false) {
-                panic!("borrow snapshot missing");
-            }
-            if total_borrowed > 0 {
                 panic!("borrow snapshot missing");
             }
             return 0u128;
