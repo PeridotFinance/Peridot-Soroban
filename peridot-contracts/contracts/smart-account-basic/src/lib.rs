@@ -4,7 +4,7 @@ use soroban_sdk::auth::{Context, ContractContext, CustomAccountInterface};
 use soroban_sdk::crypto::Hash;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, Address, Bytes, BytesN, Env, IntoVal,
-    Symbol, TryIntoVal, Vec,
+    String, Symbol, TryIntoVal, Vec,
 };
 
 #[soroban_sdk::contractclient(name = "PeridottrollerClient")]
@@ -71,6 +71,7 @@ pub enum Error {
 
 const TTL_THRESHOLD: u32 = 100_000_000;
 const TTL_EXTEND_TO: u32 = 200_000_000;
+pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 
 #[contractimpl]
 impl BasicSmartAccount {
@@ -87,6 +88,12 @@ impl BasicSmartAccount {
     ) {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
+        }
+        // If a factory id is configured at build time, require it to authorize initialization.
+        if let Some(factory_str) = option_env!("SMART_ACCOUNT_FACTORY_ID") {
+            let factory =
+                Address::from_string(&String::from_str(&env, factory_str));
+            factory.require_auth();
         }
         owner.require_auth();
         env.storage().instance().set(&DataKey::Owner, &owner);

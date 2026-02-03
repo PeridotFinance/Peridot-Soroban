@@ -1,6 +1,9 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, BytesN, Env, String};
+use soroban_sdk::{
+    contract, contractevent, contractimpl, contracttype, vec, Address, BytesN, Env, IntoVal, String,
+    Symbol,
+};
 
 #[soroban_sdk::contractclient(name = "BasicSmartAccountClient")]
 pub trait BasicSmartAccount {
@@ -120,6 +123,23 @@ impl SmartAccountFactory {
 
         match config.account_type {
             AccountType::Basic => {
+                let auths = vec![&env, soroban_sdk::auth::InvokerContractAuthEntry::Contract(
+                    soroban_sdk::auth::SubContractInvocation {
+                        context: soroban_sdk::auth::ContractContext {
+                            contract: deployed_address.clone(),
+                            fn_name: Symbol::new(&env, "initialize"),
+                            args: (
+                                config.owner.clone(),
+                                config.signer.clone(),
+                                config.peridottroller.clone(),
+                                config.margin_controller.clone(),
+                            )
+                                .into_val(&env),
+                        },
+                        sub_invocations: vec![&env],
+                    },
+                )];
+                env.authorize_as_current_contract(auths);
                 BasicSmartAccountClient::new(&env, &deployed_address).initialize(
                     &config.owner,
                     &config.signer,

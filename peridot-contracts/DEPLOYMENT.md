@@ -287,6 +287,7 @@ export PERIDOT_TOKEN_INIT_ADMIN="$ADMIN"
 export SWAP_ADAPTER_INIT_ADMIN="$ADMIN"
 export JUMP_RATE_MODEL_INIT_ADMIN="$ADMIN"
 export SMART_ACCOUNT_FACTORY_INIT_ADMIN="$ADMIN"
+export SMART_ACCOUNT_FACTORY_ID="<FACTORY_CONTRACT_ID>"
 ```
 
 If these are not set, contracts default to the hardcoded dev admin value.

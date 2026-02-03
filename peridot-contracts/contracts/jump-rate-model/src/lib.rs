@@ -84,22 +84,22 @@ impl JumpRateModel {
             .storage()
             .persistent()
             .get(&DataKey::BaseRatePerYear)
-            .unwrap_or(0);
+            .expect("base rate missing");
         let mult: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::MultiplierPerYear)
-            .unwrap_or(0);
+            .expect("multiplier missing");
         let jump: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::JumpMultiplierPerYear)
-            .unwrap_or(0);
+            .expect("jump missing");
         let kink: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::Kink)
-            .unwrap_or(SCALE_1E6 * 8 / 10);
+            .expect("kink missing");
         if util <= kink {
             base.saturating_add(util.saturating_mul(mult) / SCALE_1E6)
         } else {
@@ -143,11 +143,14 @@ impl JumpRateModel {
 }
 
 fn ensure_initialized(env: &Env) {
-    if env
-        .storage()
-        .persistent()
-        .get::<_, Address>(&DataKey::Admin)
-        .is_none()
+    let persistent = env.storage().persistent();
+    if persistent.get::<_, Address>(&DataKey::Admin).is_none()
+        || persistent.get::<_, u128>(&DataKey::BaseRatePerYear).is_none()
+        || persistent.get::<_, u128>(&DataKey::MultiplierPerYear).is_none()
+        || persistent
+            .get::<_, u128>(&DataKey::JumpMultiplierPerYear)
+            .is_none()
+        || persistent.get::<_, u128>(&DataKey::Kink).is_none()
     {
         panic!("model not initialized");
     }
