@@ -4,10 +4,10 @@ use soroban_sdk::auth::{Context, ContractContext, CustomAccountInterface};
 use soroban_sdk::crypto::Hash;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, Address, Bytes, BytesN, Env, IntoVal,
-    Symbol, TryIntoVal, Vec,
+    String, Symbol, TryIntoVal, Vec,
 };
-#[cfg(not(test))]
-use soroban_sdk::String;
+
+pub const DEFAULT_FACTORY_ID: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 
 #[soroban_sdk::contractclient(name = "PeridottrollerClient")]
 pub trait Peridottroller {
@@ -91,13 +91,21 @@ impl BasicSmartAccount {
             panic!("already initialized");
         }
         // Require factory authorization for initialization (prevents takeover).
-        #[cfg(not(test))]
-        {
-            if let Some(factory_str) = option_env!("SMART_ACCOUNT_FACTORY_ID") {
-                let factory = Address::from_string(&String::from_str(&env, factory_str));
-                factory.require_auth();
+        let factory_str = match option_env!("SMART_ACCOUNT_FACTORY_ID") {
+            Some(val) => val,
+            None => {
+                #[cfg(test)]
+                {
+                    DEFAULT_FACTORY_ID
+                }
+                #[cfg(not(test))]
+                {
+                    panic!("SMART_ACCOUNT_FACTORY_ID not set");
+                }
             }
-        }
+        };
+        let factory = Address::from_string(&String::from_str(&env, factory_str));
+        factory.require_auth();
         owner.require_auth();
         env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage()

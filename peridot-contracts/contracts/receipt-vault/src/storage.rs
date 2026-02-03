@@ -13,6 +13,7 @@ pub enum DataKey {
     InitialExchangeRate,   // u128, scaled 1e6
     // Borrowing-related keys
     BorrowSnapshots(Address), // BorrowSnapshot per user
+    HasBorrowed(Address),     // bool flag per user
     TotalBorrowed,            // u128
     BorrowIndex,              // u128 (scaled 1e18)
     BorrowYearlyRateScaled,   // u128, scaled 1e6
@@ -105,6 +106,14 @@ pub fn bump_core_ttl(env: &Env) {
 pub fn bump_borrow_snapshot_ttl(env: &Env, user: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::BorrowSnapshots(user.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::HasBorrowed(user.clone());
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
