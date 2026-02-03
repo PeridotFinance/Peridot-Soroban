@@ -1109,6 +1109,7 @@ impl ReceiptVault {
         {
             return;
         }
+        bump_borrow_state_ttl(&env);
         let last_time: u64 = env
             .storage()
             .persistent()
@@ -1446,6 +1447,8 @@ impl ReceiptVault {
 
     /// Get user's current borrow balance (principal adjusted by index)
     pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
+        let _ = ensure_initialized(&env);
+        bump_borrow_snapshot_ttl(&env, &user);
         let snap: Option<BorrowSnapshot> = env
             .storage()
             .persistent()
@@ -1484,7 +1487,8 @@ impl ReceiptVault {
         };
         env.storage()
             .persistent()
-            .set(&DataKey::BorrowSnapshots(user), &snap);
+            .set(&DataKey::BorrowSnapshots(user.clone()), &snap);
+        bump_borrow_snapshot_ttl(env, &user);
     }
 
     /// Get available liquidity = total_underlying - total_borrowed

@@ -1,4 +1,6 @@
 use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, Vec};
+#[cfg(not(test))]
+use soroban_sdk::String;
 
 use crate::constants::*;
 use crate::helpers::*;
@@ -6,6 +8,8 @@ use crate::storage::*;
 
 #[contract]
 pub struct MarginController;
+
+pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 
 #[contractimpl]
 impl MarginController {
@@ -28,6 +32,7 @@ impl MarginController {
         {
             panic!("already initialized");
         }
+        assert_expected_admin(&env, &admin);
         admin.require_auth();
         if max_leverage < 1 || max_leverage > MAX_LEVERAGE_CAP {
             panic!("invalid leverage");
@@ -553,5 +558,23 @@ impl MarginController {
         }
         let _ = total_shares;
         collateral_value.saturating_mul(SCALE_1E6) / debt_value
+    }
+}
+
+fn assert_expected_admin(env: &Env, admin: &Address) {
+    #[cfg(test)]
+    {
+        let _ = env;
+        let _ = admin;
+        return;
+    }
+    #[cfg(not(test))]
+    {
+        let expected_admin_str =
+            option_env!("MARGIN_CONTROLLER_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin = Address::from_string(&String::from_str(env, expected_admin_str));
+        if admin != &expected_admin {
+            panic!("unexpected admin");
+        }
     }
 }

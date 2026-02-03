@@ -102,6 +102,33 @@ pub fn bump_core_ttl(env: &Env) {
     }
 }
 
+pub fn bump_borrow_snapshot_ttl(env: &Env, user: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::BorrowSnapshots(user.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_borrow_state_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::TotalBorrowed) {
+        persistent.extend_ttl(&DataKey::TotalBorrowed, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BorrowIndex) {
+        persistent.extend_ttl(&DataKey::BorrowIndex, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::LastUpdateTime) {
+        persistent.extend_ttl(&DataKey::LastUpdateTime, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::AccumulatedInterest) {
+        persistent.extend_ttl(&DataKey::AccumulatedInterest, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalDeposited) {
+        persistent.extend_ttl(&DataKey::TotalDeposited, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn ptoken_balance(env: &Env, addr: &Address) -> u128 {
     let bal = TokenBase::balance(env, addr);
     if bal < 0 {
