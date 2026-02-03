@@ -9,8 +9,6 @@ use crate::storage::*;
 #[contract]
 pub struct MarginController;
 
-pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
-
 #[contractimpl]
 impl MarginController {
     pub fn initialize(
@@ -571,7 +569,7 @@ fn assert_expected_admin(env: &Env, admin: &Address) {
     #[cfg(not(test))]
     {
         let expected_admin_str =
-            option_env!("MARGIN_CONTROLLER_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+            option_env!("MARGIN_CONTROLLER_INIT_ADMIN").expect("MARGIN_CONTROLLER_INIT_ADMIN not set");
         let expected_admin = Address::from_string(&String::from_str(env, expected_admin_str));
         if admin != &expected_admin {
             panic!("unexpected admin");

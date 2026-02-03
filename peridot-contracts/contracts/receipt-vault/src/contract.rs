@@ -1448,7 +1448,6 @@ impl ReceiptVault {
     /// Get user's current borrow balance (principal adjusted by index)
     pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
         let _ = ensure_initialized(&env);
-        bump_borrow_snapshot_ttl(&env, &user);
         let snap: Option<BorrowSnapshot> = env
             .storage()
             .persistent()

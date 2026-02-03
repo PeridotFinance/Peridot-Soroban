@@ -93,10 +93,10 @@ impl BasicSmartAccount {
         // Require factory authorization for initialization (prevents takeover).
         #[cfg(not(test))]
         {
-            let factory_str =
-                option_env!("SMART_ACCOUNT_FACTORY_ID").expect("factory id not set");
-            let factory = Address::from_string(&String::from_str(&env, factory_str));
-            factory.require_auth();
+            if let Some(factory_str) = option_env!("SMART_ACCOUNT_FACTORY_ID") {
+                let factory = Address::from_string(&String::from_str(&env, factory_str));
+                factory.require_auth();
+            }
         }
         owner.require_auth();
         env.storage().instance().set(&DataKey::Owner, &owner);
