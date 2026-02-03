@@ -31,6 +31,9 @@ pub enum DataKey {
     BoostedVault,             // Optional DeFindex vault address for boosted markets
 }
 
+const TTL_THRESHOLD: u32 = 100_000_000;
+const TTL_EXTEND_TO: u32 = 200_000_000;
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MarketLiquidityHint {
@@ -68,6 +71,7 @@ pub struct SeizeContext {
 }
 
 pub fn ensure_initialized(env: &Env) -> Address {
+    bump_core_ttl(env);
     let token: Address = env
         .storage()
         .persistent()
@@ -81,7 +85,21 @@ pub fn ensure_initialized(env: &Env) -> Address {
     {
         env.storage().persistent().set(&DataKey::Initialized, &true);
     }
+    bump_core_ttl(env);
     token
+}
+
+pub fn bump_core_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::Admin) {
+        persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::UnderlyingToken) {
+        persistent.extend_ttl(&DataKey::UnderlyingToken, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::Initialized) {
+        persistent.extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }
 
 pub fn ptoken_balance(env: &Env, addr: &Address) -> u128 {

@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Env, Vec};
+use soroban_sdk::{Address, BytesN, Env, Vec};
 
 use crate::constants::*;
 use crate::storage::*;
@@ -95,6 +95,18 @@ pub fn get_position_or_panic(env: &Env, position_id: u64) -> Position {
         .persistent()
         .get(&DataKey::Position(position_id))
         .expect("position missing")
+}
+
+pub fn validate_swaps_chain(swaps_chain: &Vec<(Vec<Address>, BytesN<32>, Address)>) {
+    if swaps_chain.len() == 0 || swaps_chain.len() > MAX_SWAP_PATH_LEN {
+        panic!("bad swaps");
+    }
+    for i in 0..swaps_chain.len() {
+        let (path, _, _) = swaps_chain.get(i).unwrap();
+        if path.len() == 0 || path.len() > MAX_SWAP_PATH_LEN {
+            panic!("bad swaps");
+        }
+    }
 }
 
 pub fn bump_core_ttl(env: &Env) {

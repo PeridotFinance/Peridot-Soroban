@@ -6,6 +6,7 @@ IDENTITY="${IDENTITY:-dev}"
 
 ADMIN="$(stellar keys address "$IDENTITY")"
 echo "Admin: $ADMIN"
+export SMART_ACCOUNT_FACTORY_INIT_ADMIN="$ADMIN"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 

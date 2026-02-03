@@ -23,6 +23,25 @@ pub trait ReceiptVault {
     fn get_underlying_token(env: Env) -> Address;
 }
 
+/// Basic smart account that enforces policy via `__check_auth`.
+///
+/// # Example (doctest, no_run)
+/// ```no_run
+/// use soroban_sdk::{Env, Address, BytesN};
+/// use soroban_sdk::testutils::Address as _;
+/// use smart_account_basic::{BasicSmartAccount, BasicSmartAccountClient};
+///
+/// let env = Env::default();
+/// env.mock_all_auths();
+/// let owner = Address::generate(&env);
+/// let signer = BytesN::from_array(&env, &[1u8; 32]);
+/// let peridottroller = Address::generate(&env);
+/// let margin = Address::generate(&env);
+///
+/// let contract_id = env.register(BasicSmartAccount, ());
+/// let client = BasicSmartAccountClient::new(&env, &contract_id);
+/// client.initialize(&owner, &signer, &peridottroller, &margin);
+/// ```
 #[contract]
 pub struct BasicSmartAccount;
 

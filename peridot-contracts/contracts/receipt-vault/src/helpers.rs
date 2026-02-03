@@ -1,6 +1,7 @@
 use soroban_sdk::{Address, Env, IntoVal, Symbol};
 
 use crate::events::{ExternalCallFailed, InterestOverflow, InvalidSeizeAttempt};
+use crate::constants::SCALE_1E6;
 
 pub fn abort_seize(
     env: &Env,
@@ -29,9 +30,27 @@ pub fn checked_interest_product(
     yearly_rate_scaled: u128,
     elapsed: u128,
 ) -> u128 {
-    amount
-        .checked_mul(yearly_rate_scaled)
-        .and_then(|v| v.checked_mul(elapsed))
+    // Compute interest = amount * yearly_rate_scaled * elapsed / (seconds_per_year * 1e6)
+    // Reduce factors by gcd with denominator to avoid intermediate overflow.
+    let seconds_per_year: u128 = 365 * 24 * 60 * 60;
+    let mut denom = seconds_per_year.saturating_mul(SCALE_1E6);
+    let mut a = amount;
+    let mut b = yearly_rate_scaled;
+    let mut c = elapsed;
+
+    let g1 = gcd_u128(a, denom);
+    a /= g1;
+    denom /= g1;
+    let g2 = gcd_u128(b, denom);
+    b /= g2;
+    denom /= g2;
+    let g3 = gcd_u128(c, denom);
+    c /= g3;
+    denom /= g3;
+
+    let numerator = a
+        .checked_mul(b)
+        .and_then(|v| v.checked_mul(c))
         .unwrap_or_else(|| {
             InterestOverflow {
                 amount,
@@ -40,7 +59,17 @@ pub fn checked_interest_product(
             }
             .publish(env);
             panic!("interest overflow");
-        })
+        });
+    numerator / denom
+}
+
+fn gcd_u128(mut a: u128, mut b: u128) -> u128 {
+    while b != 0 {
+        let r = a % b;
+        a = b;
+        b = r;
+    }
+    a
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

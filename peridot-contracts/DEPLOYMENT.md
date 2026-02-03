@@ -286,6 +286,7 @@ Set these env vars **before building/deploying** so `initialize` accepts your ad
 export PERIDOT_TOKEN_INIT_ADMIN="$ADMIN"
 export SWAP_ADAPTER_INIT_ADMIN="$ADMIN"
 export JUMP_RATE_MODEL_INIT_ADMIN="$ADMIN"
+export SMART_ACCOUNT_FACTORY_INIT_ADMIN="$ADMIN"
 ```
 
 If these are not set, contracts default to the hardcoded dev admin value.
@@ -300,6 +301,7 @@ Recommended practice:
   - any frequent read/write on `margin-controller` (e.g., `get_user_positions`) to bump its critical keys
   - `peridot-token.name` or `symbol` (bumps its critical keys)
   - `jump-rate-model.get_borrow_rate` (bumps its critical keys)
+  - `smart-account-factory.get_account` (bumps its critical keys)
 - For high-availability, run this keepalive even when user activity is low.
 
 If critical keys expire, the contract can become unusable or, in worst cases, allow re‑initialization. TTL bumping prevents that.

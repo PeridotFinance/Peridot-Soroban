@@ -119,6 +119,7 @@ impl ReceiptVault {
 
     /// Admin: set boosted vault address (DeFindex).
     pub fn set_boosted_vault(env: Env, admin: Address, boosted_vault: Address) {
+        let _ = ensure_initialized(&env);
         let stored: Address = env
             .storage()
             .persistent()
@@ -135,6 +136,7 @@ impl ReceiptVault {
 
     /// View: get boosted vault (if set)
     pub fn get_boosted_vault(env: Env) -> Option<Address> {
+        let _ = ensure_initialized(&env);
         env.storage().persistent().get(&DataKey::BoostedVault)
     }
 
@@ -736,6 +738,7 @@ impl ReceiptVault {
 
     /// Get total amount deposited in the vault
     pub fn get_total_deposited(env: Env) -> u128 {
+        let _ = ensure_initialized(&env);
         env.storage()
             .persistent()
             .get(&DataKey::TotalDeposited)
@@ -744,11 +747,13 @@ impl ReceiptVault {
 
     /// Get total pTokens issued
     pub fn get_total_ptokens(env: Env) -> u128 {
+        let _ = ensure_initialized(&env);
         total_ptokens_supply(&env)
     }
 
     /// Admin: upgrade contract code
     pub fn upgrade_wasm(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -760,6 +765,7 @@ impl ReceiptVault {
 
     /// Admin: transfer admin to new address
     pub fn set_admin(env: Env, new_admin: Address) {
+        let _ = ensure_initialized(&env);
         let old: Address = env
             .storage()
             .persistent()
@@ -772,6 +778,7 @@ impl ReceiptVault {
 
     /// Get the exchange rate (pToken to underlying ratio) scaled by 1e6
     pub fn get_exchange_rate(env: Env) -> u128 {
+        let _ = ensure_initialized(&env);
         let total_ptokens = total_ptokens_supply(&env);
         if total_ptokens == 0 {
             return env
@@ -799,6 +806,7 @@ impl ReceiptVault {
 
     /// Get the underlying token address
     pub fn get_underlying_token(env: Env) -> Address {
+        let _ = ensure_initialized(&env);
         env.storage()
             .persistent()
             .get(&DataKey::UnderlyingToken)
@@ -807,6 +815,7 @@ impl ReceiptVault {
 
     /// Get collateral factor (scaled 1e6)
     pub fn get_collateral_factor(env: Env) -> u128 {
+        let _ = ensure_initialized(&env);
         env.storage()
             .persistent()
             .get(&DataKey::CollateralFactorScaled)
@@ -815,6 +824,7 @@ impl ReceiptVault {
 
     /// Admin: set peridottroller address
     pub fn set_peridottroller(env: Env, peridottroller: Address) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -888,6 +898,7 @@ impl ReceiptVault {
 
     /// Admin: set interest rate model address
     pub fn set_interest_model(env: Env, model: Address) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -915,6 +926,7 @@ impl ReceiptVault {
 
     /// Admin: set reserve factor (0..=1e6)
     pub fn set_reserve_factor(env: Env, reserve_factor_scaled: u128) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -935,6 +947,7 @@ impl ReceiptVault {
 
     /// Admin: set admin fee factor (0..=1e6)
     pub fn set_admin_fee(env: Env, admin_fee_scaled: u128) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -955,6 +968,7 @@ impl ReceiptVault {
 
     /// Admin: set flash loan fee (0..=1e6, applied to principal)
     pub fn set_flash_loan_fee(env: Env, fee_scaled: u128) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -975,6 +989,7 @@ impl ReceiptVault {
 
     /// Admin: set supply cap (0 disables)
     pub fn set_supply_cap(env: Env, cap: u128) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -987,6 +1002,7 @@ impl ReceiptVault {
 
     /// Admin: set borrow cap (0 disables)
     pub fn set_borrow_cap(env: Env, cap: u128) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -999,6 +1015,7 @@ impl ReceiptVault {
 
     /// Get total reserves
     pub fn get_total_reserves(env: Env) -> u128 {
+        let _ = ensure_initialized(&env);
         env.storage()
             .persistent()
             .get(&DataKey::TotalReserves)
@@ -1007,6 +1024,7 @@ impl ReceiptVault {
 
     /// Get total admin fees
     pub fn get_total_admin_fees(env: Env) -> u128 {
+        let _ = ensure_initialized(&env);
         env.storage()
             .persistent()
             .get(&DataKey::TotalAdminFees)
@@ -1015,6 +1033,7 @@ impl ReceiptVault {
 
     /// Admin: reduce reserves and transfer to admin
     pub fn reduce_reserves(env: Env, amount: u128) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -1047,6 +1066,7 @@ impl ReceiptVault {
 
     /// Admin: reduce admin fees and transfer to admin
     pub fn reduce_admin_fees(env: Env, amount: u128) {
+        let _ = ensure_initialized(&env);
         let admin: Address = env
             .storage()
             .persistent()
@@ -1152,11 +1172,8 @@ impl ReceiptVault {
             .unwrap_or(0u128);
         if total_deposited > 0 && yearly_rate_scaled > 0 {
             // new_interest = total_deposited * yearly_rate * elapsed / (SECONDS_PER_YEAR * 1e6)
-            let seconds_per_year: u128 = 365 * 24 * 60 * 60;
-            let numerator =
+            let new_interest =
                 checked_interest_product(&env, total_deposited, yearly_rate_scaled, elapsed);
-            let denominator = seconds_per_year.saturating_mul(SCALE_1E6);
-            let new_interest = numerator / denominator;
 
             if new_interest > 0 {
                 let accumulated: u128 = env
@@ -1208,11 +1225,8 @@ impl ReceiptVault {
             panic!("interest rate out of bounds");
         }
         if tb_prior > 0 && borrow_yearly_rate_scaled > 0 {
-            let seconds_per_year: u128 = 365 * 24 * 60 * 60;
-            let numerator =
+            let borrow_interest_total =
                 checked_interest_product(&env, tb_prior, borrow_yearly_rate_scaled, elapsed);
-            let denominator = seconds_per_year.saturating_mul(SCALE_1E6);
-            let borrow_interest_total = numerator / denominator;
             interest_accumulated_event = borrow_interest_total;
 
             // Split between reserves, admin fees and suppliers based on factors
@@ -1354,6 +1368,7 @@ impl ReceiptVault {
 
     /// Admin: update yearly interest rate (scaled 1e6). Applies after accruing with old rate.
     pub fn set_interest_rate(env: Env, yearly_rate_scaled: u128) {
+        let _ = ensure_initialized(&env);
         // Admin guard
         let admin: Address = env
             .storage()
@@ -1377,6 +1392,7 @@ impl ReceiptVault {
 
     /// Admin: update borrow yearly rate (scaled 1e6)
     pub fn set_borrow_rate(env: Env, yearly_rate_scaled: u128) {
+        let _ = ensure_initialized(&env);
         // Admin guard
         let admin: Address = env
             .storage()
@@ -1399,6 +1415,7 @@ impl ReceiptVault {
 
     /// Admin: set collateral factor (0..=1e6)
     pub fn set_collateral_factor(env: Env, new_factor_scaled: u128) {
+        let _ = ensure_initialized(&env);
         // Admin guard
         let admin: Address = env
             .storage()
@@ -1420,6 +1437,7 @@ impl ReceiptVault {
 
     /// Read admin
     pub fn get_admin(env: Env) -> Address {
+        let _ = ensure_initialized(&env);
         env.storage()
             .persistent()
             .get(&DataKey::Admin)

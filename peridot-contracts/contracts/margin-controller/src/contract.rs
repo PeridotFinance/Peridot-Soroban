@@ -136,9 +136,7 @@ impl MarginController {
         if collateral_amount == 0 {
             panic!("bad collateral");
         }
-        if swaps_chain.len() == 0 {
-            panic!("bad swaps");
-        }
+        validate_swaps_chain(&swaps_chain);
         let (debt_asset, position_asset) = match side {
             PositionSide::Long => (collateral_asset.clone(), base_asset.clone()),
             PositionSide::Short => (base_asset.clone(), collateral_asset.clone()),
@@ -392,6 +390,7 @@ impl MarginController {
     ) {
         bump_core_ttl(&env);
         user.require_auth();
+        validate_swaps_chain(&swaps_chain);
         let mut position = get_position_or_panic(&env, position_id);
         if position.owner != user {
             panic!("not owner");
@@ -404,6 +403,25 @@ impl MarginController {
             debt_for_shares(&env, &user, &position.debt_asset, position.debt_shares);
         if debt_amount == 0 {
             panic!("zero debt");
+        }
+
+        if position.collateral_asset == position.debt_asset {
+            let debt_vault = get_market(&env, &position.debt_asset);
+            ReceiptVaultClient::new(&env, &debt_vault).repay(&user, &debt_amount);
+            let vault = get_market(&env, &position.collateral_asset);
+            ReceiptVaultClient::new(&env, &vault)
+                .withdraw(&user, &position.collateral_ptokens);
+
+            let new_total_shares = total_shares.saturating_sub(position.debt_shares);
+            set_debt_shares_total(&env, &user, &position.debt_asset, new_total_shares);
+
+            position.status = PositionStatus::Closed;
+            env.storage()
+                .persistent()
+                .set(&DataKey::Position(position_id), &position);
+            bump_position_ttl(&env, position_id);
+            remove_user_position(&env, &user, position_id);
+            return;
         }
 
         let vault = get_market(&env, &position.collateral_asset);

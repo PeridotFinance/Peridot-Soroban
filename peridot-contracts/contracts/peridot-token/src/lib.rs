@@ -14,6 +14,26 @@ pub enum DataKey {
     Initialized,
 }
 
+/// Peridot reward token contract.
+///
+/// # Example (doctest, no_run)
+/// ```no_run
+/// use soroban_sdk::{Env, Address, String};
+/// use peridot_token::{PeridotToken, PeridotTokenClient, DEFAULT_INIT_ADMIN};
+///
+/// let env = Env::default();
+/// env.mock_all_auths();
+/// let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+/// let contract_id = env.register(PeridotToken, ());
+/// let client = PeridotTokenClient::new(&env, &contract_id);
+/// client.initialize(
+///     &String::from_str(&env, "Peridot"),
+///     &String::from_str(&env, "P"),
+///     &6u32,
+///     &admin,
+///     &1_000_000i128,
+/// );
+/// ```
 #[contract]
 pub struct PeridotToken;
 

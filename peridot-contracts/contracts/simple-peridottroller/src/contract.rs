@@ -1,11 +1,12 @@
 use soroban_sdk::{
-    contract, contractimpl, Address, Env, IntoVal, Map, Symbol, Val, Vec,
+    contract, contractimpl, Address, Env, IntoVal, Map, Symbol, Val, Vec, vec,
 };
 use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
 
 use crate::constants::*;
 use crate::events::*;
 use crate::storage::*;
+use crate::storage as storage;
 
 #[contract]
 pub struct SimplePeridottroller;
@@ -1299,6 +1300,15 @@ impl SimplePeridottroller {
         } else {
             accrued as i128
         };
+        let auths = vec![&env, InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: token.clone(),
+                fn_name: Symbol::new(&env, "mint"),
+                args: (user.clone(), amt).into_val(&env),
+            },
+            sub_invocations: vec![&env],
+        })];
+        env.authorize_as_current_contract(auths);
         let _: () = env.invoke_contract(
             &token,
             &Symbol::new(&env, "mint"),

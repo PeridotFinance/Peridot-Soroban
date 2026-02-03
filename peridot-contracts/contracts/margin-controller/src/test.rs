@@ -166,27 +166,25 @@ fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Addres
 }
 
 fn mock_swaps_chain(env: &Env, token_out: &Address) -> Vec<(Vec<Address>, BytesN<32>, Address)> {
-    let pools: Vec<Address> = Vec::new(env);
+    let pools: Vec<Address> = Vec::from_array(env, [token_out.clone()]);
     let pool_id = BytesN::from_array(env, &[0u8; 32]);
     Vec::from_array(env, [(pools, pool_id, token_out.clone())])
 }
 
 #[test]
 fn open_and_close_long() {
-    let (env, controller_id, usdt_id, xlm_id, user, _lender, _usdt_vault_id, _xlm_vault_id) =
+    let (env, controller_id, usdt_id, _xlm_id, user, _lender, _usdt_vault_id, _xlm_vault_id) =
         setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
-    let position_id = controller.open_position(
+    let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &xlm_id,
+        &usdt_id,
+        &100u128,
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &swaps_chain,
-        &200u128,
     );
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
@@ -364,19 +362,17 @@ fn test_open_position_zero_collateral_panics() {
 #[test]
 #[should_panic(expected = "not owner")]
 fn test_close_position_not_owner_panics() {
-    let (env, controller_id, usdt_id, xlm_id, user, _lender, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user, _lender, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
-    let position_id = controller.open_position(
+    let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &xlm_id,
+        &usdt_id,
+        &100u128,
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &swaps_chain,
-        &200u128,
     );
 
     let other_user = Address::generate(&env);
@@ -392,19 +388,17 @@ fn test_close_position_not_owner_panics() {
 #[test]
 #[should_panic(expected = "not open")]
 fn test_close_position_already_closed_panics() {
-    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
-    let position_id = controller.open_position(
+    let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &xlm_id,
+        &usdt_id,
+        &100u128,
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &swaps_chain,
-        &200u128,
     );
 
     let swaps_chain_close = mock_swaps_chain(&env, &usdt_id);
@@ -427,19 +421,17 @@ fn test_close_position_already_closed_panics() {
 
 #[test]
 fn test_get_position_and_user_positions() {
-    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
-    let position_id = controller.open_position(
+    let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &xlm_id,
+        &usdt_id,
+        &100u128,
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &swaps_chain,
-        &200u128,
     );
 
     let pos = controller.get_position(&position_id).unwrap();
@@ -454,19 +446,17 @@ fn test_get_position_and_user_positions() {
 
 #[test]
 fn test_get_health_factor() {
-    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
-    let position_id = controller.open_position(
+    let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &xlm_id,
+        &usdt_id,
+        &100u128,
         &100u128,
         &2u128,
         &PositionSide::Long,
-        &swaps_chain,
-        &200u128,
     );
 
     let health = controller.get_health_factor(&position_id);

@@ -13,6 +13,24 @@ pub trait BasicSmartAccount {
     );
 }
 
+/// Factory for deploying smart accounts.
+///
+/// # Example (doctest, no_run)
+/// ```no_run
+/// use soroban_sdk::{Env, Address, BytesN};
+/// use soroban_sdk::testutils::Address as _;
+/// use smart_account_factory::{SmartAccountFactory, SmartAccountFactoryClient, AccountType};
+///
+/// let env = Env::default();
+/// env.mock_all_auths();
+/// let admin = Address::generate(&env);
+/// let contract_id = env.register(SmartAccountFactory, ());
+/// let client = SmartAccountFactoryClient::new(&env, &contract_id);
+/// client.initialize(&admin);
+///
+/// let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
+/// client.set_wasm_hash(&admin, &AccountType::Basic, &wasm_hash);
+/// ```
 #[contract]
 pub struct SmartAccountFactory;
 
