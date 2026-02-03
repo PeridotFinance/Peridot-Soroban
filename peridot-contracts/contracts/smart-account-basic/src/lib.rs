@@ -54,6 +54,7 @@ pub enum DataKey {
     Peridottroller,
     MarginController,
     Initialized,
+    InitPersistent,
 }
 
 #[contracttype]
@@ -73,6 +74,8 @@ pub enum Error {
 
 const TTL_THRESHOLD: u32 = 100_000;
 const TTL_EXTEND_TO: u32 = 200_000;
+const PERSIST_TTL_THRESHOLD: u32 = 3_000_000;
+const PERSIST_TTL_EXTEND_TO: u32 = 6_000_000;
 
 #[contractimpl]
 impl BasicSmartAccount {
@@ -87,7 +90,9 @@ impl BasicSmartAccount {
         peridottroller: Address,
         margin_controller: Address,
     ) {
-        if env.storage().instance().has(&DataKey::Initialized) {
+        if env.storage().instance().has(&DataKey::Initialized)
+            || env.storage().persistent().has(&DataKey::InitPersistent)
+        {
             panic!("already initialized");
         }
         // Require factory authorization for initialization (prevents takeover).
@@ -118,6 +123,10 @@ impl BasicSmartAccount {
             .instance()
             .set(&DataKey::MarginController, &margin_controller);
         env.storage().instance().set(&DataKey::Initialized, &true);
+        env.storage()
+            .persistent()
+            .set(&DataKey::InitPersistent, &true);
+        bump_persistent_ttl(&env);
         bump_ttl(&env);
     }
 
@@ -168,6 +177,7 @@ impl BasicSmartAccount {
     }
 
     pub fn bump_ttl(env: Env) {
+        bump_persistent_ttl(&env);
         bump_ttl(&env);
     }
 
@@ -290,6 +300,17 @@ fn bump_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_persistent_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::InitPersistent) {
+        persistent.extend_ttl(
+            &DataKey::InitPersistent,
+            PERSIST_TTL_THRESHOLD,
+            PERSIST_TTL_EXTEND_TO,
+        );
     }
 }
 

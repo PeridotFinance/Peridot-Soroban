@@ -25,6 +25,7 @@ impl ReceiptVault {
             env.storage()
                 .persistent()
                 .set(&DataKey::HasBorrowed(user.clone()), &true);
+            bump_borrow_snapshot_ttl(env, user);
         } else if env
             .storage()
             .persistent()
