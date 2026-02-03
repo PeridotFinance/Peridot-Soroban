@@ -121,6 +121,12 @@ pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
 
 pub fn bump_borrow_state_ttl(env: &Env) {
     let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::YearlyRateScaled) {
+        persistent.extend_ttl(&DataKey::YearlyRateScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BorrowYearlyRateScaled) {
+        persistent.extend_ttl(&DataKey::BorrowYearlyRateScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     if persistent.has(&DataKey::TotalBorrowed) {
         persistent.extend_ttl(&DataKey::TotalBorrowed, TTL_THRESHOLD, TTL_EXTEND_TO);
     }

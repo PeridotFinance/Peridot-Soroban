@@ -16,7 +16,16 @@ pub struct ReceiptVault;
 #[contractimpl]
 impl ReceiptVault {
     fn ensure_user_borrow_flag(env: &Env, user: &Address) {
-        if env
+        let has_snapshot = env
+            .storage()
+            .persistent()
+            .get::<_, BorrowSnapshot>(&DataKey::BorrowSnapshots(user.clone()))
+            .is_some();
+        if has_snapshot {
+            env.storage()
+                .persistent()
+                .set(&DataKey::HasBorrowed(user.clone()), &true);
+        } else if env
             .storage()
             .persistent()
             .get::<_, bool>(&DataKey::HasBorrowed(user.clone()))
@@ -1500,16 +1509,6 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::BorrowIndex)
             .expect("borrow index missing");
-        if principal == 0 {
-            env.storage()
-                .persistent()
-                .remove(&DataKey::BorrowSnapshots(user.clone()));
-            env.storage()
-                .persistent()
-                .remove(&DataKey::HasBorrowed(user.clone()));
-            bump_has_borrowed_ttl(env, &user);
-            return;
-        }
         let snap = BorrowSnapshot {
             principal,
             interest_index: current_index,
@@ -1522,6 +1521,9 @@ impl ReceiptVault {
             .set(&DataKey::HasBorrowed(user.clone()), &true);
         bump_borrow_snapshot_ttl(env, &user);
         bump_has_borrowed_ttl(env, &user);
+        if principal == 0 {
+            return;
+        }
     }
 
     /// Get available liquidity = total_underlying - total_borrowed
