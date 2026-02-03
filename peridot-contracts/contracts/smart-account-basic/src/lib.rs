@@ -74,8 +74,8 @@ pub enum Error {
 
 const TTL_THRESHOLD: u32 = 100_000;
 const TTL_EXTEND_TO: u32 = 200_000;
-const PERSIST_TTL_THRESHOLD: u32 = 3_000_000;
-const PERSIST_TTL_EXTEND_TO: u32 = 6_000_000;
+const PERSIST_TTL_THRESHOLD: u32 = 100_000;
+const PERSIST_TTL_EXTEND_TO: u32 = 200_000;
 
 #[contractimpl]
 impl BasicSmartAccount {

@@ -1331,6 +1331,61 @@ impl ReceiptVault {
             .set(&DataKey::LastUpdateTime, &now);
     }
 
+    /// Admin-only recovery for missing core state after TTL expiry.
+    /// Sets missing rate/index/time fields to safe defaults.
+    pub fn recover_state(
+        env: Env,
+        admin: Address,
+        supply_yearly_rate_scaled: u128,
+        borrow_yearly_rate_scaled: u128,
+    ) {
+        let stored_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if stored_admin != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+        if supply_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("invalid supply rate");
+        }
+        if borrow_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
+            panic!("invalid borrow rate");
+        }
+        let storage = env.storage().persistent();
+        if storage.get::<_, u128>(&DataKey::YearlyRateScaled).is_none() {
+            storage.set(&DataKey::YearlyRateScaled, &supply_yearly_rate_scaled);
+        }
+        if storage
+            .get::<_, u128>(&DataKey::BorrowYearlyRateScaled)
+            .is_none()
+        {
+            storage.set(&DataKey::BorrowYearlyRateScaled, &borrow_yearly_rate_scaled);
+        }
+        if storage.get::<_, u128>(&DataKey::BorrowIndex).is_none() {
+            storage.set(&DataKey::BorrowIndex, &INDEX_SCALE_1E18);
+        }
+        if storage.get::<_, u128>(&DataKey::TotalBorrowed).is_none() {
+            storage.set(&DataKey::TotalBorrowed, &0u128);
+        }
+        if storage.get::<_, u128>(&DataKey::TotalDeposited).is_none() {
+            storage.set(&DataKey::TotalDeposited, &0u128);
+        }
+        if storage
+            .get::<_, u128>(&DataKey::AccumulatedInterest)
+            .is_none()
+        {
+            storage.set(&DataKey::AccumulatedInterest, &0u128);
+        }
+        if storage.get::<_, u64>(&DataKey::LastUpdateTime).is_none() {
+            storage.set(&DataKey::LastUpdateTime, &env.ledger().timestamp());
+        }
+        bump_core_ttl(&env);
+        bump_borrow_state_ttl(&env);
+    }
+
     /// Get total underlying, including accumulated interest
     pub fn get_total_underlying(env: Env) -> u128 {
         // cash + borrows - reserves - admin_fees
