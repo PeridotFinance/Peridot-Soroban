@@ -18,6 +18,7 @@ pub trait Peridottroller {
         borrow_amount: u128,
         underlying: Address,
     ) -> (u128, u128);
+    fn preview_redeem_max(env: Env, user: Address, market: Address) -> u128;
 }
 
 #[soroban_sdk::contractclient(name = "ReceiptVaultClient")]
@@ -218,8 +219,14 @@ fn enforce_policies(env: &Env, auth_contexts: &Vec<Context>) -> Result<(), Error
 
 fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
     let borrow_sym = Symbol::new(env, "borrow");
+    let withdraw_sym = Symbol::new(env, "withdraw");
+    let transfer_sym = Symbol::new(env, "transfer");
     if ctx.fn_name == borrow_sym {
         check_borrow_policy(env, ctx)?;
+    } else if ctx.fn_name == withdraw_sym {
+        check_withdraw_policy(env, ctx)?;
+    } else if ctx.fn_name == transfer_sym {
+        check_transfer_policy(env, ctx)?;
     }
     Ok(())
 }
@@ -252,6 +259,72 @@ fn check_borrow_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
     let (_liq, shortfall) = PeridottrollerClient::new(env, &peridottroller)
         .hypothetical_liquidity(&user, &ctx.contract, &borrow_amount, &underlying);
     if shortfall > 0 {
+        return Err(Error::InsufficientHealth);
+    }
+    Ok(())
+}
+
+// Enforce policy for `withdraw(user, ptoken_amount)` on a receipt vault.
+// Rejects the withdrawal if it would leave the smart account undercollateralised.
+fn check_withdraw_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
+    let user: Address = ctx
+        .args
+        .get(0)
+        .ok_or(Error::Unauthorized)?
+        .try_into_val(env)
+        .map_err(|_| Error::Unauthorized)?;
+    if user != env.current_contract_address() {
+        return Err(Error::Unauthorized);
+    }
+    let ptoken_amount: u128 = ctx
+        .args
+        .get(1)
+        .ok_or(Error::Unauthorized)?
+        .try_into_val(env)
+        .map_err(|_| Error::Unauthorized)?;
+
+    let peridottroller: Address = env
+        .storage()
+        .instance()
+        .get(&DataKey::Peridottroller)
+        .ok_or(Error::NotInitialized)?;
+
+    let max_redeem = PeridottrollerClient::new(env, &peridottroller)
+        .preview_redeem_max(&user, &ctx.contract);
+    if ptoken_amount > max_redeem {
+        return Err(Error::InsufficientHealth);
+    }
+    Ok(())
+}
+
+// Enforce policy for `transfer(from, to, amount)` on a receipt vault (pToken transfer).
+// Rejects the transfer if moving the pTokens would leave the smart account undercollateralised.
+fn check_transfer_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
+    let from: Address = ctx
+        .args
+        .get(0)
+        .ok_or(Error::Unauthorized)?
+        .try_into_val(env)
+        .map_err(|_| Error::Unauthorized)?;
+    if from != env.current_contract_address() {
+        return Err(Error::Unauthorized);
+    }
+    let amount: u128 = ctx
+        .args
+        .get(2)
+        .ok_or(Error::Unauthorized)?
+        .try_into_val(env)
+        .map_err(|_| Error::Unauthorized)?;
+
+    let peridottroller: Address = env
+        .storage()
+        .instance()
+        .get(&DataKey::Peridottroller)
+        .ok_or(Error::NotInitialized)?;
+
+    let max_redeem = PeridottrollerClient::new(env, &peridottroller)
+        .preview_redeem_max(&from, &ctx.contract);
+    if amount > max_redeem {
         return Err(Error::InsufficientHealth);
     }
     Ok(())
