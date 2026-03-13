@@ -53,6 +53,7 @@ pub enum DataKey {
     Signer(BytesN<32>),
     Peridottroller,
     MarginController,
+    AllowedContract(Address),
     Initialized,
     InitPersistent,
 }
@@ -176,6 +177,30 @@ impl BasicSmartAccount {
             .set(&DataKey::MarginController, &margin_controller);
     }
 
+    pub fn add_allowed_contract(env: Env, owner: Address, contract: Address) {
+        bump_ttl(&env);
+        require_owner(&env, &owner);
+        env.storage()
+            .instance()
+            .set(&DataKey::AllowedContract(contract), &true);
+    }
+
+    pub fn remove_allowed_contract(env: Env, owner: Address, contract: Address) {
+        bump_ttl(&env);
+        require_owner(&env, &owner);
+        env.storage()
+            .instance()
+            .remove(&DataKey::AllowedContract(contract));
+    }
+
+    pub fn is_allowed_contract(env: Env, contract: Address) -> bool {
+        bump_ttl(&env);
+        env.storage()
+            .instance()
+            .get(&DataKey::AllowedContract(contract))
+            .unwrap_or(false)
+    }
+
     pub fn bump_ttl(env: Env) {
         bump_persistent_ttl(&env);
         bump_ttl(&env);
@@ -217,23 +242,39 @@ fn enforce_policies(env: &Env, auth_contexts: &Vec<Context>) -> Result<(), Error
 }
 
 fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
-    let borrow_sym = Symbol::new(env, "borrow");
-    if ctx.fn_name == borrow_sym {
+    let fn_name = ctx.fn_name.clone();
+
+    if fn_name == Symbol::new(env, "borrow") {
         check_borrow_policy(env, ctx)?;
+    } else if fn_name == Symbol::new(env, "deposit")
+        || fn_name == Symbol::new(env, "withdraw")
+        || fn_name == Symbol::new(env, "repay")
+    {
+        require_allowed_vault_contract(env, &ctx.contract)?;
+        check_first_address_is_self(env, ctx, 0)?;
+    } else if fn_name == Symbol::new(env, "transfer") {
+        require_allowed_vault_contract(env, &ctx.contract)?;
+        check_first_address_is_self(env, ctx, 0)?;
+    } else if fn_name == Symbol::new(env, "transfer_from") {
+        require_allowed_vault_contract(env, &ctx.contract)?;
+        check_first_address_is_self(env, ctx, 0)?;
+    } else if fn_name == Symbol::new(env, "deposit_collateral")
+        || fn_name == Symbol::new(env, "withdraw_collateral")
+        || fn_name == Symbol::new(env, "open_position")
+        || fn_name == Symbol::new(env, "open_position_no_swap")
+        || fn_name == Symbol::new(env, "open_position_no_swap_short")
+        || fn_name == Symbol::new(env, "close_position")
+    {
+        require_margin_controller_contract(env, &ctx.contract)?;
+        check_first_address_is_self(env, ctx, 0)?;
     }
     Ok(())
 }
 
 fn check_borrow_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
-    let user: Address = ctx
-        .args
-        .get(0)
-        .ok_or(Error::Unauthorized)?
-        .try_into_val(env)
-        .map_err(|_| Error::Unauthorized)?;
-    if user != env.current_contract_address() {
-        return Err(Error::Unauthorized);
-    }
+    require_allowed_vault_contract(env, &ctx.contract)?;
+    let user = get_address_arg(env, ctx, 0)?;
+    require_self_address(env, &user)?;
     let borrow_amount: u128 = ctx
         .args
         .get(1)
@@ -253,6 +294,50 @@ fn check_borrow_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
         .hypothetical_liquidity(&user, &ctx.contract, &borrow_amount, &underlying);
     if shortfall > 0 {
         return Err(Error::InsufficientHealth);
+    }
+    Ok(())
+}
+
+fn check_first_address_is_self(env: &Env, ctx: &ContractContext, index: u32) -> Result<(), Error> {
+    let address = get_address_arg(env, ctx, index)?;
+    require_self_address(env, &address)
+}
+
+fn get_address_arg(env: &Env, ctx: &ContractContext, index: u32) -> Result<Address, Error> {
+    ctx.args
+        .get(index)
+        .ok_or(Error::Unauthorized)?
+        .try_into_val(env)
+        .map_err(|_| Error::Unauthorized)
+}
+
+fn require_self_address(env: &Env, address: &Address) -> Result<(), Error> {
+    if *address != env.current_contract_address() {
+        return Err(Error::Unauthorized);
+    }
+    Ok(())
+}
+
+fn require_allowed_vault_contract(env: &Env, contract: &Address) -> Result<(), Error> {
+    let allowed: bool = env
+        .storage()
+        .instance()
+        .get(&DataKey::AllowedContract(contract.clone()))
+        .unwrap_or(false);
+    if !allowed {
+        return Err(Error::Unauthorized);
+    }
+    Ok(())
+}
+
+fn require_margin_controller_contract(env: &Env, contract: &Address) -> Result<(), Error> {
+    let expected: Address = env
+        .storage()
+        .instance()
+        .get(&DataKey::MarginController)
+        .ok_or(Error::NotInitialized)?;
+    if expected != *contract {
+        return Err(Error::Unauthorized);
     }
     Ok(())
 }
@@ -318,6 +403,7 @@ fn bump_persistent_ttl(env: &Env) {
 mod test {
     use super::*;
     use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::IntoVal;
 
     #[test]
     fn test_constructor_and_signers() {
@@ -353,5 +439,92 @@ mod test {
         let other = Address::generate(&env);
         let new_signer = BytesN::from_array(&env, &[2u8; 32]);
         client.add_signer(&other, &new_signer);
+    }
+
+    #[test]
+    fn test_vault_deposit_policy_accepts_self() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let owner = Address::generate(&env);
+        let signer = BytesN::from_array(&env, &[1u8; 32]);
+        let peridottroller = Address::generate(&env);
+        let margin = Address::generate(&env);
+        let contract_id = env.register(BasicSmartAccount, ());
+        let allowed_vault = Address::generate(&env);
+        let client = BasicSmartAccountClient::new(&env, &contract_id);
+        client.initialize(&owner, &signer, &peridottroller, &margin);
+        client.add_allowed_contract(&owner, &allowed_vault);
+        env.as_contract(&contract_id, || {
+            let ctx = ContractContext {
+                contract: allowed_vault,
+                fn_name: Symbol::new(&env, "deposit"),
+                args: (contract_id.clone(), 123u128).into_val(&env),
+            };
+
+            let res = enforce_contract_policy(&env, &ctx);
+            assert_eq!(res, Ok(()));
+        });
+    }
+
+    #[test]
+    fn test_margin_open_policy_rejects_other_user() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let owner = Address::generate(&env);
+        let signer = BytesN::from_array(&env, &[1u8; 32]);
+        let peridottroller = Address::generate(&env);
+        let margin = Address::generate(&env);
+        let contract_id = env.register(BasicSmartAccount, ());
+        let client = BasicSmartAccountClient::new(&env, &contract_id);
+        client.initialize(&owner, &signer, &peridottroller, &margin);
+        let other = Address::generate(&env);
+        let swaps_chain = Vec::<(Vec<Address>, BytesN<32>, Address)>::new(&env);
+        env.as_contract(&contract_id, || {
+            let ctx = ContractContext {
+                contract: margin,
+                fn_name: Symbol::new(&env, "open_position"),
+                args: (
+                    other,
+                    Address::generate(&env),
+                    Address::generate(&env),
+                    100u128,
+                    2u128,
+                    Symbol::new(&env, "Long"),
+                    swaps_chain,
+                    90u128,
+                )
+                    .into_val(&env),
+            };
+
+            let res = enforce_contract_policy(&env, &ctx);
+            assert_eq!(res, Err(Error::Unauthorized));
+        });
+    }
+
+    #[test]
+    fn test_transfer_from_policy_uses_spender() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let owner_account = Address::generate(&env);
+        let signer = BytesN::from_array(&env, &[1u8; 32]);
+        let peridottroller = Address::generate(&env);
+        let margin = Address::generate(&env);
+        let contract_id = env.register(BasicSmartAccount, ());
+        let allowed_vault = Address::generate(&env);
+        let client = BasicSmartAccountClient::new(&env, &contract_id);
+        client.initialize(&owner_account, &signer, &peridottroller, &margin);
+        client.add_allowed_contract(&owner_account, &allowed_vault);
+        let owner = Address::generate(&env);
+        let to = Address::generate(&env);
+        env.as_contract(&contract_id, || {
+            let ctx = ContractContext {
+                contract: allowed_vault,
+                fn_name: Symbol::new(&env, "transfer_from"),
+                args: (contract_id.clone(), owner, to, 50u128).into_val(&env),
+            };
+
+            let res = enforce_contract_policy(&env, &ctx);
+            assert_eq!(res, Ok(()));
+        });
     }
 }
