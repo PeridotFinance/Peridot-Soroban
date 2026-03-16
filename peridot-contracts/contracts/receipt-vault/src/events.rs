@@ -61,6 +61,13 @@ pub struct NewAdmin {
     pub admin: Address,
 }
 
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingAdmin {
+    #[topic]
+    pub admin: Address,
+}
+
 /// Mirrors Compound's NewMarketInterestRateModel event.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]

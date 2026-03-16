@@ -19,6 +19,7 @@ pub enum DataKey {
     BorrowYearlyRateScaled,   // u128, scaled 1e6
     CollateralFactorScaled,   // u128, scaled 1e6 (e.g., 500_000 = 50%)
     Admin,                    // Address
+    PendingAdmin,             // Address pending acceptance
     Peridottroller,           // Address (optional)
     InterestModel,            // Address (optional)
     ReserveFactorScaled,      // u128 (scaled 1e6), defaults 0
@@ -32,8 +33,8 @@ pub enum DataKey {
     BoostedVault,             // Optional DeFindex vault address for boosted markets
 }
 
-const TTL_THRESHOLD: u32 = 100_000;
-const TTL_EXTEND_TO: u32 = 200_000;
+const TTL_THRESHOLD: u32 = 500_000;
+const TTL_EXTEND_TO: u32 = 1_000_000;
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -73,6 +74,7 @@ pub struct SeizeContext {
 
 pub fn ensure_initialized(env: &Env) -> Address {
     bump_core_ttl(env);
+    bump_borrow_state_ttl(env);
     let token: Address = env
         .storage()
         .persistent()
@@ -85,8 +87,10 @@ pub fn ensure_initialized(env: &Env) -> Address {
         .unwrap_or(false)
     {
         env.storage().persistent().set(&DataKey::Initialized, &true);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
-    bump_core_ttl(env);
     token
 }
 
@@ -95,11 +99,50 @@ pub fn bump_core_ttl(env: &Env) {
     if persistent.has(&DataKey::Admin) {
         persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    if persistent.has(&DataKey::PendingAdmin) {
+        persistent.extend_ttl(&DataKey::PendingAdmin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     if persistent.has(&DataKey::UnderlyingToken) {
         persistent.extend_ttl(&DataKey::UnderlyingToken, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::Initialized) {
         persistent.extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::CollateralFactorScaled) {
+        persistent.extend_ttl(&DataKey::CollateralFactorScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::Peridottroller) {
+        persistent.extend_ttl(&DataKey::Peridottroller, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::InterestModel) {
+        persistent.extend_ttl(&DataKey::InterestModel, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::ReserveFactorScaled) {
+        persistent.extend_ttl(&DataKey::ReserveFactorScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::AdminFeeScaled) {
+        persistent.extend_ttl(&DataKey::AdminFeeScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::FlashLoanFeeScaled) {
+        persistent.extend_ttl(&DataKey::FlashLoanFeeScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalAdminFees) {
+        persistent.extend_ttl(&DataKey::TotalAdminFees, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalReserves) {
+        persistent.extend_ttl(&DataKey::TotalReserves, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::SupplyCap) {
+        persistent.extend_ttl(&DataKey::SupplyCap, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BorrowCap) {
+        persistent.extend_ttl(&DataKey::BorrowCap, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BoostedVault) {
+        persistent.extend_ttl(&DataKey::BoostedVault, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::InitialExchangeRate) {
+        persistent.extend_ttl(&DataKey::InitialExchangeRate, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

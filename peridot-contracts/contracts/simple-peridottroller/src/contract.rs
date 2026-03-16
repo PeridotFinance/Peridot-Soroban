@@ -76,11 +76,24 @@ impl SimplePeridottroller {
     pub fn set_admin(env: Env, new_admin: Address) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        env.storage().persistent().set(&DataKey::Admin, &new_admin);
-        AdminUpdated {
+        env.storage().persistent().set(&DataKey::PendingAdmin, &new_admin);
+        PendingAdminUpdated {
             admin: new_admin.clone(),
         }
         .publish(&env);
+    }
+
+    pub fn accept_admin(env: Env) {
+        bump_core_ttl(&env);
+        let new_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingAdmin)
+            .expect("pending admin not set");
+        new_admin.require_auth();
+        env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.storage().persistent().remove(&DataKey::PendingAdmin);
+        AdminUpdated { admin: new_admin }.publish(&env);
     }
 
     pub fn get_admin(env: Env) -> Address {

@@ -612,9 +612,21 @@ impl ReceiptVault {
     }
 
     // ERC20-like pToken API
-    pub fn approve(env: Env, owner: Address, spender: Address, amount: u128) {
+    pub fn approve(
+        env: Env,
+        owner: Address,
+        spender: Address,
+        amount: u128,
+        live_until_ledger: u32,
+    ) {
         owner.require_auth();
-        TokenBase::approve(&env, &owner, &spender, to_i128(amount), u32::MAX);
+        TokenBase::approve(
+            &env,
+            &owner,
+            &spender,
+            to_i128(amount),
+            live_until_ledger,
+        );
     }
 
     pub fn allowance(env: Env, owner: Address, spender: Address) -> u128 {
@@ -799,7 +811,20 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         old.require_auth();
+        env.storage().persistent().set(&DataKey::PendingAdmin, &new_admin);
+        PendingAdmin { admin: new_admin }.publish(&env);
+    }
+
+    pub fn accept_admin(env: Env) {
+        let _ = ensure_initialized(&env);
+        let new_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingAdmin)
+            .expect("pending admin not set");
+        new_admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.storage().persistent().remove(&DataKey::PendingAdmin);
         NewAdmin { admin: new_admin }.publish(&env);
     }
 
@@ -1136,6 +1161,7 @@ impl ReceiptVault {
         {
             return;
         }
+        bump_core_ttl(&env);
         bump_borrow_state_ttl(&env);
         let last_time: u64 = env
             .storage()
