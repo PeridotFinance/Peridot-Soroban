@@ -5,6 +5,7 @@ use jump_rate_model as jrm;
 use mock_token::MockTokenClient;
 use simple_peridottroller::{SimplePeridottroller, SimplePeridottrollerClient};
 use soroban_sdk::testutils::Ledger;
+use soroban_sdk::testutils::storage::Persistent as _;
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
 use soroban_sdk::{
@@ -195,6 +196,80 @@ fn test_initialize() {
     assert_eq!(vault_client.get_total_deposited(), 0u128);
     assert_eq!(vault_client.get_total_ptokens(), 0u128);
     assert_eq!(vault_client.get_exchange_rate(), 1_000_000u128); // 1:1 ratio
+}
+
+#[test]
+fn test_core_ttl_bumps_all_critical_config_keys() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let model_admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        jrm::DEFAULT_INIT_ADMIN,
+    ));
+    let boosted_vault = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_contract_id = env.register(ReceiptVault, ());
+    let vault_client = ReceiptVaultClient::new(&env, &vault_contract_id);
+    vault_client.initialize(&token_address, &0u128, &0u128, &admin);
+
+    let _comp = setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_contract_id,
+        &token_address,
+        800_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    let model_id = env.register(jrm::JumpRateModel, ());
+    let model_client = jrm::JumpRateModelClient::new(&env, &model_id);
+    model_client.initialize(
+        &20_000u128,
+        &180_000u128,
+        &4_000_000u128,
+        &800_000u128,
+        &model_admin,
+    );
+
+    env.mock_all_auths_allowing_non_root_auth();
+    vault_client.set_interest_model(&model_id);
+    vault_client.set_collateral_factor(&750_000u128);
+    vault_client.set_reserve_factor(&100_000u128);
+    vault_client.set_admin_fee(&50_000u128);
+    vault_client.set_flash_loan_fee(&3_000u128);
+    vault_client.set_supply_cap(&5_000u128);
+    vault_client.set_borrow_cap(&2_500u128);
+    vault_client.set_boosted_vault(&admin, &boosted_vault);
+
+    // Any initialized read path should now bump all critical config keys.
+    let _ = vault_client.get_underlying_token();
+
+    env.as_contract(&vault_contract_id, || {
+        fn assert_bumped(env: &Env, key: &DataKey, label: &str) {
+            let ttl = env.storage().persistent().get_ttl(key);
+            assert!(ttl > 100_000, "expected bumped ttl for {label}, got {ttl}");
+        }
+
+        assert_bumped(&env, &DataKey::Admin, "Admin");
+        assert_bumped(&env, &DataKey::UnderlyingToken, "UnderlyingToken");
+        assert_bumped(&env, &DataKey::Initialized, "Initialized");
+        assert_bumped(&env, &DataKey::CollateralFactorScaled, "CollateralFactorScaled");
+        assert_bumped(&env, &DataKey::Peridottroller, "Peridottroller");
+        assert_bumped(&env, &DataKey::InterestModel, "InterestModel");
+        assert_bumped(&env, &DataKey::ReserveFactorScaled, "ReserveFactorScaled");
+        assert_bumped(&env, &DataKey::AdminFeeScaled, "AdminFeeScaled");
+        assert_bumped(&env, &DataKey::FlashLoanFeeScaled, "FlashLoanFeeScaled");
+        assert_bumped(&env, &DataKey::TotalAdminFees, "TotalAdminFees");
+        assert_bumped(&env, &DataKey::TotalReserves, "TotalReserves");
+        assert_bumped(&env, &DataKey::SupplyCap, "SupplyCap");
+        assert_bumped(&env, &DataKey::BorrowCap, "BorrowCap");
+        assert_bumped(&env, &DataKey::BoostedVault, "BoostedVault");
+        assert_bumped(&env, &DataKey::InitialExchangeRate, "InitialExchangeRate");
+    });
 }
 
 #[test]
@@ -722,7 +797,7 @@ fn test_borrow_budget_peridottroller_same_market() {
     vault.deposit(&user, &200u128);
 
     vault.borrow(&user, &80u128);
-    assert_budget_under(&env, 5_000_000, 700_000);
+    assert_budget_under(&env, 5_000_000, 850_000);
 }
 
 #[test]
@@ -1196,6 +1271,8 @@ fn test_vault_set_admin_transfers_admin() {
     vault.initialize(&token_address, &0u128, &0u128, &admin);
     assert_eq!(vault.get_admin(), admin);
     vault.set_admin(&new_admin);
+    assert_eq!(vault.get_admin(), admin);
+    vault.accept_admin();
     assert_eq!(vault.get_admin(), new_admin);
 }
 
@@ -1340,7 +1417,8 @@ fn test_ptoken_transfer_and_approve_with_gating() {
     assert_eq!(v.get_ptoken_balance(&other), 50u128);
 
     // Approve and transfer_from 50 pTokens from user to other
-    v.approve(&user, &other, &50u128);
+    let live_until_ledger = env.ledger().sequence() + 1000;
+    v.approve(&user, &other, &50u128, &live_until_ledger);
     v.transfer_from(&other, &user, &other, &50u128);
     assert_eq!(v.get_ptoken_balance(&user), 100u128);
     assert_eq!(v.get_ptoken_balance(&other), 100u128);

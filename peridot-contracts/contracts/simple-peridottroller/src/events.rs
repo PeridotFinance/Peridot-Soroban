@@ -16,6 +16,13 @@ pub struct AdminUpdated {
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingAdminUpdated {
+    #[topic]
+    pub admin: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CloseFactorUpdated {
     pub close_factor_mantissa: u128,
 }

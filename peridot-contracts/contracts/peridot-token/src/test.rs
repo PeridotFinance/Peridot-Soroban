@@ -35,7 +35,8 @@ fn test_token_mint_transfer_burn() {
     assert_eq!(c.balance_of(&b), 300i128);
 
     // Approve + transfer_from
-    c.approve(&b, &a, &100i128); // b approves a to spend 100 (symmetry for test)
+    let live_until_ledger = env.ledger().sequence() + 1000;
+    c.approve(&b, &a, &100i128, &live_until_ledger); // b approves a to spend 100
     c.transfer_from(&a, &b, &a, &100i128);
     assert_eq!(c.balance_of(&a), 800i128);
     assert_eq!(c.balance_of(&b), 200i128);

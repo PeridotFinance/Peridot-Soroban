@@ -444,7 +444,7 @@ fn test_redeem_gating_allows_within_limit() {
 #[test]
 fn test_liquidation_flow_basic() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -701,7 +701,7 @@ fn test_repay_on_behalf_for_liquidator() {
 #[test]
 fn test_liquidation_capped_by_close_factor() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -1033,6 +1033,8 @@ fn test_set_admin_transfers_admin_role() {
     c.initialize(&admin);
     assert_eq!(c.get_admin(), admin);
     c.set_admin(&new_admin);
+    assert_eq!(c.get_admin(), admin);
+    c.accept_admin();
     assert_eq!(c.get_admin(), new_admin);
 }
 
@@ -1259,7 +1261,7 @@ fn test_pause_deposit_blocks_deposit_guardian() {
 #[test]
 fn test_liquidation_fee_routed_to_reserves() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -1348,7 +1350,7 @@ fn test_liquidation_fee_routed_to_reserves() {
 #[test]
 fn test_liquidation_seize_clamps_to_available_ptokens() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
