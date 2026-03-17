@@ -76,11 +76,26 @@ impl SimplePeridottroller {
     pub fn set_admin(env: Env, new_admin: Address) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        env.storage().persistent().set(&DataKey::Admin, &new_admin);
-        AdminUpdated {
+        env.storage().persistent().set(&DataKey::PendingAdmin, &new_admin);
+        bump_pending_admin_ttl(&env);
+        PendingAdminUpdated {
             admin: new_admin.clone(),
         }
         .publish(&env);
+    }
+
+    pub fn accept_admin(env: Env) {
+        bump_core_ttl(&env);
+        bump_pending_admin_ttl(&env);
+        let new_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingAdmin)
+            .expect("pending admin not set");
+        new_admin.require_auth();
+        env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.storage().persistent().remove(&DataKey::PendingAdmin);
+        AdminUpdated { admin: new_admin }.publish(&env);
     }
 
     pub fn get_admin(env: Env) -> Address {
@@ -1128,7 +1143,7 @@ impl SimplePeridottroller {
         }
         let mut seize_ptokens = (seize_underlying.saturating_mul(1_000_000u128)) / rate;
 
-        // authorize repay_on_behalf as current contract
+        // Authorize both nested liquidation calls in one batch to reduce auth overhead.
         let repay_args: Vec<Val> = (liquidator.clone(), borrower.clone(), repay).into_val(&env);
         let mut auths = Vec::new(&env);
         auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
@@ -1139,15 +1154,7 @@ impl SimplePeridottroller {
             },
             sub_invocations: Vec::new(&env),
         }));
-        env.authorize_as_current_contract(auths);
-
-        // perform repay on behalf and seize
-        let _: () = env.invoke_contract(
-            &repay_market,
-            &Symbol::new(&env, "repay_on_behalf"),
-            (liquidator.clone(), borrower.clone(), repay).into_val(&env),
-        );
-        // Clamp seize to available borrower pTokens to avoid over-seize panics
+        // Clamp seize to available borrower pTokens to avoid over-seize panics.
         let borrower_pbal: u128 = env.invoke_contract(
             &collateral_market,
             &Symbol::new(&env, "get_ptoken_balance"),
@@ -1172,8 +1179,16 @@ impl SimplePeridottroller {
         if fee_recipient.is_none() {
             fee_ptokens = 0;
         }
-        let max_redeem_ptokens =
-            Self::preview_redeem_max(env.clone(), borrower.clone(), collateral_market.clone());
+        let liquidity_after_repay = repay_usd.saturating_sub(shortfall);
+        let max_redeem_ptokens = Self::liquidation_redeem_max_ptokens(
+            env.clone(),
+            collateral_market.clone(),
+            borrower_pbal,
+            rate,
+            pc,
+            sc,
+            liquidity_after_repay,
+        );
         let seize_ctx = SeizeContext {
             liquidity: _liq,
             shortfall,
@@ -1183,7 +1198,6 @@ impl SimplePeridottroller {
             fee_ptokens,
             expires_at: env.ledger().timestamp() + 5,
         };
-        // authorize seize as current contract
         let seize_args: Vec<Val> = (
             borrower.clone(),
             liquidator.clone(),
@@ -1202,6 +1216,12 @@ impl SimplePeridottroller {
         }));
         env.authorize_as_current_contract(auths);
 
+        // perform repay on behalf and seize
+        let _: () = env.invoke_contract(
+            &repay_market,
+            &Symbol::new(&env, "repay_on_behalf"),
+            (liquidator.clone(), borrower.clone(), repay).into_val(&env),
+        );
         let _: () = env.invoke_contract(
             &collateral_market,
             &Symbol::new(&env, "seize"),
@@ -1412,6 +1432,45 @@ impl SimplePeridottroller {
             }
         }
         (collateral_total, borrow_total)
+    }
+
+    fn liquidation_redeem_max_ptokens(
+        env: Env,
+        market: Address,
+        borrower_pbal: u128,
+        rate: u128,
+        price: u128,
+        scale: u128,
+        liquidity_after_repay: u128,
+    ) -> u128 {
+        if borrower_pbal == 0 || rate == 0 || price == 0 {
+            return 0u128;
+        }
+        let cf = Self::get_market_cf(env.clone(), market.clone());
+        if cf == 0 {
+            return 0u128;
+        }
+        let redeemable_underlying_by_health = liquidity_after_repay
+            .saturating_mul(1_000_000u128)
+            .saturating_mul(scale)
+            / cf.saturating_mul(price);
+        use soroban_sdk::IntoVal;
+        let available_underlying: u128 = env.invoke_contract(
+            &market,
+            &Symbol::new(&env, "get_available_liquidity"),
+            ().into_val(&env),
+        );
+        let clamped_underlying = if redeemable_underlying_by_health < available_underlying {
+            redeemable_underlying_by_health
+        } else {
+            available_underlying
+        };
+        let max_ptokens = (clamped_underlying.saturating_mul(1_000_000u128)) / rate;
+        if max_ptokens < borrower_pbal {
+            max_ptokens
+        } else {
+            borrower_pbal
+        }
     }
 
     // Note: we avoid calling back into the current market during hypothetical checks to prevent re-entry

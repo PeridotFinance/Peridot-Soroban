@@ -3,6 +3,7 @@ use soroban_sdk::{contracttype, Address, Env};
 #[contracttype]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     Initialized,
     PauseGuardian,              // Address (optional)
     SupportedMarkets,           // Map<Address, bool>
@@ -139,6 +140,13 @@ pub fn bump_core_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_admin_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingAdmin) {
+        persistent.extend_ttl(&DataKey::PendingAdmin, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 
