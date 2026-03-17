@@ -1179,13 +1179,20 @@ impl SimplePeridottroller {
         if fee_recipient.is_none() {
             fee_ptokens = 0;
         }
+        let liquidity_after_repay = repay_usd.saturating_sub(shortfall);
+        let max_redeem_ptokens = Self::liquidation_redeem_max_ptokens(
+            env.clone(),
+            collateral_market.clone(),
+            borrower_pbal,
+            rate,
+            pc,
+            sc,
+            liquidity_after_repay,
+        );
         let seize_ctx = SeizeContext {
             liquidity: _liq,
             shortfall,
-            // The borrower is already known to be underwater in this liquidation path, so
-            // any value below `seize_ptokens` preserves the anti-voluntary-redeem invariant
-            // without re-running the full preview path.
-            max_redeem_ptokens: 0,
+            max_redeem_ptokens,
             seize_ptokens,
             fee_recipient,
             fee_ptokens,
@@ -1425,6 +1432,45 @@ impl SimplePeridottroller {
             }
         }
         (collateral_total, borrow_total)
+    }
+
+    fn liquidation_redeem_max_ptokens(
+        env: Env,
+        market: Address,
+        borrower_pbal: u128,
+        rate: u128,
+        price: u128,
+        scale: u128,
+        liquidity_after_repay: u128,
+    ) -> u128 {
+        if borrower_pbal == 0 || rate == 0 || price == 0 {
+            return 0u128;
+        }
+        let cf = Self::get_market_cf(env.clone(), market.clone());
+        if cf == 0 {
+            return 0u128;
+        }
+        let redeemable_underlying_by_health = liquidity_after_repay
+            .saturating_mul(1_000_000u128)
+            .saturating_mul(scale)
+            / cf.saturating_mul(price);
+        use soroban_sdk::IntoVal;
+        let available_underlying: u128 = env.invoke_contract(
+            &market,
+            &Symbol::new(&env, "get_available_liquidity"),
+            ().into_val(&env),
+        );
+        let clamped_underlying = if redeemable_underlying_by_health < available_underlying {
+            redeemable_underlying_by_health
+        } else {
+            available_underlying
+        };
+        let max_ptokens = (clamped_underlying.saturating_mul(1_000_000u128)) / rate;
+        if max_ptokens < borrower_pbal {
+            max_ptokens
+        } else {
+            borrower_pbal
+        }
     }
 
     // Note: we avoid calling back into the current market during hypothetical checks to prevent re-entry

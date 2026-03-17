@@ -318,8 +318,7 @@ fn mock_swaps_chain(env: &Env, token_out: &Address) -> Vec<(Vec<Address>, BytesN
 
 #[test]
 fn open_and_close_long() {
-    let (env, controller_id, usdt_id, _xlm_id, user, _lender, _usdt_vault_id, _xlm_vault_id) =
-        setup();
+    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
@@ -385,8 +384,7 @@ fn test_set_params_non_admin_panics() {
 
 #[test]
 fn test_open_position_no_swap() {
-    let (env, controller_id, usdt_id, _xlm_id, user, _lender, _usdt_vault_id, _xlm_vault_id) =
-        setup();
+    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     // Use same asset for collateral and debt so deposit+borrow hit the same vault
@@ -505,7 +503,7 @@ fn test_open_position_zero_collateral_panics() {
 #[test]
 #[should_panic(expected = "not owner")]
 fn test_close_position_not_owner_panics() {
-    let (env, controller_id, usdt_id, _xlm_id, user, _lender, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
@@ -531,7 +529,7 @@ fn test_close_position_not_owner_panics() {
 #[test]
 #[should_panic(expected = "not open")]
 fn test_close_position_already_closed_panics() {
-    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
@@ -564,7 +562,7 @@ fn test_close_position_already_closed_panics() {
 
 #[test]
 fn test_get_position_and_user_positions() {
-    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
@@ -589,7 +587,7 @@ fn test_get_position_and_user_positions() {
 
 #[test]
 fn test_get_health_factor() {
-    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
@@ -609,7 +607,7 @@ fn test_get_health_factor() {
 
 #[test]
 fn test_multiple_positions() {
-    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) = setup();
+    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let id1 = controller.open_position_no_swap(
