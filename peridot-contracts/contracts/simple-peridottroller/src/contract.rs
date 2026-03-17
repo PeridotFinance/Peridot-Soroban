@@ -77,6 +77,7 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         require_admin(env.clone());
         env.storage().persistent().set(&DataKey::PendingAdmin, &new_admin);
+        bump_pending_admin_ttl(&env);
         PendingAdminUpdated {
             admin: new_admin.clone(),
         }
@@ -85,6 +86,7 @@ impl SimplePeridottroller {
 
     pub fn accept_admin(env: Env) {
         bump_core_ttl(&env);
+        bump_pending_admin_ttl(&env);
         let new_admin: Address = env
             .storage()
             .persistent()
@@ -1141,7 +1143,7 @@ impl SimplePeridottroller {
         }
         let mut seize_ptokens = (seize_underlying.saturating_mul(1_000_000u128)) / rate;
 
-        // authorize repay_on_behalf as current contract
+        // Authorize both nested liquidation calls in one batch to reduce auth overhead.
         let repay_args: Vec<Val> = (liquidator.clone(), borrower.clone(), repay).into_val(&env);
         let mut auths = Vec::new(&env);
         auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
@@ -1152,15 +1154,7 @@ impl SimplePeridottroller {
             },
             sub_invocations: Vec::new(&env),
         }));
-        env.authorize_as_current_contract(auths);
-
-        // perform repay on behalf and seize
-        let _: () = env.invoke_contract(
-            &repay_market,
-            &Symbol::new(&env, "repay_on_behalf"),
-            (liquidator.clone(), borrower.clone(), repay).into_val(&env),
-        );
-        // Clamp seize to available borrower pTokens to avoid over-seize panics
+        // Clamp seize to available borrower pTokens to avoid over-seize panics.
         let borrower_pbal: u128 = env.invoke_contract(
             &collateral_market,
             &Symbol::new(&env, "get_ptoken_balance"),
@@ -1185,18 +1179,18 @@ impl SimplePeridottroller {
         if fee_recipient.is_none() {
             fee_ptokens = 0;
         }
-        let max_redeem_ptokens =
-            Self::preview_redeem_max(env.clone(), borrower.clone(), collateral_market.clone());
         let seize_ctx = SeizeContext {
             liquidity: _liq,
             shortfall,
-            max_redeem_ptokens,
+            // The borrower is already known to be underwater in this liquidation path, so
+            // any value below `seize_ptokens` preserves the anti-voluntary-redeem invariant
+            // without re-running the full preview path.
+            max_redeem_ptokens: 0,
             seize_ptokens,
             fee_recipient,
             fee_ptokens,
             expires_at: env.ledger().timestamp() + 5,
         };
-        // authorize seize as current contract
         let seize_args: Vec<Val> = (
             borrower.clone(),
             liquidator.clone(),
@@ -1215,6 +1209,12 @@ impl SimplePeridottroller {
         }));
         env.authorize_as_current_contract(auths);
 
+        // perform repay on behalf and seize
+        let _: () = env.invoke_contract(
+            &repay_market,
+            &Symbol::new(&env, "repay_on_behalf"),
+            (liquidator.clone(), borrower.clone(), repay).into_val(&env),
+        );
         let _: () = env.invoke_contract(
             &collateral_market,
             &Symbol::new(&env, "seize"),

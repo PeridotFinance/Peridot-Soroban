@@ -143,6 +143,13 @@ pub fn bump_core_ttl(env: &Env) {
     }
 }
 
+pub fn bump_pending_admin_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingAdmin) {
+        persistent.extend_ttl(&DataKey::PendingAdmin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn bump_user_markets_ttl(env: &Env, user: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::UserMarkets(user.clone());
