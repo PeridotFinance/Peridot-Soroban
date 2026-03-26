@@ -1480,3 +1480,46 @@ fn test_withdraw_local_only_unrestricted_with_no_debt() {
 }
 
 // (cross-market collateral tests moved to simple-peridottroller crate to avoid circular deps)
+
+#[test]
+fn test_direct_donation_does_not_inflate_exchange_rate() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let attacker = Address::generate(&env);
+    let victim = Address::generate(&env);
+
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&attacker, &2_000i128);
+    token_admin_client.mint(&victim, &1_500i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    vault.deposit(&attacker, &1u128);
+    assert_eq!(vault.get_ptoken_balance(&attacker), 1u128);
+    assert_eq!(vault.get_exchange_rate(), 1_000_000u128);
+
+    // Donate directly to the vault address without minting pTokens.
+    token_client.transfer(&attacker, &vault_id, &999i128);
+    assert_eq!(token_client.balance(&vault_id), 1_000i128);
+    assert_eq!(vault.get_total_ptokens(), 1u128);
+    // Internal cash accounting ignores direct donations for exchange-rate purposes.
+    assert_eq!(vault.get_exchange_rate(), 1_000_000u128);
+
+    vault.deposit(&victim, &1_500u128);
+    assert_eq!(vault.get_ptoken_balance(&victim), 1_500u128);
+    assert_eq!(vault.get_total_ptokens(), 1_501u128);
+
+    vault.withdraw(&attacker, &1u128);
+    assert_eq!(token_client.balance(&attacker), 1_001i128);
+
+    vault.withdraw(&victim, &1_500u128);
+    assert_eq!(token_client.balance(&victim), 1_500i128);
+
+    // Donated funds remain unaccounted for by the exchange rate and stay in the vault.
+    assert_eq!(token_client.balance(&vault_id), 999i128);
+}

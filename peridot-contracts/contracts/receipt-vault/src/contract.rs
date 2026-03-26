@@ -15,6 +15,32 @@ pub struct ReceiptVault;
 
 #[contractimpl]
 impl ReceiptVault {
+    fn get_managed_cash(env: &Env) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::ManagedCash)
+            .expect("managed cash missing")
+    }
+
+    fn set_managed_cash(env: &Env, amount: u128) {
+        env.storage()
+            .persistent()
+            .set(&DataKey::ManagedCash, &amount);
+    }
+
+    fn add_managed_cash(env: &Env, amount: u128) {
+        let cash = Self::get_managed_cash(env);
+        Self::set_managed_cash(env, cash.saturating_add(amount));
+    }
+
+    fn sub_managed_cash(env: &Env, amount: u128) {
+        let cash = Self::get_managed_cash(env);
+        if cash < amount {
+            panic!("managed cash underflow");
+        }
+        Self::set_managed_cash(env, cash - amount);
+    }
+
     fn ensure_user_borrow_flag(env: &Env, user: &Address) {
         let has_snapshot = env
             .storage()
@@ -79,6 +105,9 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::TotalDeposited, &0u128);
+        env.storage()
+            .persistent()
+            .set(&DataKey::ManagedCash, &0u128);
 
         // Store yearly supply/borrow rates (scaled 1e6)
         env.storage()
@@ -248,6 +277,7 @@ impl ReceiptVault {
         // Transfer tokens from user to contract
         let amount_i128 = to_i128(amount);
         token_client.transfer(&user, &env.current_contract_address(), &amount_i128);
+        Self::add_managed_cash(&env, amount);
 
         // If boosted, deposit into DeFindex vault (single-asset)
         if let Some(boosted) = env
@@ -311,6 +341,7 @@ impl ReceiptVault {
                 )
                     .into_val(&env),
             );
+            Self::sub_managed_cash(&env, amount);
         }
 
         // Mint pTokens and update totals
@@ -526,10 +557,10 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::BoostedVault)
         {
-            let cash_i: i128 =
-                token_balance(&env, &token_address, &env.current_contract_address());
-            let cash: u128 = if cash_i < 0 { 0u128 } else { cash_i as u128 };
+            let cash = Self::get_managed_cash(&env);
             if cash < underlying_to_return {
+                    let cash_before =
+                        token_balance(&env, &token_address, &env.current_contract_address());
                     let total_shares_i: i128 =
                         call_contract_or_panic(&env, &boosted, "total_supply", ());
                 if total_shares_i > 0 {
@@ -578,6 +609,12 @@ impl ReceiptVault {
                             )
                                 .into_val(&env),
                         );
+                        let cash_after =
+                            token_balance(&env, &token_address, &env.current_contract_address());
+                        let cash_delta = cash_after.saturating_sub(cash_before);
+                        if cash_delta > 0 {
+                            Self::add_managed_cash(&env, cash_delta as u128);
+                        }
                     }
                 }
             }
@@ -586,6 +623,7 @@ impl ReceiptVault {
         // Transfer tokens back to user
         let underlying_i128 = to_i128(underlying_to_return);
         token_client.transfer(&env.current_contract_address(), &user, &underlying_i128);
+        Self::sub_managed_cash(&env, underlying_to_return);
 
         // Emit Compound-style Redeem event
         Redeem {
@@ -1084,6 +1122,7 @@ impl ReceiptVault {
         let token_client = token::Client::new(&env, &token_address);
         let amount_i128 = to_i128(amount);
         token_client.transfer(&env.current_contract_address(), &admin, &amount_i128);
+        Self::sub_managed_cash(&env, amount);
         ReservesReduced {
             reduce_amount: amount,
             total_reserves: updated_reserves,
@@ -1117,6 +1156,7 @@ impl ReceiptVault {
         let token_client = token::Client::new(&env, &token_address);
         let amount_i128 = to_i128(amount);
         token_client.transfer(&env.current_contract_address(), &admin, &amount_i128);
+        Self::sub_managed_cash(&env, amount);
         AdminFeesReduced {
             reduce_amount: amount,
             total_admin_fees: updated_fees,
@@ -1373,6 +1413,18 @@ impl ReceiptVault {
         if storage.get::<_, u128>(&DataKey::TotalDeposited).is_none() {
             storage.set(&DataKey::TotalDeposited, &0u128);
         }
+        if storage.get::<_, u128>(&DataKey::ManagedCash).is_none() {
+            let token_address: Address = storage
+                .get(&DataKey::UnderlyingToken)
+                .expect("Vault not initialized");
+            let live_cash_i =
+                token_balance(&env, &token_address, &env.current_contract_address());
+            let live_cash = if live_cash_i < 0 { 0u128 } else { live_cash_i as u128 };
+            // Migration path for pre-upgrade deployments: snapshot current live cash once.
+            // Future exchange-rate math uses only this managed value so direct donations do
+            // not dilute later depositors.
+            storage.set(&DataKey::ManagedCash, &live_cash);
+        }
         if storage
             .get::<_, u128>(&DataKey::AccumulatedInterest)
             .is_none()
@@ -1388,14 +1440,8 @@ impl ReceiptVault {
 
     /// Get total underlying, including accumulated interest
     pub fn get_total_underlying(env: Env) -> u128 {
-        // cash + borrows - reserves - admin_fees
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("Vault not initialized");
-        let cash_i: i128 = token_balance(&env, &token_address, &env.current_contract_address());
-        let cash: u128 = if cash_i < 0 { 0u128 } else { cash_i as u128 };
+        // managed_cash + boosted_underlying + borrows + accrued_interest - reserves - admin_fees
+        let cash = Self::get_managed_cash(&env);
         let borrows: u128 = env
             .storage()
             .persistent()
@@ -1743,6 +1789,7 @@ impl ReceiptVault {
         let token_client = token::Client::new(&env, &token_address);
         let amount_i128 = to_i128(amount);
         token_client.transfer(&env.current_contract_address(), &user, &amount_i128);
+        Self::sub_managed_cash(&env, amount);
 
         // Emit event
         BorrowEvent {
@@ -1802,6 +1849,7 @@ impl ReceiptVault {
         let token_client = token::Client::new(&env, &token_address);
         let repay_i128 = to_i128(repay_amount);
         token_client.transfer(&user, &env.current_contract_address(), &repay_i128);
+        Self::add_managed_cash(&env, repay_amount);
 
         // Update snapshot and totals
         let new_principal = current_debt - repay_amount;
@@ -1892,6 +1940,9 @@ impl ReceiptVault {
 
         let fee_paid = balance_after.saturating_sub(balance_before);
         if fee_paid > 0 {
+            Self::add_managed_cash(&env, fee_paid);
+        }
+        if fee_paid > 0 {
             let reserves: u128 = env
                 .storage()
                 .persistent()
@@ -1937,6 +1988,7 @@ impl ReceiptVault {
         let token_client = token::Client::new(&env, &token_address);
         let repay_i128 = to_i128(repay_amount);
         token_client.transfer(&liquidator, &env.current_contract_address(), &repay_i128);
+        Self::add_managed_cash(&env, repay_amount);
 
         // Update borrower snapshot and totals
         let new_principal = current_debt - repay_amount;

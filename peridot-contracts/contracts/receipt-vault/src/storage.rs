@@ -5,6 +5,7 @@ use stellar_tokens::fungible::Base as TokenBase;
 #[contracttype]
 pub enum DataKey {
     UnderlyingToken,
+    ManagedCash,              // u128 internal cash accounting; excludes direct donations
     TotalDeposited,
     InterestRatePerSecond, // u128, scaled by 1_000_000 (6 decimals)
     LastUpdateTime,        // u64
@@ -97,6 +98,9 @@ pub fn bump_core_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::UnderlyingToken) {
         persistent.extend_ttl(&DataKey::UnderlyingToken, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::ManagedCash) {
+        persistent.extend_ttl(&DataKey::ManagedCash, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::Initialized) {
         persistent.extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
