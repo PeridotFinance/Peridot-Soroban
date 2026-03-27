@@ -166,6 +166,11 @@ pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
     }
 }
 
+pub fn bump_user_borrow_state_ttl(env: &Env, user: &Address) {
+    bump_borrow_snapshot_ttl(env, user);
+    bump_has_borrowed_ttl(env, user);
+}
+
 pub fn bump_borrow_state_ttl(env: &Env) {
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::YearlyRateScaled) {
