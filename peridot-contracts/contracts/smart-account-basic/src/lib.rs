@@ -181,7 +181,8 @@ impl BasicSmartAccount {
         require_owner(&env, &owner);
         env.storage()
             .persistent()
-            .set(&DataKey::AllowedContract(contract), &true);
+            .set(&DataKey::AllowedContract(contract.clone()), &true);
+        bump_allowed_contract_ttl(&env, &contract);
     }
 
     pub fn remove_allowed_contract(env: Env, owner: Address, contract: Address) {
