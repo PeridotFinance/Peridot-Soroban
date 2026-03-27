@@ -355,9 +355,19 @@ fn verify_signatures(
     signature_payload: &Hash<32>,
     signatures: &Vec<Signature>,
 ) -> Result<(), Error> {
-    if signatures.len() == 0 {
+    if signatures.len() == 0 || signatures.len() > MAX_SIGNERS {
         return Err(Error::Unauthorized);
     }
+    for i in 0..signatures.len() {
+        let sig = signatures.get(i).unwrap();
+        for j in (i + 1)..signatures.len() {
+            let other = signatures.get(j).unwrap();
+            if sig.public_key == other.public_key {
+                return Err(Error::Unauthorized);
+            }
+        }
+    }
+    let msg: Bytes = signature_payload.to_bytes().into_val(env);
     for i in 0..signatures.len() {
         let sig = signatures.get(i).unwrap();
         let allowed: bool = env
@@ -369,7 +379,6 @@ fn verify_signatures(
             return Err(Error::Unauthorized);
         }
         bump_signer_ttl(env, &sig.public_key);
-        let msg: Bytes = signature_payload.to_bytes().into_val(env);
         env.crypto()
             .ed25519_verify(&sig.public_key, &msg, &sig.signature);
     }
@@ -495,6 +504,43 @@ mod test {
         for i in 2..=9u8 {
             client.add_signer(&owner, &BytesN::from_array(&env, &[i; 32]));
         }
+    }
+
+    #[test]
+    fn test_verify_signatures_rejects_duplicate_public_keys() {
+        let env = Env::default();
+        let payload = env.crypto().sha256(&Bytes::from_array(&env, &[7u8; 32]));
+        let public_key = BytesN::from_array(&env, &[3u8; 32]);
+        let signature = BytesN::from_array(&env, &[4u8; 64]);
+        let mut signatures = Vec::new(&env);
+        signatures.push_back(Signature {
+            public_key: public_key.clone(),
+            signature: signature.clone(),
+        });
+        signatures.push_back(Signature { public_key, signature });
+
+        assert_eq!(
+            verify_signatures(&env, &payload, &signatures),
+            Err(Error::Unauthorized)
+        );
+    }
+
+    #[test]
+    fn test_verify_signatures_rejects_too_many_signatures() {
+        let env = Env::default();
+        let payload = env.crypto().sha256(&Bytes::from_array(&env, &[9u8; 32]));
+        let mut signatures = Vec::new(&env);
+        for i in 0..(MAX_SIGNERS + 1) {
+            signatures.push_back(Signature {
+                public_key: BytesN::from_array(&env, &[i as u8; 32]),
+                signature: BytesN::from_array(&env, &[i as u8; 64]),
+            });
+        }
+
+        assert_eq!(
+            verify_signatures(&env, &payload, &signatures),
+            Err(Error::Unauthorized)
+        );
     }
 
     #[test]
