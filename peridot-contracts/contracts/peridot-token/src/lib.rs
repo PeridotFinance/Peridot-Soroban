@@ -10,6 +10,7 @@ pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIA
 #[contracttype]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     MaxSupply,
     Initialized,
 }
@@ -119,13 +120,19 @@ impl PeridotToken {
         TokenBase::allowance(&env, &owner, &spender)
     }
 
-    pub fn approve(env: Env, owner: Address, spender: Address, amount: i128) {
+    pub fn approve(
+        env: Env,
+        owner: Address,
+        spender: Address,
+        amount: i128,
+        live_until_ledger: u32,
+    ) {
         bump_critical_ttl(&env);
         owner.require_auth();
         if amount < 0 {
             panic!("bad amount");
         }
-        TokenBase::approve(&env, &owner, &spender, amount, u32::MAX);
+        TokenBase::approve(&env, &owner, &spender, amount, live_until_ledger);
     }
 
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
@@ -180,7 +187,21 @@ impl PeridotToken {
     pub fn set_admin(env: Env, new_admin: Address) {
         bump_critical_ttl(&env);
         require_admin(&env);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingAdmin, &new_admin);
+    }
+
+    pub fn accept_admin(env: Env) {
+        bump_critical_ttl(&env);
+        let new_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingAdmin)
+            .expect("pending admin not set");
+        new_admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.storage().persistent().remove(&DataKey::PendingAdmin);
     }
 
     pub fn upgrade_wasm(env: Env, new_wasm_hash: BytesN<32>) {
@@ -208,6 +229,9 @@ fn bump_critical_ttl(env: &Env) {
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::Admin) {
         persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingAdmin) {
+        persistent.extend_ttl(&DataKey::PendingAdmin, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::MaxSupply) {
         persistent.extend_ttl(&DataKey::MaxSupply, TTL_THRESHOLD, TTL_EXTEND_TO);

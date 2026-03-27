@@ -3,6 +3,7 @@ use soroban_sdk::{contracttype, Address, Env};
 #[contracttype]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     Initialized,
     PauseGuardian,              // Address (optional)
     SupportedMarkets,           // Map<Address, bool>
