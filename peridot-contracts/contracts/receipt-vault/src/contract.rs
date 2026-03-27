@@ -13,6 +13,8 @@ use crate::storage::*;
 #[contract]
 pub struct ReceiptVault;
 
+const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
+
 #[contractimpl]
 impl ReceiptVault {
     fn get_boosted_underlying(env: &Env) -> u128 {
@@ -31,15 +33,33 @@ impl ReceiptVault {
                 ) {
                     Ok(amounts) => {
                         let amt_i = amounts.get(0).unwrap_or(0);
-                        if amt_i > 0 {
-                            amt_i as u128
-                        } else {
-                            0u128
-                        }
+                        let boosted_underlying = if amt_i > 0 { amt_i as u128 } else { 0u128 };
+                        env.storage()
+                            .persistent()
+                            .set(&DataKey::BoostedUnderlyingCached, &boosted_underlying);
+                        env.storage().persistent().set(
+                            &DataKey::BoostedUnderlyingUpdatedAt,
+                            &env.ledger().timestamp(),
+                        );
+                        boosted_underlying
                     }
                     Err(err) => {
                         emit_external_call_failure(env, &boosted, &err, true);
-                        0u128
+                        let now = env.ledger().timestamp();
+                        let cached: Option<u128> = env
+                            .storage()
+                            .persistent()
+                            .get(&DataKey::BoostedUnderlyingCached);
+                        let updated_at: Option<u64> = env
+                            .storage()
+                            .persistent()
+                            .get(&DataKey::BoostedUnderlyingUpdatedAt);
+                        if let (Some(cached), Some(updated_at)) = (cached, updated_at) {
+                            if now.saturating_sub(updated_at) <= BOOSTED_CACHE_MAX_AGE_SECS {
+                                return cached;
+                            }
+                        }
+                        panic!("boosted vault unavailable");
                     }
                 }
             } else {
@@ -244,6 +264,12 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::BoostedVault, &boosted_vault);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BoostedUnderlyingCached);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BoostedUnderlyingUpdatedAt);
     }
 
     /// View: get boosted vault (if set)
@@ -1946,9 +1972,7 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalBorrowed)
                 .expect("total borrowed missing");
-        let tb_after = tb
-            .checked_sub(repay_amount)
-            .expect("repay exceeds total borrowed");
+        let tb_after = tb.saturating_sub(repay_amount);
         env.storage()
             .persistent()
             .set(&DataKey::TotalBorrowed, &tb_after);
@@ -2091,9 +2115,7 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalBorrowed)
                 .expect("total borrowed missing");
-        let tb_after = tb
-            .checked_sub(repay_amount)
-            .expect("repay exceeds total borrowed");
+        let tb_after = tb.saturating_sub(repay_amount);
         env.storage()
             .persistent()
             .set(&DataKey::TotalBorrowed, &tb_after);
