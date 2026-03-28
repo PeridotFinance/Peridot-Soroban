@@ -26,9 +26,7 @@ impl ReceiptVault {
         let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
         let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
         let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
-        let managed_cash: u128 = if let Some(cash) = storage.get(&DataKey::ManagedCash) {
-            cash
-        } else if let Some(token_address) = storage.get::<_, Address>(&DataKey::UnderlyingToken) {
+        let live_cash: u128 = if let Some(token_address) = storage.get::<_, Address>(&DataKey::UnderlyingToken) {
             Self::current_live_cash(env, &token_address)
         } else {
             0u128
@@ -39,7 +37,7 @@ impl ReceiptVault {
             .saturating_add(total_reserves)
             .saturating_add(total_admin_fees)
             .saturating_sub(total_borrowed)
-            .saturating_sub(managed_cash)
+            .saturating_sub(live_cash)
     }
 
     fn get_boosted_underlying(env: &Env) -> u128 {
@@ -96,21 +94,15 @@ impl ReceiptVault {
     }
 
     fn derive_managed_cash(env: &Env) -> u128 {
-        let storage = env.storage().persistent();
-        let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
-        let accumulated_interest: u128 = storage
-            .get(&DataKey::AccumulatedInterest)
-            .unwrap_or(0u128);
-        let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
-        let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
-        let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
-        let boosted_underlying = Self::get_boosted_underlying(env);
-        total_deposited
-            .saturating_add(accumulated_interest)
-            .saturating_add(total_reserves)
-            .saturating_add(total_admin_fees)
-            .saturating_sub(total_borrowed)
-            .saturating_sub(boosted_underlying)
+        if let Some(token_address) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::UnderlyingToken)
+        {
+            Self::current_live_cash(env, &token_address)
+        } else {
+            0u128
+        }
     }
 
     fn current_live_cash(env: &Env, token_address: &Address) -> u128 {
@@ -1581,9 +1573,9 @@ impl ReceiptVault {
             storage.set(&DataKey::TotalDeposited, &0u128);
         }
         if storage.get::<_, u128>(&DataKey::ManagedCash).is_none() {
-            // Migration path for pre-upgrade deployments: derive cash from trusted
-            // accounting state rather than the live token balance so direct donations
-            // cannot influence the snapshot.
+            // Migration path for pre-upgrade deployments: initialize managed cash
+            // from live vault balance to avoid circular dependency with boosted
+            // underlying fallback paths.
             storage.set(&DataKey::ManagedCash, &Self::derive_managed_cash(&env));
         }
         if storage
