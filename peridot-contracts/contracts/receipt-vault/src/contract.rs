@@ -45,6 +45,7 @@ impl ReceiptVault {
                     }
                     Err(err) => {
                         emit_external_call_failure(env, &boosted, &err, true);
+                        let now = env.ledger().timestamp();
                         let cached: Option<u128> = env
                             .storage()
                             .persistent()
@@ -54,11 +55,11 @@ impl ReceiptVault {
                             .persistent()
                             .get(&DataKey::BoostedUnderlyingUpdatedAt);
                         if let (Some(cached), Some(updated_at)) = (cached, updated_at) {
-                            let now = env.ledger().timestamp();
-                            let _is_stale = now.saturating_sub(updated_at) > BOOSTED_CACHE_MAX_AGE_SECS;
-                            return cached;
+                            if now.saturating_sub(updated_at) <= BOOSTED_CACHE_MAX_AGE_SECS {
+                                return cached;
+                            }
                         }
-                        0u128
+                        panic!("boosted vault unavailable");
                     }
                 }
             } else {
