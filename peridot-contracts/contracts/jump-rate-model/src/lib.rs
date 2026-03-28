@@ -39,6 +39,7 @@ impl JumpRateModel {
         kink: u128,
         admin: Address,
     ) {
+        admin.require_auth();
         if env
             .storage()
             .persistent()
@@ -54,7 +55,6 @@ impl JumpRateModel {
         if base > 10_000_000u128 || multiplier > 10_000_000u128 || jump > 10_000_000u128 {
             panic!("invalid rate params");
         }
-        admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage()
             .persistent()
@@ -157,14 +157,11 @@ fn ensure_initialized(env: &Env) {
 }
 
 fn assert_expected_admin(_env: &Env, _admin: &Address) {
-    #[cfg(not(test))]
-    {
-        let expected_admin_str =
-            option_env!("JUMP_RATE_MODEL_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
-        let expected_admin = Address::from_string(&String::from_str(_env, expected_admin_str));
-        if _admin != &expected_admin {
-            panic!("unexpected admin");
-        }
+    let expected_admin_str =
+        option_env!("JUMP_RATE_MODEL_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+    let expected_admin = Address::from_string(&String::from_str(_env, expected_admin_str));
+    if _admin != &expected_admin {
+        panic!("unexpected admin");
     }
 }
 
@@ -203,6 +200,7 @@ fn bump_ttl(env: &Env) {
 #[cfg(test)]
 mod test {
     use super::*;
+    use soroban_sdk::testutils::Address as _;
 
     #[test]
     fn model_rates() {
@@ -223,5 +221,22 @@ mod test {
         assert!(br_high > br_low);
         let sr = client.get_supply_rate(&1_000u128, &500u128, &0u128, &100_000u128);
         assert!(sr > 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "unexpected admin")]
+    fn initialize_rejects_unexpected_admin() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::generate(&env);
+        let id = env.register(JumpRateModel, ());
+        let client = JumpRateModelClient::new(&env, &id);
+        client.initialize(
+            &20_000u128,
+            &180_000u128,
+            &4_000_000u128,
+            &800_000u128,
+            &admin,
+        );
     }
 }

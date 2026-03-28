@@ -32,6 +32,8 @@ pub enum DataKey {
     BorrowCap,                // u128, max total borrowed
     Initialized,              // bool flag to prevent re-initialization
     BoostedVault,             // Optional DeFindex vault address for boosted markets
+    BoostedUnderlyingCached,  // u128 cached underlying amount for boosted vault
+    BoostedUnderlyingUpdatedAt, // u64 timestamp of cached boosted underlying
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -145,6 +147,16 @@ pub fn bump_core_ttl(env: &Env) {
     if persistent.has(&DataKey::BoostedVault) {
         persistent.extend_ttl(&DataKey::BoostedVault, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    if persistent.has(&DataKey::BoostedUnderlyingCached) {
+        persistent.extend_ttl(&DataKey::BoostedUnderlyingCached, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BoostedUnderlyingUpdatedAt) {
+        persistent.extend_ttl(
+            &DataKey::BoostedUnderlyingUpdatedAt,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
     if persistent.has(&DataKey::InitialExchangeRate) {
         persistent.extend_ttl(&DataKey::InitialExchangeRate, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
@@ -164,6 +176,11 @@ pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+}
+
+pub fn bump_user_borrow_state_ttl(env: &Env, user: &Address) {
+    bump_borrow_snapshot_ttl(env, user);
+    bump_has_borrowed_ttl(env, user);
 }
 
 pub fn bump_borrow_state_ttl(env: &Env) {

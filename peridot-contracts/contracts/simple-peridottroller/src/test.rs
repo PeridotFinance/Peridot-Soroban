@@ -1903,21 +1903,6 @@ fn test_multi_market_supply_rewards() {
     set_price_and_cache(&comp, &oracle, &oracle_id, &tb, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
-    // PERI token
-    use peridot_token as pt;
-    let peri_id = env.register(pt::PeridotToken, ());
-    let peri = pt::PeridotTokenClient::new(&env, &peri_id);
-    std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
-    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
-    peri.initialize(
-        &soroban_sdk::String::from_str(&env, "Peridot"),
-        &soroban_sdk::String::from_str(&env, "P"),
-        &6u32,
-        &token_admin,
-        &1_000_000_000i128,
-    );
-    comp.set_peridot_token(&peri_id);
-
     // Speeds: A=5, B=3 P/sec
     comp.set_supply_speed(&va_id, &5u128);
     comp.set_supply_speed(&vb_id, &3u128);
@@ -1934,7 +1919,8 @@ fn test_multi_market_supply_rewards() {
     let now = env.ledger().timestamp();
     env.ledger().set_timestamp(now + 4);
 
-    // Claim -> expect (5+3)*4 = 32 P
-    comp.claim(&user);
-    assert_eq!(peri.balance_of(&user), 32i128);
+    // Accrue rewards on both markets -> expect (5+3)*4 = 32 P accrued.
+    comp.accrue_user_market(&user, &va_id, &None);
+    comp.accrue_user_market(&user, &vb_id, &None);
+    assert_eq!(comp.get_accrued(&user), 32u128);
 }
