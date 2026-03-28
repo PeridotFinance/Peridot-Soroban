@@ -1971,6 +1971,8 @@ impl ReceiptVault {
         }
         let balance_before = balance_before_i as u128;
 
+        // Receiver must explicitly authorize being targeted as a flash loan callback.
+        receiver.require_auth();
         Self::sub_managed_cash(&env, amount);
         token_client.transfer(&env.current_contract_address(), &receiver, &to_i128(amount));
 
