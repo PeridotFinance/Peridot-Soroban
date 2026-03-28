@@ -162,6 +162,7 @@ impl ReceiptVault {
         }
         bump_user_borrow_state_ttl(env, user);
     }
+
     /// Initialize the vault with underlying token, supply yearly rate, borrow yearly rate, and admin
     /// Rates are scaled by 1e6 (e.g., 10% = 100_000)
     pub fn initialize(
@@ -1197,7 +1198,17 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
-        env.storage().persistent().set(&DataKey::BorrowCap, &cap);
+        let storage = env.storage().persistent();
+        if cap == 0 {
+            // Disable principal tracking when cap is disabled to avoid stale state.
+            storage.remove(&DataKey::TotalBorrowPrincipal);
+        } else if storage.get::<_, u128>(&DataKey::TotalBorrowPrincipal).is_none() {
+            let total_borrowed: u128 = storage
+                .get(&DataKey::TotalBorrowed)
+                .expect("total borrowed missing");
+            storage.set(&DataKey::TotalBorrowPrincipal, &total_borrowed);
+        }
+        storage.set(&DataKey::BorrowCap, &cap);
         NewBorrowCap { borrow_cap: cap }.publish(&env);
     }
 
@@ -1495,6 +1506,12 @@ impl ReceiptVault {
         }
         if storage.get::<_, u128>(&DataKey::TotalBorrowed).is_none() {
             storage.set(&DataKey::TotalBorrowed, &total_borrowed);
+        }
+        let borrow_cap: u128 = storage.get(&DataKey::BorrowCap).unwrap_or(0u128);
+        if borrow_cap > 0 && storage.get::<_, u128>(&DataKey::TotalBorrowPrincipal).is_none() {
+            // If borrow caps are enabled on an upgraded deployment, seed the
+            // principal tracker from current borrows.
+            storage.set(&DataKey::TotalBorrowPrincipal, &total_borrowed);
         }
         if storage.get::<_, u128>(&DataKey::TotalDeposited).is_none() {
             storage.set(&DataKey::TotalDeposited, &0u128);
@@ -1808,12 +1825,17 @@ impl ReceiptVault {
             .get(&DataKey::BorrowCap)
             .unwrap_or(0u128);
         if bcap > 0 {
-            let tb: u128 = env
+            let principal_total: u128 = env
                 .storage()
                 .persistent()
-                .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
-            if tb.saturating_add(amount) > bcap {
+                .get(&DataKey::TotalBorrowPrincipal)
+                .unwrap_or_else(|| {
+                    env.storage()
+                        .persistent()
+                        .get(&DataKey::TotalBorrowed)
+                        .expect("total borrowed missing")
+                });
+            if principal_total.saturating_add(amount) > bcap {
                 panic!("borrow cap exceeded");
             }
         }
@@ -1822,6 +1844,24 @@ impl ReceiptVault {
         let new_principal =
             Self::get_user_borrow_balance(env.clone(), user.clone()).saturating_add(amount);
         Self::write_borrow_snapshot(&env, user.clone(), new_principal);
+
+        if bcap > 0 {
+            let total_principal_before: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowPrincipal)
+                .unwrap_or_else(|| {
+                    env.storage()
+                        .persistent()
+                        .get(&DataKey::TotalBorrowed)
+                        .expect("total borrowed missing")
+                });
+            env.storage().persistent().set(
+                &DataKey::TotalBorrowPrincipal,
+                &total_principal_before.saturating_add(amount),
+            );
+        }
+
         let tb: u128 = env
             .storage()
             .persistent()
@@ -1905,6 +1945,31 @@ impl ReceiptVault {
         // Update snapshot and totals
         let new_principal = current_debt - repay_amount;
         Self::write_borrow_snapshot(&env, user.clone(), new_principal);
+
+        let bcap: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowCap)
+            .unwrap_or(0u128);
+        if bcap > 0 {
+            let total_principal_before: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowPrincipal)
+                .unwrap_or_else(|| {
+                    env.storage()
+                        .persistent()
+                        .get(&DataKey::TotalBorrowed)
+                        .expect("total borrowed missing")
+                });
+            let principal_repay_global = repay_amount.min(total_principal_before);
+            let total_principal_after = total_principal_before - principal_repay_global;
+            env.storage().persistent().set(
+                &DataKey::TotalBorrowPrincipal,
+                &total_principal_after,
+            );
+        }
+
         let tb: u128 = env
             .storage()
             .persistent()
@@ -2052,6 +2117,31 @@ impl ReceiptVault {
         // Update borrower snapshot and totals
         let new_principal = current_debt - repay_amount;
         Self::write_borrow_snapshot(&env, borrower.clone(), new_principal);
+
+        let bcap: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowCap)
+            .unwrap_or(0u128);
+        if bcap > 0 {
+            let total_principal_before: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowPrincipal)
+                .unwrap_or_else(|| {
+                    env.storage()
+                        .persistent()
+                        .get(&DataKey::TotalBorrowed)
+                        .expect("total borrowed missing")
+                });
+            let principal_repay_global = repay_amount.min(total_principal_before);
+            let total_principal_after = total_principal_before - principal_repay_global;
+            env.storage().persistent().set(
+                &DataKey::TotalBorrowPrincipal,
+                &total_principal_after,
+            );
+        }
+
         let tb: u128 = env
             .storage()
             .persistent()

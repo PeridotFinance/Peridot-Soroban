@@ -798,7 +798,7 @@ fn test_borrow_budget_peridottroller_same_market() {
     vault.deposit(&user, &200u128);
 
     vault.borrow(&user, &80u128);
-    assert_budget_under(&env, 5_000_000, 850_000);
+    assert_budget_under(&env, 5_000_000, 950_000);
 }
 
 #[test]
@@ -1000,6 +1000,56 @@ fn test_borrow_cap_enforced_on_borrow() {
     vault.borrow(&user, &80u128);
     // Borrow additional 30 -> would exceed cap (total 110)
     vault.borrow(&user, &30u128);
+}
+
+#[test]
+fn test_borrow_cap_uses_principal_not_interest() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &2_000i128);
+    token_admin_client.mint(&lender, &2_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.set_collateral_factor(&1_000_000u128);
+
+    // Provide liquidity + collateral
+    vault.deposit(&lender, &1_000u128);
+    vault.deposit(&user, &300u128);
+
+    // Model: 0% supply, 100% borrow.
+    let model_id = env.register(MockRateModel, ());
+    let model = MockRateModelClient::new(&env, &model_id);
+    model.initialize(&0u128, &1_000_000u128);
+    vault.set_interest_model(&model_id);
+
+    // Cap is enforced on principal outstanding.
+    vault.set_borrow_cap(&220u128);
+    vault.borrow(&user, &100u128);
+
+    // Accrue one year so interest inflates TotalBorrowed.
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault.update_interest();
+
+    let total_borrowed_before = vault.get_total_borrowed();
+    assert!(
+        total_borrowed_before.saturating_add(30u128) > 220u128,
+        "sanity: old cap logic (using total borrowed) would reject this borrow"
+    );
+
+    // Should succeed because principal outstanding is 100, so 100 + 30 <= 220.
+    vault.borrow(&user, &30u128);
+
+    let user_debt = vault.get_user_borrow_balance(&user);
+    assert!(user_debt >= 130u128);
 }
 
 // Mock rate model providing constant yearly rates

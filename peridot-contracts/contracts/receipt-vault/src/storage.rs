@@ -16,6 +16,7 @@ pub enum DataKey {
     BorrowSnapshots(Address), // BorrowSnapshot per user
     HasBorrowed(Address),     // bool flag per user
     TotalBorrowed,            // u128
+    TotalBorrowPrincipal,     // u128 principal-only global borrow total
     BorrowIndex,              // u128 (scaled 1e18)
     BorrowYearlyRateScaled,   // u128, scaled 1e6
     CollateralFactorScaled,   // u128, scaled 1e6 (e.g., 500_000 = 50%)
