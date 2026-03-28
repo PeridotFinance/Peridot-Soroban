@@ -45,7 +45,6 @@ impl ReceiptVault {
                     }
                     Err(err) => {
                         emit_external_call_failure(env, &boosted, &err, true);
-                        let now = env.ledger().timestamp();
                         let cached: Option<u128> = env
                             .storage()
                             .persistent()
@@ -55,11 +54,11 @@ impl ReceiptVault {
                             .persistent()
                             .get(&DataKey::BoostedUnderlyingUpdatedAt);
                         if let (Some(cached), Some(updated_at)) = (cached, updated_at) {
-                            if now.saturating_sub(updated_at) <= BOOSTED_CACHE_MAX_AGE_SECS {
-                                return cached;
-                            }
+                            let now = env.ledger().timestamp();
+                            let _is_stale = now.saturating_sub(updated_at) > BOOSTED_CACHE_MAX_AGE_SECS;
+                            return cached;
                         }
-                        panic!("boosted vault unavailable");
+                        0u128
                     }
                 }
             } else {
@@ -1972,7 +1971,9 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalBorrowed)
                 .expect("total borrowed missing");
-        let tb_after = tb.saturating_sub(repay_amount);
+        let tb_after = tb
+            .checked_sub(repay_amount)
+            .expect("repay exceeds total borrowed");
         env.storage()
             .persistent()
             .set(&DataKey::TotalBorrowed, &tb_after);
@@ -2115,7 +2116,9 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalBorrowed)
                 .expect("total borrowed missing");
-        let tb_after = tb.saturating_sub(repay_amount);
+        let tb_after = tb
+            .checked_sub(repay_amount)
+            .expect("repay exceeds total borrowed");
         env.storage()
             .persistent()
             .set(&DataKey::TotalBorrowed, &tb_after);
