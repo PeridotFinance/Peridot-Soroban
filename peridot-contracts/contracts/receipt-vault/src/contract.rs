@@ -17,6 +17,31 @@ const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
 
 #[contractimpl]
 impl ReceiptVault {
+    fn estimate_boosted_underlying_from_accounting(env: &Env) -> u128 {
+        let storage = env.storage().persistent();
+        let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
+        let accumulated_interest: u128 = storage
+            .get(&DataKey::AccumulatedInterest)
+            .unwrap_or(0u128);
+        let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
+        let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
+        let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
+        let managed_cash: u128 = if let Some(cash) = storage.get(&DataKey::ManagedCash) {
+            cash
+        } else if let Some(token_address) = storage.get::<_, Address>(&DataKey::UnderlyingToken) {
+            Self::current_live_cash(env, &token_address)
+        } else {
+            0u128
+        };
+
+        total_deposited
+            .saturating_add(accumulated_interest)
+            .saturating_add(total_reserves)
+            .saturating_add(total_admin_fees)
+            .saturating_sub(total_borrowed)
+            .saturating_sub(managed_cash)
+    }
+
     fn get_boosted_underlying(env: &Env) -> u128 {
         if let Some(boosted) = env
             .storage()
@@ -55,14 +80,11 @@ impl ReceiptVault {
                             .persistent()
                             .get(&DataKey::BoostedUnderlyingUpdatedAt);
                         if let (Some(cached), Some(updated_at)) = (cached, updated_at) {
-                            let _is_stale =
-                                now.saturating_sub(updated_at) > BOOSTED_CACHE_MAX_AGE_SECS;
-                            return cached;
+                            if now.saturating_sub(updated_at) <= BOOSTED_CACHE_MAX_AGE_SECS {
+                                return cached;
+                            }
                         }
-                        if let Some(cached) = cached {
-                            return cached;
-                        }
-                        0u128
+                        Self::estimate_boosted_underlying_from_accounting(env)
                     }
                 }
             } else {
