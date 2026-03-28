@@ -27,16 +27,12 @@ impl ReceiptVault {
     fn estimate_boosted_underlying_from_accounting(env: &Env) -> u128 {
         let storage = env.storage().persistent();
         let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
-        let accumulated_interest: u128 = storage
-            .get(&DataKey::AccumulatedInterest)
-            .unwrap_or(0u128);
         let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
         let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
         let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
         let tracked_cash = Self::get_managed_cash(env);
 
         total_deposited
-            .saturating_add(accumulated_interest)
             .saturating_add(total_reserves)
             .saturating_add(total_admin_fees)
             .saturating_sub(total_borrowed)
@@ -99,15 +95,11 @@ impl ReceiptVault {
     fn derive_managed_cash(env: &Env) -> u128 {
         let storage = env.storage().persistent();
         let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
-        let accumulated_interest: u128 = storage
-            .get(&DataKey::AccumulatedInterest)
-            .unwrap_or(0u128);
         let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
         let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
         let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
         let cached_boosted = Self::cached_boosted_underlying(env);
         total_deposited
-            .saturating_add(accumulated_interest)
             .saturating_add(total_reserves)
             .saturating_add(total_admin_fees)
             .saturating_sub(total_borrowed)
@@ -1356,68 +1348,6 @@ impl ReceiptVault {
             .unwrap_or(0u128);
         let pooled_reserves = current_reserves.saturating_add(current_admin_fees);
 
-        let yearly_rate_scaled: u128 = if let Some(model) = env
-            .storage()
-            .persistent()
-            .get::<_, Address>(&DataKey::InterestModel)
-        {
-            let borrows: u128 = env
-                .storage()
-                .persistent()
-                .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
-            let rf: u128 = env
-                .storage()
-                .persistent()
-                .get(&DataKey::ReserveFactorScaled)
-                .unwrap_or(0u128);
-            match try_call_contract(
-                &env,
-                &model,
-                "get_supply_rate",
-                (model_cash, borrows, pooled_reserves, rf),
-            ) {
-                Ok(rate) => rate,
-                Err(err) => {
-                    emit_external_call_failure(&env, &model, &err, true);
-                    env.storage()
-                        .persistent()
-                        .get(&DataKey::YearlyRateScaled)
-                        .expect("yearly rate missing")
-                }
-            }
-        } else {
-            env.storage()
-                .persistent()
-                .get(&DataKey::YearlyRateScaled)
-                .expect("yearly rate missing")
-        };
-        if yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
-            panic!("interest rate out of bounds");
-        }
-
-        let total_deposited: u128 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::TotalDeposited)
-            .unwrap_or(0u128);
-        if total_deposited > 0 && yearly_rate_scaled > 0 {
-            // new_interest = total_deposited * yearly_rate * elapsed / (SECONDS_PER_YEAR * 1e6)
-            let new_interest =
-                checked_interest_product(&env, total_deposited, yearly_rate_scaled, elapsed);
-
-            if new_interest > 0 {
-                let accumulated: u128 = env
-                    .storage()
-                    .persistent()
-                    .get(&DataKey::AccumulatedInterest)
-                    .expect("accumulated interest missing");
-                let updated_accumulated = accumulated.saturating_add(new_interest);
-                env.storage()
-                    .persistent()
-                    .set(&DataKey::AccumulatedInterest, &updated_accumulated);
-            }
-        }
         // Borrow interest accrual via global index (split to reserves, admin fees, and suppliers)
         let tb_prior: u128 = env
             .storage()
