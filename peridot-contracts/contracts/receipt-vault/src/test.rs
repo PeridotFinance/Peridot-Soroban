@@ -1210,6 +1210,35 @@ fn test_flash_loan_successfully_repaid() {
 }
 
 #[test]
+#[should_panic]
+fn test_flash_loan_requires_receiver_auth() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+
+    token_admin_client.mint(&depositor, &1_000i128);
+    vault.deposit(&depositor, &500u128);
+    vault.set_flash_loan_fee(&20_000u128);
+
+    let receiver_id = env.register(FlashLoanRepayer, ());
+    let receiver_client = FlashLoanRepayerClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+    token_admin_client.mint(&receiver_id, &50i128);
+
+    // Explicitly remove mocked auth entries so receiver.require_auth() must fail.
+    env.set_auths(&[]);
+    let data = Bytes::new(&env);
+    vault.flash_loan(&receiver_id, &100u128, &data);
+}
+
+#[test]
 #[should_panic(expected = "flash loan not repaid")]
 fn test_flash_loan_missing_fee_panics() {
     let env = Env::default();
