@@ -55,11 +55,14 @@ impl ReceiptVault {
                             .persistent()
                             .get(&DataKey::BoostedUnderlyingUpdatedAt);
                         if let (Some(cached), Some(updated_at)) = (cached, updated_at) {
-                            if now.saturating_sub(updated_at) <= BOOSTED_CACHE_MAX_AGE_SECS {
-                                return cached;
-                            }
+                            let _is_stale =
+                                now.saturating_sub(updated_at) > BOOSTED_CACHE_MAX_AGE_SECS;
+                            return cached;
                         }
-                        panic!("boosted vault unavailable");
+                        if let Some(cached) = cached {
+                            return cached;
+                        }
+                        0u128
                     }
                 }
             } else {
