@@ -34,6 +34,7 @@ pub enum DataKey {
     BoostedVault,             // Optional DeFindex vault address for boosted markets
     BoostedUnderlyingCached,  // u128 cached underlying amount for boosted vault
     BoostedUnderlyingUpdatedAt, // u64 timestamp of cached boosted underlying
+    TotalBorrowPrincipal,     // u128 principal-only global borrow total
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -205,6 +206,10 @@ pub fn bump_borrow_state_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::TotalDeposited) {
         persistent.extend_ttl(&DataKey::TotalDeposited, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let borrow_cap: u128 = persistent.get(&DataKey::BorrowCap).unwrap_or(0u128);
+    if borrow_cap > 0 && persistent.has(&DataKey::TotalBorrowPrincipal) {
+        persistent.extend_ttl(&DataKey::TotalBorrowPrincipal, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 
