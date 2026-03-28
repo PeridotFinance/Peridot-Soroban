@@ -27,16 +27,12 @@ impl ReceiptVault {
     fn estimate_boosted_underlying_from_accounting(env: &Env) -> u128 {
         let storage = env.storage().persistent();
         let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
-        let accumulated_interest: u128 = storage
-            .get(&DataKey::AccumulatedInterest)
-            .unwrap_or(0u128);
         let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
         let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
         let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
         let tracked_cash = Self::get_managed_cash(env);
 
         total_deposited
-            .saturating_add(accumulated_interest)
             .saturating_add(total_reserves)
             .saturating_add(total_admin_fees)
             .saturating_sub(total_borrowed)
@@ -99,15 +95,11 @@ impl ReceiptVault {
     fn derive_managed_cash(env: &Env) -> u128 {
         let storage = env.storage().persistent();
         let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
-        let accumulated_interest: u128 = storage
-            .get(&DataKey::AccumulatedInterest)
-            .unwrap_or(0u128);
         let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
         let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
         let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
         let cached_boosted = Self::cached_boosted_underlying(env);
         total_deposited
-            .saturating_add(accumulated_interest)
             .saturating_add(total_reserves)
             .saturating_add(total_admin_fees)
             .saturating_sub(total_borrowed)
@@ -641,30 +633,17 @@ impl ReceiptVault {
         TokenBase::update(&env, Some(&user), None, burn_i128);
         emit_burn(&env, &user, burn_i128);
         // Update totals
-        let mut total_deposited: u128 = env
+        let total_deposited: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::TotalDeposited)
             .unwrap_or(0u128);
-        let mut accumulated: u128 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::AccumulatedInterest)
-                .expect("accumulated interest missing");
-        // Reduce principal first, then interest if needed
-        if underlying_to_return > total_deposited {
-            let from_interest = underlying_to_return - total_deposited;
-            total_deposited = 0;
-            accumulated = accumulated.saturating_sub(from_interest);
-        } else {
-            total_deposited = total_deposited - underlying_to_return;
-        }
+        // AccumulatedInterest is deprecated from supplier accounting; withdrawals
+        // only adjust tracked deposits.
+        let total_deposited_after = total_deposited.saturating_sub(underlying_to_return);
         env.storage()
             .persistent()
-            .set(&DataKey::TotalDeposited, &total_deposited);
-        env.storage()
-            .persistent()
-            .set(&DataKey::AccumulatedInterest, &accumulated);
+            .set(&DataKey::TotalDeposited, &total_deposited_after);
 
         // If boosted and cash is insufficient, withdraw from DeFindex vault
         if let Some(boosted) = env
@@ -1336,8 +1315,14 @@ impl ReceiptVault {
             return;
         }
         let elapsed = (now - last_time) as u128;
+        let token_address: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UnderlyingToken)
+            .expect("underlying not set");
+        // Snapshot live cash once so rate queries in this accrual use the same input.
+        let model_cash = Self::current_live_cash(&env, &token_address);
 
-        // Determine supply yearly rate from model if set, else static
         let current_reserves: u128 = env
             .storage()
             .persistent()
@@ -1349,70 +1334,6 @@ impl ReceiptVault {
             .get(&DataKey::TotalAdminFees)
             .unwrap_or(0u128);
         let pooled_reserves = current_reserves.saturating_add(current_admin_fees);
-
-        let yearly_rate_scaled: u128 = if let Some(model) = env
-            .storage()
-            .persistent()
-            .get::<_, Address>(&DataKey::InterestModel)
-        {
-            let cash = Self::get_available_liquidity(env.clone());
-            let borrows: u128 = env
-                .storage()
-                .persistent()
-                .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
-            let rf: u128 = env
-                .storage()
-                .persistent()
-                .get(&DataKey::ReserveFactorScaled)
-                .unwrap_or(0u128);
-            match try_call_contract(
-                &env,
-                &model,
-                "get_supply_rate",
-                (cash, borrows, pooled_reserves, rf),
-            ) {
-                Ok(rate) => rate,
-                Err(err) => {
-                    emit_external_call_failure(&env, &model, &err, true);
-                    env.storage()
-                        .persistent()
-                        .get(&DataKey::YearlyRateScaled)
-                        .expect("yearly rate missing")
-                }
-            }
-        } else {
-            env.storage()
-                .persistent()
-                .get(&DataKey::YearlyRateScaled)
-                .expect("yearly rate missing")
-        };
-        if yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
-            panic!("interest rate out of bounds");
-        }
-
-        let total_deposited: u128 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::TotalDeposited)
-            .unwrap_or(0u128);
-        if total_deposited > 0 && yearly_rate_scaled > 0 {
-            // new_interest = total_deposited * yearly_rate * elapsed / (SECONDS_PER_YEAR * 1e6)
-            let new_interest =
-                checked_interest_product(&env, total_deposited, yearly_rate_scaled, elapsed);
-
-            if new_interest > 0 {
-                let accumulated: u128 = env
-                    .storage()
-                    .persistent()
-                    .get(&DataKey::AccumulatedInterest)
-                    .expect("accumulated interest missing");
-                let updated_accumulated = accumulated.saturating_add(new_interest);
-                env.storage()
-                    .persistent()
-                    .set(&DataKey::AccumulatedInterest, &updated_accumulated);
-            }
-        }
 
         // Borrow interest accrual via global index (split to reserves, admin fees, and suppliers)
         let tb_prior: u128 = env
@@ -1433,13 +1354,12 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::InterestModel)
         {
-            let cash = Self::get_available_liquidity(env.clone());
             let borrows: u128 = tb_prior;
             match try_call_contract(
                 &env,
                 &model,
                 "get_borrow_rate",
-                (cash, borrows, pooled_reserves),
+                (model_cash, borrows, pooled_reserves),
             ) {
                 Ok(rate) => rate,
                 Err(err) => {
@@ -1501,7 +1421,8 @@ impl ReceiptVault {
                 &current_fees.saturating_add(to_admin),
             );
 
-            // Increase total borrowed by total interest; suppliers' share is reflected through exchange-rate math and the accumulated interest tracker above
+            // Increase total borrowed by total interest; supplier yield is
+            // reflected through exchange-rate math via the borrow growth path.
             let tb_after = tb_prior.saturating_add(borrow_interest_total);
             env.storage()
                 .persistent()
@@ -1520,9 +1441,6 @@ impl ReceiptVault {
                 .persistent()
                 .set(&DataKey::BorrowIndex, &new_index);
             event_borrow_index = new_index;
-
-            // Do not credit suppliers here when using model-driven accrual to avoid double counting.
-            // Suppliers' share will be reflected implicitly via exchange rate from underlying math if needed.
         }
 
         AccrueInterest {
@@ -1600,9 +1518,9 @@ impl ReceiptVault {
         bump_borrow_state_ttl(&env);
     }
 
-    /// Get total underlying, including accumulated interest
+    /// Get total underlying
     pub fn get_total_underlying(env: Env) -> u128 {
-        // managed_cash + boosted_underlying + borrows + accrued_interest - reserves - admin_fees
+        // managed_cash + boosted_underlying + borrows - reserves - admin_fees
         let cash = Self::get_managed_cash(&env);
         let borrows: u128 = env
             .storage()
@@ -1619,15 +1537,9 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalAdminFees)
             .unwrap_or(0u128);
-        let accumulated_interest: u128 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::AccumulatedInterest)
-            .expect("accumulated interest missing");
         let boosted_underlying = Self::get_boosted_underlying(&env);
         cash.saturating_add(boosted_underlying)
             .saturating_add(borrows)
-            .saturating_add(accumulated_interest)
             .saturating_sub(reserves)
             .saturating_sub(admin_fees)
     }
