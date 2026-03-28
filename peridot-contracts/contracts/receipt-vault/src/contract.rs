@@ -13,8 +13,36 @@ use crate::storage::*;
 #[contract]
 pub struct ReceiptVault;
 
+const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
+
 #[contractimpl]
 impl ReceiptVault {
+    fn cached_boosted_underlying(env: &Env) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::BoostedUnderlyingCached)
+            .unwrap_or(0u128)
+    }
+
+    fn estimate_boosted_underlying_from_accounting(env: &Env) -> u128 {
+        let storage = env.storage().persistent();
+        let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
+        let accumulated_interest: u128 = storage
+            .get(&DataKey::AccumulatedInterest)
+            .unwrap_or(0u128);
+        let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
+        let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
+        let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
+        let tracked_cash = Self::get_managed_cash(env);
+
+        total_deposited
+            .saturating_add(accumulated_interest)
+            .saturating_add(total_reserves)
+            .saturating_add(total_admin_fees)
+            .saturating_sub(total_borrowed)
+            .saturating_sub(tracked_cash)
+    }
+
     fn get_boosted_underlying(env: &Env) -> u128 {
         if let Some(boosted) = env
             .storage()
@@ -23,17 +51,42 @@ impl ReceiptVault {
         {
             let shares_i = token::TokenClient::new(env, &boosted).balance(&env.current_contract_address());
             if shares_i > 0 {
-                let amounts: Vec<i128> = call_contract_or_panic(
+                match try_call_contract::<Vec<i128>, _>(
                     env,
                     &boosted,
                     "get_asset_amounts_per_shares",
                     (shares_i,),
-                );
-                let amt_i = amounts.get(0).unwrap_or(0);
-                if amt_i > 0 {
-                    amt_i as u128
-                } else {
-                    0u128
+                ) {
+                    Ok(amounts) => {
+                        let amt_i = amounts.get(0).unwrap_or(0);
+                        let boosted_underlying = if amt_i > 0 { amt_i as u128 } else { 0u128 };
+                        env.storage()
+                            .persistent()
+                            .set(&DataKey::BoostedUnderlyingCached, &boosted_underlying);
+                        env.storage().persistent().set(
+                            &DataKey::BoostedUnderlyingUpdatedAt,
+                            &env.ledger().timestamp(),
+                        );
+                        boosted_underlying
+                    }
+                    Err(err) => {
+                        emit_external_call_failure(env, &boosted, &err, true);
+                        let now = env.ledger().timestamp();
+                        let cached: Option<u128> = env
+                            .storage()
+                            .persistent()
+                            .get(&DataKey::BoostedUnderlyingCached);
+                        let updated_at: Option<u64> = env
+                            .storage()
+                            .persistent()
+                            .get(&DataKey::BoostedUnderlyingUpdatedAt);
+                        if let (Some(cached), Some(updated_at)) = (cached, updated_at) {
+                            if now.saturating_sub(updated_at) <= BOOSTED_CACHE_MAX_AGE_SECS {
+                                return cached;
+                            }
+                        }
+                        Self::estimate_boosted_underlying_from_accounting(env)
+                    }
                 }
             } else {
                 0u128
@@ -52,13 +105,13 @@ impl ReceiptVault {
         let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
         let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
         let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
-        let boosted_underlying = Self::get_boosted_underlying(env);
+        let cached_boosted = Self::cached_boosted_underlying(env);
         total_deposited
             .saturating_add(accumulated_interest)
             .saturating_add(total_reserves)
             .saturating_add(total_admin_fees)
             .saturating_sub(total_borrowed)
-            .saturating_sub(boosted_underlying)
+            .saturating_sub(cached_boosted)
     }
 
     fn current_live_cash(env: &Env, token_address: &Address) -> u128 {
@@ -105,7 +158,6 @@ impl ReceiptVault {
             env.storage()
                 .persistent()
                 .set(&DataKey::HasBorrowed(user.clone()), &true);
-            bump_borrow_snapshot_ttl(env, user);
         } else if env
             .storage()
             .persistent()
@@ -116,7 +168,7 @@ impl ReceiptVault {
                 .persistent()
                 .set(&DataKey::HasBorrowed(user.clone()), &false);
         }
-        bump_has_borrowed_ttl(env, user);
+        bump_user_borrow_state_ttl(env, user);
     }
     /// Initialize the vault with underlying token, supply yearly rate, borrow yearly rate, and admin
     /// Rates are scaled by 1e6 (e.g., 10% = 100_000)
@@ -238,6 +290,12 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::BoostedVault, &boosted_vault);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BoostedUnderlyingCached);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BoostedUnderlyingUpdatedAt);
     }
 
     /// View: get boosted vault (if set)
@@ -1308,12 +1366,21 @@ impl ReceiptVault {
                 .persistent()
                 .get(&DataKey::ReserveFactorScaled)
                 .unwrap_or(0u128);
-            call_contract_or_panic(
+            match try_call_contract(
                 &env,
                 &model,
                 "get_supply_rate",
                 (cash, borrows, pooled_reserves, rf),
-            )
+            ) {
+                Ok(rate) => rate,
+                Err(err) => {
+                    emit_external_call_failure(&env, &model, &err, true);
+                    env.storage()
+                        .persistent()
+                        .get(&DataKey::YearlyRateScaled)
+                        .expect("yearly rate missing")
+                }
+            }
         } else {
             env.storage()
                 .persistent()
@@ -1368,12 +1435,21 @@ impl ReceiptVault {
         {
             let cash = Self::get_available_liquidity(env.clone());
             let borrows: u128 = tb_prior;
-            call_contract_or_panic(
+            match try_call_contract(
                 &env,
                 &model,
                 "get_borrow_rate",
                 (cash, borrows, pooled_reserves),
-            )
+            ) {
+                Ok(rate) => rate,
+                Err(err) => {
+                    emit_external_call_failure(&env, &model, &err, true);
+                    env.storage()
+                        .persistent()
+                        .get(&DataKey::BorrowYearlyRateScaled)
+                        .expect("borrow yearly rate missing")
+                }
+            }
         } else {
             env.storage()
                 .persistent()
@@ -1469,6 +1545,7 @@ impl ReceiptVault {
         admin: Address,
         supply_yearly_rate_scaled: u128,
         borrow_yearly_rate_scaled: u128,
+        total_borrowed: u128,
     ) {
         let stored_admin: Address = env
             .storage()
@@ -1499,15 +1576,15 @@ impl ReceiptVault {
             storage.set(&DataKey::BorrowIndex, &INDEX_SCALE_1E18);
         }
         if storage.get::<_, u128>(&DataKey::TotalBorrowed).is_none() {
-            storage.set(&DataKey::TotalBorrowed, &0u128);
+            storage.set(&DataKey::TotalBorrowed, &total_borrowed);
         }
         if storage.get::<_, u128>(&DataKey::TotalDeposited).is_none() {
             storage.set(&DataKey::TotalDeposited, &0u128);
         }
         if storage.get::<_, u128>(&DataKey::ManagedCash).is_none() {
-            // Migration path for pre-upgrade deployments: derive cash from trusted
-            // accounting state rather than the live token balance so direct donations
-            // cannot influence the snapshot.
+            // Migration path for pre-upgrade deployments: initialize managed cash
+            // from live vault balance to avoid circular dependency with boosted
+            // underlying fallback paths.
             storage.set(&DataKey::ManagedCash, &Self::derive_managed_cash(&env));
         }
         if storage
@@ -1547,32 +1624,7 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::AccumulatedInterest)
             .expect("accumulated interest missing");
-        let boosted_underlying = if let Some(boosted) = env
-            .storage()
-            .persistent()
-            .get::<_, Address>(&DataKey::BoostedVault)
-        {
-            let shares_i = token::TokenClient::new(&env, &boosted)
-                .balance(&env.current_contract_address());
-            if shares_i > 0 {
-                let amounts: Vec<i128> = call_contract_or_panic(
-                    &env,
-                    &boosted,
-                    "get_asset_amounts_per_shares",
-                    (shares_i,),
-                );
-                let amt_i = amounts.get(0).unwrap_or(0);
-                if amt_i > 0 {
-                    amt_i as u128
-                } else {
-                    0u128
-                }
-            } else {
-                0u128
-            }
-        } else {
-            0u128
-        };
+        let boosted_underlying = Self::get_boosted_underlying(&env);
         cash.saturating_add(boosted_underlying)
             .saturating_add(borrows)
             .saturating_add(accumulated_interest)
@@ -1665,8 +1717,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::HasBorrowed(user.clone()));
-        bump_borrow_snapshot_ttl(&env, &user);
-        bump_has_borrowed_ttl(&env, &user);
+        bump_user_borrow_state_ttl(&env, &user);
         let snap: Option<BorrowSnapshot> = env
             .storage()
             .persistent()
@@ -1706,8 +1757,7 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::HasBorrowed(user.clone()), &true);
-        bump_borrow_snapshot_ttl(env, &user);
-        bump_has_borrowed_ttl(env, &user);
+        bump_user_borrow_state_ttl(env, &user);
         if principal == 0 {
             return;
         }
@@ -1948,7 +1998,9 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalBorrowed)
                 .expect("total borrowed missing");
-        let tb_after = tb - repay_amount;
+        let tb_after = tb
+            .checked_sub(repay_amount)
+            .expect("repay exceeds total borrowed");
         env.storage()
             .persistent()
             .set(&DataKey::TotalBorrowed, &tb_after);
@@ -2091,7 +2143,9 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalBorrowed)
                 .expect("total borrowed missing");
-        let tb_after = tb - repay_amount;
+        let tb_after = tb
+            .checked_sub(repay_amount)
+            .expect("repay exceeds total borrowed");
         env.storage()
             .persistent()
             .set(&DataKey::TotalBorrowed, &tb_after);
