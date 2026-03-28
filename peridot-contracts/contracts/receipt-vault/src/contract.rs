@@ -633,30 +633,17 @@ impl ReceiptVault {
         TokenBase::update(&env, Some(&user), None, burn_i128);
         emit_burn(&env, &user, burn_i128);
         // Update totals
-        let mut total_deposited: u128 = env
+        let total_deposited: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::TotalDeposited)
             .unwrap_or(0u128);
-        let mut accumulated: u128 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::AccumulatedInterest)
-                .expect("accumulated interest missing");
-        // Reduce principal first, then interest if needed
-        if underlying_to_return > total_deposited {
-            let from_interest = underlying_to_return - total_deposited;
-            total_deposited = 0;
-            accumulated = accumulated.saturating_sub(from_interest);
-        } else {
-            total_deposited = total_deposited - underlying_to_return;
-        }
+        // AccumulatedInterest is deprecated from supplier accounting; withdrawals
+        // only adjust tracked deposits.
+        let total_deposited_after = total_deposited.saturating_sub(underlying_to_return);
         env.storage()
             .persistent()
-            .set(&DataKey::TotalDeposited, &total_deposited);
-        env.storage()
-            .persistent()
-            .set(&DataKey::AccumulatedInterest, &accumulated);
+            .set(&DataKey::TotalDeposited, &total_deposited_after);
 
         // If boosted and cash is insufficient, withdraw from DeFindex vault
         if let Some(boosted) = env
@@ -1434,7 +1421,8 @@ impl ReceiptVault {
                 &current_fees.saturating_add(to_admin),
             );
 
-            // Increase total borrowed by total interest; suppliers' share is reflected through exchange-rate math and the accumulated interest tracker above
+            // Increase total borrowed by total interest; supplier yield is
+            // reflected through exchange-rate math via the borrow growth path.
             let tb_after = tb_prior.saturating_add(borrow_interest_total);
             env.storage()
                 .persistent()
