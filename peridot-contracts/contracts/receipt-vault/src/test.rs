@@ -461,7 +461,7 @@ fn test_exchange_rate_accrues_with_interest() {
 }
 
 #[test]
-fn test_interest_model_accrual_updates_accumulated_interest() {
+fn test_interest_model_accrual_does_not_credit_accumulated_interest() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -501,14 +501,15 @@ fn test_interest_model_accrual_updates_accumulated_interest() {
     env.ledger().set_timestamp(now + 30 * 24 * 60 * 60);
     vault_client.update_interest();
 
-    // Accumulated interest should grow when the external model is active.
+    // Supplier yield is reflected via total borrowed/exchange rate, not by
+    // separately crediting AccumulatedInterest.
     let accrued: u128 = env.as_contract(&vault_contract_id, || {
         env.storage()
             .persistent()
             .get(&DataKey::AccumulatedInterest)
             .unwrap_or(0u128)
     });
-    assert!(accrued > 0);
+    assert_eq!(accrued, 0u128);
 }
 
 #[test]
@@ -1069,8 +1070,8 @@ fn test_interest_model_supply_accrual() {
     // Trigger accrual directly
     vault.update_interest();
 
-    // With model set, supply interest accrues to the vault balance; 10% APR on 100 over a year => 110
-    assert_eq!(vault.get_total_underlying(), 110u128);
+    // With no borrows, supply yield is not minted from thin air.
+    assert_eq!(vault.get_total_underlying(), 100u128);
     assert!(vault.get_exchange_rate() >= 1_000_000u128);
 }
 
