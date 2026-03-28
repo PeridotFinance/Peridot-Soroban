@@ -1692,6 +1692,26 @@ impl ReceiptVault {
         }
     }
 
+    /// Repayment amount applied to principal (interest-only repayment does not reduce principal).
+    fn principal_component_of_repay(
+        env: &Env,
+        user: &Address,
+        current_debt: u128,
+        repay_amount: u128,
+    ) -> u128 {
+        let snapshot = env
+            .storage()
+            .persistent()
+            .get::<_, BorrowSnapshot>(&DataKey::BorrowSnapshots(user.clone()));
+        let Some(snapshot) = snapshot else {
+            return 0u128;
+        };
+        let accrued_interest = current_debt.saturating_sub(snapshot.principal);
+        repay_amount
+            .saturating_sub(accrued_interest)
+            .min(snapshot.principal)
+    }
+
     /// Get available liquidity = total_underlying - total_borrowed
     pub fn get_available_liquidity(env: Env) -> u128 {
         let total_underlying = Self::get_total_underlying(env.clone());
@@ -1933,6 +1953,8 @@ impl ReceiptVault {
         } else {
             amount
         };
+        let principal_repay_user =
+            Self::principal_component_of_repay(&env, &user, current_debt, repay_amount);
 
         // Transfer tokens from user
         let token_client = token::Client::new(&env, &token_address);
@@ -1962,7 +1984,7 @@ impl ReceiptVault {
                         .get(&DataKey::TotalBorrowed)
                         .expect("total borrowed missing")
                 });
-            let principal_repay_global = repay_amount.min(total_principal_before);
+            let principal_repay_global = principal_repay_user.min(total_principal_before);
             let total_principal_after = total_principal_before - principal_repay_global;
             env.storage().persistent().set(
                 &DataKey::TotalBorrowPrincipal,
@@ -2104,6 +2126,8 @@ impl ReceiptVault {
         } else {
             amount
         };
+        let principal_repay_user =
+            Self::principal_component_of_repay(&env, &borrower, current_debt, repay_amount);
 
         // Transfer tokens from liquidator
         liquidator.require_auth();
@@ -2134,7 +2158,7 @@ impl ReceiptVault {
                         .get(&DataKey::TotalBorrowed)
                         .expect("total borrowed missing")
                 });
-            let principal_repay_global = repay_amount.min(total_principal_before);
+            let principal_repay_global = principal_repay_user.min(total_principal_before);
             let total_principal_after = total_principal_before - principal_repay_global;
             env.storage().persistent().set(
                 &DataKey::TotalBorrowPrincipal,

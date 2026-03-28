@@ -1052,6 +1052,49 @@ fn test_borrow_cap_uses_principal_not_interest() {
     assert!(user_debt >= 130u128);
 }
 
+#[test]
+#[should_panic(expected = "borrow cap exceeded")]
+fn test_borrow_cap_not_released_by_interest_only_repay() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &5_000i128);
+    token_admin_client.mint(&lender, &5_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.set_collateral_factor(&1_000_000u128);
+
+    vault.deposit(&lender, &1_000u128);
+    vault.deposit(&user, &500u128);
+
+    let model_id = env.register(MockRateModel, ());
+    let model = MockRateModelClient::new(&env, &model_id);
+    model.initialize(&0u128, &1_000_000u128);
+    vault.set_interest_model(&model_id);
+
+    vault.set_borrow_cap(&100u128);
+    vault.borrow(&user, &100u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault.update_interest();
+
+    let debt_after_accrual = vault.get_user_borrow_balance(&user);
+    assert!(debt_after_accrual > 100u128);
+    let interest_only = debt_after_accrual - 100u128;
+    vault.repay(&user, &interest_only);
+
+    // Principal outstanding is still 100, so additional borrow must fail.
+    vault.borrow(&user, &1u128);
+}
+
 // Mock rate model providing constant yearly rates
 #[contract]
 struct MockRateModel;
