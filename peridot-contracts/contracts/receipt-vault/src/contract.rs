@@ -196,6 +196,9 @@ impl ReceiptVault {
         if borrow_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
             panic!("invalid borrow rate");
         }
+        if supply_yearly_rate_scaled > borrow_yearly_rate_scaled {
+            panic!("invalid rate relationship");
+        }
         // Store the underlying token address
         env.storage()
             .persistent()
@@ -216,6 +219,9 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::BorrowYearlyRateScaled, &borrow_yearly_rate_scaled);
+        // Borrowing is gated until either an interest model is configured or
+        // admin explicitly enables static-rate mode.
+        env.storage().persistent().set(&DataKey::RatesReady, &false);
 
         // Set last update time and accumulated interest
         let now = env.ledger().timestamp();
@@ -1150,7 +1156,36 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::InterestModel, &model.clone());
+        env.storage().persistent().set(&DataKey::RatesReady, &true);
         NewInterestModel { model }.publish(&env);
+    }
+
+    /// Admin: explicitly enable static-rate mode when no external model is used.
+    pub fn enable_static_rates(env: Env, admin: Address) {
+        let _ = ensure_initialized(&env);
+        let stored_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if stored_admin != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+        let supply_rate: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::YearlyRateScaled)
+            .expect("supply rate missing");
+        let borrow_rate: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowYearlyRateScaled)
+            .expect("borrow rate missing");
+        if supply_rate > borrow_rate {
+            panic!("invalid rate relationship");
+        }
+        env.storage().persistent().set(&DataKey::RatesReady, &true);
     }
 
     /// Admin: set reserve factor (0..=1e6)
@@ -1531,6 +1566,9 @@ impl ReceiptVault {
         if borrow_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
             panic!("invalid borrow rate");
         }
+        if supply_yearly_rate_scaled > borrow_yearly_rate_scaled {
+            panic!("invalid rate relationship");
+        }
         let storage = env.storage().persistent();
         if storage.get::<_, u128>(&DataKey::YearlyRateScaled).is_none() {
             storage.set(&DataKey::YearlyRateScaled, &supply_yearly_rate_scaled);
@@ -1570,6 +1608,10 @@ impl ReceiptVault {
         }
         if storage.get::<_, u64>(&DataKey::LastUpdateTime).is_none() {
             storage.set(&DataKey::LastUpdateTime, &env.ledger().timestamp());
+        }
+        if storage.get::<_, bool>(&DataKey::RatesReady).is_none() {
+            let has_model = storage.get::<_, Address>(&DataKey::InterestModel).is_some();
+            storage.set(&DataKey::RatesReady, &has_model);
         }
         bump_core_ttl(&env);
         bump_borrow_state_ttl(&env);
@@ -1614,6 +1656,14 @@ impl ReceiptVault {
         if yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
             panic!("invalid supply rate");
         }
+        let borrow_rate_scaled: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowYearlyRateScaled)
+            .expect("borrow rate missing");
+        if yearly_rate_scaled > borrow_rate_scaled {
+            panic!("invalid rate relationship");
+        }
         // Accrue with old rate first
         Self::update_interest(env.clone());
         env.storage()
@@ -1637,6 +1687,14 @@ impl ReceiptVault {
         admin.require_auth();
         if yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
             panic!("invalid borrow rate");
+        }
+        let supply_rate_scaled: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::YearlyRateScaled)
+            .expect("supply rate missing");
+        if supply_rate_scaled > yearly_rate_scaled {
+            panic!("invalid rate relationship");
         }
         Self::update_interest(env.clone());
         env.storage()
@@ -1786,6 +1844,13 @@ impl ReceiptVault {
         let token_address = ensure_initialized(&env);
         Self::ensure_user_borrow_flag(&env, &user);
         Self::update_interest(env.clone());
+        let storage = env.storage().persistent();
+        let rates_ready = storage
+            .get::<_, bool>(&DataKey::RatesReady)
+            .unwrap_or_else(|| storage.get::<_, Address>(&DataKey::InterestModel).is_some());
+        if !rates_ready {
+            panic!("rates not configured");
+        }
         ensure_user_auth(&env, &user);
         let mut user_ptokens_before: u128 = 0;
         let mut user_borrow_before: u128 = 0;

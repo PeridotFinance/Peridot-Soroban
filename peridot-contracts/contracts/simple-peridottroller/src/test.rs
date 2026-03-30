@@ -36,6 +36,7 @@ fn test_peridottroller_add_and_enter_market() {
     let market_vault_id = env.register(rv::ReceiptVault, ());
     let market_vault = rv::ReceiptVaultClient::new(&env, &market_vault_id);
     market_vault.initialize(&token, &0u128, &0u128, &admin);
+    market_vault.enable_static_rates(&admin);
 
     let id = env.register(SimplePeridottroller, ());
     let client = SimplePeridottrollerClient::new(&env, &id);
@@ -88,7 +89,9 @@ fn test_total_collateral_and_borrows_across_markets() {
 
     // Initialize: 0% supply, 0% borrow, set admin
     vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
     vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
 
     // Mint tokens to user for both assets
     let token_a_admin = token::StellarAssetClient::new(&env, &token_a);
@@ -219,7 +222,9 @@ fn test_oracle_gating_prevents_over_borrow() {
     let vault_b_id = env.register(rv::ReceiptVault, ());
     let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
     vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
     vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -281,7 +286,9 @@ fn test_oracle_gating_allows_within_limit() {
     let vault_b_id = env.register(rv::ReceiptVault, ());
     let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
     vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
     vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -339,6 +346,7 @@ fn test_redeem_gating_prevents_over_withdraw() {
     let vault_id = env.register(rv::ReceiptVault, ());
     let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
     vault.initialize(&token_a, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -396,9 +404,11 @@ fn test_redeem_gating_allows_within_limit() {
     let vault_id = env.register(rv::ReceiptVault, ());
     let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
     vault.initialize(&token_a, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
     let vault_b_id = env.register(rv::ReceiptVault, ());
     let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
     vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -466,7 +476,9 @@ fn test_liquidation_flow_basic() {
     let vault_b_id = env.register(rv::ReceiptVault, ()); // collateral market
     let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
     vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
     vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -550,8 +562,11 @@ fn test_liquidate_rejects_non_entered_collateral() {
     let vc = rv::ReceiptVaultClient::new(&env, &vc_id);
 
     va.initialize(&t_a, &0u128, &0u128, &admin);
+    va.enable_static_rates(&admin);
     vb.initialize(&t_b, &0u128, &0u128, &admin);
+    vb.enable_static_rates(&admin);
     vc.initialize(&t_c, &0u128, &0u128, &admin);
+    vc.enable_static_rates(&admin);
 
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
@@ -612,7 +627,9 @@ fn test_preview_redeem_max_non_entered_market_allows_full_redeem() {
     let vc_id = env.register(rv::ReceiptVault, ());
     let vc = rv::ReceiptVaultClient::new(&env, &vc_id);
     va.initialize(&t_a, &0u128, &0u128, &admin);
+    va.enable_static_rates(&admin);
     vc.initialize(&t_c, &0u128, &0u128, &admin);
+    vc.enable_static_rates(&admin);
 
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
@@ -669,6 +686,7 @@ fn test_repay_on_behalf_for_liquidator() {
     let vault_id = env.register(rv::ReceiptVault, ());
     let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
     vault.initialize(&token, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
 
     let comp_id = env.register(SimplePeridottroller, ());
     vault.set_peridottroller(&comp_id);
@@ -723,7 +741,9 @@ fn test_liquidation_capped_by_close_factor() {
     let vault_b_id = env.register(rv::ReceiptVault, ());
     let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
     vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
     vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -800,7 +820,9 @@ fn test_liquidation_no_shortfall_panics() {
     let vault_b_id = env.register(rv::ReceiptVault, ());
     let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
     vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
     vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -863,7 +885,9 @@ fn test_liquidation_zero_repay_panics() {
     let vault_b_id = env.register(rv::ReceiptVault, ());
     let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
     vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
     vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
 
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
@@ -917,6 +941,7 @@ fn test_preview_helpers_basic() {
     let vault_id = env.register(rv::ReceiptVault, ());
     let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
     vault.initialize(&token, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -976,7 +1001,9 @@ fn test_preview_helpers_extended() {
     let vb_id = env.register(rv::ReceiptVault, ());
     let vb = rv::ReceiptVaultClient::new(&env, &vb_id);
     va.initialize(&t_a, &0u128, &0u128, &admin);
+    va.enable_static_rates(&admin);
     vb.initialize(&t_b, &0u128, &0u128, &admin);
+    vb.enable_static_rates(&admin);
 
     // Comptroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -1066,6 +1093,7 @@ fn test_pause_borrow_blocks_borrow() {
     let vault_id = env.register(rv::ReceiptVault, ());
     let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
     vault.initialize(&token, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
@@ -1101,6 +1129,7 @@ fn test_pause_redeem_blocks_withdraw() {
     let vault_id = env.register(rv::ReceiptVault, ());
     let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
     vault.initialize(&token, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
@@ -1140,7 +1169,9 @@ fn test_pause_liquidation_blocks_liquidate() {
     let vb_id = env.register(rv::ReceiptVault, ());
     let vb = rv::ReceiptVaultClient::new(&env, &vb_id);
     va.initialize(&t_a, &0u128, &0u128, &admin);
+    va.enable_static_rates(&admin);
     vb.initialize(&t_b, &0u128, &0u128, &admin);
+    vb.enable_static_rates(&admin);
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
@@ -1189,6 +1220,7 @@ fn test_pause_deposit_blocks_deposit() {
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -1232,6 +1264,7 @@ fn test_pause_deposit_blocks_deposit_guardian() {
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
 
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
@@ -1284,7 +1317,9 @@ fn test_liquidation_fee_routed_to_reserves() {
     let vb_id = env.register(rv::ReceiptVault, ());
     let vb = rv::ReceiptVaultClient::new(&env, &vb_id);
     va.initialize(&t_a, &0u128, &0u128, &admin);
+    va.enable_static_rates(&admin);
     vb.initialize(&t_b, &0u128, &0u128, &admin);
+    vb.enable_static_rates(&admin);
 
     // Peridottroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -1370,7 +1405,9 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
     let vault_b_id = env.register(rv::ReceiptVault, ());
     let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
     vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
     vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
 
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
@@ -1439,7 +1476,9 @@ fn test_oracle_missing_price_panics() {
     let borrow_vault_id = env.register(rv::ReceiptVault, ());
     let borrow_vault = rv::ReceiptVaultClient::new(&env, &borrow_vault_id);
     coll_vault.initialize(&coll_token, &0u128, &0u128, &admin);
+    coll_vault.enable_static_rates(&admin);
     borrow_vault.initialize(&borrow_token, &0u128, &0u128, &admin);
+    borrow_vault.enable_static_rates(&admin);
 
     // Peridottroller wiring
     let comp_id = env.register(SimplePeridottroller, ());
@@ -1489,6 +1528,7 @@ fn test_oracle_decimals_normalization() {
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
 
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
@@ -1540,6 +1580,7 @@ fn test_vault_repay_on_behalf_requires_peridottroller() {
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
 
     // Fund and create debt without wiring peridottroller
     let mint = token::StellarAssetClient::new(&env, &t);
@@ -1569,6 +1610,7 @@ fn test_vault_seize_requires_peridottroller() {
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
 
     // Give borrower some pTokens
     let mint = token::StellarAssetClient::new(&env, &t);
@@ -1595,6 +1637,7 @@ fn test_rewards_accrual_and_claim() {
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
 
     // Comptroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -1667,7 +1710,9 @@ fn test_borrow_side_rewards_and_claim() {
     let vb_id = env.register(rv::ReceiptVault, ());
     let vb = rv::ReceiptVaultClient::new(&env, &vb_id);
     va.initialize(&ta, &0u128, &0u128, &admin);
+    va.enable_static_rates(&admin);
     vb.initialize(&tb, &0u128, &0u128, &admin);
+    vb.enable_static_rates(&admin);
 
     // Comptroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -1746,6 +1791,7 @@ fn test_accrue_user_market_rejects_external_hints() {
     // Mock only specific auths needed for setup (not for the attack)
     env.mock_all_auths();
     v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
 
     // Comptroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -1809,6 +1855,7 @@ fn test_accrue_user_market_allows_no_hints() {
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
     v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
 
     // Comptroller
     let comp_id = env.register(SimplePeridottroller, ());
@@ -1882,7 +1929,9 @@ fn test_multi_market_supply_rewards() {
     let vb_id = env.register(rv::ReceiptVault, ());
     let vb = rv::ReceiptVaultClient::new(&env, &vb_id);
     va.initialize(&ta, &0u128, &0u128, &admin);
+    va.enable_static_rates(&admin);
     vb.initialize(&tb, &0u128, &0u128, &admin);
+    vb.enable_static_rates(&admin);
 
     // Comptroller
     let comp_id = env.register(SimplePeridottroller, ());

@@ -253,6 +253,8 @@ fn setup_min() -> (Env, Address, Address, Address, Address) {
     let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
     usdt_vault.initialize(&usdt_id, &0u128, &0u128, &admin);
     xlm_vault.initialize(&xlm_id, &0u128, &0u128, &admin);
+    usdt_vault.enable_static_rates(&admin);
+    xlm_vault.enable_static_rates(&admin);
 
     let peridottroller_id = env.register(MockPeridottroller, ());
     MockPeridottrollerClient::new(&env, &peridottroller_id)
@@ -300,6 +302,8 @@ fn setup_min_with_vaults() -> (Env, Address, Address, Address, Address, Address,
     let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
     usdt_vault.initialize(&usdt_id, &0u128, &0u128, &admin);
     xlm_vault.initialize(&xlm_id, &0u128, &0u128, &admin);
+    usdt_vault.enable_static_rates(&admin);
+    xlm_vault.enable_static_rates(&admin);
 
     let peridottroller_id = env.register(MockPeridottroller, ());
     MockPeridottrollerClient::new(&env, &peridottroller_id)
@@ -390,6 +394,8 @@ fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Addres
     let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
     usdt_vault.initialize(&usdt_id, &0u128, &0u128, &admin);
     xlm_vault.initialize(&xlm_id, &0u128, &0u128, &admin);
+    usdt_vault.enable_static_rates(&admin);
+    xlm_vault.enable_static_rates(&admin);
 
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
