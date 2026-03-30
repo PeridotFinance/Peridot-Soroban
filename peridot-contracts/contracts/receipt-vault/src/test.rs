@@ -1535,14 +1535,14 @@ fn test_ptoken_transfer_and_approve_with_gating() {
     v.deposit(&user, &200u128); // user has 200 pTokens
 
     // Transfer 50 pTokens to other -> healthy
-    v.transfer(&user, &other, &50u128);
+    v.transfer(&user, &other, &50i128);
     assert_eq!(v.get_ptoken_balance(&user), 150u128);
     assert_eq!(v.get_ptoken_balance(&other), 50u128);
 
     // Approve and transfer_from 50 pTokens from user to other
     let live_until_ledger = env.ledger().sequence() + 1000;
-    v.approve(&user, &other, &50u128, &live_until_ledger);
-    v.transfer_from(&other, &user, &other, &50u128);
+    v.approve(&user, &other, &50i128, &live_until_ledger);
+    v.transfer_from(&other, &user, &other, &50i128);
     assert_eq!(v.get_ptoken_balance(&user), 100u128);
     assert_eq!(v.get_ptoken_balance(&other), 100u128);
 
@@ -1554,7 +1554,7 @@ fn test_ptoken_transfer_and_approve_with_gating() {
     v.set_peridottroller(&comp_id);
 
     // Attempt transfer 101 -> should panic via peridottroller gating
-    v.transfer(&user, &other, &101u128);
+    v.transfer(&user, &other, &101i128);
 }
 
 #[test]

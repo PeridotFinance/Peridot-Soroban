@@ -1,6 +1,7 @@
 use soroban_sdk::{
     auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
-    contract, contractimpl, token, Address, Bytes, Env, IntoVal, String, Symbol, Val, Vec,
+    contract, contractimpl, token, Address, Bytes, Env, IntoVal, MuxedAddress, String, Symbol,
+    Val, Vec,
 };
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
@@ -260,12 +261,8 @@ impl ReceiptVault {
         env.storage().persistent().set(&DataKey::SupplyCap, &0u128);
         env.storage().persistent().set(&DataKey::BorrowCap, &0u128);
 
-        TokenBase::set_metadata(
-            &env,
-            PTOKEN_DECIMALS,
-            String::from_str(&env, "Peridot Receipt"),
-            String::from_str(&env, "pPRT"),
-        );
+        let metadata = env.current_contract_address().to_string();
+        TokenBase::set_metadata(&env, PTOKEN_DECIMALS, metadata.clone(), metadata);
     }
 
     /// Admin: set boosted vault address (DeFindex).
@@ -757,34 +754,73 @@ impl ReceiptVault {
         env: Env,
         owner: Address,
         spender: Address,
-        amount: u128,
+        amount: i128,
         live_until_ledger: u32,
     ) {
         owner.require_auth();
-        TokenBase::approve(
-            &env,
-            &owner,
-            &spender,
-            to_i128(amount),
-            live_until_ledger,
-        );
-    }
-
-    pub fn allowance(env: Env, owner: Address, spender: Address) -> u128 {
-        let allowance = TokenBase::allowance(&env, &owner, &spender);
-        if allowance < 0 {
-            0
-        } else {
-            allowance as u128
+        if amount < 0 {
+            panic!("bad amount");
         }
+        TokenBase::approve(&env, &owner, &spender, amount, live_until_ledger);
     }
 
-    pub fn transfer(env: Env, from: Address, to: Address, amount: u128) {
-        Self::transfer_internal(env, from, to, amount, None);
+    pub fn allowance(env: Env, owner: Address, spender: Address) -> i128 {
+        TokenBase::allowance(&env, &owner, &spender)
     }
 
-    pub fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: u128) {
-        Self::transfer_internal(env, owner, to, amount, Some(spender));
+    pub fn transfer(env: Env, from: Address, to: MuxedAddress, amount: i128) {
+        if amount < 0 {
+            panic!("bad amount");
+        }
+        Self::transfer_internal(env, from, to.address(), amount as u128, None);
+    }
+
+    pub fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: i128) {
+        if amount < 0 {
+            panic!("bad amount");
+        }
+        Self::transfer_internal(env, owner, to, amount as u128, Some(spender));
+    }
+
+    pub fn burn(env: Env, from: Address, amount: i128) {
+        let _ = ensure_initialized(&env);
+        if amount < 0 {
+            panic!("bad amount");
+        }
+        TokenBase::burn(&env, &from, amount);
+    }
+
+    pub fn burn_from(env: Env, spender: Address, from: Address, amount: i128) {
+        let _ = ensure_initialized(&env);
+        if amount < 0 {
+            panic!("bad amount");
+        }
+        TokenBase::burn_from(&env, &spender, &from, amount);
+    }
+
+    pub fn balance(env: Env, account: Address) -> i128 {
+        let _ = ensure_initialized(&env);
+        TokenBase::balance(&env, &account)
+    }
+
+    pub fn total_supply(env: Env) -> i128 {
+        let _ = ensure_initialized(&env);
+        TokenBase::total_supply(&env)
+    }
+
+    pub fn decimals(env: Env) -> u32 {
+        let _ = ensure_initialized(&env);
+        TokenBase::decimals(&env)
+    }
+
+    pub fn name(env: Env) -> String {
+        let _ = ensure_initialized(&env);
+        TokenBase::name(&env)
+    }
+
+    pub fn symbol(env: Env) -> String {
+        let _ = ensure_initialized(&env);
+        TokenBase::symbol(&env)
     }
 
     fn transfer_internal(
