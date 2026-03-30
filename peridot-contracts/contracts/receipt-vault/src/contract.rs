@@ -654,10 +654,9 @@ impl ReceiptVault {
         {
             let cash = Self::get_managed_cash(&env);
             if cash < underlying_to_return {
-                    let cash_before =
-                        Self::current_live_cash(&env, &token_address);
-                    let total_shares_i: i128 =
-                        call_contract_or_panic(&env, &boosted, "total_supply", ());
+                let needed_from_boosted = underlying_to_return - cash;
+                let cash_before = Self::current_live_cash(&env, &token_address);
+                let total_shares_i: i128 = call_contract_or_panic(&env, &boosted, "total_supply", ());
                 if total_shares_i > 0 {
                     let total_shares = total_shares_i as u128;
                     let total_amounts: Vec<i128> = call_contract_or_panic(
@@ -677,7 +676,7 @@ impl ReceiptVault {
                             shares_to_withdraw = shares_to_withdraw.saturating_add(1);
                         }
                         let mut min_amounts_out: Vec<i128> = Vec::new(&env);
-                        min_amounts_out.push_back(0);
+                        min_amounts_out.push_back(to_i128(needed_from_boosted));
                         let args: Vec<Val> = (
                             shares_to_withdraw as i128,
                             min_amounts_out.clone(),
@@ -712,6 +711,11 @@ impl ReceiptVault {
                     }
                 }
             }
+        }
+
+        let cash_after_boost = Self::current_live_cash(&env, &token_address);
+        if cash_after_boost < underlying_to_return {
+            panic!("withdraw liquidity shortfall");
         }
 
         // Transfer tokens back to user
