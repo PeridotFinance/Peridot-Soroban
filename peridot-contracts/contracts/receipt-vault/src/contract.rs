@@ -18,6 +18,36 @@ const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
 
 #[contractimpl]
 impl ReceiptVault {
+    fn gcd_u128(mut a: u128, mut b: u128) -> u128 {
+        while b != 0 {
+            let r = a % b;
+            a = b;
+            b = r;
+        }
+        a
+    }
+
+    fn checked_mul_div_u128(a: u128, b: u128, denom: u128) -> u128 {
+        if denom == 0 {
+            panic!("division by zero");
+        }
+        // Reduce before multiplying to avoid overflow in intermediate products.
+        let mut left = a;
+        let mut right = b;
+        let mut d = denom;
+
+        let g1 = Self::gcd_u128(left, d);
+        left /= g1;
+        d /= g1;
+        let g2 = Self::gcd_u128(right, d);
+        right /= g2;
+        d /= g2;
+
+        left.checked_mul(right)
+            .expect("borrow index delta overflow")
+            / d
+    }
+
     fn cached_boosted_underlying(env: &Env) -> u128 {
         env.storage()
             .persistent()
@@ -1495,14 +1525,18 @@ impl ReceiptVault {
                 .set(&DataKey::TotalBorrowed, &tb_after);
             event_total_borrows = tb_after;
 
-            // Update borrow index: delta = old_index * borrow_interest / tb_prior
+            // Update borrow index with checked math (no saturating overflow).
+            // delta = old_index * borrow_interest / tb_prior
             let old_index: u128 = env
                 .storage()
                 .persistent()
                 .get(&DataKey::BorrowIndex)
                 .expect("borrow index missing");
-            let delta_index = (old_index.saturating_mul(borrow_interest_total)) / tb_prior;
-            let new_index = old_index.saturating_add(delta_index);
+            let delta_index =
+                Self::checked_mul_div_u128(old_index, borrow_interest_total, tb_prior);
+            let new_index = old_index
+                .checked_add(delta_index)
+                .expect("borrow index overflow");
             env.storage()
                 .persistent()
                 .set(&DataKey::BorrowIndex, &new_index);
