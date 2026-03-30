@@ -663,6 +663,27 @@ impl ReceiptVault {
             }
         }
 
+        let total_ptokens_after = total_ptokens_before
+            .checked_sub(ptoken_amount)
+            .expect("ptoken supply underflow");
+        if total_ptokens_after == 0 {
+            let total_borrowed: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowed)
+                .expect("total borrowed missing");
+            if total_borrowed > 0 {
+                panic!("cannot zero supply with outstanding borrows");
+            }
+
+            // Prevent a zero-supply state with residual value that would let the
+            // next depositor bootstrap at an unfair initial exchange rate.
+            let total_underlying_before = Self::get_total_underlying(env.clone());
+            if total_underlying_before > underlying_to_return {
+                panic!("cannot zero supply with residual assets");
+            }
+        }
+
         // Create token client
         let token_client = token::Client::new(&env, &token_address);
 
@@ -1026,6 +1047,10 @@ impl ReceiptVault {
         let _ = ensure_initialized(&env);
         let total_ptokens = total_ptokens_supply(&env);
         if total_ptokens == 0 {
+            let total_underlying = Self::get_total_underlying(env.clone());
+            if total_underlying > 0 {
+                panic!("non-empty vault at zero supply");
+            }
             return env
                 .storage()
                 .persistent()
