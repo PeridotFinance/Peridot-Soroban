@@ -175,6 +175,21 @@ impl FlashLoanRenegade {
     }
 }
 
+#[contract]
+pub struct FailingRewardsPeridottroller;
+
+#[contractimpl]
+impl FailingRewardsPeridottroller {
+    pub fn accrue_user_market(
+        _env: Env,
+        _user: Address,
+        _market: Address,
+        _hint: Option<ControllerAccrualHint>,
+    ) {
+        panic!("accrual failed");
+    }
+}
+
 
 
 #[test]
@@ -376,6 +391,32 @@ fn test_deposit_receives_ptokens() {
     assert_eq!(vault_client.get_total_ptokens(), 100u128);
     assert_eq!(token_client.balance(&vault_contract_id), 100i128);
     assert_eq!(token_client.balance(&user), 900i128);
+}
+
+#[test]
+#[should_panic(expected = "reward accrual failed")]
+fn test_deposit_reverts_when_reward_accrual_fails() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &500i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let failing_comp_id = env.register(FailingRewardsPeridottroller, ());
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .set(&DataKey::Peridottroller, &failing_comp_id);
+    });
+
+    vault.deposit(&user, &100u128);
 }
 
 #[test]

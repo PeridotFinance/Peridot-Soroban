@@ -164,6 +164,36 @@ impl ReceiptVault {
         bump_user_borrow_state_ttl(env, user);
     }
 
+    fn accrue_user_rewards(
+        env: &Env,
+        user: &Address,
+        hint: ControllerAccrualHint,
+        operation: &str,
+    ) {
+        if let Some(comp_addr) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::Peridottroller)
+        {
+            if let Err(err) = try_call_contract::<(), _>(
+                env,
+                &comp_addr,
+                "accrue_user_market",
+                (user.clone(), env.current_contract_address(), Some(hint)),
+            ) {
+                emit_external_call_failure(env, &comp_addr, &err, false);
+                RewardAccrualFailed {
+                    controller: comp_addr,
+                    user: user.clone(),
+                    operation: Symbol::new(env, operation),
+                    failure_kind: err.kind.as_code(),
+                }
+                .publish(env);
+                panic!("reward accrual failed");
+            }
+        }
+    }
+
     /// Initialize the vault with underlying token, supply yearly rate, borrow yearly rate, and admin
     /// Rates are scaled by 1e6 (e.g., 10% = 100_000)
     pub fn initialize(
@@ -308,35 +338,22 @@ impl ReceiptVault {
         // Require authorization from the user
         Self::ensure_user_borrow_flag(&env, &user);
         ensure_user_auth(&env, &user);
-        // Rewards: accrue user in this market
-        if let Some(comp_addr) = env
+        // Rewards: accrue user in this market and fail closed on error.
+        let total_ptokens_before = total_ptokens_supply(&env);
+        let total_borrowed_before: u128 = env
             .storage()
             .persistent()
-            .get::<_, Address>(&DataKey::Peridottroller)
-        {
-            let total_ptokens_before = total_ptokens_supply(&env);
-            let total_borrowed_before: u128 = env
-                .storage()
-                .persistent()
-                .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
-            let user_ptokens_before = ptoken_balance(&env, &user);
-            let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
-            let hint = ControllerAccrualHint {
-                total_ptokens: Some(total_ptokens_before),
-                total_borrowed: Some(total_borrowed_before),
-                user_ptokens: Some(user_ptokens_before),
-                user_borrowed: Some(user_borrow_before),
-            };
-            if let Err(err) = try_call_contract::<(), _>(
-                &env,
-                &comp_addr,
-                "accrue_user_market",
-                (user.clone(), env.current_contract_address(), Some(hint)),
-            ) {
-                emit_external_call_failure(&env, &comp_addr, &err, true);
-            }
-        }
+            .get(&DataKey::TotalBorrowed)
+            .expect("total borrowed missing");
+        let user_ptokens_before = ptoken_balance(&env, &user);
+        let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
+        let hint = ControllerAccrualHint {
+            total_ptokens: Some(total_ptokens_before),
+            total_borrowed: Some(total_borrowed_before),
+            user_ptokens: Some(user_ptokens_before),
+            user_borrowed: Some(user_borrow_before),
+        };
+        Self::accrue_user_rewards(&env, &user, hint, "deposit");
 
         // Get the underlying token
         // Pause: consult peridottroller if set
@@ -483,34 +500,21 @@ impl ReceiptVault {
         // Always update interest first
         Self::update_interest(env.clone());
         let current_ptokens = ptoken_balance(&env, &user);
-        // Rewards accrue
-        if let Some(comp_addr) = env
+        // Rewards accrue and fail closed on error.
+        let total_ptokens_before = total_ptokens_supply(&env);
+        let total_borrowed_before: u128 = env
             .storage()
             .persistent()
-            .get::<_, Address>(&DataKey::Peridottroller)
-        {
-            let total_ptokens_before = total_ptokens_supply(&env);
-            let total_borrowed_before: u128 = env
-                .storage()
-                .persistent()
-                .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
-            let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
-            let hint = ControllerAccrualHint {
-                total_ptokens: Some(total_ptokens_before),
-                total_borrowed: Some(total_borrowed_before),
-                user_ptokens: Some(current_ptokens),
-                user_borrowed: Some(user_borrow_before),
-            };
-            if let Err(err) = try_call_contract::<(), _>(
-                &env,
-                &comp_addr,
-                "accrue_user_market",
-                (user.clone(), env.current_contract_address(), Some(hint)),
-            ) {
-                emit_external_call_failure(&env, &comp_addr, &err, true);
-            }
-        }
+            .get(&DataKey::TotalBorrowed)
+            .expect("total borrowed missing");
+        let user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
+        let hint = ControllerAccrualHint {
+            total_ptokens: Some(total_ptokens_before),
+            total_borrowed: Some(total_borrowed_before),
+            user_ptokens: Some(current_ptokens),
+            user_borrowed: Some(user_borrow_before),
+        };
+        Self::accrue_user_rewards(&env, &user, hint, "withdraw");
 
         // Check user has sufficient pTokens
         if current_ptokens < ptoken_amount {
@@ -911,51 +915,27 @@ impl ReceiptVault {
             }
         }
 
-        // Rewards accrual on transfers when peridottroller is wired
-        if let Some(comp_addr) = env
+        // Rewards accrual on transfers when peridottroller is wired.
+        let total_ptokens_now = total_ptokens_supply(&env);
+        let total_borrowed_now: u128 = env
             .storage()
             .persistent()
-            .get::<_, Address>(&DataKey::Peridottroller)
-        {
-            let total_ptokens_now = total_ptokens_supply(&env);
-            let total_borrowed_now: u128 = env
-                .storage()
-                .persistent()
-                .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
-            let from_hint = ControllerAccrualHint {
-                total_ptokens: Some(total_ptokens_now),
-                total_borrowed: Some(total_borrowed_now),
-                user_ptokens: Some(ptoken_balance(&env, &from)),
-                user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), from.clone())),
-            };
-            if let Err(err) = try_call_contract::<(), _>(
-                &env,
-                &comp_addr,
-                "accrue_user_market",
-                (
-                    from.clone(),
-                    env.current_contract_address(),
-                    Some(from_hint),
-                ),
-            ) {
-                emit_external_call_failure(&env, &comp_addr, &err, true);
-            }
-            let to_hint = ControllerAccrualHint {
-                total_ptokens: Some(total_ptokens_now),
-                total_borrowed: Some(total_borrowed_now),
-                user_ptokens: Some(ptoken_balance(&env, &to)),
-                user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), to.clone())),
-            };
-            if let Err(err) = try_call_contract::<(), _>(
-                &env,
-                &comp_addr,
-                "accrue_user_market",
-                (to, env.current_contract_address(), Some(to_hint)),
-            ) {
-                emit_external_call_failure(&env, &comp_addr, &err, true);
-            }
-        }
+            .get(&DataKey::TotalBorrowed)
+            .expect("total borrowed missing");
+        let from_hint = ControllerAccrualHint {
+            total_ptokens: Some(total_ptokens_now),
+            total_borrowed: Some(total_borrowed_now),
+            user_ptokens: Some(ptoken_balance(&env, &from)),
+            user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), from.clone())),
+        };
+        Self::accrue_user_rewards(&env, &from, from_hint, "transfer");
+        let to_hint = ControllerAccrualHint {
+            total_ptokens: Some(total_ptokens_now),
+            total_borrowed: Some(total_borrowed_now),
+            user_ptokens: Some(ptoken_balance(&env, &to)),
+            user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), to.clone())),
+        };
+        Self::accrue_user_rewards(&env, &to, to_hint, "transfer");
     }
 
     /// Get total amount deposited in the vault
@@ -1855,7 +1835,7 @@ impl ReceiptVault {
         let mut user_ptokens_before: u128 = 0;
         let mut user_borrow_before: u128 = 0;
         let mut exchange_rate: u128 = 0;
-        if let Some(comp_addr) = env
+        if let Some(_comp_addr) = env
             .storage()
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
@@ -1875,14 +1855,7 @@ impl ReceiptVault {
                 user_ptokens: Some(user_ptokens_before),
                 user_borrowed: Some(user_borrow_before),
             };
-            if let Err(err) = try_call_contract::<(), _>(
-                &env,
-                &comp_addr,
-                "accrue_user_market",
-                (user.clone(), env.current_contract_address(), Some(hint)),
-            ) {
-                emit_external_call_failure(&env, &comp_addr, &err, true);
-            }
+            Self::accrue_user_rewards(&env, &user, hint, "borrow");
         }
 
         // Cross-market enforcement via peridottroller (USD); fall back to local-only if no peridottroller
@@ -2022,7 +1995,7 @@ impl ReceiptVault {
         Self::update_interest(env.clone());
         ensure_user_auth(&env, &user);
         let current_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
-        if let Some(comp_addr) = env
+        if let Some(_comp_addr) = env
             .storage()
             .persistent()
             .get::<_, Address>(&DataKey::Peridottroller)
@@ -2040,14 +2013,7 @@ impl ReceiptVault {
                 user_ptokens: Some(user_ptokens_before),
                 user_borrowed: Some(current_debt),
             };
-            if let Err(err) = try_call_contract::<(), _>(
-                &env,
-                &comp_addr,
-                "accrue_user_market",
-                (user.clone(), env.current_contract_address(), Some(hint)),
-            ) {
-                emit_external_call_failure(&env, &comp_addr, &err, true);
-            }
+            Self::accrue_user_rewards(&env, &user, hint, "repay");
         }
 
         if current_debt == 0 {

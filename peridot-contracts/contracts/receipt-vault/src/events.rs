@@ -178,6 +178,18 @@ pub struct ExternalCallFailed {
     pub failure_kind: u32,
 }
 
+/// Dedicated signal for reward accrual failures with user context.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RewardAccrualFailed {
+    #[topic]
+    pub controller: Address,
+    #[topic]
+    pub user: Address,
+    pub operation: Symbol,
+    pub failure_kind: u32,
+}
+
 /// Emits when interest math saturates to avoid panic.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
