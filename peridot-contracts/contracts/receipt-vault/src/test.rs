@@ -1043,6 +1043,42 @@ fn test_borrow_interest_accrues_and_index_updates() {
 }
 
 #[test]
+#[should_panic(expected = "borrow index overflow")]
+fn test_update_interest_reverts_on_borrow_index_overflow() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&lender, &1_000i128);
+    token_admin_client.mint(&borrower, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &1_000_000u128, &admin); // 100% borrow APR
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+
+    vault.deposit(&lender, &500u128);
+    vault.deposit(&borrower, &200u128);
+    vault.borrow(&borrower, &100u128);
+
+    // Force old_index to max so one full-year accrual overflows on checked add.
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .set(&DataKey::BorrowIndex, &u128::MAX);
+    });
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault.update_interest();
+}
+
+#[test]
 #[should_panic(expected = "supply cap exceeded")]
 fn test_supply_cap_enforced_on_deposit() {
     let env = Env::default();
