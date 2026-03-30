@@ -35,6 +35,7 @@ pub enum DataKey {
     BoostedUnderlyingCached,  // u128 cached underlying amount for boosted vault
     BoostedUnderlyingUpdatedAt, // u64 timestamp of cached boosted underlying
     TotalBorrowPrincipal,     // u128 principal-only global borrow total
+    RatesReady,               // bool, borrow/rate-sensitive operations enabled
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
