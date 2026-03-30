@@ -215,6 +215,28 @@ fn test_initialize() {
 }
 
 #[test]
+#[should_panic(expected = "non-empty vault at zero supply")]
+fn test_exchange_rate_reverts_on_zero_supply_with_residual_underlying() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    // Craft inconsistent residual economics with zero pToken supply.
+    env.as_contract(&vault_id, || {
+        env.storage().persistent().set(&DataKey::TotalBorrowed, &1u128);
+    });
+
+    vault.get_exchange_rate();
+}
+
+#[test]
 fn test_core_ttl_bumps_all_critical_config_keys() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
