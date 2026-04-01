@@ -132,6 +132,13 @@ pub struct NewBorrowCap {
     pub borrow_cap: u128,
 }
 
+/// Idle cash buffer target update (basis points of total underlying).
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NewIdleCashBuffer {
+    pub idle_cash_buffer_bps: u32,
+}
+
 /// Mirrors Compound's ReservesReduced event.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]

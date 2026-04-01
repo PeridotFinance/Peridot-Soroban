@@ -5,7 +5,7 @@ use stellar_tokens::fungible::Base as TokenBase;
 #[contracttype]
 pub enum DataKey {
     UnderlyingToken,
-    ManagedCash,              // u128 internal cash accounting; excludes direct donations
+    ManagedCash, // u128 internal cash accounting; excludes direct donations
     TotalDeposited,
     InterestRatePerSecond, // u128, scaled by 1_000_000 (6 decimals)
     LastUpdateTime,        // u64
@@ -13,29 +13,30 @@ pub enum DataKey {
     YearlyRateScaled,      // u128, scaled by 1_000_000 (6 decimals)
     InitialExchangeRate,   // u128, scaled 1e6
     // Borrowing-related keys
-    BorrowSnapshots(Address), // BorrowSnapshot per user
-    HasBorrowed(Address),     // bool flag per user
-    TotalBorrowed,            // u128
-    BorrowIndex,              // u128 (scaled 1e18)
-    BorrowYearlyRateScaled,   // u128, scaled 1e6
-    CollateralFactorScaled,   // u128, scaled 1e6 (e.g., 500_000 = 50%)
-    Admin,                    // Address
-    PendingAdmin,             // Address pending acceptance
-    Peridottroller,           // Address (optional)
-    InterestModel,            // Address (optional)
-    ReserveFactorScaled,      // u128 (scaled 1e6), defaults 0
-    AdminFeeScaled,           // u128 (scaled 1e6), defaults 0
-    FlashLoanFeeScaled,       // u128 (scaled 1e6), defaults 0
-    TotalAdminFees,           // u128 accumulated admin fees
-    TotalReserves,            // u128 accumulated reserves
-    SupplyCap,                // u128, max total underlying (principal + interest)
-    BorrowCap,                // u128, max total borrowed
-    Initialized,              // bool flag to prevent re-initialization
-    BoostedVault,             // Optional DeFindex vault address for boosted markets
-    BoostedUnderlyingCached,  // u128 cached underlying amount for boosted vault
+    BorrowSnapshots(Address),   // BorrowSnapshot per user
+    HasBorrowed(Address),       // bool flag per user
+    TotalBorrowed,              // u128
+    BorrowIndex,                // u128 (scaled 1e18)
+    BorrowYearlyRateScaled,     // u128, scaled 1e6
+    CollateralFactorScaled,     // u128, scaled 1e6 (e.g., 500_000 = 50%)
+    Admin,                      // Address
+    PendingAdmin,               // Address pending acceptance
+    Peridottroller,             // Address (optional)
+    InterestModel,              // Address (optional)
+    ReserveFactorScaled,        // u128 (scaled 1e6), defaults 0
+    AdminFeeScaled,             // u128 (scaled 1e6), defaults 0
+    FlashLoanFeeScaled,         // u128 (scaled 1e6), defaults 0
+    TotalAdminFees,             // u128 accumulated admin fees
+    TotalReserves,              // u128 accumulated reserves
+    SupplyCap,                  // u128, max total underlying (principal + interest)
+    BorrowCap,                  // u128, max total borrowed
+    Initialized,                // bool flag to prevent re-initialization
+    BoostedVault,               // Optional DeFindex vault address for boosted markets
+    BoostedUnderlyingCached,    // u128 cached underlying amount for boosted vault
     BoostedUnderlyingUpdatedAt, // u64 timestamp of cached boosted underlying
-    TotalBorrowPrincipal,     // u128 principal-only global borrow total
-    RatesReady,               // bool, borrow/rate-sensitive operations enabled
+    TotalBorrowPrincipal,       // u128 principal-only global borrow total
+    RatesReady,                 // bool, borrow/rate-sensitive operations enabled
+    IdleCashBufferBps,          // u32, target idle cash in basis points (0..=10_000)
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -117,7 +118,11 @@ pub fn bump_core_ttl(env: &Env) {
         persistent.extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::CollateralFactorScaled) {
-        persistent.extend_ttl(&DataKey::CollateralFactorScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::CollateralFactorScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::Peridottroller) {
         persistent.extend_ttl(&DataKey::Peridottroller, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -150,7 +155,11 @@ pub fn bump_core_ttl(env: &Env) {
         persistent.extend_ttl(&DataKey::BoostedVault, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::BoostedUnderlyingCached) {
-        persistent.extend_ttl(&DataKey::BoostedUnderlyingCached, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::BoostedUnderlyingCached,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::BoostedUnderlyingUpdatedAt) {
         persistent.extend_ttl(
@@ -191,7 +200,11 @@ pub fn bump_borrow_state_ttl(env: &Env) {
         persistent.extend_ttl(&DataKey::YearlyRateScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::BorrowYearlyRateScaled) {
-        persistent.extend_ttl(&DataKey::BorrowYearlyRateScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::BorrowYearlyRateScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::TotalBorrowed) {
         persistent.extend_ttl(&DataKey::TotalBorrowed, TTL_THRESHOLD, TTL_EXTEND_TO);

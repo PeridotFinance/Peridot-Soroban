@@ -4,15 +4,12 @@ use super::*;
 use jump_rate_model as jrm;
 use mock_token::MockTokenClient;
 use simple_peridottroller::{SimplePeridottroller, SimplePeridottrollerClient};
-use soroban_sdk::testutils::Ledger;
+use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
 use soroban_sdk::testutils::storage::Persistent as _;
+use soroban_sdk::testutils::Ledger;
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
-use soroban_sdk::{
-    testutils::Address as _,
-    token, Address, Bytes, Env, IntoVal, Symbol, Val, Vec,
-};
-use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
+use soroban_sdk::{testutils::Address as _, token, Address, Bytes, Env, IntoVal, Symbol, Val, Vec};
 
 fn assert_budget_under(env: &Env, max_cpu: u64, max_mem: u64) {
     let budget = env.cost_estimate().budget();
@@ -73,7 +70,11 @@ impl MockOracle {
     }
 
     pub fn lastprice(env: Env, _asset: OracleAsset) -> Option<OraclePriceData> {
-        let price: i128 = env.storage().persistent().get(&OracleKey::Price).unwrap_or(0);
+        let price: i128 = env
+            .storage()
+            .persistent()
+            .get(&OracleKey::Price)
+            .unwrap_or(0);
         Some(OraclePriceData {
             price,
             timestamp: env.ledger().timestamp(),
@@ -190,7 +191,130 @@ impl FailingRewardsPeridottroller {
     }
 }
 
+#[contract]
+pub struct MockBoostedVault;
 
+#[contracttype]
+enum BoostedKey {
+    Underlying,
+    TotalShares,
+    Share(Address),
+}
+
+#[contractimpl]
+impl MockBoostedVault {
+    pub fn initialize(env: Env, underlying: Address) {
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::Underlying, &underlying);
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::TotalShares, &0i128);
+    }
+
+    pub fn balance(env: Env, owner: Address) -> i128 {
+        env.storage()
+            .persistent()
+            .get(&BoostedKey::Share(owner))
+            .unwrap_or(0i128)
+    }
+
+    pub fn total_supply(env: Env) -> i128 {
+        env.storage()
+            .persistent()
+            .get(&BoostedKey::TotalShares)
+            .unwrap_or(0i128)
+    }
+
+    pub fn get_asset_amounts_per_shares(env: Env, shares: i128) -> Vec<i128> {
+        let mut out = Vec::new(&env);
+        if shares <= 0 {
+            out.push_back(0i128);
+            return out;
+        }
+        let total_shares = Self::total_supply(env.clone());
+        if total_shares <= 0 {
+            out.push_back(0i128);
+            return out;
+        }
+        let token_address: Address = env
+            .storage()
+            .persistent()
+            .get(&BoostedKey::Underlying)
+            .expect("underlying not set");
+        let token_client = token::Client::new(&env, &token_address);
+        let underlying_balance = token_client.balance(&env.current_contract_address());
+        if underlying_balance <= 0 {
+            out.push_back(0i128);
+            return out;
+        }
+        let underlying_for_shares = shares.saturating_mul(underlying_balance) / total_shares;
+        out.push_back(underlying_for_shares);
+        out
+    }
+
+    pub fn deposit(
+        env: Env,
+        amounts_desired: Vec<i128>,
+        _amounts_min: Vec<i128>,
+        to: Address,
+        _auto: bool,
+    ) -> i128 {
+        let amount = amounts_desired.get(0).unwrap_or(0);
+        if amount <= 0 {
+            return 0;
+        }
+        let token_address: Address = env
+            .storage()
+            .persistent()
+            .get(&BoostedKey::Underlying)
+            .expect("underlying not set");
+        let token_client = token::Client::new(&env, &token_address);
+        token_client.transfer(&to, &env.current_contract_address(), &amount);
+
+        let prev = Self::balance(env.clone(), to.clone());
+        let supply = Self::total_supply(env.clone());
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::Share(to), &(prev.saturating_add(amount)));
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::TotalShares, &(supply.saturating_add(amount)));
+        amount
+    }
+
+    pub fn withdraw(env: Env, shares: i128, min_amounts_out: Vec<i128>, to: Address) -> i128 {
+        if shares <= 0 {
+            return 0;
+        }
+        let min_out = min_amounts_out.get(0).unwrap_or(0);
+        let owner_shares = Self::balance(env.clone(), to.clone());
+        if owner_shares < shares {
+            panic!("insufficient shares");
+        }
+        let amounts = Self::get_asset_amounts_per_shares(env.clone(), shares);
+        let out = amounts.get(0).unwrap_or(0);
+        if out < min_out {
+            panic!("slippage");
+        }
+        let token_address: Address = env
+            .storage()
+            .persistent()
+            .get(&BoostedKey::Underlying)
+            .expect("underlying not set");
+        let token_client = token::Client::new(&env, &token_address);
+        token_client.transfer(&env.current_contract_address(), &to, &out);
+
+        let supply = Self::total_supply(env.clone());
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::Share(to), &(owner_shares - shares));
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::TotalShares, &(supply - shares));
+        out
+    }
+}
 
 #[test]
 fn test_initialize() {
@@ -215,6 +339,127 @@ fn test_initialize() {
 }
 
 #[test]
+fn test_borrow_redeems_boosted_liquidity_on_demand() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&lender, &2_000i128);
+    token_admin_client.mint(&borrower, &1_000i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    vault.deposit(&lender, &1_200u128);
+    vault.deposit(&borrower, &300u128);
+
+    // All deposited liquidity was deployed into boosted vault.
+    assert_eq!(token_client.balance(&vault_id), 0i128);
+    assert_eq!(boosted.balance(&vault_id), 1_500i128);
+
+    let borrower_before = token_client.balance(&borrower);
+    vault.borrow(&borrower, &200u128);
+    let borrower_after = token_client.balance(&borrower);
+
+    assert_eq!(borrower_after - borrower_before, 200i128);
+    assert_eq!(vault.get_user_borrow_balance(&borrower), 200u128);
+    assert_eq!(vault.get_total_borrowed(), 200u128);
+}
+
+#[test]
+fn test_set_idle_cash_buffer_bps() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    assert_eq!(vault.get_idle_cash_buffer_bps(), 0u32);
+    vault.set_idle_cash_buffer_bps(&admin, &1_500u32);
+    assert_eq!(vault.get_idle_cash_buffer_bps(), 1_500u32);
+}
+
+#[test]
+fn test_deposit_respects_idle_cash_buffer() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&depositor, &2_000i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+    // Keep 10% idle in vault cash.
+    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
+
+    vault.deposit(&depositor, &1_000u128);
+
+    assert_eq!(token_client.balance(&vault_id), 100i128);
+    assert_eq!(boosted.balance(&vault_id), 900i128);
+}
+
+#[test]
+fn test_rebalance_idle_cash_deploys_excess() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&depositor, &2_000i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    // Start with 100% idle cash.
+    vault.set_idle_cash_buffer_bps(&admin, &10_000u32);
+    vault.deposit(&depositor, &1_000u128);
+    assert_eq!(token_client.balance(&vault_id), 1_000i128);
+    assert_eq!(boosted.balance(&vault_id), 0i128);
+
+    // Lower target to 10% and rebalance.
+    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
+    vault.rebalance_idle_cash(&admin);
+
+    assert_eq!(token_client.balance(&vault_id), 100i128);
+    assert_eq!(boosted.balance(&vault_id), 900i128);
+}
+
+#[test]
 #[should_panic(expected = "non-empty vault at zero supply")]
 fn test_exchange_rate_reverts_on_zero_supply_with_residual_underlying() {
     let env = Env::default();
@@ -230,7 +475,9 @@ fn test_exchange_rate_reverts_on_zero_supply_with_residual_underlying() {
 
     // Craft inconsistent residual economics with zero pToken supply.
     env.as_contract(&vault_id, || {
-        env.storage().persistent().set(&DataKey::TotalBorrowed, &1u128);
+        env.storage()
+            .persistent()
+            .set(&DataKey::TotalBorrowed, &1u128);
     });
 
     vault.get_exchange_rate();
@@ -296,7 +543,11 @@ fn test_core_ttl_bumps_all_critical_config_keys() {
         assert_bumped(&env, &DataKey::Admin, "Admin");
         assert_bumped(&env, &DataKey::UnderlyingToken, "UnderlyingToken");
         assert_bumped(&env, &DataKey::Initialized, "Initialized");
-        assert_bumped(&env, &DataKey::CollateralFactorScaled, "CollateralFactorScaled");
+        assert_bumped(
+            &env,
+            &DataKey::CollateralFactorScaled,
+            "CollateralFactorScaled",
+        );
         assert_bumped(&env, &DataKey::Peridottroller, "Peridottroller");
         assert_bumped(&env, &DataKey::InterestModel, "InterestModel");
         assert_bumped(&env, &DataKey::ReserveFactorScaled, "ReserveFactorScaled");
@@ -881,8 +1132,6 @@ fn test_repay_on_behalf_via_peridottroller_auth() {
     let liquidator_balance = token_client.balance(&liquidator);
     assert_eq!(liquidator_balance, 460i128);
 }
-
-
 
 #[test]
 fn test_borrow_budget_peridottroller_same_market() {

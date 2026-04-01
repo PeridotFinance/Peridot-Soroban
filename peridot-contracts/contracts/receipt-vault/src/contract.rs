@@ -1,7 +1,7 @@
 use soroban_sdk::{
     auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
-    contract, contractimpl, token, Address, Bytes, Env, IntoVal, MuxedAddress, String, Symbol,
-    Val, Vec,
+    contract, contractimpl, token, Address, Bytes, Env, IntoVal, MuxedAddress, String, Symbol, Val,
+    Vec,
 };
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
@@ -15,6 +15,7 @@ use crate::storage::*;
 pub struct ReceiptVault;
 
 const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
+const BPS_SCALE: u128 = 10_000u128;
 
 #[contractimpl]
 impl ReceiptVault {
@@ -76,7 +77,8 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::BoostedVault)
         {
-            let shares_i = token::TokenClient::new(env, &boosted).balance(&env.current_contract_address());
+            let shares_i =
+                token::TokenClient::new(env, &boosted).balance(&env.current_contract_address());
             if shares_i > 0 {
                 match try_call_contract::<Vec<i128>, _>(
                     env,
@@ -139,7 +141,193 @@ impl ReceiptVault {
 
     fn current_live_cash(env: &Env, token_address: &Address) -> u128 {
         let cash_i = token_balance(env, token_address, &env.current_contract_address());
-        if cash_i < 0 { 0u128 } else { cash_i as u128 }
+        if cash_i < 0 {
+            0u128
+        } else {
+            cash_i as u128
+        }
+    }
+
+    fn idle_cash_buffer_bps(env: &Env) -> u32 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::IdleCashBufferBps)
+            .unwrap_or(0u32)
+    }
+
+    fn deposit_into_boosted(env: &Env, token_address: &Address, amount: u128) -> u128 {
+        if amount == 0 {
+            return 0u128;
+        }
+        let Some(boosted) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::BoostedVault)
+        else {
+            return 0u128;
+        };
+        let available_cash = Self::current_live_cash(env, token_address);
+        let deploy_amount = amount.min(available_cash);
+        if deploy_amount == 0 {
+            return 0u128;
+        }
+
+        let deploy_i128 = to_i128(deploy_amount);
+        let mut amounts_desired: Vec<i128> = Vec::new(env);
+        let mut amounts_min: Vec<i128> = Vec::new(env);
+        amounts_desired.push_back(deploy_i128);
+        amounts_min.push_back(deploy_i128);
+        let args: Vec<Val> = (
+            amounts_desired.clone(),
+            amounts_min.clone(),
+            env.current_contract_address(),
+            true,
+        )
+            .into_val(env);
+        let mut auths = Vec::new(env);
+        let mut sub_invocations: Vec<InvokerContractAuthEntry> = Vec::new(env);
+        let transfer_args: Vec<Val> =
+            (env.current_contract_address(), boosted.clone(), deploy_i128).into_val(env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: token_address.clone(),
+                fn_name: Symbol::new(env, "transfer"),
+                args: transfer_args.clone(),
+            },
+            sub_invocations: Vec::new(env),
+        }));
+        sub_invocations.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: token_address.clone(),
+                fn_name: Symbol::new(env, "transfer"),
+                args: transfer_args,
+            },
+            sub_invocations: Vec::new(env),
+        }));
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: boosted.clone(),
+                fn_name: Symbol::new(env, "deposit"),
+                args,
+            },
+            sub_invocations,
+        }));
+        env.authorize_as_current_contract(auths);
+
+        let cash_before_boost = Self::current_live_cash(env, token_address);
+        let _: Val = env.invoke_contract(
+            &boosted,
+            &Symbol::new(env, "deposit"),
+            (
+                amounts_desired,
+                amounts_min,
+                env.current_contract_address(),
+                true,
+            )
+                .into_val(env),
+        );
+        let cash_after_boost = Self::current_live_cash(env, token_address);
+        let moved = cash_before_boost.saturating_sub(cash_after_boost);
+        if moved > 0 {
+            Self::sub_managed_cash(env, moved);
+        }
+        moved
+    }
+
+    /// Redeem from boosted vault to satisfy a live-cash requirement.
+    fn redeem_from_boosted(env: &Env, token_address: &Address, needed_cash: u128) {
+        if needed_cash == 0 {
+            return;
+        }
+        let Some(boosted) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::BoostedVault)
+        else {
+            return;
+        };
+
+        let share_balance_i =
+            token::TokenClient::new(env, &boosted).balance(&env.current_contract_address());
+        if share_balance_i <= 0 {
+            return;
+        }
+        let share_balance = share_balance_i as u128;
+
+        let total_shares_i: i128 = call_contract_or_panic(env, &boosted, "total_supply", ());
+        if total_shares_i <= 0 {
+            return;
+        }
+        let total_shares = total_shares_i as u128;
+        let total_amounts: Vec<i128> = call_contract_or_panic(
+            env,
+            &boosted,
+            "get_asset_amounts_per_shares",
+            (total_shares_i,),
+        );
+        let total_underlying_i = total_amounts.get(0).unwrap_or(0);
+        if total_underlying_i <= 0 {
+            return;
+        }
+        let total_underlying = total_underlying_i as u128;
+
+        let numerator = needed_cash.checked_mul(total_shares).unwrap_or(u128::MAX);
+        let mut shares_to_withdraw = numerator / total_underlying;
+        if numerator % total_underlying != 0 {
+            shares_to_withdraw = shares_to_withdraw.saturating_add(1);
+        }
+        if shares_to_withdraw == 0 {
+            shares_to_withdraw = 1;
+        }
+        if shares_to_withdraw > share_balance {
+            shares_to_withdraw = share_balance;
+        }
+
+        let mut min_amounts_out: Vec<i128> = Vec::new(env);
+        min_amounts_out.push_back(to_i128(needed_cash));
+        let args: Vec<Val> = (
+            to_i128(shares_to_withdraw),
+            min_amounts_out.clone(),
+            env.current_contract_address(),
+        )
+            .into_val(env);
+        let mut auths = Vec::new(env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: boosted.clone(),
+                fn_name: Symbol::new(env, "withdraw"),
+                args,
+            },
+            sub_invocations: Vec::new(env),
+        }));
+        env.authorize_as_current_contract(auths);
+
+        let cash_before = Self::current_live_cash(env, token_address);
+        let _: Val = env.invoke_contract(
+            &boosted,
+            &Symbol::new(env, "withdraw"),
+            (
+                to_i128(shares_to_withdraw),
+                min_amounts_out,
+                env.current_contract_address(),
+            )
+                .into_val(env),
+        );
+        let cash_after = Self::current_live_cash(env, token_address);
+        let received = cash_after.saturating_sub(cash_before);
+        if received > 0 {
+            Self::add_managed_cash(env, received);
+        }
+    }
+
+    /// Ensure live cash can satisfy an immediate payout/borrow.
+    fn ensure_liquid_cash(env: &Env, token_address: &Address, required_cash: u128) {
+        let live_cash = Self::current_live_cash(env, token_address);
+        if live_cash >= required_cash {
+            return;
+        }
+        let needed = required_cash - live_cash;
+        Self::redeem_from_boosted(env, token_address, needed);
     }
 
     fn get_managed_cash(env: &Env) -> u128 {
@@ -360,6 +548,68 @@ impl ReceiptVault {
         env.storage().persistent().get(&DataKey::BoostedVault)
     }
 
+    /// Admin: set target idle cash buffer in basis points (0..=10_000).
+    pub fn set_idle_cash_buffer_bps(env: Env, admin: Address, idle_cash_buffer_bps: u32) {
+        let _ = ensure_initialized(&env);
+        let stored: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if stored != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+        if idle_cash_buffer_bps > BPS_SCALE as u32 {
+            panic!("invalid idle cash buffer");
+        }
+        if idle_cash_buffer_bps == 0 {
+            env.storage()
+                .persistent()
+                .remove(&DataKey::IdleCashBufferBps);
+        } else {
+            env.storage()
+                .persistent()
+                .set(&DataKey::IdleCashBufferBps, &idle_cash_buffer_bps);
+        }
+        NewIdleCashBuffer {
+            idle_cash_buffer_bps,
+        }
+        .publish(&env);
+    }
+
+    /// View: get target idle cash buffer in basis points.
+    pub fn get_idle_cash_buffer_bps(env: Env) -> u32 {
+        let _ = ensure_initialized(&env);
+        Self::idle_cash_buffer_bps(&env)
+    }
+
+    /// Admin: move excess live cash into boosted vault to match target buffer.
+    pub fn rebalance_idle_cash(env: Env, admin: Address) {
+        let token_address = ensure_initialized(&env);
+        let stored: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if stored != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+
+        let live_cash = Self::current_live_cash(&env, &token_address);
+        if live_cash == 0 {
+            return;
+        }
+        let bps = Self::idle_cash_buffer_bps(&env) as u128;
+        let total_underlying = Self::get_total_underlying(env.clone());
+        let desired_idle = total_underlying.saturating_mul(bps) / BPS_SCALE;
+        if live_cash > desired_idle {
+            let excess = live_cash - desired_idle;
+            let _ = Self::deposit_into_boosted(&env, &token_address, excess);
+        }
+    }
+
     /// Deposit tokens into the vault and receive pTokens
     pub fn deposit(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
@@ -434,73 +684,23 @@ impl ReceiptVault {
         let amount_i128 = to_i128(amount);
         token_client.transfer(&user, &env.current_contract_address(), &amount_i128);
         let cash_after = Self::current_live_cash(&env, &token_address);
-        Self::add_managed_cash(&env, cash_after.saturating_sub(cash_before));
+        let received_cash = cash_after.saturating_sub(cash_before);
+        Self::add_managed_cash(&env, received_cash);
 
-        // If boosted, deposit into DeFindex vault (single-asset)
-        if let Some(boosted) = env
-            .storage()
-            .persistent()
-            .get::<_, Address>(&DataKey::BoostedVault)
-        {
-            let mut amounts_desired: Vec<i128> = Vec::new(&env);
-            let mut amounts_min: Vec<i128> = Vec::new(&env);
-            amounts_desired.push_back(amount_i128);
-            amounts_min.push_back(amount_i128);
-            let args: Vec<Val> = (
-                amounts_desired.clone(),
-                amounts_min.clone(),
-                env.current_contract_address(),
-                true,
-            )
-                .into_val(&env);
-            let mut auths = Vec::new(&env);
-            let mut sub_invocations: Vec<InvokerContractAuthEntry> = Vec::new(&env);
-            let transfer_args: Vec<Val> = (
-                env.current_contract_address(),
-                boosted.clone(),
-                amount_i128,
-            )
-                .into_val(&env);
-            // Root transfer auth (in case vault expects a flat auth entry)
-            auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
-                context: ContractContext {
-                    contract: token_address.clone(),
-                    fn_name: Symbol::new(&env, "transfer"),
-                    args: transfer_args.clone(),
-                },
-                sub_invocations: Vec::new(&env),
-            }));
-            sub_invocations.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
-                context: ContractContext {
-                    contract: token_address.clone(),
-                    fn_name: Symbol::new(&env, "transfer"),
-                    args: transfer_args,
-                },
-                sub_invocations: Vec::new(&env),
-            }));
-            auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
-                context: ContractContext {
-                    contract: boosted.clone(),
-                    fn_name: Symbol::new(&env, "deposit"),
-                    args,
-                },
-                sub_invocations,
-            }));
-            env.authorize_as_current_contract(auths);
-            let _: Val = env.invoke_contract(
-                &boosted,
-                &Symbol::new(&env, "deposit"),
-                (
-                    amounts_desired,
-                    amounts_min,
-                    env.current_contract_address(),
-                    true,
-                )
-                    .into_val(&env),
-            );
-            let cash_after_boost = Self::current_live_cash(&env, &token_address);
-            Self::sub_managed_cash(&env, cash_after.saturating_sub(cash_after_boost));
-        }
+        let deploy_amount = if received_cash == 0 {
+            0u128
+        } else {
+            let idle_bps = Self::idle_cash_buffer_bps(&env) as u128;
+            if idle_bps == 0 {
+                received_cash
+            } else {
+                let total_underlying_after = Self::get_total_underlying(env.clone());
+                let desired_idle = total_underlying_after.saturating_mul(idle_bps) / BPS_SCALE;
+                let excess_live_cash = cash_after.saturating_sub(desired_idle);
+                received_cash.min(excess_live_cash)
+            }
+        };
+        let _ = Self::deposit_into_boosted(&env, &token_address, deploy_amount);
 
         // Mint pTokens and update totals
         TokenBase::mint(&env, &user, to_i128(ptokens_to_mint));
@@ -704,72 +904,8 @@ impl ReceiptVault {
             .persistent()
             .set(&DataKey::TotalDeposited, &total_deposited_after);
 
-        // If boosted and cash is insufficient, withdraw from DeFindex vault
-        if let Some(boosted) = env
-            .storage()
-            .persistent()
-            .get::<_, Address>(&DataKey::BoostedVault)
-        {
-            let cash = Self::get_managed_cash(&env);
-            if cash < underlying_to_return {
-                let needed_from_boosted = underlying_to_return - cash;
-                let cash_before = Self::current_live_cash(&env, &token_address);
-                let total_shares_i: i128 = call_contract_or_panic(&env, &boosted, "total_supply", ());
-                if total_shares_i > 0 {
-                    let total_shares = total_shares_i as u128;
-                    let total_amounts: Vec<i128> = call_contract_or_panic(
-                        &env,
-                        &boosted,
-                        "get_asset_amounts_per_shares",
-                        (total_shares as i128,),
-                    );
-                    let total_underlying_i = total_amounts.get(0).unwrap_or(0);
-                    if total_underlying_i > 0 {
-                        let total_underlying = total_underlying_i as u128;
-                        let mut shares_to_withdraw =
-                            underlying_to_return.saturating_mul(total_shares) / total_underlying;
-                        if underlying_to_return.saturating_mul(total_shares) % total_underlying
-                            != 0
-                        {
-                            shares_to_withdraw = shares_to_withdraw.saturating_add(1);
-                        }
-                        let mut min_amounts_out: Vec<i128> = Vec::new(&env);
-                        min_amounts_out.push_back(to_i128(needed_from_boosted));
-                        let args: Vec<Val> = (
-                            shares_to_withdraw as i128,
-                            min_amounts_out.clone(),
-                            env.current_contract_address(),
-                        )
-                            .into_val(&env);
-                        let mut auths = Vec::new(&env);
-                        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
-                            context: ContractContext {
-                                contract: boosted.clone(),
-                                fn_name: Symbol::new(&env, "withdraw"),
-                                args,
-                            },
-                            sub_invocations: Vec::new(&env),
-                        }));
-                        env.authorize_as_current_contract(auths);
-                        let _: Val = env.invoke_contract(
-                            &boosted,
-                            &Symbol::new(&env, "withdraw"),
-                            (
-                                shares_to_withdraw as i128,
-                                min_amounts_out,
-                                env.current_contract_address(),
-                            )
-                                .into_val(&env),
-                        );
-                        let cash_after = Self::current_live_cash(&env, &token_address);
-                        let cash_delta = cash_after.saturating_sub(cash_before);
-                        if cash_delta > 0 {
-                            Self::add_managed_cash(&env, cash_delta);
-                        }
-                    }
-                }
-            }
-        }
+        // Pull from boosted vault on demand so user withdrawals are backed by live cash.
+        Self::ensure_liquid_cash(&env, &token_address, underlying_to_return);
 
         let cash_after_boost = Self::current_live_cash(&env, &token_address);
         if cash_after_boost < underlying_to_return {
@@ -1009,7 +1145,9 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         old.require_auth();
-        env.storage().persistent().set(&DataKey::PendingAdmin, &new_admin);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingAdmin, &new_admin);
         PendingAdmin { admin: new_admin }.publish(&env);
     }
 
@@ -1296,7 +1434,10 @@ impl ReceiptVault {
         if cap == 0 {
             // Disable principal tracking when cap is disabled to avoid stale state.
             storage.remove(&DataKey::TotalBorrowPrincipal);
-        } else if storage.get::<_, u128>(&DataKey::TotalBorrowPrincipal).is_none() {
+        } else if storage
+            .get::<_, u128>(&DataKey::TotalBorrowPrincipal)
+            .is_none()
+        {
             let total_borrowed: u128 = storage
                 .get(&DataKey::TotalBorrowed)
                 .expect("total borrowed missing");
@@ -1609,7 +1750,11 @@ impl ReceiptVault {
             storage.set(&DataKey::TotalBorrowed, &total_borrowed);
         }
         let borrow_cap: u128 = storage.get(&DataKey::BorrowCap).unwrap_or(0u128);
-        if borrow_cap > 0 && storage.get::<_, u128>(&DataKey::TotalBorrowPrincipal).is_none() {
+        if borrow_cap > 0
+            && storage
+                .get::<_, u128>(&DataKey::TotalBorrowPrincipal)
+                .is_none()
+        {
             // If borrow caps are enabled on an upgraded deployment, seed the
             // principal tracker from current borrows.
             storage.set(&DataKey::TotalBorrowPrincipal, &total_borrowed);
@@ -1840,7 +1985,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
+            .expect("total borrowed missing");
         total_underlying.saturating_sub(total_borrowed)
     }
 
@@ -1849,7 +1994,7 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing")
+            .expect("total borrowed missing")
     }
 
     /// Get user's collateral value in underlying terms
@@ -1981,6 +2126,17 @@ impl ReceiptVault {
             }
         }
 
+        // Pull liquidity from boosted vault only when managed cash indicates a shortfall.
+        // This avoids extra token-balance reads on the common non-boosted path.
+        let managed_cash = Self::get_managed_cash(&env);
+        if managed_cash < amount {
+            Self::ensure_liquid_cash(&env, &token_address, amount);
+            let cash_for_borrow = Self::current_live_cash(&env, &token_address);
+            if cash_for_borrow < amount {
+                panic!("borrow liquidity shortfall");
+            }
+        }
+
         // Update totals and user snapshot
         let new_principal =
             Self::get_user_borrow_balance(env.clone(), user.clone()).saturating_add(amount);
@@ -2007,7 +2163,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
+            .expect("total borrowed missing");
         let total_borrows = tb.saturating_add(amount);
         env.storage()
             .persistent()
@@ -2100,17 +2256,16 @@ impl ReceiptVault {
                 });
             let principal_repay_global = principal_repay_user.min(total_principal_before);
             let total_principal_after = total_principal_before - principal_repay_global;
-            env.storage().persistent().set(
-                &DataKey::TotalBorrowPrincipal,
-                &total_principal_after,
-            );
+            env.storage()
+                .persistent()
+                .set(&DataKey::TotalBorrowPrincipal, &total_principal_after);
         }
 
         let tb: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
+            .expect("total borrowed missing");
         let tb_after = tb
             .checked_sub(repay_amount)
             .expect("repay exceeds total borrowed");
@@ -2274,17 +2429,16 @@ impl ReceiptVault {
                 });
             let principal_repay_global = principal_repay_user.min(total_principal_before);
             let total_principal_after = total_principal_before - principal_repay_global;
-            env.storage().persistent().set(
-                &DataKey::TotalBorrowPrincipal,
-                &total_principal_after,
-            );
+            env.storage()
+                .persistent()
+                .set(&DataKey::TotalBorrowPrincipal, &total_principal_after);
         }
 
         let tb: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
-                .expect("total borrowed missing");
+            .expect("total borrowed missing");
         let tb_after = tb
             .checked_sub(repay_amount)
             .expect("repay exceeds total borrowed");
