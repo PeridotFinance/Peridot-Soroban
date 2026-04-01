@@ -1205,7 +1205,6 @@ impl SimplePeridottroller {
             Some(seize_ctx.clone()),
         )
             .into_val(&env);
-        let mut auths = Vec::new(&env);
         auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
             context: ContractContext {
                 contract: collateral_market.clone(),

@@ -41,6 +41,10 @@ pub enum DataKey {
 
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
+const BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = 350_000;
+const BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = 700_000;
+const HAS_BORROWED_TTL_THRESHOLD: u32 = 500_000;
+const HAS_BORROWED_TTL_EXTEND_TO: u32 = 1_000_000;
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -177,7 +181,11 @@ pub fn bump_borrow_snapshot_ttl(env: &Env, user: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::BorrowSnapshots(user.clone());
     if persistent.has(&key) {
-        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &key,
+            BORROW_SNAPSHOT_TTL_THRESHOLD,
+            BORROW_SNAPSHOT_TTL_EXTEND_TO,
+        );
     }
 }
 
@@ -185,7 +193,11 @@ pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::HasBorrowed(user.clone());
     if persistent.has(&key) {
-        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &key,
+            HAS_BORROWED_TTL_THRESHOLD,
+            HAS_BORROWED_TTL_EXTEND_TO,
+        );
     }
 }
 

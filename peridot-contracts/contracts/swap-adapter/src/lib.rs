@@ -44,6 +44,7 @@ pub trait AquariusPool {
 pub enum DataKey {
     Admin,
     Router,
+    AllowedPool(Address),
     Initialized,
 }
 
@@ -76,6 +77,27 @@ impl SwapAdapter {
         bump_critical_ttl(&env);
         require_admin(&env, &admin);
         env.storage().persistent().set(&DataKey::Router, &router);
+    }
+
+    pub fn set_pool_allowed(env: Env, admin: Address, pool: Address, allowed: bool) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        let key = DataKey::AllowedPool(pool.clone());
+        if allowed {
+            env.storage().persistent().set(&key, &true);
+            bump_pool_ttl(&env, &pool);
+        } else {
+            env.storage().persistent().remove(&key);
+        }
+    }
+
+    pub fn is_pool_allowed(env: Env, pool: Address) -> bool {
+        bump_critical_ttl(&env);
+        bump_pool_ttl(&env, &pool);
+        env.storage()
+            .persistent()
+            .get(&DataKey::AllowedPool(pool))
+            .unwrap_or(false)
     }
 
     pub fn swap_exact_tokens_for_tokens(
@@ -139,6 +161,7 @@ impl SwapAdapter {
         amount_in: u128,
     ) -> u128 {
         bump_critical_ttl(&env);
+        ensure_pool_allowed(&env, &pool);
         AquariusPoolClient::new(&env, &pool).estimate_swap(
             &in_idx,
             &out_idx,
@@ -157,6 +180,7 @@ impl SwapAdapter {
     ) -> u128 {
         bump_critical_ttl(&env);
         user.require_auth();
+        ensure_pool_allowed(&env, &pool);
         AquariusPoolClient::new(&env, &pool).swap(
             &user,
             &in_idx,
@@ -190,8 +214,8 @@ fn require_admin(env: &Env, admin: &Address) {
     admin.require_auth();
 }
 
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
+const TTL_THRESHOLD: u32 = 500_000;
+const TTL_EXTEND_TO: u32 = 1_000_000;
 
 #[cfg(test)]
 mod test;
@@ -208,5 +232,25 @@ fn bump_critical_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_pool_ttl(env: &Env, pool: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::AllowedPool(pool.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn ensure_pool_allowed(env: &Env, pool: &Address) {
+    bump_pool_ttl(env, pool);
+    let allowed: bool = env
+        .storage()
+        .persistent()
+        .get(&DataKey::AllowedPool(pool.clone()))
+        .unwrap_or(false);
+    if !allowed {
+        panic!("pool not allowed");
     }
 }

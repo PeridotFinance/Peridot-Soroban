@@ -460,6 +460,22 @@ fn test_rebalance_idle_cash_deploys_excess() {
 }
 
 #[test]
+fn test_bump_user_borrow_ttl_permissionless() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    vault.bump_user_borrow_ttl(&user);
+}
+
+#[test]
 #[should_panic(expected = "non-empty vault at zero supply")]
 fn test_exchange_rate_reverts_on_zero_supply_with_residual_underlying() {
     let env = Env::default();

@@ -91,8 +91,8 @@ pub fn require_admin(env: Env) {
     admin.require_auth();
 }
 
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
+const TTL_THRESHOLD: u32 = 500_000;
+const TTL_EXTEND_TO: u32 = 1_000_000;
 const MAX_DECIMALS: u32 = 38;
 
 pub fn bump_core_ttl(env: &Env) {

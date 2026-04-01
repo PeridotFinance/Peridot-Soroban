@@ -1935,6 +1935,13 @@ impl ReceiptVault {
         (snapshot.principal.saturating_mul(current_index)) / snapshot.interest_index
     }
 
+    /// Permissionless TTL extension for per-user borrow state.
+    /// Keepers can call this periodically for active borrowers.
+    pub fn bump_user_borrow_ttl(env: Env, user: Address) {
+        let _ = ensure_initialized(&env);
+        bump_user_borrow_state_ttl(&env, &user);
+    }
+
     /// Internal: write user's borrow snapshot
     fn write_borrow_snapshot(env: &Env, user: Address, principal: u128) {
         let current_index: u128 = env

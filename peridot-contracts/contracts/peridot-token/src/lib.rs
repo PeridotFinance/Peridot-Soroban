@@ -211,8 +211,8 @@ impl PeridotToken {
     }
 }
 
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
+const TTL_THRESHOLD: u32 = 500_000;
+const TTL_EXTEND_TO: u32 = 1_000_000;
 
 fn require_admin(env: &Env) -> Address {
     let admin: Address = env

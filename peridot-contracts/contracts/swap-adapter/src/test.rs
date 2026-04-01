@@ -188,12 +188,30 @@ fn test_swap_pool_and_estimate() {
     let adapter_id = env.register(SwapAdapter, ());
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
     adapter.initialize(&admin, &router_id);
+    adapter.set_pool_allowed(&admin, &pool_id, &true);
 
     let est = adapter.estimate_pool_swap(&pool_id, &0u32, &1u32, &123u128);
     assert_eq!(est, 123u128);
 
     let out = adapter.swap_pool(&user, &pool_id, &0u32, &1u32, &100u128, &99u128);
     assert_eq!(out, 99u128);
+}
+
+#[test]
+#[should_panic(expected = "pool not allowed")]
+fn test_swap_pool_requires_allowlisted_pool() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = default_admin(&env);
+    let user = Address::generate(&env);
+
+    let router_id = env.register(MockAquariusRouter, ());
+    let pool_id = env.register(MockAquariusPool, ());
+    let adapter_id = env.register(SwapAdapter, ());
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    adapter.initialize(&admin, &router_id);
+
+    let _ = adapter.swap_pool(&user, &pool_id, &0u32, &1u32, &100u128, &99u128);
 }
 
 #[test]
