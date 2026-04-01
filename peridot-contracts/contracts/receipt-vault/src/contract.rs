@@ -843,22 +843,6 @@ impl ReceiptVault {
         Self::transfer_internal(env, owner, to, amount as u128, Some(spender));
     }
 
-    pub fn burn(env: Env, from: Address, amount: i128) {
-        let _ = ensure_initialized(&env);
-        if amount < 0 {
-            panic!("bad amount");
-        }
-        TokenBase::burn(&env, &from, amount);
-    }
-
-    pub fn burn_from(env: Env, spender: Address, from: Address, amount: i128) {
-        let _ = ensure_initialized(&env);
-        if amount < 0 {
-            panic!("bad amount");
-        }
-        TokenBase::burn_from(&env, &spender, &from, amount);
-    }
-
     pub fn balance(env: Env, account: Address) -> i128 {
         let _ = ensure_initialized(&env);
         TokenBase::balance(&env, &account)
