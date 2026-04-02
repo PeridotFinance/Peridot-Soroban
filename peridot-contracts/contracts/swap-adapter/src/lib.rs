@@ -60,8 +60,7 @@ impl SwapAdapter {
         if env.storage().persistent().get::<_, Address>(&DataKey::Admin).is_some() {
             panic!("already initialized");
         }
-        let expected_admin_str =
-            option_env!("SWAP_ADAPTER_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin_str = expected_admin_config();
         let expected_admin = Address::from_string(&String::from_str(&env, expected_admin_str));
         if admin != expected_admin {
             panic!("unexpected admin");
@@ -110,6 +109,9 @@ impl SwapAdapter {
     ) -> u128 {
         bump_critical_ttl(&env);
         user.require_auth();
+        if amount_in > i128::MAX as u128 || amount_out_min > i128::MAX as u128 {
+            panic!("amount too large");
+        }
         let router: Address = env
             .storage()
             .persistent()
@@ -222,6 +224,15 @@ fn require_admin(env: &Env, admin: &Address) {
     }
     bump_critical_ttl(env);
     admin.require_auth();
+}
+
+fn expected_admin_config() -> &'static str {
+    if cfg!(debug_assertions) {
+        option_env!("SWAP_ADAPTER_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
+    } else {
+        option_env!("SWAP_ADAPTER_INIT_ADMIN")
+            .expect("SWAP_ADAPTER_INIT_ADMIN must be set at build time")
+    }
 }
 
 const TTL_THRESHOLD: u32 = 500_000;

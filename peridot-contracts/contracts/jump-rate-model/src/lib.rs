@@ -162,11 +162,19 @@ fn ensure_initialized(env: &Env) {
 }
 
 fn assert_expected_admin(_env: &Env, _admin: &Address) {
-    let expected_admin_str =
-        option_env!("JUMP_RATE_MODEL_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+    let expected_admin_str = expected_admin_config();
     let expected_admin = Address::from_string(&String::from_str(_env, expected_admin_str));
     if _admin != &expected_admin {
         panic!("unexpected admin");
+    }
+}
+
+fn expected_admin_config() -> &'static str {
+    if cfg!(debug_assertions) {
+        option_env!("JUMP_RATE_MODEL_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
+    } else {
+        option_env!("JUMP_RATE_MODEL_INIT_ADMIN")
+            .expect("JUMP_RATE_MODEL_INIT_ADMIN must be set at build time")
     }
 }
 

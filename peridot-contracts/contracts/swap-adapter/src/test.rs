@@ -159,6 +159,15 @@ fn test_swap_exact_tokens() {
 }
 
 #[test]
+#[should_panic(expected = "amount too large")]
+fn test_swap_exact_tokens_rejects_amount_over_i128() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &(i128::MAX as u128 + 1), &0u128, &path, &9999u64);
+}
+
+#[test]
 fn test_swap_chained() {
     let env = Env::default();
     env.mock_all_auths();
