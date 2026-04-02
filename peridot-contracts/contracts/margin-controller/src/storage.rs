@@ -131,7 +131,11 @@ pub fn get_max_leverage(env: &Env) -> u128 {
 
 pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {
     let peridottroller = get_peridottroller(env);
-    peridottroller
+    let (num, den) = peridottroller
         .get_price_usd(asset)
-        .expect("price unavailable")
+        .expect("price unavailable");
+    if num == 0 || den == 0 {
+        panic!("invalid price");
+    }
+    (num, den)
 }

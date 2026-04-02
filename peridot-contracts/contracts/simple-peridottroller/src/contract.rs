@@ -572,6 +572,15 @@ impl SimplePeridottroller {
         env.storage()
             .persistent()
             .set(&DataKey::SupportedMarkets, &markets);
+        let token: Address = env.invoke_contract(
+            &market,
+            &Symbol::new(&env, "get_underlying_token"),
+            ().into_val(&env),
+        );
+        env.storage()
+            .persistent()
+            .set(&DataKey::SupportedToken(token.clone()), &true);
+        storage::bump_supported_token_ttl(&env, &token);
         MarketAdded { market }.publish(&env);
     }
 
@@ -662,10 +671,40 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+        let removed_token: Address = env.invoke_contract(
+            &market,
+            &Symbol::new(&env, "get_underlying_token"),
+            ().into_val(&env),
+        );
         markets.remove(market.clone());
         env.storage()
             .persistent()
             .set(&DataKey::SupportedMarkets, &markets);
+        // Maintain token allowlist consistency after market removal.
+        let mut still_supported = false;
+        let remaining = markets.keys();
+        for i in 0..remaining.len() {
+            let candidate = remaining.get(i).unwrap();
+            if !markets.get(candidate.clone()).unwrap_or(false) {
+                continue;
+            }
+            let token: Address = env.invoke_contract(
+                &candidate,
+                &Symbol::new(&env, "get_underlying_token"),
+                ().into_val(&env),
+            );
+            if token == removed_token {
+                still_supported = true;
+                break;
+            }
+        }
+        let token_key = DataKey::SupportedToken(removed_token.clone());
+        if still_supported {
+            env.storage().persistent().set(&token_key, &true);
+            storage::bump_supported_token_ttl(&env, &removed_token);
+        } else {
+            env.storage().persistent().remove(&token_key);
+        }
         MarketRemoved { market }.publish(&env);
     }
 
@@ -1542,6 +1581,15 @@ impl SimplePeridottroller {
     // Public helper to pre-warm the price cache (intended for UI/keepers).
     pub fn cache_price(env: Env, token: Address) -> Option<(u128, u128)> {
         bump_core_ttl(&env);
+        if !env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&DataKey::SupportedToken(token.clone()))
+            .unwrap_or(false)
+        {
+            return None;
+        }
+        storage::bump_supported_token_ttl(&env, &token);
         let oracle: Option<Address> = env.storage().persistent().get(&DataKey::Oracle);
         let Some(oracle_addr) = oracle else {
             return None;

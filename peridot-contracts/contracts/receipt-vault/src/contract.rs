@@ -1761,6 +1761,9 @@ impl ReceiptVault {
             panic!("invalid rate relationship");
         }
         let storage = env.storage().persistent();
+        if !storage.get::<_, bool>(&DataKey::Initialized).unwrap_or(false) {
+            storage.set(&DataKey::Initialized, &true);
+        }
         if storage.get::<_, u128>(&DataKey::YearlyRateScaled).is_none() {
             storage.set(&DataKey::YearlyRateScaled, &supply_yearly_rate_scaled);
         }

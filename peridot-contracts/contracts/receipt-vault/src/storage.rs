@@ -85,21 +85,15 @@ pub struct SeizeContext {
 pub fn ensure_initialized(env: &Env) -> Address {
     bump_core_ttl(env);
     bump_borrow_state_ttl(env);
-    let token: Address = env
-        .storage()
-        .persistent()
+    let persistent = env.storage().persistent();
+    let token: Address = persistent
         .get(&DataKey::UnderlyingToken)
         .expect("Vault not initialized");
-    if !env
-        .storage()
-        .persistent()
+    if !persistent
         .get::<_, bool>(&DataKey::Initialized)
         .unwrap_or(false)
     {
-        env.storage().persistent().set(&DataKey::Initialized, &true);
-        env.storage()
-            .persistent()
-            .extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
+        panic!("Vault not initialized");
     }
     token
 }
