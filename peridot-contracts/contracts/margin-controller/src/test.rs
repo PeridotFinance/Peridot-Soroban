@@ -146,6 +146,8 @@ impl MockPeridottroller {
         false
     }
 
+    pub fn track_borrow_market(_env: Env, _user: Address, _market: Address) {}
+
     pub fn is_deposit_paused(_env: Env, _market: Address) -> bool {
         false
     }
@@ -800,6 +802,23 @@ fn test_multiple_positions() {
     assert_ne!(id1, id2);
     let user_positions = controller.get_user_positions(&user);
     assert_eq!(user_positions.len(), 2);
+}
+
+#[test]
+fn test_get_user_positions_prunes_missing_entries() {
+    let (env, controller_id, _usdt_id, _xlm_id, user) = setup_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    env.as_contract(&controller_id, || {
+        let mut stale = Vec::new(&env);
+        stale.push_back(42u64);
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserPositions(user.clone()), &stale);
+    });
+
+    let user_positions = controller.get_user_positions(&user);
+    assert_eq!(user_positions.len(), 0);
 }
 
 #[test]

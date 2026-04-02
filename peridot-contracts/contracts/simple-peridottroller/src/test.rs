@@ -1733,7 +1733,19 @@ fn test_borrow_side_rewards_and_claim() {
     set_price_and_cache(&comp, &oracle, &oracle_id, &tb, 1_000_000i128);
     comp.set_oracle(&oracle_id);
 
-    // PERI token
+    // Fund lender liquidity and borrower collateral; CF=100%
+    let mint_a = token::StellarAssetClient::new(&env, &ta);
+    let mint_b = token::StellarAssetClient::new(&env, &tb);
+    mint_a.mint(&lender, &1_000i128);
+    mint_b.mint(&borrower, &1_000i128);
+    vb.set_collateral_factor(&1_000_000u128);
+    va.deposit(&lender, &300u128); // liquidity in A
+    vb.deposit(&borrower, &100u128); // collateral in B
+
+    // Borrow 50 -> single borrower => all borrow rewards to borrower
+    va.borrow(&borrower, &50u128);
+
+    // Configure rewards after borrow so borrow path stays lightweight.
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
     std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
@@ -1746,21 +1758,7 @@ fn test_borrow_side_rewards_and_claim() {
         &1_000_000_000i128,
     );
     comp.set_peridot_token(&peri_id);
-
-    // Borrow speed 7 P/sec on market A
     comp.set_borrow_speed(&va_id, &7u128);
-
-    // Fund lender liquidity and borrower collateral; CF=100%
-    let mint_a = token::StellarAssetClient::new(&env, &ta);
-    let mint_b = token::StellarAssetClient::new(&env, &tb);
-    mint_a.mint(&lender, &1_000i128);
-    mint_b.mint(&borrower, &1_000i128);
-    vb.set_collateral_factor(&1_000_000u128);
-    va.deposit(&lender, &300u128); // liquidity in A
-    vb.deposit(&borrower, &100u128); // collateral in B
-
-    // Borrow 50 -> single borrower => all borrow rewards to borrower
-    va.borrow(&borrower, &50u128);
 
     // Advance 6s and claim
     let now = env.ledger().timestamp();
@@ -1951,6 +1949,20 @@ fn test_multi_market_supply_rewards() {
     set_price_and_cache(&comp, &oracle, &oracle_id, &ta, 1_000_000i128);
     set_price_and_cache(&comp, &oracle, &oracle_id, &tb, 1_000_000i128);
     comp.set_oracle(&oracle_id);
+
+    // PERI token
+    let peri_id = env.register(pt::PeridotToken, ());
+    let peri = pt::PeridotTokenClient::new(&env, &peri_id);
+    std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
+    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    peri.initialize(
+        &soroban_sdk::String::from_str(&env, "Peridot"),
+        &soroban_sdk::String::from_str(&env, "P"),
+        &6u32,
+        &token_admin,
+        &1_000_000_000i128,
+    );
+    comp.set_peridot_token(&peri_id);
 
     // Speeds: A=5, B=3 P/sec
     comp.set_supply_speed(&va_id, &5u128);

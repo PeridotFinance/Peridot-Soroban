@@ -81,6 +81,9 @@ const MAX_SIGNERS: u32 = 8;
 #[contractimpl]
 impl BasicSmartAccount {
     pub fn __constructor(env: Env, factory: Address) {
+        if env.storage().persistent().has(&DataKey::Factory) {
+            panic!("already constructed");
+        }
         env.storage().persistent().set(&DataKey::Factory, &factory);
         bump_ttl(&env);
     }
@@ -243,8 +246,15 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
     let fn_name = ctx.fn_name.clone();
     let is_vault = is_allowed_vault_contract(env, &ctx.contract);
     let is_margin = is_margin_controller_contract(env, &ctx.contract);
+    let is_token_auth_fn = is_token_auth_function(env, &fn_name);
     let is_sensitive_vault_fn = is_sensitive_vault_function(env, &fn_name);
     let is_sensitive_margin_fn = is_sensitive_margin_function(env, &fn_name);
+
+    // Allow token auth methods only when this account is the token source/owner.
+    // This keeps repay/deposit token flows functional while still rejecting arbitrary auth.
+    if is_token_auth_fn && !is_vault && !is_margin {
+        return enforce_token_auth_policy(env, ctx, &fn_name);
+    }
 
     // Fail closed: if a sensitive protocol method is requested on an
     // unrecognized contract, reject authorization.
@@ -284,8 +294,6 @@ fn is_sensitive_vault_function(env: &Env, fn_name: &Symbol) -> bool {
         || *fn_name == Symbol::new(env, "repay")
         || *fn_name == Symbol::new(env, "withdraw")
         || *fn_name == Symbol::new(env, "transfer")
-        || *fn_name == Symbol::new(env, "transfer_from")
-        || *fn_name == Symbol::new(env, "approve")
 }
 
 fn is_sensitive_margin_function(env: &Env, fn_name: &Symbol) -> bool {
@@ -295,6 +303,32 @@ fn is_sensitive_margin_function(env: &Env, fn_name: &Symbol) -> bool {
         || *fn_name == Symbol::new(env, "open_position_no_swap")
         || *fn_name == Symbol::new(env, "open_position_no_swap_short")
         || *fn_name == Symbol::new(env, "close_position")
+}
+
+fn is_token_auth_function(env: &Env, fn_name: &Symbol) -> bool {
+    *fn_name == Symbol::new(env, "transfer")
+        || *fn_name == Symbol::new(env, "transfer_from")
+        || *fn_name == Symbol::new(env, "approve")
+}
+
+fn enforce_token_auth_policy(
+    env: &Env,
+    ctx: &ContractContext,
+    fn_name: &Symbol,
+) -> Result<(), Error> {
+    let self_address = env.current_contract_address();
+    if *fn_name == Symbol::new(env, "transfer") || *fn_name == Symbol::new(env, "approve") {
+        return check_first_address_is_self(env, ctx, 0);
+    }
+    if *fn_name == Symbol::new(env, "transfer_from") {
+        let spender = get_address_arg(env, ctx, 0)?;
+        let owner = get_address_arg(env, ctx, 1)?;
+        if spender != self_address && owner != self_address {
+            return Err(Error::Unauthorized);
+        }
+        return Ok(());
+    }
+    Err(Error::Unauthorized)
 }
 
 fn check_borrow_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {

@@ -535,11 +535,7 @@ impl MarginController {
 
     pub fn get_user_positions(env: Env, user: Address) -> Vec<u64> {
         bump_core_ttl(&env);
-        bump_user_positions_ttl(&env, &user);
-        env.storage()
-            .persistent()
-            .get(&DataKey::UserPositions(user))
-            .unwrap_or(Vec::new(&env))
+        compact_user_positions(&env, &user)
     }
 
     pub fn get_health_factor(env: Env, position_id: u64) -> u128 {

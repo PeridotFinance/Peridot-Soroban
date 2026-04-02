@@ -20,11 +20,7 @@ pub fn next_position_id(env: &Env) -> u64 {
 }
 
 pub fn push_user_position(env: &Env, user: &Address, id: u64) {
-    let mut positions: Vec<u64> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::UserPositions(user.clone()))
-        .unwrap_or(Vec::new(env));
+    let mut positions = compact_user_positions(env, user);
     if positions.len() >= MAX_USER_POSITIONS {
         panic!("too many positions");
     }
@@ -36,11 +32,7 @@ pub fn push_user_position(env: &Env, user: &Address, id: u64) {
 }
 
 pub fn remove_user_position(env: &Env, user: &Address, id: u64) {
-    let positions: Vec<u64> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::UserPositions(user.clone()))
-        .unwrap_or(Vec::new(env));
+    let positions = compact_user_positions(env, user);
     let mut out = Vec::new(env);
     for p in positions.iter() {
         if p != id {
@@ -51,6 +43,32 @@ pub fn remove_user_position(env: &Env, user: &Address, id: u64) {
         .persistent()
         .set(&DataKey::UserPositions(user.clone()), &out);
     bump_user_positions_ttl(env, user);
+}
+
+pub fn compact_user_positions(env: &Env, user: &Address) -> Vec<u64> {
+    let positions: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::UserPositions(user.clone()))
+        .unwrap_or(Vec::new(env));
+    let mut out = Vec::new(env);
+    let mut changed = false;
+    for id in positions.iter() {
+        let key = DataKey::Position(id);
+        if env.storage().persistent().has(&key) {
+            bump_position_ttl(env, id);
+            out.push_back(id);
+        } else {
+            changed = true;
+        }
+    }
+    if changed {
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserPositions(user.clone()), &out);
+    }
+    bump_user_positions_ttl(env, user);
+    out
 }
 
 pub fn get_debt_shares_total(env: &Env, user: &Address, debt_asset: &Address) -> u128 {

@@ -13,6 +13,32 @@ pub struct SimplePeridottroller;
 
 #[contractimpl]
 impl SimplePeridottroller {
+    fn ensure_user_market_entered(env: &Env, user: &Address, market: &Address) {
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(env));
+        if markets.get(market.clone()).unwrap_or(false) == false {
+            panic!("Market not supported");
+        }
+        let mut entered: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserMarkets(user.clone()))
+            .unwrap_or(Vec::new(env));
+        if !entered.contains(market.clone()) {
+            if entered.len() >= MAX_USER_MARKETS {
+                panic!("too many entered markets");
+            }
+            entered.push_back(market.clone());
+            env.storage()
+                .persistent()
+                .set(&DataKey::UserMarkets(user.clone()), &entered);
+        }
+        storage::bump_user_markets_ttl(env, user);
+    }
+
     pub fn initialize(env: Env, admin: Address) {
         bump_core_ttl(&env);
         if env.storage().instance().has(&DataKey::Initialized) {
@@ -552,34 +578,19 @@ impl SimplePeridottroller {
     pub fn enter_market(env: Env, user: Address, market: Address) {
         bump_core_ttl(&env);
         user.require_auth();
-        let markets: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::SupportedMarkets)
-            .unwrap_or(Map::new(&env));
-        if markets.get(market.clone()).unwrap_or(false) == false {
-            panic!("Market not supported");
-        }
-        let mut entered: Vec<Address> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UserMarkets(user.clone()))
-            .unwrap_or(Vec::new(&env));
-        if !entered.contains(market.clone()) {
-            if entered.len() >= MAX_USER_MARKETS {
-                panic!("too many entered markets");
-            }
-            entered.push_back(market.clone());
-            env.storage()
-                .persistent()
-                .set(&DataKey::UserMarkets(user.clone()), &entered);
-        }
-        storage::bump_user_markets_ttl(&env, &user);
+        Self::ensure_user_market_entered(&env, &user, &market);
         MarketEntered {
             account: user.clone(),
             market: market.clone(),
         }
         .publish(&env);
+    }
+
+    // Market-authenticated entrypoint used by vaults so borrowed markets are always tracked
+    // even if users forget to call enter_market explicitly.
+    pub fn track_borrow_market(env: Env, user: Address, market: Address) {
+        market.require_auth();
+        Self::ensure_user_market_entered(&env, &user, &market);
     }
 
     pub fn get_user_markets(env: Env, user: Address) -> Vec<Address> {
@@ -784,10 +795,13 @@ impl SimplePeridottroller {
         borrow_amount: u128,
         underlying: Address,
     ) -> (u128, u128) {
-        bump_core_ttl(&env);
+        let markets = Self::get_user_markets(env.clone(), user.clone());
+        if !markets.contains(market.clone()) {
+            panic!("market not entered");
+        }
         // Exclude current market to avoid re-entry from that market during borrow path
         let (collateral_usd, mut borrow_usd) =
-            Self::sum_positions_usd(env.clone(), user.clone(), Some(market.clone()));
+            Self::sum_positions_usd_for_markets(env.clone(), user.clone(), Some(market.clone()), markets);
         // Add hypothetical borrow in USD using provided underlying token
         let (price, scale) = Self::require_price(env.clone(), underlying.clone());
         let extra = (borrow_amount.saturating_mul(price)) / scale;
@@ -808,10 +822,13 @@ impl SimplePeridottroller {
         underlying: Address,
         hint: MarketLiquidityHint,
     ) -> (u128, u128) {
-        bump_core_ttl(&env);
+        let markets = Self::get_user_markets(env.clone(), user.clone());
+        if !markets.contains(market.clone()) {
+            panic!("market not entered");
+        }
         // Exclude current market, then add hinted collateral and debt.
         let (mut collateral_usd, mut borrow_usd) =
-            Self::sum_positions_usd(env.clone(), user.clone(), Some(market.clone()));
+            Self::sum_positions_usd_for_markets(env.clone(), user.clone(), Some(market.clone()), markets);
         let (price, scale) = Self::require_price(env.clone(), underlying);
         if hint.ptoken_balance > 0 {
             let cf: u128 = Self::get_market_cf(env.clone(), market);
@@ -1354,7 +1371,16 @@ impl SimplePeridottroller {
     // attackers from supplying malicious hint values that could inflate reward distributions.
     // Without hints (None), values are fetched on-chain which is safe but more expensive.
     pub fn accrue_user_market(env: Env, user: Address, market: Address, hint: Option<AccrualHint>) {
-        bump_core_ttl(&env);
+        // Reward accrual is disabled until a reward token is configured.
+        if env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::PeridotToken)
+            .is_none()
+        {
+            return;
+        }
+
         // When hints are provided, require authorization from the market contract.
         // This prevents external attackers from manipulating total_ptokens/total_borrowed
         // to inflate reward indexes, or user_ptokens/user_borrowed to inflate accruals.
@@ -1379,10 +1405,14 @@ impl SimplePeridottroller {
         Self::distribute_borrow(env, user, market, hint.user_borrowed);
     }
 
-    fn sum_positions_usd(env: Env, user: Address, exclude_market: Option<Address>) -> (u128, u128) {
+    fn sum_positions_usd_for_markets(
+        env: Env,
+        user: Address,
+        exclude_market: Option<Address>,
+        markets: Vec<Address>,
+    ) -> (u128, u128) {
         let mut collateral_total: u128 = 0u128;
         let mut borrow_total: u128 = 0u128;
-        let markets = Self::get_user_markets(env.clone(), user.clone());
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
             if let Some(ex) = exclude_market.clone() {
@@ -1434,6 +1464,11 @@ impl SimplePeridottroller {
             }
         }
         (collateral_total, borrow_total)
+    }
+
+    fn sum_positions_usd(env: Env, user: Address, exclude_market: Option<Address>) -> (u128, u128) {
+        let markets = Self::get_user_markets(env.clone(), user.clone());
+        Self::sum_positions_usd_for_markets(env, user, exclude_market, markets)
     }
 
     fn liquidation_redeem_max_ptokens(
@@ -1661,10 +1696,10 @@ impl SimplePeridottroller {
                         .persistent()
                         .set(&DataKey::SupplyIndex(market.clone()), &idx);
                 }
+                env.storage()
+                    .persistent()
+                    .set(&DataKey::SupplyIndexTime(market.clone()), &now);
             }
-            env.storage()
-                .persistent()
-                .set(&DataKey::SupplyIndexTime(market.clone()), &now);
         }
         // borrow
         let last_b: u64 = env
@@ -1711,10 +1746,10 @@ impl SimplePeridottroller {
                         .persistent()
                         .set(&DataKey::BorrowIndex(market.clone()), &idx);
                 }
+                env.storage()
+                    .persistent()
+                    .set(&DataKey::BorrowIndexTime(market.clone()), &now);
             }
-            env.storage()
-                .persistent()
-                .set(&DataKey::BorrowIndexTime(market.clone()), &now);
         }
     }
 

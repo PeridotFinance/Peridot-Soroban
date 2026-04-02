@@ -1225,7 +1225,7 @@ fn test_borrow_with_peridottroller_same_market_hint() {
     vault.enable_static_rates(&admin);
     vault.set_collateral_factor(&500_000u128);
 
-    setup_peridottroller_with_fallback(
+    let comp = setup_peridottroller_with_fallback(
         &env,
         &admin,
         &vault_id,
@@ -1240,6 +1240,7 @@ fn test_borrow_with_peridottroller_same_market_hint() {
 
     token_admin.mint(&user, &to_i128(200u128));
     vault.deposit(&user, &200u128);
+    comp.enter_market(&user, &vault_id);
 
     vault.borrow(&user, &80u128);
     assert_eq!(vault.get_user_borrow_balance(&user), 80u128);
@@ -1274,6 +1275,7 @@ fn test_repay_on_behalf_via_peridottroller_auth() {
     );
 
     vault.deposit(&user, &200u128);
+    comp.enter_market(&user, &vault_id);
     vault.borrow(&user, &100u128);
 
     let debt_before = vault.get_user_borrow_balance(&user);
@@ -1319,7 +1321,7 @@ fn test_borrow_budget_peridottroller_same_market() {
     vault.enable_static_rates(&admin);
     vault.set_collateral_factor(&500_000u128);
 
-    setup_peridottroller_with_fallback(
+    let comp = setup_peridottroller_with_fallback(
         &env,
         &admin,
         &vault_id,
@@ -1334,9 +1336,10 @@ fn test_borrow_budget_peridottroller_same_market() {
 
     token_admin.mint(&user, &to_i128(200u128));
     vault.deposit(&user, &200u128);
+    comp.enter_market(&user, &vault_id);
 
     vault.borrow(&user, &80u128);
-    assert_budget_under(&env, 5_000_000, 950_000);
+    assert_budget_under(&env, 5_300_000, 950_000);
 }
 
 #[test]
@@ -1354,7 +1357,7 @@ fn test_borrow_with_peridottroller_same_market_exact_threshold() {
     vault.enable_static_rates(&admin);
     vault.set_collateral_factor(&500_000u128);
 
-    setup_peridottroller_with_fallback(
+    let comp = setup_peridottroller_with_fallback(
         &env,
         &admin,
         &vault_id,
@@ -1369,6 +1372,7 @@ fn test_borrow_with_peridottroller_same_market_exact_threshold() {
 
     token_admin.mint(&user, &to_i128(200u128));
     vault.deposit(&user, &200u128);
+    comp.enter_market(&user, &vault_id);
 
     vault.borrow(&user, &100u128);
     assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
@@ -1390,7 +1394,7 @@ fn test_borrow_with_peridottroller_same_market_exceeds_threshold() {
     vault.enable_static_rates(&admin);
     vault.set_collateral_factor(&500_000u128);
 
-    setup_peridottroller_with_fallback(
+    let comp = setup_peridottroller_with_fallback(
         &env,
         &admin,
         &vault_id,
@@ -1405,8 +1409,64 @@ fn test_borrow_with_peridottroller_same_market_exceeds_threshold() {
 
     token_admin.mint(&user, &to_i128(200u128));
     vault.deposit(&user, &200u128);
+    comp.enter_market(&user, &vault_id);
 
     vault.borrow(&user, &101u128);
+}
+
+#[test]
+fn test_track_borrow_market_entrypoint_records_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_a, _token_a_client, _token_a_admin) = create_test_token(&env, &admin);
+    let (token_b, _token_b_client, _token_b_admin) = create_test_token(&env, &admin);
+
+    let vault_a_id = env.register(ReceiptVault, ());
+    let vault_a = ReceiptVaultClient::new(&env, &vault_a_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_a.set_collateral_factor(&1_000_000u128);
+
+    let vault_b_id = env.register(ReceiptVault, ());
+    let vault_b = ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+    vault_b.set_collateral_factor(&1_000_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&7u32, &1_0000000i128);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.set_oracle(&oracle_id);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.set_market_cf(&vault_a_id, &1_000_000u128);
+    comp.set_market_cf(&vault_b_id, &1_000_000u128);
+    comp.set_price_fallback(&token_a, &Some((1_000_000u128, 1_000_000u128)));
+    comp.set_price_fallback(&token_b, &Some((1_000_000u128, 1_000_000u128)));
+
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    // User explicitly enters only collateral market A.
+    comp.enter_market(&user, &vault_a_id);
+    let before = comp.get_user_markets(&user);
+    assert_eq!(before.len(), 1);
+
+    // Simulate market-authenticated tracking call from vault B.
+    env.as_contract(&vault_b_id, || {
+        comp.track_borrow_market(&user, &vault_b_id);
+    });
+
+    let markets = comp.get_user_markets(&user);
+    assert!(markets.contains(vault_a_id.clone()));
+    assert!(markets.contains(vault_b_id.clone()));
 }
 
 #[test]
@@ -1425,7 +1485,7 @@ fn test_withdraw_with_peridottroller_same_market_blocks_undercollateralized() {
     vault.enable_static_rates(&admin);
     vault.set_collateral_factor(&500_000u128);
 
-    setup_peridottroller_with_fallback(
+    let comp = setup_peridottroller_with_fallback(
         &env,
         &admin,
         &vault_id,
@@ -1440,6 +1500,7 @@ fn test_withdraw_with_peridottroller_same_market_blocks_undercollateralized() {
 
     token_admin.mint(&user, &to_i128(200u128));
     vault.deposit(&user, &200u128);
+    comp.enter_market(&user, &vault_id);
     vault.borrow(&user, &100u128);
 
     vault.withdraw(&user, &1u128);

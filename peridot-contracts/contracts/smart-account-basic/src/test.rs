@@ -225,3 +225,27 @@ fn test_non_contract_auth_context_is_rejected() {
     let res = enforce_policies(&env, &contexts);
     assert_eq!(res, Err(Error::Unauthorized));
 }
+
+#[test]
+fn test_token_transfer_context_allows_self_source() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let factory = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let signer = BytesN::from_array(&env, &[1u8; 32]);
+    let peridottroller = Address::generate(&env);
+    let margin = Address::generate(&env);
+    let token_contract = Address::generate(&env);
+    let (contract_id, client) = register_account(&env, &factory);
+    client.initialize(&owner, &signer, &peridottroller, &margin);
+
+    env.as_contract(&contract_id, || {
+        let ctx = ContractContext {
+            contract: token_contract,
+            fn_name: Symbol::new(&env, "transfer"),
+            args: (contract_id.clone(), Address::generate(&env), 10i128).into_val(&env),
+        };
+        let res = enforce_contract_policy(&env, &ctx);
+        assert_eq!(res, Ok(()));
+    });
+}
