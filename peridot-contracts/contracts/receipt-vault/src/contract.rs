@@ -113,6 +113,11 @@ impl ReceiptVault {
                             if now.saturating_sub(updated_at) <= BOOSTED_CACHE_MAX_AGE_SECS {
                                 return cached;
                             }
+                            // When cache is stale and external reads fail, avoid dropping to an
+                            // accounting estimate that can be materially lower than the last
+                            // observed boosted value.
+                            let estimated = Self::estimate_boosted_underlying_from_accounting(env);
+                            return cached.max(estimated);
                         }
                         Self::estimate_boosted_underlying_from_accounting(env)
                     }
@@ -149,10 +154,11 @@ impl ReceiptVault {
     }
 
     fn idle_cash_buffer_bps(env: &Env) -> u32 {
-        env.storage()
-            .persistent()
-            .get(&DataKey::IdleCashBufferBps)
-            .unwrap_or(0u32)
+        let value: Option<u32> = env.storage().persistent().get(&DataKey::IdleCashBufferBps);
+        if value.is_some() {
+            bump_idle_cash_buffer_ttl(env);
+        }
+        value.unwrap_or(0u32)
     }
 
     fn deposit_into_boosted(env: &Env, token_address: &Address, amount: u128) -> u128 {
@@ -578,6 +584,7 @@ impl ReceiptVault {
             env.storage()
                 .persistent()
                 .set(&DataKey::IdleCashBufferBps, &idle_cash_buffer_bps);
+            bump_idle_cash_buffer_ttl(&env);
         }
         NewIdleCashBuffer {
             idle_cash_buffer_bps,
@@ -1031,6 +1038,8 @@ impl ReceiptVault {
         if amount == 0 {
             return;
         }
+        // Ensure collateral checks use the latest debt/index state.
+        Self::update_interest(env.clone());
         Self::ensure_user_borrow_flag(&env, &from);
         Self::ensure_user_borrow_flag(&env, &to);
         // Gating: if peridottroller wired, consult redeem pause and health for from-user
@@ -1330,6 +1339,7 @@ impl ReceiptVault {
             .persistent()
             .set(&DataKey::InterestModel, &model.clone());
         env.storage().persistent().set(&DataKey::RatesReady, &true);
+        bump_rates_ready_ttl(&env);
         NewInterestModel { model }.publish(&env);
     }
 
@@ -1359,6 +1369,7 @@ impl ReceiptVault {
             panic!("invalid rate relationship");
         }
         env.storage().persistent().set(&DataKey::RatesReady, &true);
+        bump_rates_ready_ttl(&env);
     }
 
     /// Admin: set reserve factor (0..=1e6)
@@ -1797,6 +1808,7 @@ impl ReceiptVault {
             let has_model = storage.get::<_, Address>(&DataKey::InterestModel).is_some();
             storage.set(&DataKey::RatesReady, &has_model);
         }
+        bump_rates_ready_ttl(&env);
         bump_core_ttl(&env);
         bump_borrow_state_ttl(&env);
     }
@@ -2040,6 +2052,7 @@ impl ReceiptVault {
         Self::ensure_user_borrow_flag(&env, &user);
         Self::update_interest(env.clone());
         let storage = env.storage().persistent();
+        bump_rates_ready_ttl(&env);
         let rates_ready = storage
             .get::<_, bool>(&DataKey::RatesReady)
             .unwrap_or_else(|| storage.get::<_, Address>(&DataKey::InterestModel).is_some());

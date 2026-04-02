@@ -199,6 +199,7 @@ enum BoostedKey {
     Underlying,
     TotalShares,
     Share(Address),
+    FailQuote,
 }
 
 #[contractimpl]
@@ -210,6 +211,13 @@ impl MockBoostedVault {
         env.storage()
             .persistent()
             .set(&BoostedKey::TotalShares, &0i128);
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::FailQuote, &false);
+    }
+
+    pub fn set_fail_quote(env: Env, fail: bool) {
+        env.storage().persistent().set(&BoostedKey::FailQuote, &fail);
     }
 
     pub fn balance(env: Env, owner: Address) -> i128 {
@@ -227,6 +235,14 @@ impl MockBoostedVault {
     }
 
     pub fn get_asset_amounts_per_shares(env: Env, shares: i128) -> Vec<i128> {
+        if env
+            .storage()
+            .persistent()
+            .get(&BoostedKey::FailQuote)
+            .unwrap_or(false)
+        {
+            panic!("quote failed");
+        }
         let mut out = Vec::new(&env);
         if shares <= 0 {
             out.push_back(0i128);
@@ -442,6 +458,48 @@ fn test_borrow_uses_donated_cash_without_managed_cash_underflow() {
 }
 
 #[test]
+fn test_boosted_fallback_prefers_cached_value_when_stale_and_quote_fails() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&depositor, &2_000i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    vault.deposit(&depositor, &1_000u128);
+    assert_eq!(boosted.balance(&vault_id), 1_000i128);
+
+    // Simulate boosted yield by increasing underlying held by boosted vault.
+    token_admin_client.mint(&boosted_id, &200i128);
+    assert_eq!(token_client.balance(&boosted_id), 1_200i128);
+
+    let healthy_total = vault.get_total_underlying();
+    assert_eq!(healthy_total, 1_200u128);
+
+    // Force quote failures and age cache beyond max freshness.
+    boosted.set_fail_quote(&true);
+    let now = env.ledger().timestamp();
+    env.ledger()
+        .set_timestamp(now + (60 * 60 + 5) as u64);
+
+    // Stale-failure path should not drop below last cached boosted value.
+    let fallback_total = vault.get_total_underlying();
+    assert_eq!(fallback_total, healthy_total);
+}
+
+#[test]
 fn test_set_idle_cash_buffer_bps() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -638,6 +696,7 @@ fn test_core_ttl_bumps_all_critical_config_keys() {
     vault_client.set_flash_loan_fee(&3_000u128);
     vault_client.set_supply_cap(&5_000u128);
     vault_client.set_borrow_cap(&2_500u128);
+    vault_client.set_idle_cash_buffer_bps(&admin, &500u32);
     vault_client.set_boosted_vault(&admin, &boosted_vault);
 
     // Any initialized read path should now bump all critical config keys.
@@ -666,6 +725,8 @@ fn test_core_ttl_bumps_all_critical_config_keys() {
         assert_bumped(&env, &DataKey::TotalReserves, "TotalReserves");
         assert_bumped(&env, &DataKey::SupplyCap, "SupplyCap");
         assert_bumped(&env, &DataKey::BorrowCap, "BorrowCap");
+        assert_bumped(&env, &DataKey::RatesReady, "RatesReady");
+        assert_bumped(&env, &DataKey::IdleCashBufferBps, "IdleCashBufferBps");
         assert_bumped(&env, &DataKey::BoostedVault, "BoostedVault");
         assert_bumped(&env, &DataKey::InitialExchangeRate, "InitialExchangeRate");
     });
@@ -2088,6 +2149,39 @@ fn test_ptoken_transfer_and_approve_with_gating() {
 
     // Attempt transfer 101 -> should panic via peridottroller gating
     v.transfer(&user, &other, &101i128);
+}
+
+#[test]
+#[should_panic(expected = "Insufficient collateral")]
+fn test_transfer_accrues_interest_before_collateral_check() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let other = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &1_000i128);
+    token_admin_client.mint(&lender, &2_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&800_000u128);
+    vault.set_borrow_rate(&1_000_000u128); // 100% APR
+
+    vault.deposit(&lender, &1_000u128);
+    vault.deposit(&user, &100u128);
+    vault.borrow(&user, &79u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+
+    // Must fail using freshly-accrued debt, not stale pre-accrual debt.
+    vault.transfer(&user, &other, &1i128);
 }
 
 #[test]

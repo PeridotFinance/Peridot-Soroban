@@ -239,6 +239,20 @@ pub fn bump_borrow_state_ttl(env: &Env) {
     }
 }
 
+pub fn bump_idle_cash_buffer_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::IdleCashBufferBps) {
+        persistent.extend_ttl(&DataKey::IdleCashBufferBps, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_rates_ready_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::RatesReady) {
+        persistent.extend_ttl(&DataKey::RatesReady, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn ptoken_balance(env: &Env, addr: &Address) -> u128 {
     let bal = TokenBase::balance(env, addr);
     if bal < 0 {
