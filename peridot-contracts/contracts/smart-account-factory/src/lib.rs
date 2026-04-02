@@ -108,8 +108,7 @@ impl SmartAccountFactory {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
         }
-        let expected_admin_str =
-            option_env!("SMART_ACCOUNT_FACTORY_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin_str = expected_admin_config();
         let expected_admin = Address::from_string(&String::from_str(&env, expected_admin_str));
         if admin != expected_admin {
             panic!("unexpected admin");
@@ -310,6 +309,15 @@ impl SmartAccountFactory {
         env.storage().instance().remove(&DataKey::PendingUpgradeHash);
         env.storage().instance().remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
+}
+
+fn expected_admin_config() -> &'static str {
+    if cfg!(debug_assertions) {
+        option_env!("SMART_ACCOUNT_FACTORY_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
+    } else {
+        option_env!("SMART_ACCOUNT_FACTORY_INIT_ADMIN")
+            .expect("SMART_ACCOUNT_FACTORY_INIT_ADMIN must be set at build time")
     }
 }
 

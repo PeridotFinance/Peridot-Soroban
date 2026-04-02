@@ -353,8 +353,9 @@ impl ReceiptVault {
 
     fn sub_managed_cash(env: &Env, amount: u128) {
         let cash = Self::get_managed_cash(env);
-        if cash < amount {
-            panic!("managed cash underflow");
+        if cash <= amount {
+            Self::set_managed_cash(env, 0u128);
+            return;
         }
         Self::set_managed_cash(env, cash - amount);
     }
@@ -374,7 +375,10 @@ impl ReceiptVault {
             .persistent()
             .get::<_, bool>(&DataKey::HasBorrowed(user.clone()))
             .is_none()
+            && ptoken_balance(env, user) == 0
         {
+            // Only initialize false flags for accounts without collateral.
+            // This avoids masking missing debt state for collateralized users.
             env.storage()
                 .persistent()
                 .set(&DataKey::HasBorrowed(user.clone()), &false);
@@ -1932,6 +1936,10 @@ impl ReceiptVault {
         let Some(snapshot) = snap else {
             if has_borrowed.unwrap_or(false) {
                 panic!("borrow snapshot missing");
+            }
+            // Fail closed for collateralized accounts with missing borrow state.
+            if has_borrowed.is_none() && ptoken_balance(&env, &user) > 0 {
+                panic!("borrow state missing");
             }
             return 0u128;
         };

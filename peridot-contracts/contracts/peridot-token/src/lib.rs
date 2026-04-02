@@ -51,8 +51,7 @@ impl PeridotToken {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
         }
-        let expected_admin_str =
-            option_env!("PERIDOT_TOKEN_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin_str = expected_admin_config();
         let expected_admin = Address::from_string(&String::from_str(&env, expected_admin_str));
         if admin != expected_admin {
             panic!("unexpected admin");
@@ -241,6 +240,15 @@ fn bump_critical_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn expected_admin_config() -> &'static str {
+    if cfg!(debug_assertions) {
+        option_env!("PERIDOT_TOKEN_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
+    } else {
+        option_env!("PERIDOT_TOKEN_INIT_ADMIN")
+            .expect("PERIDOT_TOKEN_INIT_ADMIN must be set at build time")
     }
 }
 

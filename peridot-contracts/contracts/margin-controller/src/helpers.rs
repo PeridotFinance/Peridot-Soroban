@@ -84,7 +84,10 @@ pub fn debt_for_shares(
     }
     let debt_vault = get_market(env, debt_asset);
     let total_debt = ReceiptVaultClient::new(env, &debt_vault).get_user_borrow_balance(user);
-    let debt_amount = shares.saturating_mul(total_debt) / total_shares;
+    let debt_amount = shares
+        .checked_mul(total_debt)
+        .expect("debt calculation overflow")
+        / total_shares;
     (debt_amount, total_shares, total_debt)
 }
 

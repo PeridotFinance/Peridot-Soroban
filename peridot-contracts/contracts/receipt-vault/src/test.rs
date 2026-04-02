@@ -402,6 +402,46 @@ fn test_borrow_redeems_boosted_liquidity_on_demand() {
 }
 
 #[test]
+fn test_borrow_uses_donated_cash_without_managed_cash_underflow() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let donor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&lender, &2_000i128);
+    token_admin_client.mint(&borrower, &1_000i128);
+    token_admin_client.mint(&donor, &500i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    vault.deposit(&lender, &1_200u128);
+    vault.deposit(&borrower, &300u128);
+    // All managed cash is deployed.
+    assert_eq!(token_client.balance(&vault_id), 0i128);
+
+    // Donation increases live balance but does not change managed cash.
+    token_client.transfer(&donor, &vault_id, &200i128);
+    assert_eq!(token_client.balance(&vault_id), 200i128);
+
+    // Borrow should use donated cash and not panic on managed-cash subtraction.
+    vault.borrow(&borrower, &100u128);
+    assert_eq!(vault.get_total_borrowed(), 100u128);
+}
+
+#[test]
 fn test_set_idle_cash_buffer_bps() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -496,6 +536,36 @@ fn test_bump_user_borrow_ttl_permissionless() {
     vault.enable_static_rates(&admin);
 
     vault.bump_user_borrow_ttl(&user);
+}
+
+#[test]
+#[should_panic(expected = "borrow state missing")]
+fn test_missing_borrow_state_panics_for_collateralized_account() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&user, &500u128);
+
+    // Simulate archival/missing state for a collateralized account.
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BorrowSnapshots(user.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::HasBorrowed(user.clone()));
+    });
+
+    let _ = vault.get_user_borrow_balance(&user);
 }
 
 #[test]
