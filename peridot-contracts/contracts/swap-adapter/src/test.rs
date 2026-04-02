@@ -166,14 +166,54 @@ fn test_swap_chained() {
     let user = Address::generate(&env);
 
     let router_id = env.register(MockAquariusRouter, ());
+    let pool_id = env.register(MockAquariusPool, ());
+    let adapter_id = env.register(SwapAdapter, ());
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    adapter.initialize(&admin, &router_id);
+    adapter.set_pool_allowed(&admin, &pool_id, &true);
+
+    let token_in = Address::generate(&env);
+    let token_out = Address::generate(&env);
+    let path = Vec::from_array(&env, [token_in.clone(), token_out]);
+    let hops = Vec::from_array(
+        &env,
+        [(
+            path,
+            BytesN::from_array(&env, &[1u8; 32]),
+            pool_id,
+        )],
+    );
+    let out = adapter.swap_chained(&user, &hops, &token_in, &10u128, &9u128);
+    assert_eq!(out, 9u128);
+}
+
+#[test]
+#[should_panic(expected = "pool not allowed")]
+fn test_swap_chained_requires_allowlisted_pools() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = default_admin(&env);
+    let user = Address::generate(&env);
+
+    let router_id = env.register(MockAquariusRouter, ());
+    let pool_id = env.register(MockAquariusPool, ());
     let adapter_id = env.register(SwapAdapter, ());
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
     adapter.initialize(&admin, &router_id);
 
-    let swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)> = Vec::new(&env);
     let token_in = Address::generate(&env);
-    let out = adapter.swap_chained(&user, &swaps_chain, &token_in, &10u128, &9u128);
-    assert_eq!(out, 9u128);
+    let token_out = Address::generate(&env);
+    let path = Vec::from_array(&env, [token_in.clone(), token_out]);
+    let hops = Vec::from_array(
+        &env,
+        [(
+            path,
+            BytesN::from_array(&env, &[2u8; 32]),
+            pool_id,
+        )],
+    );
+
+    let _ = adapter.swap_chained(&user, &hops, &token_in, &10u128, &9u128);
 }
 
 #[test]

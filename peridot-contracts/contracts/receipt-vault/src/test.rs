@@ -339,6 +339,29 @@ fn test_initialize() {
 }
 
 #[test]
+#[should_panic(expected = "already initialized")]
+fn test_initialize_rejects_when_core_keys_exist_even_if_flag_missing() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let attacker = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_contract_id = env.register(ReceiptVault, ());
+    let vault_client = ReceiptVaultClient::new(&env, &vault_contract_id);
+    vault_client.initialize(&token_address, &0u128, &0u128, &admin);
+    vault_client.enable_static_rates(&admin);
+
+    // Simulate a missing init flag while core state is still present.
+    env.as_contract(&vault_contract_id, || {
+        env.storage().persistent().remove(&DataKey::Initialized);
+    });
+
+    vault_client.initialize(&token_address, &0u128, &0u128, &attacker);
+}
+
+#[test]
 fn test_borrow_redeems_boosted_liquidity_on_demand() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();

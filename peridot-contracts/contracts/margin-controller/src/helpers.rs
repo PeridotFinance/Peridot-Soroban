@@ -97,15 +97,28 @@ pub fn get_position_or_panic(env: &Env, position_id: u64) -> Position {
         .expect("position missing")
 }
 
-pub fn validate_swaps_chain(swaps_chain: &Vec<(Vec<Address>, BytesN<32>, Address)>) {
+pub fn validate_swaps_chain(
+    swaps_chain: &Vec<(Vec<Address>, BytesN<32>, Address)>,
+    expected_in: &Address,
+    expected_out: &Address,
+) {
     if swaps_chain.len() == 0 || swaps_chain.len() > MAX_SWAP_PATH_LEN {
         panic!("bad swaps");
     }
+    let mut current = expected_in.clone();
     for i in 0..swaps_chain.len() {
         let (path, _, _) = swaps_chain.get(i).unwrap();
-        if path.len() == 0 || path.len() > MAX_SWAP_PATH_LEN {
+        if path.len() < 2 || path.len() > MAX_SWAP_PATH_LEN {
             panic!("bad swaps");
         }
+        let hop_in = path.get(0).unwrap();
+        if hop_in != current {
+            panic!("bad swaps");
+        }
+        current = path.get(path.len() - 1).unwrap();
+    }
+    if current != *expected_out {
+        panic!("bad swaps");
     }
 }
 

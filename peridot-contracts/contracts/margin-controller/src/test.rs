@@ -93,6 +93,10 @@ struct MockSwapAdapter;
 
 #[contractimpl]
 impl MockSwapAdapter {
+    pub fn is_pool_allowed(_env: Env, _pool: Address) -> bool {
+        true
+    }
+
     pub fn swap_chained(
         env: Env,
         user: Address,
@@ -102,7 +106,8 @@ impl MockSwapAdapter {
         _amount_with_slippage: u128,
     ) -> u128 {
         let last = swaps_chain.get(swaps_chain.len() - 1).unwrap();
-        let token_out = last.2;
+        let (path, _, _) = last;
+        let token_out = path.get(path.len() - 1).unwrap();
         MockTokenClient::new(&env, &token_out).mint(&user, &(amount as i128));
         amount
     }
@@ -447,10 +452,15 @@ fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Addres
     )
 }
 
-fn mock_swaps_chain(env: &Env, token_out: &Address) -> Vec<(Vec<Address>, BytesN<32>, Address)> {
-    let pools: Vec<Address> = Vec::from_array(env, [token_out.clone()]);
+fn mock_swaps_chain(
+    env: &Env,
+    token_in: &Address,
+    token_out: &Address,
+) -> Vec<(Vec<Address>, BytesN<32>, Address)> {
+    let path: Vec<Address> = Vec::from_array(env, [token_in.clone(), token_out.clone()]);
     let pool_id = BytesN::from_array(env, &[0u8; 32]);
-    Vec::from_array(env, [(pools, pool_id, token_out.clone())])
+    let pool = Address::generate(env);
+    Vec::from_array(env, [(path, pool_id, pool)])
 }
 
 #[test]
@@ -470,7 +480,7 @@ fn open_and_close_long() {
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
 
-    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &usdt_id);
     controller.close_position(
         &user,
         &position_id,
@@ -564,7 +574,7 @@ fn test_open_short_position() {
     let (env, controller_id, usdt_id, xlm_id, user) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let swaps_chain = mock_swaps_chain(&env, &usdt_id);
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id, &usdt_id);
     let position_id = controller.open_position(
         &user,
         &usdt_id,
@@ -586,7 +596,7 @@ fn test_open_position_bad_leverage_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
     controller.open_position(
         &user,
         &usdt_id,
@@ -605,7 +615,7 @@ fn test_open_position_leverage_exceeds_max_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
     controller.open_position(
         &user,
         &usdt_id,
@@ -624,12 +634,32 @@ fn test_open_position_zero_collateral_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let swaps_chain = mock_swaps_chain(&env, &xlm_id);
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
     controller.open_position(
         &user,
         &usdt_id,
         &xlm_id,
         &0u128, // zero collateral
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &200u128,
+    );
+}
+
+#[test]
+#[should_panic(expected = "bad swaps")]
+fn test_open_position_rejects_mismatched_swap_path() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    // Long expects debt->position route usdt -> xlm; this route is usdt -> usdt.
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &usdt_id);
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
         &2u128,
         &PositionSide::Long,
         &swaps_chain,
@@ -654,7 +684,7 @@ fn test_close_position_not_owner_panics() {
     );
 
     let other_user = Address::generate(&env);
-    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &usdt_id);
     controller.close_position(
         &other_user,
         &position_id,
@@ -679,7 +709,7 @@ fn test_close_position_already_closed_panics() {
         &PositionSide::Long,
     );
 
-    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &usdt_id);
     controller.close_position(
         &user,
         &position_id,
@@ -688,7 +718,7 @@ fn test_close_position_already_closed_panics() {
     );
 
     // Try closing again
-    let swaps_chain_close2 = mock_swaps_chain(&env, &usdt_id);
+    let swaps_chain_close2 = mock_swaps_chain(&env, &usdt_id, &usdt_id);
     controller.close_position(
         &user,
         &position_id,

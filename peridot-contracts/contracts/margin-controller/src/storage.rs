@@ -29,6 +29,8 @@ pub trait PeridottrollerContract {
 
 #[soroban_sdk::contractclient(name = "SwapAdapterClient")]
 pub trait SwapAdapterContract {
+    fn is_pool_allowed(env: Env, pool: Address) -> bool;
+
     fn swap_chained(
         env: Env,
         user: Address,

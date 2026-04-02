@@ -139,6 +139,16 @@ impl SwapAdapter {
     ) -> u128 {
         bump_critical_ttl(&env);
         user.require_auth();
+        if swaps_chain.len() == 0 {
+            panic!("bad swaps");
+        }
+        for i in 0..swaps_chain.len() {
+            let (path, _, pool) = swaps_chain.get(i).unwrap();
+            if path.len() < 2 {
+                panic!("bad swaps");
+            }
+            ensure_pool_allowed(&env, &pool);
+        }
         let router: Address = env
             .storage()
             .persistent()

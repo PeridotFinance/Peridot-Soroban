@@ -134,11 +134,16 @@ impl JumpRateModel {
         if borrows == 0 {
             return 0;
         }
-        let denom = cash.saturating_add(borrows).saturating_sub(reserves);
+        let assets = cash.saturating_add(borrows);
+        if reserves > assets {
+            panic!("reserves exceed total assets");
+        }
+        let denom = assets - reserves;
         if denom == 0 {
             return 0;
         }
-        borrows.saturating_mul(SCALE_1E6) / denom
+        let util = borrows.saturating_mul(SCALE_1E6) / denom;
+        util.min(SCALE_1E6)
     }
 }
 

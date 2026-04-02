@@ -566,6 +566,9 @@ impl SimplePeridottroller {
             .get(&DataKey::UserMarkets(user.clone()))
             .unwrap_or(Vec::new(&env));
         if !entered.contains(market.clone()) {
+            if entered.len() >= MAX_USER_MARKETS {
+                panic!("too many entered markets");
+            }
             entered.push_back(market.clone());
             env.storage()
                 .persistent()

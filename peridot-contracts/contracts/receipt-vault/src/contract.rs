@@ -422,9 +422,10 @@ impl ReceiptVault {
         admin: Address,
     ) {
         let storage = env.storage().persistent();
-        if storage
-            .get::<_, bool>(&DataKey::Initialized)
-            .unwrap_or(false)
+        if storage.get::<_, bool>(&DataKey::Initialized).unwrap_or(false)
+            || storage.has(&DataKey::Admin)
+            || storage.has(&DataKey::UnderlyingToken)
+            || TokenBase::total_supply(&env) > 0
         {
             panic!("already initialized");
         }
@@ -517,6 +518,8 @@ impl ReceiptVault {
 
         let metadata = env.current_contract_address().to_string();
         TokenBase::set_metadata(&env, PTOKEN_DECIMALS, metadata.clone(), metadata);
+        bump_core_ttl(&env);
+        bump_borrow_state_ttl(&env);
     }
 
     /// Admin: set boosted vault address (DeFindex).
@@ -663,28 +666,37 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::SupplyCap)
             .unwrap_or(0u128);
+        let total_underlying_before = if cap > 0 {
+            Some(Self::get_total_underlying(env.clone()))
+        } else {
+            None
+        };
+
+        // Calculate pTokens to mint based on current exchange rate BEFORE moving cash
+        let current_rate = Self::get_exchange_rate(env.clone());
+        let amount_i128 = to_i128(amount);
+        token_client.transfer(&user, &env.current_contract_address(), &amount_i128);
+        let cash_after = Self::current_live_cash(&env, &token_address);
+        let received_cash = cash_after.saturating_sub(cash_before);
+        if received_cash == 0 {
+            panic!("amount below minimum");
+        }
         if cap > 0 {
-            let total_underlying_before = Self::get_total_underlying(env.clone());
-            let total_underlying_after = total_underlying_before.saturating_add(amount);
+            let total_underlying_after = total_underlying_before
+                .unwrap_or(0u128)
+                .saturating_add(received_cash);
             if total_underlying_after > cap {
                 panic!("supply cap exceeded");
             }
         }
 
-        // Calculate pTokens to mint based on current exchange rate BEFORE moving cash
-        let current_rate = Self::get_exchange_rate(env.clone());
-        let scaled_amount = amount
+        let scaled_amount = received_cash
             .checked_mul(SCALE_1E6)
             .expect("ptoken calculation overflow");
         let ptokens_to_mint = scaled_amount / current_rate;
         if ptokens_to_mint == 0 {
             panic!("amount below minimum");
         }
-        // Transfer tokens from user to contract
-        let amount_i128 = to_i128(amount);
-        token_client.transfer(&user, &env.current_contract_address(), &amount_i128);
-        let cash_after = Self::current_live_cash(&env, &token_address);
-        let received_cash = cash_after.saturating_sub(cash_before);
         Self::add_managed_cash(&env, received_cash);
 
         let deploy_amount = if received_cash == 0 {
@@ -711,12 +723,12 @@ impl ReceiptVault {
             .expect("total deposited missing");
         env.storage()
             .persistent()
-            .set(&DataKey::TotalDeposited, &(total_deposited + amount));
+            .set(&DataKey::TotalDeposited, &(total_deposited + received_cash));
 
         // Emit Compound-style Mint event
         Mint {
             minter: user.clone(),
-            mint_amount: amount,
+            mint_amount: received_cash,
             mint_tokens: ptokens_to_mint,
         }
         .publish(&env);
