@@ -458,7 +458,7 @@ fn mock_swaps_chain(
     token_out: &Address,
 ) -> Vec<(Vec<Address>, BytesN<32>, Address)> {
     let path: Vec<Address> = Vec::from_array(env, [token_in.clone(), token_out.clone()]);
-    let pool_id = BytesN::from_array(env, &[0u8; 32]);
+    let pool_id = BytesN::from_array(env, &[1u8; 32]);
     let pool = Address::generate(env);
     Vec::from_array(env, [(path, pool_id, pool)])
 }

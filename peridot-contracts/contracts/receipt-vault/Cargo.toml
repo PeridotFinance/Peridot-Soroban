@@ -15,5 +15,5 @@ stellar-tokens = { workspace = true }
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
 simple-peridottroller = { path = "../simple-peridottroller" }
-jump-rate-model = { path = "../jump-rate-model" }
+jump-rate-model = { path = "../jump-rate-model", features = ["test-default-admin"] }
 mock-token = { path = "../mocks/mock-token" }

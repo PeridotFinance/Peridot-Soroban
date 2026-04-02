@@ -227,7 +227,7 @@ fn require_admin(env: &Env, admin: &Address) {
 }
 
 fn expected_admin_config() -> &'static str {
-    if cfg!(debug_assertions) {
+    if cfg!(any(test, feature = "test-default-admin")) {
         option_env!("SWAP_ADAPTER_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
     } else {
         option_env!("SWAP_ADAPTER_INIT_ADMIN")

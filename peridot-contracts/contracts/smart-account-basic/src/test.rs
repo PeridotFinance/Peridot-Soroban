@@ -210,3 +210,18 @@ fn test_sensitive_call_on_unlisted_vault_is_rejected() {
         assert_eq!(res, Err(Error::Unauthorized));
     });
 }
+
+#[test]
+fn test_non_contract_auth_context_is_rejected() {
+    let env = Env::default();
+    let wasm_hash = BytesN::from_array(&env, &[7u8; 32]);
+    let mut contexts = Vec::new(&env);
+    contexts.push_back(Context::CreateContractHostFn(
+        soroban_sdk::auth::CreateContractHostFnContext {
+            executable: soroban_sdk::auth::ContractExecutable::Wasm(wasm_hash),
+            salt: BytesN::from_array(&env, &[9u8; 32]),
+        },
+    ));
+    let res = enforce_policies(&env, &contexts);
+    assert_eq!(res, Err(Error::Unauthorized));
+}

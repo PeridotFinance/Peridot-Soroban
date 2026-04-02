@@ -11,20 +11,6 @@ pub struct MarginController;
 
 #[contractimpl]
 impl MarginController {
-    fn ensure_swap_pools_allowed(
-        env: &Env,
-        swap_adapter: &Address,
-        swaps_chain: &Vec<(Vec<Address>, BytesN<32>, Address)>,
-    ) {
-        let adapter = SwapAdapterClient::new(env, swap_adapter);
-        for i in 0..swaps_chain.len() {
-            let (_, _, pool) = swaps_chain.get(i).unwrap();
-            if !adapter.is_pool_allowed(&pool) {
-                panic!("pool not allowed");
-            }
-        }
-    }
-
     pub fn initialize(
         env: Env,
         admin: Address,
@@ -157,7 +143,14 @@ impl MarginController {
             PositionSide::Long => (collateral_asset.clone(), base_asset.clone()),
             PositionSide::Short => (base_asset.clone(), collateral_asset.clone()),
         };
-        validate_swaps_chain(&swaps_chain, &debt_asset, &position_asset);
+        let swap_adapter = get_swap_adapter(&env);
+        validate_swaps_chain(
+            &env,
+            &swap_adapter,
+            &swaps_chain,
+            &debt_asset,
+            &position_asset,
+        );
         let collateral_price = get_price_usd(&env, &collateral_asset);
         let debt_price = get_price_usd(&env, &debt_asset);
         let collateral_value = collateral_amount
@@ -209,8 +202,6 @@ impl MarginController {
         );
 
         // Swap borrowed debt asset to position asset via Aquarius
-        let swap_adapter = get_swap_adapter(&env);
-        Self::ensure_swap_pools_allowed(&env, &swap_adapter, &swaps_chain);
         let received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
             &user,
             &swaps_chain,
@@ -415,7 +406,10 @@ impl MarginController {
         if position.status != PositionStatus::Open {
             panic!("not open");
         }
+        let swap_adapter = get_swap_adapter(&env);
         validate_swaps_chain(
+            &env,
+            &swap_adapter,
             &swaps_chain,
             &position.collateral_asset,
             &position.debt_asset,
@@ -452,8 +446,6 @@ impl MarginController {
             position.collateral_ptokens.saturating_mul(exchange_rate) / SCALE_1E6;
         ReceiptVaultClient::new(&env, &vault).withdraw(&user, &position.collateral_ptokens);
 
-        let swap_adapter = get_swap_adapter(&env);
-        Self::ensure_swap_pools_allowed(&env, &swap_adapter, &swaps_chain);
         let received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
             &user,
             &swaps_chain,

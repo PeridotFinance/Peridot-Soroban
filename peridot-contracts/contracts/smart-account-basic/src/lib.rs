@@ -229,8 +229,11 @@ impl CustomAccountInterface for BasicSmartAccount {
 fn enforce_policies(env: &Env, auth_contexts: &Vec<Context>) -> Result<(), Error> {
     for i in 0..auth_contexts.len() {
         let ctx = auth_contexts.get(i).unwrap();
-        if let Context::Contract(contract_ctx) = ctx {
-            enforce_contract_policy(env, &contract_ctx)?;
+        match ctx {
+            Context::Contract(contract_ctx) => {
+                enforce_contract_policy(env, &contract_ctx)?;
+            }
+            _ => return Err(Error::Unauthorized),
         }
     }
     Ok(())

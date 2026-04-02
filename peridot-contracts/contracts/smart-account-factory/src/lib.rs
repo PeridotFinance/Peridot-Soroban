@@ -313,7 +313,7 @@ impl SmartAccountFactory {
 }
 
 fn expected_admin_config() -> &'static str {
-    if cfg!(debug_assertions) {
+    if cfg!(test) {
         option_env!("SMART_ACCOUNT_FACTORY_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
     } else {
         option_env!("SMART_ACCOUNT_FACTORY_INIT_ADMIN")

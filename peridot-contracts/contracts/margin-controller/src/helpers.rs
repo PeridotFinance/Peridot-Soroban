@@ -101,6 +101,8 @@ pub fn get_position_or_panic(env: &Env, position_id: u64) -> Position {
 }
 
 pub fn validate_swaps_chain(
+    env: &Env,
+    swap_adapter: &Address,
     swaps_chain: &Vec<(Vec<Address>, BytesN<32>, Address)>,
     expected_in: &Address,
     expected_out: &Address,
@@ -108,11 +110,18 @@ pub fn validate_swaps_chain(
     if swaps_chain.len() == 0 || swaps_chain.len() > MAX_SWAP_PATH_LEN {
         panic!("bad swaps");
     }
+    let adapter = SwapAdapterClient::new(env, swap_adapter);
     let mut current = expected_in.clone();
     for i in 0..swaps_chain.len() {
-        let (path, _, _) = swaps_chain.get(i).unwrap();
+        let (path, pool_id, pool) = swaps_chain.get(i).unwrap();
         if path.len() < 2 || path.len() > MAX_SWAP_PATH_LEN {
             panic!("bad swaps");
+        }
+        if pool_id.to_array() == [0u8; 32] {
+            panic!("bad swaps");
+        }
+        if !adapter.is_pool_allowed(&pool) {
+            panic!("pool not allowed");
         }
         let hop_in = path.get(0).unwrap();
         if hop_in != current {

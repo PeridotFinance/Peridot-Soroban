@@ -29,6 +29,15 @@ pub struct ModelInitialized {
     pub kink: u128,
 }
 
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ModelParamsUpdated {
+    pub base_rate: u128,
+    pub multiplier: u128,
+    pub jump_multiplier: u128,
+    pub kink: u128,
+}
+
 #[contractimpl]
 impl JumpRateModel {
     pub fn initialize(
@@ -118,11 +127,49 @@ impl JumpRateModel {
     ) -> u128 {
         ensure_initialized(&env);
         bump_ttl(&env);
+        if reserve_factor > SCALE_1E6 {
+            panic!("invalid reserve_factor");
+        }
         let one_minus_rf = SCALE_1E6.saturating_sub(reserve_factor);
         let borrow_rate = Self::get_borrow_rate(env.clone(), cash, borrows, reserves);
         let rate_to_pool = borrow_rate.saturating_mul(one_minus_rf) / SCALE_1E6;
         let util = Self::utilization(cash, borrows, reserves);
         util.saturating_mul(rate_to_pool) / SCALE_1E6
+    }
+
+    pub fn set_params(
+        env: Env,
+        admin: Address,
+        base: u128,
+        multiplier: u128,
+        jump: u128,
+        kink: u128,
+    ) {
+        require_admin(&env, &admin);
+        if kink > SCALE_1E6 {
+            panic!("invalid kink");
+        }
+        if base > 10_000_000u128 || multiplier > 10_000_000u128 || jump > 10_000_000u128 {
+            panic!("invalid rate params");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::BaseRatePerYear, &base);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MultiplierPerYear, &multiplier);
+        env.storage()
+            .persistent()
+            .set(&DataKey::JumpMultiplierPerYear, &jump);
+        env.storage().persistent().set(&DataKey::Kink, &kink);
+        bump_ttl(&env);
+        ModelParamsUpdated {
+            base_rate: base,
+            multiplier,
+            jump_multiplier: jump,
+            kink,
+        }
+        .publish(&env);
     }
 
     pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
@@ -170,7 +217,7 @@ fn assert_expected_admin(_env: &Env, _admin: &Address) {
 }
 
 fn expected_admin_config() -> &'static str {
-    if cfg!(debug_assertions) {
+    if cfg!(any(test, feature = "test-default-admin")) {
         option_env!("JUMP_RATE_MODEL_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
     } else {
         option_env!("JUMP_RATE_MODEL_INIT_ADMIN")
@@ -251,5 +298,43 @@ mod test {
             &800_000u128,
             &admin,
         );
+    }
+
+    #[test]
+    fn set_params_updates_curve() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let id = env.register(JumpRateModel, ());
+        let client = JumpRateModelClient::new(&env, &id);
+        client.initialize(
+            &20_000u128,
+            &180_000u128,
+            &4_000_000u128,
+            &800_000u128,
+            &admin,
+        );
+        let before = client.get_borrow_rate(&500u128, &500u128, &0u128);
+        client.set_params(&admin, &10_000u128, &120_000u128, &3_000_000u128, &700_000u128);
+        let after = client.get_borrow_rate(&500u128, &500u128, &0u128);
+        assert!(after != before);
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid reserve_factor")]
+    fn get_supply_rate_rejects_invalid_reserve_factor() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let id = env.register(JumpRateModel, ());
+        let client = JumpRateModelClient::new(&env, &id);
+        client.initialize(
+            &20_000u128,
+            &180_000u128,
+            &4_000_000u128,
+            &800_000u128,
+            &admin,
+        );
+        let _ = client.get_supply_rate(&1_000u128, &500u128, &0u128, &1_000_001u128);
     }
 }
