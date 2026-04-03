@@ -102,10 +102,18 @@ pub fn debt_for_shares(
     }
     let debt_vault = get_market(env, debt_asset);
     let total_debt = ReceiptVaultClient::new(env, &debt_vault).get_user_borrow_balance(user);
-    let debt_amount = shares
-        .checked_mul(total_debt)
-        .expect("debt calculation overflow")
-        / total_shares;
+    let debt_amount = if shares >= total_shares {
+        total_debt
+    } else {
+        let numerator = shares
+            .checked_mul(total_debt)
+            .expect("debt calculation overflow");
+        // Round up so share burn repays enough underlying for the shares removed.
+        numerator
+            .checked_add(total_shares - 1)
+            .expect("debt calculation overflow")
+            / total_shares
+    };
     (debt_amount, total_shares, total_debt)
 }
 

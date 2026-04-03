@@ -2168,6 +2168,43 @@ fn test_jump_model_dynamic_supply_apr_accrual() {
 }
 
 #[test]
+fn test_update_interest_does_not_advance_time_when_rounds_to_zero() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &10_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &100_000u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+
+    vault.deposit(&user, &100u128);
+    vault.borrow(&user, &1u128);
+
+    let last_before: u64 = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::LastUpdateTime)
+            .expect("last update missing")
+    });
+    env.ledger().set_timestamp(last_before + 1);
+    vault.update_interest();
+    let last_after: u64 = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::LastUpdateTime)
+            .expect("last update missing")
+    });
+    assert_eq!(last_after, last_before);
+}
+
+#[test]
 #[should_panic]
 fn test_ptoken_transfer_and_approve_with_gating() {
     let env = Env::default();

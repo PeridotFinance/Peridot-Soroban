@@ -316,19 +316,38 @@ fn enforce_token_auth_policy(
     ctx: &ContractContext,
     fn_name: &Symbol,
 ) -> Result<(), Error> {
-    let self_address = env.current_contract_address();
-    if *fn_name == Symbol::new(env, "transfer") || *fn_name == Symbol::new(env, "approve") {
-        return check_first_address_is_self(env, ctx, 0);
+    if *fn_name == Symbol::new(env, "transfer") {
+        check_first_address_is_self(env, ctx, 0)?;
+        let to = get_address_arg(env, ctx, 1)?;
+        if !is_protocol_recipient(env, &to) {
+            return Err(Error::Unauthorized);
+        }
+        return Ok(());
+    }
+    if *fn_name == Symbol::new(env, "approve") {
+        check_first_address_is_self(env, ctx, 0)?;
+        let spender = get_address_arg(env, ctx, 1)?;
+        if !is_protocol_recipient(env, &spender) {
+            return Err(Error::Unauthorized);
+        }
+        return Ok(());
     }
     if *fn_name == Symbol::new(env, "transfer_from") {
-        let spender = get_address_arg(env, ctx, 0)?;
         let owner = get_address_arg(env, ctx, 1)?;
-        if spender != self_address && owner != self_address {
+        if owner != env.current_contract_address() {
+            return Err(Error::Unauthorized);
+        }
+        let to = get_address_arg(env, ctx, 2)?;
+        if !is_protocol_recipient(env, &to) {
             return Err(Error::Unauthorized);
         }
         return Ok(());
     }
     Err(Error::Unauthorized)
+}
+
+fn is_protocol_recipient(env: &Env, addr: &Address) -> bool {
+    is_allowed_vault_contract(env, addr) || is_margin_controller_contract(env, addr)
 }
 
 fn check_borrow_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {

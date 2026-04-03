@@ -88,7 +88,16 @@ impl ReceiptVault {
                 ) {
                     Ok(amounts) => {
                         let amt_i = amounts.get(0).unwrap_or(0);
-                        let boosted_underlying = if amt_i > 0 { amt_i as u128 } else { 0u128 };
+                        if amt_i <= 0 {
+                            let cached: u128 = env
+                                .storage()
+                                .persistent()
+                                .get(&DataKey::BoostedUnderlyingCached)
+                                .unwrap_or(0u128);
+                            let estimated = Self::estimate_boosted_underlying_from_accounting(env);
+                            return cached.max(estimated);
+                        }
+                        let boosted_underlying = amt_i as u128;
                         env.storage()
                             .persistent()
                             .set(&DataKey::BoostedUnderlyingCached, &boosted_underlying);
@@ -1206,13 +1215,7 @@ impl ReceiptVault {
         }
         let total_underlying = Self::get_total_underlying(env.clone());
         if total_underlying == 0 {
-            // Fall back to initial rate to avoid halting operations; downstream liquidity
-            // checks still protect withdrawals when cash is exhausted.
-            return env
-                .storage()
-                .persistent()
-                .get(&DataKey::InitialExchangeRate)
-                .unwrap_or(SCALE_1E6);
+            panic!("invalid underlying state");
         }
         // rate = total_underlying / total_ptokens, scaled 1e6
         let scaled_underlying = total_underlying
@@ -1621,6 +1624,7 @@ impl ReceiptVault {
             .get(&DataKey::BorrowIndex)
             .expect("borrow index missing");
         let mut event_total_borrows: u128 = tb_prior;
+        let mut advance_last_update = tb_prior == 0;
         // Determine borrow yearly rate from model if set, else static
         let borrow_yearly_rate_scaled: u128 = if let Some(model) = env
             .storage()
@@ -1656,6 +1660,9 @@ impl ReceiptVault {
             let borrow_interest_total =
                 checked_interest_product(&env, tb_prior, borrow_yearly_rate_scaled, elapsed);
             interest_accumulated_event = borrow_interest_total;
+            if borrow_interest_total > 0 {
+                advance_last_update = true;
+            }
 
             // Split between reserves, admin fees and suppliers based on factors
             let rf: u128 = env
@@ -1719,6 +1726,9 @@ impl ReceiptVault {
                 .set(&DataKey::BorrowIndex, &new_index);
             event_borrow_index = new_index;
         }
+        if tb_prior > 0 && borrow_yearly_rate_scaled == 0 {
+            advance_last_update = true;
+        }
 
         AccrueInterest {
             interest_accumulated: interest_accumulated_event,
@@ -1727,10 +1737,13 @@ impl ReceiptVault {
         }
         .publish(&env);
 
-        // Move time forward
-        env.storage()
-            .persistent()
-            .set(&DataKey::LastUpdateTime, &now);
+        // Move time forward only when accrual inputs cannot produce future interest
+        // (no debt or zero rate) or this update accrued a non-zero amount.
+        if advance_last_update {
+            env.storage()
+                .persistent()
+                .set(&DataKey::LastUpdateTime, &now);
+        }
     }
 
     /// Admin-only recovery for missing core state after TTL expiry.

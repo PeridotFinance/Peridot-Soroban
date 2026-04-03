@@ -8,6 +8,7 @@ pub trait ReceiptVaultContract {
     fn withdraw(env: Env, user: Address, ptoken_amount: u128);
     fn borrow(env: Env, user: Address, amount: u128);
     fn repay(env: Env, user: Address, amount: u128);
+    fn get_underlying_token(env: Env) -> Address;
     fn get_exchange_rate(env: Env) -> u128;
     fn get_ptoken_balance(env: Env, user: Address) -> u128;
     fn get_user_borrow_balance(env: Env, user: Address) -> u128;
@@ -107,6 +108,7 @@ pub fn get_market(env: &Env, asset: &Address) -> Address {
 }
 
 pub fn get_peridottroller(env: &Env) -> PeridottrollerClient<'_> {
+    bump_core_ttl(env);
     let addr: Address = env
         .storage()
         .persistent()
@@ -116,6 +118,7 @@ pub fn get_peridottroller(env: &Env) -> PeridottrollerClient<'_> {
 }
 
 pub fn get_swap_adapter(env: &Env) -> Address {
+    bump_core_ttl(env);
     env.storage()
         .persistent()
         .get(&DataKey::SwapAdapter)
@@ -123,6 +126,7 @@ pub fn get_swap_adapter(env: &Env) -> Address {
 }
 
 pub fn get_max_leverage(env: &Env) -> u128 {
+    bump_core_ttl(env);
     env.storage()
         .persistent()
         .get(&DataKey::MaxLeverage)

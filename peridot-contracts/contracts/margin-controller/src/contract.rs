@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, Vec};
+use soroban_sdk::{contract, contractimpl, token, Address, BytesN, Env, Vec};
 #[cfg(not(test))]
 use soroban_sdk::String;
 
@@ -441,10 +441,19 @@ impl MarginController {
         }
 
         let vault = get_market(&env, &position.collateral_asset);
-        let exchange_rate = ReceiptVaultClient::new(&env, &vault).get_exchange_rate();
-        let collateral_underlying =
-            position.collateral_ptokens.saturating_mul(exchange_rate) / SCALE_1E6;
+        let underlying_token = ReceiptVaultClient::new(&env, &vault).get_underlying_token();
+        let token_client = token::TokenClient::new(&env, &underlying_token);
+        let bal_before = token_client.balance(&user);
         ReceiptVaultClient::new(&env, &vault).withdraw(&user, &position.collateral_ptokens);
+        let bal_after = token_client.balance(&user);
+        let collateral_underlying = if bal_after <= bal_before {
+            0u128
+        } else {
+            (bal_after - bal_before) as u128
+        };
+        if collateral_underlying == 0 {
+            panic!("no collateral withdrawn");
+        }
 
         let received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
             &user,

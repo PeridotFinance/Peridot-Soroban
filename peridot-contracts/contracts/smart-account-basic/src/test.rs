@@ -227,7 +227,7 @@ fn test_non_contract_auth_context_is_rejected() {
 }
 
 #[test]
-fn test_token_transfer_context_allows_self_source() {
+fn test_token_transfer_context_requires_protocol_recipient() {
     let env = Env::default();
     env.mock_all_auths();
     let factory = Address::generate(&env);
@@ -236,14 +236,16 @@ fn test_token_transfer_context_allows_self_source() {
     let peridottroller = Address::generate(&env);
     let margin = Address::generate(&env);
     let token_contract = Address::generate(&env);
+    let allowed_vault = Address::generate(&env);
     let (contract_id, client) = register_account(&env, &factory);
     client.initialize(&owner, &signer, &peridottroller, &margin);
+    client.add_allowed_contract(&owner, &allowed_vault);
 
     env.as_contract(&contract_id, || {
         let ctx = ContractContext {
             contract: token_contract,
             fn_name: Symbol::new(&env, "transfer"),
-            args: (contract_id.clone(), Address::generate(&env), 10i128).into_val(&env),
+            args: (contract_id.clone(), allowed_vault, 10i128).into_val(&env),
         };
         let res = enforce_contract_policy(&env, &ctx);
         assert_eq!(res, Ok(()));

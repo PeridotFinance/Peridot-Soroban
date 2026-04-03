@@ -598,6 +598,7 @@ impl SimplePeridottroller {
     // Market-authenticated entrypoint used by vaults so borrowed markets are always tracked
     // even if users forget to call enter_market explicitly.
     pub fn track_borrow_market(env: Env, user: Address, market: Address) {
+        bump_core_ttl(&env);
         market.require_auth();
         Self::ensure_user_market_entered(&env, &user, &market);
     }
@@ -834,6 +835,7 @@ impl SimplePeridottroller {
         borrow_amount: u128,
         underlying: Address,
     ) -> (u128, u128) {
+        bump_core_ttl(&env);
         let markets = Self::get_user_markets(env.clone(), user.clone());
         if !markets.contains(market.clone()) {
             panic!("market not entered");
@@ -861,6 +863,7 @@ impl SimplePeridottroller {
         underlying: Address,
         hint: MarketLiquidityHint,
     ) -> (u128, u128) {
+        bump_core_ttl(&env);
         let markets = Self::get_user_markets(env.clone(), user.clone());
         if !markets.contains(market.clone()) {
             panic!("market not entered");
