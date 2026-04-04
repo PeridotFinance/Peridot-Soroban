@@ -198,6 +198,7 @@ impl SmartAccountFactory {
             .instance()
             .get(&DataKey::WasmHash(config.account_type))
             .expect("wasm hash not set");
+        require_approved_hash(&env, &wasm_hash);
 
         // Derive a unique, owner-scoped salt to prevent address squatting.
         let owner_str = config.owner.to_string();

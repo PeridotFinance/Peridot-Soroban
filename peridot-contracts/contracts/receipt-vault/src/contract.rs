@@ -375,6 +375,17 @@ impl ReceiptVault {
         Self::set_managed_cash(env, cash - amount);
     }
 
+    fn ensure_not_in_flash_loan(env: &Env) {
+        if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&DataKey::FlashLoanActive)
+            .unwrap_or(false)
+        {
+            panic!("operation blocked during flash loan");
+        }
+    }
+
     fn ensure_user_borrow_flag(env: &Env, user: &Address) {
         let has_snapshot = env
             .storage()
@@ -636,6 +647,7 @@ impl ReceiptVault {
     /// Deposit tokens into the vault and receive pTokens
     pub fn deposit(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
         // Always update interest first
         Self::update_interest(env.clone());
         // Require authorization from the user
@@ -757,6 +769,7 @@ impl ReceiptVault {
     /// Withdraw tokens using pTokens
     pub fn withdraw(env: Env, user: Address, ptoken_amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
         user.require_auth();
         Self::ensure_user_borrow_flag(&env, &user);
         // Always update interest first
@@ -1044,6 +1057,7 @@ impl ReceiptVault {
         spender: Option<Address>,
     ) {
         ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
         if amount == 0 {
             return;
         }
@@ -1990,6 +2004,41 @@ impl ReceiptVault {
         bump_user_borrow_state_ttl(&env, &user);
     }
 
+    /// Admin recovery path for a missing/expired borrower snapshot.
+    /// Intended for keeper-assisted repair after TTL expiry.
+    pub fn recover_user_borrow_snapshot(
+        env: Env,
+        admin: Address,
+        user: Address,
+        principal: u128,
+        interest_index: u128,
+    ) {
+        let _ = ensure_initialized(&env);
+        let stored_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if stored_admin != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+        if interest_index == 0 {
+            panic!("invalid borrow index");
+        }
+        let snap = BorrowSnapshot {
+            principal,
+            interest_index,
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::BorrowSnapshots(user.clone()), &snap);
+        env.storage()
+            .persistent()
+            .set(&DataKey::HasBorrowed(user.clone()), &(principal > 0));
+        bump_user_borrow_state_ttl(&env, &user);
+    }
+
     /// Internal: write user's borrow snapshot
     fn write_borrow_snapshot(env: &Env, user: Address, principal: u128) {
         let current_index: u128 = env
@@ -2065,6 +2114,7 @@ impl ReceiptVault {
     /// Borrow tokens against pToken collateral
     pub fn borrow(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
         Self::ensure_user_borrow_flag(&env, &user);
         Self::update_interest(env.clone());
         let storage = env.storage().persistent();
@@ -2246,6 +2296,7 @@ impl ReceiptVault {
     /// Repay borrowed tokens
     pub fn repay(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
         Self::ensure_user_borrow_flag(&env, &user);
         Self::update_interest(env.clone());
         ensure_user_auth(&env, &user);
@@ -2345,6 +2396,7 @@ impl ReceiptVault {
             panic!("invalid flash amount");
         }
         let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
         Self::update_interest(env.clone());
 
         if let Some(comp_addr) = env
@@ -2385,6 +2437,9 @@ impl ReceiptVault {
 
         // Receiver must explicitly authorize being targeted as a flash loan callback.
         receiver.require_auth();
+        env.storage()
+            .persistent()
+            .set(&DataKey::FlashLoanActive, &true);
         Self::sub_managed_cash(&env, amount);
         token_client.transfer(&env.current_contract_address(), &receiver, &to_i128(amount));
 
@@ -2421,6 +2476,7 @@ impl ReceiptVault {
                 .persistent()
                 .set(&DataKey::TotalReserves, &reserves.saturating_add(fee_paid));
         }
+        env.storage().persistent().remove(&DataKey::FlashLoanActive);
 
         FlashLoan {
             receiver: receiver.clone(),
@@ -2433,6 +2489,7 @@ impl ReceiptVault {
     /// Repay on behalf during liquidation; only callable by peridottroller/peridottroller
     pub fn repay_on_behalf(env: Env, liquidator: Address, borrower: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
         Self::ensure_user_borrow_flag(&env, &borrower);
         // Accrue and auth via peridottroller or allowlisted liquidator
         Self::update_interest(env.clone());

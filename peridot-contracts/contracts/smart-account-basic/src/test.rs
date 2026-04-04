@@ -8,11 +8,15 @@ fn register_account<'a>(env: &'a Env, factory: &Address) -> (Address, BasicSmart
     (contract_id, client)
 }
 
+fn expected_factory(env: &Env) -> Address {
+    Address::from_string(&soroban_sdk::String::from_str(env, DEFAULT_FACTORY_ADDRESS))
+}
+
 #[test]
 fn test_constructor_and_signers() {
     let env = Env::default();
     env.mock_all_auths();
-    let factory = Address::generate(&env);
+    let factory = expected_factory(&env);
     let owner = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
@@ -30,7 +34,7 @@ fn test_constructor_and_signers() {
 fn test_add_signer_requires_owner() {
     let env = Env::default();
     env.mock_all_auths();
-    let factory = Address::generate(&env);
+    let factory = expected_factory(&env);
     let owner = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
@@ -49,7 +53,7 @@ fn test_add_signer_requires_owner() {
 fn test_add_signer_respects_cap() {
     let env = Env::default();
     env.mock_all_auths();
-    let factory = Address::generate(&env);
+    let factory = expected_factory(&env);
     let owner = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
@@ -104,7 +108,7 @@ fn test_verify_signatures_rejects_too_many_signatures() {
 fn test_vault_deposit_policy_accepts_self() {
     let env = Env::default();
     env.mock_all_auths();
-    let factory = Address::generate(&env);
+    let factory = expected_factory(&env);
     let owner = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
@@ -129,7 +133,7 @@ fn test_vault_deposit_policy_accepts_self() {
 fn test_margin_open_policy_rejects_other_user() {
     let env = Env::default();
     env.mock_all_auths();
-    let factory = Address::generate(&env);
+    let factory = expected_factory(&env);
     let owner = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
@@ -164,7 +168,7 @@ fn test_margin_open_policy_rejects_other_user() {
 fn test_transfer_from_policy_is_rejected_for_allowed_vaults() {
     let env = Env::default();
     env.mock_all_auths();
-    let factory = Address::generate(&env);
+    let factory = expected_factory(&env);
     let owner_account = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
@@ -191,7 +195,7 @@ fn test_transfer_from_policy_is_rejected_for_allowed_vaults() {
 fn test_sensitive_call_on_unlisted_vault_is_rejected() {
     let env = Env::default();
     env.mock_all_auths();
-    let factory = Address::generate(&env);
+    let factory = expected_factory(&env);
     let owner_account = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
@@ -230,7 +234,7 @@ fn test_non_contract_auth_context_is_rejected() {
 fn test_token_transfer_context_requires_protocol_recipient() {
     let env = Env::default();
     env.mock_all_auths();
-    let factory = Address::generate(&env);
+    let factory = expected_factory(&env);
     let owner = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);

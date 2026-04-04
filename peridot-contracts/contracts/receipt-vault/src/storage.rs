@@ -37,12 +37,13 @@ pub enum DataKey {
     TotalBorrowPrincipal,       // u128 principal-only global borrow total
     RatesReady,                 // bool, borrow/rate-sensitive operations enabled
     IdleCashBufferBps,          // u32, target idle cash in basis points (0..=10_000)
+    FlashLoanActive,            // bool reentrancy guard for accounting-sensitive paths
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
-const BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = 350_000;
-const BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = 700_000;
+const BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = 500_000;
+const BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = 1_000_000;
 const HAS_BORROWED_TTL_THRESHOLD: u32 = 500_000;
 const HAS_BORROWED_TTL_EXTEND_TO: u32 = 1_000_000;
 
@@ -168,6 +169,9 @@ pub fn bump_core_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::InitialExchangeRate) {
         persistent.extend_ttl(&DataKey::InitialExchangeRate, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::FlashLoanActive) {
+        persistent.extend_ttl(&DataKey::FlashLoanActive, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

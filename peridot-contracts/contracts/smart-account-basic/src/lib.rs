@@ -4,7 +4,7 @@ use soroban_sdk::auth::{Context, ContractContext, CustomAccountInterface};
 use soroban_sdk::crypto::Hash;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, Address, Bytes, BytesN, Env, IntoVal,
-    Symbol, TryIntoVal, Vec,
+    String, Symbol, TryIntoVal, Vec,
 };
 
 #[soroban_sdk::contractclient(name = "PeridottrollerClient")]
@@ -77,10 +77,12 @@ pub enum Error {
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
 const MAX_SIGNERS: u32 = 8;
+const DEFAULT_FACTORY_ADDRESS: &str = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
 
 #[contractimpl]
 impl BasicSmartAccount {
     pub fn __constructor(env: Env, factory: Address) {
+        assert_expected_factory(&env, &factory);
         if env.storage().persistent().has(&DataKey::Factory) {
             panic!("already constructed");
         }
@@ -103,6 +105,7 @@ impl BasicSmartAccount {
             .persistent()
             .get(&DataKey::Factory)
             .expect("factory not set");
+        assert_expected_factory(&env, &factory);
         factory.require_auth();
         let persistent = env.storage().persistent();
         persistent.set(&DataKey::Owner, &owner);
@@ -482,6 +485,26 @@ fn require_owner(env: &Env, owner: &Address) {
     }
     bump_ttl(env);
     owner.require_auth();
+}
+
+fn expected_factory_config() -> Option<&'static str> {
+    if cfg!(test) {
+        option_env!("SMART_ACCOUNT_BASIC_FACTORY").or(Some(DEFAULT_FACTORY_ADDRESS))
+    } else {
+        Some(
+            option_env!("SMART_ACCOUNT_BASIC_FACTORY")
+                .expect("SMART_ACCOUNT_BASIC_FACTORY must be set at build time"),
+        )
+    }
+}
+
+fn assert_expected_factory(env: &Env, factory: &Address) {
+    if let Some(expected) = expected_factory_config() {
+        let expected_factory = Address::from_string(&String::from_str(env, expected));
+        if *factory != expected_factory {
+            panic!("unexpected factory");
+        }
+    }
 }
 
 fn bump_ttl(env: &Env) {

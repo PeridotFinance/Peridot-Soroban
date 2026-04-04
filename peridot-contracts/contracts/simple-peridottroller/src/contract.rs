@@ -1,5 +1,5 @@
 use soroban_sdk::{
-    contract, contractimpl, Address, Env, IntoVal, Map, Symbol, Val, Vec, vec,
+    contract, contractimpl, Address, Env, IntoVal, Map, String, Symbol, Val, Vec, vec,
 };
 use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
 
@@ -13,6 +13,26 @@ pub struct SimplePeridottroller;
 
 #[contractimpl]
 impl SimplePeridottroller {
+    fn assert_expected_admin(env: &Env, admin: &Address) {
+        if let Some(expected) = Self::expected_admin_config() {
+            let expected_admin = Address::from_string(&String::from_str(env, expected));
+            if *admin != expected_admin {
+                panic!("unexpected admin");
+            }
+        }
+    }
+
+    fn expected_admin_config() -> Option<&'static str> {
+        if cfg!(any(test, feature = "test-default-admin")) {
+            option_env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN")
+        } else {
+            Some(
+                option_env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN")
+                    .expect("SIMPLE_PERIDOTTROLLER_INIT_ADMIN must be set at build time"),
+            )
+        }
+    }
+
     fn ensure_user_market_entered(env: &Env, user: &Address, market: &Address) {
         let markets: Map<Address, bool> = env
             .storage()
@@ -52,6 +72,7 @@ impl SimplePeridottroller {
         {
             panic!("already initialized");
         }
+        Self::assert_expected_admin(&env, &admin);
         admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &admin);
         let markets: Map<Address, bool> = Map::new(&env);
@@ -345,6 +366,7 @@ impl SimplePeridottroller {
         env.storage()
             .persistent()
             .set(&DataKey::PauseGuardian, &guardian);
+        storage::bump_pause_guardian_ttl(&env);
         PauseGuardianUpdated { guardian }.publish(&env);
     }
 
@@ -444,6 +466,7 @@ impl SimplePeridottroller {
         let Some(g) = stored else {
             panic!("no guardian");
         };
+        storage::bump_pause_guardian_ttl(&env);
         if g != guardian {
             panic!("invalid guardian");
         }
@@ -468,6 +491,7 @@ impl SimplePeridottroller {
         let Some(g) = stored else {
             panic!("no guardian");
         };
+        storage::bump_pause_guardian_ttl(&env);
         if g != guardian {
             panic!("invalid guardian");
         }
@@ -492,6 +516,7 @@ impl SimplePeridottroller {
         let Some(g) = stored else {
             panic!("no guardian");
         };
+        storage::bump_pause_guardian_ttl(&env);
         if g != guardian {
             panic!("invalid guardian");
         }
@@ -518,6 +543,7 @@ impl SimplePeridottroller {
         let Some(g) = stored else {
             panic!("no guardian");
         };
+        storage::bump_pause_guardian_ttl(&env);
         if g != guardian {
             panic!("invalid guardian");
         }
@@ -1395,9 +1421,11 @@ impl SimplePeridottroller {
             &Symbol::new(&env, "mint"),
             (user.clone(), amt).into_val(&env),
         );
+        let minted = if amt < 0 { 0u128 } else { amt as u128 };
+        let remaining = accrued.saturating_sub(minted);
         env.storage()
             .persistent()
-            .set(&DataKey::Accrued(user), &0u128);
+            .set(&DataKey::Accrued(user), &remaining);
     }
 
     pub fn get_accrued(env: Env, user: Address) -> u128 {
