@@ -16,6 +16,7 @@ pub struct ReceiptVault;
 
 const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
 const BPS_SCALE: u128 = 10_000u128;
+const BOOSTED_MODEL_CASH_TOLERANCE_BPS: u128 = 2_000u128; // 20%
 
 #[contractimpl]
 impl ReceiptVault {
@@ -1608,12 +1609,23 @@ impl ReceiptVault {
             .get(&DataKey::UnderlyingToken)
             .expect("underlying not set");
         // Snapshot gross cash once so rate queries use raw liquidity inputs and
-        // reserves are subtracted only inside the rate model. Clamp boosted cash
-        // used for rates by an internal accounting estimate to avoid trusting an
-        // inflated third-party boosted quote for utilization-critical math.
+        // reserves are subtracted only inside the rate model.
+        //
+        // For rate-model inputs, cap boosted cash only when the reported value is
+        // implausibly above an internal baseline (cached/accounting). This avoids
+        // trusting extreme external quotes while preserving legitimate yield growth.
+        let cached_before = Self::cached_boosted_underlying(&env);
         let boosted_reported = Self::get_boosted_underlying(&env);
         let boosted_accounting = Self::estimate_boosted_underlying_from_accounting(&env);
-        let boosted_for_model = boosted_reported.min(boosted_accounting);
+        let boosted_baseline = cached_before.max(boosted_accounting);
+        let boosted_cap = if boosted_baseline == 0 {
+            boosted_reported
+        } else {
+            boosted_baseline.saturating_add(
+                (boosted_baseline.saturating_mul(BOOSTED_MODEL_CASH_TOLERANCE_BPS)) / BPS_SCALE,
+            )
+        };
+        let boosted_for_model = boosted_reported.min(boosted_cap);
         let model_cash = Self::current_live_cash(&env, &token_address).saturating_add(boosted_for_model);
 
         let current_reserves: u128 = env

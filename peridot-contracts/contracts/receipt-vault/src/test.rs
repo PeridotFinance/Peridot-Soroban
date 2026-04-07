@@ -2411,7 +2411,7 @@ fn test_update_interest_clamps_inflated_boosted_quote_for_model_cash() {
         jrm::DEFAULT_INIT_ADMIN,
     ));
     let user = Address::generate(&env);
-    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
     token_admin_client.mint(&user, &10_000i128);
 
     let model_id = env.register(jrm::JumpRateModel, ());
@@ -2456,13 +2456,51 @@ fn test_update_interest_clamps_inflated_boosted_quote_for_model_cash() {
     vault_a.borrow(&user, &500u128);
     vault_b.borrow(&user, &500u128);
 
+    let tb_prior = vault_b.get_total_borrowed();
+    let pooled_reserves = vault_b.get_total_reserves().saturating_add(vault_b.get_total_admin_fees());
+    let live_cash = token_client.balance(&vault_b_id) as u128;
+    let reported = boosted_inflated
+        .get_asset_amounts_per_shares(&boosted_inflated.balance(&vault_b_id))
+        .get(0)
+        .unwrap_or(0) as u128;
+    let cached_before: u128 = env
+        .as_contract(&vault_b_id, || env.storage().persistent().get(&DataKey::BoostedUnderlyingCached).unwrap_or(0u128));
+    let accounting: u128 = env.as_contract(&vault_b_id, || {
+        let storage = env.storage().persistent();
+        let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
+        let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
+        let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
+        let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
+        let managed_cash: u128 = storage.get(&DataKey::ManagedCash).unwrap_or(0u128);
+        total_deposited
+            .saturating_add(total_reserves)
+            .saturating_add(total_admin_fees)
+            .saturating_sub(total_borrowed)
+            .saturating_sub(managed_cash)
+    });
+    let baseline = cached_before.max(accounting);
+    let cap = if baseline == 0 {
+        reported
+    } else {
+        baseline.saturating_add((baseline.saturating_mul(2_000u128)) / 10_000u128)
+    };
+    let capped_cash = live_cash.saturating_add(reported.min(cap));
+    let uncapped_cash = live_cash.saturating_add(reported);
+    let expected_rate = model.get_borrow_rate(&capped_cash, &tb_prior, &pooled_reserves);
+    let uncapped_rate = model.get_borrow_rate(&uncapped_cash, &tb_prior, &pooled_reserves);
+
     let now = env.ledger().timestamp();
     env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
-    vault_a.update_interest();
     vault_b.update_interest();
+    vault_a.update_interest();
 
-    // Inflated boosted quote should not suppress rates/accrual.
-    assert_eq!(vault_a.get_total_borrowed(), vault_b.get_total_borrowed());
+    let accrued = vault_b.get_total_borrowed().saturating_sub(tb_prior);
+    let expected_accrued = tb_prior.saturating_mul(expected_rate) / 1_000_000u128;
+    let uncapped_accrued = tb_prior.saturating_mul(uncapped_rate) / 1_000_000u128;
+
+    // The model input follows capped cash, not arbitrary inflated quotes.
+    assert_eq!(accrued, expected_accrued);
+    assert!(accrued >= uncapped_accrued);
 }
 
 #[test]
