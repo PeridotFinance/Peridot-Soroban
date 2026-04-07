@@ -197,6 +197,56 @@ impl MockOracle {
     }
 }
 
+#[contract]
+struct FailingClaimMarket;
+
+#[contracttype]
+enum FailingMarketKey {
+    Underlying,
+}
+
+#[contractimpl]
+impl FailingClaimMarket {
+    pub fn initialize(env: Env, underlying: Address) {
+        env.storage()
+            .persistent()
+            .set(&FailingMarketKey::Underlying, &underlying);
+    }
+
+    pub fn get_underlying_token(env: Env) -> Address {
+        env.storage()
+            .persistent()
+            .get(&FailingMarketKey::Underlying)
+            .expect("underlying not set")
+    }
+
+    pub fn get_total_ptokens(_env: Env) -> u128 {
+        panic!("market unavailable");
+    }
+
+    pub fn get_total_borrowed(_env: Env) -> u128 {
+        0u128
+    }
+
+    pub fn get_ptoken_balance(_env: Env, _user: Address) -> u128 {
+        0u128
+    }
+
+    pub fn get_user_borrow_balance(_env: Env, _user: Address) -> u128 {
+        0u128
+    }
+}
+
+#[contract]
+struct FailingPeridotToken;
+
+#[contractimpl]
+impl FailingPeridotToken {
+    pub fn mint(_env: Env, _to: Address, _amount: i128) {
+        panic!("mint unavailable");
+    }
+}
+
 #[test]
 #[should_panic(expected = "Insufficient collateral")]
 fn test_oracle_gating_prevents_over_borrow() {
@@ -1835,6 +1885,108 @@ fn test_borrow_side_rewards_and_claim() {
     env.ledger().set_timestamp(now + 6);
     comp.claim(&borrower);
     assert_eq!(peri.balance_of(&borrower), 42i128); // 7*6
+}
+
+#[test]
+fn test_claim_skips_failing_market_and_claims_from_healthy_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    // Healthy market
+    let t_admin = Address::generate(&env);
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
+    let v_id = env.register(rv::ReceiptVault, ());
+    let v = rv::ReceiptVaultClient::new(&env, &v_id);
+    v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
+
+    // Failing market
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&t);
+
+    // Comptroller
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+    comp.add_market(&v_id);
+    // Enter failing market first to ensure claim continues past failure.
+    comp.enter_market(&user, &failing_market_id);
+    comp.enter_market(&user, &v_id);
+
+    // PERI token
+    let peri_id = env.register(pt::PeridotToken, ());
+    let peri = pt::PeridotTokenClient::new(&env, &peri_id);
+    std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
+    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    peri.initialize(
+        &soroban_sdk::String::from_str(&env, "Peridot"),
+        &soroban_sdk::String::from_str(&env, "P"),
+        &6u32,
+        &token_admin,
+        &1_000_000_000i128,
+    );
+    comp.set_peridot_token(&peri_id);
+
+    // Rewards only on the healthy market.
+    comp.set_supply_speed(&v_id, &10u128);
+
+    let mint = token::StellarAssetClient::new(&env, &t);
+    mint.mint(&user, &1_000i128);
+    v.deposit(&user, &100u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 5);
+    comp.claim(&user);
+
+    // Healthy-market rewards still claimed despite failing market.
+    assert_eq!(peri.balance_of(&user), 50i128);
+}
+
+#[test]
+fn test_claim_mint_failure_keeps_accrued_balance() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let t_admin = Address::generate(&env);
+    let t = env
+        .register_stellar_asset_contract_v2(t_admin.clone())
+        .address();
+    let v_id = env.register(rv::ReceiptVault, ());
+    let v = rv::ReceiptVaultClient::new(&env, &v_id);
+    v.initialize(&t, &0u128, &0u128, &admin);
+    v.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&v_id);
+    comp.enter_market(&user, &v_id);
+
+    // Broken reward token: mint() always reverts.
+    let broken_peri_id = env.register(FailingPeridotToken, ());
+    comp.set_peridot_token(&broken_peri_id);
+    comp.set_supply_speed(&v_id, &10u128);
+
+    let mint = token::StellarAssetClient::new(&env, &t);
+    mint.mint(&user, &1_000i128);
+    v.deposit(&user, &100u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 5);
+    comp.claim(&user);
+
+    // Claim returns without reverting and keeps accrued rewards for retry.
+    assert_eq!(comp.get_accrued(&user), 50u128);
 }
 
 #[test]

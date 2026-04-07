@@ -1,5 +1,6 @@
 use soroban_sdk::{
-    contract, contractimpl, Address, Env, IntoVal, Map, String, Symbol, Val, Vec, vec,
+    contract, contractimpl, Address, Env, IntoVal, InvokeError, Map, String, Symbol, Val, Vec,
+    vec,
 };
 use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
 
@@ -13,6 +14,82 @@ pub struct SimplePeridottroller;
 
 #[contractimpl]
 impl SimplePeridottroller {
+    fn emit_claim_call_failed(env: &Env, user: &Address, contract: &Address, function: &str) {
+        ClaimExternalCallFailed {
+            user: user.clone(),
+            contract: contract.clone(),
+            function: Symbol::new(env, function),
+        }
+        .publish(env);
+    }
+
+    fn claim_market_best_effort(env: &Env, user: &Address, market: &Address) -> bool {
+        use soroban_sdk::{IntoVal, Val, Vec};
+
+        let empty_args: Vec<Val> = ().into_val(env);
+        let total_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
+            market,
+            &Symbol::new(env, "get_total_ptokens"),
+            empty_args.clone(),
+        ) {
+            Ok(Ok(v)) => v,
+            _ => {
+                Self::emit_claim_call_failed(env, user, market, "get_total_ptokens");
+                return false;
+            }
+        };
+        let total_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
+            market,
+            &Symbol::new(env, "get_total_borrowed"),
+            empty_args,
+        ) {
+            Ok(Ok(v)) => v,
+            _ => {
+                Self::emit_claim_call_failed(env, user, market, "get_total_borrowed");
+                return false;
+            }
+        };
+
+        Self::accrue_market(
+            env.clone(),
+            market.clone(),
+            Some(total_ptokens),
+            Some(total_borrowed),
+        );
+
+        let user_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
+            market,
+            &Symbol::new(env, "get_ptoken_balance"),
+            (user.clone(),).into_val(env),
+        ) {
+            Ok(Ok(v)) => v,
+            _ => {
+                Self::emit_claim_call_failed(env, user, market, "get_ptoken_balance");
+                return false;
+            }
+        };
+        let user_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
+            market,
+            &Symbol::new(env, "get_user_borrow_balance"),
+            (user.clone(),).into_val(env),
+        ) {
+            Ok(Ok(v)) => v,
+            _ => {
+                Self::emit_claim_call_failed(env, user, market, "get_user_borrow_balance");
+                return false;
+            }
+        };
+
+        Self::distribute_supply(
+            env.clone(),
+            user.clone(),
+            market.clone(),
+            Some(user_ptokens),
+        );
+        Self::distribute_borrow(env.clone(), user.clone(), market.clone(), Some(user_borrowed));
+        true
+    }
+
     fn assert_expected_admin(env: &Env, admin: &Address) {
         if let Some(expected) = Self::expected_admin_config() {
             let expected_admin = Address::from_string(&String::from_str(env, expected));
@@ -1473,9 +1550,7 @@ impl SimplePeridottroller {
         let markets = Self::get_user_markets(env.clone(), user.clone());
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
-            Self::accrue_market(env.clone(), m.clone(), None, None);
-            Self::distribute_supply(env.clone(), user.clone(), m.clone(), None);
-            Self::distribute_borrow(env.clone(), user.clone(), m.clone(), None);
+            let _ = Self::claim_market_best_effort(&env, &user, &m);
         }
         let accrued: u128 = env
             .storage()
@@ -1508,11 +1583,12 @@ impl SimplePeridottroller {
             sub_invocations: vec![&env],
         })];
         env.authorize_as_current_contract(auths);
-        let _: () = env.invoke_contract(
-            &token,
-            &Symbol::new(&env, "mint"),
-            (user.clone(), amt).into_val(&env),
-        );
+        let mint_res =
+            env.try_invoke_contract::<(), InvokeError>(&token, &Symbol::new(&env, "mint"), (user.clone(), amt).into_val(&env));
+        if !matches!(mint_res, Ok(Ok(()))) {
+            Self::emit_claim_call_failed(&env, &user, &token, "mint");
+            return;
+        }
         let minted = if amt < 0 { 0u128 } else { amt as u128 };
         let remaining = accrued.saturating_sub(minted);
         env.storage()

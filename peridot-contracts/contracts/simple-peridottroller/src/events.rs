@@ -168,3 +168,14 @@ pub struct LiquidateBorrow {
     pub repay_amount: u128,
     pub seize_tokens: u128,
 }
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClaimExternalCallFailed {
+    #[topic]
+    pub user: Address,
+    #[topic]
+    pub contract: Address,
+    #[topic]
+    pub function: Symbol,
+}
