@@ -2294,6 +2294,38 @@ fn test_accrue_user_market_allows_no_hints() {
 
 #[test]
 #[should_panic(expected = "market not supported")]
+fn test_accrue_user_market_rejects_unsupported_market_without_hints() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let unsupported_market = Address::generate(&env);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    // Configure reward token so accrue_user_market doesn't short-circuit early.
+    let peri_id = env.register(pt::PeridotToken, ());
+    let peri = pt::PeridotTokenClient::new(&env, &peri_id);
+    std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
+    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    peri.initialize(
+        &soroban_sdk::String::from_str(&env, "Peridot"),
+        &soroban_sdk::String::from_str(&env, "P"),
+        &6u32,
+        &token_admin,
+        &1_000_000_000i128,
+    );
+    comp.set_peridot_token(&peri_id);
+
+    // No add_market call for unsupported_market: should panic on validation.
+    comp.accrue_user_market(&user, &unsupported_market, &None);
+}
+
+#[test]
+#[should_panic(expected = "market not supported")]
 fn test_bind_boosted_vault_rejects_unsupported_market() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
