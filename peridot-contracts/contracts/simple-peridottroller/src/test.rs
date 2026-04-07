@@ -126,6 +126,85 @@ fn test_remove_market_rejects_non_entered_supplier_state() {
 }
 
 #[test]
+#[should_panic(expected = "market state unavailable")]
+fn test_remove_market_fails_closed_when_market_state_unavailable() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+
+    comp.remove_market(&failing_market_id);
+}
+
+#[test]
+#[should_panic(expected = "ack required")]
+fn test_force_remove_market_requires_ack() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+
+    comp.force_remove_market(&failing_market_id, &false);
+}
+
+#[test]
+fn test_force_remove_market_allows_delist_when_market_state_unavailable() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+
+    // Delist succeeds via emergency path even though the market state endpoint traps.
+    comp.force_remove_market(&failing_market_id, &true);
+
+    // Verifies market is no longer supported.
+    let enter_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        comp.enter_market(&user, &failing_market_id);
+    }));
+    assert!(enter_res.is_err());
+}
+
+#[test]
 fn test_total_collateral_and_borrows_across_markets() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
