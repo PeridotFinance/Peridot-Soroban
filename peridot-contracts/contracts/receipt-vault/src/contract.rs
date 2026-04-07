@@ -286,7 +286,10 @@ impl ReceiptVault {
         }
         let total_underlying = total_underlying_i as u128;
 
-        let numerator = needed_cash.checked_mul(total_shares).unwrap_or(u128::MAX);
+        // Add a tiny buffer for share rounding so downstream payout paths are
+        // less brittle to 1-unit quote/withdraw drift in boosted vault math.
+        let target_cash = needed_cash.saturating_add(1);
+        let numerator = target_cash.checked_mul(total_shares).unwrap_or(u128::MAX);
         let mut shares_to_withdraw = numerator / total_underlying;
         if numerator % total_underlying != 0 {
             shares_to_withdraw = shares_to_withdraw.saturating_add(1);
@@ -299,7 +302,7 @@ impl ReceiptVault {
         }
 
         let mut min_amounts_out: Vec<i128> = Vec::new(env);
-        min_amounts_out.push_back(to_i128(needed_cash));
+        min_amounts_out.push_back(to_i128(needed_cash.saturating_sub(1)));
         let args: Vec<Val> = (
             to_i128(shares_to_withdraw),
             min_amounts_out.clone(),
@@ -2412,6 +2415,14 @@ impl ReceiptVault {
         let available = Self::get_available_liquidity(env.clone());
         if available < amount {
             panic!("insufficient liquidity");
+        }
+
+        // Pull from boosted vault on demand so flash loans are backed by live cash.
+        // Do this before taking the pre-loan balance snapshot used for repayment checks.
+        Self::ensure_liquid_cash(&env, &token_address, amount);
+        let cash_for_flash = Self::current_live_cash(&env, &token_address);
+        if cash_for_flash < amount {
+            panic!("flash loan liquidity shortfall");
         }
 
         let fee_scaled: u128 = env

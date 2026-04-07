@@ -200,6 +200,7 @@ enum BoostedKey {
     TotalShares,
     Share(Address),
     FailQuote,
+    WithdrawHaircut,
 }
 
 #[contractimpl]
@@ -214,10 +215,19 @@ impl MockBoostedVault {
         env.storage()
             .persistent()
             .set(&BoostedKey::FailQuote, &false);
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::WithdrawHaircut, &0i128);
     }
 
     pub fn set_fail_quote(env: Env, fail: bool) {
         env.storage().persistent().set(&BoostedKey::FailQuote, &fail);
+    }
+
+    pub fn set_withdraw_haircut(env: Env, haircut: i128) {
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::WithdrawHaircut, &haircut);
     }
 
     pub fn balance(env: Env, owner: Address) -> i128 {
@@ -309,7 +319,15 @@ impl MockBoostedVault {
             panic!("insufficient shares");
         }
         let amounts = Self::get_asset_amounts_per_shares(env.clone(), shares);
-        let out = amounts.get(0).unwrap_or(0);
+        let mut out = amounts.get(0).unwrap_or(0);
+        let haircut: i128 = env
+            .storage()
+            .persistent()
+            .get(&BoostedKey::WithdrawHaircut)
+            .unwrap_or(0i128);
+        if haircut > 0 {
+            out = out.saturating_sub(haircut);
+        }
         if out < min_out {
             panic!("slippage");
         }
@@ -1985,6 +2003,92 @@ fn test_flash_loan_successfully_repaid() {
         token_client.balance(&receiver_id),
         50i128 - expected_fee as i128
     );
+}
+
+#[test]
+fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin_client.mint(&depositor, &1_000i128);
+    vault.deposit(&depositor, &500u128);
+
+    // Boosted deposit path deploys all live cash.
+    assert_eq!(token_client.balance(&vault_id), 0i128);
+    assert_eq!(boosted.balance(&vault_id), 500i128);
+
+    let fee_scaled = 20_000u128; // 2%
+    vault.set_flash_loan_fee(&fee_scaled);
+
+    let receiver_id = env.register(FlashLoanRepayer, ());
+    let receiver_client = FlashLoanRepayerClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+    token_admin_client.mint(&receiver_id, &50i128);
+
+    let amount = 100u128;
+    let expected_fee = (amount * fee_scaled) / 1_000_000u128;
+    let data = Bytes::new(&env);
+
+    vault.flash_loan(&receiver_id, &amount, &data);
+
+    // Buffered redemption pulls 101 from boosted, then 100 is loaned out and
+    // 100 + fee is repaid, leaving 1 extra unit in live cash.
+    assert_eq!(boosted.balance(&vault_id), 399i128);
+    assert_eq!(token_client.balance(&vault_id), (101 + expected_fee) as i128);
+    assert_eq!(vault.get_total_reserves(), expected_fee);
+}
+
+#[test]
+fn test_flash_loan_boosted_redemption_tolerates_small_rounding_delta() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+    boosted.set_withdraw_haircut(&1i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin_client.mint(&depositor, &1_000i128);
+    vault.deposit(&depositor, &500u128);
+    assert_eq!(token_client.balance(&vault_id), 0i128);
+
+    let fee_scaled = 20_000u128; // 2%
+    vault.set_flash_loan_fee(&fee_scaled);
+
+    let receiver_id = env.register(FlashLoanRepayer, ());
+    let receiver_client = FlashLoanRepayerClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+    token_admin_client.mint(&receiver_id, &50i128);
+
+    // With a 1-unit redemption haircut, strict no-buffer redemption could fail.
+    // Buffered redemption should still source enough live cash for the loan.
+    let amount = 100u128;
+    let data = Bytes::new(&env);
+    vault.flash_loan(&receiver_id, &amount, &data);
 }
 
 #[test]
