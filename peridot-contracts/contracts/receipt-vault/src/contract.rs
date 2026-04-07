@@ -1608,9 +1608,13 @@ impl ReceiptVault {
             .get(&DataKey::UnderlyingToken)
             .expect("underlying not set");
         // Snapshot gross cash once so rate queries use raw liquidity inputs and
-        // reserves are subtracted only inside the rate model.
-        let model_cash = Self::current_live_cash(&env, &token_address)
-            .saturating_add(Self::get_boosted_underlying(&env));
+        // reserves are subtracted only inside the rate model. Clamp boosted cash
+        // used for rates by an internal accounting estimate to avoid trusting an
+        // inflated third-party boosted quote for utilization-critical math.
+        let boosted_reported = Self::get_boosted_underlying(&env);
+        let boosted_accounting = Self::estimate_boosted_underlying_from_accounting(&env);
+        let boosted_for_model = boosted_reported.min(boosted_accounting);
+        let model_cash = Self::current_live_cash(&env, &token_address).saturating_add(boosted_for_model);
 
         let current_reserves: u128 = env
             .storage()

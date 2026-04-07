@@ -201,6 +201,7 @@ enum BoostedKey {
     Share(Address),
     FailQuote,
     WithdrawHaircut,
+    QuoteMultiplierBps,
 }
 
 #[contractimpl]
@@ -218,6 +219,9 @@ impl MockBoostedVault {
         env.storage()
             .persistent()
             .set(&BoostedKey::WithdrawHaircut, &0i128);
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::QuoteMultiplierBps, &1_000_000u128);
     }
 
     pub fn set_fail_quote(env: Env, fail: bool) {
@@ -228,6 +232,12 @@ impl MockBoostedVault {
         env.storage()
             .persistent()
             .set(&BoostedKey::WithdrawHaircut, &haircut);
+    }
+
+    pub fn set_quote_multiplier_bps(env: Env, bps: u128) {
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::QuoteMultiplierBps, &bps);
     }
 
     pub fn balance(env: Env, owner: Address) -> i128 {
@@ -275,7 +285,13 @@ impl MockBoostedVault {
             return out;
         }
         let underlying_for_shares = shares.saturating_mul(underlying_balance) / total_shares;
-        out.push_back(underlying_for_shares);
+        let quote_bps: u128 = env
+            .storage()
+            .persistent()
+            .get(&BoostedKey::QuoteMultiplierBps)
+            .unwrap_or(1_000_000u128);
+        let quoted = underlying_for_shares.saturating_mul(to_i128(quote_bps)) / 1_000_000i128;
+        out.push_back(quoted);
         out
     }
 
@@ -2382,6 +2398,71 @@ fn test_update_interest_uses_gross_cash_for_model_with_boosted_assets() {
 
     assert_eq!(accrued, expected_accrued);
     assert_ne!(accrued, wrong_accrued);
+}
+
+#[test]
+fn test_update_interest_clamps_inflated_boosted_quote_for_model_cash() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let model_admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        jrm::DEFAULT_INIT_ADMIN,
+    ));
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &10_000i128);
+
+    let model_id = env.register(jrm::JumpRateModel, ());
+    let model = jrm::JumpRateModelClient::new(&env, &model_id);
+    // Linear rate curve to make utilization effects obvious.
+    model.initialize(
+        &0u128,
+        &1_000_000u128,
+        &1_000_000u128,
+        &1_000_000u128,
+        &model_admin,
+    );
+
+    let boosted_normal_id = env.register(MockBoostedVault, ());
+    let boosted_normal = MockBoostedVaultClient::new(&env, &boosted_normal_id);
+    boosted_normal.initialize(&token_address);
+
+    let boosted_inflated_id = env.register(MockBoostedVault, ());
+    let boosted_inflated = MockBoostedVaultClient::new(&env, &boosted_inflated_id);
+    boosted_inflated.initialize(&token_address);
+    boosted_inflated.set_quote_multiplier_bps(&3_000_000u128);
+
+    let vault_a_id = env.register(ReceiptVault, ());
+    let vault_a = ReceiptVaultClient::new(&env, &vault_a_id);
+    vault_a.initialize(&token_address, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_a.set_collateral_factor(&1_000_000u128);
+    vault_a.set_interest_model(&model_id);
+    vault_a.set_boosted_vault(&admin, &boosted_normal_id);
+
+    let vault_b_id = env.register(ReceiptVault, ());
+    let vault_b = ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_b.initialize(&token_address, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+    vault_b.set_collateral_factor(&1_000_000u128);
+    vault_b.set_interest_model(&model_id);
+    vault_b.set_boosted_vault(&admin, &boosted_inflated_id);
+
+    // Identical state on both vaults.
+    vault_a.deposit(&user, &1_000u128);
+    vault_b.deposit(&user, &1_000u128);
+    vault_a.borrow(&user, &500u128);
+    vault_b.borrow(&user, &500u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault_a.update_interest();
+    vault_b.update_interest();
+
+    // Inflated boosted quote should not suppress rates/accrual.
+    assert_eq!(vault_a.get_total_borrowed(), vault_b.get_total_borrowed());
 }
 
 #[test]
