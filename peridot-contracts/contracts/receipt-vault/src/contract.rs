@@ -1607,8 +1607,10 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::UnderlyingToken)
             .expect("underlying not set");
-        // Snapshot live cash once so rate queries in this accrual use the same input.
-        let model_cash = Self::current_live_cash(&env, &token_address);
+        // Snapshot gross cash once so rate queries use raw liquidity inputs and
+        // reserves are subtracted only inside the rate model.
+        let model_cash = Self::current_live_cash(&env, &token_address)
+            .saturating_add(Self::get_boosted_underlying(&env));
 
         let current_reserves: u128 = env
             .storage()
