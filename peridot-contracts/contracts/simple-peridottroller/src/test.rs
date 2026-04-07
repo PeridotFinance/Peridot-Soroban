@@ -1906,6 +1906,24 @@ fn test_accrue_user_market_allows_no_hints() {
 }
 
 #[test]
+#[should_panic(expected = "market not supported")]
+fn test_bind_boosted_vault_rejects_unsupported_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let unsupported_market = Address::generate(&env);
+    let boosted = Address::generate(&env);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    let none_addr: Option<Address> = None;
+    comp.bind_boosted_vault(&unsupported_market, &none_addr, &Some(boosted));
+}
+
+#[test]
 fn test_multi_market_supply_rewards() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();

@@ -639,6 +639,14 @@ impl SimplePeridottroller {
     ) {
         bump_core_ttl(&env);
         market.require_auth();
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if markets.get(market.clone()).unwrap_or(false) == false {
+            panic!("market not supported");
+        }
 
         if let Some(old) = old_boosted {
             let key = DataKey::BoostedVaultOwner(old.clone());
