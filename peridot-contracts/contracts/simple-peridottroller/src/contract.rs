@@ -356,11 +356,11 @@ impl SimplePeridottroller {
     pub fn get_market_cf(env: Env, market: Address) -> u128 {
         bump_core_ttl(&env);
         storage::bump_market_cf_ttl(&env, &market);
-        // Default to 50% unless explicitly set (Compound v2 default)
+        // Safe default: unconfigured markets contribute no collateral until admin sets CF.
         env.storage()
             .persistent()
             .get(&DataKey::MarketCF(market))
-            .unwrap_or(500_000u128)
+            .unwrap_or(0u128)
     }
 
     pub fn set_liquidation_fee(env: Env, fee_scaled: u128) {
@@ -923,6 +923,20 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+        // Refuse removal while market still has any open supply or borrow state.
+        let total_ptokens: u128 = env.invoke_contract(
+            &market,
+            &Symbol::new(&env, "get_total_ptokens"),
+            ().into_val(&env),
+        );
+        let total_borrowed: u128 = env.invoke_contract(
+            &market,
+            &Symbol::new(&env, "get_total_borrowed"),
+            ().into_val(&env),
+        );
+        if total_ptokens > 0 || total_borrowed > 0 {
+            panic!("market has active positions");
+        }
         let removed_token: Address = env.invoke_contract(
             &market,
             &Symbol::new(&env, "get_underlying_token"),
@@ -965,8 +979,16 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
+            if !supported.get(m.clone()).unwrap_or(false) {
+                continue;
+            }
             // dynamic client: simply call via env.invoke_contract for portability
             let pbal: u128 = env.invoke_contract(
                 &m,
@@ -990,9 +1012,17 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
             if m == exclude_market {
+                continue;
+            }
+            if !supported.get(m.clone()).unwrap_or(false) {
                 continue;
             }
             let pbal: u128 = env.invoke_contract(
@@ -1720,6 +1750,11 @@ impl SimplePeridottroller {
     ) -> (u128, u128) {
         let mut collateral_total: u128 = 0u128;
         let mut borrow_total: u128 = 0u128;
+        let supported_markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
             if let Some(ex) = exclude_market.clone() {
@@ -1727,6 +1762,7 @@ impl SimplePeridottroller {
                     continue;
                 }
             }
+            let is_supported = supported_markets.get(m.clone()).unwrap_or(false);
 
             // Underlying token and price
             use soroban_sdk::IntoVal;
@@ -1751,7 +1787,7 @@ impl SimplePeridottroller {
             let (price, scale) = Self::require_price(env.clone(), token.clone());
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
-            if pbal > 0 {
+            if pbal > 0 && is_supported {
                 let rate: u128 = env.invoke_contract(
                     &m,
                     &Symbol::new(&env, "get_exchange_rate"),
