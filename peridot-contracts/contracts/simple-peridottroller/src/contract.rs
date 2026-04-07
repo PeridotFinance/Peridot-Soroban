@@ -1666,6 +1666,8 @@ impl SimplePeridottroller {
     // attackers from supplying malicious hint values that could inflate reward distributions.
     // Without hints (None), values are fetched on-chain which is safe but more expensive.
     pub fn accrue_user_market(env: Env, user: Address, market: Address, hint: Option<AccrualHint>) {
+        bump_core_ttl(&env);
+
         // Reward accrual is disabled until a reward token is configured.
         if env
             .storage()
@@ -1674,6 +1676,16 @@ impl SimplePeridottroller {
             .is_none()
         {
             return;
+        }
+
+        // Always restrict accrual calls to configured markets to avoid arbitrary external calls.
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if !supported.get(market.clone()).unwrap_or(false) {
+            panic!("market not supported");
         }
 
         // When hints are provided, require authorization from the market contract.
