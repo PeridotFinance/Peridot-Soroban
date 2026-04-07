@@ -629,6 +629,57 @@ impl SimplePeridottroller {
         Self::ensure_user_market_entered(&env, &user, &market);
     }
 
+    // Market-authenticated registry for one-to-one boosted-vault ownership.
+    // Used by receipt vaults to prevent two markets from sharing the same boosted pool.
+    pub fn bind_boosted_vault(
+        env: Env,
+        market: Address,
+        old_boosted: Option<Address>,
+        new_boosted: Option<Address>,
+    ) {
+        bump_core_ttl(&env);
+        market.require_auth();
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if markets.get(market.clone()).unwrap_or(false) == false {
+            panic!("market not supported");
+        }
+
+        if let Some(old) = old_boosted {
+            let key = DataKey::BoostedVaultOwner(old.clone());
+            let owner: Option<Address> = env.storage().persistent().get(&key);
+            if let Some(owner) = owner {
+                if owner != market {
+                    panic!("boosted vault owned by another market");
+                }
+                env.storage().persistent().remove(&key);
+            }
+        }
+
+        if let Some(new_vault) = new_boosted {
+            let key = DataKey::BoostedVaultOwner(new_vault.clone());
+            let owner: Option<Address> = env.storage().persistent().get(&key);
+            if let Some(owner) = owner {
+                if owner != market {
+                    panic!("boosted vault already assigned");
+                }
+            }
+            env.storage().persistent().set(&key, &market);
+            storage::bump_boosted_vault_owner_ttl(&env, &new_vault);
+        }
+    }
+
+    pub fn get_boosted_vault_owner(env: Env, boosted_vault: Address) -> Option<Address> {
+        bump_core_ttl(&env);
+        storage::bump_boosted_vault_owner_ttl(&env, &boosted_vault);
+        env.storage()
+            .persistent()
+            .get(&DataKey::BoostedVaultOwner(boosted_vault))
+    }
+
     pub fn get_user_markets(env: Env, user: Address) -> Vec<Address> {
         bump_core_ttl(&env);
         storage::bump_user_markets_ttl(&env, &user);

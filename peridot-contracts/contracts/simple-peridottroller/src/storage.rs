@@ -35,6 +35,7 @@ pub enum DataKey {
     PriceCache(Address),
     FallbackPrice(Address),
     SupportedToken(Address), // bool: token belongs to at least one supported market
+    BoostedVaultOwner(Address), // Address: boosted vault -> owning receipt-vault
 }
 
 #[contracttype]
@@ -201,6 +202,14 @@ pub fn bump_oracle_asset_symbol_ttl(env: &Env, token: &Address) {
 pub fn bump_supported_token_ttl(env: &Env, token: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::SupportedToken(token.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_boosted_vault_owner_ttl(env: &Env, boosted_vault: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::BoostedVaultOwner(boosted_vault.clone());
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }

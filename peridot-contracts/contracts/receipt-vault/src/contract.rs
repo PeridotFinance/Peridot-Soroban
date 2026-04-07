@@ -568,6 +568,25 @@ impl ReceiptVault {
             panic!("not admin");
         }
         admin.require_auth();
+        let old_boosted: Option<Address> = env.storage().persistent().get(&DataKey::BoostedVault);
+        if let Some(comp_addr) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::Peridottroller)
+        {
+            // Enforce one-to-one boosted-vault ownership across markets when a
+            // shared controller is configured.
+            let _: () = call_contract_or_panic(
+                &env,
+                &comp_addr,
+                "bind_boosted_vault",
+                (
+                    env.current_contract_address(),
+                    old_boosted.clone(),
+                    Some(boosted_vault.clone()),
+                ),
+            );
+        }
         env.storage()
             .persistent()
             .set(&DataKey::BoostedVault, &boosted_vault);
@@ -577,6 +596,11 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .remove(&DataKey::BoostedUnderlyingUpdatedAt);
+        BoostedVaultSet {
+            old_vault: old_boosted,
+            new_vault: Some(boosted_vault),
+        }
+        .publish(&env);
     }
 
     /// View: get boosted vault (if set)
@@ -1322,6 +1346,20 @@ impl ReceiptVault {
         );
         let _price_check: Option<(u128, u128)> =
             call_contract_or_panic(&env, &peridottroller, "get_price_usd", (token_address,));
+        let existing_boosted: Option<Address> =
+            env.storage().persistent().get(&DataKey::BoostedVault);
+        if existing_boosted.is_some() {
+            let _: () = call_contract_or_panic(
+                &env,
+                &peridottroller,
+                "bind_boosted_vault",
+                (
+                    env.current_contract_address(),
+                    Option::<Address>::None,
+                    existing_boosted.clone(),
+                ),
+            );
+        }
         env.storage()
             .persistent()
             .set(&DataKey::Peridottroller, &peridottroller.clone());

@@ -163,6 +163,14 @@ pub struct NewPeridottroller {
     pub peridottroller: Address,
 }
 
+/// Emits when the boosted vault address is updated.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BoostedVaultSet {
+    pub old_vault: Option<Address>,
+    pub new_vault: Option<Address>,
+}
+
 /// Flash loan execution log.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
