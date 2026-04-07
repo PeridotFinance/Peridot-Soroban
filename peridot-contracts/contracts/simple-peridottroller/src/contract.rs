@@ -204,16 +204,20 @@ impl SimplePeridottroller {
         storage::bump_user_markets_ttl(env, user);
     }
 
-    fn apply_market_removal(env: &Env, market: &Address, mut markets: Map<Address, bool>) {
-        let removed_token: Address = env.invoke_contract(
-            market,
-            &Symbol::new(env, "get_underlying_token"),
-            ().into_val(env),
-        );
+    fn apply_market_removal(
+        env: &Env,
+        market: &Address,
+        removed_token: &Address,
+        mut markets: Map<Address, bool>,
+        allow_cross_market_reads: bool,
+    ) {
         markets.remove(market.clone());
         env.storage()
             .persistent()
             .set(&DataKey::SupportedMarkets, &markets);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::MarketUnderlying(market.clone()));
 
         // Maintain token allowlist consistency after market removal.
         let mut still_supported = false;
@@ -223,12 +227,37 @@ impl SimplePeridottroller {
             if !markets.get(candidate.clone()).unwrap_or(false) {
                 continue;
             }
-            let token: Address = env.invoke_contract(
-                &candidate,
-                &Symbol::new(env, "get_underlying_token"),
-                ().into_val(env),
-            );
-            if token == removed_token {
+            let token_opt: Option<Address> = if let Some(token) = env
+                .storage()
+                .persistent()
+                .get::<_, Address>(&DataKey::MarketUnderlying(candidate.clone()))
+            {
+                storage::bump_market_underlying_ttl(env, &candidate);
+                Some(token)
+            } else if allow_cross_market_reads {
+                // Legacy compatibility: hydrate missing cache entries for older deployments.
+                match env.try_invoke_contract::<Address, InvokeError>(
+                    &candidate,
+                    &Symbol::new(env, "get_underlying_token"),
+                    ().into_val(env),
+                ) {
+                    Ok(Ok(token)) => {
+                        env.storage()
+                            .persistent()
+                            .set(&DataKey::MarketUnderlying(candidate.clone()), &token);
+                        storage::bump_market_underlying_ttl(env, &candidate);
+                        Some(token)
+                    }
+                    _ => panic!("market state unavailable"),
+                }
+            } else {
+                // Emergency path avoids all cross-contract reads.
+                // If a remaining market has unknown token mapping, conservatively keep
+                // token allowlist entries to avoid accidental token de-allowlisting.
+                still_supported = true;
+                break;
+            };
+            if token_opt == Some(removed_token.clone()) {
                 still_supported = true;
                 break;
             }
@@ -236,7 +265,7 @@ impl SimplePeridottroller {
         let token_key = DataKey::SupportedToken(removed_token.clone());
         if still_supported {
             env.storage().persistent().set(&token_key, &true);
-            storage::bump_supported_token_ttl(env, &removed_token);
+            storage::bump_supported_token_ttl(env, removed_token);
         } else {
             env.storage().persistent().remove(&token_key);
         }
@@ -833,7 +862,11 @@ impl SimplePeridottroller {
         env.storage()
             .persistent()
             .set(&DataKey::SupportedToken(token.clone()), &true);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarketUnderlying(market.clone()), &token);
         storage::bump_supported_token_ttl(&env, &token);
+        storage::bump_market_underlying_ttl(&env, &market);
         MarketAdded { market }.publish(&env);
     }
 
@@ -1023,7 +1056,27 @@ impl SimplePeridottroller {
         if total_ptokens > 0 || total_borrowed > 0 {
             panic!("market has active positions");
         }
-        Self::apply_market_removal(&env, &market, markets);
+        let removed_token: Address = if let Some(token) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::MarketUnderlying(market.clone()))
+        {
+            storage::bump_market_underlying_ttl(&env, &market);
+            token
+        } else {
+            // Legacy compatibility for markets added before token cache existed.
+            let token: Address = env.invoke_contract(
+                &market,
+                &Symbol::new(&env, "get_underlying_token"),
+                ().into_val(&env),
+            );
+            env.storage()
+                .persistent()
+                .set(&DataKey::MarketUnderlying(market.clone()), &token);
+            storage::bump_market_underlying_ttl(&env, &market);
+            token
+        };
+        Self::apply_market_removal(&env, &market, &removed_token, markets, true);
     }
 
     // Emergency path: delist a market even when its state endpoints are unavailable.
@@ -1031,7 +1084,14 @@ impl SimplePeridottroller {
     // - admin auth
     // - explicit risk acknowledgement
     // - zero entered users tracked in the controller
-    pub fn force_remove_market(env: Env, market: Address, acknowledge_risk: bool) {
+    pub fn force_remove_market(
+        env: Env,
+        market: Address,
+        removed_token: Address,
+        expected_total_ptokens: u128,
+        expected_total_borrowed: u128,
+        acknowledge_risk: bool,
+    ) {
         bump_core_ttl(&env);
         let admin: Address = env
             .storage()
@@ -1041,6 +1101,9 @@ impl SimplePeridottroller {
         admin.require_auth();
         if !acknowledge_risk {
             panic!("ack required");
+        }
+        if expected_total_ptokens > 0 || expected_total_borrowed > 0 {
+            panic!("expected active positions");
         }
         let markets: Map<Address, bool> = env
             .storage()
@@ -1058,7 +1121,7 @@ impl SimplePeridottroller {
         if counts.get(market.clone()).unwrap_or(0u32) > 0 {
             panic!("market has active users");
         }
-        Self::apply_market_removal(&env, &market, markets);
+        Self::apply_market_removal(&env, &market, &removed_token, markets, false);
     }
 
     // Sum collateral across user's entered markets using each market's exchange rate and pToken balance

@@ -170,7 +170,7 @@ fn test_force_remove_market_requires_ack() {
     comp.initialize(&admin);
     comp.add_market(&failing_market_id);
 
-    comp.force_remove_market(&failing_market_id, &false);
+    comp.force_remove_market(&failing_market_id, &token, &0u128, &0u128, &false);
 }
 
 #[test]
@@ -195,13 +195,63 @@ fn test_force_remove_market_allows_delist_when_market_state_unavailable() {
     comp.add_market(&failing_market_id);
 
     // Delist succeeds via emergency path even though the market state endpoint traps.
-    comp.force_remove_market(&failing_market_id, &true);
+    comp.force_remove_market(&failing_market_id, &token, &0u128, &0u128, &true);
 
     // Verifies market is no longer supported.
     let enter_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         comp.enter_market(&user, &failing_market_id);
     }));
     assert!(enter_res.is_err());
+}
+
+#[test]
+#[should_panic(expected = "expected active positions")]
+fn test_force_remove_market_requires_zero_expected_totals() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+
+    comp.force_remove_market(&failing_market_id, &token, &1u128, &0u128, &true);
+}
+
+#[test]
+fn test_force_remove_market_does_not_call_market_for_underlying() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+
+    // Break underlying getter after listing; emergency delist should still succeed
+    // because it uses cached/supplied token, not market calls.
+    failing_market.set_fail_underlying(&true);
+    comp.force_remove_market(&failing_market_id, &token, &0u128, &0u128, &true);
 }
 
 #[test]
@@ -446,6 +496,7 @@ struct FailingClaimMarket;
 #[contracttype]
 enum FailingMarketKey {
     Underlying,
+    FailUnderlying,
 }
 
 #[contractimpl]
@@ -454,9 +505,26 @@ impl FailingClaimMarket {
         env.storage()
             .persistent()
             .set(&FailingMarketKey::Underlying, &underlying);
+        env.storage()
+            .persistent()
+            .set(&FailingMarketKey::FailUnderlying, &false);
+    }
+
+    pub fn set_fail_underlying(env: Env, fail: bool) {
+        env.storage()
+            .persistent()
+            .set(&FailingMarketKey::FailUnderlying, &fail);
     }
 
     pub fn get_underlying_token(env: Env) -> Address {
+        let fail = env
+            .storage()
+            .persistent()
+            .get(&FailingMarketKey::FailUnderlying)
+            .unwrap_or(false);
+        if fail {
+            panic!("underlying unavailable");
+        }
         env.storage()
             .persistent()
             .get(&FailingMarketKey::Underlying)
