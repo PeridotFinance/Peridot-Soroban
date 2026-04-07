@@ -112,6 +112,13 @@ impl SimplePeridottroller {
     pub fn set_oracle(env: Env, oracle: Address) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        // Basic oracle interface sanity checks.
+        let oracle_client = crate::reflector::ReflectorClient::new(&env, &oracle);
+        let decimals = oracle_client.decimals();
+        let resolution = oracle_client.resolution();
+        if decimals > 38 || resolution == 0 {
+            panic!("invalid oracle");
+        }
         env.storage().persistent().set(&DataKey::Oracle, &oracle);
         OracleUpdated {
             oracle: oracle.clone(),
@@ -168,7 +175,7 @@ impl SimplePeridottroller {
     pub fn set_close_factor(env: Env, close_factor_scaled: u128) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        if close_factor_scaled > 1_000_000u128 {
+        if close_factor_scaled > MAX_CLOSE_FACTOR {
             panic!("invalid close factor");
         }
         env.storage()
@@ -183,7 +190,7 @@ impl SimplePeridottroller {
     pub fn set_liquidation_incentive(env: Env, li_scaled: u128) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        if li_scaled < 1_000_000u128 {
+        if li_scaled < 1_000_000u128 || li_scaled > MAX_LIQUIDATION_INCENTIVE {
             panic!("invalid incentive");
         }
         env.storage()
@@ -199,7 +206,7 @@ impl SimplePeridottroller {
     pub fn set_market_cf(env: Env, market: Address, cf_scaled: u128) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        if cf_scaled > 1_000_000u128 {
+        if cf_scaled < MIN_MARKET_CF || cf_scaled > 1_000_000u128 {
             panic!("invalid collateral factor");
         }
         env.storage()
@@ -240,7 +247,7 @@ impl SimplePeridottroller {
     pub fn set_oracle_max_age_multiplier(env: Env, k: u64) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        if k == 0 {
+        if k == 0 || k > MAX_ORACLE_MAX_AGE_MULTIPLIER {
             panic!("invalid max age mult");
         }
         env.storage()
@@ -311,6 +318,15 @@ impl SimplePeridottroller {
     pub fn set_peridot_token(env: Env, token: Address) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        if let Some(existing) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::PeridotToken)
+        {
+            if existing != token {
+                panic!("peridot token already set");
+            }
+        }
         env.storage()
             .persistent()
             .set(&DataKey::PeridotToken, &token);
@@ -320,6 +336,18 @@ impl SimplePeridottroller {
     pub fn set_supply_speed(env: Env, market: Address, speed_per_sec: u128) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        if speed_per_sec > MAX_REWARD_SPEED_PER_SEC {
+            panic!("speed too high");
+        }
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if !supported.get(market.clone()).unwrap_or(false) {
+            panic!("market not supported");
+        }
+        Self::accrue_market(env.clone(), market.clone(), None, None);
         let now = env.ledger().timestamp();
         // initialize index/time on first set
         let exists: Option<u128> = env
@@ -342,6 +370,18 @@ impl SimplePeridottroller {
     pub fn set_borrow_speed(env: Env, market: Address, speed_per_sec: u128) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        if speed_per_sec > MAX_REWARD_SPEED_PER_SEC {
+            panic!("speed too high");
+        }
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if !supported.get(market.clone()).unwrap_or(false) {
+            panic!("market not supported");
+        }
+        Self::accrue_market(env.clone(), market.clone(), None, None);
         let now = env.ledger().timestamp();
         let exists: Option<u128> = env
             .storage()
