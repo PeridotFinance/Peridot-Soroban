@@ -16,7 +16,7 @@ pub struct ReceiptVault;
 
 const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
 const BPS_SCALE: u128 = 10_000u128;
-const BOOSTED_MODEL_CASH_TOLERANCE_BPS: u128 = 2_000u128; // 20%
+const BOOSTED_MODEL_CASH_TOLERANCE_BPS: u128 = 500u128; // 5%
 
 #[contractimpl]
 impl ReceiptVault {
@@ -1608,25 +1608,35 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::UnderlyingToken)
             .expect("underlying not set");
+        // Borrow interest accrual via global index (split to reserves, admin fees, and suppliers)
+        let tb_prior: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::TotalBorrowed)
+            .expect("total borrowed missing");
+
         // Snapshot gross cash once so rate queries use raw liquidity inputs and
         // reserves are subtracted only inside the rate model.
         //
         // For rate-model inputs, cap boosted cash only when the reported value is
         // implausibly above an internal baseline (cached/accounting). This avoids
         // trusting extreme external quotes while preserving legitimate yield growth.
+        // If baseline is unavailable while borrows are outstanding, fail-safe by
+        // ignoring boosted cash for this accrual tick.
         let cached_before = Self::cached_boosted_underlying(&env);
         let boosted_reported = Self::get_boosted_underlying(&env);
         let boosted_accounting = Self::estimate_boosted_underlying_from_accounting(&env);
         let boosted_baseline = cached_before.max(boosted_accounting);
         let boosted_cap = if boosted_baseline == 0 {
-            boosted_reported
+            if tb_prior > 0 { 0 } else { boosted_reported }
         } else {
             boosted_baseline.saturating_add(
                 (boosted_baseline.saturating_mul(BOOSTED_MODEL_CASH_TOLERANCE_BPS)) / BPS_SCALE,
             )
         };
         let boosted_for_model = boosted_reported.min(boosted_cap);
-        let model_cash = Self::current_live_cash(&env, &token_address).saturating_add(boosted_for_model);
+        let model_cash = Self::current_live_cash(&env, &token_address)
+            .saturating_add(boosted_for_model);
 
         let current_reserves: u128 = env
             .storage()
@@ -1640,12 +1650,6 @@ impl ReceiptVault {
             .unwrap_or(0u128);
         let pooled_reserves = current_reserves.saturating_add(current_admin_fees);
 
-        // Borrow interest accrual via global index (split to reserves, admin fees, and suppliers)
-        let tb_prior: u128 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::TotalBorrowed)
-            .expect("total borrowed missing");
         let mut interest_accumulated_event: u128 = 0u128;
         let mut event_borrow_index: u128 = env
             .storage()
