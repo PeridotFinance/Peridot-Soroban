@@ -1424,8 +1424,8 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
     set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128); // $1
     set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 5_000_000i128); // $5 initial to allow borrow
     comp.set_oracle(&oracle_id);
-    // Increase liquidation incentive to 2.0x
-    comp.set_liquidation_incentive(&2_000_000u128);
+    // Increase liquidation incentive to max allowed 1.2x
+    comp.set_liquidation_incentive(&1_200_000u128);
 
     vault_a.set_peridottroller(&comp_id);
     vault_b.set_peridottroller(&comp_id);
@@ -1803,6 +1803,82 @@ fn test_claim_all_rejects_oversized_batch() {
     env.as_contract(&comp_id, || {
         SimplePeridottroller::claim_all(env.clone(), users.clone());
     });
+}
+
+#[test]
+#[should_panic(expected = "invalid max age mult")]
+fn test_set_oracle_max_age_multiplier_rejects_large_values() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.set_oracle_max_age_multiplier(&11u64);
+}
+
+#[test]
+#[should_panic(expected = "invalid collateral factor")]
+fn test_set_market_cf_rejects_zero() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.set_market_cf(&Address::generate(&env), &0u128);
+}
+
+#[test]
+#[should_panic(expected = "invalid incentive")]
+fn test_set_liquidation_incentive_rejects_above_cap() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.set_liquidation_incentive(&1_200_001u128);
+}
+
+#[test]
+#[should_panic(expected = "peridot token already set")]
+fn test_set_peridot_token_is_one_time() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.set_peridot_token(&Address::generate(&env));
+    comp.set_peridot_token(&Address::generate(&env));
+}
+
+#[test]
+#[should_panic(expected = "speed too high")]
+fn test_set_supply_speed_rejects_excessive_values() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+    comp.set_supply_speed(&market_id, &(MAX_REWARD_SPEED_PER_SEC + 1));
 }
 
 // Security test: Verify that accrue_user_market rejects hints from non-market callers
