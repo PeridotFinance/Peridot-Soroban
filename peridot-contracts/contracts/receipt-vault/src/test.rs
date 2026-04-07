@@ -201,6 +201,7 @@ enum BoostedKey {
     Share(Address),
     FailQuote,
     WithdrawHaircut,
+    QuoteMultiplierBps,
 }
 
 #[contractimpl]
@@ -218,6 +219,9 @@ impl MockBoostedVault {
         env.storage()
             .persistent()
             .set(&BoostedKey::WithdrawHaircut, &0i128);
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::QuoteMultiplierBps, &1_000_000u128);
     }
 
     pub fn set_fail_quote(env: Env, fail: bool) {
@@ -228,6 +232,12 @@ impl MockBoostedVault {
         env.storage()
             .persistent()
             .set(&BoostedKey::WithdrawHaircut, &haircut);
+    }
+
+    pub fn set_quote_multiplier_bps(env: Env, bps: u128) {
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::QuoteMultiplierBps, &bps);
     }
 
     pub fn balance(env: Env, owner: Address) -> i128 {
@@ -275,7 +285,13 @@ impl MockBoostedVault {
             return out;
         }
         let underlying_for_shares = shares.saturating_mul(underlying_balance) / total_shares;
-        out.push_back(underlying_for_shares);
+        let quote_bps: u128 = env
+            .storage()
+            .persistent()
+            .get(&BoostedKey::QuoteMultiplierBps)
+            .unwrap_or(1_000_000u128);
+        let quoted = underlying_for_shares.saturating_mul(to_i128(quote_bps)) / 1_000_000i128;
+        out.push_back(quoted);
         out
     }
 
@@ -2306,6 +2322,260 @@ fn test_jump_model_dynamic_supply_apr_accrual() {
 
     // Underlying should increase between years due to higher post-kink rates
     assert!(total_underlying_y2 >= total_underlying_y1);
+}
+
+#[test]
+fn test_update_interest_uses_gross_cash_for_model_with_boosted_assets() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let model_admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        jrm::DEFAULT_INIT_ADMIN,
+    ));
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &10_000i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    // Linear model: yearly borrow rate ~= utilization.
+    let model_id = env.register(jrm::JumpRateModel, ());
+    let model_client = jrm::JumpRateModelClient::new(&env, &model_id);
+    model_client.initialize(
+        &0u128,
+        &1_000_000u128,
+        &1_000_000u128,
+        &1_000_000u128,
+        &model_admin,
+    );
+    env.mock_all_auths_allowing_non_root_auth();
+    vault.set_interest_model(&model_id);
+
+    vault.deposit(&user, &1_000u128);
+    vault.borrow(&user, &500u128);
+
+    // Seed non-zero reserves to exercise the reserve-subtraction path.
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .set(&DataKey::TotalReserves, &100u128);
+    });
+
+    let tb_prior = vault.get_total_borrowed();
+    let pooled_reserves = vault.get_total_reserves().saturating_add(vault.get_total_admin_fees());
+    let live_cash = token_client.balance(&vault_id) as u128;
+    let boosted_shares = boosted.balance(&vault_id);
+    let boosted_underlying = boosted
+        .get_asset_amounts_per_shares(&boosted_shares)
+        .get(0)
+        .unwrap_or(0) as u128;
+    let gross_cash = live_cash.saturating_add(boosted_underlying);
+
+    let expected_rate = model_client.get_borrow_rate(&gross_cash, &tb_prior, &pooled_reserves);
+    let wrong_cash = vault.get_available_liquidity();
+    let wrong_rate = model_client.get_borrow_rate(&wrong_cash, &tb_prior, &pooled_reserves);
+    assert!(expected_rate < wrong_rate);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault.update_interest();
+
+    let tb_after = vault.get_total_borrowed();
+    let accrued = tb_after.saturating_sub(tb_prior);
+    let expected_accrued = tb_prior.saturating_mul(expected_rate) / 1_000_000u128;
+    let wrong_accrued = tb_prior.saturating_mul(wrong_rate) / 1_000_000u128;
+
+    assert_eq!(accrued, expected_accrued);
+    assert_ne!(accrued, wrong_accrued);
+}
+
+#[test]
+fn test_update_interest_clamps_inflated_boosted_quote_for_model_cash() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let model_admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        jrm::DEFAULT_INIT_ADMIN,
+    ));
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &10_000i128);
+
+    let model_id = env.register(jrm::JumpRateModel, ());
+    let model = jrm::JumpRateModelClient::new(&env, &model_id);
+    // Linear rate curve to make utilization effects obvious.
+    model.initialize(
+        &0u128,
+        &1_000_000u128,
+        &1_000_000u128,
+        &1_000_000u128,
+        &model_admin,
+    );
+
+    let boosted_normal_id = env.register(MockBoostedVault, ());
+    let boosted_normal = MockBoostedVaultClient::new(&env, &boosted_normal_id);
+    boosted_normal.initialize(&token_address);
+
+    let boosted_inflated_id = env.register(MockBoostedVault, ());
+    let boosted_inflated = MockBoostedVaultClient::new(&env, &boosted_inflated_id);
+    boosted_inflated.initialize(&token_address);
+    boosted_inflated.set_quote_multiplier_bps(&3_000_000u128);
+
+    let vault_a_id = env.register(ReceiptVault, ());
+    let vault_a = ReceiptVaultClient::new(&env, &vault_a_id);
+    vault_a.initialize(&token_address, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_a.set_collateral_factor(&1_000_000u128);
+    vault_a.set_interest_model(&model_id);
+    vault_a.set_boosted_vault(&admin, &boosted_normal_id);
+
+    let vault_b_id = env.register(ReceiptVault, ());
+    let vault_b = ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_b.initialize(&token_address, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+    vault_b.set_collateral_factor(&1_000_000u128);
+    vault_b.set_interest_model(&model_id);
+    vault_b.set_boosted_vault(&admin, &boosted_inflated_id);
+
+    // Identical state on both vaults.
+    vault_a.deposit(&user, &1_000u128);
+    vault_b.deposit(&user, &1_000u128);
+    vault_a.borrow(&user, &500u128);
+    vault_b.borrow(&user, &500u128);
+
+    let tb_prior = vault_b.get_total_borrowed();
+    let pooled_reserves = vault_b.get_total_reserves().saturating_add(vault_b.get_total_admin_fees());
+    let live_cash = token_client.balance(&vault_b_id) as u128;
+    let reported = boosted_inflated
+        .get_asset_amounts_per_shares(&boosted_inflated.balance(&vault_b_id))
+        .get(0)
+        .unwrap_or(0) as u128;
+    let cached_before: u128 = env
+        .as_contract(&vault_b_id, || env.storage().persistent().get(&DataKey::BoostedUnderlyingCached).unwrap_or(0u128));
+    let accounting: u128 = env.as_contract(&vault_b_id, || {
+        let storage = env.storage().persistent();
+        let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
+        let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
+        let total_admin_fees: u128 = storage.get(&DataKey::TotalAdminFees).unwrap_or(0u128);
+        let total_borrowed: u128 = storage.get(&DataKey::TotalBorrowed).unwrap_or(0u128);
+        let managed_cash: u128 = storage.get(&DataKey::ManagedCash).unwrap_or(0u128);
+        total_deposited
+            .saturating_add(total_reserves)
+            .saturating_add(total_admin_fees)
+            .saturating_sub(total_borrowed)
+            .saturating_sub(managed_cash)
+    });
+    let baseline = cached_before.max(accounting);
+    let cap = if baseline == 0 {
+        reported
+    } else {
+        baseline.saturating_add((baseline.saturating_mul(500u128)) / 10_000u128)
+    };
+    let capped_cash = live_cash.saturating_add(reported.min(cap));
+    let uncapped_cash = live_cash.saturating_add(reported);
+    let expected_rate = model.get_borrow_rate(&capped_cash, &tb_prior, &pooled_reserves);
+    let uncapped_rate = model.get_borrow_rate(&uncapped_cash, &tb_prior, &pooled_reserves);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault_b.update_interest();
+    vault_a.update_interest();
+
+    let accrued = vault_b.get_total_borrowed().saturating_sub(tb_prior);
+    let expected_accrued = tb_prior.saturating_mul(expected_rate) / 1_000_000u128;
+    let uncapped_accrued = tb_prior.saturating_mul(uncapped_rate) / 1_000_000u128;
+
+    // The model input follows capped cash, not arbitrary inflated quotes.
+    assert_eq!(accrued, expected_accrued);
+    assert!(accrued >= uncapped_accrued);
+}
+
+#[test]
+fn test_update_interest_ignores_boosted_quote_when_baseline_missing_with_debt() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let model_admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        jrm::DEFAULT_INIT_ADMIN,
+    ));
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &10_000i128);
+
+    let model_id = env.register(jrm::JumpRateModel, ());
+    let model = jrm::JumpRateModelClient::new(&env, &model_id);
+    model.initialize(
+        &0u128,
+        &1_000_000u128,
+        &1_000_000u128,
+        &1_000_000u128,
+        &model_admin,
+    );
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.set_interest_model(&model_id);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    vault.deposit(&user, &1_000u128);
+    vault.borrow(&user, &500u128);
+    boosted.set_quote_multiplier_bps(&3_000_000u128);
+
+    // Force the model-cash baseline to zero while debt remains outstanding.
+    env.as_contract(&vault_id, || {
+        let storage = env.storage().persistent();
+        storage.set(&DataKey::BoostedUnderlyingCached, &0u128);
+        storage.set(&DataKey::TotalDeposited, &0u128);
+        storage.set(&DataKey::TotalReserves, &0u128);
+        storage.set(&DataKey::TotalAdminFees, &0u128);
+        storage.set(&DataKey::ManagedCash, &0u128);
+    });
+
+    let tb_prior = vault.get_total_borrowed();
+    let pooled_reserves = vault.get_total_reserves().saturating_add(vault.get_total_admin_fees());
+    let live_cash = token_client.balance(&vault_id) as u128;
+    let reported = boosted
+        .get_asset_amounts_per_shares(&boosted.balance(&vault_id))
+        .get(0)
+        .unwrap_or(0) as u128;
+
+    let expected_rate = model.get_borrow_rate(&live_cash, &tb_prior, &pooled_reserves);
+    let uncapped_rate = model.get_borrow_rate(
+        &live_cash.saturating_add(reported),
+        &tb_prior,
+        &pooled_reserves,
+    );
+    assert!(expected_rate > uncapped_rate);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault.update_interest();
+
+    let accrued = vault.get_total_borrowed().saturating_sub(tb_prior);
+    let expected_accrued = tb_prior.saturating_mul(expected_rate) / 1_000_000u128;
+    assert_eq!(accrued, expected_accrued);
 }
 
 #[test]
