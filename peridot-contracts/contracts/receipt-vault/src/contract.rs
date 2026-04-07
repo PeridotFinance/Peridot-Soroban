@@ -2671,9 +2671,8 @@ impl ReceiptVault {
         if seize_ctx.shortfall == 0 {
             abort_seize(&env, &borrower, &liquidator, ptoken_amount, "solvent");
         }
-        if seize_ctx.max_redeem_ptokens >= ptoken_amount {
-            abort_seize(&env, &borrower, &liquidator, ptoken_amount, "voluntary");
-        }
+        // Do not block liquidations based on redeem previews. A precomputed
+        // shortfall already proves insolvency at liquidation initiation.
         if seize_ctx.expires_at < env.ledger().timestamp() {
             abort_seize(&env, &borrower, &liquidator, ptoken_amount, "stale_ctx");
         }
