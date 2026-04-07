@@ -27,66 +27,125 @@ impl SimplePeridottroller {
         use soroban_sdk::{IntoVal, Val, Vec};
 
         let empty_args: Vec<Val> = ().into_val(env);
-        let total_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
-            market,
-            &Symbol::new(env, "get_total_ptokens"),
-            empty_args.clone(),
-        ) {
-            Ok(Ok(v)) => v,
-            _ => {
-                Self::emit_claim_call_failed(env, user, market, "get_total_ptokens");
-                return false;
+        let now = env.ledger().timestamp();
+
+        let mut total_ptokens_hint: Option<u128> = None;
+        let last_supply_idx_time: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupplyIndexTime(market.clone()))
+            .unwrap_or(now);
+        if now > last_supply_idx_time {
+            let supply_speed: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::SupplySpeed(market.clone()))
+                .unwrap_or(0u128);
+            if supply_speed > 0 {
+                let total_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
+                    market,
+                    &Symbol::new(env, "get_total_ptokens"),
+                    empty_args.clone(),
+                ) {
+                    Ok(Ok(v)) => v,
+                    _ => {
+                        Self::emit_claim_call_failed(env, user, market, "get_total_ptokens");
+                        return false;
+                    }
+                };
+                total_ptokens_hint = Some(total_ptokens);
             }
-        };
-        let total_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
-            market,
-            &Symbol::new(env, "get_total_borrowed"),
-            empty_args,
-        ) {
-            Ok(Ok(v)) => v,
-            _ => {
-                Self::emit_claim_call_failed(env, user, market, "get_total_borrowed");
-                return false;
+        }
+
+        let mut total_borrowed_hint: Option<u128> = None;
+        let last_borrow_idx_time: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowIndexTime(market.clone()))
+            .unwrap_or(now);
+        if now > last_borrow_idx_time {
+            let borrow_speed: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::BorrowSpeed(market.clone()))
+                .unwrap_or(0u128);
+            if borrow_speed > 0 {
+                let total_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
+                    market,
+                    &Symbol::new(env, "get_total_borrowed"),
+                    empty_args,
+                ) {
+                    Ok(Ok(v)) => v,
+                    _ => {
+                        Self::emit_claim_call_failed(env, user, market, "get_total_borrowed");
+                        return false;
+                    }
+                };
+                total_borrowed_hint = Some(total_borrowed);
             }
-        };
+        }
 
         Self::accrue_market(
             env.clone(),
             market.clone(),
-            Some(total_ptokens),
-            Some(total_borrowed),
+            total_ptokens_hint,
+            total_borrowed_hint,
         );
 
-        let user_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
-            market,
-            &Symbol::new(env, "get_ptoken_balance"),
-            (user.clone(),).into_val(env),
-        ) {
-            Ok(Ok(v)) => v,
-            _ => {
-                Self::emit_claim_call_failed(env, user, market, "get_ptoken_balance");
-                return false;
-            }
-        };
-        let user_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
-            market,
-            &Symbol::new(env, "get_user_borrow_balance"),
-            (user.clone(),).into_val(env),
-        ) {
-            Ok(Ok(v)) => v,
-            _ => {
-                Self::emit_claim_call_failed(env, user, market, "get_user_borrow_balance");
-                return false;
-            }
-        };
+        let mut user_ptokens_hint: Option<u128> = None;
+        let supply_index: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupplyIndex(market.clone()))
+            .unwrap_or(INDEX_SCALE_1E18);
+        let user_supply_index: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()))
+            .unwrap_or(INDEX_SCALE_1E18);
+        if supply_index != user_supply_index {
+            let user_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
+                market,
+                &Symbol::new(env, "get_ptoken_balance"),
+                (user.clone(),).into_val(env),
+            ) {
+                Ok(Ok(v)) => v,
+                _ => {
+                    Self::emit_claim_call_failed(env, user, market, "get_ptoken_balance");
+                    return false;
+                }
+            };
+            user_ptokens_hint = Some(user_ptokens);
+        }
 
-        Self::distribute_supply(
-            env.clone(),
-            user.clone(),
-            market.clone(),
-            Some(user_ptokens),
-        );
-        Self::distribute_borrow(env.clone(), user.clone(), market.clone(), Some(user_borrowed));
+        let mut user_borrowed_hint: Option<u128> = None;
+        let borrow_index: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowIndex(market.clone()))
+            .unwrap_or(INDEX_SCALE_1E18);
+        let user_borrow_index: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserBorrowIndex(user.clone(), market.clone()))
+            .unwrap_or(INDEX_SCALE_1E18);
+        if borrow_index != user_borrow_index {
+            let user_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
+                market,
+                &Symbol::new(env, "get_user_borrow_balance"),
+                (user.clone(),).into_val(env),
+            ) {
+                Ok(Ok(v)) => v,
+                _ => {
+                    Self::emit_claim_call_failed(env, user, market, "get_user_borrow_balance");
+                    return false;
+                }
+            };
+            user_borrowed_hint = Some(user_borrowed);
+        }
+
+        Self::distribute_supply(env.clone(), user.clone(), market.clone(), user_ptokens_hint);
+        Self::distribute_borrow(env.clone(), user.clone(), market.clone(), user_borrowed_hint);
         true
     }
 
