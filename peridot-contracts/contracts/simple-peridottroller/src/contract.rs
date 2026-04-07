@@ -29,19 +29,18 @@ impl SimplePeridottroller {
         let empty_args: Vec<Val> = ().into_val(env);
         let now = env.ledger().timestamp();
 
-        let mut total_ptokens_hint: Option<u128> = None;
-        let last_supply_idx_time: u64 = env
+        let supply_speed: u128 = env
             .storage()
             .persistent()
-            .get(&DataKey::SupplyIndexTime(market.clone()))
-            .unwrap_or(now);
-        if now > last_supply_idx_time {
-            let supply_speed: u128 = env
+            .get(&DataKey::SupplySpeed(market.clone()))
+            .unwrap_or(0u128);
+        let mut total_ptokens_hint: Option<u128> = None;
+        if supply_speed > 0 {
+            let last_supply_idx_time: Option<u64> = env
                 .storage()
                 .persistent()
-                .get(&DataKey::SupplySpeed(market.clone()))
-                .unwrap_or(0u128);
-            if supply_speed > 0 {
+                .get(&DataKey::SupplyIndexTime(market.clone()));
+            if last_supply_idx_time.map(|last| now > last).unwrap_or(false) {
                 let total_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
                     market,
                     &Symbol::new(env, "get_total_ptokens"),
@@ -57,19 +56,18 @@ impl SimplePeridottroller {
             }
         }
 
-        let mut total_borrowed_hint: Option<u128> = None;
-        let last_borrow_idx_time: u64 = env
+        let borrow_speed: u128 = env
             .storage()
             .persistent()
-            .get(&DataKey::BorrowIndexTime(market.clone()))
-            .unwrap_or(now);
-        if now > last_borrow_idx_time {
-            let borrow_speed: u128 = env
+            .get(&DataKey::BorrowSpeed(market.clone()))
+            .unwrap_or(0u128);
+        let mut total_borrowed_hint: Option<u128> = None;
+        if borrow_speed > 0 {
+            let last_borrow_idx_time: Option<u64> = env
                 .storage()
                 .persistent()
-                .get(&DataKey::BorrowSpeed(market.clone()))
-                .unwrap_or(0u128);
-            if borrow_speed > 0 {
+                .get(&DataKey::BorrowIndexTime(market.clone()));
+            if last_borrow_idx_time.map(|last| now > last).unwrap_or(false) {
                 let total_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
                     market,
                     &Symbol::new(env, "get_total_borrowed"),
@@ -1958,100 +1956,112 @@ impl SimplePeridottroller {
     ) {
         let now = env.ledger().timestamp();
         // supply
-        let last_s: u64 = env
+        let last_s_opt: Option<u64> = env
             .storage()
             .persistent()
-            .get(&DataKey::SupplyIndexTime(market.clone()))
-            .unwrap_or(now);
-        let dt_s = now.saturating_sub(last_s);
-        if dt_s > 0 {
-            let speed: u128 = env
-                .storage()
-                .persistent()
-                .get(&DataKey::SupplySpeed(market.clone()))
-                .unwrap_or(0u128);
-            if speed > 0 {
-                use soroban_sdk::IntoVal;
-                let total_ptokens: u128 = total_ptokens_hint.unwrap_or_else(|| {
-                    env.invoke_contract(
-                        &market,
-                        &Symbol::new(&env, "get_total_ptokens"),
-                        ().into_val(&env),
-                    )
-                });
-                if total_ptokens > 0 {
-                    let mut idx: u128 = env
-                        .storage()
-                        .persistent()
-                        .get(&DataKey::SupplyIndex(market.clone()))
-                        .unwrap_or(INDEX_SCALE_1E18);
-                    let product = speed
-                        .checked_mul(dt_s as u128)
-                        .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
-                    let delta = match product {
-                        Some(total) => total / total_ptokens,
-                        None => {
-                            env.storage()
-                                .persistent()
-                                .set(&DataKey::SupplySpeed(market.clone()), &0u128);
-                            0u128
-                        }
-                    };
-                    idx = idx.saturating_add(delta);
+            .get(&DataKey::SupplyIndexTime(market.clone()));
+        let speed: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupplySpeed(market.clone()))
+            .unwrap_or(0u128);
+        if speed > 0 {
+            if let Some(last_s) = last_s_opt {
+                let dt_s = now.saturating_sub(last_s);
+                if dt_s > 0 {
+                    use soroban_sdk::IntoVal;
+                    let total_ptokens: u128 = total_ptokens_hint.unwrap_or_else(|| {
+                        env.invoke_contract(
+                            &market,
+                            &Symbol::new(&env, "get_total_ptokens"),
+                            ().into_val(&env),
+                        )
+                    });
+                    if total_ptokens > 0 {
+                        let mut idx: u128 = env
+                            .storage()
+                            .persistent()
+                            .get(&DataKey::SupplyIndex(market.clone()))
+                            .unwrap_or(INDEX_SCALE_1E18);
+                        let product = speed
+                            .checked_mul(dt_s as u128)
+                            .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
+                        let delta = match product {
+                            Some(total) => total / total_ptokens,
+                            None => {
+                                env.storage()
+                                    .persistent()
+                                    .set(&DataKey::SupplySpeed(market.clone()), &0u128);
+                                0u128
+                            }
+                        };
+                        idx = idx.saturating_add(delta);
+                        env.storage()
+                            .persistent()
+                            .set(&DataKey::SupplyIndex(market.clone()), &idx);
+                    }
                     env.storage()
                         .persistent()
-                        .set(&DataKey::SupplyIndex(market.clone()), &idx);
+                        .set(&DataKey::SupplyIndexTime(market.clone()), &now);
                 }
+            } else {
                 env.storage()
                     .persistent()
                     .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+                // Missing index-time can happen after TTL expiry; re-anchor at `now` so
+                // accrual resumes on the next call instead of remaining permanently at dt=0.
             }
         }
         // borrow
-        let last_b: u64 = env
+        let last_b_opt: Option<u64> = env
             .storage()
             .persistent()
-            .get(&DataKey::BorrowIndexTime(market.clone()))
-            .unwrap_or(now);
-        let dt_b = now.saturating_sub(last_b);
-        if dt_b > 0 {
-            let speed: u128 = env
-                .storage()
-                .persistent()
-                .get(&DataKey::BorrowSpeed(market.clone()))
-                .unwrap_or(0u128);
-            if speed > 0 {
-                use soroban_sdk::IntoVal;
-                let total_borrowed: u128 = total_borrowed_hint.unwrap_or_else(|| {
-                    env.invoke_contract(
-                        &market,
-                        &Symbol::new(&env, "get_total_borrowed"),
-                        ().into_val(&env),
-                    )
-                });
-                if total_borrowed > 0 {
-                    let mut idx: u128 = env
-                        .storage()
-                        .persistent()
-                        .get(&DataKey::BorrowIndex(market.clone()))
-                        .unwrap_or(INDEX_SCALE_1E18);
-                    let product = speed
-                        .checked_mul(dt_b as u128)
-                        .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
-                    let delta = match product {
-                        Some(total) => total / total_borrowed,
-                        None => {
-                            env.storage()
-                                .persistent()
-                                .set(&DataKey::BorrowSpeed(market.clone()), &0u128);
-                            0u128
-                        }
-                    };
-                    idx = idx.saturating_add(delta);
+            .get(&DataKey::BorrowIndexTime(market.clone()));
+        let speed: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowSpeed(market.clone()))
+            .unwrap_or(0u128);
+        if speed > 0 {
+            if let Some(last_b) = last_b_opt {
+                let dt_b = now.saturating_sub(last_b);
+                if dt_b > 0 {
+                    use soroban_sdk::IntoVal;
+                    let total_borrowed: u128 = total_borrowed_hint.unwrap_or_else(|| {
+                        env.invoke_contract(
+                            &market,
+                            &Symbol::new(&env, "get_total_borrowed"),
+                            ().into_val(&env),
+                        )
+                    });
+                    if total_borrowed > 0 {
+                        let mut idx: u128 = env
+                            .storage()
+                            .persistent()
+                            .get(&DataKey::BorrowIndex(market.clone()))
+                            .unwrap_or(INDEX_SCALE_1E18);
+                        let product = speed
+                            .checked_mul(dt_b as u128)
+                            .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
+                        let delta = match product {
+                            Some(total) => total / total_borrowed,
+                            None => {
+                                env.storage()
+                                    .persistent()
+                                    .set(&DataKey::BorrowSpeed(market.clone()), &0u128);
+                                0u128
+                            }
+                        };
+                        idx = idx.saturating_add(delta);
+                        env.storage()
+                            .persistent()
+                            .set(&DataKey::BorrowIndex(market.clone()), &idx);
+                    }
                     env.storage()
                         .persistent()
-                        .set(&DataKey::BorrowIndex(market.clone()), &idx);
+                        .set(&DataKey::BorrowIndexTime(market.clone()), &now);
                 }
+            } else {
                 env.storage()
                     .persistent()
                     .set(&DataKey::BorrowIndexTime(market.clone()), &now);

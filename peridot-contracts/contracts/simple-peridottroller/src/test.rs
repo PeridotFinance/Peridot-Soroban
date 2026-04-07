@@ -1990,6 +1990,57 @@ fn test_claim_mint_failure_keeps_accrued_balance() {
 }
 
 #[test]
+fn test_claim_recovers_missing_supply_index_time() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let vault_id = env.register(rv::ReceiptVault, ());
+    let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_id);
+    comp.enter_market(&user, &vault_id);
+    comp.set_supply_speed(&vault_id, &10u128);
+
+    let mint = token::StellarAssetClient::new(&env, &token);
+    mint.mint(&user, &1_000i128);
+    vault.deposit(&user, &100u128);
+
+    // Simulate TTL loss for the index-time key.
+    env.as_contract(&comp_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::SupplyIndexTime(vault_id.clone()));
+    });
+
+    // First claim re-anchors missing index-time at `now` without getting stuck.
+    comp.claim(&user);
+    let supply_time_after_reanchor: Option<u64> = env.as_contract(&comp_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::SupplyIndexTime(vault_id.clone()))
+    });
+    assert!(supply_time_after_reanchor.is_some());
+
+    // Next claim after time advances should accrue rewards again.
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 5);
+    comp.claim(&user);
+    assert!(comp.get_accrued(&user) > 0);
+}
+
+#[test]
 #[should_panic]
 fn test_claim_requires_user_auth() {
     let env = Env::default();
