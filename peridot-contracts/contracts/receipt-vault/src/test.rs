@@ -1988,6 +1988,52 @@ fn test_flash_loan_successfully_repaid() {
 }
 
 #[test]
+fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin_client.mint(&depositor, &1_000i128);
+    vault.deposit(&depositor, &500u128);
+
+    // Boosted deposit path deploys all live cash.
+    assert_eq!(token_client.balance(&vault_id), 0i128);
+    assert_eq!(boosted.balance(&vault_id), 500i128);
+
+    let fee_scaled = 20_000u128; // 2%
+    vault.set_flash_loan_fee(&fee_scaled);
+
+    let receiver_id = env.register(FlashLoanRepayer, ());
+    let receiver_client = FlashLoanRepayerClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+    token_admin_client.mint(&receiver_id, &50i128);
+
+    let amount = 100u128;
+    let expected_fee = (amount * fee_scaled) / 1_000_000u128;
+    let data = Bytes::new(&env);
+
+    vault.flash_loan(&receiver_id, &amount, &data);
+
+    // 100 underlying was pulled from boosted, then returned + fee.
+    assert_eq!(boosted.balance(&vault_id), 400i128);
+    assert_eq!(token_client.balance(&vault_id), (100 + expected_fee) as i128);
+    assert_eq!(vault.get_total_reserves(), expected_fee);
+}
+
+#[test]
 #[should_panic]
 fn test_flash_loan_requires_receiver_auth() {
     let env = Env::default();

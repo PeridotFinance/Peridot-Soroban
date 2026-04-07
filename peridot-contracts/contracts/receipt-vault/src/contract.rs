@@ -2414,6 +2414,14 @@ impl ReceiptVault {
             panic!("insufficient liquidity");
         }
 
+        // Pull from boosted vault on demand so flash loans are backed by live cash.
+        // Do this before taking the pre-loan balance snapshot used for repayment checks.
+        Self::ensure_liquid_cash(&env, &token_address, amount);
+        let cash_for_flash = Self::current_live_cash(&env, &token_address);
+        if cash_for_flash < amount {
+            panic!("flash loan liquidity shortfall");
+        }
+
         let fee_scaled: u128 = env
             .storage()
             .persistent()
