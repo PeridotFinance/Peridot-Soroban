@@ -492,6 +492,51 @@ fn test_borrow_uses_donated_cash_without_managed_cash_underflow() {
 }
 
 #[test]
+#[should_panic(expected = "boosted vault already assigned")]
+fn test_set_boosted_vault_rejects_duplicate_assignment_across_markets() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_a_id = env.register(ReceiptVault, ());
+    let vault_a = ReceiptVaultClient::new(&env, &vault_a_id);
+    vault_a.initialize(&token_address, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+
+    let vault_b_id = env.register(ReceiptVault, ());
+    let vault_b = ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_b.initialize(&token_address, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&7u32, &1_0000000i128);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.set_oracle(&oracle_id);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.set_market_cf(&vault_a_id, &1_000_000u128);
+    comp.set_market_cf(&vault_b_id, &1_000_000u128);
+    comp.set_price_fallback(&token_address, &Some((1_000_000u128, 1_000_000u128)));
+
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    vault_a.set_boosted_vault(&admin, &boosted_id);
+    // Must fail: peridottroller registry enforces one boosted pool per market.
+    vault_b.set_boosted_vault(&admin, &boosted_id);
+}
+
+#[test]
 fn test_boosted_fallback_prefers_cached_value_when_stale_and_quote_fails() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
