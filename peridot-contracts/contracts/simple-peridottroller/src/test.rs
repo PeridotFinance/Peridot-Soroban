@@ -795,6 +795,76 @@ fn test_liquidation_capped_by_close_factor() {
 }
 
 #[test]
+fn test_liquidation_succeeds_when_post_repay_redeem_preview_exceeds_seize() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let lender = Address::generate(&env);
+
+    // token_a = borrow asset, token_b = collateral asset
+    let ta_admin = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(ta_admin.clone())
+        .address();
+    let tb_admin = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(tb_admin.clone())
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.enter_market(&borrower, &vault_a_id);
+    comp.enter_market(&borrower, &vault_b_id);
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128); // $1
+    comp.set_oracle(&oracle_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_a.mint(&lender, &500i128);
+    mint_b.mint(&borrower, &500i128);
+    mint_a.mint(&liquidator, &200i128);
+
+    vault_b.set_collateral_factor(&500_000u128); // 50%
+    vault_a.deposit(&lender, &200u128);
+    vault_b.deposit(&borrower, &320u128);
+    vault_a.borrow(&borrower, &100u128);
+
+    // Price drop creates shortfall.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 500_000i128); // $0.50
+    let (_liq, shortfall) = comp.account_liquidity(&borrower);
+    assert!(shortfall > 0);
+
+    // With close-factor-capped repay (50), seize should proceed even though
+    // post-repay redeem preview may exceed seize amount.
+    comp.liquidate(&borrower, &vault_a_id, &vault_b_id, &100u128, &liquidator);
+
+    assert_eq!(vault_a.get_user_borrow_balance(&borrower), 50u128);
+    assert_eq!(vault_b.get_ptoken_balance(&liquidator), 108u128);
+}
+
+#[test]
 #[should_panic(expected = "no shortfall")]
 fn test_liquidation_no_shortfall_panics() {
     let env = Env::default();
