@@ -36,6 +36,7 @@ pub enum DataKey {
     FallbackPrice(Address),
     SupportedToken(Address), // bool: token belongs to at least one supported market
     BoostedVaultOwner(Address), // Address: boosted vault -> owning receipt-vault
+    MarketUserCounts, // Map<Address, u32>: number of users with market in UserMarkets
 }
 
 #[contracttype]

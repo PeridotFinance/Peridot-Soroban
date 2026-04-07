@@ -63,7 +63,7 @@ fn test_peridottroller_add_and_enter_market() {
 }
 
 #[test]
-#[should_panic(expected = "market has active positions")]
+#[should_panic(expected = "market has active users")]
 fn test_remove_market_rejects_active_positions() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -84,6 +84,7 @@ fn test_remove_market_rejects_active_positions() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&market_vault_id);
+    comp.enter_market(&user, &market_vault_id);
 
     // Leave an active supply position in the market.
     let mint = token::StellarAssetClient::new(&env, &token);

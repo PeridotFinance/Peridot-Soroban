@@ -189,6 +189,16 @@ impl SimplePeridottroller {
             env.storage()
                 .persistent()
                 .set(&DataKey::UserMarkets(user.clone()), &entered);
+            let mut counts: Map<Address, u32> = env
+                .storage()
+                .instance()
+                .get(&DataKey::MarketUserCounts)
+                .unwrap_or(Map::new(env));
+            let current = counts.get(market.clone()).unwrap_or(0u32);
+            counts.set(market.clone(), current.saturating_add(1));
+            env.storage()
+                .instance()
+                .set(&DataKey::MarketUserCounts, &counts);
         }
         storage::bump_user_markets_ttl(env, user);
     }
@@ -902,6 +912,20 @@ impl SimplePeridottroller {
             env.storage()
                 .persistent()
                 .set(&DataKey::UserMarkets(user.clone()), &new_vec);
+            let mut counts: Map<Address, u32> = env
+                .storage()
+                .instance()
+                .get(&DataKey::MarketUserCounts)
+                .unwrap_or(Map::new(&env));
+            let current = counts.get(market.clone()).unwrap_or(0u32);
+            if current <= 1 {
+                counts.remove(market.clone());
+            } else {
+                counts.set(market.clone(), current - 1);
+            }
+            env.storage()
+                .instance()
+                .set(&DataKey::MarketUserCounts, &counts);
         }
         MarketExited {
             account: user.clone(),
@@ -923,19 +947,14 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
-        // Refuse removal while market still has any open supply or borrow state.
-        let total_ptokens: u128 = env.invoke_contract(
-            &market,
-            &Symbol::new(&env, "get_total_ptokens"),
-            ().into_val(&env),
-        );
-        let total_borrowed: u128 = env.invoke_contract(
-            &market,
-            &Symbol::new(&env, "get_total_borrowed"),
-            ().into_val(&env),
-        );
-        if total_ptokens > 0 || total_borrowed > 0 {
-            panic!("market has active positions");
+        // Refuse removal while any user still has this market in their entered list.
+        let counts: Map<Address, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey::MarketUserCounts)
+            .unwrap_or(Map::new(&env));
+        if counts.get(market.clone()).unwrap_or(0u32) > 0 {
+            panic!("market has active users");
         }
         let removed_token: Address = env.invoke_contract(
             &market,
@@ -1763,6 +1782,9 @@ impl SimplePeridottroller {
                 }
             }
             let is_supported = supported_markets.get(m.clone()).unwrap_or(false);
+            if !is_supported {
+                continue;
+            }
 
             // Underlying token and price
             use soroban_sdk::IntoVal;
@@ -1787,7 +1809,7 @@ impl SimplePeridottroller {
             let (price, scale) = Self::require_price(env.clone(), token.clone());
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
-            if pbal > 0 && is_supported {
+            if pbal > 0 {
                 let rate: u128 = env.invoke_contract(
                     &m,
                     &Symbol::new(&env, "get_exchange_rate"),
