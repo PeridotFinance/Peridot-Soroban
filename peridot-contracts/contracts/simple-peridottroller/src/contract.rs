@@ -195,7 +195,8 @@ impl SimplePeridottroller {
                 .get(&DataKey::MarketUserCounts)
                 .unwrap_or(Map::new(env));
             let current = counts.get(market.clone()).unwrap_or(0u32);
-            counts.set(market.clone(), current.saturating_add(1));
+            let next = current.checked_add(1).expect("market user count overflow");
+            counts.set(market.clone(), next);
             env.storage()
                 .instance()
                 .set(&DataKey::MarketUserCounts, &counts);
@@ -955,6 +956,27 @@ impl SimplePeridottroller {
             .unwrap_or(Map::new(&env));
         if counts.get(market.clone()).unwrap_or(0u32) > 0 {
             panic!("market has active users");
+        }
+        // Defense-in-depth: also verify the market itself reports no outstanding state.
+        // If calls fail, fail closed and keep market listed.
+        let total_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
+            &market,
+            &Symbol::new(&env, "get_total_ptokens"),
+            ().into_val(&env),
+        ) {
+            Ok(Ok(v)) => v,
+            _ => panic!("market state unavailable"),
+        };
+        let total_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
+            &market,
+            &Symbol::new(&env, "get_total_borrowed"),
+            ().into_val(&env),
+        ) {
+            Ok(Ok(v)) => v,
+            _ => panic!("market state unavailable"),
+        };
+        if total_ptokens > 0 || total_borrowed > 0 {
+            panic!("market has active positions");
         }
         let removed_token: Address = env.invoke_contract(
             &market,

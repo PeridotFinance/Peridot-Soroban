@@ -95,6 +95,37 @@ fn test_remove_market_rejects_active_positions() {
 }
 
 #[test]
+#[should_panic(expected = "market has active positions")]
+fn test_remove_market_rejects_non_entered_supplier_state() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let market_vault_id = env.register(rv::ReceiptVault, ());
+    let market_vault = rv::ReceiptVaultClient::new(&env, &market_vault_id);
+    market_vault.initialize(&token, &0u128, &0u128, &admin);
+    market_vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_vault_id);
+
+    // Supplier never enters the market but still has pTokens.
+    let mint = token::StellarAssetClient::new(&env, &token);
+    mint.mint(&user, &1_000i128);
+    market_vault.deposit(&user, &100u128);
+
+    comp.remove_market(&market_vault_id);
+}
+
+#[test]
 fn test_total_collateral_and_borrows_across_markets() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
