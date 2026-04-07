@@ -868,12 +868,6 @@ impl ReceiptVault {
                 let local_collateral_usd = (remaining_discounted.saturating_mul(price)) / scale;
 
                 // Borrows USD: other markets + local market
-                let other_borrows_usd: u128 = call_contract_or_panic(
-                    &env,
-                    &comp_addr,
-                    "get_borrows_excl",
-                    (user.clone(), env.current_contract_address()),
-                );
                 let local_debt_usd = (local_debt.saturating_mul(price)) / scale;
 
                 let total_collateral_usd =
