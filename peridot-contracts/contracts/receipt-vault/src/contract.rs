@@ -286,7 +286,10 @@ impl ReceiptVault {
         }
         let total_underlying = total_underlying_i as u128;
 
-        let numerator = needed_cash.checked_mul(total_shares).unwrap_or(u128::MAX);
+        // Add a tiny buffer for share rounding so downstream payout paths are
+        // less brittle to 1-unit quote/withdraw drift in boosted vault math.
+        let target_cash = needed_cash.saturating_add(1);
+        let numerator = target_cash.checked_mul(total_shares).unwrap_or(u128::MAX);
         let mut shares_to_withdraw = numerator / total_underlying;
         if numerator % total_underlying != 0 {
             shares_to_withdraw = shares_to_withdraw.saturating_add(1);
@@ -299,7 +302,7 @@ impl ReceiptVault {
         }
 
         let mut min_amounts_out: Vec<i128> = Vec::new(env);
-        min_amounts_out.push_back(to_i128(needed_cash));
+        min_amounts_out.push_back(to_i128(needed_cash.saturating_sub(1)));
         let args: Vec<Val> = (
             to_i128(shares_to_withdraw),
             min_amounts_out.clone(),
