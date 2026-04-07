@@ -1767,6 +1767,44 @@ fn test_borrow_side_rewards_and_claim() {
     assert_eq!(peri.balance_of(&borrower), 42i128); // 7*6
 }
 
+#[test]
+#[should_panic]
+fn test_claim_requires_user_auth() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    // Disable mocked auth so user.require_auth() is enforced.
+    env.set_auths(&[]);
+    comp.claim(&user);
+}
+
+#[test]
+#[should_panic(expected = "batch too large")]
+fn test_claim_all_rejects_oversized_batch() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    let mut users = soroban_sdk::Vec::new(&env);
+    for _ in 0..(MAX_CLAIM_BATCH + 1) {
+        users.push_back(Address::generate(&env));
+    }
+    env.as_contract(&comp_id, || {
+        SimplePeridottroller::claim_all(env.clone(), users.clone());
+    });
+}
+
 // Security test: Verify that accrue_user_market rejects hints from non-market callers
 // This prevents attackers from inflating reward indexes with malicious hint values
 #[test]

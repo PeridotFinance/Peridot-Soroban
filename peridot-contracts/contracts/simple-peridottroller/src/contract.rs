@@ -1428,6 +1428,7 @@ impl SimplePeridottroller {
     // Claim accrued rewards and mint PERI to user
     pub fn claim(env: Env, user: Address) {
         bump_core_ttl(&env);
+        user.require_auth();
         // Accrue and distribute on all entered markets
         let markets = Self::get_user_markets(env.clone(), user.clone());
         for i in 0..markets.len() {
@@ -1974,6 +1975,9 @@ impl SimplePeridottroller {
     // UX: allow claiming for many users at once (permissionless)
     pub fn claim_all(env: Env, users: Vec<Address>) {
         bump_core_ttl(&env);
+        if users.len() > MAX_CLAIM_BATCH {
+            panic!("batch too large");
+        }
         for i in 0..users.len() {
             let u = users.get(i).unwrap();
             Self::claim(env.clone(), u);
