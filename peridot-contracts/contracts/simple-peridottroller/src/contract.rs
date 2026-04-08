@@ -14,6 +14,24 @@ pub struct SimplePeridottroller;
 
 #[contractimpl]
 impl SimplePeridottroller {
+    fn are_market_openings_paused(env: &Env, market: &Address) -> bool {
+        let borrow_paused: bool = env
+            .storage()
+            .persistent()
+            .get::<_, Map<Address, bool>>(&DataKey::PauseBorrow)
+            .unwrap_or(Map::new(env))
+            .get(market.clone())
+            .unwrap_or(false);
+        let deposit_paused: bool = env
+            .storage()
+            .persistent()
+            .get::<_, Map<Address, bool>>(&DataKey::PauseDeposit)
+            .unwrap_or(Map::new(env))
+            .get(market.clone())
+            .unwrap_or(false);
+        borrow_paused && deposit_paused
+    }
+
     fn emit_claim_call_failed(env: &Env, user: &Address, contract: &Address, function: &str) {
         ClaimExternalCallFailed {
             user: user.clone(),
@@ -899,6 +917,9 @@ impl SimplePeridottroller {
         if !markets.get(market.clone()).unwrap_or(false) {
             panic!("market not supported");
         }
+        if !Self::are_market_openings_paused(&env, &market) {
+            panic!("market not paused");
+        }
         let total_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
             &market,
             &Symbol::new(&env, "get_total_ptokens"),
@@ -1090,6 +1111,9 @@ impl SimplePeridottroller {
         if counts.get(market.clone()).unwrap_or(0u32) > 0 {
             panic!("market has active users");
         }
+        if !Self::are_market_openings_paused(&env, &market) {
+            panic!("market not paused");
+        }
         let verified_at: u64 = env
             .storage()
             .persistent()
@@ -1154,6 +1178,9 @@ impl SimplePeridottroller {
             .unwrap_or(Map::new(&env));
         if counts.get(market.clone()).unwrap_or(0u32) > 0 {
             panic!("market has active users");
+        }
+        if !Self::are_market_openings_paused(&env, &market) {
+            panic!("market not paused");
         }
         let effective_removed_token = if let Some(cached_token) = env
             .storage()

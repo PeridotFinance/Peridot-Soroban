@@ -49,6 +49,8 @@ fn test_peridottroller_add_and_enter_market() {
     let markets_after = client.get_user_markets(&user);
     assert_eq!(markets_after.len(), 0);
     // Remove
+    client.set_pause_borrow(&market_vault_id, &true);
+    client.set_pause_deposit(&market_vault_id, &true);
     client.verify_market_zero_totals(&market_vault_id);
     client.remove_market(&market_vault_id);
 
@@ -123,6 +125,8 @@ fn test_remove_market_rejects_non_entered_supplier_state() {
     mint.mint(&user, &1_000i128);
     market_vault.deposit(&user, &100u128);
 
+    comp.set_pause_borrow(&market_vault_id, &true);
+    comp.set_pause_deposit(&market_vault_id, &true);
     comp.verify_market_zero_totals(&market_vault_id);
 }
 
@@ -147,6 +151,8 @@ fn test_remove_market_fails_closed_when_market_state_unavailable() {
     comp.initialize(&admin);
     comp.add_market(&failing_market_id);
 
+    comp.set_pause_borrow(&failing_market_id, &true);
+    comp.set_pause_deposit(&failing_market_id, &true);
     comp.verify_market_zero_totals(&failing_market_id);
 }
 
@@ -194,6 +200,8 @@ fn test_force_remove_market_allows_delist_when_market_state_unavailable() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
     comp.verify_market_zero_totals(&delist_market_id);
     delist_market.set_fail_underlying(&true);
 
@@ -250,6 +258,8 @@ fn test_force_remove_market_does_not_call_market_for_underlying() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
     comp.verify_market_zero_totals(&delist_market_id);
 
     // Break underlying getter after listing; emergency delist should still succeed
@@ -282,6 +292,8 @@ fn test_force_remove_market_rejects_removed_token_mismatch() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
     comp.verify_market_zero_totals(&delist_market_id);
 
     // Cached market->underlying mapping is token_a, so token_b must be rejected.
@@ -308,6 +320,8 @@ fn test_force_remove_market_requires_zero_totals_proof() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
 
     comp.force_remove_market(&delist_market_id, &token, &0u128, &0u128, &true);
 }
@@ -332,6 +346,8 @@ fn test_force_remove_market_requires_fresh_zero_totals_proof() {
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
     comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
     comp.verify_market_zero_totals(&delist_market_id);
 
     let now = env.ledger().timestamp();
@@ -380,6 +396,8 @@ fn test_remove_market_does_not_block_on_unavailable_remaining_market_underlying(
     market_b.set_fail_underlying(&true);
 
     // Must still delist market_a without being blocked by market_b read failures.
+    comp.set_pause_borrow(&market_a_id, &true);
+    comp.set_pause_deposit(&market_a_id, &true);
     comp.verify_market_zero_totals(&market_a_id);
     comp.remove_market(&market_a_id);
 
