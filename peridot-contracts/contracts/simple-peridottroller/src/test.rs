@@ -49,6 +49,7 @@ fn test_peridottroller_add_and_enter_market() {
     let markets_after = client.get_user_markets(&user);
     assert_eq!(markets_after.len(), 0);
     // Remove
+    client.verify_market_zero_totals(&market_vault_id);
     client.remove_market(&market_vault_id);
 
     // Re-add and re-enter to assert happy path
@@ -122,7 +123,7 @@ fn test_remove_market_rejects_non_entered_supplier_state() {
     mint.mint(&user, &1_000i128);
     market_vault.deposit(&user, &100u128);
 
-    comp.remove_market(&market_vault_id);
+    comp.verify_market_zero_totals(&market_vault_id);
 }
 
 #[test]
@@ -146,7 +147,7 @@ fn test_remove_market_fails_closed_when_market_state_unavailable() {
     comp.initialize(&admin);
     comp.add_market(&failing_market_id);
 
-    comp.remove_market(&failing_market_id);
+    comp.verify_market_zero_totals(&failing_market_id);
 }
 
 #[test]
@@ -379,6 +380,7 @@ fn test_remove_market_does_not_block_on_unavailable_remaining_market_underlying(
     market_b.set_fail_underlying(&true);
 
     // Must still delist market_a without being blocked by market_b read failures.
+    comp.verify_market_zero_totals(&market_a_id);
     comp.remove_market(&market_a_id);
 
     // Removed market is no longer supported.

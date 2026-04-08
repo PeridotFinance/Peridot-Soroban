@@ -1090,26 +1090,15 @@ impl SimplePeridottroller {
         if counts.get(market.clone()).unwrap_or(0u32) > 0 {
             panic!("market has active users");
         }
-        // Defense-in-depth: also verify the market itself reports no outstanding state.
-        // If calls fail, fail closed and keep market listed.
-        let total_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
-            &market,
-            &Symbol::new(&env, "get_total_ptokens"),
-            ().into_val(&env),
-        ) {
-            Ok(Ok(v)) => v,
-            _ => panic!("market state unavailable"),
-        };
-        let total_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
-            &market,
-            &Symbol::new(&env, "get_total_borrowed"),
-            ().into_val(&env),
-        ) {
-            Ok(Ok(v)) => v,
-            _ => panic!("market state unavailable"),
-        };
-        if total_ptokens > 0 || total_borrowed > 0 {
-            panic!("market has active positions");
+        let verified_at: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarketZeroTotalsVerifiedAt(market.clone()))
+            .unwrap_or_else(|| panic!("missing zero-totals proof"));
+        storage::bump_market_zero_totals_verified_ttl(&env, &market);
+        let now = env.ledger().timestamp();
+        if now.saturating_sub(verified_at) > FORCE_REMOVE_ZERO_TOTALS_MAX_AGE_SECS {
+            panic!("stale zero-totals proof");
         }
         let removed_token: Address = if let Some(token) = env
             .storage()
@@ -1119,17 +1108,7 @@ impl SimplePeridottroller {
             storage::bump_market_underlying_ttl(&env, &market);
             token
         } else {
-            // Legacy compatibility for markets added before token cache existed.
-            let token: Address = env.invoke_contract(
-                &market,
-                &Symbol::new(&env, "get_underlying_token"),
-                ().into_val(&env),
-            );
-            env.storage()
-                .persistent()
-                .set(&DataKey::MarketUnderlying(market.clone()), &token);
-            storage::bump_market_underlying_ttl(&env, &market);
-            token
+            panic!("market underlying missing");
         };
         Self::apply_market_removal(&env, &market, &removed_token, markets, true);
     }
