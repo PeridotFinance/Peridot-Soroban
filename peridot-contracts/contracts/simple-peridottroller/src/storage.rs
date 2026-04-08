@@ -35,7 +35,10 @@ pub enum DataKey {
     PriceCache(Address),
     FallbackPrice(Address),
     SupportedToken(Address), // bool: token belongs to at least one supported market
+    MarketUnderlying(Address), // Address: cached market -> underlying token
+    MarketZeroTotalsVerifiedAt(Address), // u64 timestamp for emergency delist gating
     BoostedVaultOwner(Address), // Address: boosted vault -> owning receipt-vault
+    MarketUserCounts, // Map<Address, u32>: number of users with market in UserMarkets
 }
 
 #[contracttype]
@@ -202,6 +205,22 @@ pub fn bump_oracle_asset_symbol_ttl(env: &Env, token: &Address) {
 pub fn bump_supported_token_ttl(env: &Env, token: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::SupportedToken(token.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_market_underlying_ttl(env: &Env, market: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarketUnderlying(market.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_market_zero_totals_verified_ttl(env: &Env, market: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarketZeroTotalsVerifiedAt(market.clone());
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }

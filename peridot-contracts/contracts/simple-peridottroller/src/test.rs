@@ -6,7 +6,7 @@ use soroban_sdk::testutils::Ledger;
 use soroban_sdk::token;
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
-use soroban_sdk::{testutils::Address as _, Address, Env, IntoVal, String, Symbol};
+use soroban_sdk::{testutils::Address as _, Address, Env, IntoVal, Map, String, Symbol};
 
 fn set_price_and_cache(
     comp: &SimplePeridottrollerClient,
@@ -49,6 +49,9 @@ fn test_peridottroller_add_and_enter_market() {
     let markets_after = client.get_user_markets(&user);
     assert_eq!(markets_after.len(), 0);
     // Remove
+    client.set_pause_borrow(&market_vault_id, &true);
+    client.set_pause_deposit(&market_vault_id, &true);
+    client.verify_market_zero_totals(&market_vault_id);
     client.remove_market(&market_vault_id);
 
     // Re-add and re-enter to assert happy path
@@ -60,6 +63,352 @@ fn test_peridottroller_add_and_enter_market() {
     let markets = client.get_user_markets(&user);
     assert_eq!(markets.len(), 1);
     assert_eq!(markets.get(0), Some(market_vault_id));
+}
+
+#[test]
+#[should_panic(expected = "market has active users")]
+fn test_remove_market_rejects_active_positions() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let market_vault_id = env.register(rv::ReceiptVault, ());
+    let market_vault = rv::ReceiptVaultClient::new(&env, &market_vault_id);
+    market_vault.initialize(&token, &0u128, &0u128, &admin);
+    market_vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_vault_id);
+    comp.enter_market(&user, &market_vault_id);
+
+    // Leave an active supply position in the market.
+    let mint = token::StellarAssetClient::new(&env, &token);
+    mint.mint(&user, &1_000i128);
+    market_vault.deposit(&user, &100u128);
+
+    comp.remove_market(&market_vault_id);
+}
+
+#[test]
+#[should_panic(expected = "market has active positions")]
+fn test_remove_market_rejects_non_entered_supplier_state() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let market_vault_id = env.register(rv::ReceiptVault, ());
+    let market_vault = rv::ReceiptVaultClient::new(&env, &market_vault_id);
+    market_vault.initialize(&token, &0u128, &0u128, &admin);
+    market_vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_vault_id);
+
+    // Supplier never enters the market but still has pTokens.
+    let mint = token::StellarAssetClient::new(&env, &token);
+    mint.mint(&user, &1_000i128);
+    market_vault.deposit(&user, &100u128);
+
+    comp.set_pause_borrow(&market_vault_id, &true);
+    comp.set_pause_deposit(&market_vault_id, &true);
+    comp.verify_market_zero_totals(&market_vault_id);
+}
+
+#[test]
+#[should_panic(expected = "market state unavailable")]
+fn test_remove_market_fails_closed_when_market_state_unavailable() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+
+    comp.set_pause_borrow(&failing_market_id, &true);
+    comp.set_pause_deposit(&failing_market_id, &true);
+    comp.verify_market_zero_totals(&failing_market_id);
+}
+
+#[test]
+#[should_panic(expected = "ack required")]
+fn test_force_remove_market_requires_ack() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+
+    comp.force_remove_market(&failing_market_id, &token, &0u128, &0u128, &false);
+}
+
+#[test]
+fn test_force_remove_market_allows_delist_when_market_state_unavailable() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let delist_market_id = env.register(DelistMarket, ());
+    let delist_market = DelistMarketClient::new(&env, &delist_market_id);
+    delist_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
+    comp.verify_market_zero_totals(&delist_market_id);
+    delist_market.set_fail_underlying(&true);
+
+    // Delist succeeds via emergency path even though the market state endpoint traps.
+    comp.force_remove_market(&delist_market_id, &token, &0u128, &0u128, &true);
+
+    // Verifies market is no longer supported.
+    let enter_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        comp.enter_market(&user, &delist_market_id);
+    }));
+    assert!(enter_res.is_err());
+}
+
+#[test]
+#[should_panic(expected = "expected active positions")]
+fn test_force_remove_market_requires_zero_expected_totals() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+
+    comp.force_remove_market(&failing_market_id, &token, &1u128, &0u128, &true);
+}
+
+#[test]
+fn test_force_remove_market_does_not_call_market_for_underlying() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let delist_market_id = env.register(DelistMarket, ());
+    let delist_market = DelistMarketClient::new(&env, &delist_market_id);
+    delist_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
+    comp.verify_market_zero_totals(&delist_market_id);
+
+    // Break underlying getter after listing; emergency delist should still succeed
+    // because it uses cached/supplied token, not market calls.
+    delist_market.set_fail_underlying(&true);
+    comp.force_remove_market(&delist_market_id, &token, &0u128, &0u128, &true);
+}
+
+#[test]
+#[should_panic(expected = "removed token mismatch")]
+fn test_force_remove_market_rejects_removed_token_mismatch() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    let delist_market_id = env.register(DelistMarket, ());
+    let delist_market = DelistMarketClient::new(&env, &delist_market_id);
+    delist_market.initialize(&token_a);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
+    comp.verify_market_zero_totals(&delist_market_id);
+
+    // Cached market->underlying mapping is token_a, so token_b must be rejected.
+    comp.force_remove_market(&delist_market_id, &token_b, &0u128, &0u128, &true);
+}
+
+#[test]
+#[should_panic(expected = "missing zero-totals proof")]
+fn test_force_remove_market_requires_zero_totals_proof() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let delist_market_id = env.register(DelistMarket, ());
+    let delist_market = DelistMarketClient::new(&env, &delist_market_id);
+    delist_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
+
+    comp.force_remove_market(&delist_market_id, &token, &0u128, &0u128, &true);
+}
+
+#[test]
+#[should_panic(expected = "stale zero-totals proof")]
+fn test_force_remove_market_requires_fresh_zero_totals_proof() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let delist_market_id = env.register(DelistMarket, ());
+    let delist_market = DelistMarketClient::new(&env, &delist_market_id);
+    delist_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&delist_market_id);
+    comp.set_pause_borrow(&delist_market_id, &true);
+    comp.set_pause_deposit(&delist_market_id, &true);
+    comp.verify_market_zero_totals(&delist_market_id);
+
+    let now = env.ledger().timestamp();
+    env.ledger()
+        .set_timestamp(now + FORCE_REMOVE_ZERO_TOTALS_MAX_AGE_SECS + 1);
+    comp.force_remove_market(&delist_market_id, &token, &0u128, &0u128, &true);
+}
+
+#[test]
+fn test_remove_market_does_not_block_on_unavailable_remaining_market_underlying() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    let market_a_id = env.register(rv::ReceiptVault, ());
+    let market_a = rv::ReceiptVaultClient::new(&env, &market_a_id);
+    market_a.initialize(&token_a, &0u128, &0u128, &admin);
+    market_a.enable_static_rates(&admin);
+
+    let market_b_id = env.register(FailingClaimMarket, ());
+    let market_b = FailingClaimMarketClient::new(&env, &market_b_id);
+    market_b.initialize(&token_b);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_a_id);
+    comp.add_market(&market_b_id);
+
+    // Simulate a legacy deployment where remaining market cache is missing.
+    env.as_contract(&comp_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::MarketUnderlying(market_b_id.clone()));
+    });
+    market_b.set_fail_underlying(&true);
+
+    // Must still delist market_a without being blocked by market_b read failures.
+    comp.set_pause_borrow(&market_a_id, &true);
+    comp.set_pause_deposit(&market_a_id, &true);
+    comp.verify_market_zero_totals(&market_a_id);
+    comp.remove_market(&market_a_id);
+
+    // Removed market is no longer supported.
+    let removed_enter = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        comp.enter_market(&user, &market_a_id);
+    }));
+    assert!(removed_enter.is_err());
+
+    // Remaining market stays supported.
+    comp.enter_market(&user, &market_b_id);
 }
 
 #[test]
@@ -142,6 +491,107 @@ fn test_total_collateral_and_borrows_across_markets() {
     assert_eq!(total_borrows, 150u128);
 }
 
+#[test]
+fn test_unconfigured_market_cf_defaults_to_zero() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+
+    assert_eq!(comp.get_market_cf(&market_id), 0u128);
+}
+
+#[test]
+fn test_removed_market_not_counted_as_collateral() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let lender = Address::generate(&env);
+
+    let token_a = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    comp.enter_market(&borrower, &vault_a_id);
+    comp.enter_market(&borrower, &vault_b_id);
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+    vault_b.set_collateral_factor(&500_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_b.mint(&borrower, &200i128);
+    mint_a.mint(&lender, &300i128);
+
+    vault_b.deposit(&borrower, &200u128);
+    vault_a.deposit(&lender, &300u128);
+    vault_a.borrow(&borrower, &50u128);
+
+    let (liq_before, shortfall_before) = comp.account_liquidity(&borrower);
+    assert_eq!(liq_before, 50u128);
+    assert_eq!(shortfall_before, 0u128);
+
+    // Simulate a stale UserMarkets entry for an unsupported market (e.g., legacy state)
+    // by removing the market from SupportedMarkets directly in storage.
+    env.as_contract(&comp_id, || {
+        let mut markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        markets.remove(vault_b_id.clone());
+        env.storage()
+            .persistent()
+            .set(&DataKey::SupportedMarkets, &markets);
+    });
+
+    // Removed collateral market is ignored in risk checks.
+    let (liq_after, shortfall_after) = comp.account_liquidity(&borrower);
+    assert_eq!(liq_after, 0u128);
+    assert_eq!(shortfall_after, 50u128);
+    assert_eq!(comp.get_user_total_collateral(&borrower), 0u128);
+}
+
 // Mock Reflector oracle for tests
 #[contract]
 struct MockOracle;
@@ -203,6 +653,7 @@ struct FailingClaimMarket;
 #[contracttype]
 enum FailingMarketKey {
     Underlying,
+    FailUnderlying,
 }
 
 #[contractimpl]
@@ -211,9 +662,26 @@ impl FailingClaimMarket {
         env.storage()
             .persistent()
             .set(&FailingMarketKey::Underlying, &underlying);
+        env.storage()
+            .persistent()
+            .set(&FailingMarketKey::FailUnderlying, &false);
+    }
+
+    pub fn set_fail_underlying(env: Env, fail: bool) {
+        env.storage()
+            .persistent()
+            .set(&FailingMarketKey::FailUnderlying, &fail);
     }
 
     pub fn get_underlying_token(env: Env) -> Address {
+        let fail = env
+            .storage()
+            .persistent()
+            .get(&FailingMarketKey::FailUnderlying)
+            .unwrap_or(false);
+        if fail {
+            panic!("underlying unavailable");
+        }
         env.storage()
             .persistent()
             .get(&FailingMarketKey::Underlying)
@@ -233,6 +701,56 @@ impl FailingClaimMarket {
     }
 
     pub fn get_user_borrow_balance(_env: Env, _user: Address) -> u128 {
+        0u128
+    }
+}
+
+#[contract]
+struct DelistMarket;
+
+#[contracttype]
+enum DelistMarketKey {
+    Underlying,
+    FailUnderlying,
+}
+
+#[contractimpl]
+impl DelistMarket {
+    pub fn initialize(env: Env, underlying: Address) {
+        env.storage()
+            .persistent()
+            .set(&DelistMarketKey::Underlying, &underlying);
+        env.storage()
+            .persistent()
+            .set(&DelistMarketKey::FailUnderlying, &false);
+    }
+
+    pub fn set_fail_underlying(env: Env, fail: bool) {
+        env.storage()
+            .persistent()
+            .set(&DelistMarketKey::FailUnderlying, &fail);
+    }
+
+    pub fn get_underlying_token(env: Env) -> Address {
+        let fail = env
+            .storage()
+            .persistent()
+            .get(&DelistMarketKey::FailUnderlying)
+            .unwrap_or(false);
+        if fail {
+            panic!("underlying unavailable");
+        }
+        env.storage()
+            .persistent()
+            .get(&DelistMarketKey::Underlying)
+            .expect("underlying not set")
+    }
+
+    pub fn get_total_ptokens(_env: Env) -> u128 {
+        0u128
+    }
+
+    pub fn get_total_borrowed(_env: Env) -> u128 {
         0u128
     }
 }
@@ -468,6 +986,7 @@ fn test_redeem_gating_allows_within_limit() {
     comp.add_market(&vault_b_id);
     comp.enter_market(&user, &vault_id);
     comp.enter_market(&user, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &1_000_000u128);
 
     // Oracle
     let oracle_id = env.register(MockOracle, ());
@@ -538,6 +1057,7 @@ fn test_liquidation_flow_basic() {
     comp.add_market(&vault_b_id);
     comp.enter_market(&borrower, &vault_a_id);
     comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
 
     // Oracle
     let oracle_id = env.register(MockOracle, ());
@@ -803,6 +1323,7 @@ fn test_liquidation_capped_by_close_factor() {
     comp.add_market(&vault_b_id);
     comp.enter_market(&borrower, &vault_a_id);
     comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
 
     // Oracle
     let oracle_id = env.register(MockOracle, ());
@@ -880,6 +1401,7 @@ fn test_liquidation_succeeds_when_post_repay_redeem_preview_exceeds_seize() {
     comp.add_market(&vault_b_id);
     comp.enter_market(&borrower, &vault_a_id);
     comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
     vault_a.set_peridottroller(&comp_id);
     vault_b.set_peridottroller(&comp_id);
 
@@ -952,6 +1474,7 @@ fn test_liquidation_no_shortfall_panics() {
     comp.add_market(&vault_b_id);
     comp.enter_market(&borrower, &vault_a_id);
     comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
 
     // Oracle
     let oracle_id = env.register(MockOracle, ());
@@ -1016,6 +1539,7 @@ fn test_liquidation_zero_repay_panics() {
     comp.add_market(&vault_b_id);
     comp.enter_market(&borrower, &vault_a_id);
     comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
 
     // Oracle
     let oracle_id = env.register(MockOracle, ());
@@ -1069,6 +1593,7 @@ fn test_preview_helpers_basic() {
     comp.initialize(&admin);
     comp.add_market(&vault_id);
     comp.enter_market(&user, &vault_id);
+    comp.set_market_cf(&vault_id, &500_000u128);
 
     // Oracle
     let oracle_id = env.register(MockOracle, ());
@@ -1300,6 +1825,7 @@ fn test_pause_liquidation_blocks_liquidate() {
     comp.add_market(&vb_id);
     comp.enter_market(&user, &va_id);
     comp.enter_market(&user, &vb_id);
+    comp.set_market_cf(&vb_id, &500_000u128);
     va.set_peridottroller(&comp_id);
     vb.set_peridottroller(&comp_id);
     // Oracle
@@ -1449,6 +1975,7 @@ fn test_liquidation_fee_routed_to_reserves() {
     comp.add_market(&vb_id);
     comp.enter_market(&borrower, &va_id);
     comp.enter_market(&borrower, &vb_id);
+    comp.set_market_cf(&vb_id, &500_000u128);
 
     // Oracle + params
     let oracle_id = env.register(MockOracle, ());
@@ -1536,6 +2063,7 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
     comp.add_market(&vault_b_id);
     comp.enter_market(&borrower, &vault_a_id);
     comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
 
     // Oracle + params
     let oracle_id = env.register(MockOracle, ());
@@ -1842,6 +2370,7 @@ fn test_borrow_side_rewards_and_claim() {
     comp.add_market(&vb_id);
     comp.enter_market(&borrower, &va_id);
     comp.enter_market(&borrower, &vb_id);
+    comp.set_market_cf(&vb_id, &1_000_000u128);
     va.set_peridottroller(&comp_id);
     vb.set_peridottroller(&comp_id);
 

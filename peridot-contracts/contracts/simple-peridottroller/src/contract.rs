@@ -14,6 +14,24 @@ pub struct SimplePeridottroller;
 
 #[contractimpl]
 impl SimplePeridottroller {
+    fn are_market_openings_paused(env: &Env, market: &Address) -> bool {
+        let borrow_paused: bool = env
+            .storage()
+            .persistent()
+            .get::<_, Map<Address, bool>>(&DataKey::PauseBorrow)
+            .unwrap_or(Map::new(env))
+            .get(market.clone())
+            .unwrap_or(false);
+        let deposit_paused: bool = env
+            .storage()
+            .persistent()
+            .get::<_, Map<Address, bool>>(&DataKey::PauseDeposit)
+            .unwrap_or(Map::new(env))
+            .get(market.clone())
+            .unwrap_or(false);
+        borrow_paused && deposit_paused
+    }
+
     fn emit_claim_call_failed(env: &Env, user: &Address, contract: &Address, function: &str) {
         ClaimExternalCallFailed {
             user: user.clone(),
@@ -189,8 +207,98 @@ impl SimplePeridottroller {
             env.storage()
                 .persistent()
                 .set(&DataKey::UserMarkets(user.clone()), &entered);
+            let mut counts: Map<Address, u32> = env
+                .storage()
+                .instance()
+                .get(&DataKey::MarketUserCounts)
+                .unwrap_or(Map::new(env));
+            let current = counts.get(market.clone()).unwrap_or(0u32);
+            let next = current.checked_add(1).expect("market user count overflow");
+            counts.set(market.clone(), next);
+            env.storage()
+                .instance()
+                .set(&DataKey::MarketUserCounts, &counts);
         }
         storage::bump_user_markets_ttl(env, user);
+    }
+
+    fn apply_market_removal(
+        env: &Env,
+        market: &Address,
+        removed_token: &Address,
+        mut markets: Map<Address, bool>,
+        allow_cross_market_reads: bool,
+    ) {
+        markets.remove(market.clone());
+        env.storage()
+            .persistent()
+            .set(&DataKey::SupportedMarkets, &markets);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::MarketUnderlying(market.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::MarketZeroTotalsVerifiedAt(market.clone()));
+
+        // Maintain token allowlist consistency after market removal.
+        let mut still_supported = false;
+        let remaining = markets.keys();
+        for i in 0..remaining.len() {
+            let candidate = remaining.get(i).unwrap();
+            if !markets.get(candidate.clone()).unwrap_or(false) {
+                continue;
+            }
+            let token_opt: Option<Address> = if let Some(token) = env
+                .storage()
+                .persistent()
+                .get::<_, Address>(&DataKey::MarketUnderlying(candidate.clone()))
+            {
+                storage::bump_market_underlying_ttl(env, &candidate);
+                Some(token)
+            } else if allow_cross_market_reads {
+                // Legacy compatibility: hydrate missing cache entries for older deployments.
+                match env.try_invoke_contract::<Address, InvokeError>(
+                    &candidate,
+                    &Symbol::new(env, "get_underlying_token"),
+                    ().into_val(env),
+                ) {
+                    Ok(Ok(token)) => {
+                        env.storage()
+                            .persistent()
+                            .set(&DataKey::MarketUnderlying(candidate.clone()), &token);
+                        storage::bump_market_underlying_ttl(env, &candidate);
+                        Some(token)
+                    }
+                    _ => {
+                        // Do not block market removal due to unrelated market-read failures.
+                        // Conservatively keep token allowlist entries in this case.
+                        still_supported = true;
+                        break;
+                    }
+                }
+            } else {
+                // Emergency path avoids all cross-contract reads.
+                // If a remaining market has unknown token mapping, conservatively keep
+                // token allowlist entries to avoid accidental token de-allowlisting.
+                still_supported = true;
+                break;
+            };
+            if token_opt == Some(removed_token.clone()) {
+                still_supported = true;
+                break;
+            }
+        }
+        let token_key = DataKey::SupportedToken(removed_token.clone());
+        if still_supported {
+            env.storage().persistent().set(&token_key, &true);
+            storage::bump_supported_token_ttl(env, removed_token);
+        } else {
+            env.storage().persistent().remove(&token_key);
+        }
+        MarketRemoved {
+            market: market.clone(),
+        }
+        .publish(env);
     }
 
     pub fn initialize(env: Env, admin: Address) {
@@ -356,11 +464,11 @@ impl SimplePeridottroller {
     pub fn get_market_cf(env: Env, market: Address) -> u128 {
         bump_core_ttl(&env);
         storage::bump_market_cf_ttl(&env, &market);
-        // Default to 50% unless explicitly set (Compound v2 default)
+        // Safe default: unconfigured markets contribute no collateral until admin sets CF.
         env.storage()
             .persistent()
             .get(&DataKey::MarketCF(market))
-            .unwrap_or(500_000u128)
+            .unwrap_or(0u128)
     }
 
     pub fn set_liquidation_fee(env: Env, fee_scaled: u128) {
@@ -780,8 +888,62 @@ impl SimplePeridottroller {
         env.storage()
             .persistent()
             .set(&DataKey::SupportedToken(token.clone()), &true);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarketUnderlying(market.clone()), &token);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::MarketZeroTotalsVerifiedAt(market.clone()));
         storage::bump_supported_token_ttl(&env, &token);
+        storage::bump_market_underlying_ttl(&env, &market);
         MarketAdded { market }.publish(&env);
+    }
+
+    // Admin-maintained proof that a market has no outstanding supply/borrow totals.
+    // This is used to gate emergency force-delisting without relying on reads at delist time.
+    pub fn verify_market_zero_totals(env: Env, market: Address) {
+        bump_core_ttl(&env);
+        let admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        admin.require_auth();
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if !markets.get(market.clone()).unwrap_or(false) {
+            panic!("market not supported");
+        }
+        if !Self::are_market_openings_paused(&env, &market) {
+            panic!("market not paused");
+        }
+        let total_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
+            &market,
+            &Symbol::new(&env, "get_total_ptokens"),
+            ().into_val(&env),
+        ) {
+            Ok(Ok(v)) => v,
+            _ => panic!("market state unavailable"),
+        };
+        let total_borrowed = match env.try_invoke_contract::<u128, InvokeError>(
+            &market,
+            &Symbol::new(&env, "get_total_borrowed"),
+            ().into_val(&env),
+        ) {
+            Ok(Ok(v)) => v,
+            _ => panic!("market state unavailable"),
+        };
+        if total_ptokens > 0 || total_borrowed > 0 {
+            panic!("market has active positions");
+        }
+        env.storage().persistent().set(
+            &DataKey::MarketZeroTotalsVerifiedAt(market.clone()),
+            &env.ledger().timestamp(),
+        );
+        storage::bump_market_zero_totals_verified_ttl(&env, &market);
     }
 
     pub fn enter_market(env: Env, user: Address, market: Address) {
@@ -902,6 +1064,20 @@ impl SimplePeridottroller {
             env.storage()
                 .persistent()
                 .set(&DataKey::UserMarkets(user.clone()), &new_vec);
+            let mut counts: Map<Address, u32> = env
+                .storage()
+                .instance()
+                .get(&DataKey::MarketUserCounts)
+                .unwrap_or(Map::new(&env));
+            let current = counts.get(market.clone()).unwrap_or(0u32);
+            if current <= 1 {
+                counts.remove(market.clone());
+            } else {
+                counts.set(market.clone(), current - 1);
+            }
+            env.storage()
+                .instance()
+                .set(&DataKey::MarketUserCounts, &counts);
         }
         MarketExited {
             account: user.clone(),
@@ -918,46 +1094,124 @@ impl SimplePeridottroller {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
-        let mut markets: Map<Address, bool> = env
+        let markets: Map<Address, bool> = env
             .storage()
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
-        let removed_token: Address = env.invoke_contract(
-            &market,
-            &Symbol::new(&env, "get_underlying_token"),
-            ().into_val(&env),
-        );
-        markets.remove(market.clone());
-        env.storage()
+        if !markets.get(market.clone()).unwrap_or(false) {
+            panic!("market not supported");
+        }
+        // Refuse removal while any user still has this market in their entered list.
+        let counts: Map<Address, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey::MarketUserCounts)
+            .unwrap_or(Map::new(&env));
+        if counts.get(market.clone()).unwrap_or(0u32) > 0 {
+            panic!("market has active users");
+        }
+        if !Self::are_market_openings_paused(&env, &market) {
+            panic!("market not paused");
+        }
+        let verified_at: u64 = env
+            .storage()
             .persistent()
-            .set(&DataKey::SupportedMarkets, &markets);
-        // Maintain token allowlist consistency after market removal.
-        let mut still_supported = false;
-        let remaining = markets.keys();
-        for i in 0..remaining.len() {
-            let candidate = remaining.get(i).unwrap();
-            if !markets.get(candidate.clone()).unwrap_or(false) {
-                continue;
-            }
-            let token: Address = env.invoke_contract(
-                &candidate,
-                &Symbol::new(&env, "get_underlying_token"),
-                ().into_val(&env),
-            );
-            if token == removed_token {
-                still_supported = true;
-                break;
-            }
+            .get(&DataKey::MarketZeroTotalsVerifiedAt(market.clone()))
+            .unwrap_or_else(|| panic!("missing zero-totals proof"));
+        storage::bump_market_zero_totals_verified_ttl(&env, &market);
+        let now = env.ledger().timestamp();
+        if now.saturating_sub(verified_at) > FORCE_REMOVE_ZERO_TOTALS_MAX_AGE_SECS {
+            panic!("stale zero-totals proof");
         }
-        let token_key = DataKey::SupportedToken(removed_token.clone());
-        if still_supported {
-            env.storage().persistent().set(&token_key, &true);
-            storage::bump_supported_token_ttl(&env, &removed_token);
+        let removed_token: Address = if let Some(token) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::MarketUnderlying(market.clone()))
+        {
+            storage::bump_market_underlying_ttl(&env, &market);
+            token
         } else {
-            env.storage().persistent().remove(&token_key);
+            panic!("market underlying missing");
+        };
+        Self::apply_market_removal(&env, &market, &removed_token, markets, true);
+    }
+
+    // Emergency path: delist a market even when its state endpoints are unavailable.
+    // This intentionally bypasses cross-contract total checks but still requires:
+    // - admin auth
+    // - explicit risk acknowledgement
+    // - zero entered users tracked in the controller
+    pub fn force_remove_market(
+        env: Env,
+        market: Address,
+        removed_token: Address,
+        expected_total_ptokens: u128,
+        expected_total_borrowed: u128,
+        acknowledge_risk: bool,
+    ) {
+        bump_core_ttl(&env);
+        let admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        admin.require_auth();
+        if !acknowledge_risk {
+            panic!("ack required");
         }
-        MarketRemoved { market }.publish(&env);
+        if expected_total_ptokens > 0 || expected_total_borrowed > 0 {
+            panic!("expected active positions");
+        }
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if !markets.get(market.clone()).unwrap_or(false) {
+            panic!("market not supported");
+        }
+        let counts: Map<Address, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey::MarketUserCounts)
+            .unwrap_or(Map::new(&env));
+        if counts.get(market.clone()).unwrap_or(0u32) > 0 {
+            panic!("market has active users");
+        }
+        if !Self::are_market_openings_paused(&env, &market) {
+            panic!("market not paused");
+        }
+        let effective_removed_token = if let Some(cached_token) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::MarketUnderlying(market.clone()))
+        {
+            storage::bump_market_underlying_ttl(&env, &market);
+            if cached_token != removed_token {
+                panic!("removed token mismatch");
+            }
+            cached_token
+        } else {
+            panic!("market underlying missing");
+        };
+        let verified_at: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarketZeroTotalsVerifiedAt(market.clone()))
+            .unwrap_or_else(|| panic!("missing zero-totals proof"));
+        storage::bump_market_zero_totals_verified_ttl(&env, &market);
+        let now = env.ledger().timestamp();
+        if now.saturating_sub(verified_at) > FORCE_REMOVE_ZERO_TOTALS_MAX_AGE_SECS {
+            panic!("stale zero-totals proof");
+        };
+        Self::apply_market_removal(
+            &env,
+            &market,
+            &effective_removed_token,
+            markets,
+            false,
+        );
     }
 
     // Sum collateral across user's entered markets using each market's exchange rate and pToken balance
@@ -965,8 +1219,16 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
+            if !supported.get(m.clone()).unwrap_or(false) {
+                continue;
+            }
             // dynamic client: simply call via env.invoke_contract for portability
             let pbal: u128 = env.invoke_contract(
                 &m,
@@ -990,9 +1252,17 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
             if m == exclude_market {
+                continue;
+            }
+            if !supported.get(m.clone()).unwrap_or(false) {
                 continue;
             }
             let pbal: u128 = env.invoke_contract(
@@ -1720,12 +1990,21 @@ impl SimplePeridottroller {
     ) -> (u128, u128) {
         let mut collateral_total: u128 = 0u128;
         let mut borrow_total: u128 = 0u128;
+        let supported_markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
             if let Some(ex) = exclude_market.clone() {
                 if m == ex {
                     continue;
                 }
+            }
+            let is_supported = supported_markets.get(m.clone()).unwrap_or(false);
+            if !is_supported {
+                continue;
             }
 
             // Underlying token and price
