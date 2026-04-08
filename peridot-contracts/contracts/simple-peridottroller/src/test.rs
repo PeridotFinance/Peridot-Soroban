@@ -2161,6 +2161,92 @@ fn test_oracle_missing_price_panics() {
 }
 
 #[test]
+fn test_cached_price_expires_at_k_times_resolution() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let vault_id = env.register(rv::ReceiptVault, ());
+    let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    // Default max age is resolution(300) * k(2) = 600s.
+    env.ledger().set_timestamp(601);
+    assert_eq!(comp.get_price_usd(&token), None);
+}
+
+#[test]
+fn test_fallback_price_has_max_age() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    comp.set_price_fallback(&token, &Some((1_000_000u128, 1_000_000u128)));
+    assert_eq!(comp.get_price_usd(&token), Some((1_000_000u128, 1_000_000u128)));
+
+    env.ledger()
+        .set_timestamp(MAX_FALLBACK_PRICE_AGE_SECS.saturating_add(1));
+    assert_eq!(comp.get_price_usd(&token), None);
+}
+
+#[test]
+fn test_fallback_without_timestamp_is_rejected() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    // Simulate legacy state where fallback existed without set-at metadata.
+    env.as_contract(&comp_id, || {
+        env.storage().persistent().set(
+            &DataKey::FallbackPrice(token.clone()),
+            &FallbackPrice {
+                price: 1_000_000u128,
+                scale: 1_000_000u128,
+            },
+        );
+        env.storage()
+            .persistent()
+            .remove(&DataKey::FallbackPriceSetAt(token.clone()));
+    });
+
+    assert_eq!(comp.get_price_usd(&token), None);
+}
+
+#[test]
 fn test_oracle_decimals_normalization() {
     let env = Env::default();
     env.mock_all_auths();
