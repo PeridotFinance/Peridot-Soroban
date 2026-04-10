@@ -1,5 +1,6 @@
 pub const INDEX_SCALE_1E18: u128 = 1_000_000_000_000_000_000u128;
-pub const MAX_USER_MARKETS: u32 = 16;
+// Hard cap to keep health-check loops within practical Soroban compute budgets.
+pub const MAX_USER_MARKETS: u32 = 8;
 pub const MAX_CLAIM_BATCH: u32 = 32;
 pub const MAX_ORACLE_MAX_AGE_MULTIPLIER: u64 = 10;
 pub const MIN_MARKET_CF: u128 = 10_000u128; // 1%

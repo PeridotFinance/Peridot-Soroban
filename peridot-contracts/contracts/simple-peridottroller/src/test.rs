@@ -66,6 +66,46 @@ fn test_peridottroller_add_and_enter_market() {
 }
 
 #[test]
+#[should_panic(expected = "too many entered markets")]
+fn test_enter_market_enforces_max_user_markets() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let id = env.register(SimplePeridottroller, ());
+    let client = SimplePeridottrollerClient::new(&env, &id);
+    client.initialize(&admin);
+
+    // Entering MAX_USER_MARKETS distinct markets is allowed.
+    for _ in 0..MAX_USER_MARKETS {
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin.clone())
+            .address();
+        let vault_id = env.register(rv::ReceiptVault, ());
+        let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
+        vault.initialize(&token, &0u128, &0u128, &admin);
+        vault.enable_static_rates(&admin);
+        client.add_market(&vault_id);
+        client.enter_market(&user, &vault_id);
+    }
+
+    // The next distinct market must be rejected.
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let extra_vault_id = env.register(rv::ReceiptVault, ());
+    let extra_vault = rv::ReceiptVaultClient::new(&env, &extra_vault_id);
+    extra_vault.initialize(&token, &0u128, &0u128, &admin);
+    extra_vault.enable_static_rates(&admin);
+    client.add_market(&extra_vault_id);
+    client.enter_market(&user, &extra_vault_id);
+}
+
+#[test]
 #[should_panic(expected = "market has active users")]
 fn test_remove_market_rejects_active_positions() {
     let env = Env::default();
