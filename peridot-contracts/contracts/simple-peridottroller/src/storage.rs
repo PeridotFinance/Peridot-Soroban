@@ -13,9 +13,13 @@ pub enum DataKey {
     LiquidationIncentiveScaled, // u128 scaled 1e6
     ReserveRecipient,           // Address for liquidation fee pTokens
     PauseBorrow,                // Map<Address, bool>
+    PauseBorrowUntil,           // Map<Address, u64> pause expiry
     PauseRedeem,                // Map<Address, bool>
+    PauseRedeemUntil,           // Map<Address, u64> pause expiry
     PauseLiquidation,           // Map<Address, bool>
+    PauseLiquidationUntil,      // Map<Address, u64> pause expiry
     PauseDeposit,               // Map<Address, bool>
+    PauseDepositUntil,          // Map<Address, u64> pause expiry
     LiquidationFeeScaled,       // u128 scaled 1e6, portion to reserves
     OracleMaxAgeMultiplier,     // u64 multiplier of resolution (default 2)
     OracleAssetSymbol(Address), // Optional Reflector symbol override

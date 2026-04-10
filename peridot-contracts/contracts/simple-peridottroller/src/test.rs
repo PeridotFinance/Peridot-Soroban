@@ -1978,6 +1978,87 @@ fn test_pause_deposit_blocks_deposit_guardian() {
 }
 
 #[test]
+fn test_pause_expires_automatically() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+
+    comp.set_pause_deposit(&market_id, &true);
+    assert!(comp.is_deposit_paused(&market_id));
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + MAX_PAUSE_DURATION_SECS + 1);
+    assert!(!comp.is_deposit_paused(&market_id));
+}
+
+#[test]
+fn test_liquidation_pause_also_pauses_borrow() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+
+    comp.set_pause_liquidation(&market_id, &true);
+    assert!(comp.is_liquidation_paused(&market_id));
+    assert!(comp.is_borrow_paused(&market_id));
+}
+
+#[test]
+#[should_panic(expected = "guardian can only pause")]
+fn test_guardian_cannot_unpause() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let guardian = Address::generate(&env);
+
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+    comp.set_pause_guardian(&guardian);
+    comp.pause_deposit_g(&guardian, &market_id, &true);
+
+    // Guardian unpause must be rejected.
+    comp.pause_deposit_g(&guardian, &market_id, &false);
+}
+
+#[test]
 fn test_liquidation_fee_routed_to_reserves() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();

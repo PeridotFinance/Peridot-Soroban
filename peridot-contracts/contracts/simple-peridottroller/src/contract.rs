@@ -15,20 +15,18 @@ pub struct SimplePeridottroller;
 #[contractimpl]
 impl SimplePeridottroller {
     fn are_market_openings_paused(env: &Env, market: &Address) -> bool {
-        let borrow_paused: bool = env
-            .storage()
-            .persistent()
-            .get::<_, Map<Address, bool>>(&DataKey::PauseBorrow)
-            .unwrap_or(Map::new(env))
-            .get(market.clone())
-            .unwrap_or(false);
-        let deposit_paused: bool = env
-            .storage()
-            .persistent()
-            .get::<_, Map<Address, bool>>(&DataKey::PauseDeposit)
-            .unwrap_or(Map::new(env))
-            .get(market.clone())
-            .unwrap_or(false);
+        let borrow_paused = Self::is_pause_active(
+            env,
+            DataKey::PauseBorrow,
+            DataKey::PauseBorrowUntil,
+            market,
+        );
+        let deposit_paused = Self::is_pause_active(
+            env,
+            DataKey::PauseDeposit,
+            DataKey::PauseDepositUntil,
+            market,
+        );
         borrow_paused && deposit_paused
     }
 
@@ -714,17 +712,88 @@ impl SimplePeridottroller {
         PauseGuardianUpdated { guardian }.publish(&env);
     }
 
+    fn set_pause_state(
+        env: &Env,
+        pause_key: DataKey,
+        until_key: DataKey,
+        market: &Address,
+        paused: bool,
+    ) {
+        let mut flags: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&pause_key)
+            .unwrap_or(Map::new(env));
+        let mut untils: Map<Address, u64> = env
+            .storage()
+            .persistent()
+            .get(&until_key)
+            .unwrap_or(Map::new(env));
+        if paused {
+            flags.set(market.clone(), true);
+            untils.set(
+                market.clone(),
+                env.ledger().timestamp().saturating_add(MAX_PAUSE_DURATION_SECS),
+            );
+        } else {
+            flags.remove(market.clone());
+            untils.remove(market.clone());
+        }
+        env.storage().persistent().set(&pause_key, &flags);
+        env.storage().persistent().set(&until_key, &untils);
+        let persistent = env.storage().persistent();
+        if persistent.has(&pause_key) {
+            persistent.extend_ttl(&pause_key, 500_000, 1_000_000);
+        }
+        if persistent.has(&until_key) {
+            persistent.extend_ttl(&until_key, 500_000, 1_000_000);
+        }
+    }
+
+    fn is_pause_active(env: &Env, pause_key: DataKey, until_key: DataKey, market: &Address) -> bool {
+        let flags: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&pause_key)
+            .unwrap_or(Map::new(env));
+        if !flags.get(market.clone()).unwrap_or(false) {
+            return false;
+        }
+        let untils: Map<Address, u64> = env
+            .storage()
+            .persistent()
+            .get(&until_key)
+            .unwrap_or(Map::new(env));
+        let Some(expires_at) = untils.get(market.clone()) else {
+            // Fail open for legacy pause entries written before expiries existed.
+            return false;
+        };
+        env.ledger().timestamp() <= expires_at
+    }
+
+    fn require_guardian_auth(env: &Env, guardian: &Address) {
+        let stored: Option<Address> = env.storage().persistent().get(&DataKey::PauseGuardian);
+        let Some(g) = stored else {
+            panic!("no guardian");
+        };
+        storage::bump_pause_guardian_ttl(env);
+        if g != *guardian {
+            panic!("invalid guardian");
+        }
+        guardian.require_auth();
+    }
+
     // Pause controls
     pub fn set_pause_borrow(env: Env, market: Address, paused: bool) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        let mut m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseBorrow)
-            .unwrap_or(Map::new(&env));
-        m.set(market.clone(), paused);
-        env.storage().persistent().set(&DataKey::PauseBorrow, &m);
+        Self::set_pause_state(
+            &env,
+            DataKey::PauseBorrow,
+            DataKey::PauseBorrowUntil,
+            &market,
+            paused,
+        );
         BorrowPauseUpdated {
             market: market.clone(),
             paused,
@@ -733,24 +802,24 @@ impl SimplePeridottroller {
     }
     pub fn is_borrow_paused(env: Env, market: Address) -> bool {
         bump_core_ttl(&env);
-        let m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseBorrow)
-            .unwrap_or(Map::new(&env));
-        m.get(market).unwrap_or(false)
+        Self::is_pause_active(
+            &env,
+            DataKey::PauseBorrow,
+            DataKey::PauseBorrowUntil,
+            &market,
+        )
     }
 
     pub fn set_pause_redeem(env: Env, market: Address, paused: bool) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        let mut m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseRedeem)
-            .unwrap_or(Map::new(&env));
-        m.set(market.clone(), paused);
-        env.storage().persistent().set(&DataKey::PauseRedeem, &m);
+        Self::set_pause_state(
+            &env,
+            DataKey::PauseRedeem,
+            DataKey::PauseRedeemUntil,
+            &market,
+            paused,
+        );
         RedeemPauseUpdated {
             market: market.clone(),
             paused,
@@ -759,26 +828,38 @@ impl SimplePeridottroller {
     }
     pub fn is_redeem_paused(env: Env, market: Address) -> bool {
         bump_core_ttl(&env);
-        let m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseRedeem)
-            .unwrap_or(Map::new(&env));
-        m.get(market).unwrap_or(false)
+        Self::is_pause_active(
+            &env,
+            DataKey::PauseRedeem,
+            DataKey::PauseRedeemUntil,
+            &market,
+        )
     }
 
     pub fn set_pause_liquidation(env: Env, market: Address, paused: bool) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        let mut m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseLiquidation)
-            .unwrap_or(Map::new(&env));
-        m.set(market.clone(), paused);
-        env.storage()
-            .persistent()
-            .set(&DataKey::PauseLiquidation, &m);
+        Self::set_pause_state(
+            &env,
+            DataKey::PauseLiquidation,
+            DataKey::PauseLiquidationUntil,
+            &market,
+            paused,
+        );
+        if paused {
+            Self::set_pause_state(
+                &env,
+                DataKey::PauseBorrow,
+                DataKey::PauseBorrowUntil,
+                &market,
+                true,
+            );
+            BorrowPauseUpdated {
+                market: market.clone(),
+                paused: true,
+            }
+            .publish(&env);
+        }
         LiquidationPauseUpdated {
             market: market.clone(),
             paused,
@@ -789,13 +870,13 @@ impl SimplePeridottroller {
     pub fn set_pause_deposit(env: Env, market: Address, paused: bool) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        let mut m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseDeposit)
-            .unwrap_or(Map::new(&env));
-        m.set(market.clone(), paused);
-        env.storage().persistent().set(&DataKey::PauseDeposit, &m);
+        Self::set_pause_state(
+            &env,
+            DataKey::PauseDeposit,
+            DataKey::PauseDepositUntil,
+            &market,
+            paused,
+        );
         DepositPauseUpdated {
             market: market.clone(),
             paused,
@@ -806,123 +887,113 @@ impl SimplePeridottroller {
     // Guardian variants
     pub fn pause_borrow_g(env: Env, guardian: Address, market: Address, paused: bool) {
         bump_core_ttl(&env);
-        let stored: Option<Address> = env.storage().persistent().get(&DataKey::PauseGuardian);
-        let Some(g) = stored else {
-            panic!("no guardian");
-        };
-        storage::bump_pause_guardian_ttl(&env);
-        if g != guardian {
-            panic!("invalid guardian");
+        if !paused {
+            panic!("guardian can only pause");
         }
-        guardian.require_auth();
-        let mut m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseBorrow)
-            .unwrap_or(Map::new(&env));
-        m.set(market.clone(), paused);
-        env.storage().persistent().set(&DataKey::PauseBorrow, &m);
+        Self::require_guardian_auth(&env, &guardian);
+        Self::set_pause_state(
+            &env,
+            DataKey::PauseBorrow,
+            DataKey::PauseBorrowUntil,
+            &market,
+            true,
+        );
         BorrowPauseUpdated {
             market: market.clone(),
-            paused,
+            paused: true,
         }
         .publish(&env);
     }
 
     pub fn pause_redeem_g(env: Env, guardian: Address, market: Address, paused: bool) {
         bump_core_ttl(&env);
-        let stored: Option<Address> = env.storage().persistent().get(&DataKey::PauseGuardian);
-        let Some(g) = stored else {
-            panic!("no guardian");
-        };
-        storage::bump_pause_guardian_ttl(&env);
-        if g != guardian {
-            panic!("invalid guardian");
+        if !paused {
+            panic!("guardian can only pause");
         }
-        guardian.require_auth();
-        let mut m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseRedeem)
-            .unwrap_or(Map::new(&env));
-        m.set(market.clone(), paused);
-        env.storage().persistent().set(&DataKey::PauseRedeem, &m);
+        Self::require_guardian_auth(&env, &guardian);
+        Self::set_pause_state(
+            &env,
+            DataKey::PauseRedeem,
+            DataKey::PauseRedeemUntil,
+            &market,
+            true,
+        );
         RedeemPauseUpdated {
             market: market.clone(),
-            paused,
+            paused: true,
         }
         .publish(&env);
     }
 
     pub fn pause_liquidation_g(env: Env, guardian: Address, market: Address, paused: bool) {
         bump_core_ttl(&env);
-        let stored: Option<Address> = env.storage().persistent().get(&DataKey::PauseGuardian);
-        let Some(g) = stored else {
-            panic!("no guardian");
-        };
-        storage::bump_pause_guardian_ttl(&env);
-        if g != guardian {
-            panic!("invalid guardian");
+        if !paused {
+            panic!("guardian can only pause");
         }
-        guardian.require_auth();
-        let mut m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseLiquidation)
-            .unwrap_or(Map::new(&env));
-        m.set(market.clone(), paused);
-        env.storage()
-            .persistent()
-            .set(&DataKey::PauseLiquidation, &m);
+        Self::require_guardian_auth(&env, &guardian);
+        Self::set_pause_state(
+            &env,
+            DataKey::PauseLiquidation,
+            DataKey::PauseLiquidationUntil,
+            &market,
+            true,
+        );
+        Self::set_pause_state(
+            &env,
+            DataKey::PauseBorrow,
+            DataKey::PauseBorrowUntil,
+            &market,
+            true,
+        );
+        BorrowPauseUpdated {
+            market: market.clone(),
+            paused: true,
+        }
+        .publish(&env);
         LiquidationPauseUpdated {
             market: market.clone(),
-            paused,
+            paused: true,
         }
         .publish(&env);
     }
 
     pub fn pause_deposit_g(env: Env, guardian: Address, market: Address, paused: bool) {
         bump_core_ttl(&env);
-        let stored: Option<Address> = env.storage().persistent().get(&DataKey::PauseGuardian);
-        let Some(g) = stored else {
-            panic!("no guardian");
-        };
-        storage::bump_pause_guardian_ttl(&env);
-        if g != guardian {
-            panic!("invalid guardian");
+        if !paused {
+            panic!("guardian can only pause");
         }
-        guardian.require_auth();
-        let mut m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseDeposit)
-            .unwrap_or(Map::new(&env));
-        m.set(market.clone(), paused);
-        env.storage().persistent().set(&DataKey::PauseDeposit, &m);
+        Self::require_guardian_auth(&env, &guardian);
+        Self::set_pause_state(
+            &env,
+            DataKey::PauseDeposit,
+            DataKey::PauseDepositUntil,
+            &market,
+            true,
+        );
         DepositPauseUpdated {
             market: market.clone(),
-            paused,
+            paused: true,
         }
         .publish(&env);
     }
     pub fn is_liquidation_paused(env: Env, market: Address) -> bool {
         bump_core_ttl(&env);
-        let m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseLiquidation)
-            .unwrap_or(Map::new(&env));
-        m.get(market).unwrap_or(false)
+        Self::is_pause_active(
+            &env,
+            DataKey::PauseLiquidation,
+            DataKey::PauseLiquidationUntil,
+            &market,
+        )
     }
 
     pub fn is_deposit_paused(env: Env, market: Address) -> bool {
         bump_core_ttl(&env);
-        let m: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::PauseDeposit)
-            .unwrap_or(Map::new(&env));
-        m.get(market).unwrap_or(false)
+        Self::is_pause_active(
+            &env,
+            DataKey::PauseDeposit,
+            DataKey::PauseDepositUntil,
+            &market,
+        )
     }
 
     pub fn add_market(env: Env, market: Address) {
