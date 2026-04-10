@@ -2381,44 +2381,53 @@ impl SimplePeridottroller {
                 _ => 0u128, // treat collateral read failure as 0 collateral
             };
 
-            // Get borrow balance — treat failure as 0 debt for now (revisit if needed)
-            // Pro-auditor: "maximum plausible debt" is hard without token knowledge
+            // ALMANAX FIX (fea09f03): Get borrow balance — fail-closed on debt read failure
+            // Cannot allow debt to be treated as $0 as this makes undercollateralized accounts appear solvent
             let debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
             ) {
                 Ok(Ok(bal)) => bal,
-                _ => 0u128, // treat debt read failure as 0 debt (fail-open)
+                _ => {
+                    // Fail-closed: if we can't read debt, we must assume worst case
+                    // Skip this market entirely (both collateral and debt) to prevent
+                    // incorrect health calculations that could enable protocol exploitation
+                    continue;
+                }
             };
 
             if pbal == 0 && debt == 0 {
                 continue;
             }
 
-            // Get price — use try_require_price instead of require_price to avoid panic
-            // Pro-auditor: decouple oracle unavailability from account lockout
-            // try_require_price attempts live refresh (unlike get_price_usd)
+            // ALMANAX FIX (11737140): Get price — fail-closed when debt exists
+            // Cannot skip markets with nonzero debt when price unavailable
             let (price, scale) = match Self::try_require_price(&env, &token) {
                 Some((p, s)) if p > 0 => (p, s),
                 _ => {
                     // No price available
-                    // For debt: we must count it, but cannot. Skip market (fail-open).
-                    // For collateral: treat as $0 (fail-open for collateral).
-                    // Pro-auditor: "treat collateral as $0 rather than panicking"
-                    continue; // skip market if price unavailable
+                    if debt > 0 {
+                        // FAIL-CLOSED: Cannot value debt without price - skip entire market
+                        // to prevent undercollateralized positions from appearing solvent
+                        continue;
+                    }
+                    // If only collateral (no debt), skip market (collateral treated as $0)
+                    continue;
                 }
             };
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
             if pbal > 0 {
+                // ALMANAX FIX (fa8bc794): Don't continue on exchange rate failure
+                // Must still process debt even if collateral valuation fails
                 let rate: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                     &m,
                     &Symbol::new(&env, "get_exchange_rate"),
                     ().into_val(&env),
                 ) {
                     Ok(Ok(r)) if r > 0 => r,
-                    _ => continue, // treat exchange rate failure as 0 collateral
+                    _ => 0u128, // treat exchange rate failure as 0 collateral (but continue to debt)
                 };
                 let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
                 let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
