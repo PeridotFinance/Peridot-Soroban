@@ -6,6 +6,7 @@ pub enum DataKey {
     PendingAdmin,
     Initialized,
     PauseGuardian,              // Address (optional)
+    PauseExpiryMigrationDone,   // bool: legacy pause-expiry migration completed
     SupportedMarkets,           // Map<Address, bool>
     UserMarkets(Address),       // Vec<Address>
     Oracle,                     // Address

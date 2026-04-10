@@ -2038,6 +2038,11 @@ fn test_legacy_pause_without_expiry_fails_closed_without_backfill() {
         env.storage()
             .persistent()
             .set(&DataKey::PauseBorrowUntil, &untils);
+        // Emulate upgraded legacy deployment where migration-complete flag
+        // does not exist yet.
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PauseExpiryMigrationDone);
     });
 
     // Missing expiry fails closed, and pause checks stay read-only.
@@ -2083,13 +2088,43 @@ fn test_migrate_legacy_pause_expiries_backfills_and_expires() {
         env.storage()
             .persistent()
             .set(&DataKey::PauseBorrowUntil, &untils);
+        // Emulate upgraded legacy deployment where migration-complete flag
+        // does not exist yet.
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PauseExpiryMigrationDone);
     });
 
     assert!(comp.is_borrow_paused(&market_id));
-    comp.migrate_legacy_pause_expiries();
+    let next = comp.migrate_legacy_pause_expiries(&0u32, &8u32);
+    assert_eq!(next, 1u32);
     let now = env.ledger().timestamp();
     env.ledger().set_timestamp(now + MAX_PAUSE_DURATION_SECS + 1);
     assert!(!comp.is_borrow_paused(&market_id));
+}
+
+#[test]
+#[should_panic(expected = "market not supported")]
+fn test_pause_setter_rejects_unsupported_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    // Market was never added via add_market.
+    comp.set_pause_borrow(&market_id, &true);
 }
 
 #[test]

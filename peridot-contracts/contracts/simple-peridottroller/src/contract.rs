@@ -184,14 +184,7 @@ impl SimplePeridottroller {
     }
 
     fn ensure_user_market_entered(env: &Env, user: &Address, market: &Address) {
-        let markets: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::SupportedMarkets)
-            .unwrap_or(Map::new(env));
-        if markets.get(market.clone()).unwrap_or(false) == false {
-            panic!("Market not supported");
-        }
+        Self::require_market_supported(env, market);
         let mut entered: Vec<Address> = env
             .storage()
             .persistent()
@@ -218,6 +211,17 @@ impl SimplePeridottroller {
                 .set(&DataKey::MarketUserCounts, &counts);
         }
         storage::bump_user_markets_ttl(env, user);
+    }
+
+    fn require_market_supported(env: &Env, market: &Address) {
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(env));
+        if !markets.get(market.clone()).unwrap_or(false) {
+            panic!("market not supported");
+        }
     }
 
     fn apply_market_removal(
@@ -712,37 +716,76 @@ impl SimplePeridottroller {
         PauseGuardianUpdated { guardian }.publish(&env);
     }
 
-    pub fn migrate_legacy_pause_expiries(env: Env) {
+    pub fn migrate_legacy_pause_expiries(env: Env, start: u32, limit: u32) -> u32 {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        if limit == 0 {
+            panic!("bad limit");
+        }
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        let market_keys = markets.keys();
+        let total = market_keys.len();
+        if start >= total {
+            env.storage()
+                .persistent()
+                .set(&DataKey::PauseExpiryMigrationDone, &true);
+            return total;
+        }
+        let next = start.saturating_add(limit).min(total);
         let expires_at = env
             .ledger()
             .timestamp()
             .saturating_add(MAX_PAUSE_DURATION_SECS);
-        Self::backfill_missing_pause_expiries(
+        Self::backfill_missing_pause_expiries_batch(
             &env,
             DataKey::PauseBorrow,
             DataKey::PauseBorrowUntil,
             expires_at,
+            start,
+            next,
+            &market_keys,
+            &markets,
         );
-        Self::backfill_missing_pause_expiries(
+        Self::backfill_missing_pause_expiries_batch(
             &env,
             DataKey::PauseRedeem,
             DataKey::PauseRedeemUntil,
             expires_at,
+            start,
+            next,
+            &market_keys,
+            &markets,
         );
-        Self::backfill_missing_pause_expiries(
+        Self::backfill_missing_pause_expiries_batch(
             &env,
             DataKey::PauseLiquidation,
             DataKey::PauseLiquidationUntil,
             expires_at,
+            start,
+            next,
+            &market_keys,
+            &markets,
         );
-        Self::backfill_missing_pause_expiries(
+        Self::backfill_missing_pause_expiries_batch(
             &env,
             DataKey::PauseDeposit,
             DataKey::PauseDepositUntil,
             expires_at,
+            start,
+            next,
+            &market_keys,
+            &markets,
         );
+        if next >= total {
+            env.storage()
+                .persistent()
+                .set(&DataKey::PauseExpiryMigrationDone, &true);
+        }
+        next
     }
 
     fn set_pause_state(
@@ -783,11 +826,15 @@ impl SimplePeridottroller {
         }
     }
 
-    fn backfill_missing_pause_expiries(
+    fn backfill_missing_pause_expiries_batch(
         env: &Env,
         pause_key: DataKey,
         until_key: DataKey,
         expires_at: u64,
+        start: u32,
+        end: u32,
+        market_keys: &Vec<Address>,
+        supported: &Map<Address, bool>,
     ) {
         let flags: Map<Address, bool> = env
             .storage()
@@ -800,9 +847,11 @@ impl SimplePeridottroller {
             .get(&until_key)
             .unwrap_or(Map::new(env));
         let mut changed = false;
-        let markets = flags.keys();
-        for i in 0..markets.len() {
-            let market = markets.get(i).unwrap();
+        for i in start..end {
+            let market = market_keys.get(i).unwrap();
+            if !supported.get(market.clone()).unwrap_or(false) {
+                continue;
+            }
             if !flags.get(market.clone()).unwrap_or(false) {
                 continue;
             }
@@ -835,8 +884,13 @@ impl SimplePeridottroller {
             .get(&until_key)
             .unwrap_or(Map::new(env));
         let Some(expires_at) = untils.get(market.clone()) else {
-            // Fail closed when pause metadata is inconsistent.
-            return true;
+            // During legacy migration, fail closed on inconsistent pause metadata.
+            let migrated = env
+                .storage()
+                .persistent()
+                .get::<_, bool>(&DataKey::PauseExpiryMigrationDone)
+                .unwrap_or(false);
+            return !migrated;
         };
         env.ledger().timestamp() <= expires_at
     }
@@ -857,6 +911,7 @@ impl SimplePeridottroller {
     pub fn set_pause_borrow(env: Env, market: Address, paused: bool) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        Self::require_market_supported(&env, &market);
         Self::set_pause_state(
             &env,
             DataKey::PauseBorrow,
@@ -883,6 +938,7 @@ impl SimplePeridottroller {
     pub fn set_pause_redeem(env: Env, market: Address, paused: bool) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        Self::require_market_supported(&env, &market);
         Self::set_pause_state(
             &env,
             DataKey::PauseRedeem,
@@ -909,6 +965,7 @@ impl SimplePeridottroller {
     pub fn set_pause_liquidation(env: Env, market: Address, paused: bool) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        Self::require_market_supported(&env, &market);
         Self::set_pause_state(
             &env,
             DataKey::PauseLiquidation,
@@ -940,6 +997,7 @@ impl SimplePeridottroller {
     pub fn set_pause_deposit(env: Env, market: Address, paused: bool) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        Self::require_market_supported(&env, &market);
         Self::set_pause_state(
             &env,
             DataKey::PauseDeposit,
@@ -957,6 +1015,7 @@ impl SimplePeridottroller {
     // Guardian variants
     pub fn pause_borrow_g(env: Env, guardian: Address, market: Address, paused: bool) {
         bump_core_ttl(&env);
+        Self::require_market_supported(&env, &market);
         if !paused {
             panic!("guardian can only pause");
         }
@@ -977,6 +1036,7 @@ impl SimplePeridottroller {
 
     pub fn pause_redeem_g(env: Env, guardian: Address, market: Address, paused: bool) {
         bump_core_ttl(&env);
+        Self::require_market_supported(&env, &market);
         if !paused {
             panic!("guardian can only pause");
         }
@@ -997,6 +1057,7 @@ impl SimplePeridottroller {
 
     pub fn pause_liquidation_g(env: Env, guardian: Address, market: Address, paused: bool) {
         bump_core_ttl(&env);
+        Self::require_market_supported(&env, &market);
         if !paused {
             panic!("guardian can only pause");
         }
@@ -1029,6 +1090,7 @@ impl SimplePeridottroller {
 
     pub fn pause_deposit_g(env: Env, guardian: Address, market: Address, paused: bool) {
         bump_core_ttl(&env);
+        Self::require_market_supported(&env, &market);
         if !paused {
             panic!("guardian can only pause");
         }
