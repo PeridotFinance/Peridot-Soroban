@@ -1692,13 +1692,80 @@ fn test_repay_on_behalf_for_liquidator() {
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let debt_token_admin = Address::generate(&env);
+    let debt_token = env
+        .register_stellar_asset_contract_v2(debt_token_admin.clone())
+        .address();
+    let coll_token_admin = Address::generate(&env);
+    let coll_token = env
+        .register_stellar_asset_contract_v2(coll_token_admin.clone())
+        .address();
+    let debt_token_client = token::Client::new(&env, &debt_token);
+    let debt_token_admin_client = token::StellarAssetClient::new(&env, &debt_token);
+    let coll_token_admin_client = token::StellarAssetClient::new(&env, &coll_token);
+
+    let debt_vault_id = env.register(rv::ReceiptVault, ());
+    let debt_vault = rv::ReceiptVaultClient::new(&env, &debt_vault_id);
+    debt_vault.initialize(&debt_token, &0u128, &0u128, &admin);
+    debt_vault.enable_static_rates(&admin);
+    let coll_vault_id = env.register(rv::ReceiptVault, ());
+    let coll_vault = rv::ReceiptVaultClient::new(&env, &coll_vault_id);
+    coll_vault.initialize(&coll_token, &0u128, &0u128, &admin);
+    coll_vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    debt_vault.set_peridottroller(&comp_id);
+    coll_vault.set_peridottroller(&comp_id);
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&debt_vault_id);
+    comp.add_market(&coll_vault_id);
+    comp.enter_market(&borrower, &debt_vault_id);
+    comp.enter_market(&borrower, &coll_vault_id);
+    comp.enter_market(&lender, &debt_vault_id);
+    comp.set_market_cf(&coll_vault_id, &500_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &debt_token, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &coll_token, 1_000_000i128);
+
+    debt_token_admin_client.mint(&lender, &1_000i128);
+    debt_vault.deposit(&lender, &1_000u128);
+    coll_token_admin_client.mint(&borrower, &200i128);
+    coll_vault.deposit(&borrower, &200u128);
+
+    debt_vault.borrow(&borrower, &100u128);
+    assert_eq!(debt_vault.get_user_borrow_balance(&borrower), 100u128);
+
+    // Make borrower underwater so repay_on_behalf_for_liquidator is authorized.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &coll_token, 800_000i128);
+
+    debt_token_admin_client.mint(&liquidator, &200i128);
+    comp.repay_on_behalf_for_liquidator(&borrower, &debt_vault_id, &40u128, &liquidator);
+
+    assert_eq!(debt_vault.get_user_borrow_balance(&borrower), 60u128);
+    assert_eq!(debt_token_client.balance(&liquidator), 160i128);
+}
+
+#[test]
+#[should_panic(expected = "no shortfall")]
+fn test_repay_on_behalf_for_liquidator_rejects_solvent_borrower() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
     let liquidator = Address::generate(&env);
 
     let token_admin = Address::generate(&env);
     let token = env
         .register_stellar_asset_contract_v2(token_admin.clone())
         .address();
-    let token_client = token::Client::new(&env, &token);
     let token_admin_client = token::StellarAssetClient::new(&env, &token);
 
     let vault_id = env.register(rv::ReceiptVault, ());
@@ -1723,15 +1790,75 @@ fn test_repay_on_behalf_for_liquidator() {
     vault.deposit(&admin, &1_000u128);
     token_admin_client.mint(&borrower, &200i128);
     vault.deposit(&borrower, &200u128);
+    vault.borrow(&borrower, &100u128); // exactly at limit, no shortfall
+    token_admin_client.mint(&liquidator, &50i128);
 
-    vault.borrow(&borrower, &100u128);
-    assert_eq!(vault.get_user_borrow_balance(&borrower), 100u128);
+    comp.repay_on_behalf_for_liquidator(&borrower, &vault_id, &10u128, &liquidator);
+}
 
-    token_admin_client.mint(&liquidator, &200i128);
-    comp.repay_on_behalf_for_liquidator(&borrower, &vault_id, &40u128, &liquidator);
+#[test]
+fn test_repay_on_behalf_for_liquidator_caps_to_close_factor() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
 
-    assert_eq!(vault.get_user_borrow_balance(&borrower), 60u128);
-    assert_eq!(token_client.balance(&liquidator), 160i128);
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let debt_token_admin = Address::generate(&env);
+    let debt_token = env
+        .register_stellar_asset_contract_v2(debt_token_admin.clone())
+        .address();
+    let coll_token_admin = Address::generate(&env);
+    let coll_token = env
+        .register_stellar_asset_contract_v2(coll_token_admin.clone())
+        .address();
+    let debt_token_client = token::Client::new(&env, &debt_token);
+    let debt_token_admin_client = token::StellarAssetClient::new(&env, &debt_token);
+    let coll_token_admin_client = token::StellarAssetClient::new(&env, &coll_token);
+
+    let debt_vault_id = env.register(rv::ReceiptVault, ());
+    let debt_vault = rv::ReceiptVaultClient::new(&env, &debt_vault_id);
+    debt_vault.initialize(&debt_token, &0u128, &0u128, &admin);
+    debt_vault.enable_static_rates(&admin);
+    let coll_vault_id = env.register(rv::ReceiptVault, ());
+    let coll_vault = rv::ReceiptVaultClient::new(&env, &coll_vault_id);
+    coll_vault.initialize(&coll_token, &0u128, &0u128, &admin);
+    coll_vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    debt_vault.set_peridottroller(&comp_id);
+    coll_vault.set_peridottroller(&comp_id);
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&debt_vault_id);
+    comp.add_market(&coll_vault_id);
+    comp.enter_market(&borrower, &debt_vault_id);
+    comp.enter_market(&borrower, &coll_vault_id);
+    comp.enter_market(&lender, &debt_vault_id);
+    comp.set_market_cf(&coll_vault_id, &500_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &debt_token, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &coll_token, 1_000_000i128);
+
+    debt_token_admin_client.mint(&lender, &1_000i128);
+    debt_vault.deposit(&lender, &1_000u128);
+    coll_token_admin_client.mint(&borrower, &200i128);
+    coll_vault.deposit(&borrower, &200u128);
+    debt_vault.borrow(&borrower, &100u128);
+    // Make borrower underwater.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &coll_token, 800_000i128);
+
+    debt_token_admin_client.mint(&liquidator, &200i128);
+    // Request above close-factor cap (50), function must cap.
+    comp.repay_on_behalf_for_liquidator(&borrower, &debt_vault_id, &100u128, &liquidator);
+
+    assert_eq!(debt_vault.get_user_borrow_balance(&borrower), 50u128);
+    assert_eq!(debt_token_client.balance(&liquidator), 150i128);
 }
 
 #[test]

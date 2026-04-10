@@ -2278,12 +2278,46 @@ impl SimplePeridottroller {
         if !supported.get(repay_market.clone()).unwrap_or(false) {
             panic!("market not supported");
         }
-        if repay_amount == 0 {
+        // Keep this path aligned with liquidation policy: repay-on-behalf for liquidators
+        // is only valid for currently underwater accounts and under close-factor cap.
+        let (known_collateral_usd, known_borrow_usd, indeterminate, collateral_indeterminate) =
+            Self::sum_positions_usd(env.clone(), borrower.clone(), None);
+        let shortfall = known_borrow_usd.saturating_sub(known_collateral_usd);
+        if shortfall == 0 && indeterminate {
+            panic!("health indeterminate");
+        }
+        if shortfall > 0 && collateral_indeterminate {
+            panic!("health indeterminate");
+        }
+        if shortfall == 0 {
+            panic!("no shortfall");
+        }
+
+        let close_factor: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::CloseFactorScaled)
+            .unwrap_or(500_000u128);
+        let debt: u128 = env.invoke_contract(
+            &repay_market,
+            &Symbol::new(&env, "get_user_borrow_balance"),
+            (borrower.clone(),).into_val(&env),
+        );
+        if debt == 0 {
+            panic!("no debt");
+        }
+        let max_repay = (debt.saturating_mul(close_factor)) / 1_000_000u128;
+        let repay = if repay_amount > max_repay {
+            max_repay
+        } else {
+            repay_amount
+        };
+        if repay == 0 {
             panic!("repay too small");
         }
 
         let repay_args: Vec<Val> =
-            (liquidator.clone(), borrower.clone(), repay_amount).into_val(&env);
+            (liquidator.clone(), borrower.clone(), repay).into_val(&env);
         let mut auths = Vec::new(&env);
         auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
             context: ContractContext {
@@ -2298,7 +2332,7 @@ impl SimplePeridottroller {
         let _: () = env.invoke_contract(
             &repay_market,
             &Symbol::new(&env, "repay_on_behalf"),
-            (liquidator, borrower, repay_amount).into_val(&env),
+            (liquidator, borrower, repay).into_val(&env),
         );
     }
 
