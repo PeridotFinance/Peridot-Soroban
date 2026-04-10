@@ -752,6 +752,13 @@ impl SimplePeridottroller {
             env.storage()
                 .persistent()
                 .set(&DataKey::PauseExpiryMigrationCursor, &total);
+            let persistent = env.storage().persistent();
+            if persistent.has(&DataKey::PauseExpiryMigrationDone) {
+                persistent.extend_ttl(&DataKey::PauseExpiryMigrationDone, 500_000, 1_000_000);
+            }
+            if persistent.has(&DataKey::PauseExpiryMigrationCursor) {
+                persistent.extend_ttl(&DataKey::PauseExpiryMigrationCursor, 500_000, 1_000_000);
+            }
             return total;
         }
         let next = start.saturating_add(limit).min(total);
@@ -807,6 +814,13 @@ impl SimplePeridottroller {
         env.storage()
             .persistent()
             .set(&DataKey::PauseExpiryMigrationCursor, &next);
+        let persistent = env.storage().persistent();
+        if persistent.has(&DataKey::PauseExpiryMigrationDone) {
+            persistent.extend_ttl(&DataKey::PauseExpiryMigrationDone, 500_000, 1_000_000);
+        }
+        if persistent.has(&DataKey::PauseExpiryMigrationCursor) {
+            persistent.extend_ttl(&DataKey::PauseExpiryMigrationCursor, 500_000, 1_000_000);
+        }
         next
     }
 

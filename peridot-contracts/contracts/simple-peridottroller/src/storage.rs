@@ -127,18 +127,6 @@ pub fn bump_core_ttl(env: &Env) {
     if persistent.has(&DataKey::ReserveRecipient) {
         persistent.extend_ttl(&DataKey::ReserveRecipient, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
-    if persistent.has(&DataKey::PauseBorrow) {
-        persistent.extend_ttl(&DataKey::PauseBorrow, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseRedeem) {
-        persistent.extend_ttl(&DataKey::PauseRedeem, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseLiquidation) {
-        persistent.extend_ttl(&DataKey::PauseLiquidation, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseDeposit) {
-        persistent.extend_ttl(&DataKey::PauseDeposit, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
     if persistent.has(&DataKey::LiquidationFeeScaled) {
         persistent.extend_ttl(&DataKey::LiquidationFeeScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
