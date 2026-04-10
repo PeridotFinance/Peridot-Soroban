@@ -2006,7 +2006,7 @@ fn test_pause_expires_automatically() {
 }
 
 #[test]
-fn test_legacy_pause_without_expiry_treated_as_expired_without_backfill() {
+fn test_legacy_pause_without_expiry_fails_closed_without_backfill() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -2040,8 +2040,8 @@ fn test_legacy_pause_without_expiry_treated_as_expired_without_backfill() {
             .set(&DataKey::PauseBorrowUntil, &untils);
     });
 
-    // Missing expiry is treated as expired, and pause checks stay read-only.
-    assert!(!comp.is_borrow_paused(&market_id));
+    // Missing expiry fails closed, and pause checks stay read-only.
+    assert!(comp.is_borrow_paused(&market_id));
     env.as_contract(&comp_id, || {
         let untils: Map<Address, u64> = env
             .storage()
@@ -2050,6 +2050,46 @@ fn test_legacy_pause_without_expiry_treated_as_expired_without_backfill() {
             .unwrap_or(Map::new(&env));
         assert!(untils.get(market_id.clone()).is_none());
     });
+}
+
+#[test]
+fn test_migrate_legacy_pause_expiries_backfills_and_expires() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+
+    comp.set_pause_borrow(&market_id, &true);
+    env.as_contract(&comp_id, || {
+        let mut untils: Map<Address, u64> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PauseBorrowUntil)
+            .unwrap_or(Map::new(&env));
+        untils.remove(market_id.clone());
+        env.storage()
+            .persistent()
+            .set(&DataKey::PauseBorrowUntil, &untils);
+    });
+
+    assert!(comp.is_borrow_paused(&market_id));
+    comp.migrate_legacy_pause_expiries();
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + MAX_PAUSE_DURATION_SECS + 1);
+    assert!(!comp.is_borrow_paused(&market_id));
 }
 
 #[test]

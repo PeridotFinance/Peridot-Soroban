@@ -712,6 +712,39 @@ impl SimplePeridottroller {
         PauseGuardianUpdated { guardian }.publish(&env);
     }
 
+    pub fn migrate_legacy_pause_expiries(env: Env) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        let expires_at = env
+            .ledger()
+            .timestamp()
+            .saturating_add(MAX_PAUSE_DURATION_SECS);
+        Self::backfill_missing_pause_expiries(
+            &env,
+            DataKey::PauseBorrow,
+            DataKey::PauseBorrowUntil,
+            expires_at,
+        );
+        Self::backfill_missing_pause_expiries(
+            &env,
+            DataKey::PauseRedeem,
+            DataKey::PauseRedeemUntil,
+            expires_at,
+        );
+        Self::backfill_missing_pause_expiries(
+            &env,
+            DataKey::PauseLiquidation,
+            DataKey::PauseLiquidationUntil,
+            expires_at,
+        );
+        Self::backfill_missing_pause_expiries(
+            &env,
+            DataKey::PauseDeposit,
+            DataKey::PauseDepositUntil,
+            expires_at,
+        );
+    }
+
     fn set_pause_state(
         env: &Env,
         pause_key: DataKey,
@@ -750,6 +783,43 @@ impl SimplePeridottroller {
         }
     }
 
+    fn backfill_missing_pause_expiries(
+        env: &Env,
+        pause_key: DataKey,
+        until_key: DataKey,
+        expires_at: u64,
+    ) {
+        let flags: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&pause_key)
+            .unwrap_or(Map::new(env));
+        let mut untils: Map<Address, u64> = env
+            .storage()
+            .persistent()
+            .get(&until_key)
+            .unwrap_or(Map::new(env));
+        let mut changed = false;
+        let markets = flags.keys();
+        for i in 0..markets.len() {
+            let market = markets.get(i).unwrap();
+            if !flags.get(market.clone()).unwrap_or(false) {
+                continue;
+            }
+            if untils.get(market.clone()).is_none() {
+                untils.set(market, expires_at);
+                changed = true;
+            }
+        }
+        if changed {
+            env.storage().persistent().set(&until_key, &untils);
+            let persistent = env.storage().persistent();
+            if persistent.has(&until_key) {
+                persistent.extend_ttl(&until_key, 500_000, 1_000_000);
+            }
+        }
+    }
+
     fn is_pause_active(env: &Env, pause_key: DataKey, until_key: DataKey, market: &Address) -> bool {
         let flags: Map<Address, bool> = env
             .storage()
@@ -765,9 +835,8 @@ impl SimplePeridottroller {
             .get(&until_key)
             .unwrap_or(Map::new(env));
         let Some(expires_at) = untils.get(market.clone()) else {
-            // Keep pause checks read-only. Legacy flags without expiry metadata are
-            // treated as expired and must be re-paused explicitly by admin/guardian.
-            return false;
+            // Fail closed when pause metadata is inconsistent.
+            return true;
         };
         env.ledger().timestamp() <= expires_at
     }
