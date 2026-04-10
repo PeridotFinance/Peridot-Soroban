@@ -6,7 +6,7 @@ use soroban_sdk::testutils::Ledger;
 use soroban_sdk::token;
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
-use soroban_sdk::{testutils::Address as _, Address, Env, IntoVal, Map, String, Symbol};
+use soroban_sdk::{testutils::Address as _, Address, Env, IntoVal, Map, String, Symbol, Vec};
 
 fn set_price_and_cache(
     comp: &SimplePeridottrollerClient,
@@ -63,6 +63,59 @@ fn test_peridottroller_add_and_enter_market() {
     let markets = client.get_user_markets(&user);
     assert_eq!(markets.len(), 1);
     assert_eq!(markets.get(0), Some(market_vault_id));
+}
+
+#[test]
+fn test_exit_market_non_entered_returns_without_external_calls() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    // BrokenMarket panics on pToken/debt reads. If exit_market performs external calls
+    // before membership validation, this test would panic.
+    let token = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let broken_market_id = env.register(BrokenMarket, ());
+    let broken_market = BrokenMarketClient::new(&env, &broken_market_id);
+    broken_market.initialize(&token);
+
+    // User has not entered this market: exit is a no-op.
+    comp.exit_market(&user, &broken_market_id);
+    let markets = comp.get_user_markets(&user);
+    assert_eq!(markets.len(), 0);
+}
+
+#[test]
+#[should_panic(expected = "market not supported")]
+fn test_exit_market_rejects_entered_but_unsupported_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let unsupported_market = Address::generate(&env);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    // Simulate legacy/corrupt state where user list contains an unsupported market.
+    env.as_contract(&comp_id, || {
+        let mut entered = Vec::new(&env);
+        entered.push_back(unsupported_market.clone());
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserMarkets(user.clone()), &entered);
+    });
+
+    comp.exit_market(&user, &unsupported_market);
 }
 
 #[test]

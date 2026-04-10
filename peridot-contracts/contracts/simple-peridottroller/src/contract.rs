@@ -1344,6 +1344,15 @@ impl SimplePeridottroller {
             .get(&DataKey::UserMarkets(user.clone()))
             .unwrap_or(Vec::new(&env));
 
+        // If user never entered this market, exit is a no-op.
+        // Avoid any cross-contract calls on caller-supplied addresses in this path.
+        if !entered.contains(market.clone()) {
+            return;
+        }
+
+        // Defense in depth: only supported markets can be queried by exit checks.
+        Self::require_market_supported(&env, &market);
+
         // Safety: block exit if user has pTokens or borrow balance in this market
         // Use try_invoke_contract and fail-closed: reject exit if we cannot verify safety
         use soroban_sdk::{IntoVal, InvokeError};
@@ -1371,33 +1380,31 @@ impl SimplePeridottroller {
         if debt > 0 {
             panic!("Cannot exit with outstanding debt");
         }
-        if entered.contains(market.clone()) {
-            // Remove first occurrence
-            let mut new_vec = Vec::new(&env);
-            for i in 0..entered.len() {
-                let m = entered.get(i).unwrap();
-                if m != market {
-                    new_vec.push_back(m);
-                }
+        // Remove first occurrence
+        let mut new_vec = Vec::new(&env);
+        for i in 0..entered.len() {
+            let m = entered.get(i).unwrap();
+            if m != market {
+                new_vec.push_back(m);
             }
-            env.storage()
-                .persistent()
-                .set(&DataKey::UserMarkets(user.clone()), &new_vec);
-            let mut counts: Map<Address, u32> = env
-                .storage()
-                .instance()
-                .get(&DataKey::MarketUserCounts)
-                .unwrap_or(Map::new(&env));
-            let current = counts.get(market.clone()).unwrap_or(0u32);
-            if current <= 1 {
-                counts.remove(market.clone());
-            } else {
-                counts.set(market.clone(), current - 1);
-            }
-            env.storage()
-                .instance()
-                .set(&DataKey::MarketUserCounts, &counts);
         }
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserMarkets(user.clone()), &new_vec);
+        let mut counts: Map<Address, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey::MarketUserCounts)
+            .unwrap_or(Map::new(&env));
+        let current = counts.get(market.clone()).unwrap_or(0u32);
+        if current <= 1 {
+            counts.remove(market.clone());
+        } else {
+            counts.set(market.clone(), current - 1);
+        }
+        env.storage()
+            .instance()
+            .set(&DataKey::MarketUserCounts, &counts);
         MarketExited {
             account: user.clone(),
             market,
