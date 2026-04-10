@@ -2101,9 +2101,82 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
     assert_eq!(vault_b.get_ptoken_balance(&borrower), 0u128);
     assert_eq!(vault_b.get_ptoken_balance(&liquidator), 50u128);
     // Repay is proportionally reduced when seize is clamped:
-    // requested capped repay=25, computed seize=60, available seize=50 => repay=20.
-    assert_eq!((liq_a_before - liq_a_after) as u128, 20u128);
-    assert_eq!(vault_a.get_user_borrow_balance(&borrower), 30u128);
+    // requested capped repay=25, computed seize=60, available seize=50 => repay=ceil(25*50/60)=21.
+    assert_eq!((liq_a_before - liq_a_after) as u128, 21u128);
+    assert_eq!(vault_a.get_user_borrow_balance(&borrower), 29u128);
+}
+
+#[test]
+fn test_liquidation_clamp_rounding_keeps_nonzero_repay() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let lender = Address::generate(&env);
+
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    let va_id = env.register(rv::ReceiptVault, ());
+    let va = rv::ReceiptVaultClient::new(&env, &va_id);
+    let vb_id = env.register(rv::ReceiptVault, ());
+    let vb = rv::ReceiptVaultClient::new(&env, &vb_id);
+    va.initialize(&token_a, &0u128, &0u128, &admin);
+    va.enable_static_rates(&admin);
+    vb.initialize(&token_b, &0u128, &0u128, &admin);
+    vb.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&va_id);
+    comp.add_market(&vb_id);
+    comp.enter_market(&borrower, &va_id);
+    comp.enter_market(&borrower, &vb_id);
+    comp.set_market_cf(&vb_id, &1_000_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128); // $1
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 4_000_000i128); // $4 to allow initial borrow
+    comp.set_oracle(&oracle_id);
+
+    va.set_peridottroller(&comp_id);
+    vb.set_peridottroller(&comp_id);
+    vb.set_collateral_factor(&1_000_000u128);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_b.mint(&borrower, &10i128);
+    mint_a.mint(&lender, &10i128);
+    mint_a.mint(&liquidator, &10i128);
+
+    vb.deposit(&borrower, &1u128); // 1 pToken collateral
+    va.deposit(&lender, &5u128);
+    va.borrow(&borrower, &2u128); // close-factor cap => max repay 1
+
+    // Make borrower deeply underwater so seize (for repay=1) > 1 pToken:
+    // repay_usd=1, seize_underlying_usd=1 (trunc), collateral price=0.5 => seize=2 pTokens.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 500_000i128);
+
+    let ta_client = token::Client::new(&env, &token_a);
+    let liq_before = ta_client.balance(&liquidator);
+    comp.liquidate(&borrower, &va_id, &vb_id, &10u128, &liquidator);
+    let liq_after = ta_client.balance(&liquidator);
+
+    // With ceil-div scaling, repay remains 1 (not rounded to zero), liquidation succeeds.
+    assert_eq!((liq_before - liq_after) as u128, 1u128);
+    assert_eq!(vb.get_ptoken_balance(&liquidator), 1u128);
+    assert_eq!(va.get_user_borrow_balance(&borrower), 1u128);
 }
 
 #[test]

@@ -1766,7 +1766,14 @@ impl SimplePeridottroller {
             (borrower.clone(),).into_val(&env),
         );
         if seize_ptokens > borrower_pbal {
-            repay = (repay.saturating_mul(borrower_pbal)) / seize_ptokens;
+            // Scale repay down with ceil-div so tiny-but-nonzero collateral does
+            // not round to zero and block liquidation.
+            let scaled = repay.saturating_mul(borrower_pbal);
+            repay = if scaled == 0 {
+                0
+            } else {
+                (scaled.saturating_sub(1) / seize_ptokens).saturating_add(1)
+            };
             if repay == 0 {
                 panic!("zero seize");
             }
