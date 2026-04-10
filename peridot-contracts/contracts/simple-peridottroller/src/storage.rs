@@ -237,6 +237,37 @@ pub fn bump_boosted_vault_owner_ttl(env: &Env, boosted_vault: &Address) {
     }
 }
 
+pub fn bump_reward_market_ttl(env: &Env, market: &Address) {
+    let persistent = env.storage().persistent();
+    let keys = [
+        DataKey::SupplySpeed(market.clone()),
+        DataKey::BorrowSpeed(market.clone()),
+        DataKey::SupplyIndex(market.clone()),
+        DataKey::BorrowIndex(market.clone()),
+        DataKey::SupplyIndexTime(market.clone()),
+        DataKey::BorrowIndexTime(market.clone()),
+    ];
+    for key in keys {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
+}
+
+pub fn bump_reward_user_ttl(env: &Env, user: &Address, market: &Address) {
+    let persistent = env.storage().persistent();
+    let keys = [
+        DataKey::UserSupplyIndex(user.clone(), market.clone()),
+        DataKey::UserBorrowIndex(user.clone(), market.clone()),
+        DataKey::Accrued(user.clone()),
+    ];
+    for key in keys {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
+}
+
 pub fn pow10_u128(decimals: u32) -> u128 {
     if decimals > MAX_DECIMALS {
         panic!("decimals too large");

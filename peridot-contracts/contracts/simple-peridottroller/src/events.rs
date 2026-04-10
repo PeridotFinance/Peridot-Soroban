@@ -182,6 +182,13 @@ pub struct ClaimExternalCallFailed {
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClaimAccruedMissing {
+    #[topic]
+    pub user: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SupplySpeedOverflowDisabled {
     #[topic]
     pub market: Address,
