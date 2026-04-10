@@ -1723,7 +1723,7 @@ impl SimplePeridottroller {
             panic!("no debt");
         }
         let max_repay = (debt.saturating_mul(close_factor)) / 1_000_000u128;
-        let repay = if repay_amount > max_repay {
+        let mut repay = if repay_amount > max_repay {
             max_repay
         } else {
             repay_amount
@@ -1758,26 +1758,28 @@ impl SimplePeridottroller {
         }
         let mut seize_ptokens = (seize_underlying.saturating_mul(1_000_000u128)) / rate;
 
-        // Authorize both nested liquidation calls in one batch to reduce auth overhead.
-        let repay_args: Vec<Val> = (liquidator.clone(), borrower.clone(), repay).into_val(&env);
-        let mut auths = Vec::new(&env);
-        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
-            context: ContractContext {
-                contract: repay_market.clone(),
-                fn_name: Symbol::new(&env, "repay_on_behalf"),
-                args: repay_args,
-            },
-            sub_invocations: Vec::new(&env),
-        }));
-        // Clamp seize to available borrower pTokens to avoid over-seize panics.
+        // Clamp to available collateral and proportionally scale repay down first,
+        // so liquidators never pay for collateral that cannot be seized.
         let borrower_pbal: u128 = env.invoke_contract(
             &collateral_market,
             &Symbol::new(&env, "get_ptoken_balance"),
             (borrower.clone(),).into_val(&env),
         );
         if seize_ptokens > borrower_pbal {
+            // Scale repay down with ceil-div so tiny-but-nonzero collateral does
+            // not round to zero and block liquidation.
+            let scaled = repay.saturating_mul(borrower_pbal);
+            repay = if scaled == 0 {
+                0
+            } else {
+                (scaled.saturating_sub(1) / seize_ptokens).saturating_add(1)
+            };
+            if repay == 0 {
+                panic!("zero seize");
+            }
             seize_ptokens = borrower_pbal;
         }
+        let repay_usd = (repay.saturating_mul(pb)) / sb;
         let liq_fee: u128 = env
             .storage()
             .persistent()
@@ -1820,6 +1822,17 @@ impl SimplePeridottroller {
             Some(seize_ctx.clone()),
         )
             .into_val(&env);
+        // Authorize both nested liquidation calls in one batch to reduce auth overhead.
+        let repay_args: Vec<Val> = (liquidator.clone(), borrower.clone(), repay).into_val(&env);
+        let mut auths = Vec::new(&env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: repay_market.clone(),
+                fn_name: Symbol::new(&env, "repay_on_behalf"),
+                args: repay_args,
+            },
+            sub_invocations: Vec::new(&env),
+        }));
         auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
             context: ContractContext {
                 contract: collateral_market.clone(),
