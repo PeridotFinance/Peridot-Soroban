@@ -1702,7 +1702,7 @@ impl SimplePeridottroller {
     // Sum collateral in USD across markets excluding a specific market
     pub fn get_collateral_excl_usd(env: Env, user: Address, exclude_market: Address) -> u128 {
         bump_core_ttl(&env);
-        let (collateral_usd, _borrows, indeterminate) =
+        let (collateral_usd, _borrows, indeterminate, _collateral_indeterminate) =
             Self::sum_positions_usd(env, user, Some(exclude_market));
         if indeterminate {
             0u128
@@ -1712,7 +1712,8 @@ impl SimplePeridottroller {
     }
 
     fn account_liquidity_internal(env: Env, user: Address) -> (u128, u128, bool) {
-        let (collateral_usd, borrow_usd, indeterminate) = Self::sum_positions_usd(env, user, None);
+        let (collateral_usd, borrow_usd, indeterminate, _collateral_indeterminate) =
+            Self::sum_positions_usd(env, user, None);
         if indeterminate {
             return (0u128, u128::MAX, true);
         }
@@ -1744,7 +1745,8 @@ impl SimplePeridottroller {
             panic!("market not entered");
         }
         // Exclude current market to avoid re-entry from that market during borrow path
-        let (collateral_usd, mut borrow_usd, indeterminate) = Self::sum_positions_usd_for_markets(
+        let (collateral_usd, mut borrow_usd, indeterminate, _collateral_indeterminate) =
+            Self::sum_positions_usd_for_markets(
             env.clone(),
             user.clone(),
             Some(market.clone()),
@@ -1779,7 +1781,8 @@ impl SimplePeridottroller {
             panic!("market not entered");
         }
         // Exclude current market, then add hinted collateral and debt.
-        let (mut collateral_usd, mut borrow_usd, indeterminate) = Self::sum_positions_usd_for_markets(
+        let (mut collateral_usd, mut borrow_usd, indeterminate, _collateral_indeterminate) =
+            Self::sum_positions_usd_for_markets(
             env.clone(),
             user.clone(),
             Some(market.clone()),
@@ -1854,7 +1857,7 @@ impl SimplePeridottroller {
             }
         }
         // Totals in USD
-        let (_collateral_usd, borrow_usd, indeterminate) =
+        let (_collateral_usd, borrow_usd, indeterminate, _collateral_indeterminate) =
             Self::sum_positions_usd(env.clone(), user.clone(), None);
         if indeterminate {
             return 0u128;
@@ -2064,11 +2067,14 @@ impl SimplePeridottroller {
         // Ensure borrower is undercollateralized using known (deterministic) positions.
         // If health is indeterminate due to unrelated failing markets, allow liquidation
         // only when known positions are already in shortfall.
-        let (known_collateral_usd, known_borrow_usd, indeterminate) =
+        let (known_collateral_usd, known_borrow_usd, indeterminate, collateral_indeterminate) =
             Self::sum_positions_usd(env.clone(), borrower.clone(), None);
         let shortfall = known_borrow_usd.saturating_sub(known_collateral_usd);
         let liquidity = known_collateral_usd.saturating_sub(known_borrow_usd);
         if shortfall == 0 && indeterminate {
+            panic!("health indeterminate");
+        }
+        if shortfall > 0 && indeterminate && collateral_indeterminate {
             panic!("health indeterminate");
         }
         if shortfall == 0 {
@@ -2407,10 +2413,11 @@ impl SimplePeridottroller {
         user: Address,
         exclude_market: Option<Address>,
         markets: Vec<Address>,
-    ) -> (u128, u128, bool) {
+    ) -> (u128, u128, bool, bool) {
         let mut collateral_total: u128 = 0u128;
         let mut borrow_total: u128 = 0u128;
         let mut indeterminate = false;
+        let mut collateral_indeterminate = false;
         let supported_markets: Map<Address, bool> = env
             .storage()
             .persistent()
@@ -2432,13 +2439,19 @@ impl SimplePeridottroller {
             }
 
             // Get pToken balance — treat failure as 0 collateral (fail-open for collateral)
+            let mut pbal_read_failed = false;
             let pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_ptoken_balance"),
                 (user.clone(),).into_val(&env),
             ) {
                 Ok(Ok(bal)) => bal,
-                _ => 0u128, // treat collateral read failure as 0 collateral
+                _ => {
+                    indeterminate = true;
+                    collateral_indeterminate = true;
+                    pbal_read_failed = true;
+                    0u128
+                }
             };
 
             // Get borrow balance — fail-closed on debt read failure
@@ -2450,7 +2463,10 @@ impl SimplePeridottroller {
                 Ok(Ok(bal)) => bal,
                 _ => {
                     indeterminate = true;
-                    break;
+                    if pbal > 0 || pbal_read_failed {
+                        collateral_indeterminate = true;
+                    }
+                    continue;
                 }
             };
 
@@ -2468,7 +2484,10 @@ impl SimplePeridottroller {
                 Ok(Ok(addr)) => addr,
                 _ => {
                     indeterminate = true;
-                    break;
+                    if pbal > 0 || pbal_read_failed {
+                        collateral_indeterminate = true;
+                    }
+                    continue;
                 }
             };
 
@@ -2478,7 +2497,10 @@ impl SimplePeridottroller {
                 _ => {
                     if debt > 0 {
                         indeterminate = true;
-                        break;
+                        if pbal > 0 || pbal_read_failed {
+                            collateral_indeterminate = true;
+                        }
+                        continue;
                     }
                     continue;
                 }
@@ -2508,14 +2530,14 @@ impl SimplePeridottroller {
                 borrow_total = borrow_total.saturating_add(usd);
             }
         }
-        (collateral_total, borrow_total, indeterminate)
+        (collateral_total, borrow_total, indeterminate, collateral_indeterminate)
     }
 
     fn sum_positions_usd(
         env: Env,
         user: Address,
         exclude_market: Option<Address>,
-    ) -> (u128, u128, bool) {
+    ) -> (u128, u128, bool, bool) {
         let markets = Self::get_user_markets(env.clone(), user.clone());
         Self::sum_positions_usd_for_markets(env, user, exclude_market, markets)
     }
