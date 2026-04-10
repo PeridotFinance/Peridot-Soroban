@@ -34,6 +34,7 @@ pub enum DataKey {
     Accrued(Address),
     PriceCache(Address),
     FallbackPrice(Address),
+    FallbackPriceSetAt(Address), // u64 timestamp when fallback was set
     SupportedToken(Address), // bool: token belongs to at least one supported market
     MarketUnderlying(Address), // Address: cached market -> underlying token
     MarketZeroTotalsVerifiedAt(Address), // u64 timestamp for emergency delist gating
@@ -189,6 +190,14 @@ pub fn bump_price_cache_ttl(env: &Env, token: &Address) {
 pub fn bump_fallback_price_ttl(env: &Env, token: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::FallbackPrice(token.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_fallback_price_set_at_ttl(env: &Env, token: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::FallbackPriceSetAt(token.clone());
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }

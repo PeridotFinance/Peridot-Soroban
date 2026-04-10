@@ -526,6 +526,10 @@ impl SimplePeridottroller {
                     &DataKey::FallbackPrice(token.clone()),
                     &FallbackPrice { price: p, scale: s },
                 );
+                env.storage().persistent().set(
+                    &DataKey::FallbackPriceSetAt(token.clone()),
+                    &env.ledger().timestamp(),
+                );
                 FallbackPriceUpdated {
                     token,
                     price: Some(p),
@@ -537,6 +541,9 @@ impl SimplePeridottroller {
                 env.storage()
                     .persistent()
                     .remove(&DataKey::FallbackPrice(token.clone()));
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::FallbackPriceSetAt(token.clone()));
                 FallbackPriceUpdated {
                     token,
                     price: None,
@@ -544,6 +551,31 @@ impl SimplePeridottroller {
                 }
                 .publish(&env);
             }
+        }
+    }
+
+    // Admin migration helper: backfill fallback timestamp for pre-upgrade entries
+    // that existed before FallbackPriceSetAt was introduced.
+    pub fn backfill_fallback_price_set_at(env: Env, token: Address) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        let fallback: Option<FallbackPrice> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::FallbackPrice(token.clone()));
+        if fallback.is_none() {
+            panic!("fallback not set");
+        }
+        if env
+            .storage()
+            .persistent()
+            .get::<_, u64>(&DataKey::FallbackPriceSetAt(token.clone()))
+            .is_none()
+        {
+            env.storage()
+                .persistent()
+                .set(&DataKey::FallbackPriceSetAt(token.clone()), &env.ledger().timestamp());
+            storage::bump_fallback_price_set_at_ttl(&env, &token);
         }
     }
 
@@ -2113,12 +2145,18 @@ impl SimplePeridottroller {
             }
         }
         storage::bump_fallback_price_ttl(&env, &token);
+        storage::bump_fallback_price_set_at_ttl(&env, &token);
         if let Some(fallback) = env
             .storage()
             .persistent()
             .get::<_, FallbackPrice>(&DataKey::FallbackPrice(token.clone()))
         {
-            if fallback.price > 0 {
+            let set_at: Option<u64> = env
+                .storage()
+                .persistent()
+                .get(&DataKey::FallbackPriceSetAt(token.clone()));
+            if fallback.price > 0 && set_at.map(|t| Self::fallback_price_fresh(&env, t)).unwrap_or(false)
+            {
                 return Some((fallback.price, fallback.scale));
             }
         }
@@ -2192,11 +2230,7 @@ impl SimplePeridottroller {
     }
 
     fn require_price(env: Env, token: Address) -> (u128, u128) {
-        if let Some((price, scale)) = Self::get_price_usd(env.clone(), token.clone()) {
-            if price > 0 {
-                return (price, scale);
-            }
-        }
+        bump_core_ttl(&env);
         storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()
@@ -2209,13 +2243,25 @@ impl SimplePeridottroller {
                 return (cached.price, cached.scale);
             }
         }
+        // Prefer fresh live oracle refresh over fallback whenever possible.
+        if let Some((price, scale)) = Self::cache_price(env.clone(), token.clone()) {
+            if price > 0 {
+                return (price, scale);
+            }
+        }
         storage::bump_fallback_price_ttl(&env, &token);
+        storage::bump_fallback_price_set_at_ttl(&env, &token);
         if let Some(fallback) = env
             .storage()
             .persistent()
             .get::<_, FallbackPrice>(&DataKey::FallbackPrice(token.clone()))
         {
-            if fallback.price > 0 {
+            let set_at: Option<u64> = env
+                .storage()
+                .persistent()
+                .get(&DataKey::FallbackPriceSetAt(token.clone()));
+            if fallback.price > 0 && set_at.map(|t| Self::fallback_price_fresh(&env, t)).unwrap_or(false)
+            {
                 return (fallback.price, fallback.scale);
             }
         }
@@ -2230,10 +2276,13 @@ impl SimplePeridottroller {
             .get(&DataKey::OracleMaxAgeMultiplier)
             .unwrap_or(2u64);
         let res = cached_resolution as u64;
-        let grace = res
-            .saturating_mul(k)
-            .saturating_mul(FALLBACK_STALE_MULTIPLIER.max(1));
+        let grace = res.saturating_mul(k);
         cached_timestamp + grace >= now
+    }
+
+    fn fallback_price_fresh(env: &Env, set_at: u64) -> bool {
+        let now = env.ledger().timestamp();
+        now.saturating_sub(set_at) <= MAX_FALLBACK_PRICE_AGE_SECS
     }
 }
 
