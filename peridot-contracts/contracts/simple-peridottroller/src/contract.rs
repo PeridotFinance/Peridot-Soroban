@@ -914,6 +914,15 @@ impl SimplePeridottroller {
         if !flags.get(market.clone()).unwrap_or(false) {
             return false;
         }
+        // Keep pause flag/expiry TTLs aligned while a market is paused so
+        // pause state cannot disappear due to key-expiry skew.
+        let persistent = env.storage().persistent();
+        if persistent.has(&pause_key) {
+            persistent.extend_ttl(&pause_key, 500_000, 1_000_000);
+        }
+        if persistent.has(&until_key) {
+            persistent.extend_ttl(&until_key, 500_000, 1_000_000);
+        }
         let untils: Map<Address, u64> = env
             .storage()
             .persistent()
