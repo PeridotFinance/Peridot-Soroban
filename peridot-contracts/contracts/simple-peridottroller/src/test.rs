@@ -3869,12 +3869,9 @@ fn test_multi_market_supply_rewards() {
     assert_eq!(comp.get_accrued(&user), 32u128);
 }
 
-/// FIND-039 follow-up: A broken market in UserMarkets makes health indeterminate.
-///
-/// This intentionally fails closed to prevent false shortfall/liquidation outcomes.
+/// FIND-039 follow-up: A broken market in UserMarkets yields fail-closed liquidity output.
 #[test]
-#[should_panic(expected = "health indeterminate")]
-fn test_find_039_broken_market_health_is_indeterminate() {
+fn test_find_039_broken_market_returns_fail_closed_shortfall() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -3967,6 +3964,75 @@ fn test_find_039_broken_market_health_is_indeterminate() {
     comp.add_market(&broken_id); // This succeeds (get_underlying_token works)
     comp.enter_market(&alice, &broken_id); // Alice's list: [vault_b, vault_a, broken]
 
-    // Indeterminate health must revert instead of fabricating max debt/shortfall.
-    let _ = comp.account_liquidity(&alice);
+    // Health query remains non-reverting but fail-closed.
+    let (liq_after, shortfall_after) = comp.account_liquidity(&alice);
+    assert_eq!(liq_after, 0u128);
+    assert_eq!(shortfall_after, u128::MAX);
+}
+
+#[test]
+#[should_panic(expected = "health indeterminate")]
+fn test_find_039_liquidation_rejects_indeterminate_health() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let token_a = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    mint_b.mint(&alice, &100i128);
+    mint_a.mint(&liquidator, &1_000i128);
+
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    vault_b.set_collateral_factor(&500_000u128);
+    comp.enter_market(&alice, &vault_b_id);
+    comp.enter_market(&alice, &vault_a_id);
+    vault_b.deposit(&alice, &100u128);
+    vault_a.deposit(&liquidator, &200u128);
+    vault_a.borrow(&alice, &40u128);
+
+    // Make position underwater before liquidation attempt.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 600_000i128);
+
+    let broken_id = env.register(BrokenMarket, ());
+    let broken_market = BrokenMarketClient::new(&env, &broken_id);
+    broken_market.initialize(&token_b);
+    comp.add_market(&broken_id);
+    comp.enter_market(&alice, &broken_id);
+
+    // Liquidation must not proceed when health aggregation is indeterminate.
+    comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
 }

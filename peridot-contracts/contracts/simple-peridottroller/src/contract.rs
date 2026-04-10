@@ -1702,20 +1702,32 @@ impl SimplePeridottroller {
     // Sum collateral in USD across markets excluding a specific market
     pub fn get_collateral_excl_usd(env: Env, user: Address, exclude_market: Address) -> u128 {
         bump_core_ttl(&env);
-        let (_collateral_usd, _borrows) = Self::sum_positions_usd(env, user, Some(exclude_market));
-        _collateral_usd
+        let (collateral_usd, _borrows, indeterminate) =
+            Self::sum_positions_usd(env, user, Some(exclude_market));
+        if indeterminate {
+            0u128
+        } else {
+            collateral_usd
+        }
+    }
+
+    fn account_liquidity_internal(env: Env, user: Address) -> (u128, u128, bool) {
+        let (collateral_usd, borrow_usd, indeterminate) = Self::sum_positions_usd(env, user, None);
+        if indeterminate {
+            return (0u128, u128::MAX, true);
+        }
+        if collateral_usd >= borrow_usd {
+            (collateral_usd - borrow_usd, 0u128, false)
+        } else {
+            (0u128, borrow_usd - collateral_usd, false)
+        }
     }
 
     // Account liquidity in USD across all entered markets: (liquidity, shortfall)
     pub fn account_liquidity(env: Env, user: Address) -> (u128, u128) {
         bump_core_ttl(&env);
-        let (_collateral_usd, borrow_usd) =
-            Self::sum_positions_usd(env.clone(), user.clone(), None);
-        if _collateral_usd >= borrow_usd {
-            (_collateral_usd - borrow_usd, 0u128)
-        } else {
-            (0u128, borrow_usd - _collateral_usd)
-        }
+        let (liquidity, shortfall, _indeterminate) = Self::account_liquidity_internal(env, user);
+        (liquidity, shortfall)
     }
 
     // Hypothetical liquidity after borrowing `borrow_amount` of `market` underlying
@@ -1732,8 +1744,15 @@ impl SimplePeridottroller {
             panic!("market not entered");
         }
         // Exclude current market to avoid re-entry from that market during borrow path
-        let (collateral_usd, mut borrow_usd) =
-            Self::sum_positions_usd_for_markets(env.clone(), user.clone(), Some(market.clone()), markets);
+        let (collateral_usd, mut borrow_usd, indeterminate) = Self::sum_positions_usd_for_markets(
+            env.clone(),
+            user.clone(),
+            Some(market.clone()),
+            markets,
+        );
+        if indeterminate {
+            return (0u128, u128::MAX);
+        }
         // Add hypothetical borrow in USD using provided underlying token
         let (price, scale) = Self::require_price(env.clone(), underlying.clone());
         let extra = (borrow_amount.saturating_mul(price)) / scale;
@@ -1760,8 +1779,15 @@ impl SimplePeridottroller {
             panic!("market not entered");
         }
         // Exclude current market, then add hinted collateral and debt.
-        let (mut collateral_usd, mut borrow_usd) =
-            Self::sum_positions_usd_for_markets(env.clone(), user.clone(), Some(market.clone()), markets);
+        let (mut collateral_usd, mut borrow_usd, indeterminate) = Self::sum_positions_usd_for_markets(
+            env.clone(),
+            user.clone(),
+            Some(market.clone()),
+            markets,
+        );
+        if indeterminate {
+            return (0u128, u128::MAX);
+        }
         let (price, scale) = Self::require_price(env.clone(), underlying);
         if hint.ptoken_balance > 0 {
             let cf: u128 = Self::get_market_cf(env.clone(), market);
@@ -1828,8 +1854,11 @@ impl SimplePeridottroller {
             }
         }
         // Totals in USD
-        let (_collateral_usd, borrow_usd) =
+        let (_collateral_usd, borrow_usd, indeterminate) =
             Self::sum_positions_usd(env.clone(), user.clone(), None);
+        if indeterminate {
+            return 0u128;
+        }
         if borrow_usd == 0 || !entered {
             // no debt => can redeem all pTokens (subject to liquidity)
             let pbal: u128 = env.invoke_contract(
@@ -2033,7 +2062,11 @@ impl SimplePeridottroller {
             panic!("collateral market not entered");
         }
         // ensure borrower is undercollateralized
-        let (_liq, shortfall) = Self::account_liquidity(env.clone(), borrower.clone());
+        let (_liq, shortfall, indeterminate) =
+            Self::account_liquidity_internal(env.clone(), borrower.clone());
+        if indeterminate {
+            panic!("health indeterminate");
+        }
         if shortfall == 0 {
             panic!("no shortfall");
         }
@@ -2370,9 +2403,10 @@ impl SimplePeridottroller {
         user: Address,
         exclude_market: Option<Address>,
         markets: Vec<Address>,
-    ) -> (u128, u128) {
+    ) -> (u128, u128, bool) {
         let mut collateral_total: u128 = 0u128;
         let mut borrow_total: u128 = 0u128;
+        let mut indeterminate = false;
         let supported_markets: Map<Address, bool> = env
             .storage()
             .persistent()
@@ -2420,7 +2454,10 @@ impl SimplePeridottroller {
                 (user.clone(),).into_val(&env),
             ) {
                 Ok(Ok(bal)) => bal,
-                _ => panic!("health indeterminate"),
+                _ => {
+                    indeterminate = true;
+                    break;
+                }
             };
 
             if pbal == 0 && debt == 0 {
@@ -2432,7 +2469,8 @@ impl SimplePeridottroller {
                 Some((p, s)) if p > 0 => (p, s),
                 _ => {
                     if debt > 0 {
-                        panic!("health indeterminate");
+                        indeterminate = true;
+                        break;
                     }
                     continue;
                 }
@@ -2462,10 +2500,14 @@ impl SimplePeridottroller {
                 borrow_total = borrow_total.saturating_add(usd);
             }
         }
-        (collateral_total, borrow_total)
+        (collateral_total, borrow_total, indeterminate)
     }
 
-    fn sum_positions_usd(env: Env, user: Address, exclude_market: Option<Address>) -> (u128, u128) {
+    fn sum_positions_usd(
+        env: Env,
+        user: Address,
+        exclude_market: Option<Address>,
+    ) -> (u128, u128, bool) {
         let markets = Self::get_user_markets(env.clone(), user.clone());
         Self::sum_positions_usd_for_markets(env, user, exclude_market, markets)
     }
