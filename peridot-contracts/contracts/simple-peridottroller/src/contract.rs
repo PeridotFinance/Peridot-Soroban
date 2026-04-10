@@ -2438,8 +2438,10 @@ impl SimplePeridottroller {
                 continue;
             }
 
-            // Get pToken balance — treat failure as 0 collateral (fail-open for collateral)
-            let mut pbal_read_failed = false;
+            // Get pToken balance — fail-open for collateral by default.
+            // A read failure alone should not poison account health unless debt/position
+            // evidence later shows this market is material to solvency.
+            let mut pbal_known = true;
             let pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_ptoken_balance"),
@@ -2447,9 +2449,7 @@ impl SimplePeridottroller {
             ) {
                 Ok(Ok(bal)) => bal,
                 _ => {
-                    indeterminate = true;
-                    collateral_indeterminate = true;
-                    pbal_read_failed = true;
+                    pbal_known = false;
                     0u128
                 }
             };
@@ -2463,7 +2463,7 @@ impl SimplePeridottroller {
                 Ok(Ok(bal)) => bal,
                 _ => {
                     indeterminate = true;
-                    if pbal > 0 || pbal_read_failed {
+                    if pbal_known && pbal > 0 {
                         collateral_indeterminate = true;
                     }
                     continue;
@@ -2484,7 +2484,7 @@ impl SimplePeridottroller {
                 Ok(Ok(addr)) => addr,
                 _ => {
                     indeterminate = true;
-                    if pbal > 0 || pbal_read_failed {
+                    if pbal_known && pbal > 0 {
                         collateral_indeterminate = true;
                     }
                     continue;
@@ -2497,7 +2497,7 @@ impl SimplePeridottroller {
                 _ => {
                     if debt > 0 {
                         indeterminate = true;
-                        if pbal > 0 || pbal_read_failed {
+                        if pbal_known && pbal > 0 {
                             collateral_indeterminate = true;
                         }
                         continue;

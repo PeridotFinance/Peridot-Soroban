@@ -774,6 +774,33 @@ fn test_get_borrows_excl_fails_closed_when_market_unavailable() {
 }
 
 #[test]
+fn test_account_liquidity_not_poisoned_by_pbal_read_failure_without_debt() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let fail_market_id = env.register(PbalReadFailMarket, ());
+    let fail_market = PbalReadFailMarketClient::new(&env, &fail_market_id);
+    fail_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&fail_market_id);
+    comp.enter_market(&user, &fail_market_id);
+
+    // pToken read failure with zero debt should not force synthetic shortfall.
+    let (liq, shortfall) = comp.account_liquidity(&user);
+    assert_eq!(liq, 0u128);
+    assert_eq!(shortfall, 0u128);
+}
+
+#[test]
 fn test_account_liquidity_marks_indeterminate_when_underlying_unavailable_with_debt() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -1025,6 +1052,42 @@ impl BrokenMarket {
     pub fn get_exchange_rate(_env: Env) -> u128 {
         // Storage expired - simulate missing key panic
         panic!("storage: missing value for key");
+    }
+}
+
+#[contract]
+struct PbalReadFailMarket;
+
+#[contracttype]
+enum PbalReadFailMarketKey {
+    Token,
+}
+
+#[contractimpl]
+impl PbalReadFailMarket {
+    pub fn initialize(env: Env, token: Address) {
+        env.storage()
+            .instance()
+            .set(&PbalReadFailMarketKey::Token, &token);
+    }
+
+    pub fn get_underlying_token(env: Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&PbalReadFailMarketKey::Token)
+            .expect("token not set")
+    }
+
+    pub fn get_ptoken_balance(_env: Env, _user: Address) -> u128 {
+        panic!("ptoken read unavailable");
+    }
+
+    pub fn get_user_borrow_balance(_env: Env, _user: Address) -> u128 {
+        0u128
+    }
+
+    pub fn get_exchange_rate(_env: Env) -> u128 {
+        1_000_000u128
     }
 }
 
@@ -4079,6 +4142,73 @@ fn test_find_039_liquidation_allows_when_known_shortfall_exists() {
     comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
 
     // Borrower debt reduced by liquidation.
+    assert!(vault_a.get_user_borrow_balance(&alice) < 40u128);
+}
+
+#[test]
+fn test_liquidation_not_blocked_by_unrelated_pbal_read_failure() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let token_a = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    mint_b.mint(&alice, &100i128);
+    mint_a.mint(&liquidator, &1_000i128);
+
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    vault_b.set_collateral_factor(&500_000u128);
+    comp.enter_market(&alice, &vault_b_id);
+    comp.enter_market(&alice, &vault_a_id);
+    vault_b.deposit(&alice, &100u128);
+    vault_a.deposit(&liquidator, &200u128);
+    vault_a.borrow(&alice, &40u128);
+
+    // Make known position underwater.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 600_000i128);
+
+    // Add unrelated market that fails pToken-balance reads but has no debt.
+    let fail_market_id = env.register(PbalReadFailMarket, ());
+    let fail_market = PbalReadFailMarketClient::new(&env, &fail_market_id);
+    fail_market.initialize(&token_b);
+    comp.add_market(&fail_market_id);
+    comp.enter_market(&alice, &fail_market_id);
+
+    comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
     assert!(vault_a.get_user_borrow_balance(&alice) < 40u128);
 }
 
