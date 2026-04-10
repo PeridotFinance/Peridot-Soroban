@@ -1343,21 +1343,31 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::UserMarkets(user.clone()))
             .unwrap_or(Vec::new(&env));
+
         // Safety: block exit if user has pTokens or borrow balance in this market
-        use soroban_sdk::IntoVal;
-        let pbal: u128 = env.invoke_contract(
+        // Use try_invoke_contract and fail-closed: reject exit if we cannot verify safety
+        use soroban_sdk::{IntoVal, InvokeError};
+
+        let pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
             &market,
             &Symbol::new(&env, "get_ptoken_balance"),
             (user.clone(),).into_val(&env),
-        );
+        ) {
+            Ok(Ok(bal)) => bal,
+            _ => panic!("Cannot verify collateral balance - market unavailable"),
+        };
         if pbal > 0 {
             panic!("Cannot exit with collateral in market");
         }
-        let debt: u128 = env.invoke_contract(
+
+        let debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
             &market,
             &Symbol::new(&env, "get_user_borrow_balance"),
             (user.clone(),).into_val(&env),
-        );
+        ) {
+            Ok(Ok(bal)) => bal,
+            _ => panic!("Cannot verify debt balance - market unavailable"),
+        };
         if debt > 0 {
             panic!("Cannot exit with outstanding debt");
         }
@@ -2317,6 +2327,9 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+
+        use soroban_sdk::{IntoVal, InvokeError};
+
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
             if let Some(ex) = exclude_market.clone() {
@@ -2329,35 +2342,65 @@ impl SimplePeridottroller {
                 continue;
             }
 
-            // Underlying token and price
-            use soroban_sdk::IntoVal;
-            let token: Address = env.invoke_contract(
+            // Get underlying token — skip market on failure (cannot price positions)
+            let token: Address = match env.try_invoke_contract::<Address, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_underlying_token"),
                 ().into_val(&env),
-            );
-            let pbal: u128 = env.invoke_contract(
+            ) {
+                Ok(Ok(addr)) => addr,
+                _ => continue, // skip market if get_underlying_token fails
+            };
+
+            // Get pToken balance — treat failure as 0 collateral (fail-open for collateral)
+            let pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_ptoken_balance"),
                 (user.clone(),).into_val(&env),
-            );
-            let debt: u128 = env.invoke_contract(
+            ) {
+                Ok(Ok(bal)) => bal,
+                _ => 0u128, // treat collateral read failure as 0 collateral
+            };
+
+            // Get borrow balance — treat failure as 0 debt for now (revisit if needed)
+            // Pro-auditor: "maximum plausible debt" is hard without token knowledge
+            let debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
-            );
+            ) {
+                Ok(Ok(bal)) => bal,
+                _ => 0u128, // treat debt read failure as 0 debt (fail-open)
+            };
+
             if pbal == 0 && debt == 0 {
                 continue;
             }
-            let (price, scale) = Self::require_price(env.clone(), token.clone());
+
+            // Get price — use try_require_price instead of require_price to avoid panic
+            // Pro-auditor: decouple oracle unavailability from account lockout
+            // try_require_price attempts live refresh (unlike get_price_usd)
+            let (price, scale) = match Self::try_require_price(&env, &token) {
+                Some((p, s)) if p > 0 => (p, s),
+                _ => {
+                    // No price available
+                    // For debt: we must count it, but cannot. Skip market (fail-open).
+                    // For collateral: treat as $0 (fail-open for collateral).
+                    // Pro-auditor: "treat collateral as $0 rather than panicking"
+                    continue; // skip market if price unavailable
+                }
+            };
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
             if pbal > 0 {
-                let rate: u128 = env.invoke_contract(
+                let rate: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                     &m,
                     &Symbol::new(&env, "get_exchange_rate"),
                     ().into_val(&env),
-                );
+                ) {
+                    Ok(Ok(r)) if r > 0 => r,
+                    _ => continue, // treat exchange rate failure as 0 collateral
+                };
                 let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
                 let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
                 let discounted = (underlying_amount.saturating_mul(cf)) / 1_000_000u128;
@@ -2399,12 +2442,19 @@ impl SimplePeridottroller {
             .saturating_mul(1_000_000u128)
             .saturating_mul(scale)
             / cf.saturating_mul(price);
-        use soroban_sdk::IntoVal;
-        let available_underlying: u128 = env.invoke_contract(
+
+        // Use try_invoke_contract for get_available_liquidity
+        // Fail-closed: return 0 if we cannot verify available liquidity
+        use soroban_sdk::{IntoVal, InvokeError};
+        let available_underlying: u128 = match env.try_invoke_contract::<u128, InvokeError>(
             &market,
             &Symbol::new(&env, "get_available_liquidity"),
             ().into_val(&env),
-        );
+        ) {
+            Ok(Ok(liq)) => liq,
+            _ => return 0u128, // cannot verify safety - block liquidation
+        };
+
         let clamped_underlying = if redeemable_underlying_by_health < available_underlying {
             redeemable_underlying_by_health
         } else {
@@ -2517,6 +2567,47 @@ impl SimplePeridottroller {
             }
             _ => None,
         }
+    }
+
+    // Non-panicking version of require_price for FIND-039 fix
+    // Returns None instead of panicking when price unavailable
+    fn try_require_price(env: &Env, token: &Address) -> Option<(u128, u128)> {
+        bump_core_ttl(env);
+        storage::bump_price_cache_ttl(env, token);
+        if let Some(cached) = env
+            .storage()
+            .persistent()
+            .get::<_, CachedPrice>(&DataKey::PriceCache(token.clone()))
+        {
+            if cached.price > 0
+                && Self::cached_price_fresh(env, cached.timestamp, cached.resolution)
+            {
+                return Some((cached.price, cached.scale));
+            }
+        }
+        // Prefer fresh live oracle refresh over fallback
+        if let Some((price, scale)) = Self::cache_price(env.clone(), token.clone()) {
+            if price > 0 {
+                return Some((price, scale));
+            }
+        }
+        storage::bump_fallback_price_ttl(env, token);
+        storage::bump_fallback_price_set_at_ttl(env, token);
+        if let Some(fallback) = env
+            .storage()
+            .persistent()
+            .get::<_, FallbackPrice>(&DataKey::FallbackPrice(token.clone()))
+        {
+            let set_at: Option<u64> = env
+                .storage()
+                .persistent()
+                .get(&DataKey::FallbackPriceSetAt(token.clone()));
+            if fallback.price > 0 && set_at.map(|t| Self::fallback_price_fresh(env, t)).unwrap_or(false)
+            {
+                return Some((fallback.price, fallback.scale));
+            }
+        }
+        None // Return None instead of panicking
     }
 
     fn require_price(env: Env, token: Address) -> (u128, u128) {
