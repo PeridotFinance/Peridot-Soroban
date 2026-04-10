@@ -2090,13 +2090,20 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
     // Borrow 50 allowed (discounted collateral = 50*0.5*5 = $125)
     vault_a.borrow(&borrower, &50u128);
 
-    // Now drop price to $0.5; close factor=50% caps repay to 25; 2x LI => seize = 25*2/0.5 = 100 > 50 -> clamp to 50
+    // Now drop price to $0.5; close factor=50% caps repay to 25; LI=1.2x => seize = 25*1.2/0.5 = 60 > 50 -> clamp to 50
     set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 500_000i128);
+    let ta_client = token::Client::new(&env, &token_a);
+    let liq_a_before = ta_client.balance(&liquidator);
     comp.liquidate(&borrower, &vault_a_id, &vault_b_id, &50u128, &liquidator);
+    let liq_a_after = ta_client.balance(&liquidator);
 
     // Borrower collateral pTokens fully seized (50), liquidator receives 50 since no fee configured
     assert_eq!(vault_b.get_ptoken_balance(&borrower), 0u128);
     assert_eq!(vault_b.get_ptoken_balance(&liquidator), 50u128);
+    // Repay is proportionally reduced when seize is clamped:
+    // requested capped repay=25, computed seize=60, available seize=50 => repay=20.
+    assert_eq!((liq_a_before - liq_a_after) as u128, 20u128);
+    assert_eq!(vault_a.get_user_borrow_balance(&borrower), 30u128);
 }
 
 #[test]
