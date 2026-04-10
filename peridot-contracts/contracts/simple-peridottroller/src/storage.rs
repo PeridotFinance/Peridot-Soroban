@@ -7,6 +7,7 @@ pub enum DataKey {
     Initialized,
     PauseGuardian,              // Address (optional)
     PauseExpiryMigrationDone,   // bool: legacy pause-expiry migration completed
+    PauseExpiryMigrationCursor, // u32: next supported-market index to migrate
     SupportedMarkets,           // Map<Address, bool>
     UserMarkets(Address),       // Vec<Address>
     Oracle,                     // Address

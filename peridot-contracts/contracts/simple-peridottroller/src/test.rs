@@ -2104,6 +2104,72 @@ fn test_migrate_legacy_pause_expiries_backfills_and_expires() {
 }
 
 #[test]
+fn test_missing_pause_expiry_stays_fail_closed_even_after_migration_done() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+
+    comp.set_pause_borrow(&market_id, &true);
+    env.as_contract(&comp_id, || {
+        let mut untils: Map<Address, u64> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PauseBorrowUntil)
+            .unwrap_or(Map::new(&env));
+        untils.remove(market_id.clone());
+        env.storage()
+            .persistent()
+            .set(&DataKey::PauseBorrowUntil, &untils);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PauseExpiryMigrationDone, &true);
+    });
+
+    assert!(comp.is_borrow_paused(&market_id));
+}
+
+#[test]
+#[should_panic(expected = "bad start")]
+fn test_migrate_legacy_pause_expiries_requires_sequential_start() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    for _ in 0..2 {
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin.clone())
+            .address();
+        let market_id = env.register(rv::ReceiptVault, ());
+        let market = rv::ReceiptVaultClient::new(&env, &market_id);
+        market.initialize(&token, &0u128, &0u128, &admin);
+        market.enable_static_rates(&admin);
+        comp.add_market(&market_id);
+    }
+
+    // Cursor starts at 0, so starting from 1 must be rejected.
+    comp.migrate_legacy_pause_expiries(&1u32, &1u32);
+}
+
+#[test]
 #[should_panic(expected = "market not supported")]
 fn test_pause_setter_rejects_unsupported_market() {
     let env = Env::default();

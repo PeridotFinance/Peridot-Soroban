@@ -722,6 +722,22 @@ impl SimplePeridottroller {
         if limit == 0 {
             panic!("bad limit");
         }
+        let done: bool = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PauseExpiryMigrationDone)
+            .unwrap_or(false);
+        let cursor: u32 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PauseExpiryMigrationCursor)
+            .unwrap_or(0u32);
+        if done {
+            return cursor;
+        }
+        if start != cursor {
+            panic!("bad start");
+        }
         let markets: Map<Address, bool> = env
             .storage()
             .persistent()
@@ -733,6 +749,9 @@ impl SimplePeridottroller {
             env.storage()
                 .persistent()
                 .set(&DataKey::PauseExpiryMigrationDone, &true);
+            env.storage()
+                .persistent()
+                .set(&DataKey::PauseExpiryMigrationCursor, &total);
             return total;
         }
         let next = start.saturating_add(limit).min(total);
@@ -785,6 +804,9 @@ impl SimplePeridottroller {
                 .persistent()
                 .set(&DataKey::PauseExpiryMigrationDone, &true);
         }
+        env.storage()
+            .persistent()
+            .set(&DataKey::PauseExpiryMigrationCursor, &next);
         next
     }
 
@@ -884,13 +906,8 @@ impl SimplePeridottroller {
             .get(&until_key)
             .unwrap_or(Map::new(env));
         let Some(expires_at) = untils.get(market.clone()) else {
-            // During legacy migration, fail closed on inconsistent pause metadata.
-            let migrated = env
-                .storage()
-                .persistent()
-                .get::<_, bool>(&DataKey::PauseExpiryMigrationDone)
-                .unwrap_or(false);
-            return !migrated;
+            // Fail closed on inconsistent pause metadata.
+            return true;
         };
         env.ledger().timestamp() <= expires_at
     }
