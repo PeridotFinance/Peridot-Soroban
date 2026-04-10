@@ -1556,7 +1556,8 @@ impl SimplePeridottroller {
         total
     }
 
-    // Sum collateral across markets excluding a specific market (to avoid re-entry from that market)
+    // Sum CF-discounted collateral (in underlying units, not USD) across markets,
+    // excluding a specific market (to avoid re-entry from that market).
     pub fn get_collateral_excl(env: Env, user: Address, exclude_market: Address) -> u128 {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
@@ -1585,7 +1586,10 @@ impl SimplePeridottroller {
                     &Symbol::new(&env, "get_exchange_rate"),
                     ().into_val(&env),
                 );
-                total = total.saturating_add((pbal.saturating_mul(rate)) / 1_000_000u128);
+                let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
+                let underlying = (pbal.saturating_mul(rate)) / 1_000_000u128;
+                let discounted = (underlying.saturating_mul(cf)) / 1_000_000u128;
+                total = total.saturating_add(discounted);
             }
         }
         total
@@ -1618,7 +1622,22 @@ impl SimplePeridottroller {
             if m == exclude_market {
                 continue;
             }
-            let debt: u128 = env.invoke_contract(
+            // First read: lets us skip expensive accrual for markets with no debt.
+            let mut debt: u128 = env.invoke_contract(
+                &m,
+                &Symbol::new(&env, "get_user_borrow_balance"),
+                (user.clone(),).into_val(&env),
+            );
+            if debt == 0 {
+                continue;
+            }
+            // Keep debt reads fresh for external callers where debt exists.
+            let _: () = env.invoke_contract(
+                &m,
+                &Symbol::new(&env, "update_interest"),
+                ().into_val(&env),
+            );
+            debt = env.invoke_contract(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
