@@ -1761,7 +1761,7 @@ impl SimplePeridottroller {
                 user.clone(),
                 Some(market.clone()),
                 markets,
-                true,
+                false,
             );
         if indeterminate {
             return (0u128, u128::MAX);
@@ -1787,6 +1787,8 @@ impl SimplePeridottroller {
         hint: MarketLiquidityHint,
     ) -> (u128, u128) {
         bump_core_ttl(&env);
+        // This path may refresh cross-market state; restrict it to the calling market.
+        market.require_auth();
         let markets = Self::get_user_markets(env.clone(), user.clone());
         if !markets.contains(market.clone()) {
             panic!("market not entered");
@@ -2493,26 +2495,11 @@ impl SimplePeridottroller {
             }
             let market_cf: u128 = Self::get_market_cf(env.clone(), m.clone());
 
-            if refresh_market_state {
-                let refreshed = env.try_invoke_contract::<(), InvokeError>(
-                    &m,
-                    &Symbol::new(&env, "update_interest"),
-                    ().into_val(&env),
-                );
-                if !matches!(refreshed, Ok(Ok(()))) {
-                    indeterminate = true;
-                    if market_cf > 0 {
-                        collateral_indeterminate = true;
-                    }
-                    continue;
-                }
-            }
-
             // Get pToken balance — fail-open for collateral by default.
             // A read failure alone should not poison account health unless debt/position
             // evidence later shows this market is material to solvency.
             let mut pbal_known = true;
-            let pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
+            let mut pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_ptoken_balance"),
                 (user.clone(),).into_val(&env),
@@ -2528,7 +2515,7 @@ impl SimplePeridottroller {
             };
 
             // Get borrow balance — fail-closed on debt read failure
-            let debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
+            let mut debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
@@ -2542,6 +2529,53 @@ impl SimplePeridottroller {
                     continue;
                 }
             };
+
+            // For borrow-path hypothetical checks, refresh only markets with a position
+            // and then re-read user balances to use fresh values.
+            if refresh_market_state && (pbal > 0 || debt > 0) {
+                let refreshed = env.try_invoke_contract::<(), InvokeError>(
+                    &m,
+                    &Symbol::new(&env, "update_interest"),
+                    ().into_val(&env),
+                );
+                if !matches!(refreshed, Ok(Ok(()))) {
+                    indeterminate = true;
+                    if pbal_known && pbal > 0 && market_cf > 0 {
+                        collateral_indeterminate = true;
+                    }
+                    continue;
+                }
+
+                pbal = match env.try_invoke_contract::<u128, InvokeError>(
+                    &m,
+                    &Symbol::new(&env, "get_ptoken_balance"),
+                    (user.clone(),).into_val(&env),
+                ) {
+                    Ok(Ok(bal)) => bal,
+                    _ => {
+                        pbal_known = false;
+                        if market_cf > 0 {
+                            collateral_indeterminate = true;
+                        }
+                        0u128
+                    }
+                };
+
+                debt = match env.try_invoke_contract::<u128, InvokeError>(
+                    &m,
+                    &Symbol::new(&env, "get_user_borrow_balance"),
+                    (user.clone(),).into_val(&env),
+                ) {
+                    Ok(Ok(bal)) => bal,
+                    _ => {
+                        indeterminate = true;
+                        if pbal_known && pbal > 0 && market_cf > 0 {
+                            collateral_indeterminate = true;
+                        }
+                        continue;
+                    }
+                };
+            }
 
             if pbal == 0 && debt == 0 {
                 continue;
