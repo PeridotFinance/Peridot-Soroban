@@ -765,8 +765,8 @@ impl SimplePeridottroller {
             .get(&until_key)
             .unwrap_or(Map::new(env));
         let Some(expires_at) = untils.get(market.clone()) else {
-            // Fail open for legacy pause entries written before expiries existed.
-            return false;
+            // Fail closed for legacy pause entries that predate expiry metadata.
+            return true;
         };
         env.ledger().timestamp() <= expires_at
     }
