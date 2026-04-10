@@ -3926,7 +3926,7 @@ fn test_find_039_broken_market_does_not_lock_account() {
     assert_eq!(liq, 0u128, "§A: no excess liquidity after collateral price drop");
     assert_eq!(
         shortfall, 10u128,
-        "§A: $10 shortfall — Alice IS legitimately liquidatable without BrokenMarket"
+        "§A: $10 shortfall — Alice IS legitimately liquidatable without BrokenMarket (baseline)"
     );
 
     // §B: Simulate TTL expiry of a dormant market Alice entered earlier
@@ -3945,31 +3945,35 @@ fn test_find_039_broken_market_does_not_lock_account() {
     comp.add_market(&broken_id); // This succeeds (get_underlying_token works)
     comp.enter_market(&alice, &broken_id); // Alice's list: [vault_b, vault_a, broken]
 
-    // §C: FIND-039 FIX — liquidate() NO LONGER PANICS
-    // With try_invoke_contract fix, broken markets are gracefully skipped.
-    // Liquidation proceeds successfully, clearing the $10 shortfall.
+    // §C: FIND-039 FIX — account_liquidity() NO LONGER PANICS
+    // With try_invoke_contract fix + ALMANAX sentinel pattern:
     //
     // OLD BEHAVIOR (pre-fix): Would panic with "storage: missing value for key"
-    // NEW BEHAVIOR (post-fix): Skips broken market, liquidation succeeds
-    comp.liquidate(&alice, &vault_a_id, &vault_b_id, &20u128, &liquidator);
-
-    // Verify liquidation succeeded (shortfall reduced)
+    // NEW BEHAVIOR (Almanax guidance): Returns sentinel shortfall (0, u128::MAX)
+    //   - Broken market detected during sum_positions_usd_for_markets
+    //   - Sets borrow_total = u128::MAX (maximum risk)
+    //   - Account treated as maximally undercollateralized
+    //   - Blocks borrow/withdraw/exit but allows repay/close
     let (liq_after, shortfall_after) = comp.account_liquidity(&alice);
+    assert_eq!(liq_after, 0u128, "§C: No liquidity with broken market");
     assert!(
-        shortfall_after < shortfall,
-        "§C: Shortfall should be reduced after liquidation (was {}, now {})",
-        shortfall,
+        shortfall_after > 1_000_000_000_000_000_000u128,
+        "§C: Sentinel shortfall (very large) due to broken market, got {}",
         shortfall_after
     );
 
-    // §D: Verify Alice can still perform other operations (not locked out)
-    // This would panic pre-fix due to broken market in entered list
-    // The call succeeding (not panicking) demonstrates the fix works
+    // §D: Verify query operations still work (account not completely locked)
+    // This would panic pre-fix due to broken market in entered list.
+    // The call succeeding (not panicking) demonstrates the FIND-039 fix works.
     let _max_redeem = comp.preview_redeem_max(&alice, &vault_b_id);
 
-    // Also verify account_liquidity still works (doesn't panic on broken market)
+    // Also verify we can query account_liquidity again (doesn't panic)
     let (_final_liq, _final_shortfall) = comp.account_liquidity(&alice);
 
-    // Success! Alice's account is not permanently locked despite having
-    // entered a broken market. Pre-fix, all these calls would panic.
+    // Success! Alice's account is not COMPLETELY locked despite having
+    // a broken market. Pre-fix: all calls would panic.
+    // Post-fix with Almanax sentinel: calls succeed but account is maximally risky.
+    //
+    // ALMANAX GUIDANCE: Sentinel shortfall (0, u128::MAX) prevents risky operations
+    // (borrow/withdraw/exit) while allowing graceful degradation (repay/close/query).
 }

@@ -2381,8 +2381,7 @@ impl SimplePeridottroller {
                 _ => 0u128, // treat collateral read failure as 0 collateral
             };
 
-            // ALMANAX FIX (fea09f03): Get borrow balance — fail-closed on debt read failure
-            // Cannot allow debt to be treated as $0 as this makes undercollateralized accounts appear solvent
+            // Get borrow balance — fail-closed on debt read failure
             let debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
@@ -2390,10 +2389,9 @@ impl SimplePeridottroller {
             ) {
                 Ok(Ok(bal)) => bal,
                 _ => {
-                    // Fail-closed: if we can't read debt, we must assume worst case
-                    // Skip this market entirely (both collateral and debt) to prevent
-                    // incorrect health calculations that could enable protocol exploitation
-                    continue;
+                    // Sentinel pattern: treat account as maximally risky
+                    borrow_total = u128::MAX;
+                    break;
                 }
             };
 
@@ -2401,33 +2399,29 @@ impl SimplePeridottroller {
                 continue;
             }
 
-            // ALMANAX FIX (11737140): Get price — fail-closed when debt exists
-            // Cannot skip markets with nonzero debt when price unavailable
+            // Get price — fail-closed when debt exists
             let (price, scale) = match Self::try_require_price(&env, &token) {
                 Some((p, s)) if p > 0 => (p, s),
                 _ => {
-                    // No price available
                     if debt > 0 {
-                        // FAIL-CLOSED: Cannot value debt without price - skip entire market
-                        // to prevent undercollateralized positions from appearing solvent
-                        continue;
+                        // Sentinel pattern: cannot value debt without price
+                        borrow_total = u128::MAX;
+                        break;
                     }
-                    // If only collateral (no debt), skip market (collateral treated as $0)
                     continue;
                 }
             };
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
             if pbal > 0 {
-                // ALMANAX FIX (fa8bc794): Don't continue on exchange rate failure
-                // Must still process debt even if collateral valuation fails
+                // Exchange rate failure → treat as 0 collateral, still count debt
                 let rate: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                     &m,
                     &Symbol::new(&env, "get_exchange_rate"),
                     ().into_val(&env),
                 ) {
                     Ok(Ok(r)) if r > 0 => r,
-                    _ => 0u128, // treat exchange rate failure as 0 collateral (but continue to debt)
+                    _ => 0u128,
                 };
                 let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
                 let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
