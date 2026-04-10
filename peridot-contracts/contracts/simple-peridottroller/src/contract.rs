@@ -2230,6 +2230,7 @@ impl SimplePeridottroller {
     }
 
     fn require_price(env: Env, token: Address) -> (u128, u128) {
+        bump_core_ttl(&env);
         storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()
