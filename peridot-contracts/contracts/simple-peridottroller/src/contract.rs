@@ -2061,10 +2061,14 @@ impl SimplePeridottroller {
         if !collateral_entered {
             panic!("collateral market not entered");
         }
-        // ensure borrower is undercollateralized
-        let (_liq, shortfall, indeterminate) =
-            Self::account_liquidity_internal(env.clone(), borrower.clone());
-        if indeterminate {
+        // Ensure borrower is undercollateralized using known (deterministic) positions.
+        // If health is indeterminate due to unrelated failing markets, allow liquidation
+        // only when known positions are already in shortfall.
+        let (known_collateral_usd, known_borrow_usd, indeterminate) =
+            Self::sum_positions_usd(env.clone(), borrower.clone(), None);
+        let shortfall = known_borrow_usd.saturating_sub(known_collateral_usd);
+        let liquidity = known_collateral_usd.saturating_sub(known_borrow_usd);
+        if shortfall == 0 && indeterminate {
             panic!("health indeterminate");
         }
         if shortfall == 0 {
@@ -2178,7 +2182,7 @@ impl SimplePeridottroller {
             liquidity_after_repay,
         );
         let seize_ctx = SeizeContext {
-            liquidity: _liq,
+            liquidity,
             shortfall,
             max_redeem_ptokens,
             seize_ptokens,
@@ -2427,16 +2431,6 @@ impl SimplePeridottroller {
                 continue;
             }
 
-            // Get underlying token — skip market on failure (cannot price positions)
-            let token: Address = match env.try_invoke_contract::<Address, InvokeError>(
-                &m,
-                &Symbol::new(&env, "get_underlying_token"),
-                ().into_val(&env),
-            ) {
-                Ok(Ok(addr)) => addr,
-                _ => continue, // skip market if get_underlying_token fails
-            };
-
             // Get pToken balance — treat failure as 0 collateral (fail-open for collateral)
             let pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
@@ -2463,6 +2457,20 @@ impl SimplePeridottroller {
             if pbal == 0 && debt == 0 {
                 continue;
             }
+
+            // If this market has any position, inability to resolve underlying token
+            // makes health valuation indeterminate (cannot safely skip potential debt).
+            let token: Address = match env.try_invoke_contract::<Address, InvokeError>(
+                &m,
+                &Symbol::new(&env, "get_underlying_token"),
+                ().into_val(&env),
+            ) {
+                Ok(Ok(addr)) => addr,
+                _ => {
+                    indeterminate = true;
+                    break;
+                }
+            };
 
             // Get price — fail-closed when debt exists
             let (price, scale) = match Self::try_require_price(&env, &token) {

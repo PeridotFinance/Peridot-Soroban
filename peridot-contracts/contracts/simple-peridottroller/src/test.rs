@@ -773,6 +773,36 @@ fn test_get_borrows_excl_fails_closed_when_market_unavailable() {
     assert_eq!(comp.get_borrows_excl(&user, &exclude_market), u128::MAX);
 }
 
+#[test]
+fn test_account_liquidity_marks_indeterminate_when_underlying_unavailable_with_debt() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token);
+    failing_market.set_debt(&user, &25u128);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&failing_market_id);
+    comp.enter_market(&user, &failing_market_id);
+
+    // Market becomes unreadable for underlying token after entry.
+    failing_market.set_fail_underlying(&true);
+
+    let (liq, shortfall) = comp.account_liquidity(&user);
+    assert_eq!(liq, 0u128);
+    assert_eq!(shortfall, u128::MAX);
+}
+
 // Mock Reflector oracle for tests
 #[contract]
 struct MockOracle;
@@ -835,6 +865,7 @@ struct FailingClaimMarket;
 enum FailingMarketKey {
     Underlying,
     FailUnderlying,
+    Debt(Address),
 }
 
 #[contractimpl]
@@ -852,6 +883,12 @@ impl FailingClaimMarket {
         env.storage()
             .persistent()
             .set(&FailingMarketKey::FailUnderlying, &fail);
+    }
+
+    pub fn set_debt(env: Env, user: Address, debt: u128) {
+        env.storage()
+            .persistent()
+            .set(&FailingMarketKey::Debt(user), &debt);
     }
 
     pub fn get_underlying_token(env: Env) -> Address {
@@ -881,8 +918,11 @@ impl FailingClaimMarket {
         0u128
     }
 
-    pub fn get_user_borrow_balance(_env: Env, _user: Address) -> u128 {
-        0u128
+    pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&FailingMarketKey::Debt(user))
+            .unwrap_or(0u128)
     }
 }
 
@@ -3971,8 +4011,7 @@ fn test_find_039_broken_market_returns_fail_closed_shortfall() {
 }
 
 #[test]
-#[should_panic(expected = "health indeterminate")]
-fn test_find_039_liquidation_rejects_indeterminate_health() {
+fn test_find_039_liquidation_allows_when_known_shortfall_exists() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -4027,12 +4066,85 @@ fn test_find_039_liquidation_rejects_indeterminate_health() {
     // Make position underwater before liquidation attempt.
     set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 600_000i128);
 
-    let broken_id = env.register(BrokenMarket, ());
-    let broken_market = BrokenMarketClient::new(&env, &broken_id);
-    broken_market.initialize(&token_b);
-    comp.add_market(&broken_id);
-    comp.enter_market(&alice, &broken_id);
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token_b);
+    failing_market.set_debt(&alice, &1u128);
+    comp.add_market(&failing_market_id);
+    comp.enter_market(&alice, &failing_market_id);
+    failing_market.set_fail_underlying(&true);
 
-    // Liquidation must not proceed when health aggregation is indeterminate.
+    // Known shortfall from real markets is already non-zero, so liquidation should proceed
+    // even if another entered market is indeterminate.
+    comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
+
+    // Borrower debt reduced by liquidation.
+    assert!(vault_a.get_user_borrow_balance(&alice) < 40u128);
+}
+
+#[test]
+#[should_panic(expected = "health indeterminate")]
+fn test_find_039_liquidation_rejects_when_only_indeterminate_signal() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let token_a = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    mint_b.mint(&alice, &100i128);
+    mint_a.mint(&liquidator, &1_000i128);
+
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    vault_b.set_collateral_factor(&500_000u128);
+    comp.enter_market(&alice, &vault_b_id);
+    comp.enter_market(&alice, &vault_a_id);
+    vault_b.deposit(&alice, &100u128);
+    vault_a.deposit(&liquidator, &200u128);
+    vault_a.borrow(&alice, &30u128); // healthy: collateral power $50 vs debt $30
+
+    // Unrelated failing market introduces indeterminate state.
+    let failing_market_id = env.register(FailingClaimMarket, ());
+    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
+    failing_market.initialize(&token_b);
+    failing_market.set_debt(&alice, &1u128);
+    comp.add_market(&failing_market_id);
+    comp.enter_market(&alice, &failing_market_id);
+    failing_market.set_fail_underlying(&true);
+
+    // Known positions are not underwater; indeterminate alone must not authorize liquidation.
     comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
 }
