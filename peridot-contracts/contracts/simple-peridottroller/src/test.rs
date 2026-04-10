@@ -632,6 +632,73 @@ fn test_removed_market_not_counted_as_collateral() {
     assert_eq!(comp.get_user_total_collateral(&borrower), 0u128);
 }
 
+#[test]
+fn test_get_collateral_excl_applies_market_cf() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let exclude_market = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+    comp.enter_market(&user, &market_id);
+    comp.set_market_cf(&market_id, &500_000u128); // 50%
+
+    let mint = token::StellarAssetClient::new(&env, &token);
+    mint.mint(&user, &1_000i128);
+    market.deposit(&user, &200u128); // 200 underlying collateral
+
+    // get_collateral_excl returns CF-discounted underlying (not raw underlying).
+    assert_eq!(comp.get_collateral_excl(&user, &exclude_market), 100u128);
+}
+
+#[test]
+fn test_get_borrows_excl_accrues_interest_before_reading_debt() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let exclude_market = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let stale_market_id = env.register(StaleBorrowMarket, ());
+    let stale_market = StaleBorrowMarketClient::new(&env, &stale_market_id);
+    stale_market.initialize(&token);
+    stale_market.set_debt(&user, &123u128);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&stale_market_id);
+    comp.enter_market(&user, &stale_market_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128); // $1.00
+
+    // get_borrows_excl should call update_interest first, then read debt.
+    assert_eq!(comp.get_borrows_excl(&user, &exclude_market), 123u128);
+    assert!(stale_market.was_updated());
+}
+
 // Mock Reflector oracle for tests
 #[contract]
 struct MockOracle;
@@ -802,6 +869,72 @@ struct FailingPeridotToken;
 impl FailingPeridotToken {
     pub fn mint(_env: Env, _to: Address, _amount: i128) {
         panic!("mint unavailable");
+    }
+}
+
+#[contract]
+struct StaleBorrowMarket;
+
+#[contracttype]
+enum StaleBorrowMarketKey {
+    Underlying,
+    Updated,
+    Debt(Address),
+}
+
+#[contractimpl]
+impl StaleBorrowMarket {
+    pub fn initialize(env: Env, underlying: Address) {
+        env.storage()
+            .persistent()
+            .set(&StaleBorrowMarketKey::Underlying, &underlying);
+        env.storage()
+            .persistent()
+            .set(&StaleBorrowMarketKey::Updated, &false);
+    }
+
+    pub fn set_debt(env: Env, user: Address, debt: u128) {
+        env.storage()
+            .persistent()
+            .set(&StaleBorrowMarketKey::Debt(user), &debt);
+        env.storage()
+            .persistent()
+            .set(&StaleBorrowMarketKey::Updated, &false);
+    }
+
+    pub fn get_underlying_token(env: Env) -> Address {
+        env.storage()
+            .persistent()
+            .get(&StaleBorrowMarketKey::Underlying)
+            .expect("underlying not set")
+    }
+
+    pub fn update_interest(env: Env) {
+        env.storage()
+            .persistent()
+            .set(&StaleBorrowMarketKey::Updated, &true);
+    }
+
+    pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
+        let updated = env
+            .storage()
+            .persistent()
+            .get(&StaleBorrowMarketKey::Updated)
+            .unwrap_or(false);
+        if !updated {
+            return 0u128;
+        }
+        env.storage()
+            .persistent()
+            .get(&StaleBorrowMarketKey::Debt(user))
+            .unwrap_or(0u128)
+    }
+
+    pub fn was_updated(env: Env) -> bool {
+        env.storage()
+            .persistent()
+            .get(&StaleBorrowMarketKey::Updated)
+            .unwrap_or(false)
     }
 }
 

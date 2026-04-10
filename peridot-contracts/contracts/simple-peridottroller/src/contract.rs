@@ -1556,7 +1556,8 @@ impl SimplePeridottroller {
         total
     }
 
-    // Sum collateral across markets excluding a specific market (to avoid re-entry from that market)
+    // Sum CF-discounted collateral (in underlying units, not USD) across markets,
+    // excluding a specific market (to avoid re-entry from that market).
     pub fn get_collateral_excl(env: Env, user: Address, exclude_market: Address) -> u128 {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
@@ -1585,7 +1586,10 @@ impl SimplePeridottroller {
                     &Symbol::new(&env, "get_exchange_rate"),
                     ().into_val(&env),
                 );
-                total = total.saturating_add((pbal.saturating_mul(rate)) / 1_000_000u128);
+                let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
+                let underlying = (pbal.saturating_mul(rate)) / 1_000_000u128;
+                let discounted = (underlying.saturating_mul(cf)) / 1_000_000u128;
+                total = total.saturating_add(discounted);
             }
         }
         total
@@ -1613,11 +1617,25 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
             if m == exclude_market {
                 continue;
             }
+            if !supported.get(m.clone()).unwrap_or(false) {
+                continue;
+            }
+            // Keep debt reads fresh for external callers by accruing before reading balance.
+            let _: () = env.invoke_contract(
+                &m,
+                &Symbol::new(&env, "update_interest"),
+                ().into_val(&env),
+            );
             let debt: u128 = env.invoke_contract(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
