@@ -621,6 +621,11 @@ impl SimplePeridottroller {
         if !supported.get(market.clone()).unwrap_or(false) {
             panic!("market not supported");
         }
+        let prev_speed: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupplySpeed(market.clone()))
+            .unwrap_or(0u128);
         Self::accrue_market(env.clone(), market.clone(), None, None);
         let now = env.ledger().timestamp();
         // initialize index/time on first set
@@ -633,9 +638,19 @@ impl SimplePeridottroller {
                 .persistent()
                 .set(&DataKey::SupplyIndex(market.clone()), &INDEX_SCALE_1E18);
         }
-        env.storage()
-            .persistent()
-            .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+        if speed_per_sec > 0 {
+            let needs_anchor = prev_speed == 0
+                || env
+                    .storage()
+                    .persistent()
+                    .get::<_, u64>(&DataKey::SupplyIndexTime(market.clone()))
+                    .is_none();
+            if needs_anchor {
+                env.storage()
+                    .persistent()
+                    .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+            }
+        }
         env.storage()
             .persistent()
             .set(&DataKey::SupplySpeed(market), &speed_per_sec);
@@ -655,6 +670,11 @@ impl SimplePeridottroller {
         if !supported.get(market.clone()).unwrap_or(false) {
             panic!("market not supported");
         }
+        let prev_speed: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowSpeed(market.clone()))
+            .unwrap_or(0u128);
         Self::accrue_market(env.clone(), market.clone(), None, None);
         let now = env.ledger().timestamp();
         let exists: Option<u128> = env
@@ -666,9 +686,19 @@ impl SimplePeridottroller {
                 .persistent()
                 .set(&DataKey::BorrowIndex(market.clone()), &INDEX_SCALE_1E18);
         }
-        env.storage()
-            .persistent()
-            .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+        if speed_per_sec > 0 {
+            let needs_anchor = prev_speed == 0
+                || env
+                    .storage()
+                    .persistent()
+                    .get::<_, u64>(&DataKey::BorrowIndexTime(market.clone()))
+                    .is_none();
+            if needs_anchor {
+                env.storage()
+                    .persistent()
+                    .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+            }
+        }
         env.storage()
             .persistent()
             .set(&DataKey::BorrowSpeed(market), &speed_per_sec);
@@ -2345,6 +2375,10 @@ impl SimplePeridottroller {
                                 env.storage()
                                     .persistent()
                                     .set(&DataKey::SupplySpeed(market.clone()), &0u128);
+                                SupplySpeedOverflowDisabled {
+                                    market: market.clone(),
+                                }
+                                .publish(&env);
                                 0u128
                             }
                         };
@@ -2402,6 +2436,10 @@ impl SimplePeridottroller {
                                 env.storage()
                                     .persistent()
                                     .set(&DataKey::BorrowSpeed(market.clone()), &0u128);
+                                BorrowSpeedOverflowDisabled {
+                                    market: market.clone(),
+                                }
+                                .publish(&env);
                                 0u128
                             }
                         };
@@ -2434,12 +2472,17 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupplyIndex(market.clone()))
             .unwrap_or(INDEX_SCALE_1E18);
-        let uidx: u128 = env
+        let user_idx_opt: Option<u128> = env
             .storage()
             .persistent()
-            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()))
-            .unwrap_or(INDEX_SCALE_1E18);
+            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()));
+        let uidx: u128 = user_idx_opt.unwrap_or(idx);
         if idx == uidx {
+            if user_idx_opt.is_none() {
+                env.storage()
+                    .persistent()
+                    .set(&DataKey::UserSupplyIndex(user, market), &idx);
+            }
             return;
         }
         let pbal: u128 = user_ptokens_hint.unwrap_or_else(|| {
