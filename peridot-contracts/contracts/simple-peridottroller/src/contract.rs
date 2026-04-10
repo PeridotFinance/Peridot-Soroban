@@ -898,24 +898,7 @@ impl SimplePeridottroller {
         }
         if changed {
             env.storage().persistent().set(&until_key, &untils);
-            let persistent = env.storage().persistent();
-            if persistent.has(&until_key) {
-                persistent.extend_ttl(&until_key, 500_000, 1_000_000);
-            }
         }
-    }
-
-    fn is_pause_active(env: &Env, pause_key: DataKey, until_key: DataKey, market: &Address) -> bool {
-        let flags: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&pause_key)
-            .unwrap_or(Map::new(env));
-        if !flags.get(market.clone()).unwrap_or(false) {
-            return false;
-        }
-        // Keep pause flag/expiry TTLs aligned while a market is paused so
-        // pause state cannot disappear due to key-expiry skew.
         let persistent = env.storage().persistent();
         if persistent.has(&pause_key) {
             persistent.extend_ttl(&pause_key, 500_000, 1_000_000);
@@ -923,7 +906,18 @@ impl SimplePeridottroller {
         if persistent.has(&until_key) {
             persistent.extend_ttl(&until_key, 500_000, 1_000_000);
         }
-        let untils: Map<Address, u64> = env
+    }
+
+    fn is_pause_active(env: &Env, pause_key: DataKey, until_key: DataKey, market: &Address) -> bool {
+        let mut flags: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&pause_key)
+            .unwrap_or(Map::new(env));
+        if !flags.get(market.clone()).unwrap_or(false) {
+            return false;
+        }
+        let mut untils: Map<Address, u64> = env
             .storage()
             .persistent()
             .get(&until_key)
@@ -932,7 +926,17 @@ impl SimplePeridottroller {
             // Fail closed on inconsistent pause metadata.
             return true;
         };
-        env.ledger().timestamp() <= expires_at
+        let now = env.ledger().timestamp();
+        if now <= expires_at {
+            return true;
+        }
+
+        // Self-heal stale pause entries once the pause has expired.
+        flags.remove(market.clone());
+        untils.remove(market.clone());
+        env.storage().persistent().set(&pause_key, &flags);
+        env.storage().persistent().set(&until_key, &untils);
+        false
     }
 
     fn require_guardian_auth(env: &Env, guardian: &Address) {

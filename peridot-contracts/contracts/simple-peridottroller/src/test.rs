@@ -2003,6 +2003,20 @@ fn test_pause_expires_automatically() {
     let now = env.ledger().timestamp();
     env.ledger().set_timestamp(now + MAX_PAUSE_DURATION_SECS + 1);
     assert!(!comp.is_deposit_paused(&market_id));
+    env.as_contract(&comp_id, || {
+        let flags: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PauseDeposit)
+            .unwrap_or(Map::new(&env));
+        let untils: Map<Address, u64> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PauseDepositUntil)
+            .unwrap_or(Map::new(&env));
+        assert!(!flags.get(market_id.clone()).unwrap_or(false));
+        assert!(untils.get(market_id.clone()).is_none());
+    });
 }
 
 #[test]
