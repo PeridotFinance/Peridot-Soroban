@@ -2663,6 +2663,95 @@ fn test_borrow_side_rewards_and_claim() {
 }
 
 #[test]
+fn test_liquidator_does_not_receive_retroactive_supply_rewards_after_seize() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.cost_estimate().budget().reset_unlimited();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let ta_admin = Address::generate(&env);
+    let tb_admin = Address::generate(&env);
+    let ta = env
+        .register_stellar_asset_contract_v2(ta_admin.clone())
+        .address();
+    let tb = env
+        .register_stellar_asset_contract_v2(tb_admin.clone())
+        .address();
+
+    // collateral market A and repay market B
+    let va_id = env.register(rv::ReceiptVault, ());
+    let va = rv::ReceiptVaultClient::new(&env, &va_id);
+    let vb_id = env.register(rv::ReceiptVault, ());
+    let vb = rv::ReceiptVaultClient::new(&env, &vb_id);
+    va.initialize(&ta, &0u128, &0u128, &admin);
+    va.enable_static_rates(&admin);
+    vb.initialize(&tb, &0u128, &0u128, &admin);
+    vb.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&va_id);
+    comp.add_market(&vb_id);
+    comp.set_market_cf(&va_id, &500_000u128);
+    comp.enter_market(&borrower, &va_id);
+    comp.enter_market(&borrower, &vb_id);
+    comp.enter_market(&liquidator, &va_id);
+    comp.enter_market(&liquidator, &vb_id);
+    va.set_peridottroller(&comp_id);
+    vb.set_peridottroller(&comp_id);
+    va.set_collateral_factor(&500_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &ta, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &tb, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &ta);
+    let mint_b = token::StellarAssetClient::new(&env, &tb);
+    mint_a.mint(&borrower, &1_000i128);
+    mint_b.mint(&liquidator, &1_000i128);
+
+    // Borrower mints collateral pTokens and borrows from market B.
+    va.deposit(&borrower, &100u128);
+    vb.deposit(&liquidator, &300u128);
+    vb.borrow(&borrower, &40u128);
+
+    // Configure rewards after borrow so borrow path stays under footprint limits.
+    let peri_id = env.register(pt::PeridotToken, ());
+    let peri = pt::PeridotTokenClient::new(&env, &peri_id);
+    std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", pt::DEFAULT_INIT_ADMIN);
+    let token_admin = Address::from_string(&String::from_str(&env, pt::DEFAULT_INIT_ADMIN));
+    peri.initialize(
+        &soroban_sdk::String::from_str(&env, "Peridot"),
+        &soroban_sdk::String::from_str(&env, "P"),
+        &6u32,
+        &token_admin,
+        &1_000_000_000i128,
+    );
+    comp.set_peridot_token(&peri_id);
+    comp.set_supply_speed(&va_id, &10u128);
+
+    // Let supply index grow before liquidator receives any collateral pTokens.
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 10);
+
+    // Liquidate to receive seized collateral pTokens after index growth.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &ta, 500_000i128);
+    comp.liquidate(&borrower, &vb_id, &va_id, &40u128, &liquidator);
+    assert!(va.get_ptoken_balance(&liquidator) > 0u128);
+
+    // Claim in the same timestamp as seize: no retroactive supply rewards.
+    comp.claim(&liquidator);
+    assert_eq!(peri.balance_of(&liquidator), 0i128);
+}
+
+#[test]
 fn test_claim_skips_failing_market_and_claims_from_healthy_market() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -2694,6 +2783,8 @@ fn test_claim_skips_failing_market_and_claims_from_healthy_market() {
     // Enter failing market first to ensure claim continues past failure.
     comp.enter_market(&user, &failing_market_id);
     comp.enter_market(&user, &v_id);
+    // Wire healthy market so deposit path anchors user supply index.
+    v.set_peridottroller(&comp_id);
 
     // PERI token
     let peri_id = env.register(pt::PeridotToken, ());
@@ -2746,6 +2837,8 @@ fn test_claim_mint_failure_keeps_accrued_balance() {
     comp.initialize(&admin);
     comp.add_market(&v_id);
     comp.enter_market(&user, &v_id);
+    // Wire market so deposit path anchors user supply index.
+    v.set_peridottroller(&comp_id);
 
     // Broken reward token: mint() always reverts.
     let broken_peri_id = env.register(FailingPeridotToken, ());

@@ -179,3 +179,17 @@ pub struct ClaimExternalCallFailed {
     #[topic]
     pub function: Symbol,
 }
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SupplySpeedOverflowDisabled {
+    #[topic]
+    pub market: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BorrowSpeedOverflowDisabled {
+    #[topic]
+    pub market: Address,
+}
