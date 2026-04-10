@@ -759,27 +759,15 @@ impl SimplePeridottroller {
         if !flags.get(market.clone()).unwrap_or(false) {
             return false;
         }
-        let mut untils: Map<Address, u64> = env
+        let untils: Map<Address, u64> = env
             .storage()
             .persistent()
             .get(&until_key)
             .unwrap_or(Map::new(env));
-        let expires_at = if let Some(ts) = untils.get(market.clone()) {
-            ts
-        } else {
-            // Legacy pre-upgrade pause entries had no expiry metadata.
-            // Backfill to a bounded duration from first post-upgrade access.
-            let ts = env
-                .ledger()
-                .timestamp()
-                .saturating_add(MAX_PAUSE_DURATION_SECS);
-            untils.set(market.clone(), ts);
-            env.storage().persistent().set(&until_key, &untils);
-            let persistent = env.storage().persistent();
-            if persistent.has(&until_key) {
-                persistent.extend_ttl(&until_key, 500_000, 1_000_000);
-            }
-            ts
+        let Some(expires_at) = untils.get(market.clone()) else {
+            // Keep pause checks read-only. Legacy flags without expiry metadata are
+            // treated as expired and must be re-paused explicitly by admin/guardian.
+            return false;
         };
         env.ledger().timestamp() <= expires_at
     }

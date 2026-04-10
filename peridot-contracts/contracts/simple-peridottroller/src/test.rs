@@ -2006,7 +2006,7 @@ fn test_pause_expires_automatically() {
 }
 
 #[test]
-fn test_legacy_pause_without_expiry_backfills_bounded_expiry() {
+fn test_legacy_pause_without_expiry_treated_as_expired_without_backfill() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -2040,11 +2040,16 @@ fn test_legacy_pause_without_expiry_backfills_bounded_expiry() {
             .set(&DataKey::PauseBorrowUntil, &untils);
     });
 
-    // Missing expiry must keep the market paused and backfill a bounded expiry.
-    assert!(comp.is_borrow_paused(&market_id));
-    let now = env.ledger().timestamp();
-    env.ledger().set_timestamp(now + MAX_PAUSE_DURATION_SECS + 1);
+    // Missing expiry is treated as expired, and pause checks stay read-only.
     assert!(!comp.is_borrow_paused(&market_id));
+    env.as_contract(&comp_id, || {
+        let untils: Map<Address, u64> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PauseBorrowUntil)
+            .unwrap_or(Map::new(&env));
+        assert!(untils.get(market_id.clone()).is_none());
+    });
 }
 
 #[test]
