@@ -655,7 +655,8 @@ impl SimplePeridottroller {
         }
         env.storage()
             .persistent()
-            .set(&DataKey::SupplySpeed(market), &speed_per_sec);
+            .set(&DataKey::SupplySpeed(market.clone()), &speed_per_sec);
+        storage::bump_reward_market_ttl(&env, &market);
     }
 
     pub fn set_borrow_speed(env: Env, market: Address, speed_per_sec: u128) {
@@ -703,7 +704,8 @@ impl SimplePeridottroller {
         }
         env.storage()
             .persistent()
-            .set(&DataKey::BorrowSpeed(market), &speed_per_sec);
+            .set(&DataKey::BorrowSpeed(market.clone()), &speed_per_sec);
+        storage::bump_reward_market_ttl(&env, &market);
     }
 
     pub fn set_pause_guardian(env: Env, guardian: Address) {
@@ -860,6 +862,7 @@ impl SimplePeridottroller {
         if persistent.has(&until_key) {
             persistent.extend_ttl(&until_key, 500_000, 1_000_000);
         }
+        storage::bump_pause_guardian_ttl(env);
     }
 
     fn backfill_missing_pause_expiries_batch(
@@ -2346,10 +2349,17 @@ impl SimplePeridottroller {
             let m = markets.get(i).unwrap();
             let _ = Self::claim_market_best_effort(&env, &user, &m);
         }
+        let accrued_key = DataKey::Accrued(user.clone());
+        if !env.storage().persistent().has(&accrued_key) {
+            if markets.len() > 0 {
+                ClaimAccruedMissing { user: user.clone() }.publish(&env);
+            }
+            return;
+        }
         let accrued: u128 = env
             .storage()
             .persistent()
-            .get(&DataKey::Accrued(user.clone()))
+            .get(&accrued_key)
             .unwrap_or(0u128);
         if accrued == 0 {
             return;
@@ -2839,6 +2849,7 @@ impl SimplePeridottroller {
         total_ptokens_hint: Option<u128>,
         total_borrowed_hint: Option<u128>,
     ) {
+        storage::bump_reward_market_ttl(&env, &market);
         let now = env.ledger().timestamp();
         // supply
         let last_s_opt: Option<u64> = env
@@ -2888,15 +2899,18 @@ impl SimplePeridottroller {
                         env.storage()
                             .persistent()
                             .set(&DataKey::SupplyIndex(market.clone()), &idx);
+                        storage::bump_reward_market_ttl(&env, &market);
                     }
                     env.storage()
                         .persistent()
                         .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+                    storage::bump_reward_market_ttl(&env, &market);
                 }
             } else {
                 env.storage()
                     .persistent()
                     .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+                storage::bump_reward_market_ttl(&env, &market);
                 // Missing index-time can happen after TTL expiry; re-anchor at `now` so
                 // accrual resumes on the next call instead of remaining permanently at dt=0.
             }
@@ -2949,15 +2963,18 @@ impl SimplePeridottroller {
                         env.storage()
                             .persistent()
                             .set(&DataKey::BorrowIndex(market.clone()), &idx);
+                        storage::bump_reward_market_ttl(&env, &market);
                     }
                     env.storage()
                         .persistent()
                         .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+                    storage::bump_reward_market_ttl(&env, &market);
                 }
             } else {
                 env.storage()
                     .persistent()
                     .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+                storage::bump_reward_market_ttl(&env, &market);
             }
         }
     }
@@ -2969,6 +2986,7 @@ impl SimplePeridottroller {
         user_ptokens_hint: Option<u128>,
     ) {
         use soroban_sdk::IntoVal;
+        storage::bump_reward_user_ttl(&env, &user, &market);
         let idx: u128 = env
             .storage()
             .persistent()
@@ -2983,7 +3001,8 @@ impl SimplePeridottroller {
             if user_idx_opt.is_none() {
                 env.storage()
                     .persistent()
-                    .set(&DataKey::UserSupplyIndex(user, market), &idx);
+                    .set(&DataKey::UserSupplyIndex(user.clone(), market.clone()), &idx);
+                storage::bump_reward_user_ttl(&env, &user, &market);
             }
             return;
         }
@@ -3005,10 +3024,12 @@ impl SimplePeridottroller {
             env.storage()
                 .persistent()
                 .set(&DataKey::Accrued(user.clone()), &acc.saturating_add(add));
+            storage::bump_reward_user_ttl(&env, &user, &market);
         }
         env.storage()
             .persistent()
-            .set(&DataKey::UserSupplyIndex(user, market), &idx);
+            .set(&DataKey::UserSupplyIndex(user.clone(), market.clone()), &idx);
+        storage::bump_reward_user_ttl(&env, &user, &market);
     }
 
     fn distribute_borrow(
@@ -3018,6 +3039,7 @@ impl SimplePeridottroller {
         user_borrowed_hint: Option<u128>,
     ) {
         use soroban_sdk::IntoVal;
+        storage::bump_reward_user_ttl(&env, &user, &market);
         let idx: u128 = env
             .storage()
             .persistent()
@@ -3029,6 +3051,7 @@ impl SimplePeridottroller {
             .get(&DataKey::UserBorrowIndex(user.clone(), market.clone()))
             .unwrap_or(INDEX_SCALE_1E18);
         if idx == uidx {
+            storage::bump_reward_user_ttl(&env, &user, &market);
             return;
         }
         let debt: u128 = user_borrowed_hint.unwrap_or_else(|| {
@@ -3049,10 +3072,12 @@ impl SimplePeridottroller {
             env.storage()
                 .persistent()
                 .set(&DataKey::Accrued(user.clone()), &acc.saturating_add(add));
+            storage::bump_reward_user_ttl(&env, &user, &market);
         }
         env.storage()
             .persistent()
-            .set(&DataKey::UserBorrowIndex(user, market), &idx);
+            .set(&DataKey::UserBorrowIndex(user.clone(), market.clone()), &idx);
+        storage::bump_reward_user_ttl(&env, &user, &market);
     }
 
     // UX: allow claiming for many users at once (permissionless)
