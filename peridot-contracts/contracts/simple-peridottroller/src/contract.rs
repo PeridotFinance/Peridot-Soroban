@@ -1617,26 +1617,27 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
-        let supported: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::SupportedMarkets)
-            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
             if m == exclude_market {
                 continue;
             }
-            if !supported.get(m.clone()).unwrap_or(false) {
+            // First read: lets us skip expensive accrual for markets with no debt.
+            let mut debt: u128 = env.invoke_contract(
+                &m,
+                &Symbol::new(&env, "get_user_borrow_balance"),
+                (user.clone(),).into_val(&env),
+            );
+            if debt == 0 {
                 continue;
             }
-            // Keep debt reads fresh for external callers by accruing before reading balance.
+            // Keep debt reads fresh for external callers where debt exists.
             let _: () = env.invoke_contract(
                 &m,
                 &Symbol::new(&env, "update_interest"),
                 ().into_val(&env),
             );
-            let debt: u128 = env.invoke_contract(
+            debt = env.invoke_contract(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),

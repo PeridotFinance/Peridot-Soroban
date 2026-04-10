@@ -699,6 +699,53 @@ fn test_get_borrows_excl_accrues_interest_before_reading_debt() {
     assert!(stale_market.was_updated());
 }
 
+#[test]
+fn test_get_borrows_excl_counts_debt_from_unsupported_entered_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let exclude_market = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let stale_market_id = env.register(StaleBorrowMarket, ());
+    let stale_market = StaleBorrowMarketClient::new(&env, &stale_market_id);
+    stale_market.initialize(&token);
+    stale_market.set_debt(&user, &50u128);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&stale_market_id);
+    comp.enter_market(&user, &stale_market_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128); // $1.00
+
+    // Simulate delist/misconfiguration: market removed from SupportedMarkets
+    // but still present in UserMarkets with outstanding debt.
+    env.as_contract(&comp_id, || {
+        let mut markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        markets.remove(stale_market_id.clone());
+        env.storage()
+            .persistent()
+            .set(&DataKey::SupportedMarkets, &markets);
+    });
+
+    // Debt from the unsupported-but-entered market must still be counted.
+    assert_eq!(comp.get_borrows_excl(&user, &exclude_market), 50u128);
+}
+
 // Mock Reflector oracle for tests
 #[contract]
 struct MockOracle;
@@ -916,18 +963,21 @@ impl StaleBorrowMarket {
     }
 
     pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
+        let debt: u128 = env
+            .storage()
+            .persistent()
+            .get(&StaleBorrowMarketKey::Debt(user))
+            .unwrap_or(0u128);
         let updated = env
             .storage()
             .persistent()
             .get(&StaleBorrowMarketKey::Updated)
             .unwrap_or(false);
         if !updated {
-            return 0u128;
+            // Simulate stale accounting that under-reports until update_interest is called.
+            return debt.saturating_sub(1);
         }
-        env.storage()
-            .persistent()
-            .get(&StaleBorrowMarketKey::Debt(user))
-            .unwrap_or(0u128)
+        debt
     }
 
     pub fn was_updated(env: Env) -> bool {
