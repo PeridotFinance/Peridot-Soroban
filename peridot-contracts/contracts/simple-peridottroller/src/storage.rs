@@ -6,6 +6,8 @@ pub enum DataKey {
     PendingAdmin,
     Initialized,
     PauseGuardian,              // Address (optional)
+    PauseExpiryMigrationDone,   // bool: legacy pause-expiry migration completed
+    PauseExpiryMigrationCursor, // u32: next supported-market index to migrate
     SupportedMarkets,           // Map<Address, bool>
     UserMarkets(Address),       // Vec<Address>
     Oracle,                     // Address
@@ -13,9 +15,13 @@ pub enum DataKey {
     LiquidationIncentiveScaled, // u128 scaled 1e6
     ReserveRecipient,           // Address for liquidation fee pTokens
     PauseBorrow,                // Map<Address, bool>
+    PauseBorrowUntil,           // Map<Address, u64> pause expiry
     PauseRedeem,                // Map<Address, bool>
+    PauseRedeemUntil,           // Map<Address, u64> pause expiry
     PauseLiquidation,           // Map<Address, bool>
+    PauseLiquidationUntil,      // Map<Address, u64> pause expiry
     PauseDeposit,               // Map<Address, bool>
+    PauseDepositUntil,          // Map<Address, u64> pause expiry
     LiquidationFeeScaled,       // u128 scaled 1e6, portion to reserves
     OracleMaxAgeMultiplier,     // u64 multiplier of resolution (default 2)
     OracleAssetSymbol(Address), // Optional Reflector symbol override
@@ -120,18 +126,6 @@ pub fn bump_core_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::ReserveRecipient) {
         persistent.extend_ttl(&DataKey::ReserveRecipient, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseBorrow) {
-        persistent.extend_ttl(&DataKey::PauseBorrow, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseRedeem) {
-        persistent.extend_ttl(&DataKey::PauseRedeem, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseLiquidation) {
-        persistent.extend_ttl(&DataKey::PauseLiquidation, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseDeposit) {
-        persistent.extend_ttl(&DataKey::PauseDeposit, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::LiquidationFeeScaled) {
         persistent.extend_ttl(&DataKey::LiquidationFeeScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
