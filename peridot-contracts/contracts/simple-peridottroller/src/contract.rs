@@ -1343,21 +1343,31 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::UserMarkets(user.clone()))
             .unwrap_or(Vec::new(&env));
+
         // Safety: block exit if user has pTokens or borrow balance in this market
-        use soroban_sdk::IntoVal;
-        let pbal: u128 = env.invoke_contract(
+        // Use try_invoke_contract and fail-closed: reject exit if we cannot verify safety
+        use soroban_sdk::{IntoVal, InvokeError};
+
+        let pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
             &market,
             &Symbol::new(&env, "get_ptoken_balance"),
             (user.clone(),).into_val(&env),
-        );
+        ) {
+            Ok(Ok(bal)) => bal,
+            _ => panic!("Cannot verify collateral balance - market unavailable"),
+        };
         if pbal > 0 {
             panic!("Cannot exit with collateral in market");
         }
-        let debt: u128 = env.invoke_contract(
+
+        let debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
             &market,
             &Symbol::new(&env, "get_user_borrow_balance"),
             (user.clone(),).into_val(&env),
-        );
+        ) {
+            Ok(Ok(bal)) => bal,
+            _ => panic!("Cannot verify debt balance - market unavailable"),
+        };
         if debt > 0 {
             panic!("Cannot exit with outstanding debt");
         }
@@ -1615,6 +1625,7 @@ impl SimplePeridottroller {
     // Sum borrows in USD across markets excluding a specific market
     pub fn get_borrows_excl(env: Env, user: Address, exclude_market: Address) -> u128 {
         bump_core_ttl(&env);
+        use soroban_sdk::{IntoVal, InvokeError};
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
         for i in 0..markets.len() {
@@ -1623,34 +1634,65 @@ impl SimplePeridottroller {
                 continue;
             }
             // First read: lets us skip expensive accrual for markets with no debt.
-            let mut debt: u128 = env.invoke_contract(
+            let mut debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
-            );
+            ) {
+                Ok(Ok(v)) => v,
+                _ => {
+                    // Cannot safely determine debt for this market; fail closed.
+                    total = u128::MAX;
+                    break;
+                }
+            };
             if debt == 0 {
                 continue;
             }
             // Keep debt reads fresh for external callers where debt exists.
-            let _: () = env.invoke_contract(
-                &m,
-                &Symbol::new(&env, "update_interest"),
-                ().into_val(&env),
-            );
-            debt = env.invoke_contract(
+            if env
+                .try_invoke_contract::<(), InvokeError>(
+                    &m,
+                    &Symbol::new(&env, "update_interest"),
+                    ().into_val(&env),
+                )
+                .is_err()
+            {
+                total = u128::MAX;
+                break;
+            }
+            debt = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
-            );
+            ) {
+                Ok(Ok(v)) => v,
+                _ => {
+                    total = u128::MAX;
+                    break;
+                }
+            };
             if debt == 0 {
                 continue;
             }
-            let token: Address = env.invoke_contract(
+            let token: Address = match env.try_invoke_contract::<Address, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_underlying_token"),
                 ().into_val(&env),
-            );
-            let (price, scale) = Self::require_price(env.clone(), token);
+            ) {
+                Ok(Ok(v)) => v,
+                _ => {
+                    total = u128::MAX;
+                    break;
+                }
+            };
+            let (price, scale) = match Self::try_require_price(&env, &token) {
+                Some(v) => v,
+                None => {
+                    total = u128::MAX;
+                    break;
+                }
+            };
             let usd = (debt.saturating_mul(price)) / scale;
             total = total.saturating_add(usd);
         }
@@ -1660,20 +1702,33 @@ impl SimplePeridottroller {
     // Sum collateral in USD across markets excluding a specific market
     pub fn get_collateral_excl_usd(env: Env, user: Address, exclude_market: Address) -> u128 {
         bump_core_ttl(&env);
-        let (_collateral_usd, _borrows) = Self::sum_positions_usd(env, user, Some(exclude_market));
-        _collateral_usd
+        let (collateral_usd, _borrows, indeterminate, _collateral_indeterminate) =
+            Self::sum_positions_usd(env, user, Some(exclude_market));
+        if indeterminate {
+            0u128
+        } else {
+            collateral_usd
+        }
+    }
+
+    fn account_liquidity_internal(env: Env, user: Address) -> (u128, u128, bool) {
+        let (collateral_usd, borrow_usd, indeterminate, _collateral_indeterminate) =
+            Self::sum_positions_usd(env, user, None);
+        if indeterminate {
+            return (0u128, u128::MAX, true);
+        }
+        if collateral_usd >= borrow_usd {
+            (collateral_usd - borrow_usd, 0u128, false)
+        } else {
+            (0u128, borrow_usd - collateral_usd, false)
+        }
     }
 
     // Account liquidity in USD across all entered markets: (liquidity, shortfall)
     pub fn account_liquidity(env: Env, user: Address) -> (u128, u128) {
         bump_core_ttl(&env);
-        let (_collateral_usd, borrow_usd) =
-            Self::sum_positions_usd(env.clone(), user.clone(), None);
-        if _collateral_usd >= borrow_usd {
-            (_collateral_usd - borrow_usd, 0u128)
-        } else {
-            (0u128, borrow_usd - _collateral_usd)
-        }
+        let (liquidity, shortfall, _indeterminate) = Self::account_liquidity_internal(env, user);
+        (liquidity, shortfall)
     }
 
     // Hypothetical liquidity after borrowing `borrow_amount` of `market` underlying
@@ -1690,8 +1745,16 @@ impl SimplePeridottroller {
             panic!("market not entered");
         }
         // Exclude current market to avoid re-entry from that market during borrow path
-        let (collateral_usd, mut borrow_usd) =
-            Self::sum_positions_usd_for_markets(env.clone(), user.clone(), Some(market.clone()), markets);
+        let (collateral_usd, mut borrow_usd, indeterminate, _collateral_indeterminate) =
+            Self::sum_positions_usd_for_markets(
+            env.clone(),
+            user.clone(),
+            Some(market.clone()),
+            markets,
+        );
+        if indeterminate {
+            return (0u128, u128::MAX);
+        }
         // Add hypothetical borrow in USD using provided underlying token
         let (price, scale) = Self::require_price(env.clone(), underlying.clone());
         let extra = (borrow_amount.saturating_mul(price)) / scale;
@@ -1718,8 +1781,16 @@ impl SimplePeridottroller {
             panic!("market not entered");
         }
         // Exclude current market, then add hinted collateral and debt.
-        let (mut collateral_usd, mut borrow_usd) =
-            Self::sum_positions_usd_for_markets(env.clone(), user.clone(), Some(market.clone()), markets);
+        let (mut collateral_usd, mut borrow_usd, indeterminate, _collateral_indeterminate) =
+            Self::sum_positions_usd_for_markets(
+            env.clone(),
+            user.clone(),
+            Some(market.clone()),
+            markets,
+        );
+        if indeterminate {
+            return (0u128, u128::MAX);
+        }
         let (price, scale) = Self::require_price(env.clone(), underlying);
         if hint.ptoken_balance > 0 {
             let cf: u128 = Self::get_market_cf(env.clone(), market);
@@ -1786,8 +1857,11 @@ impl SimplePeridottroller {
             }
         }
         // Totals in USD
-        let (_collateral_usd, borrow_usd) =
+        let (_collateral_usd, borrow_usd, indeterminate, _collateral_indeterminate) =
             Self::sum_positions_usd(env.clone(), user.clone(), None);
+        if indeterminate {
+            return 0u128;
+        }
         if borrow_usd == 0 || !entered {
             // no debt => can redeem all pTokens (subject to liquidity)
             let pbal: u128 = env.invoke_contract(
@@ -1990,8 +2064,19 @@ impl SimplePeridottroller {
         if !collateral_entered {
             panic!("collateral market not entered");
         }
-        // ensure borrower is undercollateralized
-        let (_liq, shortfall) = Self::account_liquidity(env.clone(), borrower.clone());
+        // Ensure borrower is undercollateralized using known (deterministic) positions.
+        // If health is indeterminate due to unrelated failing markets, allow liquidation
+        // only when known positions are already in shortfall.
+        let (known_collateral_usd, known_borrow_usd, indeterminate, collateral_indeterminate) =
+            Self::sum_positions_usd(env.clone(), borrower.clone(), None);
+        let shortfall = known_borrow_usd.saturating_sub(known_collateral_usd);
+        let liquidity = known_collateral_usd.saturating_sub(known_borrow_usd);
+        if shortfall == 0 && indeterminate {
+            panic!("health indeterminate");
+        }
+        if shortfall > 0 && collateral_indeterminate {
+            panic!("health indeterminate");
+        }
         if shortfall == 0 {
             panic!("no shortfall");
         }
@@ -2103,7 +2188,7 @@ impl SimplePeridottroller {
             liquidity_after_repay,
         );
         let seize_ctx = SeizeContext {
-            liquidity: _liq,
+            liquidity,
             shortfall,
             max_redeem_ptokens,
             seize_ptokens,
@@ -2328,14 +2413,19 @@ impl SimplePeridottroller {
         user: Address,
         exclude_market: Option<Address>,
         markets: Vec<Address>,
-    ) -> (u128, u128) {
+    ) -> (u128, u128, bool, bool) {
         let mut collateral_total: u128 = 0u128;
         let mut borrow_total: u128 = 0u128;
+        let mut indeterminate = false;
+        let mut collateral_indeterminate = false;
         let supported_markets: Map<Address, bool> = env
             .storage()
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+
+        use soroban_sdk::{IntoVal, InvokeError};
+
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
             if let Some(ex) = exclude_market.clone() {
@@ -2347,39 +2437,92 @@ impl SimplePeridottroller {
             if !is_supported {
                 continue;
             }
+            let market_cf: u128 = Self::get_market_cf(env.clone(), m.clone());
 
-            // Underlying token and price
-            use soroban_sdk::IntoVal;
-            let token: Address = env.invoke_contract(
-                &m,
-                &Symbol::new(&env, "get_underlying_token"),
-                ().into_val(&env),
-            );
-            let pbal: u128 = env.invoke_contract(
+            // Get pToken balance — fail-open for collateral by default.
+            // A read failure alone should not poison account health unless debt/position
+            // evidence later shows this market is material to solvency.
+            let mut pbal_known = true;
+            let pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_ptoken_balance"),
                 (user.clone(),).into_val(&env),
-            );
-            let debt: u128 = env.invoke_contract(
+            ) {
+                Ok(Ok(bal)) => bal,
+                _ => {
+                    pbal_known = false;
+                    if market_cf > 0 {
+                        collateral_indeterminate = true;
+                    }
+                    0u128
+                }
+            };
+
+            // Get borrow balance — fail-closed on debt read failure
+            let debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
-            );
+            ) {
+                Ok(Ok(bal)) => bal,
+                _ => {
+                    indeterminate = true;
+                    if pbal_known && pbal > 0 && market_cf > 0 {
+                        collateral_indeterminate = true;
+                    }
+                    continue;
+                }
+            };
+
             if pbal == 0 && debt == 0 {
                 continue;
             }
-            let (price, scale) = Self::require_price(env.clone(), token.clone());
+
+            // If this market has any position, inability to resolve underlying token
+            // makes health valuation indeterminate (cannot safely skip potential debt).
+            let token: Address = match env.try_invoke_contract::<Address, InvokeError>(
+                &m,
+                &Symbol::new(&env, "get_underlying_token"),
+                ().into_val(&env),
+            ) {
+                Ok(Ok(addr)) => addr,
+                _ => {
+                    indeterminate = true;
+                    if pbal_known && pbal > 0 && market_cf > 0 {
+                        collateral_indeterminate = true;
+                    }
+                    continue;
+                }
+            };
+
+            // Get price — fail-closed when debt exists
+            let (price, scale) = match Self::try_require_price(&env, &token) {
+                Some((p, s)) if p > 0 => (p, s),
+                _ => {
+                    if debt > 0 {
+                        indeterminate = true;
+                        if pbal_known && pbal > 0 && market_cf > 0 {
+                            collateral_indeterminate = true;
+                        }
+                        continue;
+                    }
+                    continue;
+                }
+            };
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
             if pbal > 0 {
-                let rate: u128 = env.invoke_contract(
+                // Exchange rate failure → treat as 0 collateral, still count debt
+                let rate: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                     &m,
                     &Symbol::new(&env, "get_exchange_rate"),
                     ().into_val(&env),
-                );
-                let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
+                ) {
+                    Ok(Ok(r)) if r > 0 => r,
+                    _ => 0u128,
+                };
                 let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
-                let discounted = (underlying_amount.saturating_mul(cf)) / 1_000_000u128;
+                let discounted = (underlying_amount.saturating_mul(market_cf)) / 1_000_000u128;
                 let usd = (discounted.saturating_mul(price)) / scale;
                 collateral_total = collateral_total.saturating_add(usd);
             }
@@ -2390,10 +2533,14 @@ impl SimplePeridottroller {
                 borrow_total = borrow_total.saturating_add(usd);
             }
         }
-        (collateral_total, borrow_total)
+        (collateral_total, borrow_total, indeterminate, collateral_indeterminate)
     }
 
-    fn sum_positions_usd(env: Env, user: Address, exclude_market: Option<Address>) -> (u128, u128) {
+    fn sum_positions_usd(
+        env: Env,
+        user: Address,
+        exclude_market: Option<Address>,
+    ) -> (u128, u128, bool, bool) {
         let markets = Self::get_user_markets(env.clone(), user.clone());
         Self::sum_positions_usd_for_markets(env, user, exclude_market, markets)
     }
@@ -2418,12 +2565,19 @@ impl SimplePeridottroller {
             .saturating_mul(1_000_000u128)
             .saturating_mul(scale)
             / cf.saturating_mul(price);
-        use soroban_sdk::IntoVal;
-        let available_underlying: u128 = env.invoke_contract(
+
+        // Use try_invoke_contract for get_available_liquidity
+        // Fail-closed: return 0 if we cannot verify available liquidity
+        use soroban_sdk::{IntoVal, InvokeError};
+        let available_underlying: u128 = match env.try_invoke_contract::<u128, InvokeError>(
             &market,
             &Symbol::new(&env, "get_available_liquidity"),
             ().into_val(&env),
-        );
+        ) {
+            Ok(Ok(liq)) => liq,
+            _ => return 0u128, // cannot verify safety - block liquidation
+        };
+
         let clamped_underlying = if redeemable_underlying_by_health < available_underlying {
             redeemable_underlying_by_health
         } else {
@@ -2536,6 +2690,47 @@ impl SimplePeridottroller {
             }
             _ => None,
         }
+    }
+
+    // Non-panicking version of require_price for FIND-039 fix
+    // Returns None instead of panicking when price unavailable
+    fn try_require_price(env: &Env, token: &Address) -> Option<(u128, u128)> {
+        bump_core_ttl(env);
+        storage::bump_price_cache_ttl(env, token);
+        if let Some(cached) = env
+            .storage()
+            .persistent()
+            .get::<_, CachedPrice>(&DataKey::PriceCache(token.clone()))
+        {
+            if cached.price > 0
+                && Self::cached_price_fresh(env, cached.timestamp, cached.resolution)
+            {
+                return Some((cached.price, cached.scale));
+            }
+        }
+        // Prefer fresh live oracle refresh over fallback
+        if let Some((price, scale)) = Self::cache_price(env.clone(), token.clone()) {
+            if price > 0 {
+                return Some((price, scale));
+            }
+        }
+        storage::bump_fallback_price_ttl(env, token);
+        storage::bump_fallback_price_set_at_ttl(env, token);
+        if let Some(fallback) = env
+            .storage()
+            .persistent()
+            .get::<_, FallbackPrice>(&DataKey::FallbackPrice(token.clone()))
+        {
+            let set_at: Option<u64> = env
+                .storage()
+                .persistent()
+                .get(&DataKey::FallbackPriceSetAt(token.clone()));
+            if fallback.price > 0 && set_at.map(|t| Self::fallback_price_fresh(env, t)).unwrap_or(false)
+            {
+                return Some((fallback.price, fallback.scale));
+            }
+        }
+        None // Return None instead of panicking
     }
 
     fn require_price(env: Env, token: Address) -> (u128, u128) {
