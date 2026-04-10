@@ -1757,11 +1757,12 @@ impl SimplePeridottroller {
         // Exclude current market to avoid re-entry from that market during borrow path
         let (collateral_usd, mut borrow_usd, indeterminate, _collateral_indeterminate) =
             Self::sum_positions_usd_for_markets(
-            env.clone(),
-            user.clone(),
-            Some(market.clone()),
-            markets,
-        );
+                env.clone(),
+                user.clone(),
+                Some(market.clone()),
+                markets,
+                false,
+            );
         if indeterminate {
             return (0u128, u128::MAX);
         }
@@ -1786,6 +1787,8 @@ impl SimplePeridottroller {
         hint: MarketLiquidityHint,
     ) -> (u128, u128) {
         bump_core_ttl(&env);
+        // This path may refresh cross-market state; restrict it to the calling market.
+        market.require_auth();
         let markets = Self::get_user_markets(env.clone(), user.clone());
         if !markets.contains(market.clone()) {
             panic!("market not entered");
@@ -1793,11 +1796,12 @@ impl SimplePeridottroller {
         // Exclude current market, then add hinted collateral and debt.
         let (mut collateral_usd, mut borrow_usd, indeterminate, _collateral_indeterminate) =
             Self::sum_positions_usd_for_markets(
-            env.clone(),
-            user.clone(),
-            Some(market.clone()),
-            markets,
-        );
+                env.clone(),
+                user.clone(),
+                Some(market.clone()),
+                markets,
+                true,
+            );
         if indeterminate {
             return (0u128, u128::MAX);
         }
@@ -2464,6 +2468,7 @@ impl SimplePeridottroller {
         user: Address,
         exclude_market: Option<Address>,
         markets: Vec<Address>,
+        refresh_market_state: bool,
     ) -> (u128, u128, bool, bool) {
         let mut collateral_total: u128 = 0u128;
         let mut borrow_total: u128 = 0u128;
@@ -2494,7 +2499,7 @@ impl SimplePeridottroller {
             // A read failure alone should not poison account health unless debt/position
             // evidence later shows this market is material to solvency.
             let mut pbal_known = true;
-            let pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
+            let mut pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_ptoken_balance"),
                 (user.clone(),).into_val(&env),
@@ -2510,7 +2515,7 @@ impl SimplePeridottroller {
             };
 
             // Get borrow balance — fail-closed on debt read failure
-            let debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
+            let mut debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
@@ -2524,6 +2529,53 @@ impl SimplePeridottroller {
                     continue;
                 }
             };
+
+            // For borrow-path hypothetical checks, refresh only markets with a position
+            // and then re-read user balances to use fresh values.
+            if refresh_market_state && (pbal > 0 || debt > 0) {
+                let refreshed = env.try_invoke_contract::<(), InvokeError>(
+                    &m,
+                    &Symbol::new(&env, "update_interest"),
+                    ().into_val(&env),
+                );
+                if !matches!(refreshed, Ok(Ok(()))) {
+                    indeterminate = true;
+                    if pbal_known && pbal > 0 && market_cf > 0 {
+                        collateral_indeterminate = true;
+                    }
+                    continue;
+                }
+
+                pbal = match env.try_invoke_contract::<u128, InvokeError>(
+                    &m,
+                    &Symbol::new(&env, "get_ptoken_balance"),
+                    (user.clone(),).into_val(&env),
+                ) {
+                    Ok(Ok(bal)) => bal,
+                    _ => {
+                        pbal_known = false;
+                        if market_cf > 0 {
+                            collateral_indeterminate = true;
+                        }
+                        0u128
+                    }
+                };
+
+                debt = match env.try_invoke_contract::<u128, InvokeError>(
+                    &m,
+                    &Symbol::new(&env, "get_user_borrow_balance"),
+                    (user.clone(),).into_val(&env),
+                ) {
+                    Ok(Ok(bal)) => bal,
+                    _ => {
+                        indeterminate = true;
+                        if pbal_known && pbal > 0 && market_cf > 0 {
+                            collateral_indeterminate = true;
+                        }
+                        continue;
+                    }
+                };
+            }
 
             if pbal == 0 && debt == 0 {
                 continue;
@@ -2593,7 +2645,7 @@ impl SimplePeridottroller {
         exclude_market: Option<Address>,
     ) -> (u128, u128, bool, bool) {
         let markets = Self::get_user_markets(env.clone(), user.clone());
-        Self::sum_positions_usd_for_markets(env, user, exclude_market, markets)
+        Self::sum_positions_usd_for_markets(env, user, exclude_market, markets, false)
     }
 
     fn liquidation_redeem_max_ptokens(

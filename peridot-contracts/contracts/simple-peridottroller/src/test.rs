@@ -753,6 +753,145 @@ fn test_get_borrows_excl_accrues_interest_before_reading_debt() {
 }
 
 #[test]
+fn test_hypothetical_liquidity_with_hint_refreshes_cross_market_interest() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    // Current market (the market passed as `market` in hypothetical_liquidity_with_hint).
+    let current_market_id = env.register(rv::ReceiptVault, ());
+    let current_market = rv::ReceiptVaultClient::new(&env, &current_market_id);
+    current_market.initialize(&token, &0u128, &0u128, &admin);
+    current_market.enable_static_rates(&admin);
+
+    // Cross-market with stale debt behavior until update_interest() is called.
+    let stale_market_id = env.register(StaleBorrowMarket, ());
+    let stale_market = StaleBorrowMarketClient::new(&env, &stale_market_id);
+    stale_market.initialize(&token);
+    stale_market.set_debt(&user, &100u128); // stale read would return 99
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&current_market_id);
+    comp.add_market(&stale_market_id);
+    comp.enter_market(&user, &current_market_id);
+    comp.enter_market(&user, &stale_market_id);
+    comp.set_market_cf(&current_market_id, &1_000_000u128); // 100% CF for precise arithmetic
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128); // $1
+
+    // Hint says current-market collateral is worth 100 underlying.
+    // Borrowing 1 extra should be blocked only if cross-market debt is refreshed to 100.
+    let hint = MarketLiquidityHint {
+        ptoken_balance: 100u128,
+        user_borrowed: 0u128,
+        exchange_rate: 1_000_000u128,
+    };
+    let (_liq, shortfall) = env.as_contract(&current_market_id, || {
+        comp.hypothetical_liquidity_with_hint(&user, &current_market_id, &1u128, &token, &hint)
+    });
+
+    assert!(stale_market.was_updated());
+    assert_eq!(shortfall, 1u128);
+}
+
+#[test]
+fn test_hypothetical_liquidity_does_not_refresh_cross_market_interest() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let current_market_id = env.register(rv::ReceiptVault, ());
+    let current_market = rv::ReceiptVaultClient::new(&env, &current_market_id);
+    current_market.initialize(&token, &0u128, &0u128, &admin);
+    current_market.enable_static_rates(&admin);
+
+    let stale_market_id = env.register(StaleBorrowMarket, ());
+    let stale_market = StaleBorrowMarketClient::new(&env, &stale_market_id);
+    stale_market.initialize(&token);
+    stale_market.set_debt(&user, &100u128);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&current_market_id);
+    comp.add_market(&stale_market_id);
+    comp.enter_market(&user, &current_market_id);
+    comp.enter_market(&user, &stale_market_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128);
+
+    let _ = comp.hypothetical_liquidity(&user, &current_market_id, &0u128, &token);
+    assert!(!stale_market.was_updated());
+}
+
+#[test]
+fn test_hypothetical_liquidity_with_hint_ignores_refresh_failure_for_zero_position_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let current_market_id = env.register(rv::ReceiptVault, ());
+    let current_market = rv::ReceiptVaultClient::new(&env, &current_market_id);
+    current_market.initialize(&token, &0u128, &0u128, &admin);
+    current_market.enable_static_rates(&admin);
+
+    let zero_pos_id = env.register(UpdateFailNoPositionMarket, ());
+    let zero_pos = UpdateFailNoPositionMarketClient::new(&env, &zero_pos_id);
+    zero_pos.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&current_market_id);
+    comp.add_market(&zero_pos_id);
+    comp.enter_market(&user, &current_market_id);
+    comp.enter_market(&user, &zero_pos_id);
+    comp.set_market_cf(&current_market_id, &1_000_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128);
+
+    let hint = MarketLiquidityHint {
+        ptoken_balance: 100u128,
+        user_borrowed: 0u128,
+        exchange_rate: 1_000_000u128,
+    };
+
+    let (_liq, shortfall) = env.as_contract(&current_market_id, || {
+        comp.hypothetical_liquidity_with_hint(&user, &current_market_id, &10u128, &token, &hint)
+    });
+    assert_eq!(shortfall, 0u128);
+}
+
+#[test]
 fn test_get_borrows_excl_counts_debt_from_unsupported_entered_market() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -1210,6 +1349,46 @@ impl StaleBorrowMarket {
             .persistent()
             .get(&StaleBorrowMarketKey::Updated)
             .unwrap_or(false)
+    }
+}
+
+#[contract]
+struct UpdateFailNoPositionMarket;
+
+#[contracttype]
+enum UpdateFailNoPositionMarketKey {
+    Underlying,
+}
+
+#[contractimpl]
+impl UpdateFailNoPositionMarket {
+    pub fn initialize(env: Env, underlying: Address) {
+        env.storage()
+            .persistent()
+            .set(&UpdateFailNoPositionMarketKey::Underlying, &underlying);
+    }
+
+    pub fn get_underlying_token(env: Env) -> Address {
+        env.storage()
+            .persistent()
+            .get(&UpdateFailNoPositionMarketKey::Underlying)
+            .expect("underlying not set")
+    }
+
+    pub fn update_interest(_env: Env) {
+        panic!("update unavailable");
+    }
+
+    pub fn get_ptoken_balance(_env: Env, _user: Address) -> u128 {
+        0u128
+    }
+
+    pub fn get_user_borrow_balance(_env: Env, _user: Address) -> u128 {
+        0u128
+    }
+
+    pub fn get_exchange_rate(_env: Env) -> u128 {
+        1_000_000u128
     }
 }
 
