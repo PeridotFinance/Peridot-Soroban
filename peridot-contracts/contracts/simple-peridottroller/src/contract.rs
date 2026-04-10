@@ -2074,7 +2074,7 @@ impl SimplePeridottroller {
         if shortfall == 0 && indeterminate {
             panic!("health indeterminate");
         }
-        if shortfall > 0 && indeterminate && collateral_indeterminate {
+        if shortfall > 0 && collateral_indeterminate {
             panic!("health indeterminate");
         }
         if shortfall == 0 {
@@ -2437,6 +2437,7 @@ impl SimplePeridottroller {
             if !is_supported {
                 continue;
             }
+            let market_cf: u128 = Self::get_market_cf(env.clone(), m.clone());
 
             // Get pToken balance — fail-open for collateral by default.
             // A read failure alone should not poison account health unless debt/position
@@ -2450,6 +2451,9 @@ impl SimplePeridottroller {
                 Ok(Ok(bal)) => bal,
                 _ => {
                     pbal_known = false;
+                    if market_cf > 0 {
+                        collateral_indeterminate = true;
+                    }
                     0u128
                 }
             };
@@ -2463,7 +2467,7 @@ impl SimplePeridottroller {
                 Ok(Ok(bal)) => bal,
                 _ => {
                     indeterminate = true;
-                    if pbal_known && pbal > 0 {
+                    if pbal_known && pbal > 0 && market_cf > 0 {
                         collateral_indeterminate = true;
                     }
                     continue;
@@ -2484,7 +2488,7 @@ impl SimplePeridottroller {
                 Ok(Ok(addr)) => addr,
                 _ => {
                     indeterminate = true;
-                    if pbal_known && pbal > 0 {
+                    if pbal_known && pbal > 0 && market_cf > 0 {
                         collateral_indeterminate = true;
                     }
                     continue;
@@ -2497,7 +2501,7 @@ impl SimplePeridottroller {
                 _ => {
                     if debt > 0 {
                         indeterminate = true;
-                        if pbal_known && pbal > 0 {
+                        if pbal_known && pbal > 0 && market_cf > 0 {
                             collateral_indeterminate = true;
                         }
                         continue;
@@ -2517,9 +2521,8 @@ impl SimplePeridottroller {
                     Ok(Ok(r)) if r > 0 => r,
                     _ => 0u128,
                 };
-                let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
                 let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
-                let discounted = (underlying_amount.saturating_mul(cf)) / 1_000_000u128;
+                let discounted = (underlying_amount.saturating_mul(market_cf)) / 1_000_000u128;
                 let usd = (discounted.saturating_mul(price)) / scale;
                 collateral_total = collateral_total.saturating_add(usd);
             }
