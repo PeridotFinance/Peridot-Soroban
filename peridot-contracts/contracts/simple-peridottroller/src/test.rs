@@ -746,6 +746,33 @@ fn test_get_borrows_excl_counts_debt_from_unsupported_entered_market() {
     assert_eq!(comp.get_borrows_excl(&user, &exclude_market), 50u128);
 }
 
+#[test]
+fn test_get_borrows_excl_fails_closed_when_market_unavailable() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let exclude_market = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let broken_id = env.register(BrokenMarket, ());
+    let broken_market = BrokenMarketClient::new(&env, &broken_id);
+    broken_market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&broken_id);
+    comp.enter_market(&user, &broken_id);
+
+    // Do not trap when a market in UserMarkets is unavailable; return fail-closed debt.
+    assert_eq!(comp.get_borrows_excl(&user, &exclude_market), u128::MAX);
+}
+
 // Mock Reflector oracle for tests
 #[contract]
 struct MockOracle;
@@ -3842,17 +3869,12 @@ fn test_multi_market_supply_rewards() {
     assert_eq!(comp.get_accrued(&user), 32u128);
 }
 
-/// FIND-039 PoC: Demonstrates that cross-contract panics in sum_positions_usd
-/// no longer permanently lock accounts after applying try_invoke_contract fix.
+/// FIND-039 follow-up: A broken market in UserMarkets makes health indeterminate.
 ///
-/// Original vulnerability: If a user entered a market whose storage expired (or
-/// became malicious), ANY operation requiring sum_positions_usd (account_liquidity,
-/// liquidation, withdraw, borrow) would panic, permanently locking the account.
-///
-/// Post-fix behavior: Markets that fail cross-contract calls are gracefully skipped,
-/// allowing liquidation and other operations to proceed.
+/// This intentionally fails closed to prevent false shortfall/liquidation outcomes.
 #[test]
-fn test_find_039_broken_market_does_not_lock_account() {
+#[should_panic(expected = "health indeterminate")]
+fn test_find_039_broken_market_health_is_indeterminate() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -3945,35 +3967,6 @@ fn test_find_039_broken_market_does_not_lock_account() {
     comp.add_market(&broken_id); // This succeeds (get_underlying_token works)
     comp.enter_market(&alice, &broken_id); // Alice's list: [vault_b, vault_a, broken]
 
-    // §C: FIND-039 FIX — account_liquidity() NO LONGER PANICS
-    // With try_invoke_contract fix + ALMANAX sentinel pattern:
-    //
-    // OLD BEHAVIOR (pre-fix): Would panic with "storage: missing value for key"
-    // NEW BEHAVIOR (Almanax guidance): Returns sentinel shortfall (0, u128::MAX)
-    //   - Broken market detected during sum_positions_usd_for_markets
-    //   - Sets borrow_total = u128::MAX (maximum risk)
-    //   - Account treated as maximally undercollateralized
-    //   - Blocks borrow/withdraw/exit but allows repay/close
-    let (liq_after, shortfall_after) = comp.account_liquidity(&alice);
-    assert_eq!(liq_after, 0u128, "§C: No liquidity with broken market");
-    assert!(
-        shortfall_after > 1_000_000_000_000_000_000u128,
-        "§C: Sentinel shortfall (very large) due to broken market, got {}",
-        shortfall_after
-    );
-
-    // §D: Verify query operations still work (account not completely locked)
-    // This would panic pre-fix due to broken market in entered list.
-    // The call succeeding (not panicking) demonstrates the FIND-039 fix works.
-    let _max_redeem = comp.preview_redeem_max(&alice, &vault_b_id);
-
-    // Also verify we can query account_liquidity again (doesn't panic)
-    let (_final_liq, _final_shortfall) = comp.account_liquidity(&alice);
-
-    // Success! Alice's account is not COMPLETELY locked despite having
-    // a broken market. Pre-fix: all calls would panic.
-    // Post-fix with Almanax sentinel: calls succeed but account is maximally risky.
-    //
-    // ALMANAX GUIDANCE: Sentinel shortfall (0, u128::MAX) prevents risky operations
-    // (borrow/withdraw/exit) while allowing graceful degradation (repay/close/query).
+    // Indeterminate health must revert instead of fabricating max debt/shortfall.
+    let _ = comp.account_liquidity(&alice);
 }

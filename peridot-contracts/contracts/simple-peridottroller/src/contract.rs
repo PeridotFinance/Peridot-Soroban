@@ -1625,6 +1625,7 @@ impl SimplePeridottroller {
     // Sum borrows in USD across markets excluding a specific market
     pub fn get_borrows_excl(env: Env, user: Address, exclude_market: Address) -> u128 {
         bump_core_ttl(&env);
+        use soroban_sdk::{IntoVal, InvokeError};
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
         for i in 0..markets.len() {
@@ -1633,34 +1634,65 @@ impl SimplePeridottroller {
                 continue;
             }
             // First read: lets us skip expensive accrual for markets with no debt.
-            let mut debt: u128 = env.invoke_contract(
+            let mut debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
-            );
+            ) {
+                Ok(Ok(v)) => v,
+                _ => {
+                    // Cannot safely determine debt for this market; fail closed.
+                    total = u128::MAX;
+                    break;
+                }
+            };
             if debt == 0 {
                 continue;
             }
             // Keep debt reads fresh for external callers where debt exists.
-            let _: () = env.invoke_contract(
-                &m,
-                &Symbol::new(&env, "update_interest"),
-                ().into_val(&env),
-            );
-            debt = env.invoke_contract(
+            if env
+                .try_invoke_contract::<(), InvokeError>(
+                    &m,
+                    &Symbol::new(&env, "update_interest"),
+                    ().into_val(&env),
+                )
+                .is_err()
+            {
+                total = u128::MAX;
+                break;
+            }
+            debt = match env.try_invoke_contract::<u128, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
                 (user.clone(),).into_val(&env),
-            );
+            ) {
+                Ok(Ok(v)) => v,
+                _ => {
+                    total = u128::MAX;
+                    break;
+                }
+            };
             if debt == 0 {
                 continue;
             }
-            let token: Address = env.invoke_contract(
+            let token: Address = match env.try_invoke_contract::<Address, InvokeError>(
                 &m,
                 &Symbol::new(&env, "get_underlying_token"),
                 ().into_val(&env),
-            );
-            let (price, scale) = Self::require_price(env.clone(), token);
+            ) {
+                Ok(Ok(v)) => v,
+                _ => {
+                    total = u128::MAX;
+                    break;
+                }
+            };
+            let (price, scale) = match Self::try_require_price(&env, &token) {
+                Some(v) => v,
+                None => {
+                    total = u128::MAX;
+                    break;
+                }
+            };
             let usd = (debt.saturating_mul(price)) / scale;
             total = total.saturating_add(usd);
         }
@@ -2388,11 +2420,7 @@ impl SimplePeridottroller {
                 (user.clone(),).into_val(&env),
             ) {
                 Ok(Ok(bal)) => bal,
-                _ => {
-                    // Sentinel pattern: treat account as maximally risky
-                    borrow_total = u128::MAX;
-                    break;
-                }
+                _ => panic!("health indeterminate"),
             };
 
             if pbal == 0 && debt == 0 {
@@ -2404,9 +2432,7 @@ impl SimplePeridottroller {
                 Some((p, s)) if p > 0 => (p, s),
                 _ => {
                     if debt > 0 {
-                        // Sentinel pattern: cannot value debt without price
-                        borrow_total = u128::MAX;
-                        break;
+                        panic!("health indeterminate");
                     }
                     continue;
                 }
