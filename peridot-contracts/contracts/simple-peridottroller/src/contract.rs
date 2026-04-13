@@ -2710,6 +2710,12 @@ impl SimplePeridottroller {
                 return Some((cached.price, cached.scale));
             }
         }
+        // Prefer refreshing from live oracle before falling back to static configured prices.
+        if let Some((price, scale)) = Self::cache_price(env.clone(), token.clone()) {
+            if price > 0 {
+                return Some((price, scale));
+            }
+        }
         storage::bump_fallback_price_ttl(&env, &token);
         storage::bump_fallback_price_set_at_ttl(&env, &token);
         if let Some(fallback) = env

@@ -19,6 +19,7 @@ pub trait ReceiptVaultContract {
 pub trait PeridottrollerContract {
     fn account_liquidity(env: Env, user: Address) -> (u128, u128);
     fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)>;
+    fn cache_price(env: Env, token: Address) -> Option<(u128, u128)>;
     fn liquidate(
         env: Env,
         borrower: Address,
@@ -145,6 +146,7 @@ pub fn get_max_slippage_bps(env: &Env) -> u128 {
 
 pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {
     let peridottroller = get_peridottroller(env);
+    let _ = peridottroller.cache_price(asset);
     let (num, den) = peridottroller
         .get_price_usd(asset)
         .expect("price unavailable");
