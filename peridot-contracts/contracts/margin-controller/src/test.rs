@@ -736,6 +736,33 @@ fn test_open_position_rejects_mismatched_swap_path() {
 }
 
 #[test]
+#[should_panic(expected = "bad swaps")]
+fn test_open_position_rejects_empty_swap_hop_path() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let empty_path: Vec<Address> = Vec::new(&env);
+    let swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)> = Vec::from_array(
+        &env,
+        [(
+            empty_path,
+            BytesN::from_array(&env, &[1u8; 32]),
+            Address::generate(&env),
+        )],
+    );
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &200u128,
+    );
+}
+
+#[test]
 #[should_panic(expected = "slippage too high")]
 fn test_open_position_rejects_low_slippage_floor() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();

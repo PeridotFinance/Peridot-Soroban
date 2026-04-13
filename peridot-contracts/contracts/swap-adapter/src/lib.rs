@@ -117,6 +117,9 @@ impl SwapAdapter {
             panic!("amount too large");
         }
         let now = env.ledger().timestamp();
+        if deadline < now {
+            panic!("deadline expired");
+        }
         if deadline > now.saturating_add(MAX_DEADLINE_SECONDS) {
             panic!("deadline too far");
         }
