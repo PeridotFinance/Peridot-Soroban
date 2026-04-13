@@ -876,6 +876,27 @@ fn test_open_position_no_swap_rejects_leverage_above_pre_swap_cf_bound() {
 }
 
 #[test]
+#[should_panic(expected = "invalid market cf")]
+fn test_open_position_no_swap_rejects_invalid_market_cf_scale() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+
+    // Defensive check: unexpected CF scale from controller should fail fast.
+    comp.set_market_cf(&usdt_vault_id, &1_500_000u128);
+    controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &30u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+}
+
+#[test]
 #[should_panic(expected = "bad collateral")]
 fn test_open_position_zero_collateral_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();

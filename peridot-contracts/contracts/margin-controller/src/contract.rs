@@ -641,8 +641,13 @@ impl MarginController {
     fn assert_pre_swap_leverage_supported(env: &Env, collateral_asset: &Address, leverage: u128) {
         let collateral_market = get_market(env, collateral_asset);
         let cf = get_peridottroller(env).get_market_cf(&collateral_market);
-        let requested_scaled = leverage.saturating_mul(SCALE_1E6);
-        let max_supported_scaled = SCALE_1E6.saturating_add(cf);
+        if cf > SCALE_1E6 {
+            panic!("invalid market cf");
+        }
+        let requested_scaled = leverage
+            .checked_mul(SCALE_1E6)
+            .expect("leverage overflow");
+        let max_supported_scaled = SCALE_1E6.checked_add(cf).expect("cf overflow");
         if requested_scaled > max_supported_scaled {
             panic!("leverage unsupported pre-swap");
         }
