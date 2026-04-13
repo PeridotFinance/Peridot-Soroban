@@ -1,4 +1,6 @@
-use soroban_sdk::{contracttype, Address, BytesN, Env, Vec};
+use soroban_sdk::{
+    contracttype, Address, BytesN, Env, IntoVal, InvokeError, Symbol, Vec,
+};
 
 use crate::constants::*;
 use crate::helpers::{bump_core_ttl, bump_market_ttl};
@@ -19,6 +21,7 @@ pub trait ReceiptVaultContract {
 pub trait PeridottrollerContract {
     fn account_liquidity(env: Env, user: Address) -> (u128, u128);
     fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)>;
+    fn cache_price(env: Env, token: Address) -> Option<(u128, u128)>;
     fn liquidate(
         env: Env,
         borrower: Address,
@@ -144,6 +147,16 @@ pub fn get_max_slippage_bps(env: &Env) -> u128 {
 }
 
 pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {
+    let peridottroller_addr: Address = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Peridottroller)
+        .expect("peridottroller not set");
+    let _ = env.try_invoke_contract::<Option<(u128, u128)>, InvokeError>(
+        &peridottroller_addr,
+        &Symbol::new(env, "cache_price"),
+        (asset.clone(),).into_val(env),
+    );
     let peridottroller = get_peridottroller(env);
     let (num, den) = peridottroller
         .get_price_usd(asset)
