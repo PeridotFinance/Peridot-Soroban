@@ -22,6 +22,7 @@ enum MockPeridottrollerKey {
     LivePrice(Address),
     CachePriceCalls(Address),
     CachePriceShouldPanic,
+    MarketCF(Address),
     Liquidity(Address),
     Shortfall(Address),
     LastBorrower,
@@ -250,8 +251,18 @@ impl MockPeridottroller {
         false
     }
 
-    pub fn get_market_cf(_env: Env, _market: Address) -> u128 {
-        1_000_000u128
+    pub fn get_market_cf(env: Env, market: Address) -> u128 {
+        env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::MarketCF(market))
+            .unwrap_or(1_000_000u128)
+    }
+
+    pub fn set_market_cf(env: Env, market: Address, cf: u128) {
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::MarketCF(market), &cf);
     }
 
     pub fn get_collateral_excl_usd(
@@ -1004,6 +1015,48 @@ fn test_open_position_leverage_exceeds_max_panics() {
         &PositionSide::Long,
         &swaps_chain,
         &200u128,
+    );
+}
+
+#[test]
+#[should_panic(expected = "leverage unsupported pre-swap")]
+fn test_open_position_no_swap_rejects_leverage_above_pre_swap_cf_bound() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+
+    // With CF=50%, pre-swap borrow gate only supports up to 1.5x leverage.
+    comp.set_market_cf(&usdt_vault_id, &500_000u128);
+    controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &30u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+}
+
+#[test]
+#[should_panic(expected = "invalid market cf")]
+fn test_open_position_no_swap_rejects_invalid_market_cf_scale() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+
+    // Defensive check: unexpected CF scale from controller should fail fast.
+    comp.set_market_cf(&usdt_vault_id, &1_500_000u128);
+    controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &30u128,
+        &2u128,
+        &PositionSide::Long,
     );
 }
 
