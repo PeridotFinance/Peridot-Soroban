@@ -22,6 +22,7 @@ pub trait PeridottrollerContract {
     fn account_liquidity(env: Env, user: Address) -> (u128, u128);
     fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)>;
     fn cache_price(env: Env, token: Address) -> Option<(u128, u128)>;
+    fn get_market_cf(env: Env, market: Address) -> u128;
     fn liquidate(
         env: Env,
         borrower: Address,
