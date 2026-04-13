@@ -174,6 +174,9 @@ pub fn bump_core_ttl(env: &Env) {
     if persistent.has(&DataKey::MaxLeverage) {
         persistent.extend_ttl(&DataKey::MaxLeverage, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    if persistent.has(&DataKey::MaxSlippageBps) {
+        persistent.extend_ttl(&DataKey::MaxSlippageBps, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     if persistent.has(&DataKey::LiquidationBonus) {
         persistent.extend_ttl(&DataKey::LiquidationBonus, TTL_THRESHOLD, TTL_EXTEND_TO);
     }

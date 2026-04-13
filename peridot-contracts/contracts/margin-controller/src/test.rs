@@ -123,6 +123,7 @@ struct MockVault;
 enum MockVaultKey {
     PTokenBalance(Address),
     BorrowBalance(Address),
+    UnderlyingToken,
 }
 
 #[contractimpl]
@@ -208,12 +209,38 @@ impl MockPeridottroller {
 
 #[contractimpl]
 impl MockVault {
+    pub fn set_underlying_token(env: Env, token: Address) {
+        env.storage()
+            .persistent()
+            .set(&MockVaultKey::UnderlyingToken, &token);
+    }
+
+    pub fn get_underlying_token(env: Env) -> Address {
+        env.storage()
+            .persistent()
+            .get(&MockVaultKey::UnderlyingToken)
+            .expect("underlying not set")
+    }
+
     pub fn deposit(env: Env, user: Address, amount: u128) {
         let key = MockVaultKey::PTokenBalance(user);
         let current: u128 = env.storage().persistent().get(&key).unwrap_or(0);
         env.storage()
             .persistent()
             .set(&key, &current.saturating_add(amount));
+    }
+
+    pub fn withdraw(env: Env, user: Address, ptoken_amount: u128) {
+        let key = MockVaultKey::PTokenBalance(user.clone());
+        let current: u128 = env.storage().persistent().get(&key).unwrap_or(0);
+        if ptoken_amount > current {
+            panic!("insufficient ptoken");
+        }
+        env.storage()
+            .persistent()
+            .set(&key, &current.saturating_sub(ptoken_amount));
+        let token = Self::get_underlying_token(env.clone());
+        MockTokenClient::new(&env, &token).mint(&user, &(ptoken_amount as i128));
     }
 
     pub fn get_ptoken_balance(env: Env, user: Address) -> u128 {
@@ -236,6 +263,14 @@ impl MockVault {
         env.storage()
             .persistent()
             .set(&key, &current.saturating_add(amount));
+    }
+
+    pub fn repay(env: Env, user: Address, amount: u128) {
+        let key = MockVaultKey::BorrowBalance(user);
+        let current: u128 = env.storage().persistent().get(&key).unwrap_or(0);
+        env.storage()
+            .persistent()
+            .set(&key, &current.saturating_sub(amount.min(current)));
     }
 }
 
@@ -360,6 +395,10 @@ fn setup_short_min() -> (Env, Address, Address, Address, Address) {
 
     let usdt_vault_id = env.register(MockVault, ());
     let xlm_vault_id = env.register(MockVault, ());
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+    usdt_vault.set_underlying_token(&usdt_id);
+    xlm_vault.set_underlying_token(&xlm_id);
 
     let peridottroller_id = env.register(MockPeridottroller, ());
     MockPeridottrollerClient::new(&env, &peridottroller_id)
@@ -532,6 +571,33 @@ fn test_set_params_non_admin_panics() {
 }
 
 #[test]
+fn test_set_max_slippage_bps() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let _controller = MarginControllerClient::new(&env, &controller_id);
+    let admin = Address::generate(&env);
+
+    let fresh_id = env.register(MarginController, ());
+    let fresh = MarginControllerClient::new(&env, &fresh_id);
+    let comp = Address::generate(&env);
+    let swap = Address::generate(&env);
+    fresh.initialize(&admin, &comp, &swap, &3u128, &10_000u128);
+    fresh.set_max_slippage_bps(&admin, &25_000u128);
+}
+
+#[test]
+#[should_panic(expected = "invalid slippage")]
+fn test_set_max_slippage_bps_rejects_zero() {
+    let (env, _controller_id, _, _, _, _, _, _) = setup();
+    let admin = Address::generate(&env);
+    let fresh_id = env.register(MarginController, ());
+    let fresh = MarginControllerClient::new(&env, &fresh_id);
+    let comp = Address::generate(&env);
+    let swap = Address::generate(&env);
+    fresh.initialize(&admin, &comp, &swap, &3u128, &10_000u128);
+    fresh.set_max_slippage_bps(&admin, &0u128);
+}
+
+#[test]
 fn test_open_position_no_swap() {
     let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
@@ -670,6 +736,52 @@ fn test_open_position_rejects_mismatched_swap_path() {
 }
 
 #[test]
+#[should_panic(expected = "bad swaps")]
+fn test_open_position_rejects_empty_swap_hop_path() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let empty_path: Vec<Address> = Vec::new(&env);
+    let swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)> = Vec::from_array(
+        &env,
+        [(
+            empty_path,
+            BytesN::from_array(&env, &[1u8; 32]),
+            Address::generate(&env),
+        )],
+    );
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &200u128,
+    );
+}
+
+#[test]
+#[should_panic(expected = "slippage too high")]
+fn test_open_position_rejects_low_slippage_floor() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &1u128, // below oracle-derived minimum
+    );
+}
+
+#[test]
 #[should_panic(expected = "not owner")]
 fn test_close_position_not_owner_panics() {
     let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
@@ -727,6 +839,26 @@ fn test_close_position_already_closed_panics() {
         &swaps_chain_close2,
         &200u128,
     );
+}
+
+#[test]
+#[should_panic(expected = "slippage too high")]
+fn test_close_position_rejects_low_slippage_floor() {
+    let (env, controller_id, usdt_id, xlm_id, user) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.close_position(&user, &position_id, &swaps_chain_close, &1u128);
 }
 
 #[test]

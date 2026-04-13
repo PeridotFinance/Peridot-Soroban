@@ -1,6 +1,7 @@
 use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{contract, contractimpl, Env, IntoVal};
 
 #[contract]
@@ -95,7 +96,7 @@ fn test_initialize() {
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
 
     let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
-    let out = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &0u128, &path, &9999u64);
+    let out = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &1u128, &path, &9999u64);
     assert_eq!(out, 100u128);
 }
 
@@ -131,7 +132,7 @@ fn test_set_router() {
     adapter.set_router(&admin, &new_router_id);
 
     let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
-    let out = adapter.swap_exact_tokens_for_tokens(&user, &50u128, &0u128, &path, &9999u64);
+    let out = adapter.swap_exact_tokens_for_tokens(&user, &50u128, &1u128, &path, &9999u64);
     assert_eq!(out, 50u128);
 }
 
@@ -164,7 +165,37 @@ fn test_swap_exact_tokens_rejects_amount_over_i128() {
     let (env, adapter_id, token_a_id, token_b_id, user) = setup();
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
     let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
-    let _ = adapter.swap_exact_tokens_for_tokens(&user, &(i128::MAX as u128 + 1), &0u128, &path, &9999u64);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &(i128::MAX as u128 + 1), &1u128, &path, &9999u64);
+}
+
+#[test]
+#[should_panic(expected = "zero slippage")]
+fn test_swap_exact_tokens_rejects_zero_slippage_min() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &0u128, &path, &9999u64);
+}
+
+#[test]
+#[should_panic(expected = "deadline too far")]
+fn test_swap_exact_tokens_rejects_far_deadline() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let now = env.ledger().timestamp();
+    let too_far = now.saturating_add(MAX_DEADLINE_SECONDS).saturating_add(1);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &1u128, &path, &too_far);
+}
+
+#[test]
+#[should_panic(expected = "deadline expired")]
+fn test_swap_exact_tokens_rejects_past_deadline() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    env.ledger().with_mut(|l| l.timestamp = 100);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &1u128, &path, &99u64);
 }
 
 #[test]
