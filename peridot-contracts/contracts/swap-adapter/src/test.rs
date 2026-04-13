@@ -333,6 +333,22 @@ fn test_swap_pool_requires_allowlisted_pool() {
 }
 
 #[test]
+#[should_panic(expected = "pool not allowed")]
+fn test_estimate_pool_swap_requires_allowlisted_pool() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = default_admin(&env);
+
+    let router_id = env.register(MockAquariusRouter, ());
+    let pool_id = env.register(MockAquariusPool, ());
+    let adapter_id = env.register(SwapAdapter, ());
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    adapter.initialize(&admin, &router_id);
+
+    let _ = adapter.estimate_pool_swap(&pool_id, &0u32, &1u32, &100u128);
+}
+
+#[test]
 fn test_bump_ttl() {
     let (env, adapter_id, _, _, _) = setup();
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
