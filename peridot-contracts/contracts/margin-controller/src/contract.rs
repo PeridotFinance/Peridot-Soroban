@@ -153,6 +153,7 @@ impl MarginController {
         if collateral_amount == 0 {
             panic!("bad collateral");
         }
+        Self::assert_pre_swap_leverage_supported(&env, &collateral_asset, leverage);
         let (debt_asset, position_asset) = match side {
             PositionSide::Long => (collateral_asset.clone(), base_asset.clone()),
             PositionSide::Short => (base_asset.clone(), collateral_asset.clone()),
@@ -340,6 +341,7 @@ impl MarginController {
         if leverage < 1 || leverage > max_leverage {
             panic!("bad leverage");
         }
+        Self::assert_pre_swap_leverage_supported(&env, &collateral_asset, leverage);
         if collateral_amount == 0 || borrow_amount == 0 {
             panic!("bad amounts");
         }
@@ -632,6 +634,23 @@ impl MarginController {
         expected_out
             .saturating_mul(SCALE_1E6.saturating_sub(max_slippage_bps))
             / SCALE_1E6
+    }
+
+    // Current borrow path performs health checks before swapped collateral is deposited.
+    // That means requested leverage cannot exceed what the initial collateral supports.
+    fn assert_pre_swap_leverage_supported(env: &Env, collateral_asset: &Address, leverage: u128) {
+        let collateral_market = get_market(env, collateral_asset);
+        let cf = get_peridottroller(env).get_market_cf(&collateral_market);
+        if cf > SCALE_1E6 {
+            panic!("invalid market cf");
+        }
+        let requested_scaled = leverage
+            .checked_mul(SCALE_1E6)
+            .expect("leverage overflow");
+        let max_supported_scaled = SCALE_1E6.checked_add(cf).expect("cf overflow");
+        if requested_scaled > max_supported_scaled {
+            panic!("leverage unsupported pre-swap");
+        }
     }
 }
 
