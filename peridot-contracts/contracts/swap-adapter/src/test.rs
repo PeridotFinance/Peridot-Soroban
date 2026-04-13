@@ -43,6 +43,9 @@ impl MockAquariusRouter {
 #[contract]
 struct MockAquariusPool;
 
+#[contract]
+struct MockSoroswapRouterEmpty;
+
 #[contractimpl]
 impl MockAquariusPool {
     pub fn estimate_swap(_env: Env, _in_idx: u32, _out_idx: u32, amount_in: u128) -> u128 {
@@ -58,6 +61,20 @@ impl MockAquariusPool {
         amount_out_min: u128,
     ) -> u128 {
         amount_out_min
+    }
+}
+
+#[contractimpl]
+impl MockSoroswapRouterEmpty {
+    pub fn swap_exact_tokens_for_tokens(
+        env: Env,
+        _amount_in: i128,
+        _amount_out_min: i128,
+        _path: Vec<Address>,
+        _to: Address,
+        _deadline: u64,
+    ) -> Vec<i128> {
+        Vec::new(&env)
     }
 }
 
@@ -169,6 +186,15 @@ fn test_swap_exact_tokens_rejects_amount_over_i128() {
 }
 
 #[test]
+#[should_panic(expected = "amount too large")]
+fn test_swap_exact_tokens_rejects_amount_out_min_over_i128() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &1u128, &(i128::MAX as u128 + 1), &path, &9999u64);
+}
+
+#[test]
 #[should_panic(expected = "zero slippage")]
 fn test_swap_exact_tokens_rejects_zero_slippage_min() {
     let (env, adapter_id, token_a_id, token_b_id, user) = setup();
@@ -186,6 +212,18 @@ fn test_swap_exact_tokens_rejects_far_deadline() {
     let now = env.ledger().timestamp();
     let too_far = now.saturating_add(MAX_DEADLINE_SECONDS).saturating_add(1);
     let _ = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &1u128, &path, &too_far);
+}
+
+#[test]
+#[should_panic(expected = "router returned empty amounts")]
+fn test_swap_exact_tokens_rejects_empty_router_amounts() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let admin = default_admin(&env);
+    let empty_router_id = env.register(MockSoroswapRouterEmpty, ());
+    adapter.set_router(&admin, &empty_router_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &1u128, &path, &9999u64);
 }
 
 #[test]
