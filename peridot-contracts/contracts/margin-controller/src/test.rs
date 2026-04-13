@@ -18,6 +18,17 @@ enum OracleKey {
 }
 
 #[contracttype]
+enum MockPeridottrollerKey {
+    Liquidity(Address),
+    Shortfall(Address),
+    LastBorrower,
+    LastRepayMarket,
+    LastCollateralMarket,
+    LastRepayAmount,
+    LastLiquidator,
+}
+
+#[contracttype]
 #[derive(Clone)]
 struct OraclePrice {
     price: i128,
@@ -139,8 +150,27 @@ impl MockPeridottroller {
         rec.map(|r| (r.price as u128, 1_000_000u128))
     }
 
-    pub fn account_liquidity(_env: Env, _user: Address) -> (u128, u128) {
-        (0u128, 0u128)
+    pub fn set_account_liquidity(env: Env, user: Address, liquidity: u128, shortfall: u128) {
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::Liquidity(user.clone()), &liquidity);
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::Shortfall(user), &shortfall);
+    }
+
+    pub fn account_liquidity(env: Env, user: Address) -> (u128, u128) {
+        let liquidity: u128 = env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::Liquidity(user.clone()))
+            .unwrap_or(0u128);
+        let shortfall: u128 = env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::Shortfall(user))
+            .unwrap_or(0u128);
+        (liquidity, shortfall)
     }
 
     pub fn is_borrow_paused(_env: Env, _market: Address) -> bool {
@@ -197,13 +227,63 @@ impl MockPeridottroller {
     }
 
     pub fn liquidate(
-        _env: Env,
-        _liquidator: Address,
-        _borrower: Address,
-        _repay_market: Address,
-        _collateral_market: Address,
-        _repay_amount: u128,
+        env: Env,
+        borrower: Address,
+        repay_market: Address,
+        collateral_market: Address,
+        repay_amount: u128,
+        liquidator: Address,
     ) {
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::LastBorrower, &borrower);
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::LastRepayMarket, &repay_market);
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::LastCollateralMarket, &collateral_market);
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::LastRepayAmount, &repay_amount);
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::LastLiquidator, &liquidator);
+    }
+
+    pub fn get_last_liquidation(env: Env) -> (Address, Address, Address, u128, Address) {
+        let borrower: Address = env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::LastBorrower)
+            .expect("borrower missing");
+        let repay_market: Address = env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::LastRepayMarket)
+            .expect("repay market missing");
+        let collateral_market: Address = env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::LastCollateralMarket)
+            .expect("collateral market missing");
+        let repay_amount: u128 = env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::LastRepayAmount)
+            .expect("repay amount missing");
+        let liquidator: Address = env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::LastLiquidator)
+            .expect("liquidator missing");
+        (
+            borrower,
+            repay_market,
+            collateral_market,
+            repay_amount,
+            liquidator,
+        )
     }
 }
 
@@ -378,7 +458,16 @@ fn setup_min_with_vaults() -> (Env, Address, Address, Address, Address, Address,
     )
 }
 
-fn setup_short_min() -> (Env, Address, Address, Address, Address) {
+fn setup_short_min() -> (
+    Env,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+) {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().with_mut(|l| l.timestamp = 1);
@@ -416,7 +505,16 @@ fn setup_short_min() -> (Env, Address, Address, Address, Address) {
 
     usdt.mint(&user, &1_000_000i128);
 
-    (env, controller_id, usdt_id, xlm_id, user)
+    (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    )
 }
 fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Address) {
     let env = Env::default();
@@ -620,7 +718,7 @@ fn test_open_position_no_swap() {
 
 #[test]
 fn test_open_position_no_swap_short() {
-    let (env, controller_id, usdt_id, xlm_id, user) = setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap_short(
@@ -639,7 +737,7 @@ fn test_open_position_no_swap_short() {
 
 #[test]
 fn test_open_short_position() {
-    let (env, controller_id, usdt_id, xlm_id, user) = setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let swaps_chain = mock_swaps_chain(&env, &xlm_id, &usdt_id);
@@ -844,7 +942,7 @@ fn test_close_position_already_closed_panics() {
 #[test]
 #[should_panic(expected = "slippage too high")]
 fn test_close_position_rejects_low_slippage_floor() {
-    let (env, controller_id, usdt_id, xlm_id, user) = setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
@@ -859,6 +957,47 @@ fn test_close_position_rejects_low_slippage_floor() {
 
     let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
     controller.close_position(&user, &position_id, &swaps_chain_close, &1u128);
+}
+
+#[test]
+fn test_liquidate_position_calls_peridottroller_with_expected_order() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let liquidator = Address::generate(&env);
+
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+    comp.set_account_liquidity(&user, &0u128, &1u128);
+
+    controller.liquidate_position(&liquidator, &position_id);
+
+    let (borrower, repay_market, collateral_market, repay_amount, captured_liquidator) =
+        comp.get_last_liquidation();
+    assert_eq!(borrower, user);
+    assert_eq!(repay_market, xlm_vault_id);
+    assert_eq!(collateral_market, usdt_vault_id);
+    assert_eq!(repay_amount, 50u128);
+    assert_eq!(captured_liquidator, liquidator);
+
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
 }
 
 #[test]

@@ -21,11 +21,11 @@ pub trait PeridottrollerContract {
     fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)>;
     fn liquidate(
         env: Env,
-        liquidator: Address,
         borrower: Address,
         repay_market: Address,
         collateral_market: Address,
         repay_amount: u128,
+        liquidator: Address,
     );
 }
 

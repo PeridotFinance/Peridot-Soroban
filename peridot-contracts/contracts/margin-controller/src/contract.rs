@@ -551,11 +551,11 @@ impl MarginController {
         let debt_vault = get_market(&env, &position.debt_asset);
         let collateral_vault = get_market(&env, &position.collateral_asset);
         get_peridottroller(&env).liquidate(
-            &liquidator,
             &position.owner,
             &debt_vault,
             &collateral_vault,
             &debt_amount,
+            &liquidator,
         );
 
         let new_total_shares = total_shares.saturating_sub(position.debt_shares);
