@@ -2751,8 +2751,14 @@ impl SimplePeridottroller {
         let Some(oracle_addr) = oracle else {
             return None;
         };
-        let client = crate::reflector::ReflectorClient::new(&env, &oracle_addr);
-        let dec = client.decimals();
+        let dec: u32 = match env.try_invoke_contract::<u32, InvokeError>(
+            &oracle_addr,
+            &Symbol::new(&env, "decimals"),
+            ().into_val(&env),
+        ) {
+            Ok(Ok(v)) => v,
+            _ => return None,
+        };
         let scale = pow10_u128(dec);
         storage::bump_oracle_asset_symbol_ttl(&env, &token);
         let asset = match env
@@ -2763,11 +2769,27 @@ impl SimplePeridottroller {
             Some(sym) => crate::reflector::Asset::Other(sym),
             None => crate::reflector::Asset::Stellar(token.clone()),
         };
-        let pd_opt = client.lastprice(&asset);
+        let pd_opt: Option<crate::reflector::PriceData> =
+            match env.try_invoke_contract::<Option<crate::reflector::PriceData>, InvokeError>(
+                &oracle_addr,
+                &Symbol::new(&env, "lastprice"),
+                (asset,).into_val(&env),
+            ) {
+                Ok(Ok(v)) => v,
+                _ => return None,
+            };
         match pd_opt {
             Some(pd) if pd.price > 0 => {
+                let resolution: u32 = match env.try_invoke_contract::<u32, InvokeError>(
+                    &oracle_addr,
+                    &Symbol::new(&env, "resolution"),
+                    ().into_val(&env),
+                ) {
+                    Ok(Ok(v)) => v,
+                    _ => return None,
+                };
                 // Staleness check per Reflector best practices
-                let res = client.resolution() as u64; // seconds
+                let res = resolution as u64; // seconds
                 let now = env.ledger().timestamp();
                 // consider stale if older than k * resolution (configurable)
                 let k: u64 = env
@@ -2791,7 +2813,7 @@ impl SimplePeridottroller {
                         price,
                         scale,
                         timestamp: pd.timestamp,
-                        resolution: client.resolution(),
+                        resolution,
                     },
                 );
                 storage::bump_price_cache_ttl(&env, &token);

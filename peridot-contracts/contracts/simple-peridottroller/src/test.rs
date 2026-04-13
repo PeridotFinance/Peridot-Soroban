@@ -1030,6 +1030,7 @@ struct MockOracle;
 enum OracleKey {
     Decimals,
     Price(Address),
+    FailLastPrice,
 }
 
 #[contracttype]
@@ -1044,6 +1045,9 @@ impl MockOracle {
         env.storage()
             .persistent()
             .set(&OracleKey::Decimals, &decimals);
+        env.storage()
+            .persistent()
+            .set(&OracleKey::FailLastPrice, &false);
     }
     pub fn set_price(env: Env, asset: Address, price: i128) {
         env.storage()
@@ -1060,6 +1064,14 @@ impl MockOracle {
         env: Env,
         asset: crate::reflector::Asset,
     ) -> Option<crate::reflector::PriceData> {
+        let fail = env
+            .storage()
+            .persistent()
+            .get(&OracleKey::FailLastPrice)
+            .unwrap_or(false);
+        if fail {
+            panic!("oracle unavailable");
+        }
         match asset {
             crate::reflector::Asset::Stellar(addr) => {
                 let rec: Option<OraclePrice> =
@@ -1074,6 +1086,12 @@ impl MockOracle {
     }
     pub fn resolution(_env: Env) -> u32 {
         300
+    }
+
+    pub fn set_fail_lastprice(env: Env, fail: bool) {
+        env.storage()
+            .persistent()
+            .set(&OracleKey::FailLastPrice, &fail);
     }
 }
 
@@ -3333,6 +3351,41 @@ fn test_fallback_price_has_max_age() {
     env.ledger()
         .set_timestamp(MAX_FALLBACK_PRICE_AGE_SECS.saturating_add(1));
     assert_eq!(comp.get_price_usd(&token), None);
+}
+
+#[test]
+fn test_get_price_usd_uses_fallback_when_oracle_refresh_fails() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    // Add a market so token is supported and get_price_usd will attempt cache refresh.
+    let vault_id = env.register(rv::ReceiptVault, ());
+    let vault = rv::ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    oracle.set_price(&token, &1_000_000i128);
+    comp.set_oracle(&oracle_id);
+    comp.set_price_fallback(&token, &Some((1_000_000u128, 1_000_000u128)));
+    // Force oracle failure after set_oracle succeeds.
+    oracle.set_fail_lastprice(&true);
+
+    // Must not panic; fallback should still be returned.
+    assert_eq!(comp.get_price_usd(&token), Some((1_000_000u128, 1_000_000u128)));
 }
 
 #[test]

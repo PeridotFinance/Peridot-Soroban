@@ -21,6 +21,7 @@ enum OracleKey {
 enum MockPeridottrollerKey {
     LivePrice(Address),
     CachePriceCalls(Address),
+    CachePriceShouldPanic,
     Liquidity(Address),
     Shortfall(Address),
     LastBorrower,
@@ -159,6 +160,14 @@ impl MockPeridottroller {
     }
 
     pub fn cache_price(env: Env, asset: Address) -> Option<(u128, u128)> {
+        if env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::CachePriceShouldPanic)
+            .unwrap_or(false)
+        {
+            panic!("cache refresh failed");
+        }
         let live: Option<u128> = env
             .storage()
             .persistent()
@@ -182,6 +191,12 @@ impl MockPeridottroller {
             .persistent()
             .get(&MockPeridottrollerKey::CachePriceCalls(asset))
             .unwrap_or(0u32)
+    }
+
+    pub fn set_cache_price_should_panic(env: Env, should_panic: bool) {
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::CachePriceShouldPanic, &should_panic);
     }
 
     pub fn set_account_liquidity(env: Env, user: Address, liquidity: u128, shortfall: u128) {
@@ -936,6 +951,29 @@ fn test_open_position_no_swap_calls_cache_price_for_assets() {
     );
     assert!(comp.get_cache_price_calls(&xlm_id) > 0);
     assert!(comp.get_cache_price_calls(&usdt_id) > 0);
+}
+
+#[test]
+fn test_open_position_no_swap_uses_cached_price_when_refresh_traps() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, _, _) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+
+    // Simulate refresh path trapping (oracle unavailable). Controller should still
+    // proceed using already-cached prices from get_price_usd.
+    comp.set_cache_price_should_panic(&true);
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &xlm_id,
+        &usdt_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Open);
 }
 
 #[test]
