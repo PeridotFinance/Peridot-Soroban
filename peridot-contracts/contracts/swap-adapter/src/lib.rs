@@ -116,6 +116,12 @@ impl SwapAdapter {
         if amount_in > i128::MAX as u128 || amount_out_min > i128::MAX as u128 {
             panic!("amount too large");
         }
+        let amount_in_i128: i128 = amount_in
+            .try_into()
+            .unwrap_or_else(|_| panic!("amount too large"));
+        let amount_out_min_i128: i128 = amount_out_min
+            .try_into()
+            .unwrap_or_else(|_| panic!("amount too large"));
         let now = env.ledger().timestamp();
         if deadline < now {
             panic!("deadline expired");
@@ -129,17 +135,20 @@ impl SwapAdapter {
             .get(&DataKey::Router)
             .expect("router not set");
         let amounts = SoroswapRouterClient::new(&env, &router).swap_exact_tokens_for_tokens(
-            &amount_in.try_into().unwrap(),
-            &amount_out_min.try_into().unwrap(),
+            &amount_in_i128,
+            &amount_out_min_i128,
             &path,
             &user,
             &deadline,
         );
+        if amounts.len() == 0 {
+            panic!("router returned empty amounts");
+        }
         let last = amounts.get(amounts.len() - 1).unwrap();
         if last < 0 {
             panic!("invalid swap output");
         }
-        last.try_into().unwrap()
+        last.try_into().unwrap_or_else(|_| panic!("invalid swap output"))
     }
 
     pub fn swap_chained(
