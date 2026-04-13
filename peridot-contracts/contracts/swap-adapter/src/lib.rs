@@ -2,6 +2,7 @@
 use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, String, Vec};
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+pub const MAX_DEADLINE_SECONDS: u64 = 86_400; // 24h
 
 #[soroban_sdk::contractclient(name = "SoroswapRouterClient")]
 pub trait SoroswapRouter {
@@ -109,8 +110,15 @@ impl SwapAdapter {
     ) -> u128 {
         bump_critical_ttl(&env);
         user.require_auth();
+        if amount_out_min == 0 {
+            panic!("zero slippage");
+        }
         if amount_in > i128::MAX as u128 || amount_out_min > i128::MAX as u128 {
             panic!("amount too large");
+        }
+        let now = env.ledger().timestamp();
+        if deadline > now.saturating_add(MAX_DEADLINE_SECONDS) {
+            panic!("deadline too far");
         }
         let router: Address = env
             .storage()

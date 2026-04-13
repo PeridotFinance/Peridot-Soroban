@@ -1,5 +1,6 @@
 use soroban_sdk::{contracttype, Address, BytesN, Env, Vec};
 
+use crate::constants::*;
 use crate::helpers::{bump_core_ttl, bump_market_ttl};
 
 #[soroban_sdk::contractclient(name = "ReceiptVaultClient")]
@@ -48,6 +49,7 @@ pub enum DataKey {
     Peridottroller,
     SwapAdapter,
     MaxLeverage,
+    MaxSlippageBps,
     LiquidationBonus,
     Market(Address),
     PositionCounter,
@@ -131,6 +133,14 @@ pub fn get_max_leverage(env: &Env) -> u128 {
         .persistent()
         .get(&DataKey::MaxLeverage)
         .unwrap_or(1u128)
+}
+
+pub fn get_max_slippage_bps(env: &Env) -> u128 {
+    bump_core_ttl(env);
+    env.storage()
+        .persistent()
+        .get(&DataKey::MaxSlippageBps)
+        .unwrap_or(DEFAULT_MAX_SLIPPAGE_BPS)
 }
 
 pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {

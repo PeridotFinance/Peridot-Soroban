@@ -47,6 +47,9 @@ impl MarginController {
             .set(&DataKey::MaxLeverage, &max_leverage);
         env.storage()
             .persistent()
+            .set(&DataKey::MaxSlippageBps, &DEFAULT_MAX_SLIPPAGE_BPS);
+        env.storage()
+            .persistent()
             .set(&DataKey::LiquidationBonus, &liquidation_bonus_scaled);
         env.storage()
             .persistent()
@@ -89,6 +92,17 @@ impl MarginController {
         env.storage()
             .persistent()
             .set(&DataKey::LiquidationBonus, &liquidation_bonus_scaled);
+    }
+
+    pub fn set_max_slippage_bps(env: Env, admin: Address, max_slippage_bps: u128) {
+        bump_core_ttl(&env);
+        require_admin(&env, &admin);
+        if max_slippage_bps == 0 || max_slippage_bps > MAX_SLIPPAGE_BPS_CAP {
+            panic!("invalid slippage");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::MaxSlippageBps, &max_slippage_bps);
     }
 
     pub fn set_swap_adapter(env: Env, admin: Address, swap_adapter: Address) {
@@ -143,6 +157,9 @@ impl MarginController {
             PositionSide::Long => (collateral_asset.clone(), base_asset.clone()),
             PositionSide::Short => (base_asset.clone(), collateral_asset.clone()),
         };
+        if amount_with_slippage == 0 {
+            panic!("bad slippage");
+        }
         let swap_adapter = get_swap_adapter(&env);
         validate_swaps_chain(
             &env,
@@ -164,6 +181,11 @@ impl MarginController {
         let borrow_amount = borrow_value.saturating_mul(debt_price.1) / debt_price.0;
         if borrow_amount == 0 {
             panic!("borrow too small");
+        }
+        let min_out_oracle =
+            Self::oracle_min_out(&env, &debt_asset, &position_asset, borrow_amount);
+        if amount_with_slippage < min_out_oracle {
+            panic!("slippage too high");
         }
 
         // Deposit initial collateral
@@ -209,6 +231,9 @@ impl MarginController {
             &borrow_amount,
             &amount_with_slippage,
         );
+        if received < min_out_oracle {
+            panic!("slippage too high");
+        }
         if received == 0 {
             panic!("swap failed");
         }
@@ -414,6 +439,9 @@ impl MarginController {
             &position.collateral_asset,
             &position.debt_asset,
         );
+        if amount_with_slippage == 0 {
+            panic!("bad slippage");
+        }
 
         let (debt_amount, total_shares, _total_debt) =
             debt_for_shares(&env, &user, &position.debt_asset, position.debt_shares);
@@ -454,6 +482,15 @@ impl MarginController {
         if collateral_underlying == 0 {
             panic!("no collateral withdrawn");
         }
+        let min_out_oracle = Self::oracle_min_out(
+            &env,
+            &position.collateral_asset,
+            &position.debt_asset,
+            collateral_underlying,
+        );
+        if amount_with_slippage < min_out_oracle {
+            panic!("slippage too high");
+        }
 
         let received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
             &user,
@@ -462,6 +499,9 @@ impl MarginController {
             &collateral_underlying,
             &amount_with_slippage,
         );
+        if received < min_out_oracle {
+            panic!("slippage too high");
+        }
         if received < debt_amount {
             panic!("insufficient swap output");
         }
@@ -573,6 +613,25 @@ impl MarginController {
         }
         let _ = total_shares;
         collateral_value.saturating_mul(SCALE_1E6) / debt_value
+    }
+
+    fn oracle_min_out(
+        env: &Env,
+        token_in: &Address,
+        token_out: &Address,
+        amount_in: u128,
+    ) -> u128 {
+        let in_price = get_price_usd(env, token_in);
+        let out_price = get_price_usd(env, token_out);
+        let in_value_usd = amount_in.saturating_mul(in_price.0) / in_price.1;
+        let expected_out = in_value_usd.saturating_mul(out_price.1) / out_price.0;
+        if expected_out == 0 {
+            panic!("swap amount too small");
+        }
+        let max_slippage_bps = get_max_slippage_bps(env);
+        expected_out
+            .saturating_mul(SCALE_1E6.saturating_sub(max_slippage_bps))
+            / SCALE_1E6
     }
 }
 

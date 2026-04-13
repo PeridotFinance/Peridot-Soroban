@@ -136,6 +136,16 @@ pub fn validate_swaps_chain(
     if swaps_chain.len() == 0 || swaps_chain.len() > MAX_SWAP_PATH_LEN {
         panic!("bad swaps");
     }
+    let first_hop = swaps_chain.get(0).unwrap();
+    let first_path = first_hop.0;
+    if first_path.get(0).unwrap() != *expected_in {
+        panic!("bad swaps");
+    }
+    let last_hop = swaps_chain.get(swaps_chain.len() - 1).unwrap();
+    let last_path = last_hop.0;
+    if last_path.get(last_path.len() - 1).unwrap() != *expected_out {
+        panic!("bad swaps");
+    }
     let adapter = SwapAdapterClient::new(env, swap_adapter);
     let mut current = expected_in.clone();
     for i in 0..swaps_chain.len() {
@@ -173,6 +183,9 @@ pub fn bump_core_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::MaxLeverage) {
         persistent.extend_ttl(&DataKey::MaxLeverage, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::MaxSlippageBps) {
+        persistent.extend_ttl(&DataKey::MaxSlippageBps, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::LiquidationBonus) {
         persistent.extend_ttl(&DataKey::LiquidationBonus, TTL_THRESHOLD, TTL_EXTEND_TO);
