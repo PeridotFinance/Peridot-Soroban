@@ -194,6 +194,8 @@ impl MarginController {
         let p_before =
             ReceiptVaultClient::new(&env, &collateral_vault).get_ptoken_balance(&user);
         ReceiptVaultClient::new(&env, &collateral_vault).deposit(&user, &collateral_amount);
+        let peridottroller = get_peridottroller(&env);
+        peridottroller.enter_market(&user, &collateral_vault);
         let p_after =
             ReceiptVaultClient::new(&env, &collateral_vault).get_ptoken_balance(&user);
         let p_delta = p_after.saturating_sub(p_before);
@@ -203,6 +205,7 @@ impl MarginController {
 
         // Borrow debt asset
         let debt_vault = get_market(&env, &debt_asset);
+        peridottroller.enter_market(&user, &debt_vault);
         let debt_before =
             ReceiptVaultClient::new(&env, &debt_vault).get_user_borrow_balance(&user);
         let shares_before = get_debt_shares_total(&env, &user, &debt_asset);
@@ -244,6 +247,7 @@ impl MarginController {
         let p_before =
             ReceiptVaultClient::new(&env, &position_vault).get_ptoken_balance(&user);
         ReceiptVaultClient::new(&env, &position_vault).deposit(&user, &received);
+        peridottroller.enter_market(&user, &position_vault);
         let p_after =
             ReceiptVaultClient::new(&env, &position_vault).get_ptoken_balance(&user);
         let p_delta = p_after.saturating_sub(p_before);
@@ -361,6 +365,8 @@ impl MarginController {
         let p_before =
             ReceiptVaultClient::new(&env, &collateral_vault).get_ptoken_balance(&user);
         ReceiptVaultClient::new(&env, &collateral_vault).deposit(&user, &collateral_amount);
+        let peridottroller = get_peridottroller(&env);
+        peridottroller.enter_market(&user, &collateral_vault);
         let p_after =
             ReceiptVaultClient::new(&env, &collateral_vault).get_ptoken_balance(&user);
         let p_delta = p_after.saturating_sub(p_before);
@@ -370,6 +376,7 @@ impl MarginController {
 
         // Borrow debt asset
         let debt_vault = get_market(&env, &debt_asset);
+        peridottroller.enter_market(&user, &debt_vault);
         let debt_before =
             ReceiptVaultClient::new(&env, &debt_vault).get_user_borrow_balance(&user);
         let shares_before = get_debt_shares_total(&env, &user, &debt_asset);
