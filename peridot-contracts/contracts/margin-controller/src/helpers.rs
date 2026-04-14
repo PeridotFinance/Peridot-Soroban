@@ -199,11 +199,62 @@ pub fn bump_market_ttl(env: &Env, asset: &Address) {
 }
 
 pub fn bump_position_ttl(env: &Env, position_id: u64) {
-    let key = DataKey::Position(position_id);
     let persistent = env.storage().persistent();
+    let key = DataKey::Position(position_id);
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    let initial_market_key = DataKey::PositionInitialLockMarket(position_id);
+    if persistent.has(&initial_market_key) {
+        persistent.extend_ttl(&initial_market_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let initial_ptokens_key = DataKey::PositionInitialLockPtokens(position_id);
+    if persistent.has(&initial_ptokens_key) {
+        persistent.extend_ttl(&initial_ptokens_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn set_position_initial_lock(
+    env: &Env,
+    position_id: u64,
+    market: &Address,
+    ptoken_amount: u128,
+) {
+    env.storage().persistent().set(
+        &DataKey::PositionInitialLockMarket(position_id),
+        market,
+    );
+    env.storage().persistent().set(
+        &DataKey::PositionInitialLockPtokens(position_id),
+        &ptoken_amount,
+    );
+    bump_position_ttl(env, position_id);
+}
+
+pub fn get_position_initial_lock(env: &Env, position_id: u64) -> Option<(Address, u128)> {
+    let market: Option<Address> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionInitialLockMarket(position_id));
+    let Some(market) = market else {
+        return None;
+    };
+    let ptoken_amount: u128 = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionInitialLockPtokens(position_id))
+        .unwrap_or(0u128);
+    bump_position_ttl(env, position_id);
+    Some((market, ptoken_amount))
+}
+
+pub fn clear_position_initial_lock(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PositionInitialLockMarket(position_id));
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PositionInitialLockPtokens(position_id));
 }
 
 pub fn bump_user_positions_ttl(env: &Env, user: &Address) {

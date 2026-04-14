@@ -416,6 +416,42 @@ impl ReceiptVault {
         bump_user_borrow_state_ttl(env, user);
     }
 
+    fn consume_margin_withdraw_bypass(env: &Env, user: &Address) -> bool {
+        let key = DataKey::MarginWithdrawBypass(user.clone());
+        let enabled = env.storage().persistent().get(&key).unwrap_or(false);
+        if enabled {
+            env.storage().persistent().remove(&key);
+        }
+        enabled
+    }
+
+    fn enforce_margin_lock(
+        env: &Env,
+        user: &Address,
+        current_ptokens: u128,
+        ptoken_reduction: u128,
+    ) {
+        if ptoken_reduction == 0 {
+            return;
+        }
+        if let Some(margin_controller) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::MarginController)
+        {
+            let locked_ptokens: u128 = call_contract_or_panic(
+                env,
+                &margin_controller,
+                "locked_ptokens_in_market",
+                (user.clone(), env.current_contract_address()),
+            );
+            let remaining_ptokens = current_ptokens.saturating_sub(ptoken_reduction);
+            if remaining_ptokens < locked_ptokens {
+                panic!("collateral locked");
+            }
+        }
+    }
+
     fn accrue_user_rewards(
         env: &Env,
         user: &Address,
@@ -823,6 +859,9 @@ impl ReceiptVault {
         if current_ptokens < ptoken_amount {
             panic!("Insufficient pTokens");
         }
+        if !Self::consume_margin_withdraw_bypass(&env, &user) {
+            Self::enforce_margin_lock(&env, &user, current_ptokens, ptoken_amount);
+        }
 
         // Calculate underlying tokens to return based on current exchange rate
         let current_rate = Self::get_exchange_rate(env.clone());
@@ -1146,6 +1185,7 @@ impl ReceiptVault {
         if from_bal < amount {
             panic!("Insufficient pTokens");
         }
+        Self::enforce_margin_lock(&env, &from, from_bal, amount);
 
         match spender {
             Some(spender_addr) => {
@@ -1364,6 +1404,64 @@ impl ReceiptVault {
             .persistent()
             .set(&DataKey::Peridottroller, &peridottroller.clone());
         NewPeridottroller { peridottroller }.publish(&env);
+    }
+
+    /// Admin: set or clear margin controller address used for collateral lock checks.
+    pub fn set_margin_controller(
+        env: Env,
+        admin: Address,
+        margin_controller: Option<Address>,
+    ) {
+        let _ = ensure_initialized(&env);
+        let stored_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if admin != stored_admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+
+        if let Some(controller) = margin_controller {
+            let _: u128 = call_contract_or_panic(
+                &env,
+                &controller,
+                "locked_ptokens_in_market",
+                (
+                    env.current_contract_address(),
+                    env.current_contract_address(),
+                ),
+            );
+            env.storage()
+                .persistent()
+                .set(&DataKey::MarginController, &controller);
+            return;
+        }
+        env.storage().persistent().remove(&DataKey::MarginController);
+    }
+
+    pub fn get_margin_controller(env: Env) -> Option<Address> {
+        let _ = ensure_initialized(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::MarginController)
+    }
+
+    pub fn begin_margin_withdraw(env: Env, margin_controller: Address, user: Address) {
+        let _ = ensure_initialized(&env);
+        let configured: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginController)
+            .expect("margin controller not set");
+        if margin_controller != configured {
+            panic!("not margin controller");
+        }
+        margin_controller.require_auth();
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarginWithdrawBypass(user), &true);
     }
 
     /// Admin: set interest rate model address

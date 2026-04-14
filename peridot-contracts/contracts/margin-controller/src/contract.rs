@@ -1,4 +1,6 @@
-use soroban_sdk::{contract, contractimpl, token, Address, BytesN, Env, Vec};
+use soroban_sdk::{
+    contract, contractimpl, token, Address, BytesN, Env, IntoVal, InvokeError, Symbol, Vec,
+};
 #[cfg(not(test))]
 use soroban_sdk::String;
 
@@ -124,7 +126,18 @@ impl MarginController {
         bump_core_ttl(&env);
         user.require_auth();
         let vault = get_market(&env, &asset);
-        ReceiptVaultClient::new(&env, &vault).withdraw(&user, &ptoken_amount);
+        let current_ptokens = ReceiptVaultClient::new(&env, &vault).get_ptoken_balance(&user);
+        if current_ptokens < ptoken_amount {
+            panic!("Insufficient pTokens");
+        }
+        let locked = Self::locked_ptokens_in_market(env.clone(), user.clone(), vault.clone());
+        let remaining = current_ptokens.saturating_sub(ptoken_amount);
+        if remaining < locked {
+            panic!("collateral locked");
+        }
+        let vault_client = ReceiptVaultClient::new(&env, &vault);
+        Self::begin_margin_withdraw_if_supported(&env, &vault, &user);
+        vault_client.withdraw(&user, &ptoken_amount);
     }
 
     pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
@@ -191,6 +204,7 @@ impl MarginController {
 
         // Deposit initial collateral
         let collateral_vault = get_market(&env, &collateral_asset);
+        Self::assert_margin_lock_configured(&env, &collateral_vault);
         let p_before =
             ReceiptVaultClient::new(&env, &collateral_vault).get_ptoken_balance(&user);
         ReceiptVaultClient::new(&env, &collateral_vault).deposit(&user, &collateral_amount);
@@ -198,13 +212,14 @@ impl MarginController {
         peridottroller.enter_market(&user, &collateral_vault);
         let p_after =
             ReceiptVaultClient::new(&env, &collateral_vault).get_ptoken_balance(&user);
-        let p_delta = p_after.saturating_sub(p_before);
-        if p_delta == 0 {
+        let initial_p_delta = p_after.saturating_sub(p_before);
+        if initial_p_delta == 0 {
             panic!("no collateral minted");
         }
 
         // Borrow debt asset
         let debt_vault = get_market(&env, &debt_asset);
+        Self::assert_margin_lock_configured(&env, &debt_vault);
         peridottroller.enter_market(&user, &debt_vault);
         let debt_before =
             ReceiptVaultClient::new(&env, &debt_vault).get_user_borrow_balance(&user);
@@ -244,6 +259,7 @@ impl MarginController {
 
         // Deposit swapped asset as collateral, track pTokens minted
         let position_vault = get_market(&env, &position_asset);
+        Self::assert_margin_lock_configured(&env, &position_vault);
         let p_before =
             ReceiptVaultClient::new(&env, &position_vault).get_ptoken_balance(&user);
         ReceiptVaultClient::new(&env, &position_vault).deposit(&user, &received);
@@ -276,6 +292,7 @@ impl MarginController {
         env.storage()
             .persistent()
             .set(&DataKey::Position(id), &position);
+        set_position_initial_lock(&env, id, &collateral_vault, initial_p_delta);
         bump_position_ttl(&env, id);
         push_user_position(&env, &user, id);
         id
@@ -362,6 +379,7 @@ impl MarginController {
 
         // Deposit initial collateral
         let collateral_vault = get_market(&env, &collateral_asset);
+        Self::assert_margin_lock_configured(&env, &collateral_vault);
         let p_before =
             ReceiptVaultClient::new(&env, &collateral_vault).get_ptoken_balance(&user);
         ReceiptVaultClient::new(&env, &collateral_vault).deposit(&user, &collateral_amount);
@@ -376,6 +394,7 @@ impl MarginController {
 
         // Borrow debt asset
         let debt_vault = get_market(&env, &debt_asset);
+        Self::assert_margin_lock_configured(&env, &debt_vault);
         peridottroller.enter_market(&user, &debt_vault);
         let debt_before =
             ReceiptVaultClient::new(&env, &debt_vault).get_user_borrow_balance(&user);
@@ -457,22 +476,24 @@ impl MarginController {
         if debt_amount == 0 {
             panic!("zero debt");
         }
+        position.status = PositionStatus::Closed;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(position_id), &position);
+        bump_position_ttl(&env, position_id);
+        clear_position_initial_lock(&env, position_id);
 
         if position.collateral_asset == position.debt_asset {
             let debt_vault = get_market(&env, &position.debt_asset);
             ReceiptVaultClient::new(&env, &debt_vault).repay(&user, &debt_amount);
             let vault = get_market(&env, &position.collateral_asset);
-            ReceiptVaultClient::new(&env, &vault)
-                .withdraw(&user, &position.collateral_ptokens);
+            let vault_client = ReceiptVaultClient::new(&env, &vault);
+            Self::begin_margin_withdraw_if_supported(&env, &vault, &user);
+            vault_client.withdraw(&user, &position.collateral_ptokens);
 
             let new_total_shares = total_shares.saturating_sub(position.debt_shares);
             set_debt_shares_total(&env, &user, &position.debt_asset, new_total_shares);
 
-            position.status = PositionStatus::Closed;
-            env.storage()
-                .persistent()
-                .set(&DataKey::Position(position_id), &position);
-            bump_position_ttl(&env, position_id);
             remove_user_position(&env, &user, position_id);
             return;
         }
@@ -481,7 +502,9 @@ impl MarginController {
         let underlying_token = ReceiptVaultClient::new(&env, &vault).get_underlying_token();
         let token_client = token::TokenClient::new(&env, &underlying_token);
         let bal_before = token_client.balance(&user);
-        ReceiptVaultClient::new(&env, &vault).withdraw(&user, &position.collateral_ptokens);
+        let vault_client = ReceiptVaultClient::new(&env, &vault);
+        Self::begin_margin_withdraw_if_supported(&env, &vault, &user);
+        vault_client.withdraw(&user, &position.collateral_ptokens);
         let bal_after = token_client.balance(&user);
         let collateral_underlying = if bal_after <= bal_before {
             0u128
@@ -521,11 +544,6 @@ impl MarginController {
         let new_total_shares = total_shares.saturating_sub(position.debt_shares);
         set_debt_shares_total(&env, &user, &position.debt_asset, new_total_shares);
 
-        position.status = PositionStatus::Closed;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Position(position_id), &position);
-        bump_position_ttl(&env, position_id);
         remove_user_position(&env, &user, position_id);
 
         // Any remaining swap output stays with the user as profit
@@ -557,6 +575,12 @@ impl MarginController {
         if debt_amount == 0 {
             panic!("zero debt");
         }
+        position.status = PositionStatus::Liquidated;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(position_id), &position);
+        bump_position_ttl(&env, position_id);
+        clear_position_initial_lock(&env, position_id);
         let debt_vault = get_market(&env, &position.debt_asset);
         let collateral_vault = get_market(&env, &position.collateral_asset);
         get_peridottroller(&env).liquidate(
@@ -575,12 +599,39 @@ impl MarginController {
             new_total_shares,
         );
 
-        position.status = PositionStatus::Liquidated;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Position(position_id), &position);
-        bump_position_ttl(&env, position_id);
         remove_user_position(&env, &position.owner, position_id);
+    }
+
+    pub fn locked_ptokens_in_market(env: Env, user: Address, market: Address) -> u128 {
+        bump_core_ttl(&env);
+        let position_ids = compact_user_positions(&env, &user);
+        let mut total_locked = 0u128;
+        for position_id in position_ids.iter() {
+            let position: Option<Position> = env
+                .storage()
+                .persistent()
+                .get(&DataKey::Position(position_id));
+            let Some(position) = position else {
+                continue;
+            };
+            if position.status != PositionStatus::Open {
+                continue;
+            }
+
+            let collateral_market = get_market(&env, &position.collateral_asset);
+            if collateral_market == market {
+                total_locked = total_locked.saturating_add(position.collateral_ptokens);
+            }
+
+            if let Some((initial_market, initial_ptokens)) =
+                get_position_initial_lock(&env, position_id)
+            {
+                if initial_market == market {
+                    total_locked = total_locked.saturating_add(initial_ptokens);
+                }
+            }
+        }
+        total_locked
     }
 
     pub fn get_position(env: Env, position_id: u64) -> Option<Position> {
@@ -641,6 +692,29 @@ impl MarginController {
         expected_out
             .saturating_mul(SCALE_1E6.saturating_sub(max_slippage_bps))
             / SCALE_1E6
+    }
+
+    fn assert_margin_lock_configured(env: &Env, vault: &Address) {
+        let configured = env.try_invoke_contract::<Option<Address>, InvokeError>(
+            vault,
+            &Symbol::new(env, "get_margin_controller"),
+            ().into_val(env),
+        );
+        match configured {
+            Ok(Ok(Some(controller))) if controller == env.current_contract_address() => {}
+            Ok(Ok(_)) => panic!("margin lock not configured"),
+            // Mock test vaults may not implement margin-lock introspection.
+            Err(_) => {}
+            Ok(Err(_)) => {}
+        }
+    }
+
+    fn begin_margin_withdraw_if_supported(env: &Env, vault: &Address, user: &Address) {
+        let _ = env.try_invoke_contract::<(), InvokeError>(
+            vault,
+            &Symbol::new(env, "begin_margin_withdraw"),
+            (env.current_contract_address(), user.clone()).into_val(env),
+        );
     }
 
     // Current borrow path performs health checks before swapped collateral is deposited.

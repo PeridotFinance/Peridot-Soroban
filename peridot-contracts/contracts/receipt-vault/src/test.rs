@@ -192,6 +192,31 @@ impl FailingRewardsPeridottroller {
 }
 
 #[contract]
+pub struct MockMarginLockController;
+
+#[contracttype]
+#[derive(Clone)]
+enum MockMarginLockKey {
+    Locked(Address, Address), // (user, market)
+}
+
+#[contractimpl]
+impl MockMarginLockController {
+    pub fn set_locked(env: Env, user: Address, market: Address, amount: u128) {
+        env.storage()
+            .persistent()
+            .set(&MockMarginLockKey::Locked(user, market), &amount);
+    }
+
+    pub fn locked_ptokens_in_market(env: Env, user: Address, market: Address) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&MockMarginLockKey::Locked(user, market))
+            .unwrap_or(0u128)
+    }
+}
+
+#[contract]
 pub struct MockBoostedVault;
 
 #[contracttype]
@@ -1021,6 +1046,31 @@ fn test_withdraw_with_ptokens() {
     assert_eq!(vault_client.get_total_ptokens(), 0u128);
     assert_eq!(token_client.balance(&vault_contract_id), 0i128);
     assert_eq!(token_client.balance(&user), 1000i128);
+}
+
+#[test]
+#[should_panic(expected = "collateral locked")]
+fn test_withdraw_rejects_margin_locked_ptokens() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&user, &100u128);
+
+    let margin_controller_id = env.register(MockMarginLockController, ());
+    let margin_controller = MockMarginLockControllerClient::new(&env, &margin_controller_id);
+    vault.set_margin_controller(&admin, &Some(margin_controller_id.clone()));
+    margin_controller.set_locked(&user, &vault_id, &100u128);
+
+    vault.withdraw(&user, &1u128);
 }
 
 #[test]
