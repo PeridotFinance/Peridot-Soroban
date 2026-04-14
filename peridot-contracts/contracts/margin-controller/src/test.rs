@@ -140,6 +140,7 @@ enum MockVaultKey {
     PTokenBalance(Address),
     BorrowBalance(Address),
     UnderlyingToken,
+    MarginController,
 }
 
 #[contractimpl]
@@ -426,6 +427,26 @@ impl MockVault {
             .persistent()
             .set(&key, &current.saturating_sub(amount.min(current)));
     }
+
+    pub fn set_margin_controller(env: Env, margin_controller: Option<Address>) {
+        if let Some(controller) = margin_controller {
+            env.storage()
+                .persistent()
+                .set(&MockVaultKey::MarginController, &controller);
+            return;
+        }
+        env.storage()
+            .persistent()
+            .remove(&MockVaultKey::MarginController);
+    }
+
+    pub fn get_margin_controller(env: Env) -> Option<Address> {
+        env.storage()
+            .persistent()
+            .get(&MockVaultKey::MarginController)
+    }
+
+    pub fn begin_margin_withdraw(_env: Env, _margin_controller: Address, _user: Address) {}
 }
 
 fn setup_min() -> (Env, Address, Address, Address, Address) {
@@ -582,6 +603,8 @@ fn setup_short_min() -> (
     controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
+    usdt_vault.set_margin_controller(&Some(controller_id.clone()));
+    xlm_vault.set_margin_controller(&Some(controller_id.clone()));
     usdt.mint(&user, &1_000_000i128);
 
     (
@@ -1014,6 +1037,33 @@ fn test_open_short_position() {
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
     assert_eq!(pos.side, PositionSide::Short);
+}
+
+#[test]
+#[should_panic(expected = "margin lock not configured")]
+fn test_open_position_rejects_market_without_margin_lock_introspection() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    usdt_vault.set_margin_controller(&None);
+
+    let _ = controller.open_position_no_swap_short(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &1_000u128,
+        &500u128,
+        &2u128,
+    );
 }
 
 #[test]

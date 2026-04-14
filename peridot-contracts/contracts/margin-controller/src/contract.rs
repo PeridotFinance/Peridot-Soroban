@@ -703,9 +703,8 @@ impl MarginController {
         match configured {
             Ok(Ok(Some(controller))) if controller == env.current_contract_address() => {}
             Ok(Ok(_)) => panic!("margin lock not configured"),
-            // Mock test vaults may not implement margin-lock introspection.
-            Err(_) => {}
-            Ok(Err(_)) => {}
+            Err(_) => panic!("margin lock not configured"),
+            Ok(Err(_)) => panic!("margin lock not configured"),
         }
     }
 
