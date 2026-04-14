@@ -140,6 +140,7 @@ enum MockVaultKey {
     PTokenBalance(Address),
     BorrowBalance(Address),
     UnderlyingToken,
+    MarginController,
 }
 
 #[contractimpl]
@@ -426,6 +427,26 @@ impl MockVault {
             .persistent()
             .set(&key, &current.saturating_sub(amount.min(current)));
     }
+
+    pub fn set_margin_controller(env: Env, margin_controller: Option<Address>) {
+        if let Some(controller) = margin_controller {
+            env.storage()
+                .persistent()
+                .set(&MockVaultKey::MarginController, &controller);
+            return;
+        }
+        env.storage()
+            .persistent()
+            .remove(&MockVaultKey::MarginController);
+    }
+
+    pub fn get_margin_controller(env: Env) -> Option<Address> {
+        env.storage()
+            .persistent()
+            .get(&MockVaultKey::MarginController)
+    }
+
+    pub fn begin_margin_withdraw(_env: Env, _margin_controller: Address, _user: Address) {}
 }
 
 fn setup_min() -> (Env, Address, Address, Address, Address) {
@@ -467,6 +488,8 @@ fn setup_min() -> (Env, Address, Address, Address, Address) {
     controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
+    usdt_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
+    xlm_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
 
     usdt.mint(&user, &1_000_000i128);
     usdt.mint(&admin, &1_000_000i128);
@@ -477,7 +500,8 @@ fn setup_min() -> (Env, Address, Address, Address, Address) {
     (env, controller_id, usdt_id, xlm_id, user)
 }
 
-fn setup_min_with_vaults() -> (Env, Address, Address, Address, Address, Address, Address) {
+fn setup_min_with_vaults(
+) -> (Env, Address, Address, Address, Address, Address, Address, Address) {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().with_mut(|l| l.timestamp = 1);
@@ -514,6 +538,8 @@ fn setup_min_with_vaults() -> (Env, Address, Address, Address, Address, Address,
     controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
+    usdt_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
+    xlm_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
 
     usdt.mint(&user, &1_000_000i128);
     usdt.mint(&admin, &1_000_000i128);
@@ -527,6 +553,7 @@ fn setup_min_with_vaults() -> (Env, Address, Address, Address, Address, Address,
         usdt_id,
         xlm_id,
         user,
+        peridottroller_id,
         usdt_vault_id,
         xlm_vault_id,
     )
@@ -576,7 +603,8 @@ fn setup_short_min() -> (
     controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
-
+    usdt_vault.set_margin_controller(&Some(controller_id.clone()));
+    xlm_vault.set_margin_controller(&Some(controller_id.clone()));
     usdt.mint(&user, &1_000_000i128);
 
     (
@@ -648,6 +676,8 @@ fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Addres
     controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
+    usdt_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
+    xlm_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
 
     // Enter markets so peridottroller counts collateral across vaults
     comp.enter_market(&user, &usdt_vault_id);
@@ -723,6 +753,8 @@ fn setup_without_pre_enter_market(
     controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
+    usdt_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
+    xlm_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
 
     (
         env,
@@ -941,6 +973,33 @@ fn test_open_position_no_swap_works_without_manual_enter_market() {
 }
 
 #[test]
+fn test_locked_ptokens_in_market_tracks_open_position_collateral() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let _position_id = controller.open_position_no_swap_short(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &1_000u128,
+        &500u128,
+        &2u128,
+    );
+
+    let locked = controller.locked_ptokens_in_market(&user, &usdt_vault_id);
+    assert_eq!(locked, 1_000u128);
+}
+
+#[test]
 fn test_open_position_no_swap_short() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
@@ -978,6 +1037,33 @@ fn test_open_short_position() {
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
     assert_eq!(pos.side, PositionSide::Short);
+}
+
+#[test]
+#[should_panic(expected = "margin lock not configured")]
+fn test_open_position_rejects_market_without_margin_lock_introspection() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    usdt_vault.set_margin_controller(&None);
+
+    let _ = controller.open_position_no_swap_short(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &1_000u128,
+        &500u128,
+        &2u128,
+    );
 }
 
 #[test]
@@ -1427,7 +1513,8 @@ fn test_get_user_positions_prunes_missing_entries() {
 
 #[test]
 fn test_deposit_and_withdraw_collateral() {
-    let (env, controller_id, usdt_id, _xlm_id, user, usdt_vault_id, _) = setup_min_with_vaults();
+    let (env, controller_id, usdt_id, _xlm_id, user, _, usdt_vault_id, _) =
+        setup_min_with_vaults();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     // Deposit collateral through controller

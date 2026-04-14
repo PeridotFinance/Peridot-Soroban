@@ -38,6 +38,8 @@ pub enum DataKey {
     RatesReady,                 // bool, borrow/rate-sensitive operations enabled
     IdleCashBufferBps,          // u32, target idle cash in basis points (0..=10_000)
     FlashLoanActive,            // bool reentrancy guard for accounting-sensitive paths
+    MarginController,           // Address (optional), enforces margin collateral locks
+    MarginWithdrawBypass(Address), // bool one-shot bypass for margin-controller-managed withdraw
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
