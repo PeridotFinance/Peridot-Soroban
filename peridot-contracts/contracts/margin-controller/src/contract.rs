@@ -612,21 +612,21 @@ impl MarginController {
 
         let debt_vault = get_market(&env, &position.debt_asset);
         let debt_vault_client = ReceiptVaultClient::new(&env, &debt_vault);
-        let collateral_vault_client = ReceiptVaultClient::new(&env, &collateral_vault);
-        let borrower_collateral_before = collateral_vault_client.get_ptoken_balance(&position.owner);
+        let position_shortfall_usd = debt_value.saturating_sub(collateral_value);
+        let max_seize_ptokens = position.collateral_ptokens;
         let peridottroller_addr: Address = env
             .storage()
             .persistent()
             .get(&DataKey::Peridottroller)
             .expect("peridottroller not set");
-        let controller = env.current_contract_address();
         let liquidation_args: Vec<Val> = (
-            controller.clone(),
             position.owner.clone(),
             debt_vault.clone(),
             collateral_vault.clone(),
             debt_amount,
             liquidator.clone(),
+            position_shortfall_usd,
+            max_seize_ptokens,
         )
             .into_val(&env);
         let mut auths = Vec::new(&env);
@@ -640,13 +640,14 @@ impl MarginController {
         }));
         env.authorize_as_current_contract(auths);
 
-        get_peridottroller(&env).liquidate_for_margin(
-            &controller,
+        let seized_ptokens = get_peridottroller(&env).liquidate_for_margin(
             &position.owner,
             &debt_vault,
             &collateral_vault,
             &debt_amount,
             &liquidator,
+            &position_shortfall_usd,
+            &max_seize_ptokens,
         );
         let total_debt_after = debt_vault_client.get_user_borrow_balance(&position.owner);
         if total_debt_after >= total_debt_before {
@@ -674,11 +675,9 @@ impl MarginController {
             .checked_sub(shares_burned)
             .expect("share underflow");
         position.debt_shares = new_position_shares;
-        let borrower_collateral_after = collateral_vault_client.get_ptoken_balance(&position.owner);
-        if borrower_collateral_after < borrower_collateral_before {
-            let seized = borrower_collateral_before - borrower_collateral_after;
-            position.collateral_ptokens = position.collateral_ptokens.saturating_sub(seized);
-        }
+        position.collateral_ptokens = position
+            .collateral_ptokens
+            .saturating_sub(seized_ptokens);
         let new_total_shares = total_shares
             .checked_sub(shares_burned)
             .expect("share underflow");

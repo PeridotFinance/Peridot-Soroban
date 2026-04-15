@@ -1223,6 +1223,16 @@ impl FailingPeridotToken {
     }
 }
 
+#[contract]
+struct MockMarginController;
+
+#[contractimpl]
+impl MockMarginController {
+    pub fn locked_ptokens_in_market(_env: Env, _user: Address, _market: Address) -> u128 {
+        0u128
+    }
+}
+
 // BrokenMarket simulates a market whose storage TTL has expired (FIND-039 PoC)
 // It was healthy when added (get_underlying_token works), then expired (all other calls panic)
 #[contract]
@@ -1747,13 +1757,12 @@ fn test_liquidation_flow_basic() {
 }
 
 #[test]
-#[should_panic(expected = "unauthorized controller")]
+#[should_panic(expected = "margin controller not set")]
 fn test_liquidate_for_margin_rejects_unauthorized_controller() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
-    let controller = Address::generate(&env);
     let borrower = Address::generate(&env);
     let liquidator = Address::generate(&env);
     let market_a = Address::generate(&env);
@@ -1764,13 +1773,29 @@ fn test_liquidate_for_margin_rejects_unauthorized_controller() {
     comp.initialize(&admin);
 
     comp.liquidate_for_margin(
-        &controller,
         &borrower,
         &market_a,
         &market_b,
         &10u128,
         &liquidator,
+        &1u128,
+        &1u128,
     );
+}
+
+#[test]
+#[should_panic(expected = "invalid controller")]
+fn test_set_margin_liquidation_ctrl_rejects_non_contract() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let eoa = Address::generate(&env);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.set_margin_liquidation_ctrl(&eoa, &true);
 }
 
 #[test]
@@ -1781,7 +1806,7 @@ fn test_liquidate_for_margin_bypasses_account_level_shortfall_gate() {
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
     let liquidator = Address::generate(&env);
-    let controller = Address::generate(&env);
+    let controller = env.register(MockMarginController, ());
 
     // Tokens
     let token_admin_a = Address::generate(&env);
@@ -1840,12 +1865,13 @@ fn test_liquidate_for_margin_bypasses_account_level_shortfall_gate() {
     vault_a.borrow(&borrower, &50u128);
 
     comp.liquidate_for_margin(
-        &controller,
         &borrower,
         &vault_a_id,
         &vault_b_id,
         &25u128,
         &liquidator,
+        &1u128,
+        &100u128,
     );
 
     let debt_after = vault_a.get_user_borrow_balance(&borrower);

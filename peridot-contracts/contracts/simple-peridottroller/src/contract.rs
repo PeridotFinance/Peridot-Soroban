@@ -224,19 +224,39 @@ impl SimplePeridottroller {
         }
     }
 
-    fn require_margin_liquidation_controller(env: &Env, controller: &Address) {
+    fn assert_valid_margin_liquidation_controller(env: &Env, controller: &Address) {
+        // Interface probe to prevent accidental EOA/non-controller configuration.
+        // Any valid margin-controller implementation must expose this read method.
+        let probe = env.try_invoke_contract::<u128, InvokeError>(
+            controller,
+            &Symbol::new(env, "locked_ptokens_in_market"),
+            (
+                env.current_contract_address(),
+                env.current_contract_address(),
+            )
+                .into_val(env),
+        );
+        if !matches!(probe, Ok(Ok(_))) {
+            panic!("invalid controller");
+        }
+    }
+
+    fn get_margin_liquidation_controller(env: &Env) -> Address {
         storage::bump_margin_liquidation_controllers_ttl(env);
         let controllers: Map<Address, bool> = env
             .storage()
             .persistent()
             .get(&DataKey::MarginLiquidationControllers)
             .unwrap_or(Map::new(env));
-        if !controllers
-            .get(controller.clone())
-            .unwrap_or(false)
-        {
-            panic!("unauthorized controller");
+        let keys = controllers.keys();
+        if keys.len() != 1 {
+            panic!("margin controller not set");
         }
+        let controller = keys.get(0).unwrap();
+        if !controllers.get(controller.clone()).unwrap_or(false) {
+            panic!("margin controller not set");
+        }
+        controller
     }
 
     fn apply_market_removal(
@@ -475,7 +495,10 @@ impl SimplePeridottroller {
             .get(&DataKey::MarginLiquidationControllers)
             .unwrap_or(Map::new(&env));
         if allowed {
-            controllers.set(controller, true);
+            Self::assert_valid_margin_liquidation_controller(&env, &controller);
+            let mut single = Map::new(&env);
+            single.set(controller, true);
+            controllers = single;
         } else {
             controllers.remove(controller);
         }
@@ -493,7 +516,12 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::MarginLiquidationControllers)
             .unwrap_or(Map::new(&env));
-        controllers.get(controller).unwrap_or(false)
+        let keys = controllers.keys();
+        if keys.len() != 1 {
+            return false;
+        }
+        let configured = keys.get(0).unwrap();
+        configured == controller && controllers.get(controller).unwrap_or(false)
     }
 
     // Market collateral factor admin setter/getter
@@ -2105,6 +2133,8 @@ impl SimplePeridottroller {
             repay_amount,
             liquidator,
             true,
+            None,
+            None,
         );
     }
 
@@ -2112,16 +2142,17 @@ impl SimplePeridottroller {
     // This path is controller-gated and intentionally does not require account-level shortfall.
     pub fn liquidate_for_margin(
         env: Env,
-        controller: Address,
         borrower: Address,
         repay_market: Address,
         collateral_market: Address,
         repay_amount: u128,
         liquidator: Address,
-    ) {
+        position_shortfall_usd: u128,
+        max_seize_ptokens: u128,
+    ) -> u128 {
         bump_core_ttl(&env);
+        let controller = Self::get_margin_liquidation_controller(&env);
         controller.require_auth();
-        Self::require_margin_liquidation_controller(&env, &controller);
         Self::liquidate_internal(
             env,
             borrower,
@@ -2130,7 +2161,9 @@ impl SimplePeridottroller {
             repay_amount,
             liquidator,
             false,
-        );
+            Some(position_shortfall_usd),
+            Some(max_seize_ptokens),
+        )
     }
 
     fn liquidate_internal(
@@ -2141,7 +2174,9 @@ impl SimplePeridottroller {
         repay_amount: u128,
         liquidator: Address,
         require_account_shortfall: bool,
-    ) {
+        position_shortfall_usd: Option<u128>,
+        max_seize_ptokens: Option<u128>,
+    ) -> u128 {
         // top-level auth for liquidator, to allow token transfer from liquidator in nested calls
         liquidator.require_auth();
         let supported: Map<Address, bool> = env
@@ -2192,17 +2227,16 @@ impl SimplePeridottroller {
                 panic!("no shortfall");
             }
         }
-        // Seize-context consumers require shortfall > 0; margin-controller path proves
-        // position insolvency independently and may be account-solvent cross-market.
-        let shortfall_for_ctx = if account_shortfall == 0 {
-            1u128
+        let (shortfall_for_ctx, liquidity_for_ctx) = if require_account_shortfall {
+            (account_shortfall, account_liquidity)
         } else {
-            account_shortfall
-        };
-        let liquidity_for_ctx = if account_shortfall == 0 {
-            0u128
-        } else {
-            account_liquidity
+            let position_shortfall = position_shortfall_usd.unwrap_or(0u128);
+            if position_shortfall == 0 {
+                panic!("position shortfall required");
+            }
+            // Margin-path liquidation is position-scoped and can occur even if the
+            // account is cross-market solvent.
+            (position_shortfall, 0u128)
         };
 
         // params
@@ -2270,10 +2304,19 @@ impl SimplePeridottroller {
             &Symbol::new(&env, "get_ptoken_balance"),
             (borrower.clone(),).into_val(&env),
         );
-        if seize_ptokens > borrower_pbal {
+        let mut seize_cap = borrower_pbal;
+        if let Some(max_seize) = max_seize_ptokens {
+            if max_seize == 0 {
+                panic!("no collateral");
+            }
+            if max_seize < seize_cap {
+                seize_cap = max_seize;
+            }
+        }
+        if seize_ptokens > seize_cap {
             // Scale repay down with ceil-div so tiny-but-nonzero collateral does
             // not round to zero and block liquidation.
-            let scaled = repay.saturating_mul(borrower_pbal);
+            let scaled = repay.saturating_mul(seize_cap);
             repay = if scaled == 0 {
                 0
             } else {
@@ -2282,7 +2325,7 @@ impl SimplePeridottroller {
             if repay == 0 {
                 panic!("zero seize");
             }
-            seize_ptokens = borrower_pbal;
+            seize_ptokens = seize_cap;
         }
         let repay_usd = (repay.saturating_mul(pb)) / sb;
         let liq_fee: u128 = env
@@ -2375,6 +2418,7 @@ impl SimplePeridottroller {
             seize_tokens: seize_ptokens,
         }
         .publish(&env);
+        seize_ptokens
     }
 
     /// Repay on behalf via peridottroller auth (no seize).

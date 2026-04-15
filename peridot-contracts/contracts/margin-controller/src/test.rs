@@ -388,21 +388,23 @@ impl MockPeridottroller {
 
     pub fn liquidate_for_margin(
         env: Env,
-        _controller: Address,
         borrower: Address,
         repay_market: Address,
         collateral_market: Address,
         repay_amount: u128,
         liquidator: Address,
-    ) {
+        _position_shortfall_usd: u128,
+        max_seize_ptokens: u128,
+    ) -> u128 {
         Self::liquidate(
-            env,
+            env.clone(),
             borrower,
             repay_market,
             collateral_market,
             repay_amount,
             liquidator,
         );
+        max_seize_ptokens
     }
 
     pub fn get_last_liquidation(env: Env) -> (Address, Address, Address, u128, Address) {
