@@ -898,7 +898,7 @@ fn test_set_market_and_params() {
     let fresh_id = env.register(MarginController, ());
     let fresh = MarginControllerClient::new(&env, &fresh_id);
     let comp = Address::generate(&env);
-    let swap = Address::generate(&env);
+    let swap = env.register(MockSwapAdapter, ());
     fresh.initialize(&admin, &comp, &swap, &3u128, &10_000u128);
     fresh.set_market(&admin, &usdt_id, &usdt_vault_id);
 
@@ -924,7 +924,7 @@ fn test_set_max_slippage_bps() {
     let fresh_id = env.register(MarginController, ());
     let fresh = MarginControllerClient::new(&env, &fresh_id);
     let comp = Address::generate(&env);
-    let swap = Address::generate(&env);
+    let swap = env.register(MockSwapAdapter, ());
     fresh.initialize(&admin, &comp, &swap, &3u128, &10_000u128);
     fresh.set_max_slippage_bps(&admin, &25_000u128);
 }
@@ -937,9 +937,38 @@ fn test_set_max_slippage_bps_rejects_zero() {
     let fresh_id = env.register(MarginController, ());
     let fresh = MarginControllerClient::new(&env, &fresh_id);
     let comp = Address::generate(&env);
-    let swap = Address::generate(&env);
+    let swap = env.register(MockSwapAdapter, ());
     fresh.initialize(&admin, &comp, &swap, &3u128, &10_000u128);
     fresh.set_max_slippage_bps(&admin, &0u128);
+}
+
+#[test]
+#[should_panic(expected = "invalid liquidation bonus")]
+fn test_set_params_rejects_excessive_liquidation_bonus() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let admin: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    });
+    controller.set_params(&admin, &5u128, &600_000u128);
+}
+
+#[test]
+#[should_panic(expected = "invalid swap adapter")]
+fn test_set_swap_adapter_rejects_invalid_contract() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let admin: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    });
+    let not_adapter = Address::generate(&env);
+    controller.set_swap_adapter(&admin, &not_adapter);
 }
 
 #[test]

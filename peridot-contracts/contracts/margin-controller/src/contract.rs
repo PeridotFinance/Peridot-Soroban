@@ -37,6 +37,8 @@ impl MarginController {
         if max_leverage < 1 || max_leverage > MAX_LEVERAGE_CAP {
             panic!("invalid leverage");
         }
+        Self::assert_valid_liquidation_bonus(liquidation_bonus_scaled);
+        Self::assert_valid_swap_adapter(&env, &swap_adapter);
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage()
             .persistent()
@@ -88,6 +90,7 @@ impl MarginController {
         if max_leverage < 1 || max_leverage > MAX_LEVERAGE_CAP {
             panic!("invalid leverage");
         }
+        Self::assert_valid_liquidation_bonus(liquidation_bonus_scaled);
         env.storage()
             .persistent()
             .set(&DataKey::MaxLeverage, &max_leverage);
@@ -110,6 +113,7 @@ impl MarginController {
     pub fn set_swap_adapter(env: Env, admin: Address, swap_adapter: Address) {
         bump_core_ttl(&env);
         require_admin(&env, &admin);
+        Self::assert_valid_swap_adapter(&env, &swap_adapter);
         env.storage()
             .persistent()
             .set(&DataKey::SwapAdapter, &swap_adapter);
@@ -732,6 +736,23 @@ impl MarginController {
             Ok(Ok(_)) => panic!("margin lock not configured"),
             Err(_) => panic!("margin lock not configured"),
             Ok(Err(_)) => panic!("margin lock not configured"),
+        }
+    }
+
+    fn assert_valid_liquidation_bonus(liquidation_bonus_scaled: u128) {
+        if liquidation_bonus_scaled > MAX_LIQUIDATION_BONUS_SCALED {
+            panic!("invalid liquidation bonus");
+        }
+    }
+
+    fn assert_valid_swap_adapter(env: &Env, swap_adapter: &Address) {
+        match env.try_invoke_contract::<bool, InvokeError>(
+            swap_adapter,
+            &Symbol::new(env, "is_pool_allowed"),
+            (env.current_contract_address(),).into_val(env),
+        ) {
+            Ok(Ok(_)) => {}
+            _ => panic!("invalid swap adapter"),
         }
     }
 
