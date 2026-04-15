@@ -993,6 +993,59 @@ fn test_open_position_no_swap() {
 }
 
 #[test]
+fn test_open_position_no_swap_issues_ceil_debt_shares() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        _usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let _ = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &20u128,
+        &10u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    // Force a non-integer share/debt ratio before the next borrow:
+    // debt_before = 10, shares_before = 3, borrow = 4.
+    // New share issuance should be ceil(4*3/10) = 2.
+    let debt_key = DataKey::DebtSharesTotal(user.clone(), xlm_id.clone());
+    env.as_contract(&controller_id, || {
+        env.storage().persistent().set(&debt_key, &3u128);
+    });
+
+    let second_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &20u128,
+        &4u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+    let second = controller.get_position(&second_id).unwrap();
+    assert_eq!(second.debt_shares, 2u128);
+
+    let total_shares: u128 = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::DebtSharesTotal(user.clone(), xlm_id.clone()))
+            .expect("missing debt shares total")
+    });
+    assert_eq!(total_shares, 5u128);
+}
+
+#[test]
 fn test_open_position_no_swap_enters_required_markets() {
     let (
         env,
