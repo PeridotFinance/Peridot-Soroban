@@ -107,6 +107,9 @@ impl MockOracle {
 #[contract]
 struct MockSwapAdapter;
 
+#[contract]
+struct MockBadSwapAdapter;
+
 #[contracttype]
 enum MockSwapAdapterKey {
     LastAmountIn,
@@ -141,6 +144,29 @@ impl MockSwapAdapter {
             .persistent()
             .get(&MockSwapAdapterKey::LastAmountIn)
             .unwrap_or(0u128)
+    }
+}
+
+#[contractimpl]
+impl MockBadSwapAdapter {
+    pub fn is_pool_allowed(_env: Env, _pool: Address) -> bool {
+        true
+    }
+
+    pub fn swap_chained(
+        env: Env,
+        user: Address,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        _token_in: Address,
+        amount: u128,
+        _amount_with_slippage: u128,
+    ) -> u128 {
+        let received = amount / 2;
+        let last = swaps_chain.get(swaps_chain.len() - 1).unwrap();
+        let (path, _, _) = last;
+        let token_out = path.get(path.len() - 1).unwrap();
+        MockTokenClient::new(&env, &token_out).mint(&user, &(received as i128));
+        received
     }
 }
 
@@ -1501,6 +1527,35 @@ fn test_open_position_rejects_low_slippage_floor() {
         &PositionSide::Long,
         &swaps_chain,
         &1u128, // below oracle-derived minimum
+    );
+}
+
+#[test]
+#[should_panic(expected = "slippage too high")]
+fn test_open_position_rejects_amm_output_below_oracle_floor() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    // Swap adapter that always returns only 50% of the input amount.
+    let bad_swap_adapter_id = env.register(MockBadSwapAdapter, ());
+    let admin: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    });
+    controller.set_swap_adapter(&admin, &bad_swap_adapter_id);
+
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &100u128, // meets user floor, but not the oracle-derived minimum
     );
 }
 
