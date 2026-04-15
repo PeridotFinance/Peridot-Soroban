@@ -234,16 +234,8 @@ impl MarginController {
         let debt_before =
             ReceiptVaultClient::new(&env, &debt_vault).get_user_borrow_balance(&user);
         let shares_before = get_debt_shares_total(&env, &user, &debt_asset);
-        let new_shares = if shares_before == 0 || debt_before == 0 {
-            borrow_amount
-        } else {
-            let numerator = borrow_amount.saturating_mul(shares_before);
-            let mut shares = numerator / debt_before;
-            if numerator > 0 && shares == 0 {
-                shares = 1;
-            }
-            shares
-        };
+        let new_shares =
+            Self::calculate_new_debt_shares(borrow_amount, shares_before, debt_before);
         ReceiptVaultClient::new(&env, &debt_vault).borrow(&user, &borrow_amount);
         set_debt_shares_total(
             &env,
@@ -415,16 +407,8 @@ impl MarginController {
         let debt_before =
             ReceiptVaultClient::new(&env, &debt_vault).get_user_borrow_balance(&user);
         let shares_before = get_debt_shares_total(&env, &user, &debt_asset);
-        let new_shares = if shares_before == 0 || debt_before == 0 {
-            borrow_amount
-        } else {
-            let numerator = borrow_amount.saturating_mul(shares_before);
-            let mut shares = numerator / debt_before;
-            if numerator > 0 && shares == 0 {
-                shares = 1;
-            }
-            shares
-        };
+        let new_shares =
+            Self::calculate_new_debt_shares(borrow_amount, shares_before, debt_before);
         ReceiptVaultClient::new(&env, &debt_vault).borrow(&user, &borrow_amount);
         set_debt_shares_total(
             &env,
@@ -509,6 +493,12 @@ impl MarginController {
 
             let new_total_shares = total_shares.saturating_sub(position.debt_shares);
             set_debt_shares_total(&env, &user, &position.debt_asset, new_total_shares);
+            Self::assert_no_residual_debt_when_all_shares_burned(
+                &env,
+                &user,
+                &debt_vault,
+                new_total_shares,
+            );
 
             remove_user_position(&env, &user, position_id);
             return;
@@ -559,6 +549,12 @@ impl MarginController {
 
         let new_total_shares = total_shares.saturating_sub(position.debt_shares);
         set_debt_shares_total(&env, &user, &position.debt_asset, new_total_shares);
+        Self::assert_no_residual_debt_when_all_shares_burned(
+            &env,
+            &user,
+            &debt_vault,
+            new_total_shares,
+        );
 
         remove_user_position(&env, &user, position_id);
 
@@ -753,6 +749,38 @@ impl MarginController {
         ) {
             Ok(Ok(_)) => {}
             _ => panic!("invalid swap adapter"),
+        }
+    }
+
+    fn calculate_new_debt_shares(
+        borrow_amount: u128,
+        shares_before: u128,
+        debt_before: u128,
+    ) -> u128 {
+        if shares_before == 0 || debt_before == 0 {
+            return borrow_amount;
+        }
+        let numerator = borrow_amount
+            .checked_mul(shares_before)
+            .expect("share calc overflow");
+        numerator
+            .checked_add(debt_before - 1)
+            .expect("share calc overflow")
+            / debt_before
+    }
+
+    fn assert_no_residual_debt_when_all_shares_burned(
+        env: &Env,
+        user: &Address,
+        debt_vault: &Address,
+        new_total_shares: u128,
+    ) {
+        if new_total_shares != 0 {
+            return;
+        }
+        let remaining = ReceiptVaultClient::new(env, debt_vault).get_user_borrow_balance(user);
+        if remaining > 0 {
+            panic!("residual debt");
         }
     }
 
