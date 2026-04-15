@@ -1624,6 +1624,8 @@ fn test_liquidate_position_calls_peridottroller_with_expected_order() {
         &PositionSide::Long,
     );
     comp.set_account_liquidity(&user, &0u128, &1u128);
+    // Make the position insolvent in position-isolated terms (HF < 1.0).
+    comp.set_price(&usdt_id, &400_000u128, &1_000_000u128);
 
     controller.liquidate_position(&liquidator, &position_id);
 
@@ -1637,6 +1639,71 @@ fn test_liquidate_position_calls_peridottroller_with_expected_order() {
 
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Liquidated);
+}
+
+#[test]
+#[should_panic(expected = "not liquidatable")]
+fn test_liquidate_position_rejects_positive_account_liquidity_even_if_hf_is_below_one() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        _usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let liquidator = Address::generate(&env);
+
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &xlm_id,
+        &usdt_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+    // Position-level insolvency: collateral (XLM) marked down to 40% of initial value.
+    comp.set_price(&xlm_id, &400_000u128, &1_000_000u128);
+    // Global account liquidity still appears healthy; this should no longer block liquidation.
+    comp.set_account_liquidity(&user, &9_940u128, &0u128);
+
+    controller.liquidate_position(&liquidator, &position_id);
+}
+
+#[test]
+#[should_panic(expected = "not liquidatable")]
+fn test_liquidate_position_rejects_healthy_hf_even_if_account_has_shortfall() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        _usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let liquidator = Address::generate(&env);
+
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+    // Force account-level shortfall signal while position remains healthy (HF=2.0 at 1:1 prices).
+    comp.set_account_liquidity(&user, &0u128, &1u128);
+    controller.liquidate_position(&liquidator, &position_id);
 }
 
 #[test]
