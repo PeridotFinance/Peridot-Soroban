@@ -842,6 +842,35 @@ fn open_and_close_long() {
 }
 
 #[test]
+fn test_close_position_withdraws_initial_collateral_lock() {
+    let (env, controller_id, usdt_id, xlm_id, user, _comp, usdt_vault_id, _xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    let open_swaps = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &open_swaps,
+        &100u128,
+    );
+
+    // Initial collateral pTokens are minted in the collateral (USDT) vault.
+    assert_eq!(usdt_vault.get_ptoken_balance(&user), 100u128);
+
+    let close_swaps = mock_swaps_chain(&env, &xlm_id, &usdt_id);
+    controller.close_position(&user, &position_id, &close_swaps, &100u128);
+
+    // Closing now auto-withdraws the initial collateral lock.
+    assert_eq!(usdt_vault.get_ptoken_balance(&user), 0u128);
+}
+
+#[test]
 fn test_close_position_swaps_actual_withdrawn_amount_after_interest_accrual() {
     let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xlm_vault_id) =
         setup_short_min();

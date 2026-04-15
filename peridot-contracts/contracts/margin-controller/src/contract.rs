@@ -482,12 +482,12 @@ impl MarginController {
         if debt_amount == 0 {
             panic!("zero debt");
         }
+        let initial_lock = get_position_initial_lock(&env, position_id);
         position.status = PositionStatus::Closed;
         env.storage()
             .persistent()
             .set(&DataKey::Position(position_id), &position);
         bump_position_ttl(&env, position_id);
-        clear_position_initial_lock(&env, position_id);
 
         if position.collateral_asset == position.debt_asset {
             let debt_vault = get_market(&env, &position.debt_asset);
@@ -505,6 +505,8 @@ impl MarginController {
                 &debt_vault,
                 new_total_shares,
             );
+            Self::withdraw_initial_collateral_if_any(&env, &user, initial_lock);
+            clear_position_initial_lock(&env, position_id);
 
             remove_user_position(&env, &user, position_id);
             return;
@@ -561,6 +563,8 @@ impl MarginController {
             &debt_vault,
             new_total_shares,
         );
+        Self::withdraw_initial_collateral_if_any(&env, &user, initial_lock);
+        clear_position_initial_lock(&env, position_id);
 
         remove_user_position(&env, &user, position_id);
 
@@ -788,6 +792,22 @@ impl MarginController {
         if remaining > 0 {
             panic!("residual debt");
         }
+    }
+
+    fn withdraw_initial_collateral_if_any(
+        env: &Env,
+        user: &Address,
+        initial_lock: Option<(Address, u128)>,
+    ) {
+        let Some((initial_market, initial_ptokens)) = initial_lock else {
+            return;
+        };
+        if initial_ptokens == 0 {
+            return;
+        }
+        let vault = ReceiptVaultClient::new(env, &initial_market);
+        Self::begin_margin_withdraw_if_supported(env, &initial_market, user);
+        vault.withdraw(user, &initial_ptokens);
     }
 
     fn begin_margin_withdraw_if_supported(env: &Env, vault: &Address, user: &Address) {
