@@ -13,6 +13,7 @@ pub enum DataKey {
     Oracle,                     // Address
     CloseFactorScaled,          // u128 scaled 1e6
     LiquidationIncentiveScaled, // u128 scaled 1e6
+    MarginLiquidationControllers, // Map<Address, bool>
     ReserveRecipient,           // Address for liquidation fee pTokens
     PauseBorrow,                // Map<Address, bool>
     PauseBorrowUntil,           // Map<Address, u64> pause expiry
@@ -154,6 +155,17 @@ pub fn bump_pause_guardian_ttl(env: &Env) {
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::PauseGuardian) {
         persistent.extend_ttl(&DataKey::PauseGuardian, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_margin_liquidation_controllers_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::MarginLiquidationControllers) {
+        persistent.extend_ttl(
+            &DataKey::MarginLiquidationControllers,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
 }
 

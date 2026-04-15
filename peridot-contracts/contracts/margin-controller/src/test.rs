@@ -31,6 +31,7 @@ enum MockPeridottrollerKey {
     LastRepayAmount,
     LastLiquidator,
     EnteredMarket(Address, Address),
+    LiquidateRepayBps,
 }
 
 #[contracttype]
@@ -308,6 +309,12 @@ impl MockPeridottroller {
             .set(&MockPeridottrollerKey::MarketCF(market), &cf);
     }
 
+    pub fn set_liquidate_repay_bps(env: Env, bps: u128) {
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::LiquidateRepayBps, &bps);
+    }
+
     pub fn get_collateral_excl_usd(
         _env: Env,
         _user: Address,
@@ -366,6 +373,39 @@ impl MockPeridottroller {
         env.storage()
             .persistent()
             .set(&MockPeridottrollerKey::LastLiquidator, &liquidator);
+
+        // Apply a configurable mocked liquidation effect so post-call debt reflects progress.
+        let repay_bps: u128 = env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::LiquidateRepayBps)
+            .unwrap_or(1_000_000u128);
+        let effective_repay = repay_amount.saturating_mul(repay_bps) / 1_000_000u128;
+        if effective_repay > 0 {
+            MockVaultClient::new(&env, &repay_market).repay(&borrower, &effective_repay);
+        }
+    }
+
+    pub fn liquidate_for_margin(
+        env: Env,
+        _controller: Address,
+        borrower: Address,
+        repay_market: Address,
+        collateral_market: Address,
+        repay_amount: u128,
+        liquidator: Address,
+        _position_shortfall_usd: u128,
+        max_seize_ptokens: u128,
+    ) -> u128 {
+        Self::liquidate(
+            env.clone(),
+            borrower,
+            repay_market,
+            collateral_market,
+            repay_amount,
+            liquidator,
+        );
+        max_seize_ptokens
     }
 
     pub fn get_last_liquidation(env: Env) -> (Address, Address, Address, u128, Address) {
@@ -1678,6 +1718,35 @@ fn test_close_position_rejects_low_slippage_floor() {
 }
 
 #[test]
+fn test_close_position_allows_underwater_with_wallet_topup() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, xlm_vault_id) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    // Build an underwater position: collateral=100 USDT, debt=150 XLM.
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &150u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    // Swap output from collateral (100) is not enough to repay debt (150); top up from wallet.
+    MockTokenClient::new(&env, &xlm_id).mint(&user, &1_000i128);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.close_position(&user, &position_id, &swaps_chain_close, &1_000u128);
+
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Closed);
+    assert_eq!(
+        MockVaultClient::new(&env, &xlm_vault_id).get_user_borrow_balance(&user),
+        0u128
+    );
+}
+
+#[test]
 fn test_liquidate_position_calls_peridottroller_with_expected_order() {
     let (
         env,
@@ -1721,8 +1790,67 @@ fn test_liquidate_position_calls_peridottroller_with_expected_order() {
 }
 
 #[test]
-#[should_panic(expected = "not liquidatable")]
-fn test_liquidate_position_rejects_positive_account_liquidity_even_if_hf_is_below_one() {
+fn test_liquidate_position_partial_repay_keeps_position_open_and_preserves_other_position_debt() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        _usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let liquidator = Address::generate(&env);
+
+    // User needs collateral asset (XLM) for these long no-swap positions.
+    MockTokenClient::new(&env, &xlm_id).mint(&user, &1_000i128);
+
+    // Two positions share the same (user, debt_asset) share pool.
+    let pos_a_id = controller.open_position_no_swap(
+        &user,
+        &xlm_id,
+        &usdt_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+    let pos_b_id = controller.open_position_no_swap(
+        &user,
+        &xlm_id,
+        &usdt_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    // Make positions underwater for liquidation eligibility.
+    comp.set_price(&xlm_id, &400_000u128, &1_000_000u128);
+    comp.set_price(&usdt_id, &1_000_000u128, &1_000_000u128);
+    comp.set_account_liquidity(&user, &0u128, &1u128);
+
+    let hf_b_before = controller.get_health_factor(&pos_b_id);
+    assert_eq!(hf_b_before, 800_000u128);
+
+    // Simulate close-factor-capped liquidation progress (50% of requested repay).
+    comp.set_liquidate_repay_bps(&500_000u128);
+    controller.liquidate_position(&liquidator, &pos_a_id);
+
+    let pos_a_after = controller.get_position(&pos_a_id).unwrap();
+    assert_eq!(pos_a_after.status, PositionStatus::Open);
+    assert_eq!(pos_a_after.debt_shares, 25u128);
+
+    // Position B's debt projection should remain stable (no cross-position contamination).
+    let hf_b_after = controller.get_health_factor(&pos_b_id);
+    assert_eq!(hf_b_after, hf_b_before);
+}
+
+#[test]
+fn test_liquidate_position_allows_hf_liquidation_even_with_positive_account_liquidity() {
     let (
         env,
         controller_id,
@@ -1752,6 +1880,8 @@ fn test_liquidate_position_rejects_positive_account_liquidity_even_if_hf_is_belo
     comp.set_account_liquidity(&user, &9_940u128, &0u128);
 
     controller.liquidate_position(&liquidator, &position_id);
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
 }
 
 #[test]

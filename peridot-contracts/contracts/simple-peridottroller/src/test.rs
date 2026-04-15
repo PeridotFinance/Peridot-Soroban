@@ -1223,6 +1223,16 @@ impl FailingPeridotToken {
     }
 }
 
+#[contract]
+struct MockMarginController;
+
+#[contractimpl]
+impl MockMarginController {
+    pub fn locked_ptokens_in_market(_env: Env, _user: Address, _market: Address) -> u128 {
+        0u128
+    }
+}
+
 // BrokenMarket simulates a market whose storage TTL has expired (FIND-039 PoC)
 // It was healthy when added (get_underlying_token works), then expired (all other calls panic)
 #[contract]
@@ -1742,6 +1752,136 @@ fn test_liquidation_flow_basic() {
     let debt_after = vault_a.get_user_borrow_balance(&borrower);
     assert!(debt_after <= 25u128);
     // Liquidator should have received some pTokens from B
+    let p_liq = vault_b.get_ptoken_balance(&liquidator);
+    assert!(p_liq > 0u128);
+}
+
+#[test]
+#[should_panic(expected = "unauthorized controller")]
+fn test_liquidate_for_margin_rejects_unauthorized_controller() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let controller = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let market_a = Address::generate(&env);
+    let market_b = Address::generate(&env);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    comp.liquidate_for_margin(
+        &controller,
+        &borrower,
+        &market_a,
+        &market_b,
+        &10u128,
+        &liquidator,
+        &1u128,
+        &1u128,
+    );
+}
+
+#[test]
+fn test_set_margin_liquidation_ctrl_allows_multiple_entries() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let c1 = Address::generate(&env);
+    let c2 = Address::generate(&env);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.set_margin_liquidation_ctrl(&c1, &true);
+    comp.set_margin_liquidation_ctrl(&c2, &true);
+    assert!(comp.is_margin_liquidation_ctrl(&c1));
+    assert!(comp.is_margin_liquidation_ctrl(&c2));
+}
+
+#[test]
+fn test_liquidate_for_margin_bypasses_account_level_shortfall_gate() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let controller = env.register(MockMarginController, ());
+
+    // Tokens
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    // Vaults
+    let vault_a_id = env.register(rv::ReceiptVault, ()); // borrow market
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ()); // collateral market
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    // Peridottroller
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.enter_market(&borrower, &vault_a_id);
+    comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    comp.set_margin_liquidation_ctrl(&controller, &true);
+
+    // Oracle: keep both assets at $1, so borrower is not globally in shortfall.
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    // Wire peridottroller
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    // Mint tokens
+    let admin_a = token::StellarAssetClient::new(&env, &token_a);
+    let admin_b = token::StellarAssetClient::new(&env, &token_b);
+    admin_a.mint(&borrower, &1_000i128);
+    admin_b.mint(&borrower, &1_000i128);
+    admin_a.mint(&liquidator, &1_000i128);
+
+    // Borrower is healthy from account perspective (100 collateral @50% CF, 50 debt).
+    vault_b.set_collateral_factor(&500_000u128);
+    vault_b.deposit(&borrower, &100u128);
+    vault_a.deposit(&liquidator, &200u128);
+    vault_a.borrow(&borrower, &50u128);
+
+    comp.liquidate_for_margin(
+        &controller,
+        &borrower,
+        &vault_a_id,
+        &vault_b_id,
+        &25u128,
+        &liquidator,
+        &1u128,
+        &100u128,
+    );
+
+    let debt_after = vault_a.get_user_borrow_balance(&borrower);
+    assert!(debt_after <= 25u128);
     let p_liq = vault_b.get_ptoken_balance(&liquidator);
     assert!(p_liq > 0u128);
 }
