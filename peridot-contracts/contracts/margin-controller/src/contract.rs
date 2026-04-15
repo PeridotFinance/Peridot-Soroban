@@ -20,7 +20,11 @@ impl MarginController {
         swap_adapter: Address,
         max_leverage: u128,
     ) {
-        if env.storage().persistent().has(&DataKey::Initialized) {
+        let persistent = env.storage().persistent();
+        let already_initialized = persistent.has(&DataKey::Initialized)
+            || persistent.has(&DataKey::Admin)
+            || env.storage().instance().has(&DataKey::Initialized);
+        if already_initialized {
             panic!("already initialized");
         }
         assert_expected_admin(&env, &admin);
