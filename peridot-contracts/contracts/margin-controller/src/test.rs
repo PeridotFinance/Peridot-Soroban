@@ -1535,6 +1535,44 @@ fn test_get_health_factor() {
 }
 
 #[test]
+fn test_get_health_factor_applies_collateral_factor() {
+    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller_id: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Peridottroller)
+            .expect("peridottroller not set")
+    });
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault_id: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Market(usdt_id.clone()))
+            .expect("market not set")
+    });
+
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &usdt_id,
+        &100u128,
+        &60u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    let hf_before = controller.get_health_factor(&position_id);
+    assert_eq!(hf_before, 1_666_666u128);
+
+    // Halve collateral factor; health factor must reflect discounted collateral.
+    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
+    let hf_after = controller.get_health_factor(&position_id);
+    assert_eq!(hf_after, 833_333u128);
+    assert!(hf_after < 1_000_000u128);
+}
+
+#[test]
 fn test_multiple_positions() {
     let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);

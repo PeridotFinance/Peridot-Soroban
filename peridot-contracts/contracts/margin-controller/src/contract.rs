@@ -681,11 +681,17 @@ impl MarginController {
             panic!("invalid collateral price");
         }
         let vault = get_market(&env, &position.collateral_asset);
+        let collateral_cf = get_peridottroller(&env).get_market_cf(&vault);
+        if collateral_cf > SCALE_1E6 {
+            panic!("invalid market cf");
+        }
         let exchange_rate = ReceiptVaultClient::new(&env, &vault).get_exchange_rate();
         let collateral_underlying =
             position.collateral_ptokens.saturating_mul(exchange_rate) / SCALE_1E6;
-        let collateral_value =
+        let collateral_value_raw =
             collateral_underlying.saturating_mul(coll_price.0) / coll_price.1;
+        let collateral_value =
+            collateral_value_raw.saturating_mul(collateral_cf) / SCALE_1E6;
         if collateral_value == 0 {
             return 0;
         }
