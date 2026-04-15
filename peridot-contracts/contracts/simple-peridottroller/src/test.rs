@@ -3421,6 +3421,67 @@ fn test_fallback_without_timestamp_is_rejected() {
 }
 
 #[test]
+fn test_get_price_usd_rejects_cached_price_with_zero_scale() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    env.as_contract(&comp_id, || {
+        env.storage().persistent().set(
+            &DataKey::PriceCache(token.clone()),
+            &CachedPrice {
+                price: 1_000_000u128,
+                scale: 0u128,
+                timestamp: env.ledger().timestamp(),
+                resolution: 300u32,
+            },
+        );
+    });
+
+    assert_eq!(comp.get_price_usd(&token), None);
+}
+
+#[test]
+fn test_get_price_usd_rejects_fallback_with_zero_scale() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    env.as_contract(&comp_id, || {
+        env.storage().persistent().set(
+            &DataKey::FallbackPrice(token.clone()),
+            &FallbackPrice {
+                price: 1_000_000u128,
+                scale: 0u128,
+            },
+        );
+        env.storage()
+            .persistent()
+            .set(&DataKey::FallbackPriceSetAt(token.clone()), &env.ledger().timestamp());
+    });
+
+    assert_eq!(comp.get_price_usd(&token), None);
+}
+
+#[test]
 fn test_backfill_fallback_price_set_at_restores_legacy_fallback() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();

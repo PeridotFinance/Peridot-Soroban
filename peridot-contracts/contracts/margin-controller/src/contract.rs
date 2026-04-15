@@ -184,6 +184,12 @@ impl MarginController {
         );
         let collateral_price = get_price_usd(&env, &collateral_asset);
         let debt_price = get_price_usd(&env, &debt_asset);
+        if collateral_price.0 == 0 || collateral_price.1 == 0 {
+            panic!("invalid collateral price");
+        }
+        if debt_price.0 == 0 || debt_price.1 == 0 {
+            panic!("invalid debt price");
+        }
         let collateral_value = collateral_amount
             .saturating_mul(collateral_price.0)
             / collateral_price.1;
@@ -368,6 +374,12 @@ impl MarginController {
         }
         let collateral_price = get_price_usd(&env, &collateral_asset);
         let debt_price = get_price_usd(&env, &debt_asset);
+        if collateral_price.0 == 0 || collateral_price.1 == 0 {
+            panic!("invalid collateral price");
+        }
+        if debt_price.0 == 0 || debt_price.1 == 0 {
+            panic!("invalid debt price");
+        }
         let collateral_value = collateral_amount
             .saturating_mul(collateral_price.0)
             / collateral_price.1;
@@ -660,8 +672,14 @@ impl MarginController {
             return u128::MAX;
         }
         let debt_price = get_price_usd(&env, &position.debt_asset);
+        if debt_price.0 == 0 || debt_price.1 == 0 {
+            panic!("invalid debt price");
+        }
         let debt_value = debt_amount.saturating_mul(debt_price.0) / debt_price.1;
         let coll_price = get_price_usd(&env, &position.collateral_asset);
+        if coll_price.0 == 0 || coll_price.1 == 0 {
+            panic!("invalid collateral price");
+        }
         let vault = get_market(&env, &position.collateral_asset);
         let exchange_rate = ReceiptVaultClient::new(&env, &vault).get_exchange_rate();
         let collateral_underlying =
@@ -683,6 +701,9 @@ impl MarginController {
     ) -> u128 {
         let in_price = get_price_usd(env, token_in);
         let out_price = get_price_usd(env, token_out);
+        if in_price.0 == 0 || in_price.1 == 0 || out_price.0 == 0 || out_price.1 == 0 {
+            panic!("invalid price");
+        }
         let in_value_usd = amount_in.saturating_mul(in_price.0) / in_price.1;
         let expected_out = in_value_usd.saturating_mul(out_price.1) / out_price.0;
         if expected_out == 0 {

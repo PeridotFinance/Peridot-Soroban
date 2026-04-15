@@ -2705,14 +2705,16 @@ impl SimplePeridottroller {
             .persistent()
             .get::<_, CachedPrice>(&DataKey::PriceCache(token.clone()))
         {
-            if cached.price > 0 && Self::cached_price_fresh(&env, cached.timestamp, cached.resolution)
+            if cached.price > 0
+                && cached.scale > 0
+                && Self::cached_price_fresh(&env, cached.timestamp, cached.resolution)
             {
                 return Some((cached.price, cached.scale));
             }
         }
         // Prefer refreshing from live oracle before falling back to static configured prices.
         if let Some((price, scale)) = Self::cache_price(env.clone(), token.clone()) {
-            if price > 0 {
+            if price > 0 && scale > 0 {
                 return Some((price, scale));
             }
         }
@@ -2727,7 +2729,9 @@ impl SimplePeridottroller {
                 .storage()
                 .persistent()
                 .get(&DataKey::FallbackPriceSetAt(token.clone()));
-            if fallback.price > 0 && set_at.map(|t| Self::fallback_price_fresh(&env, t)).unwrap_or(false)
+            if fallback.price > 0
+                && fallback.scale > 0
+                && set_at.map(|t| Self::fallback_price_fresh(&env, t)).unwrap_or(false)
             {
                 return Some((fallback.price, fallback.scale));
             }
@@ -2760,6 +2764,9 @@ impl SimplePeridottroller {
             _ => return None,
         };
         let scale = pow10_u128(dec);
+        if scale == 0 {
+            return None;
+        }
         storage::bump_oracle_asset_symbol_ttl(&env, &token);
         let asset = match env
             .storage()
@@ -2834,6 +2841,7 @@ impl SimplePeridottroller {
             .get::<_, CachedPrice>(&DataKey::PriceCache(token.clone()))
         {
             if cached.price > 0
+                && cached.scale > 0
                 && Self::cached_price_fresh(env, cached.timestamp, cached.resolution)
             {
                 return Some((cached.price, cached.scale));
@@ -2841,7 +2849,7 @@ impl SimplePeridottroller {
         }
         // Prefer fresh live oracle refresh over fallback
         if let Some((price, scale)) = Self::cache_price(env.clone(), token.clone()) {
-            if price > 0 {
+            if price > 0 && scale > 0 {
                 return Some((price, scale));
             }
         }
@@ -2856,7 +2864,9 @@ impl SimplePeridottroller {
                 .storage()
                 .persistent()
                 .get(&DataKey::FallbackPriceSetAt(token.clone()));
-            if fallback.price > 0 && set_at.map(|t| Self::fallback_price_fresh(env, t)).unwrap_or(false)
+            if fallback.price > 0
+                && fallback.scale > 0
+                && set_at.map(|t| Self::fallback_price_fresh(env, t)).unwrap_or(false)
             {
                 return Some((fallback.price, fallback.scale));
             }
@@ -2873,6 +2883,7 @@ impl SimplePeridottroller {
             .get::<_, CachedPrice>(&DataKey::PriceCache(token.clone()))
         {
             if cached.price > 0
+                && cached.scale > 0
                 && Self::cached_price_fresh(&env, cached.timestamp, cached.resolution)
             {
                 return (cached.price, cached.scale);
@@ -2880,7 +2891,7 @@ impl SimplePeridottroller {
         }
         // Prefer fresh live oracle refresh over fallback whenever possible.
         if let Some((price, scale)) = Self::cache_price(env.clone(), token.clone()) {
-            if price > 0 {
+            if price > 0 && scale > 0 {
                 return (price, scale);
             }
         }
@@ -2895,7 +2906,9 @@ impl SimplePeridottroller {
                 .storage()
                 .persistent()
                 .get(&DataKey::FallbackPriceSetAt(token.clone()));
-            if fallback.price > 0 && set_at.map(|t| Self::fallback_price_fresh(&env, t)).unwrap_or(false)
+            if fallback.price > 0
+                && fallback.scale > 0
+                && set_at.map(|t| Self::fallback_price_fresh(&env, t)).unwrap_or(false)
             {
                 return (fallback.price, fallback.scale);
             }
