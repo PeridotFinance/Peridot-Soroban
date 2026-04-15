@@ -107,6 +107,11 @@ impl MockOracle {
 #[contract]
 struct MockSwapAdapter;
 
+#[contracttype]
+enum MockSwapAdapterKey {
+    LastAmountIn,
+}
+
 #[contractimpl]
 impl MockSwapAdapter {
     pub fn is_pool_allowed(_env: Env, _pool: Address) -> bool {
@@ -121,11 +126,21 @@ impl MockSwapAdapter {
         amount: u128,
         _amount_with_slippage: u128,
     ) -> u128 {
+        env.storage()
+            .persistent()
+            .set(&MockSwapAdapterKey::LastAmountIn, &amount);
         let last = swaps_chain.get(swaps_chain.len() - 1).unwrap();
         let (path, _, _) = last;
         let token_out = path.get(path.len() - 1).unwrap();
         MockTokenClient::new(&env, &token_out).mint(&user, &(amount as i128));
         amount
+    }
+
+    pub fn get_last_swap_amount_in(env: Env) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&MockSwapAdapterKey::LastAmountIn)
+            .unwrap_or(0u128)
     }
 }
 
@@ -141,6 +156,7 @@ enum MockVaultKey {
     BorrowBalance(Address),
     UnderlyingToken,
     MarginController,
+    WithdrawPayoutBps,
 }
 
 #[contractimpl]
@@ -395,7 +411,13 @@ impl MockVault {
             .persistent()
             .set(&key, &current.saturating_sub(ptoken_amount));
         let token = Self::get_underlying_token(env.clone());
-        MockTokenClient::new(&env, &token).mint(&user, &(ptoken_amount as i128));
+        let payout_bps: u128 = env
+            .storage()
+            .persistent()
+            .get(&MockVaultKey::WithdrawPayoutBps)
+            .unwrap_or(1_000_000u128);
+        let payout = ptoken_amount.saturating_mul(payout_bps) / 1_000_000u128;
+        MockTokenClient::new(&env, &token).mint(&user, &(payout as i128));
     }
 
     pub fn get_ptoken_balance(env: Env, user: Address) -> u128 {
@@ -447,6 +469,12 @@ impl MockVault {
     }
 
     pub fn begin_margin_withdraw(_env: Env, _margin_controller: Address, _user: Address) {}
+
+    pub fn set_withdraw_payout_bps(env: Env, payout_bps: u128) {
+        env.storage()
+            .persistent()
+            .set(&MockVaultKey::WithdrawPayoutBps, &payout_bps);
+    }
 }
 
 fn setup_min() -> (Env, Address, Address, Address, Address) {
@@ -806,6 +834,48 @@ fn open_and_close_long() {
 
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Closed);
+}
+
+#[test]
+fn test_close_position_swaps_actual_withdrawn_amount_after_interest_accrual() {
+    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let swap_adapter_id: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::SwapAdapter)
+            .expect("swap adapter not set")
+    });
+    let swap_adapter = MockSwapAdapterClient::new(&env, &swap_adapter_id);
+
+    // Emulate post-snapshot accrual by paying out 110% underlying on withdraw.
+    usdt_vault.set_withdraw_payout_bps(&1_100_000u128);
+
+    let position_id = controller.open_position_no_swap_short(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &1_000u128,
+        &500u128,
+        &2u128,
+    );
+    let position = controller.get_position(&position_id).unwrap();
+
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.close_position(
+        &user,
+        &position_id,
+        &swaps_chain_close,
+        &2_000u128,
+    );
+
+    let swapped_amount = swap_adapter.get_last_swap_amount_in();
+    assert!(
+        swapped_amount > position.collateral_ptokens,
+        "swap input should use actual withdrawn underlying, not stale pre-withdraw snapshot"
+    );
 }
 
 #[test]
