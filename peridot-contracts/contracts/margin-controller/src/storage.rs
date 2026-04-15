@@ -32,6 +32,15 @@ pub trait PeridottrollerContract {
         repay_amount: u128,
         liquidator: Address,
     );
+    fn liquidate_for_margin(
+        env: Env,
+        controller: Address,
+        borrower: Address,
+        repay_market: Address,
+        collateral_market: Address,
+        repay_amount: u128,
+        liquidator: Address,
+    );
 }
 
 #[soroban_sdk::contractclient(name = "SwapAdapterClient")]

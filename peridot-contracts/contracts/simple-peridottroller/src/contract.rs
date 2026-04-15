@@ -224,6 +224,21 @@ impl SimplePeridottroller {
         }
     }
 
+    fn require_margin_liquidation_controller(env: &Env, controller: &Address) {
+        storage::bump_margin_liquidation_controllers_ttl(env);
+        let controllers: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginLiquidationControllers)
+            .unwrap_or(Map::new(env));
+        if !controllers
+            .get(controller.clone())
+            .unwrap_or(false)
+        {
+            panic!("unauthorized controller");
+        }
+    }
+
     fn apply_market_removal(
         env: &Env,
         market: &Address,
@@ -444,6 +459,41 @@ impl SimplePeridottroller {
             incentive_mantissa: li_scaled,
         }
         .publish(&env);
+    }
+
+    pub fn set_margin_liquidation_ctrl(
+        env: Env,
+        controller: Address,
+        allowed: bool,
+    ) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        storage::bump_margin_liquidation_controllers_ttl(&env);
+        let mut controllers: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginLiquidationControllers)
+            .unwrap_or(Map::new(&env));
+        if allowed {
+            controllers.set(controller, true);
+        } else {
+            controllers.remove(controller);
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarginLiquidationControllers, &controllers);
+        storage::bump_margin_liquidation_controllers_ttl(&env);
+    }
+
+    pub fn is_margin_liquidation_ctrl(env: Env, controller: Address) -> bool {
+        bump_core_ttl(&env);
+        storage::bump_margin_liquidation_controllers_ttl(&env);
+        let controllers: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginLiquidationControllers)
+            .unwrap_or(Map::new(&env));
+        controllers.get(controller).unwrap_or(false)
     }
 
     // Market collateral factor admin setter/getter
@@ -2036,7 +2086,8 @@ impl SimplePeridottroller {
         (seize_underlying.saturating_mul(1_000_000u128)) / rate
     }
 
-    // Liquidation entrypoint: liquidator repays on behalf and seizes collateral pTokens
+    // Liquidation entrypoint: liquidator repays on behalf and seizes collateral pTokens.
+    // Requires account-level shortfall.
     pub fn liquidate(
         env: Env,
         borrower: Address,
@@ -2046,6 +2097,51 @@ impl SimplePeridottroller {
         liquidator: Address,
     ) {
         bump_core_ttl(&env);
+        Self::liquidate_internal(
+            env,
+            borrower,
+            repay_market,
+            collateral_market,
+            repay_amount,
+            liquidator,
+            true,
+        );
+    }
+
+    // Margin-controller liquidation entrypoint.
+    // This path is controller-gated and intentionally does not require account-level shortfall.
+    pub fn liquidate_for_margin(
+        env: Env,
+        controller: Address,
+        borrower: Address,
+        repay_market: Address,
+        collateral_market: Address,
+        repay_amount: u128,
+        liquidator: Address,
+    ) {
+        bump_core_ttl(&env);
+        controller.require_auth();
+        Self::require_margin_liquidation_controller(&env, &controller);
+        Self::liquidate_internal(
+            env,
+            borrower,
+            repay_market,
+            collateral_market,
+            repay_amount,
+            liquidator,
+            false,
+        );
+    }
+
+    fn liquidate_internal(
+        env: Env,
+        borrower: Address,
+        repay_market: Address,
+        collateral_market: Address,
+        repay_amount: u128,
+        liquidator: Address,
+        require_account_shortfall: bool,
+    ) {
         // top-level auth for liquidator, to allow token transfer from liquidator in nested calls
         liquidator.require_auth();
         let supported: Map<Address, bool> = env
@@ -2078,22 +2174,36 @@ impl SimplePeridottroller {
         if !collateral_entered {
             panic!("collateral market not entered");
         }
-        // Ensure borrower is undercollateralized using known (deterministic) positions.
-        // If health is indeterminate due to unrelated failing markets, allow liquidation
-        // only when known positions are already in shortfall.
         let (known_collateral_usd, known_borrow_usd, indeterminate, collateral_indeterminate) =
             Self::sum_positions_usd(env.clone(), borrower.clone(), None);
-        let shortfall = known_borrow_usd.saturating_sub(known_collateral_usd);
-        let liquidity = known_collateral_usd.saturating_sub(known_borrow_usd);
-        if shortfall == 0 && indeterminate {
-            panic!("health indeterminate");
+        let account_shortfall = known_borrow_usd.saturating_sub(known_collateral_usd);
+        let account_liquidity = known_collateral_usd.saturating_sub(known_borrow_usd);
+        if require_account_shortfall {
+            // Ensure borrower is undercollateralized using known (deterministic) positions.
+            // If health is indeterminate due to unrelated failing markets, allow liquidation
+            // only when known positions are already in shortfall.
+            if account_shortfall == 0 && indeterminate {
+                panic!("health indeterminate");
+            }
+            if account_shortfall > 0 && collateral_indeterminate {
+                panic!("health indeterminate");
+            }
+            if account_shortfall == 0 {
+                panic!("no shortfall");
+            }
         }
-        if shortfall > 0 && collateral_indeterminate {
-            panic!("health indeterminate");
-        }
-        if shortfall == 0 {
-            panic!("no shortfall");
-        }
+        // Seize-context consumers require shortfall > 0; margin-controller path proves
+        // position insolvency independently and may be account-solvent cross-market.
+        let shortfall_for_ctx = if account_shortfall == 0 {
+            1u128
+        } else {
+            account_shortfall
+        };
+        let liquidity_for_ctx = if account_shortfall == 0 {
+            0u128
+        } else {
+            account_liquidity
+        };
 
         // params
         let close_factor: u128 = env
@@ -2191,7 +2301,7 @@ impl SimplePeridottroller {
         if fee_recipient.is_none() {
             fee_ptokens = 0;
         }
-        let liquidity_after_repay = repay_usd.saturating_sub(shortfall);
+        let liquidity_after_repay = repay_usd.saturating_sub(shortfall_for_ctx);
         let max_redeem_ptokens = Self::liquidation_redeem_max_ptokens(
             env.clone(),
             collateral_market.clone(),
@@ -2202,8 +2312,8 @@ impl SimplePeridottroller {
             liquidity_after_repay,
         );
         let seize_ctx = SeizeContext {
-            liquidity,
-            shortfall,
+            liquidity: liquidity_for_ctx,
+            shortfall: shortfall_for_ctx,
             max_redeem_ptokens,
             seize_ptokens,
             fee_recipient,
