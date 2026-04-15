@@ -170,6 +170,9 @@ impl MarginController {
         if collateral_amount == 0 {
             panic!("bad collateral");
         }
+        if collateral_asset == base_asset {
+            panic!("assets must differ");
+        }
         Self::assert_pre_swap_leverage_supported(&env, &collateral_asset, leverage);
         let (debt_asset, position_asset) = match side {
             PositionSide::Long => (collateral_asset.clone(), base_asset.clone()),
@@ -363,6 +366,9 @@ impl MarginController {
         let max_leverage = get_max_leverage(&env);
         if leverage < 1 || leverage > max_leverage {
             panic!("bad leverage");
+        }
+        if collateral_asset == debt_asset {
+            panic!("assets must differ");
         }
         Self::assert_pre_swap_leverage_supported(&env, &collateral_asset, leverage);
         if collateral_amount == 0 || borrow_amount == 0 {
