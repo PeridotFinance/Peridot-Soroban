@@ -1747,6 +1747,89 @@ fn test_close_position_allows_underwater_with_wallet_topup() {
 }
 
 #[test]
+fn test_close_position_uses_snapshotted_vault_after_market_remap() {
+    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    let admin: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    });
+
+    let new_usdt_vault_id = env.register(MockVault, ());
+    let new_usdt_vault = MockVaultClient::new(&env, &new_usdt_vault_id);
+    new_usdt_vault.set_underlying_token(&usdt_id);
+    new_usdt_vault.set_margin_controller(&Some(controller_id.clone()));
+    controller.set_market(&admin, &usdt_id, &new_usdt_vault_id);
+
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.close_position(&user, &position_id, &swaps_chain_close, &200u128);
+
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Closed);
+    assert_eq!(
+        MockVaultClient::new(&env, &usdt_vault_id).get_ptoken_balance(&user),
+        0u128
+    );
+    assert_eq!(
+        MockVaultClient::new(&env, &new_usdt_vault_id).get_ptoken_balance(&user),
+        0u128
+    );
+    assert_eq!(
+        MockVaultClient::new(&env, &xlm_vault_id).get_user_borrow_balance(&user),
+        0u128
+    );
+}
+
+#[test]
+fn test_locked_ptokens_uses_snapshotted_vault_after_market_remap() {
+    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let _position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    let admin: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    });
+
+    let new_usdt_vault_id = env.register(MockVault, ());
+    let new_usdt_vault = MockVaultClient::new(&env, &new_usdt_vault_id);
+    new_usdt_vault.set_underlying_token(&usdt_id);
+    new_usdt_vault.set_margin_controller(&Some(controller_id.clone()));
+    controller.set_market(&admin, &usdt_id, &new_usdt_vault_id);
+
+    let locked_old = controller.locked_ptokens_in_market(&user, &usdt_vault_id);
+    let locked_new = controller.locked_ptokens_in_market(&user, &new_usdt_vault_id);
+    assert_eq!(locked_old, 100u128);
+    assert_eq!(locked_new, 0u128);
+}
+
+#[test]
 fn test_liquidate_position_calls_peridottroller_with_expected_order() {
     let (
         env,
@@ -1784,6 +1867,64 @@ fn test_liquidate_position_calls_peridottroller_with_expected_order() {
     assert_eq!(collateral_market, usdt_vault_id);
     assert_eq!(repay_amount, 50u128);
     assert_eq!(captured_liquidator, liquidator);
+
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
+}
+
+#[test]
+fn test_liquidate_position_uses_snapshotted_vaults_after_market_remap() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let liquidator = Address::generate(&env);
+
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    // Make position insolvent.
+    comp.set_price(&usdt_id, &400_000u128, &1_000_000u128);
+
+    let admin: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    });
+    let new_usdt_vault_id = env.register(MockVault, ());
+    let new_usdt_vault = MockVaultClient::new(&env, &new_usdt_vault_id);
+    new_usdt_vault.set_underlying_token(&usdt_id);
+    new_usdt_vault.set_margin_controller(&Some(controller_id.clone()));
+    controller.set_market(&admin, &usdt_id, &new_usdt_vault_id);
+
+    let new_xlm_vault_id = env.register(MockVault, ());
+    let new_xlm_vault = MockVaultClient::new(&env, &new_xlm_vault_id);
+    new_xlm_vault.set_underlying_token(&xlm_id);
+    new_xlm_vault.set_margin_controller(&Some(controller_id.clone()));
+    controller.set_market(&admin, &xlm_id, &new_xlm_vault_id);
+
+    controller.liquidate_position(&liquidator, &position_id);
+
+    let (_borrower, repay_market, collateral_market, _repay_amount, _liq) =
+        comp.get_last_liquidation();
+    assert_eq!(repay_market, xlm_vault_id);
+    assert_eq!(collateral_market, usdt_vault_id);
 
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Liquidated);

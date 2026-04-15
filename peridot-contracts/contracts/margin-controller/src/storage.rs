@@ -1,6 +1,4 @@
-use soroban_sdk::{
-    contracttype, Address, BytesN, Env, IntoVal, InvokeError, Symbol, Vec,
-};
+use soroban_sdk::{contracttype, Address, BytesN, Env, IntoVal, InvokeError, Symbol, Vec};
 
 use crate::constants::*;
 use crate::helpers::{bump_core_ttl, bump_market_ttl};
@@ -74,6 +72,9 @@ pub enum DataKey {
     Initialized,
     PositionInitialLockMarket(u64),
     PositionInitialLockPtokens(u64),
+    PositionCollateralVault(u64),
+    PositionDebtVault(u64),
+    PositionPositionVault(u64),
 }
 
 #[contracttype]
