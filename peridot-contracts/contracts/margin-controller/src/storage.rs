@@ -67,14 +67,14 @@ pub enum DataKey {
     Market(Address),
     PositionCounter,
     Position(u64),
-    PositionCollateralVault(u64),
-    PositionDebtVault(u64),
-    PositionPositionVault(u64),
     UserPositions(Address),
     DebtSharesTotal(Address, Address), // (user, debt_asset)
     Initialized,
     PositionInitialLockMarket(u64),
     PositionInitialLockPtokens(u64),
+    PositionCollateralVault(u64),
+    PositionDebtVault(u64),
+    PositionPositionVault(u64),
 }
 
 #[contracttype]
