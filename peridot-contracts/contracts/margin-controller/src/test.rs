@@ -434,6 +434,10 @@ impl MockVault {
             .unwrap_or(0)
     }
 
+    pub fn get_exchange_rate(_env: Env) -> u128 {
+        1_000_000u128
+    }
+
     pub fn borrow(env: Env, user: Address, amount: u128) {
         let key = MockVaultKey::BorrowBalance(user);
         let current: u128 = env.storage().persistent().get(&key).unwrap_or(0);
@@ -723,6 +727,7 @@ fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Addres
     )
 }
 
+#[allow(dead_code)]
 fn setup_without_pre_enter_market(
 ) -> (Env, Address, Address, Address, Address, Address, Address, Address) {
     let env = Env::default();
@@ -809,13 +814,13 @@ fn mock_swaps_chain(
 
 #[test]
 fn open_and_close_long() {
-    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &100u128,
         &2u128,
@@ -824,7 +829,7 @@ fn open_and_close_long() {
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
 
-    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &usdt_id);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
     controller.close_position(
         &user,
         &position_id,
@@ -973,14 +978,13 @@ fn test_set_swap_adapter_rejects_invalid_contract() {
 
 #[test]
 fn test_open_position_no_swap() {
-    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    // Use same asset for collateral and debt so deposit+borrow hit the same vault
     let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &50u128,
         &2u128,
@@ -990,6 +994,42 @@ fn test_open_position_no_swap() {
     assert_eq!(pos.status, PositionStatus::Open);
     assert_eq!(pos.side, PositionSide::Long);
     assert_eq!(pos.owner, user);
+}
+
+#[test]
+#[should_panic(expected = "assets must differ")]
+fn test_open_position_no_swap_rejects_same_assets() {
+    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let _ = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &usdt_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+}
+
+#[test]
+#[should_panic(expected = "assets must differ")]
+fn test_open_position_rejects_same_collateral_and_base() {
+    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &usdt_id);
+
+    let _ = controller.open_position(
+        &user,
+        &usdt_id,
+        &usdt_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &100u128,
+    );
 }
 
 #[test]
@@ -1107,14 +1147,13 @@ fn test_open_position_enters_position_market_after_swap() {
 
 #[test]
 fn test_open_position_no_swap_works_without_manual_enter_market() {
-    let (env, controller_id, usdt_id, _xlm_id, user, _, _, _) =
-        setup_without_pre_enter_market();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &50u128,
         &2u128,
@@ -1453,13 +1492,13 @@ fn test_open_position_rejects_low_slippage_floor() {
 #[test]
 #[should_panic(expected = "not owner")]
 fn test_close_position_not_owner_panics() {
-    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &100u128,
         &2u128,
@@ -1467,7 +1506,7 @@ fn test_close_position_not_owner_panics() {
     );
 
     let other_user = Address::generate(&env);
-    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &usdt_id);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
     controller.close_position(
         &other_user,
         &position_id,
@@ -1479,20 +1518,20 @@ fn test_close_position_not_owner_panics() {
 #[test]
 #[should_panic(expected = "not open")]
 fn test_close_position_already_closed_panics() {
-    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &100u128,
         &2u128,
         &PositionSide::Long,
     );
 
-    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &usdt_id);
+    let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
     controller.close_position(
         &user,
         &position_id,
@@ -1501,7 +1540,7 @@ fn test_close_position_already_closed_panics() {
     );
 
     // Try closing again
-    let swaps_chain_close2 = mock_swaps_chain(&env, &usdt_id, &usdt_id);
+    let swaps_chain_close2 = mock_swaps_chain(&env, &usdt_id, &xlm_id);
     controller.close_position(
         &user,
         &position_id,
@@ -1573,13 +1612,13 @@ fn test_liquidate_position_calls_peridottroller_with_expected_order() {
 
 #[test]
 fn test_get_position_and_user_positions() {
-    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &100u128,
         &2u128,
@@ -1598,13 +1637,13 @@ fn test_get_position_and_user_positions() {
 
 #[test]
 fn test_get_health_factor() {
-    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &100u128,
         &2u128,
@@ -1618,7 +1657,7 @@ fn test_get_health_factor() {
 
 #[test]
 fn test_get_health_factor_applies_collateral_factor() {
-    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let peridottroller_id: Address = env.as_contract(&controller_id, || {
         env.storage()
@@ -1637,7 +1676,7 @@ fn test_get_health_factor_applies_collateral_factor() {
     let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &60u128,
         &2u128,
@@ -1656,7 +1695,7 @@ fn test_get_health_factor_applies_collateral_factor() {
 
 #[test]
 fn test_get_health_factor_invalid_cf_returns_indeterminate() {
-    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let peridottroller_id: Address = env.as_contract(&controller_id, || {
         env.storage()
@@ -1675,7 +1714,7 @@ fn test_get_health_factor_invalid_cf_returns_indeterminate() {
     let position_id = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &60u128,
         &2u128,
@@ -1689,13 +1728,13 @@ fn test_get_health_factor_invalid_cf_returns_indeterminate() {
 
 #[test]
 fn test_multiple_positions() {
-    let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let id1 = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &100u128,
         &2u128,
@@ -1705,7 +1744,7 @@ fn test_multiple_positions() {
     let id2 = controller.open_position_no_swap(
         &user,
         &usdt_id,
-        &usdt_id,
+        &xlm_id,
         &100u128,
         &100u128,
         &2u128,
