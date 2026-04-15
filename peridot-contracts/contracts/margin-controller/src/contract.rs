@@ -582,11 +582,12 @@ impl MarginController {
         if liquidator == position.owner {
             panic!("self liquidation");
         }
-        let health_factor = Self::get_health_factor(env.clone(), position_id);
-        if health_factor >= SCALE_1E6 {
+        // Keep liquidation gating aligned with peridottroller, which enforces
+        // account-level shortfall internally.
+        let (liq, shortfall) = get_peridottroller(&env).account_liquidity(&position.owner);
+        if shortfall == 0 || liq > 0 {
             panic!("not liquidatable");
         }
-
         let (debt_amount, total_shares, _total_debt) = debt_for_shares(
             &env,
             &position.owner,
@@ -596,6 +597,31 @@ impl MarginController {
         if debt_amount == 0 {
             panic!("zero debt");
         }
+        // Position-level guard: only liquidate when this position itself is underwater.
+        let debt_price = get_price_usd(&env, &position.debt_asset);
+        if debt_price.0 == 0 || debt_price.1 == 0 {
+            panic!("invalid debt price");
+        }
+        let debt_value = debt_amount.saturating_mul(debt_price.0) / debt_price.1;
+        let coll_price = get_price_usd(&env, &position.collateral_asset);
+        if coll_price.0 == 0 || coll_price.1 == 0 {
+            panic!("invalid collateral price");
+        }
+        let collateral_vault = get_market(&env, &position.collateral_asset);
+        let collateral_cf = get_peridottroller(&env).get_market_cf(&collateral_vault);
+        if collateral_cf > SCALE_1E6 {
+            panic!("invalid market cf");
+        }
+        let exchange_rate = ReceiptVaultClient::new(&env, &collateral_vault).get_exchange_rate();
+        let collateral_underlying =
+            position.collateral_ptokens.saturating_mul(exchange_rate) / SCALE_1E6;
+        let collateral_value_raw =
+            collateral_underlying.saturating_mul(coll_price.0) / coll_price.1;
+        let collateral_value = collateral_value_raw.saturating_mul(collateral_cf) / SCALE_1E6;
+        if collateral_value >= debt_value {
+            panic!("not liquidatable");
+        }
+
         position.status = PositionStatus::Liquidated;
         env.storage()
             .persistent()
@@ -603,7 +629,6 @@ impl MarginController {
         bump_position_ttl(&env, position_id);
         clear_position_initial_lock(&env, position_id);
         let debt_vault = get_market(&env, &position.debt_asset);
-        let collateral_vault = get_market(&env, &position.collateral_asset);
         get_peridottroller(&env).liquidate(
             &position.owner,
             &debt_vault,

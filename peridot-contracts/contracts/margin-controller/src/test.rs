@@ -1623,6 +1623,7 @@ fn test_liquidate_position_calls_peridottroller_with_expected_order() {
         &2u128,
         &PositionSide::Long,
     );
+    comp.set_account_liquidity(&user, &0u128, &1u128);
     // Make the position insolvent in position-isolated terms (HF < 1.0).
     comp.set_price(&usdt_id, &400_000u128, &1_000_000u128);
 
@@ -1641,7 +1642,8 @@ fn test_liquidate_position_calls_peridottroller_with_expected_order() {
 }
 
 #[test]
-fn test_liquidate_position_ignores_positive_account_liquidity_when_hf_is_below_one() {
+#[should_panic(expected = "not liquidatable")]
+fn test_liquidate_position_rejects_positive_account_liquidity_even_if_hf_is_below_one() {
     let (
         env,
         controller_id,
@@ -1671,8 +1673,6 @@ fn test_liquidate_position_ignores_positive_account_liquidity_when_hf_is_below_o
     comp.set_account_liquidity(&user, &9_940u128, &0u128);
 
     controller.liquidate_position(&liquidator, &position_id);
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Liquidated);
 }
 
 #[test]
