@@ -19,7 +19,6 @@ impl MarginController {
         peridottroller: Address,
         swap_adapter: Address,
         max_leverage: u128,
-        liquidation_bonus_scaled: u128,
     ) {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
@@ -37,7 +36,6 @@ impl MarginController {
         if max_leverage < 1 || max_leverage > MAX_LEVERAGE_CAP {
             panic!("invalid leverage");
         }
-        Self::assert_valid_liquidation_bonus(liquidation_bonus_scaled);
         Self::assert_valid_swap_adapter(&env, &swap_adapter);
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage()
@@ -52,9 +50,6 @@ impl MarginController {
         env.storage()
             .persistent()
             .set(&DataKey::MaxSlippageBps, &DEFAULT_MAX_SLIPPAGE_BPS);
-        env.storage()
-            .persistent()
-            .set(&DataKey::LiquidationBonus, &liquidation_bonus_scaled);
         env.storage()
             .persistent()
             .set(&DataKey::PositionCounter, &0u64);
@@ -83,20 +78,15 @@ impl MarginController {
         env: Env,
         admin: Address,
         max_leverage: u128,
-        liquidation_bonus_scaled: u128,
     ) {
         bump_core_ttl(&env);
         require_admin(&env, &admin);
         if max_leverage < 1 || max_leverage > MAX_LEVERAGE_CAP {
             panic!("invalid leverage");
         }
-        Self::assert_valid_liquidation_bonus(liquidation_bonus_scaled);
         env.storage()
             .persistent()
             .set(&DataKey::MaxLeverage, &max_leverage);
-        env.storage()
-            .persistent()
-            .set(&DataKey::LiquidationBonus, &liquidation_bonus_scaled);
     }
 
     pub fn set_max_slippage_bps(env: Env, admin: Address, max_slippage_bps: u128) {
@@ -766,12 +756,6 @@ impl MarginController {
             Ok(Ok(_)) => panic!("margin lock not configured"),
             Err(_) => panic!("margin lock not configured"),
             Ok(Err(_)) => panic!("margin lock not configured"),
-        }
-    }
-
-    fn assert_valid_liquidation_bonus(liquidation_bonus_scaled: u128) {
-        if liquidation_bonus_scaled > MAX_LIQUIDATION_BONUS_SCALED {
-            panic!("invalid liquidation bonus");
         }
     }
 

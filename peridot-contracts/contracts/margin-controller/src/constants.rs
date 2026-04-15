@@ -1,7 +1,6 @@
 pub const SCALE_1E6: u128 = 1_000_000u128;
 pub const DEFAULT_MAX_SLIPPAGE_BPS: u128 = 50_000u128; // 5%
 pub const MAX_SLIPPAGE_BPS_CAP: u128 = 500_000u128; // 50%
-pub const MAX_LIQUIDATION_BONUS_SCALED: u128 = 500_000u128; // 50% max bonus
 pub const MAX_USER_POSITIONS: u32 = 64;
 pub const MAX_LEVERAGE_CAP: u128 = 10;
 pub const MAX_SWAP_PATH_LEN: u32 = 5;

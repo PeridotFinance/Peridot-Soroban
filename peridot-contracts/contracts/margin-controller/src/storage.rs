@@ -55,7 +55,6 @@ pub enum DataKey {
     SwapAdapter,
     MaxLeverage,
     MaxSlippageBps,
-    LiquidationBonus,
     Market(Address),
     PositionCounter,
     Position(u64),
