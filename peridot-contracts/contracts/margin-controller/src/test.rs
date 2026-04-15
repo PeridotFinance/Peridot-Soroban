@@ -950,6 +950,44 @@ fn test_initialize_twice_panics() {
 }
 
 #[test]
+#[should_panic(expected = "already initialized")]
+fn test_initialize_rejects_when_legacy_instance_initialized_exists() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let controller_id = env.register(MarginController, ());
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    env.as_contract(&controller_id, || {
+        env.storage().instance().set(&DataKey::Initialized, &true);
+    });
+
+    let admin = Address::generate(&env);
+    let comp = Address::generate(&env);
+    let swap = env.register(MockSwapAdapter, ());
+    controller.initialize(&admin, &comp, &swap, &5u128);
+}
+
+#[test]
+#[should_panic(expected = "already initialized")]
+fn test_initialize_rejects_when_admin_key_exists_without_initialized() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let controller_id = env.register(MarginController, ());
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .set(&DataKey::Admin, &Address::generate(&env));
+    });
+
+    let admin = Address::generate(&env);
+    let comp = Address::generate(&env);
+    let swap = env.register(MockSwapAdapter, ());
+    controller.initialize(&admin, &comp, &swap, &5u128);
+}
+
+#[test]
 fn test_set_market_and_params() {
     let (env, _controller_id, usdt_id, _, _, _, usdt_vault_id, _) = setup();
     let admin = Address::generate(&env);

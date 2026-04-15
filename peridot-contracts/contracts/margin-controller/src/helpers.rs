@@ -180,10 +180,8 @@ pub fn bump_core_ttl(env: &Env) {
     if persistent.has(&DataKey::PositionCounter) {
         persistent.extend_ttl(&DataKey::PositionCounter, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
-    if env.storage().instance().has(&DataKey::Initialized) {
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    if persistent.has(&DataKey::Initialized) {
+        persistent.extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 
