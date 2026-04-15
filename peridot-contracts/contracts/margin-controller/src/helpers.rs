@@ -3,6 +3,13 @@ use soroban_sdk::{Address, BytesN, Env, Vec};
 use crate::constants::*;
 use crate::storage::*;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PositionVaults {
+    pub collateral_vault: Address,
+    pub debt_vault: Address,
+    pub position_vault: Address,
+}
+
 pub fn next_position_id(env: &Env) -> u64 {
     let mut id: u64 = env
         .storage()
@@ -75,10 +82,7 @@ pub fn get_debt_shares_total(env: &Env, user: &Address, debt_asset: &Address) ->
     bump_debt_shares_ttl(env, user, debt_asset);
     env.storage()
         .persistent()
-        .get(&DataKey::DebtSharesTotal(
-            user.clone(),
-            debt_asset.clone(),
-        ))
+        .get(&DataKey::DebtSharesTotal(user.clone(), debt_asset.clone()))
         .unwrap_or(0u128)
 }
 
@@ -96,12 +100,22 @@ pub fn debt_for_shares(
     debt_asset: &Address,
     shares: u128,
 ) -> (u128, u128, u128) {
+    let debt_vault = get_market(env, debt_asset);
+    debt_for_shares_in_vault(env, user, debt_asset, &debt_vault, shares)
+}
+
+pub fn debt_for_shares_in_vault(
+    env: &Env,
+    user: &Address,
+    debt_asset: &Address,
+    debt_vault: &Address,
+    shares: u128,
+) -> (u128, u128, u128) {
     let total_shares = get_debt_shares_total(env, user, debt_asset);
     if total_shares == 0 || shares == 0 {
         return (0, total_shares, 0);
     }
-    let debt_vault = get_market(env, debt_asset);
-    let total_debt = ReceiptVaultClient::new(env, &debt_vault).get_user_borrow_balance(user);
+    let total_debt = ReceiptVaultClient::new(env, debt_vault).get_user_borrow_balance(user);
     let debt_amount = if shares >= total_shares {
         total_debt
     } else {
@@ -115,6 +129,64 @@ pub fn debt_for_shares(
             / total_shares
     };
     (debt_amount, total_shares, total_debt)
+}
+
+pub fn set_position_vaults(
+    env: &Env,
+    position_id: u64,
+    collateral_vault: &Address,
+    debt_vault: &Address,
+    position_vault: &Address,
+) {
+    env.storage().persistent().set(
+        &DataKey::PositionCollateralVault(position_id),
+        collateral_vault,
+    );
+    env.storage()
+        .persistent()
+        .set(&DataKey::PositionDebtVault(position_id), debt_vault);
+    env.storage()
+        .persistent()
+        .set(&DataKey::PositionPositionVault(position_id), position_vault);
+    bump_position_ttl(env, position_id);
+}
+
+pub fn get_position_vaults(env: &Env, position_id: u64, position: &Position) -> PositionVaults {
+    let collateral_vault: Option<Address> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionCollateralVault(position_id));
+    let debt_vault: Option<Address> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionDebtVault(position_id));
+    let position_vault: Option<Address> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionPositionVault(position_id));
+
+    // Backward compatibility for pre-snapshot positions created before FIND-064.
+    let resolved = PositionVaults {
+        collateral_vault: collateral_vault
+            .unwrap_or_else(|| get_market(env, &position.collateral_asset)),
+        debt_vault: debt_vault.unwrap_or_else(|| get_market(env, &position.debt_asset)),
+        position_vault: position_vault
+            .unwrap_or_else(|| get_market(env, &position.collateral_asset)),
+    };
+    bump_position_ttl(env, position_id);
+    resolved
+}
+
+pub fn clear_position_vaults(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PositionCollateralVault(position_id));
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PositionDebtVault(position_id));
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PositionPositionVault(position_id));
 }
 
 /// Private helper that panics if position is missing (used internally by contract methods).
@@ -207,6 +279,18 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     if persistent.has(&initial_ptokens_key) {
         persistent.extend_ttl(&initial_ptokens_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    let collateral_vault_key = DataKey::PositionCollateralVault(position_id);
+    if persistent.has(&collateral_vault_key) {
+        persistent.extend_ttl(&collateral_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let debt_vault_key = DataKey::PositionDebtVault(position_id);
+    if persistent.has(&debt_vault_key) {
+        persistent.extend_ttl(&debt_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let position_vault_key = DataKey::PositionPositionVault(position_id);
+    if persistent.has(&position_vault_key) {
+        persistent.extend_ttl(&position_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }
 
 pub fn set_position_initial_lock(
@@ -215,10 +299,9 @@ pub fn set_position_initial_lock(
     market: &Address,
     ptoken_amount: u128,
 ) {
-    env.storage().persistent().set(
-        &DataKey::PositionInitialLockMarket(position_id),
-        market,
-    );
+    env.storage()
+        .persistent()
+        .set(&DataKey::PositionInitialLockMarket(position_id), market);
     env.storage().persistent().set(
         &DataKey::PositionInitialLockPtokens(position_id),
         &ptoken_amount,
