@@ -619,7 +619,9 @@ impl MarginController {
             .persistent()
             .get(&DataKey::Peridottroller)
             .expect("peridottroller not set");
+        let controller = env.current_contract_address();
         let liquidation_args: Vec<Val> = (
+            controller.clone(),
             position.owner.clone(),
             debt_vault.clone(),
             collateral_vault.clone(),
@@ -641,6 +643,7 @@ impl MarginController {
         env.authorize_as_current_contract(auths);
 
         let seized_ptokens = get_peridottroller(&env).liquidate_for_margin(
+            &controller,
             &position.owner,
             &debt_vault,
             &collateral_vault,

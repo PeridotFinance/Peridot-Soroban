@@ -34,6 +34,7 @@ pub trait PeridottrollerContract {
     );
     fn liquidate_for_margin(
         env: Env,
+        controller: Address,
         borrower: Address,
         repay_market: Address,
         collateral_market: Address,

@@ -224,39 +224,14 @@ impl SimplePeridottroller {
         }
     }
 
-    fn assert_valid_margin_liquidation_controller(env: &Env, controller: &Address) {
-        // Interface probe to prevent accidental EOA/non-controller configuration.
-        // Any valid margin-controller implementation must expose this read method.
-        let probe = env.try_invoke_contract::<u128, InvokeError>(
-            controller,
-            &Symbol::new(env, "locked_ptokens_in_market"),
-            (
-                env.current_contract_address(),
-                env.current_contract_address(),
-            )
-                .into_val(env),
-        );
-        if !matches!(probe, Ok(Ok(_))) {
-            panic!("invalid controller");
-        }
-    }
-
-    fn get_margin_liquidation_controller(env: &Env) -> Address {
+    fn is_margin_liquidation_controller_allowed(env: &Env, controller: &Address) -> bool {
         storage::bump_margin_liquidation_controllers_ttl(env);
         let controllers: Map<Address, bool> = env
             .storage()
             .persistent()
             .get(&DataKey::MarginLiquidationControllers)
             .unwrap_or(Map::new(env));
-        let keys = controllers.keys();
-        if keys.len() != 1 {
-            panic!("margin controller not set");
-        }
-        let controller = keys.get(0).unwrap();
-        if !controllers.get(controller.clone()).unwrap_or(false) {
-            panic!("margin controller not set");
-        }
-        controller
+        controllers.get(controller.clone()).unwrap_or(false)
     }
 
     fn apply_market_removal(
@@ -495,10 +470,7 @@ impl SimplePeridottroller {
             .get(&DataKey::MarginLiquidationControllers)
             .unwrap_or(Map::new(&env));
         if allowed {
-            Self::assert_valid_margin_liquidation_controller(&env, &controller);
-            let mut single = Map::new(&env);
-            single.set(controller, true);
-            controllers = single;
+            controllers.set(controller, true);
         } else {
             controllers.remove(controller);
         }
@@ -510,18 +482,7 @@ impl SimplePeridottroller {
 
     pub fn is_margin_liquidation_ctrl(env: Env, controller: Address) -> bool {
         bump_core_ttl(&env);
-        storage::bump_margin_liquidation_controllers_ttl(&env);
-        let controllers: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::MarginLiquidationControllers)
-            .unwrap_or(Map::new(&env));
-        let keys = controllers.keys();
-        if keys.len() != 1 {
-            return false;
-        }
-        let configured = keys.get(0).unwrap();
-        configured == controller && controllers.get(controller).unwrap_or(false)
+        Self::is_margin_liquidation_controller_allowed(&env, &controller)
     }
 
     // Market collateral factor admin setter/getter
@@ -2142,6 +2103,7 @@ impl SimplePeridottroller {
     // This path is controller-gated and intentionally does not require account-level shortfall.
     pub fn liquidate_for_margin(
         env: Env,
+        controller: Address,
         borrower: Address,
         repay_market: Address,
         collateral_market: Address,
@@ -2151,8 +2113,10 @@ impl SimplePeridottroller {
         max_seize_ptokens: u128,
     ) -> u128 {
         bump_core_ttl(&env);
-        let controller = Self::get_margin_liquidation_controller(&env);
         controller.require_auth();
+        if !Self::is_margin_liquidation_controller_allowed(&env, &controller) {
+            panic!("unauthorized controller");
+        }
         Self::liquidate_internal(
             env,
             borrower,

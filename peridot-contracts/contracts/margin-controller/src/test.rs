@@ -388,6 +388,7 @@ impl MockPeridottroller {
 
     pub fn liquidate_for_margin(
         env: Env,
+        _controller: Address,
         borrower: Address,
         repay_market: Address,
         collateral_market: Address,
