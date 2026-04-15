@@ -582,9 +582,8 @@ impl MarginController {
         if liquidator == position.owner {
             panic!("self liquidation");
         }
-        let (liq, shortfall) =
-            get_peridottroller(&env).account_liquidity(&position.owner);
-        if shortfall == 0 || liq > 0 {
+        let health_factor = Self::get_health_factor(env.clone(), position_id);
+        if health_factor >= SCALE_1E6 {
             panic!("not liquidatable");
         }
 
