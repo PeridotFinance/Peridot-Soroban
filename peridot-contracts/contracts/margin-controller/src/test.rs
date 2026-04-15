@@ -517,7 +517,7 @@ fn setup_min() -> (Env, Address, Address, Address, Address) {
 
     let controller_id = env.register(MarginController, ());
     let controller = MarginControllerClient::new(&env, &controller_id);
-    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
+    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
     usdt_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
@@ -567,7 +567,7 @@ fn setup_min_with_vaults(
 
     let controller_id = env.register(MarginController, ());
     let controller = MarginControllerClient::new(&env, &controller_id);
-    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
+    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
     usdt_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
@@ -632,7 +632,7 @@ fn setup_short_min() -> (
 
     let controller_id = env.register(MarginController, ());
     let controller = MarginControllerClient::new(&env, &controller_id);
-    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
+    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
     usdt_vault.set_margin_controller(&Some(controller_id.clone()));
@@ -705,7 +705,7 @@ fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Addres
 
     let controller_id = env.register(MarginController, ());
     let controller = MarginControllerClient::new(&env, &controller_id);
-    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
+    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
     usdt_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
@@ -783,7 +783,7 @@ fn setup_without_pre_enter_market(
 
     let controller_id = env.register(MarginController, ());
     let controller = MarginControllerClient::new(&env, &controller_id);
-    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128, &50_000u128);
+    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128);
     controller.set_market(&admin, &usdt_id, &usdt_vault_id);
     controller.set_market(&admin, &xlm_id, &xlm_vault_id);
     usdt_vault.set_margin_controller(&admin, &Some(controller_id.clone()));
@@ -920,7 +920,7 @@ fn test_initialize_twice_panics() {
     let admin = Address::generate(&env);
     let comp = Address::generate(&env);
     let swap = Address::generate(&env);
-    controller.initialize(&admin, &comp, &swap, &5u128, &50_000u128);
+    controller.initialize(&admin, &comp, &swap, &5u128);
 }
 
 #[test]
@@ -933,11 +933,11 @@ fn test_set_market_and_params() {
     let fresh = MarginControllerClient::new(&env, &fresh_id);
     let comp = Address::generate(&env);
     let swap = env.register(MockSwapAdapter, ());
-    fresh.initialize(&admin, &comp, &swap, &3u128, &10_000u128);
+    fresh.initialize(&admin, &comp, &swap, &3u128);
     fresh.set_market(&admin, &usdt_id, &usdt_vault_id);
 
     // Update params
-    fresh.set_params(&admin, &5u128, &50_000u128);
+    fresh.set_params(&admin, &5u128);
 }
 
 #[test]
@@ -946,7 +946,7 @@ fn test_set_params_non_admin_panics() {
     let (env, controller_id, _, _, _, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let non_admin = Address::generate(&env);
-    controller.set_params(&non_admin, &3u128, &10_000u128);
+    controller.set_params(&non_admin, &3u128);
 }
 
 #[test]
@@ -959,7 +959,7 @@ fn test_set_max_slippage_bps() {
     let fresh = MarginControllerClient::new(&env, &fresh_id);
     let comp = Address::generate(&env);
     let swap = env.register(MockSwapAdapter, ());
-    fresh.initialize(&admin, &comp, &swap, &3u128, &10_000u128);
+    fresh.initialize(&admin, &comp, &swap, &3u128);
     fresh.set_max_slippage_bps(&admin, &25_000u128);
 }
 
@@ -972,22 +972,8 @@ fn test_set_max_slippage_bps_rejects_zero() {
     let fresh = MarginControllerClient::new(&env, &fresh_id);
     let comp = Address::generate(&env);
     let swap = env.register(MockSwapAdapter, ());
-    fresh.initialize(&admin, &comp, &swap, &3u128, &10_000u128);
+    fresh.initialize(&admin, &comp, &swap, &3u128);
     fresh.set_max_slippage_bps(&admin, &0u128);
-}
-
-#[test]
-#[should_panic(expected = "invalid liquidation bonus")]
-fn test_set_params_rejects_excessive_liquidation_bonus() {
-    let (env, controller_id, _, _, _, _, _, _) = setup();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let admin: Address = env.as_contract(&controller_id, || {
-        env.storage()
-            .persistent()
-            .get(&DataKey::Admin)
-            .expect("admin not set")
-    });
-    controller.set_params(&admin, &5u128, &600_000u128);
 }
 
 #[test]
