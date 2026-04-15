@@ -683,7 +683,7 @@ impl MarginController {
         let vault = get_market(&env, &position.collateral_asset);
         let collateral_cf = get_peridottroller(&env).get_market_cf(&vault);
         if collateral_cf > SCALE_1E6 {
-            return 0;
+            return u128::MAX;
         }
         let exchange_rate = ReceiptVaultClient::new(&env, &vault).get_exchange_rate();
         let collateral_underlying =

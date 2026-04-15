@@ -1573,7 +1573,7 @@ fn test_get_health_factor_applies_collateral_factor() {
 }
 
 #[test]
-fn test_get_health_factor_invalid_cf_fails_closed() {
+fn test_get_health_factor_invalid_cf_returns_indeterminate() {
     let (env, controller_id, usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let peridottroller_id: Address = env.as_contract(&controller_id, || {
@@ -1602,7 +1602,7 @@ fn test_get_health_factor_invalid_cf_fails_closed() {
 
     peridottroller.set_market_cf(&usdt_vault_id, &1_000_001u128);
     let hf = controller.get_health_factor(&position_id);
-    assert_eq!(hf, 0u128);
+    assert_eq!(hf, u128::MAX);
 }
 
 #[test]
