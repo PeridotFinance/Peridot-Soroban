@@ -2450,11 +2450,11 @@ impl SimplePeridottroller {
         if !collateral_entered {
             panic!("collateral market not entered");
         }
-        let (known_collateral_usd, known_borrow_usd, indeterminate, collateral_indeterminate) =
-            Self::sum_positions_usd(env.clone(), borrower.clone(), None);
-        let account_shortfall = known_borrow_usd.saturating_sub(known_collateral_usd);
-        let account_liquidity = known_collateral_usd.saturating_sub(known_borrow_usd);
-        if require_account_shortfall {
+        let (shortfall_for_ctx, liquidity_for_ctx) = if require_account_shortfall {
+            let (known_collateral_usd, known_borrow_usd, indeterminate, collateral_indeterminate) =
+                Self::sum_positions_usd(env.clone(), borrower.clone(), None);
+            let account_shortfall = known_borrow_usd.saturating_sub(known_collateral_usd);
+            let account_liquidity = known_collateral_usd.saturating_sub(known_borrow_usd);
             // Ensure borrower is undercollateralized using known (deterministic) positions.
             // If health is indeterminate due to unrelated failing markets, allow liquidation
             // only when known positions are already in shortfall.
@@ -2467,8 +2467,6 @@ impl SimplePeridottroller {
             if account_shortfall == 0 {
                 panic!("no shortfall");
             }
-        }
-        let (shortfall_for_ctx, liquidity_for_ctx) = if require_account_shortfall {
             (account_shortfall, account_liquidity)
         } else {
             let position_shortfall = position_shortfall_usd.unwrap_or(0u128);

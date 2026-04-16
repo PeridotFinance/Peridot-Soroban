@@ -22,6 +22,7 @@ enum MockPeridottrollerKey {
     LivePrice(Address),
     CachePriceCalls(Address),
     CachePriceShouldPanic,
+    AccountLiquidityShouldPanic,
     MarketCF(Address),
     Liquidity(Address),
     Shortfall(Address),
@@ -260,7 +261,22 @@ impl MockPeridottroller {
             .set(&MockPeridottrollerKey::Shortfall(user), &shortfall);
     }
 
+    pub fn set_liq_panic(env: Env, should_panic: bool) {
+        env.storage().persistent().set(
+            &MockPeridottrollerKey::AccountLiquidityShouldPanic,
+            &should_panic,
+        );
+    }
+
     pub fn account_liquidity(env: Env, user: Address) -> (u128, u128) {
+        if env
+            .storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::AccountLiquidityShouldPanic)
+            .unwrap_or(false)
+        {
+            panic!("account liquidity should not be called");
+        }
         let liquidity: u128 = env
             .storage()
             .persistent()
@@ -2082,6 +2098,42 @@ fn test_liquidate_position_allows_hf_liquidation_even_with_positive_account_liqu
     comp.set_price(&xlm_id, &400_000u128, &1_000_000u128);
     // Global account liquidity still appears healthy; this should no longer block liquidation.
     comp.set_account_liquidity(&user, &9_940u128, &0u128);
+
+    controller.liquidate_position(&liquidator, &position_id);
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
+}
+
+#[test]
+fn test_liquidate_position_does_not_call_account_liquidity_gate() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        _usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let liquidator = Address::generate(&env);
+
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &xlm_id,
+        &usdt_id,
+        &100u128,
+        &50u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    // Ensure position is insolvent for position-level liquidation.
+    comp.set_price(&xlm_id, &400_000u128, &1_000_000u128);
+    // If liquidation still depends on account_liquidity(), this call will panic.
+    comp.set_liq_panic(&true);
 
     controller.liquidate_position(&liquidator, &position_id);
     let pos = controller.get_position(&position_id).unwrap();
