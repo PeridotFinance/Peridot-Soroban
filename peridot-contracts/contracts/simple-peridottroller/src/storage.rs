@@ -5,27 +5,27 @@ pub enum DataKey {
     Admin,
     PendingAdmin,
     Initialized,
-    PauseGuardian,              // Address (optional)
-    PauseExpiryMigrationDone,   // bool: legacy pause-expiry migration completed
-    PauseExpiryMigrationCursor, // u32: next supported-market index to migrate
-    SupportedMarkets,           // Map<Address, bool>
-    UserMarkets(Address),       // Vec<Address>
-    Oracle,                     // Address
-    CloseFactorScaled,          // u128 scaled 1e6
-    LiquidationIncentiveScaled, // u128 scaled 1e6
+    PauseGuardian,                // Address (optional)
+    PauseExpiryMigrationDone,     // bool: legacy pause-expiry migration completed
+    PauseExpiryMigrationCursor,   // u32: next supported-market index to migrate
+    SupportedMarkets,             // Map<Address, bool>
+    UserMarkets(Address),         // Vec<Address>
+    Oracle,                       // Address
+    CloseFactorScaled,            // u128 scaled 1e6
+    LiquidationIncentiveScaled,   // u128 scaled 1e6
     MarginLiquidationControllers, // Map<Address, bool>
-    ReserveRecipient,           // Address for liquidation fee pTokens
-    PauseBorrow,                // Map<Address, bool>
-    PauseBorrowUntil,           // Map<Address, u64> pause expiry
-    PauseRedeem,                // Map<Address, bool>
-    PauseRedeemUntil,           // Map<Address, u64> pause expiry
-    PauseLiquidation,           // Map<Address, bool>
-    PauseLiquidationUntil,      // Map<Address, u64> pause expiry
-    PauseDeposit,               // Map<Address, bool>
-    PauseDepositUntil,          // Map<Address, u64> pause expiry
-    LiquidationFeeScaled,       // u128 scaled 1e6, portion to reserves
-    OracleMaxAgeMultiplier,     // u64 multiplier of resolution (default 2)
-    OracleAssetSymbol(Address), // Optional Reflector symbol override
+    ReserveRecipient,             // Address for liquidation fee pTokens
+    PauseBorrow,                  // Map<Address, bool>
+    PauseBorrowUntil,             // Map<Address, u64> pause expiry
+    PauseRedeem,                  // Map<Address, bool>
+    PauseRedeemUntil,             // Map<Address, u64> pause expiry
+    PauseLiquidation,             // Map<Address, bool>
+    PauseLiquidationUntil,        // Map<Address, u64> pause expiry
+    PauseDeposit,                 // Map<Address, bool>
+    PauseDepositUntil,            // Map<Address, u64> pause expiry
+    LiquidationFeeScaled,         // u128 scaled 1e6, portion to reserves
+    OracleMaxAgeMultiplier,       // u64 multiplier of resolution (default 2)
+    OracleAssetSymbol(Address),   // Optional Reflector symbol override
     // Collateral factors per market (scaled 1e6)
     MarketCF(Address),
     // Rewards
@@ -42,11 +42,13 @@ pub enum DataKey {
     PriceCache(Address),
     FallbackPrice(Address),
     FallbackPriceSetAt(Address), // u64 timestamp when fallback was set
-    SupportedToken(Address), // bool: token belongs to at least one supported market
-    MarketUnderlying(Address), // Address: cached market -> underlying token
+    SupportedToken(Address),     // bool: token belongs to at least one supported market
+    MarketUnderlying(Address),   // Address: cached market -> underlying token
     MarketZeroTotalsVerifiedAt(Address), // u64 timestamp for emergency delist gating
-    BoostedVaultOwner(Address), // Address: boosted vault -> owning receipt-vault
-    MarketUserCounts, // Map<Address, u32>: number of users with market in UserMarkets
+    BoostedVaultOwner(Address),  // Address: boosted vault -> owning receipt-vault
+    MarketUserCounts,            // Map<Address, u32>: number of users with market in UserMarkets
+    PendingUpgradeHash,          // BytesN<32>: timelocked controller upgrade target
+    PendingUpgradeEta,           // u64: earliest timestamp when upgrade can execute
 }
 
 #[contracttype]
@@ -123,7 +125,11 @@ pub fn bump_core_ttl(env: &Env) {
         persistent.extend_ttl(&DataKey::CloseFactorScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::LiquidationIncentiveScaled) {
-        persistent.extend_ttl(&DataKey::LiquidationIncentiveScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::LiquidationIncentiveScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::ReserveRecipient) {
         persistent.extend_ttl(&DataKey::ReserveRecipient, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -132,7 +138,11 @@ pub fn bump_core_ttl(env: &Env) {
         persistent.extend_ttl(&DataKey::LiquidationFeeScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::OracleMaxAgeMultiplier) {
-        persistent.extend_ttl(&DataKey::OracleMaxAgeMultiplier, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::OracleMaxAgeMultiplier,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::PeridotToken) {
         persistent.extend_ttl(&DataKey::PeridotToken, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -141,6 +151,16 @@ pub fn bump_core_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

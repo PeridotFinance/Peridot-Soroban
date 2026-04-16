@@ -47,6 +47,8 @@ pub enum DataKey {
     Router,
     AllowedPool(Address),
     Initialized,
+    PendingUpgradeHash,
+    PendingUpgradeEta,
 }
 
 #[contract]
@@ -58,7 +60,12 @@ impl SwapAdapter {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
         }
-        if env.storage().persistent().get::<_, Address>(&DataKey::Admin).is_some() {
+        if env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::Admin)
+            .is_some()
+        {
             panic!("already initialized");
         }
         let expected_admin_str = expected_admin_config();
@@ -148,7 +155,8 @@ impl SwapAdapter {
         if last < 0 {
             panic!("invalid swap output");
         }
-        last.try_into().unwrap_or_else(|_| panic!("invalid swap output"))
+        last.try_into()
+            .unwrap_or_else(|_| panic!("invalid swap output"))
     }
 
     pub fn swap_chained(
@@ -194,11 +202,7 @@ impl SwapAdapter {
     ) -> u128 {
         bump_critical_ttl(&env);
         ensure_pool_allowed(&env, &pool);
-        AquariusPoolClient::new(&env, &pool).estimate_swap(
-            &in_idx,
-            &out_idx,
-            &amount_in,
-        )
+        AquariusPoolClient::new(&env, &pool).estimate_swap(&in_idx, &out_idx, &amount_in)
     }
 
     pub fn swap_pool(
@@ -226,9 +230,48 @@ impl SwapAdapter {
         bump_critical_ttl(&env);
     }
 
+    pub fn propose_upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        bump_pending_upgrade_ttl(&env);
+    }
+
     pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
         bump_critical_ttl(&env);
         require_admin(&env, &admin);
+        bump_pending_upgrade_ttl(&env);
+        let pending_hash: BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
@@ -257,6 +300,7 @@ fn expected_admin_config() -> &'static str {
 
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
+const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
 
 #[cfg(test)]
 mod test;
@@ -273,6 +317,16 @@ fn bump_critical_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

@@ -1,12 +1,12 @@
 use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::ReceiptVault;
+use simple_peridottroller::SimplePeridottroller;
 use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{
     contract, contractimpl, contracttype, Address, BytesN, Env, IntoVal, Symbol, Vec,
 };
-use simple_peridottroller::SimplePeridottroller;
-use soroban_sdk::testutils::Ledger;
 
 #[contract]
 struct MockOracle;
@@ -189,9 +189,12 @@ enum MockVaultKey {
 #[contractimpl]
 impl MockPeridottroller {
     pub fn set_price(env: Env, asset: Address, price: u128, _scale: u128) {
-        env.storage()
-            .persistent()
-            .set(&OracleKey::Price(asset), &OraclePrice { price: price as i128 });
+        env.storage().persistent().set(
+            &OracleKey::Price(asset),
+            &OraclePrice {
+                price: price as i128,
+            },
+        );
     }
 
     pub fn set_live_price(env: Env, asset: Address, price: u128) {
@@ -221,9 +224,12 @@ impl MockPeridottroller {
         let Some(price) = live else {
             return None;
         };
-        env.storage()
-            .persistent()
-            .set(&OracleKey::Price(asset.clone()), &OraclePrice { price: price as i128 });
+        env.storage().persistent().set(
+            &OracleKey::Price(asset.clone()),
+            &OraclePrice {
+                price: price as i128,
+            },
+        );
         let calls_key = MockPeridottrollerKey::CachePriceCalls(asset.clone());
         let calls: u32 = env.storage().persistent().get(&calls_key).unwrap_or(0u32);
         env.storage()
@@ -296,8 +302,7 @@ impl MockPeridottroller {
     }
 
     pub fn get_market_cf(env: Env, market: Address) -> u128 {
-        env
-            .storage()
+        env.storage()
             .persistent()
             .get(&MockPeridottrollerKey::MarketCF(market))
             .unwrap_or(1_000_000u128)
@@ -315,19 +320,11 @@ impl MockPeridottroller {
             .set(&MockPeridottrollerKey::LiquidateRepayBps, &bps);
     }
 
-    pub fn get_collateral_excl_usd(
-        _env: Env,
-        _user: Address,
-        _market: Address,
-    ) -> u128 {
+    pub fn get_collateral_excl_usd(_env: Env, _user: Address, _market: Address) -> u128 {
         0u128
     }
 
-    pub fn get_borrows_excl(
-        _env: Env,
-        _user: Address,
-        _market: Address,
-    ) -> u128 {
+    pub fn get_borrows_excl(_env: Env, _user: Address, _market: Address) -> u128 {
         0u128
     }
 
@@ -364,9 +361,10 @@ impl MockPeridottroller {
         env.storage()
             .persistent()
             .set(&MockPeridottrollerKey::LastRepayMarket, &repay_market);
-        env.storage()
-            .persistent()
-            .set(&MockPeridottrollerKey::LastCollateralMarket, &collateral_market);
+        env.storage().persistent().set(
+            &MockPeridottrollerKey::LastCollateralMarket,
+            &collateral_market,
+        );
         env.storage()
             .persistent()
             .set(&MockPeridottrollerKey::LastRepayAmount, &repay_amount);
@@ -572,10 +570,16 @@ fn setup_min() -> (Env, Address, Address, Address, Address) {
     xlm_vault.enable_static_rates(&admin);
 
     let peridottroller_id = env.register(MockPeridottroller, ());
-    MockPeridottrollerClient::new(&env, &peridottroller_id)
-        .set_price(&usdt_id, &1_000_000u128, &1_000_000u128);
-    MockPeridottrollerClient::new(&env, &peridottroller_id)
-        .set_price(&xlm_id, &1_000_000u128, &1_000_000u128);
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &usdt_id,
+        &1_000_000u128,
+        &1_000_000u128,
+    );
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &1_000_000u128,
+        &1_000_000u128,
+    );
     usdt_vault.set_peridottroller(&peridottroller_id);
     xlm_vault.set_peridottroller(&peridottroller_id);
 
@@ -598,8 +602,16 @@ fn setup_min() -> (Env, Address, Address, Address, Address) {
     (env, controller_id, usdt_id, xlm_id, user)
 }
 
-fn setup_min_with_vaults(
-) -> (Env, Address, Address, Address, Address, Address, Address, Address) {
+fn setup_min_with_vaults() -> (
+    Env,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+) {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().with_mut(|l| l.timestamp = 1);
@@ -624,10 +636,16 @@ fn setup_min_with_vaults(
     xlm_vault.enable_static_rates(&admin);
 
     let peridottroller_id = env.register(MockPeridottroller, ());
-    MockPeridottrollerClient::new(&env, &peridottroller_id)
-        .set_price(&usdt_id, &1_000_000u128, &1_000_000u128);
-    MockPeridottrollerClient::new(&env, &peridottroller_id)
-        .set_price(&xlm_id, &1_000_000u128, &1_000_000u128);
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &usdt_id,
+        &1_000_000u128,
+        &1_000_000u128,
+    );
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &1_000_000u128,
+        &1_000_000u128,
+    );
 
     let swap_adapter_id = env.register(MockSwapAdapter, ());
 
@@ -689,10 +707,16 @@ fn setup_short_min() -> (
     xlm_vault.set_underlying_token(&xlm_id);
 
     let peridottroller_id = env.register(MockPeridottroller, ());
-    MockPeridottrollerClient::new(&env, &peridottroller_id)
-        .set_price(&usdt_id, &1_000_000u128, &1_000_000u128);
-    MockPeridottrollerClient::new(&env, &peridottroller_id)
-        .set_price(&xlm_id, &1_000_000u128, &1_000_000u128);
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &usdt_id,
+        &1_000_000u128,
+        &1_000_000u128,
+    );
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &1_000_000u128,
+        &1_000_000u128,
+    );
 
     let swap_adapter_id = env.register(MockSwapAdapter, ());
 
@@ -716,7 +740,16 @@ fn setup_short_min() -> (
         xlm_vault_id,
     )
 }
-fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Address) {
+fn setup() -> (
+    Env,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+) {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().with_mut(|l| l.timestamp = 1);
@@ -794,8 +827,16 @@ fn setup() -> (Env, Address, Address, Address, Address, Address, Address, Addres
 }
 
 #[allow(dead_code)]
-fn setup_without_pre_enter_market(
-) -> (Env, Address, Address, Address, Address, Address, Address, Address) {
+fn setup_without_pre_enter_market() -> (
+    Env,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+) {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().with_mut(|l| l.timestamp = 1);
@@ -896,12 +937,7 @@ fn open_and_close_long() {
     assert_eq!(pos.status, PositionStatus::Open);
 
     let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.close_position(
-        &user,
-        &position_id,
-        &swaps_chain_close,
-        &200u128,
-    );
+    controller.close_position(&user, &position_id, &swaps_chain_close, &200u128);
 
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Closed);
@@ -938,8 +974,16 @@ fn test_close_position_withdraws_initial_collateral_lock() {
 
 #[test]
 fn test_close_position_swaps_actual_withdrawn_amount_after_interest_accrual() {
-    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xlm_vault_id) =
-        setup_short_min();
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
     let swap_adapter_id: Address = env.as_contract(&controller_id, || {
@@ -953,23 +997,12 @@ fn test_close_position_swaps_actual_withdrawn_amount_after_interest_accrual() {
     // Emulate post-snapshot accrual by paying out 110% underlying on withdraw.
     usdt_vault.set_withdraw_payout_bps(&1_100_000u128);
 
-    let position_id = controller.open_position_no_swap_short(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &1_000u128,
-        &500u128,
-        &2u128,
-    );
+    let position_id = controller
+        .open_position_no_swap_short(&user, &usdt_id, &xlm_id, &1_000u128, &500u128, &2u128);
     let position = controller.get_position(&position_id).unwrap();
 
     let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.close_position(
-        &user,
-        &position_id,
-        &swaps_chain_close,
-        &2_000u128,
-    );
+    controller.close_position(&user, &position_id, &swaps_chain_close, &2_000u128);
 
     let swapped_amount = swap_adapter.get_last_swap_amount_in();
     assert!(
@@ -1206,16 +1239,8 @@ fn test_open_position_no_swap_issues_ceil_debt_shares() {
 
 #[test]
 fn test_open_position_no_swap_enters_required_markets() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        peridottroller_id,
-        usdt_vault_id,
-        xlm_vault_id,
-    ) = setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
 
@@ -1235,16 +1260,8 @@ fn test_open_position_no_swap_enters_required_markets() {
 
 #[test]
 fn test_open_position_enters_position_market_after_swap() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        peridottroller_id,
-        usdt_vault_id,
-        xlm_vault_id,
-    ) = setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
 
@@ -1296,14 +1313,8 @@ fn test_locked_ptokens_in_market_tracks_open_position_collateral() {
     ) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let _position_id = controller.open_position_no_swap_short(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &1_000u128,
-        &500u128,
-        &2u128,
-    );
+    let _position_id = controller
+        .open_position_no_swap_short(&user, &usdt_id, &xlm_id, &1_000u128, &500u128, &2u128);
 
     let locked = controller.locked_ptokens_in_market(&user, &usdt_vault_id);
     assert_eq!(locked, 1_000u128);
@@ -1314,14 +1325,8 @@ fn test_open_position_no_swap_short() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
-    let position_id = controller.open_position_no_swap_short(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &50u128,
-        &2u128,
-    );
+    let position_id =
+        controller.open_position_no_swap_short(&user, &usdt_id, &xlm_id, &100u128, &50u128, &2u128);
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
     assert_eq!(pos.side, PositionSide::Short);
@@ -1366,14 +1371,8 @@ fn test_open_position_rejects_market_without_margin_lock_introspection() {
     let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
     usdt_vault.set_margin_controller(&None);
 
-    let _ = controller.open_position_no_swap_short(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &1_000u128,
-        &500u128,
-        &2u128,
-    );
+    let _ = controller
+        .open_position_no_swap_short(&user, &usdt_id, &xlm_id, &1_000u128, &500u128, &2u128);
 }
 
 #[test]
@@ -1525,8 +1524,7 @@ fn test_open_position_rejects_empty_swap_hop_path() {
 #[test]
 #[should_panic(expected = "borrow exceeds leverage")]
 fn test_open_position_no_swap_refreshes_oracle_price_before_leverage_check() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, _, _) =
-        setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
 
@@ -1546,8 +1544,7 @@ fn test_open_position_no_swap_refreshes_oracle_price_before_leverage_check() {
 
 #[test]
 fn test_open_position_no_swap_calls_cache_price_for_assets() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, _, _) =
-        setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
 
@@ -1568,8 +1565,7 @@ fn test_open_position_no_swap_calls_cache_price_for_assets() {
 
 #[test]
 fn test_open_position_no_swap_uses_cached_price_when_refresh_traps() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, _, _) =
-        setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, _, _) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
 
@@ -1655,12 +1651,7 @@ fn test_close_position_not_owner_panics() {
 
     let other_user = Address::generate(&env);
     let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.close_position(
-        &other_user,
-        &position_id,
-        &swaps_chain_close,
-        &200u128,
-    );
+    controller.close_position(&other_user, &position_id, &swaps_chain_close, &200u128);
 }
 
 #[test]
@@ -1680,21 +1671,11 @@ fn test_close_position_already_closed_panics() {
     );
 
     let swaps_chain_close = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.close_position(
-        &user,
-        &position_id,
-        &swaps_chain_close,
-        &200u128,
-    );
+    controller.close_position(&user, &position_id, &swaps_chain_close, &200u128);
 
     // Try closing again
     let swaps_chain_close2 = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.close_position(
-        &user,
-        &position_id,
-        &swaps_chain_close2,
-        &200u128,
-    );
+    controller.close_position(&user, &position_id, &swaps_chain_close2, &200u128);
 }
 
 #[test]
@@ -1748,8 +1729,16 @@ fn test_close_position_allows_underwater_with_wallet_topup() {
 
 #[test]
 fn test_close_position_uses_snapshotted_vault_after_market_remap() {
-    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let position_id = controller.open_position_no_swap(
@@ -1796,8 +1785,16 @@ fn test_close_position_uses_snapshotted_vault_after_market_remap() {
 
 #[test]
 fn test_locked_ptokens_uses_snapshotted_vault_after_market_remap() {
-    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xlm_vault_id) =
-        setup_short_min();
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     let _position_id = controller.open_position_no_swap(
@@ -1831,16 +1828,8 @@ fn test_locked_ptokens_uses_snapshotted_vault_after_market_remap() {
 
 #[test]
 fn test_liquidate_position_calls_peridottroller_with_expected_order() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        peridottroller_id,
-        usdt_vault_id,
-        xlm_vault_id,
-    ) = setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
     let liquidator = Address::generate(&env);
@@ -1874,16 +1863,8 @@ fn test_liquidate_position_calls_peridottroller_with_expected_order() {
 
 #[test]
 fn test_liquidate_position_uses_snapshotted_vaults_after_market_remap() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        peridottroller_id,
-        usdt_vault_id,
-        xlm_vault_id,
-    ) = setup_short_min();
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
     let liquidator = Address::generate(&env);
@@ -2221,8 +2202,7 @@ fn test_get_user_positions_prunes_missing_entries() {
 
 #[test]
 fn test_deposit_and_withdraw_collateral() {
-    let (env, controller_id, usdt_id, _xlm_id, user, _, usdt_vault_id, _) =
-        setup_min_with_vaults();
+    let (env, controller_id, usdt_id, _xlm_id, user, _, usdt_vault_id, _) = setup_min_with_vaults();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
     // Deposit collateral through controller

@@ -7,6 +7,7 @@ const SCALE_1E6: u128 = 1_000_000u128;
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
+const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
 
 #[contracttype]
 pub enum DataKey {
@@ -15,6 +16,8 @@ pub enum DataKey {
     JumpMultiplierPerYear, // u128 scaled 1e6
     Kink,                  // u128 scaled 1e6
     Admin,                 // Address
+    PendingUpgradeHash,    // BytesN<32>
+    PendingUpgradeEta,     // u64 unix timestamp
 }
 
 #[contract]
@@ -172,8 +175,46 @@ impl JumpRateModel {
         .publish(&env);
     }
 
+    pub fn propose_upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
+        require_admin(&env, &admin);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        bump_pending_upgrade_ttl(&env);
+    }
+
     pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
         require_admin(&env, &admin);
+        bump_pending_upgrade_ttl(&env);
+        let pending_hash: BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
@@ -197,8 +238,12 @@ impl JumpRateModel {
 fn ensure_initialized(env: &Env) {
     let persistent = env.storage().persistent();
     if persistent.get::<_, Address>(&DataKey::Admin).is_none()
-        || persistent.get::<_, u128>(&DataKey::BaseRatePerYear).is_none()
-        || persistent.get::<_, u128>(&DataKey::MultiplierPerYear).is_none()
+        || persistent
+            .get::<_, u128>(&DataKey::BaseRatePerYear)
+            .is_none()
+        || persistent
+            .get::<_, u128>(&DataKey::MultiplierPerYear)
+            .is_none()
         || persistent
             .get::<_, u128>(&DataKey::JumpMultiplierPerYear)
             .is_none()
@@ -217,7 +262,10 @@ fn assert_expected_admin(_env: &Env, _admin: &Address) {
 }
 
 fn expected_admin_config() -> &'static str {
-    if cfg!(any(test, all(debug_assertions, feature = "test-default-admin"))) {
+    if cfg!(any(
+        test,
+        all(debug_assertions, feature = "test-default-admin")
+    )) {
         option_env!("JUMP_RATE_MODEL_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
     } else {
         option_env!("JUMP_RATE_MODEL_INIT_ADMIN")
@@ -250,10 +298,24 @@ fn bump_ttl(env: &Env) {
         persistent.extend_ttl(&DataKey::MultiplierPerYear, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::JumpMultiplierPerYear) {
-        persistent.extend_ttl(&DataKey::JumpMultiplierPerYear, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::JumpMultiplierPerYear,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::Kink) {
         persistent.extend_ttl(&DataKey::Kink, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 
@@ -315,7 +377,13 @@ mod test {
             &admin,
         );
         let before = client.get_borrow_rate(&500u128, &500u128, &0u128);
-        client.set_params(&admin, &10_000u128, &120_000u128, &3_000_000u128, &700_000u128);
+        client.set_params(
+            &admin,
+            &10_000u128,
+            &120_000u128,
+            &3_000_000u128,
+            &700_000u128,
+        );
         let after = client.get_borrow_rate(&500u128, &500u128, &0u128);
         assert!(after != before);
     }

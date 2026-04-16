@@ -492,7 +492,9 @@ impl ReceiptVault {
         admin: Address,
     ) {
         let storage = env.storage().persistent();
-        if storage.get::<_, bool>(&DataKey::Initialized).unwrap_or(false)
+        if storage
+            .get::<_, bool>(&DataKey::Initialized)
+            .unwrap_or(false)
             || storage.has(&DataKey::Admin)
             || storage.has(&DataKey::UnderlyingToken)
             || TokenBase::total_supply(&env) > 0
@@ -1234,7 +1236,29 @@ impl ReceiptVault {
         total_ptokens_supply(&env)
     }
 
-    /// Admin: upgrade contract code
+    /// Admin: stage a timelocked contract upgrade.
+    pub fn propose_upgrade_wasm(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        let _ = ensure_initialized(&env);
+        let admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        admin.require_auth();
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        bump_pending_upgrade_ttl(&env);
+    }
+
+    /// Admin: execute a staged upgrade once timelock has elapsed.
     pub fn upgrade_wasm(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
         let _ = ensure_initialized(&env);
         let admin: Address = env
@@ -1243,6 +1267,62 @@ impl ReceiptVault {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        bump_pending_upgrade_ttl(&env);
+        let pending_hash: soroban_sdk::BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+
+        // If wired to a controller, require all market operations paused pre-upgrade.
+        if let Some(peridottroller) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::Peridottroller)
+        {
+            let market = env.current_contract_address();
+            let deposit_paused: bool = call_contract_or_panic::<bool, _>(
+                &env,
+                &peridottroller,
+                "is_deposit_paused",
+                (market.clone(),),
+            );
+            let redeem_paused: bool = call_contract_or_panic::<bool, _>(
+                &env,
+                &peridottroller,
+                "is_redeem_paused",
+                (market.clone(),),
+            );
+            let borrow_paused: bool = call_contract_or_panic::<bool, _>(
+                &env,
+                &peridottroller,
+                "is_borrow_paused",
+                (market,),
+            );
+            if !(deposit_paused && redeem_paused && borrow_paused) {
+                panic!("market not paused for upgrade");
+            }
+        }
+
+        // Re-baseline interest state before swapping logic to avoid accrual discontinuity.
+        Self::update_interest(env.clone());
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
@@ -1407,11 +1487,7 @@ impl ReceiptVault {
     }
 
     /// Admin: set or clear margin controller address used for collateral lock checks.
-    pub fn set_margin_controller(
-        env: Env,
-        admin: Address,
-        margin_controller: Option<Address>,
-    ) {
+    pub fn set_margin_controller(env: Env, admin: Address, margin_controller: Option<Address>) {
         let _ = ensure_initialized(&env);
         let stored_admin: Address = env
             .storage()
@@ -1438,14 +1514,14 @@ impl ReceiptVault {
                 .set(&DataKey::MarginController, &controller);
             return;
         }
-        env.storage().persistent().remove(&DataKey::MarginController);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::MarginController);
     }
 
     pub fn get_margin_controller(env: Env) -> Option<Address> {
         let _ = ensure_initialized(&env);
-        env.storage()
-            .persistent()
-            .get(&DataKey::MarginController)
+        env.storage().persistent().get(&DataKey::MarginController)
     }
 
     pub fn begin_margin_withdraw(env: Env, margin_controller: Address, user: Address) {
@@ -1764,15 +1840,19 @@ impl ReceiptVault {
         let boosted_accounting = Self::estimate_boosted_underlying_from_accounting(&env);
         let boosted_baseline = cached_before.max(boosted_accounting);
         let boosted_cap = if boosted_baseline == 0 {
-            if tb_prior > 0 { 0 } else { boosted_reported }
+            if tb_prior > 0 {
+                0
+            } else {
+                boosted_reported
+            }
         } else {
             boosted_baseline.saturating_add(
                 (boosted_baseline.saturating_mul(BOOSTED_MODEL_CASH_TOLERANCE_BPS)) / BPS_SCALE,
             )
         };
         let boosted_for_model = boosted_reported.min(boosted_cap);
-        let model_cash = Self::current_live_cash(&env, &token_address)
-            .saturating_add(boosted_for_model);
+        let model_cash =
+            Self::current_live_cash(&env, &token_address).saturating_add(boosted_for_model);
 
         let current_reserves: u128 = env
             .storage()
@@ -1943,7 +2023,10 @@ impl ReceiptVault {
             panic!("invalid rate relationship");
         }
         let storage = env.storage().persistent();
-        if !storage.get::<_, bool>(&DataKey::Initialized).unwrap_or(false) {
+        if !storage
+            .get::<_, bool>(&DataKey::Initialized)
+            .unwrap_or(false)
+        {
             storage.set(&DataKey::Initialized, &true);
         }
         if storage.get::<_, u128>(&DataKey::YearlyRateScaled).is_none() {

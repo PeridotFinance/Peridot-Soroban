@@ -1,8 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractevent, contractimpl, contracttype, vec, Address, Bytes, BytesN, Env,
-    IntoVal, String, Symbol,
+    contract, contractevent, contractimpl, contracttype, vec, Address, Bytes, BytesN, Env, IntoVal,
+    String, Symbol,
 };
 
 #[soroban_sdk::contractclient(name = "BasicSmartAccountClient")]
@@ -115,9 +115,7 @@ impl SmartAccountFactory {
         }
         admin.require_auth();
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage()
-            .instance()
-            .set(&DataKey::Initialized, &true);
+        env.storage().instance().set(&DataKey::Initialized, &true);
         bump_ttl(&env);
     }
 
@@ -132,20 +130,26 @@ impl SmartAccountFactory {
     pub fn revoke_hash(env: Env, admin: Address, hash: BytesN<32>) {
         bump_ttl(&env);
         require_admin(&env, &admin);
-        env.storage().instance().remove(&DataKey::ApprovedHash(hash));
+        env.storage()
+            .instance()
+            .remove(&DataKey::ApprovedHash(hash));
     }
 
     pub fn set_wasm_hash(env: Env, admin: Address, account_type: AccountType, hash: BytesN<32>) {
         bump_ttl(&env);
         require_admin(&env, &admin);
         require_approved_hash(&env, &hash);
-        let execute_after = env.ledger().timestamp().saturating_add(HASH_CHANGE_DELAY_SECS);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(HASH_CHANGE_DELAY_SECS);
         env.storage()
             .instance()
             .set(&DataKey::PendingWasmHash(account_type.clone()), &hash);
-        env.storage()
-            .instance()
-            .set(&DataKey::PendingWasmEta(account_type.clone()), &execute_after);
+        env.storage().instance().set(
+            &DataKey::PendingWasmEta(account_type.clone()),
+            &execute_after,
+        );
         ChildWasmHashProposed {
             account_type,
             hash,
@@ -215,22 +219,25 @@ impl SmartAccountFactory {
 
         match config.account_type {
             AccountType::Basic => {
-                let auths = vec![&env, soroban_sdk::auth::InvokerContractAuthEntry::Contract(
-                    soroban_sdk::auth::SubContractInvocation {
-                        context: soroban_sdk::auth::ContractContext {
-                            contract: deployed_address.clone(),
-                            fn_name: Symbol::new(&env, "initialize"),
-                            args: (
-                                config.owner.clone(),
-                                config.signer.clone(),
-                                config.peridottroller.clone(),
-                                config.margin_controller.clone(),
-                            )
-                                .into_val(&env),
+                let auths = vec![
+                    &env,
+                    soroban_sdk::auth::InvokerContractAuthEntry::Contract(
+                        soroban_sdk::auth::SubContractInvocation {
+                            context: soroban_sdk::auth::ContractContext {
+                                contract: deployed_address.clone(),
+                                fn_name: Symbol::new(&env, "initialize"),
+                                args: (
+                                    config.owner.clone(),
+                                    config.signer.clone(),
+                                    config.peridottroller.clone(),
+                                    config.margin_controller.clone(),
+                                )
+                                    .into_val(&env),
+                            },
+                            sub_invocations: vec![&env],
                         },
-                        sub_invocations: vec![&env],
-                    },
-                )];
+                    ),
+                ];
                 env.authorize_as_current_contract(auths);
                 BasicSmartAccountClient::new(&env, &deployed_address).initialize(
                     &config.owner,
@@ -241,9 +248,10 @@ impl SmartAccountFactory {
             }
         }
 
-        env.storage()
-            .persistent()
-            .set(&DataKey::UserAccount(config.owner.clone()), &deployed_address);
+        env.storage().persistent().set(
+            &DataKey::UserAccount(config.owner.clone()),
+            &deployed_address,
+        );
         bump_user_account_ttl(&env, &config.owner);
 
         let mut count: u64 = env
@@ -252,7 +260,9 @@ impl SmartAccountFactory {
             .get(&DataKey::AccountCount)
             .unwrap_or(0u64);
         count = count.saturating_add(1);
-        env.storage().persistent().set(&DataKey::AccountCount, &count);
+        env.storage()
+            .persistent()
+            .set(&DataKey::AccountCount, &count);
         bump_account_count_ttl(&env);
         AccountCreated {
             owner: config.owner,
@@ -273,7 +283,10 @@ impl SmartAccountFactory {
         bump_ttl(&env);
         require_admin(&env, &admin);
         require_approved_hash(&env, &new_wasm_hash);
-        let execute_after = env.ledger().timestamp().saturating_add(HASH_CHANGE_DELAY_SECS);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(HASH_CHANGE_DELAY_SECS);
         env.storage()
             .instance()
             .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
@@ -307,7 +320,9 @@ impl SmartAccountFactory {
             panic!("upgrade timelocked");
         }
         require_approved_hash(&env, &new_wasm_hash);
-        env.storage().instance().remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .instance()
+            .remove(&DataKey::PendingUpgradeHash);
         env.storage().instance().remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
@@ -378,8 +393,7 @@ mod test {
     fn test_initialize_and_set_wasm_hash() {
         let env = Env::default();
         env.mock_all_auths();
-        let admin =
-            Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
 
         let contract_id = env.register(SmartAccountFactory, ());
         let client = SmartAccountFactoryClient::new(&env, &contract_id);
@@ -388,7 +402,8 @@ mod test {
         let fake_hash = BytesN::from_array(&env, &[1u8; 32]);
         client.approve_hash(&admin, &fake_hash);
         client.set_wasm_hash(&admin, &AccountType::Basic, &fake_hash);
-        env.ledger().with_mut(|l| l.timestamp += HASH_CHANGE_DELAY_SECS + 1);
+        env.ledger()
+            .with_mut(|l| l.timestamp += HASH_CHANGE_DELAY_SECS + 1);
         client.apply_wasm_hash(&admin, &AccountType::Basic);
     }
 
@@ -397,8 +412,7 @@ mod test {
     fn test_set_wasm_hash_non_admin_panics() {
         let env = Env::default();
         env.mock_all_auths();
-        let admin =
-            Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
         let non_admin = Address::generate(&env);
 
         let contract_id = env.register(SmartAccountFactory, ());

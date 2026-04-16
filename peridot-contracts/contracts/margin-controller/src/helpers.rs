@@ -257,6 +257,16 @@ pub fn bump_core_ttl(env: &Env) {
     }
 }
 
+pub fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn bump_market_ttl(env: &Env, asset: &Address) {
     let key = DataKey::Market(asset.clone());
     let persistent = env.storage().persistent();

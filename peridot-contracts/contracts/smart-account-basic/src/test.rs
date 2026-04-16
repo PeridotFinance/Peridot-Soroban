@@ -78,7 +78,10 @@ fn test_verify_signatures_rejects_duplicate_public_keys() {
         public_key: public_key.clone(),
         signature: signature.clone(),
     });
-    signatures.push_back(Signature { public_key, signature });
+    signatures.push_back(Signature {
+        public_key,
+        signature,
+    });
 
     assert_eq!(
         verify_signatures(&env, &payload, &signatures),

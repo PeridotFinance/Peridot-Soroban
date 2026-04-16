@@ -182,7 +182,13 @@ fn test_swap_exact_tokens_rejects_amount_over_i128() {
     let (env, adapter_id, token_a_id, token_b_id, user) = setup();
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
     let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
-    let _ = adapter.swap_exact_tokens_for_tokens(&user, &(i128::MAX as u128 + 1), &1u128, &path, &9999u64);
+    let _ = adapter.swap_exact_tokens_for_tokens(
+        &user,
+        &(i128::MAX as u128 + 1),
+        &1u128,
+        &path,
+        &9999u64,
+    );
 }
 
 #[test]
@@ -191,7 +197,13 @@ fn test_swap_exact_tokens_rejects_amount_out_min_over_i128() {
     let (env, adapter_id, token_a_id, token_b_id, user) = setup();
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
     let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
-    let _ = adapter.swap_exact_tokens_for_tokens(&user, &1u128, &(i128::MAX as u128 + 1), &path, &9999u64);
+    let _ = adapter.swap_exact_tokens_for_tokens(
+        &user,
+        &1u128,
+        &(i128::MAX as u128 + 1),
+        &path,
+        &9999u64,
+    );
 }
 
 #[test]
@@ -255,11 +267,7 @@ fn test_swap_chained() {
     let path = Vec::from_array(&env, [token_in.clone(), token_out]);
     let hops = Vec::from_array(
         &env,
-        [(
-            path,
-            BytesN::from_array(&env, &[1u8; 32]),
-            pool_id,
-        )],
+        [(path, BytesN::from_array(&env, &[1u8; 32]), pool_id)],
     );
     let out = adapter.swap_chained(&user, &hops, &token_in, &10u128, &9u128);
     assert_eq!(out, 9u128);
@@ -284,11 +292,7 @@ fn test_swap_chained_requires_allowlisted_pools() {
     let path = Vec::from_array(&env, [token_in.clone(), token_out]);
     let hops = Vec::from_array(
         &env,
-        [(
-            path,
-            BytesN::from_array(&env, &[2u8; 32]),
-            pool_id,
-        )],
+        [(path, BytesN::from_array(&env, &[2u8; 32]), pool_id)],
     );
 
     let _ = adapter.swap_chained(&user, &hops, &token_in, &10u128, &9u128);

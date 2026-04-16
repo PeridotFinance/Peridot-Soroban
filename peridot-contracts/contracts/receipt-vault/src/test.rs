@@ -250,7 +250,9 @@ impl MockBoostedVault {
     }
 
     pub fn set_fail_quote(env: Env, fail: bool) {
-        env.storage().persistent().set(&BoostedKey::FailQuote, &fail);
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::FailQuote, &fail);
     }
 
     pub fn set_withdraw_haircut(env: Env, haircut: i128) {
@@ -595,8 +597,7 @@ fn test_boosted_fallback_prefers_cached_value_when_stale_and_quote_fails() {
     // Force quote failures and age cache beyond max freshness.
     boosted.set_fail_quote(&true);
     let now = env.ledger().timestamp();
-    env.ledger()
-        .set_timestamp(now + (60 * 60 + 5) as u64);
+    env.ledger().set_timestamp(now + (60 * 60 + 5) as u64);
 
     // Stale-failure path should not drop below last cached boosted value.
     let fallback_total = vault.get_total_underlying();
@@ -1499,7 +1500,8 @@ fn test_repay_overpay_after_interest_accrual_uses_pre_accrual_cap() {
     assert_eq!(token_client.balance(&user), 900i128);
 
     let t0 = env.ledger().timestamp();
-    env.ledger().with_mut(|l| l.timestamp = t0 + 365 * 24 * 60 * 60);
+    env.ledger()
+        .with_mut(|l| l.timestamp = t0 + 365 * 24 * 60 * 60);
 
     // Overpay request is deterministically capped to pre-accrual debt (100).
     vault_client.repay(&user, &1000u128);
@@ -1546,7 +1548,8 @@ fn test_repay_on_behalf_overpay_after_interest_accrual_uses_pre_accrual_cap() {
     assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
 
     let t0 = env.ledger().timestamp();
-    env.ledger().with_mut(|l| l.timestamp = t0 + 365 * 24 * 60 * 60);
+    env.ledger()
+        .with_mut(|l| l.timestamp = t0 + 365 * 24 * 60 * 60);
 
     // Overpay request is deterministically capped to pre-accrual debt (100).
     let comp_id = comp.address.clone();
@@ -2258,7 +2261,10 @@ fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
     // Buffered redemption pulls 101 from boosted, then 100 is loaned out and
     // 100 + fee is repaid, leaving 1 extra unit in live cash.
     assert_eq!(boosted.balance(&vault_id), 399i128);
-    assert_eq!(token_client.balance(&vault_id), (101 + expected_fee) as i128);
+    assert_eq!(
+        token_client.balance(&vault_id),
+        (101 + expected_fee) as i128
+    );
     assert_eq!(vault.get_total_reserves(), expected_fee);
 }
 
@@ -2567,7 +2573,9 @@ fn test_update_interest_uses_gross_cash_for_model_with_boosted_assets() {
     });
 
     let tb_prior = vault.get_total_borrowed();
-    let pooled_reserves = vault.get_total_reserves().saturating_add(vault.get_total_admin_fees());
+    let pooled_reserves = vault
+        .get_total_reserves()
+        .saturating_add(vault.get_total_admin_fees());
     let live_cash = token_client.balance(&vault_id) as u128;
     let boosted_shares = boosted.balance(&vault_id);
     let boosted_underlying = boosted
@@ -2651,14 +2659,20 @@ fn test_update_interest_clamps_inflated_boosted_quote_for_model_cash() {
     vault_b.borrow(&user, &500u128);
 
     let tb_prior = vault_b.get_total_borrowed();
-    let pooled_reserves = vault_b.get_total_reserves().saturating_add(vault_b.get_total_admin_fees());
+    let pooled_reserves = vault_b
+        .get_total_reserves()
+        .saturating_add(vault_b.get_total_admin_fees());
     let live_cash = token_client.balance(&vault_b_id) as u128;
     let reported = boosted_inflated
         .get_asset_amounts_per_shares(&boosted_inflated.balance(&vault_b_id))
         .get(0)
         .unwrap_or(0) as u128;
-    let cached_before: u128 = env
-        .as_contract(&vault_b_id, || env.storage().persistent().get(&DataKey::BoostedUnderlyingCached).unwrap_or(0u128));
+    let cached_before: u128 = env.as_contract(&vault_b_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::BoostedUnderlyingCached)
+            .unwrap_or(0u128)
+    });
     let accounting: u128 = env.as_contract(&vault_b_id, || {
         let storage = env.storage().persistent();
         let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
@@ -2748,7 +2762,9 @@ fn test_update_interest_ignores_boosted_quote_when_baseline_missing_with_debt() 
     });
 
     let tb_prior = vault.get_total_borrowed();
-    let pooled_reserves = vault.get_total_reserves().saturating_add(vault.get_total_admin_fees());
+    let pooled_reserves = vault
+        .get_total_reserves()
+        .saturating_add(vault.get_total_admin_fees());
     let live_cash = token_client.balance(&vault_id) as u128;
     let reported = boosted
         .get_asset_amounts_per_shares(&boosted.balance(&vault_id))

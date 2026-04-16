@@ -13,33 +13,35 @@ pub enum DataKey {
     YearlyRateScaled,      // u128, scaled by 1_000_000 (6 decimals)
     InitialExchangeRate,   // u128, scaled 1e6
     // Borrowing-related keys
-    BorrowSnapshots(Address),   // BorrowSnapshot per user
-    HasBorrowed(Address),       // bool flag per user
-    TotalBorrowed,              // u128
-    BorrowIndex,                // u128 (scaled 1e18)
-    BorrowYearlyRateScaled,     // u128, scaled 1e6
-    CollateralFactorScaled,     // u128, scaled 1e6 (e.g., 500_000 = 50%)
-    Admin,                      // Address
-    PendingAdmin,               // Address pending acceptance
-    Peridottroller,             // Address (optional)
-    InterestModel,              // Address (optional)
-    ReserveFactorScaled,        // u128 (scaled 1e6), defaults 0
-    AdminFeeScaled,             // u128 (scaled 1e6), defaults 0
-    FlashLoanFeeScaled,         // u128 (scaled 1e6), defaults 0
-    TotalAdminFees,             // u128 accumulated admin fees
-    TotalReserves,              // u128 accumulated reserves
-    SupplyCap,                  // u128, max total underlying (principal + interest)
-    BorrowCap,                  // u128, max total borrowed
-    Initialized,                // bool flag to prevent re-initialization
-    BoostedVault,               // Optional DeFindex vault address for boosted markets
-    BoostedUnderlyingCached,    // u128 cached underlying amount for boosted vault
-    BoostedUnderlyingUpdatedAt, // u64 timestamp of cached boosted underlying
-    TotalBorrowPrincipal,       // u128 principal-only global borrow total
-    RatesReady,                 // bool, borrow/rate-sensitive operations enabled
-    IdleCashBufferBps,          // u32, target idle cash in basis points (0..=10_000)
-    FlashLoanActive,            // bool reentrancy guard for accounting-sensitive paths
-    MarginController,           // Address (optional), enforces margin collateral locks
+    BorrowSnapshots(Address),      // BorrowSnapshot per user
+    HasBorrowed(Address),          // bool flag per user
+    TotalBorrowed,                 // u128
+    BorrowIndex,                   // u128 (scaled 1e18)
+    BorrowYearlyRateScaled,        // u128, scaled 1e6
+    CollateralFactorScaled,        // u128, scaled 1e6 (e.g., 500_000 = 50%)
+    Admin,                         // Address
+    PendingAdmin,                  // Address pending acceptance
+    Peridottroller,                // Address (optional)
+    InterestModel,                 // Address (optional)
+    ReserveFactorScaled,           // u128 (scaled 1e6), defaults 0
+    AdminFeeScaled,                // u128 (scaled 1e6), defaults 0
+    FlashLoanFeeScaled,            // u128 (scaled 1e6), defaults 0
+    TotalAdminFees,                // u128 accumulated admin fees
+    TotalReserves,                 // u128 accumulated reserves
+    SupplyCap,                     // u128, max total underlying (principal + interest)
+    BorrowCap,                     // u128, max total borrowed
+    Initialized,                   // bool flag to prevent re-initialization
+    BoostedVault,                  // Optional DeFindex vault address for boosted markets
+    BoostedUnderlyingCached,       // u128 cached underlying amount for boosted vault
+    BoostedUnderlyingUpdatedAt,    // u64 timestamp of cached boosted underlying
+    TotalBorrowPrincipal,          // u128 principal-only global borrow total
+    RatesReady,                    // bool, borrow/rate-sensitive operations enabled
+    IdleCashBufferBps,             // u32, target idle cash in basis points (0..=10_000)
+    FlashLoanActive,               // bool reentrancy guard for accounting-sensitive paths
+    MarginController,              // Address (optional), enforces margin collateral locks
     MarginWithdrawBypass(Address), // bool one-shot bypass for margin-controller-managed withdraw
+    PendingUpgradeHash,            // BytesN<32> target wasm hash for timelocked upgrade
+    PendingUpgradeEta,             // u64 unix timestamp when upgrade becomes executable
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -177,6 +179,16 @@ pub fn bump_core_ttl(env: &Env) {
     }
 }
 
+pub fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn bump_borrow_snapshot_ttl(env: &Env, user: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::BorrowSnapshots(user.clone());
@@ -193,11 +205,7 @@ pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::HasBorrowed(user.clone());
     if persistent.has(&key) {
-        persistent.extend_ttl(
-            &key,
-            HAS_BORROWED_TTL_THRESHOLD,
-            HAS_BORROWED_TTL_EXTEND_TO,
-        );
+        persistent.extend_ttl(&key, HAS_BORROWED_TTL_THRESHOLD, HAS_BORROWED_TTL_EXTEND_TO);
     }
 }
 
