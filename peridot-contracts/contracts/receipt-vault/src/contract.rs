@@ -2453,6 +2453,14 @@ impl ReceiptVault {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
         Self::ensure_user_borrow_flag(&env, &user);
+        // Compute a deterministic repay cap from pre-accrual state so auth entries
+        // do not depend on time-elapsed interest updates between simulation and execution.
+        let debt_before_accrual = Self::get_user_borrow_balance(env.clone(), user.clone());
+        let planned_repay = if amount > debt_before_accrual {
+            debt_before_accrual
+        } else {
+            amount
+        };
         Self::update_interest(env.clone());
         ensure_user_auth(&env, &user);
         let current_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
@@ -2480,10 +2488,10 @@ impl ReceiptVault {
         if current_debt == 0 {
             return;
         }
-        let repay_amount = if amount > current_debt {
+        let repay_amount = if planned_repay > current_debt {
             current_debt
         } else {
-            amount
+            planned_repay
         };
         let principal_repay_user =
             Self::principal_component_of_repay(&env, &user, current_debt, repay_amount);
@@ -2654,6 +2662,14 @@ impl ReceiptVault {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
         Self::ensure_user_borrow_flag(&env, &borrower);
+        // Compute a deterministic repay cap from pre-accrual state so auth entries
+        // do not depend on time-elapsed interest updates between simulation and execution.
+        let debt_before_accrual = Self::get_user_borrow_balance(env.clone(), borrower.clone());
+        let planned_repay = if amount > debt_before_accrual {
+            debt_before_accrual
+        } else {
+            amount
+        };
         // Accrue and auth via peridottroller or allowlisted liquidator
         Self::update_interest(env.clone());
         let comp: Option<Address> = env.storage().persistent().get(&DataKey::Peridottroller);
@@ -2666,10 +2682,10 @@ impl ReceiptVault {
         if current_debt == 0 {
             return;
         }
-        let repay_amount = if amount > current_debt {
+        let repay_amount = if planned_repay > current_debt {
             current_debt
         } else {
-            amount
+            planned_repay
         };
         let principal_repay_user =
             Self::principal_component_of_repay(&env, &borrower, current_debt, repay_amount);

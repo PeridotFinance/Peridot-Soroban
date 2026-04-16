@@ -1472,6 +1472,105 @@ fn test_repay_on_behalf_via_peridottroller_auth() {
 }
 
 #[test]
+fn test_repay_overpay_after_interest_accrual_uses_pre_accrual_cap() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.ledger().with_mut(|l| l.timestamp = 1);
+
+    let admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        jrm::DEFAULT_INIT_ADMIN,
+    ));
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &1000i128);
+
+    let vault_contract_id = env.register(ReceiptVault, ());
+    let vault_client = ReceiptVaultClient::new(&env, &vault_contract_id);
+
+    // 100% APR borrow rate so one-year elapsed time produces material interest.
+    vault_client.initialize(&token_address, &0u128, &1_000_000u128, &admin);
+    vault_client.enable_static_rates(&admin);
+
+    vault_client.deposit(&user, &200u128);
+    vault_client.borrow(&user, &100u128);
+    assert_eq!(vault_client.get_user_borrow_balance(&user), 100u128);
+    assert_eq!(token_client.balance(&user), 900i128);
+
+    let t0 = env.ledger().timestamp();
+    env.ledger().with_mut(|l| l.timestamp = t0 + 365 * 24 * 60 * 60);
+
+    // Overpay request is deterministically capped to pre-accrual debt (100).
+    vault_client.repay(&user, &1000u128);
+
+    // User only repaid the pre-accrual cap.
+    assert_eq!(token_client.balance(&user), 800i128);
+    // Interest accrued during update_interest remains outstanding.
+    assert!(vault_client.get_user_borrow_balance(&user) > 0u128);
+}
+
+#[test]
+fn test_repay_on_behalf_overpay_after_interest_accrual_uses_pre_accrual_cap() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.ledger().with_mut(|l| l.timestamp = 1);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &500i128);
+    token_admin_client.mint(&liquidator, &500i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    // 100% APR borrow rate so one-year elapsed time produces material interest.
+    vault.initialize(&token_address, &0u128, &1_000_000u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let comp = setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        800_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    vault.deposit(&user, &200u128);
+    comp.enter_market(&user, &vault_id);
+    vault.borrow(&user, &100u128);
+    assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+
+    let t0 = env.ledger().timestamp();
+    env.ledger().with_mut(|l| l.timestamp = t0 + 365 * 24 * 60 * 60);
+
+    // Overpay request is deterministically capped to pre-accrual debt (100).
+    let comp_id = comp.address.clone();
+    env.as_contract(&comp_id, || {
+        let repay_args: Vec<Val> = (liquidator.clone(), user.clone(), 1000u128).into_val(&env);
+        let mut auths = Vec::new(&env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: vault_id.clone(),
+                fn_name: Symbol::new(&env, "repay_on_behalf"),
+                args: repay_args,
+            },
+            sub_invocations: Vec::new(&env),
+        }));
+        env.authorize_as_current_contract(auths);
+        let vault_client = ReceiptVaultClient::new(&env, &vault_id);
+        vault_client.repay_on_behalf(&liquidator, &user, &1000u128);
+    });
+
+    assert_eq!(token_client.balance(&liquidator), 400i128);
+    assert!(vault.get_user_borrow_balance(&user) > 0u128);
+}
+
+#[test]
 fn test_borrow_budget_peridottroller_same_market() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
