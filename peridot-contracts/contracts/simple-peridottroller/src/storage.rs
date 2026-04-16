@@ -49,6 +49,14 @@ pub enum DataKey {
     MarketUserCounts,            // Map<Address, u32>: number of users with market in UserMarkets
     PendingUpgradeHash,          // BytesN<32>: timelocked controller upgrade target
     PendingUpgradeEta,           // u64: earliest timestamp when upgrade can execute
+    PendingOracle,               // Address: staged oracle update target
+    PendingOracleEta,            // u64: earliest timestamp for staged oracle update
+    PendingCloseFactorScaled,    // u128: staged close factor
+    PendingCloseFactorEta,       // u64: earliest timestamp for staged close factor update
+    PendingLiqIncentiveScaled,   // u128: staged liquidation incentive
+    PendingLiqIncentiveEta,      // u64: earliest timestamp for staged liquidation incentive update
+    PendingMarketCF(Address),    // u128: staged market collateral factor
+    PendingMarketCFEta(Address), // u64: earliest timestamp for staged market CF update
 }
 
 #[contracttype]
@@ -161,6 +169,64 @@ pub fn bump_pending_upgrade_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::PendingUpgradeEta) {
         persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_oracle_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingOracle) {
+        persistent.extend_ttl(&DataKey::PendingOracle, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingOracleEta) {
+        persistent.extend_ttl(&DataKey::PendingOracleEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_close_factor_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingCloseFactorScaled) {
+        persistent.extend_ttl(
+            &DataKey::PendingCloseFactorScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+    if persistent.has(&DataKey::PendingCloseFactorEta) {
+        persistent.extend_ttl(
+            &DataKey::PendingCloseFactorEta,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_pending_liquidation_incentive_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingLiqIncentiveScaled) {
+        persistent.extend_ttl(
+            &DataKey::PendingLiqIncentiveScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+    if persistent.has(&DataKey::PendingLiqIncentiveEta) {
+        persistent.extend_ttl(
+            &DataKey::PendingLiqIncentiveEta,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_pending_market_cf_ttl(env: &Env, market: &Address) {
+    let persistent = env.storage().persistent();
+    let pending_key = DataKey::PendingMarketCF(market.clone());
+    if persistent.has(&pending_key) {
+        persistent.extend_ttl(&pending_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let eta_key = DataKey::PendingMarketCFEta(market.clone());
+    if persistent.has(&eta_key) {
+        persistent.extend_ttl(&eta_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

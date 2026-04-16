@@ -3502,6 +3502,50 @@ fn test_fallback_price_has_max_age() {
 }
 
 #[test]
+#[should_panic(expected = "invalid fallback price")]
+fn test_set_price_fallback_rejects_excessive_price() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    comp.set_price_fallback(
+        &token,
+        &Some((MAX_FALLBACK_PRICE.saturating_add(1), 1_000_000u128)),
+    );
+}
+
+#[test]
+#[should_panic(expected = "invalid fallback price")]
+fn test_set_price_fallback_rejects_excessive_scale() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    comp.set_price_fallback(
+        &token,
+        &Some((1_000_000u128, MAX_FALLBACK_SCALE.saturating_add(1))),
+    );
+}
+
+#[test]
 fn test_get_price_usd_uses_fallback_when_oracle_refresh_fails() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
