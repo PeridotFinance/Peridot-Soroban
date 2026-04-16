@@ -265,7 +265,7 @@ impl MockPeridottroller {
             .storage()
             .persistent()
             .get(&MockPeridottrollerKey::Liquidity(user.clone()))
-            .unwrap_or(0u128);
+            .unwrap_or(u128::MAX);
         let shortfall: u128 = env
             .storage()
             .persistent()
@@ -1347,11 +1347,30 @@ fn test_open_short_position() {
         &2u128,
         &PositionSide::Short,
         &swaps_chain,
-        &200u128,
+        &100u128,
     );
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
     assert_eq!(pos.side, PositionSide::Short);
+}
+
+#[test]
+#[should_panic(expected = "slippage too high")]
+fn test_open_position_rejects_user_slippage_floor_not_met() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id, &usdt_id);
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Short,
+        &swaps_chain,
+        &200u128, // higher than realizable output in this setup
+    );
 }
 
 #[test]
