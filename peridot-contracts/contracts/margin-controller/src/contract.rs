@@ -195,7 +195,6 @@ impl MarginController {
         if collateral_asset == base_asset {
             panic!("assets must differ");
         }
-        Self::assert_pre_swap_leverage_supported(&env, &collateral_asset, leverage);
         let (debt_asset, position_asset) = match side {
             PositionSide::Long => (collateral_asset.clone(), base_asset.clone()),
             PositionSide::Short => (base_asset.clone(), collateral_asset.clone()),
@@ -249,14 +248,75 @@ impl MarginController {
             panic!("no collateral minted");
         }
 
-        // Borrow debt asset
+        // Borrow debt asset in bounded steps, swapping/depositing each step so newly
+        // acquired collateral contributes to the next borrow check.
         let debt_vault = get_market(&env, &debt_asset);
         Self::assert_margin_lock_configured(&env, &debt_vault);
+        let position_vault = get_market(&env, &position_asset);
+        Self::assert_margin_lock_configured(&env, &position_vault);
         peridottroller.enter_market(&user, &debt_vault);
-        let debt_before = ReceiptVaultClient::new(&env, &debt_vault).get_user_borrow_balance(&user);
+        peridottroller.enter_market(&user, &position_vault);
+        let debt_vault_client = ReceiptVaultClient::new(&env, &debt_vault);
+        let debt_before = debt_vault_client.get_user_borrow_balance(&user);
         let shares_before = get_debt_shares_total(&env, &user, &debt_asset);
-        let new_shares = Self::calculate_new_debt_shares(borrow_amount, shares_before, debt_before);
-        ReceiptVaultClient::new(&env, &debt_vault).borrow(&user, &borrow_amount);
+        let mut remaining_borrow = borrow_amount;
+        let mut total_received = 0u128;
+        let p_before = ReceiptVaultClient::new(&env, &position_vault).get_ptoken_balance(&user);
+        const MAX_BORROW_STEPS: u32 = 32;
+        for _ in 0..MAX_BORROW_STEPS {
+            if remaining_borrow == 0 {
+                break;
+            }
+
+            let step_borrow = Self::max_borrow_step_for_position(
+                &peridottroller,
+                &user,
+                debt_price,
+                remaining_borrow,
+            );
+            if step_borrow == 0 {
+                break;
+            }
+
+            debt_vault_client.borrow(&user, &step_borrow);
+            let step_min_out_oracle =
+                Self::oracle_min_out(&env, &debt_asset, &position_asset, step_borrow);
+            let received_step = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
+                &user,
+                &swaps_chain,
+                &debt_asset,
+                &step_borrow,
+                &step_min_out_oracle,
+            );
+            if received_step < step_min_out_oracle {
+                panic!("slippage too high");
+            }
+            if received_step == 0 {
+                panic!("swap failed");
+            }
+
+            ReceiptVaultClient::new(&env, &position_vault).deposit(&user, &received_step);
+            total_received = total_received.saturating_add(received_step);
+            remaining_borrow = remaining_borrow.saturating_sub(step_borrow);
+        }
+        if remaining_borrow > 0 {
+            panic!("leverage unsupported pre-swap");
+        }
+        if total_received < min_out_oracle {
+            panic!("slippage too high");
+        }
+        let p_after = ReceiptVaultClient::new(&env, &position_vault).get_ptoken_balance(&user);
+        let p_delta = p_after.saturating_sub(p_before);
+        if p_delta == 0 {
+            panic!("no collateral minted");
+        }
+        let debt_after = debt_vault_client.get_user_borrow_balance(&user);
+        let actual_borrowed = debt_after.saturating_sub(debt_before);
+        if actual_borrowed == 0 {
+            panic!("zero borrow");
+        }
+        let new_shares =
+            Self::calculate_new_debt_shares(actual_borrowed, shares_before, debt_before);
         set_debt_shares_total(
             &env,
             &user,
@@ -264,38 +324,7 @@ impl MarginController {
             shares_before.saturating_add(new_shares),
         );
 
-        // Swap borrowed debt asset to position asset via Aquarius
-        let received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
-            &user,
-            &swaps_chain,
-            &debt_asset,
-            &borrow_amount,
-            &amount_with_slippage,
-        );
-        if received < min_out_oracle {
-            panic!("slippage too high");
-        }
-        if received == 0 {
-            panic!("swap failed");
-        }
-
-        // Deposit swapped asset as collateral, track pTokens minted
-        let position_vault = get_market(&env, &position_asset);
-        Self::assert_margin_lock_configured(&env, &position_vault);
-        let p_before = ReceiptVaultClient::new(&env, &position_vault).get_ptoken_balance(&user);
-        ReceiptVaultClient::new(&env, &position_vault).deposit(&user, &received);
-        peridottroller.enter_market(&user, &position_vault);
-        let p_after = ReceiptVaultClient::new(&env, &position_vault).get_ptoken_balance(&user);
-        let p_delta = p_after.saturating_sub(p_before);
-        if p_delta == 0 {
-            panic!("no collateral minted");
-        }
-
-        let entry_price_scaled = borrow_value
-            .saturating_mul(SCALE_1E6)
-            .saturating_mul(debt_price.1)
-            / debt_price.0
-            / received;
+        let entry_price_scaled = actual_borrowed.saturating_mul(SCALE_1E6) / total_received;
 
         let id = next_position_id(&env);
         let position = Position {
@@ -857,6 +886,30 @@ impl MarginController {
         }
     }
 
+    fn max_borrow_step_for_position(
+        peridottroller: &PeridottrollerClient<'_>,
+        user: &Address,
+        debt_price: (u128, u128),
+        max_requested: u128,
+    ) -> u128 {
+        if max_requested == 0 {
+            return 0;
+        }
+        let (liquidity, shortfall) = peridottroller.account_liquidity(user);
+        if shortfall > 0 || liquidity == 0 || debt_price.0 == 0 {
+            return 0;
+        }
+        let liquidity_in_debt = liquidity.saturating_mul(debt_price.1) / debt_price.0;
+        if liquidity_in_debt == 0 {
+            return 0;
+        }
+        if liquidity_in_debt < max_requested {
+            liquidity_in_debt
+        } else {
+            max_requested
+        }
+    }
+
     fn calculate_new_debt_shares(
         borrow_amount: u128,
         shares_before: u128,
@@ -913,8 +966,8 @@ impl MarginController {
         );
     }
 
-    // Current borrow path performs health checks before swapped collateral is deposited.
-    // That means requested leverage cannot exceed what the initial collateral supports.
+    // No-swap borrow path performs health checks before any additional collateral is added.
+    // This caps leverage to what the initial collateral can support on its own.
     fn assert_pre_swap_leverage_supported(env: &Env, collateral_asset: &Address, leverage: u128) {
         let collateral_market = get_market(env, collateral_asset);
         let cf = get_peridottroller(env).get_market_cf(&collateral_market);

@@ -265,7 +265,7 @@ impl MockPeridottroller {
             .storage()
             .persistent()
             .get(&MockPeridottrollerKey::Liquidity(user.clone()))
-            .unwrap_or(0u128);
+            .unwrap_or(u128::MAX);
         let shortfall: u128 = env
             .storage()
             .persistent()
