@@ -1496,6 +1496,26 @@ fn test_open_position_rejects_mismatched_swap_path() {
 
 #[test]
 #[should_panic(expected = "bad swaps")]
+fn test_open_position_rejects_wrong_swap_input_endpoint() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    // Long expects debt->position route usdt -> xlm; this route starts from xlm.
+    let swaps_chain = mock_swaps_chain(&env, &xlm_id, &xlm_id);
+    controller.open_position(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &200u128,
+    );
+}
+
+#[test]
+#[should_panic(expected = "bad swaps")]
 fn test_open_position_rejects_empty_swap_hop_path() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
     let controller = MarginControllerClient::new(&env, &controller_id);
