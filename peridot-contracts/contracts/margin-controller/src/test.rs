@@ -1475,6 +1475,28 @@ fn test_open_position_no_swap_rejects_invalid_market_cf_scale() {
 }
 
 #[test]
+#[should_panic(expected = "borrow exceeds leverage")]
+fn test_open_position_no_swap_applies_cf_to_borrow_ceiling() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let comp = MockPeridottrollerClient::new(&env, &peridottroller_id);
+
+    // Raw collateral value is $100, but with CF=50% the leverage ceiling is based on $50.
+    // At leverage=1, a $60 borrow must fail once CF discounting is applied.
+    comp.set_market_cf(&usdt_vault_id, &500_000u128);
+    controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &60u128,
+        &1u128,
+        &PositionSide::Long,
+    );
+}
+
+#[test]
 #[should_panic(expected = "bad collateral")]
 fn test_open_position_zero_collateral_panics() {
     let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup();
