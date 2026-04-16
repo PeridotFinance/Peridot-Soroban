@@ -1522,6 +1522,27 @@ fn test_open_position_rejects_empty_swap_hop_path() {
 }
 
 #[test]
+#[should_panic(expected = "bad swaps")]
+fn test_close_position_rejects_mismatched_swap_path() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, _, _) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let position_id = controller.open_position_no_swap(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &30u128,
+        &2u128,
+        &PositionSide::Long,
+    );
+
+    // Close path for this position must be usdt -> xlm. usdt -> usdt should fail validation.
+    let bad_swaps_chain = mock_swaps_chain(&env, &usdt_id, &usdt_id);
+    controller.close_position(&user, &position_id, &bad_swaps_chain, &200u128);
+}
+
+#[test]
 #[should_panic(expected = "borrow exceeds leverage")]
 fn test_open_position_no_swap_refreshes_oracle_price_before_leverage_check() {
     let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, _, _) = setup_short_min();
