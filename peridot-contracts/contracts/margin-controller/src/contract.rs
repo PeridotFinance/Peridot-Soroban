@@ -415,7 +415,9 @@ impl MarginController {
         if collateral_asset == debt_asset {
             panic!("assets must differ");
         }
-        Self::assert_pre_swap_leverage_supported(&env, &collateral_asset, leverage);
+        let collateral_vault = get_market(&env, &collateral_asset);
+        let collateral_cf =
+            Self::assert_pre_swap_leverage_supported(&env, &collateral_vault, leverage);
         if collateral_amount == 0 || borrow_amount == 0 {
             panic!("bad amounts");
         }
@@ -430,13 +432,14 @@ impl MarginController {
         let collateral_value =
             collateral_amount.saturating_mul(collateral_price.0) / collateral_price.1;
         let borrow_value = borrow_amount.saturating_mul(debt_price.0) / debt_price.1;
-        let target_value = collateral_value.saturating_mul(leverage);
+        let discounted_collateral_value =
+            collateral_value.saturating_mul(collateral_cf) / SCALE_1E6;
+        let target_value = discounted_collateral_value.saturating_mul(leverage);
         if borrow_value >= target_value {
             panic!("borrow exceeds leverage");
         }
 
         // Deposit initial collateral
-        let collateral_vault = get_market(&env, &collateral_asset);
         Self::assert_margin_lock_configured(&env, &collateral_vault);
         let p_before = ReceiptVaultClient::new(&env, &collateral_vault).get_ptoken_balance(&user);
         ReceiptVaultClient::new(&env, &collateral_vault).deposit(&user, &collateral_amount);
@@ -968,9 +971,12 @@ impl MarginController {
 
     // No-swap borrow path performs health checks before any additional collateral is added.
     // This caps leverage to what the initial collateral can support on its own.
-    fn assert_pre_swap_leverage_supported(env: &Env, collateral_asset: &Address, leverage: u128) {
-        let collateral_market = get_market(env, collateral_asset);
-        let cf = get_peridottroller(env).get_market_cf(&collateral_market);
+    fn assert_pre_swap_leverage_supported(
+        env: &Env,
+        collateral_market: &Address,
+        leverage: u128,
+    ) -> u128 {
+        let cf = get_peridottroller(env).get_market_cf(collateral_market);
         if cf > SCALE_1E6 {
             panic!("invalid market cf");
         }
@@ -979,6 +985,7 @@ impl MarginController {
         if requested_scaled > max_supported_scaled {
             panic!("leverage unsupported pre-swap");
         }
+        cf
     }
 }
 
