@@ -9,6 +9,14 @@ pub struct OracleUpdated {
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingOracleUpdated {
+    #[topic]
+    pub oracle: Address,
+    pub execute_after: u64,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdminUpdated {
     #[topic]
     pub admin: Address,
@@ -29,8 +37,22 @@ pub struct CloseFactorUpdated {
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingCloseFactorUpdated {
+    pub close_factor_mantissa: u128,
+    pub execute_after: u64,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LiquidationIncentiveUpdated {
     pub incentive_mantissa: u128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingLiqIncentiveUpdated {
+    pub incentive_mantissa: u128,
+    pub execute_after: u64,
 }
 
 #[contractevent]
@@ -39,6 +61,15 @@ pub struct MarketCollateralFactorUpdated {
     #[topic]
     pub market: Address,
     pub cf_mantissa: u128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingMarketCFUpdated {
+    #[topic]
+    pub market: Address,
+    pub cf_mantissa: u128,
+    pub execute_after: u64,
 }
 
 #[contractevent]

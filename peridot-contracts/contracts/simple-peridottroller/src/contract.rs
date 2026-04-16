@@ -412,7 +412,20 @@ impl SimplePeridottroller {
         let pending_eta: Option<u64> = persistent.get(&DataKey::PendingOracleEta);
         let now = env.ledger().timestamp();
         if pending == Some(oracle.clone()) {
-            let eta = pending_eta.unwrap_or(0);
+            let Some(eta) = pending_eta else {
+                persistent.remove(&DataKey::PendingOracle);
+                persistent.remove(&DataKey::PendingOracleEta);
+                let execute_after = now.saturating_add(delay);
+                persistent.set(&DataKey::PendingOracle, &oracle);
+                persistent.set(&DataKey::PendingOracleEta, &execute_after);
+                storage::bump_pending_oracle_ttl(&env);
+                PendingOracleUpdated {
+                    oracle: oracle.clone(),
+                    execute_after,
+                }
+                .publish(&env);
+                return;
+            };
             if now < eta {
                 panic!("oracle timelocked");
             }
@@ -427,8 +440,14 @@ impl SimplePeridottroller {
         }
 
         persistent.set(&DataKey::PendingOracle, &oracle);
-        persistent.set(&DataKey::PendingOracleEta, &now.saturating_add(delay));
+        let execute_after = now.saturating_add(delay);
+        persistent.set(&DataKey::PendingOracleEta, &execute_after);
         storage::bump_pending_oracle_ttl(&env);
+        PendingOracleUpdated {
+            oracle: oracle.clone(),
+            execute_after,
+        }
+        .publish(&env);
     }
 
     // Admin transfer
@@ -545,7 +564,20 @@ impl SimplePeridottroller {
         let pending_eta: Option<u64> = persistent.get(&DataKey::PendingCloseFactorEta);
         let now = env.ledger().timestamp();
         if pending == Some(close_factor_scaled) {
-            let eta = pending_eta.unwrap_or(0);
+            let Some(eta) = pending_eta else {
+                persistent.remove(&DataKey::PendingCloseFactorScaled);
+                persistent.remove(&DataKey::PendingCloseFactorEta);
+                let execute_after = now.saturating_add(delay);
+                persistent.set(&DataKey::PendingCloseFactorScaled, &close_factor_scaled);
+                persistent.set(&DataKey::PendingCloseFactorEta, &execute_after);
+                storage::bump_pending_close_factor_ttl(&env);
+                PendingCloseFactorUpdated {
+                    close_factor_mantissa: close_factor_scaled,
+                    execute_after,
+                }
+                .publish(&env);
+                return;
+            };
             if now < eta {
                 panic!("close factor timelocked");
             }
@@ -560,8 +592,14 @@ impl SimplePeridottroller {
         }
 
         persistent.set(&DataKey::PendingCloseFactorScaled, &close_factor_scaled);
-        persistent.set(&DataKey::PendingCloseFactorEta, &now.saturating_add(delay));
+        let execute_after = now.saturating_add(delay);
+        persistent.set(&DataKey::PendingCloseFactorEta, &execute_after);
         storage::bump_pending_close_factor_ttl(&env);
+        PendingCloseFactorUpdated {
+            close_factor_mantissa: close_factor_scaled,
+            execute_after,
+        }
+        .publish(&env);
     }
 
     pub fn set_liquidation_incentive(env: Env, li_scaled: u128) {
@@ -591,7 +629,20 @@ impl SimplePeridottroller {
         let pending_eta: Option<u64> = persistent.get(&DataKey::PendingLiqIncentiveEta);
         let now = env.ledger().timestamp();
         if pending == Some(li_scaled) {
-            let eta = pending_eta.unwrap_or(0);
+            let Some(eta) = pending_eta else {
+                persistent.remove(&DataKey::PendingLiqIncentiveScaled);
+                persistent.remove(&DataKey::PendingLiqIncentiveEta);
+                let execute_after = now.saturating_add(delay);
+                persistent.set(&DataKey::PendingLiqIncentiveScaled, &li_scaled);
+                persistent.set(&DataKey::PendingLiqIncentiveEta, &execute_after);
+                storage::bump_pending_liquidation_incentive_ttl(&env);
+                PendingLiqIncentiveUpdated {
+                    incentive_mantissa: li_scaled,
+                    execute_after,
+                }
+                .publish(&env);
+                return;
+            };
             if now < eta {
                 panic!("incentive timelocked");
             }
@@ -606,8 +657,14 @@ impl SimplePeridottroller {
         }
 
         persistent.set(&DataKey::PendingLiqIncentiveScaled, &li_scaled);
-        persistent.set(&DataKey::PendingLiqIncentiveEta, &now.saturating_add(delay));
+        let execute_after = now.saturating_add(delay);
+        persistent.set(&DataKey::PendingLiqIncentiveEta, &execute_after);
         storage::bump_pending_liquidation_incentive_ttl(&env);
+        PendingLiqIncentiveUpdated {
+            incentive_mantissa: li_scaled,
+            execute_after,
+        }
+        .publish(&env);
     }
 
     pub fn set_margin_liquidation_ctrl(env: Env, controller: Address, allowed: bool) {
@@ -679,7 +736,21 @@ impl SimplePeridottroller {
         let pending_eta: Option<u64> = persistent.get(&pending_eta_key);
         let now = env.ledger().timestamp();
         if pending == Some(cf_scaled) {
-            let eta = pending_eta.unwrap_or(0);
+            let Some(eta) = pending_eta else {
+                persistent.remove(&pending_key);
+                persistent.remove(&pending_eta_key);
+                let execute_after = now.saturating_add(delay);
+                persistent.set(&pending_key, &cf_scaled);
+                persistent.set(&pending_eta_key, &execute_after);
+                storage::bump_pending_market_cf_ttl(&env, &market);
+                PendingMarketCFUpdated {
+                    market: market.clone(),
+                    cf_mantissa: cf_scaled,
+                    execute_after,
+                }
+                .publish(&env);
+                return;
+            };
             if now < eta {
                 panic!("market cf timelocked");
             }
@@ -695,8 +766,15 @@ impl SimplePeridottroller {
         }
 
         persistent.set(&pending_key, &cf_scaled);
-        persistent.set(&pending_eta_key, &now.saturating_add(delay));
+        let execute_after = now.saturating_add(delay);
+        persistent.set(&pending_eta_key, &execute_after);
         storage::bump_pending_market_cf_ttl(&env, &market);
+        PendingMarketCFUpdated {
+            market: market.clone(),
+            cf_mantissa: cf_scaled,
+            execute_after,
+        }
+        .publish(&env);
     }
 
     pub fn get_market_cf(env: Env, market: Address) -> u128 {
