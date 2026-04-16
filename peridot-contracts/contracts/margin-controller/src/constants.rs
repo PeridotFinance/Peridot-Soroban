@@ -6,3 +6,4 @@ pub const MAX_LEVERAGE_CAP: u128 = 10;
 pub const MAX_SWAP_PATH_LEN: u32 = 5;
 pub const TTL_THRESHOLD: u32 = 500_000;
 pub const TTL_EXTEND_TO: u32 = 1_000_000;
+pub const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;

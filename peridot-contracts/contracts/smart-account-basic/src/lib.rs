@@ -57,6 +57,8 @@ pub enum DataKey {
     MarginController,
     AllowedContract(Address),
     Initialized,
+    PendingUpgradeHash,
+    PendingUpgradeEta,
 }
 
 #[contracttype]
@@ -76,6 +78,7 @@ pub enum Error {
 
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
+const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
 const MAX_SIGNERS: u32 = 8;
 const DEFAULT_FACTORY_ADDRESS: &str = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
 
@@ -129,7 +132,10 @@ impl BasicSmartAccount {
     pub fn has_signer(env: Env, signer: BytesN<32>) -> bool {
         bump_ttl(&env);
         bump_signer_ttl(&env, &signer);
-        env.storage().persistent().get(&DataKey::Signer(signer)).unwrap_or(false)
+        env.storage()
+            .persistent()
+            .get(&DataKey::Signer(signer))
+            .unwrap_or(false)
     }
 
     pub fn add_signer(env: Env, owner: Address, signer: BytesN<32>) {
@@ -194,22 +200,66 @@ impl BasicSmartAccount {
     pub fn remove_allowed_contract(env: Env, owner: Address, contract: Address) {
         bump_ttl(&env);
         require_owner(&env, &owner);
-        env.storage().persistent().remove(&DataKey::AllowedContract(contract));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::AllowedContract(contract));
     }
 
     pub fn is_allowed_contract(env: Env, contract: Address) -> bool {
         bump_ttl(&env);
         bump_allowed_contract_ttl(&env, &contract);
-        env.storage().persistent().get(&DataKey::AllowedContract(contract)).unwrap_or(false)
+        env.storage()
+            .persistent()
+            .get(&DataKey::AllowedContract(contract))
+            .unwrap_or(false)
     }
 
     pub fn bump_ttl(env: Env) {
         bump_ttl(&env);
     }
 
+    pub fn propose_upgrade_wasm(env: Env, owner: Address, new_wasm_hash: BytesN<32>) {
+        bump_ttl(&env);
+        require_owner(&env, &owner);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        bump_pending_upgrade_ttl(&env);
+    }
+
     pub fn upgrade_wasm(env: Env, owner: Address, new_wasm_hash: BytesN<32>) {
         bump_ttl(&env);
         require_owner(&env, &owner);
+        bump_pending_upgrade_ttl(&env);
+        let pending_hash: BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
@@ -270,7 +320,9 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
 
     if is_vault && fn_name == Symbol::new(env, "borrow") {
         check_borrow_policy(env, ctx)?;
-    } else if is_vault && (fn_name == Symbol::new(env, "deposit") || fn_name == Symbol::new(env, "repay")) {
+    } else if is_vault
+        && (fn_name == Symbol::new(env, "deposit") || fn_name == Symbol::new(env, "repay"))
+    {
         check_first_address_is_self(env, ctx, 0)?;
     } else if is_vault && fn_name == Symbol::new(env, "withdraw") {
         check_redeem_policy(env, ctx, 0, 1)?;
@@ -278,11 +330,11 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
         check_redeem_policy(env, ctx, 0, 2)?;
     } else if is_margin
         && (fn_name == Symbol::new(env, "deposit_collateral")
-        || fn_name == Symbol::new(env, "withdraw_collateral")
-        || fn_name == Symbol::new(env, "open_position")
-        || fn_name == Symbol::new(env, "open_position_no_swap")
-        || fn_name == Symbol::new(env, "open_position_no_swap_short")
-        || fn_name == Symbol::new(env, "close_position"))
+            || fn_name == Symbol::new(env, "withdraw_collateral")
+            || fn_name == Symbol::new(env, "open_position")
+            || fn_name == Symbol::new(env, "open_position_no_swap")
+            || fn_name == Symbol::new(env, "open_position_no_swap_short")
+            || fn_name == Symbol::new(env, "close_position"))
     {
         check_first_address_is_self(env, ctx, 0)?;
     } else if is_vault || is_margin {
@@ -369,10 +421,13 @@ fn check_borrow_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
         .get(&DataKey::Peridottroller)
         .ok_or(Error::NotInitialized)?;
 
-    let underlying =
-        ReceiptVaultClient::new(env, &ctx.contract).get_underlying_token();
-    let (_liq, shortfall) = PeridottrollerClient::new(env, &peridottroller)
-        .hypothetical_liquidity(&user, &ctx.contract, &borrow_amount, &underlying);
+    let underlying = ReceiptVaultClient::new(env, &ctx.contract).get_underlying_token();
+    let (_liq, shortfall) = PeridottrollerClient::new(env, &peridottroller).hypothetical_liquidity(
+        &user,
+        &ctx.contract,
+        &borrow_amount,
+        &underlying,
+    );
     if shortfall > 0 {
         return Err(Error::InsufficientHealth);
     }
@@ -526,6 +581,16 @@ fn bump_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::MarginController) {
         persistent.extend_ttl(&DataKey::MarginController, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

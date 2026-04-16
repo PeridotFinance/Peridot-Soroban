@@ -75,6 +75,8 @@ pub enum DataKey {
     PositionCollateralVault(u64),
     PositionDebtVault(u64),
     PositionPositionVault(u64),
+    PendingUpgradeHash,
+    PendingUpgradeEta,
 }
 
 #[contracttype]

@@ -1,13 +1,12 @@
-use soroban_sdk::{
-    contract, contractimpl, Address, Env, IntoVal, InvokeError, Map, String, Symbol, Val, Vec,
-    vec,
-};
 use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
+use soroban_sdk::{
+    contract, contractimpl, vec, Address, Env, IntoVal, InvokeError, Map, String, Symbol, Val, Vec,
+};
 
 use crate::constants::*;
 use crate::events::*;
+use crate::storage;
 use crate::storage::*;
-use crate::storage as storage;
 
 #[contract]
 pub struct SimplePeridottroller;
@@ -15,12 +14,8 @@ pub struct SimplePeridottroller;
 #[contractimpl]
 impl SimplePeridottroller {
     fn are_market_openings_paused(env: &Env, market: &Address) -> bool {
-        let borrow_paused = Self::is_pause_active(
-            env,
-            DataKey::PauseBorrow,
-            DataKey::PauseBorrowUntil,
-            market,
-        );
+        let borrow_paused =
+            Self::is_pause_active(env, DataKey::PauseBorrow, DataKey::PauseBorrowUntil, market);
         let deposit_paused = Self::is_pause_active(
             env,
             DataKey::PauseDeposit,
@@ -159,7 +154,12 @@ impl SimplePeridottroller {
         }
 
         Self::distribute_supply(env.clone(), user.clone(), market.clone(), user_ptokens_hint);
-        Self::distribute_borrow(env.clone(), user.clone(), market.clone(), user_borrowed_hint);
+        Self::distribute_borrow(
+            env.clone(),
+            user.clone(),
+            market.clone(),
+            user_borrowed_hint,
+        );
         true
     }
 
@@ -384,7 +384,9 @@ impl SimplePeridottroller {
     pub fn set_admin(env: Env, new_admin: Address) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        env.storage().persistent().set(&DataKey::PendingAdmin, &new_admin);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingAdmin, &new_admin);
         bump_pending_admin_ttl(&env);
         PendingAdminUpdated {
             admin: new_admin.clone(),
@@ -419,9 +421,48 @@ impl SimplePeridottroller {
         env.storage().persistent().get(&DataKey::Oracle)
     }
 
+    pub fn propose_upgrade_wasm(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        storage::bump_pending_upgrade_ttl(&env);
+    }
+
     pub fn upgrade_wasm(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        storage::bump_pending_upgrade_ttl(&env);
+        let pending_hash: soroban_sdk::BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
@@ -456,11 +497,7 @@ impl SimplePeridottroller {
         .publish(&env);
     }
 
-    pub fn set_margin_liquidation_ctrl(
-        env: Env,
-        controller: Address,
-        allowed: bool,
-    ) {
+    pub fn set_margin_liquidation_ctrl(env: Env, controller: Address, allowed: bool) {
         bump_core_ttl(&env);
         require_admin(env.clone());
         storage::bump_margin_liquidation_controllers_ttl(&env);
@@ -613,9 +650,10 @@ impl SimplePeridottroller {
             .get::<_, u64>(&DataKey::FallbackPriceSetAt(token.clone()))
             .is_none()
         {
-            env.storage()
-                .persistent()
-                .set(&DataKey::FallbackPriceSetAt(token.clone()), &env.ledger().timestamp());
+            env.storage().persistent().set(
+                &DataKey::FallbackPriceSetAt(token.clone()),
+                &env.ledger().timestamp(),
+            );
             storage::bump_fallback_price_set_at_ttl(&env, &token);
         }
     }
@@ -886,7 +924,9 @@ impl SimplePeridottroller {
             flags.set(market.clone(), true);
             untils.set(
                 market.clone(),
-                env.ledger().timestamp().saturating_add(MAX_PAUSE_DURATION_SECS),
+                env.ledger()
+                    .timestamp()
+                    .saturating_add(MAX_PAUSE_DURATION_SECS),
             );
         } else {
             flags.remove(market.clone());
@@ -950,7 +990,12 @@ impl SimplePeridottroller {
         }
     }
 
-    fn is_pause_active(env: &Env, pause_key: DataKey, until_key: DataKey, market: &Address) -> bool {
+    fn is_pause_active(
+        env: &Env,
+        pause_key: DataKey,
+        until_key: DataKey,
+        market: &Address,
+    ) -> bool {
         let mut flags: Map<Address, bool> = env
             .storage()
             .persistent()
@@ -1573,13 +1618,7 @@ impl SimplePeridottroller {
         if now.saturating_sub(verified_at) > FORCE_REMOVE_ZERO_TOTALS_MAX_AGE_SECS {
             panic!("stale zero-totals proof");
         };
-        Self::apply_market_removal(
-            &env,
-            &market,
-            &effective_removed_token,
-            markets,
-            false,
-        );
+        Self::apply_market_removal(&env, &market, &effective_removed_token, markets, false);
     }
 
     // Sum collateral across user's entered markets using each market's exchange rate and pToken balance
@@ -1847,8 +1886,8 @@ impl SimplePeridottroller {
         let (price, scale) = Self::require_price(env.clone(), underlying);
         if hint.ptoken_balance > 0 {
             let cf: u128 = Self::get_market_cf(env.clone(), market);
-            let underlying_amount = (hint.ptoken_balance.saturating_mul(hint.exchange_rate))
-                / 1_000_000u128;
+            let underlying_amount =
+                (hint.ptoken_balance.saturating_mul(hint.exchange_rate)) / 1_000_000u128;
             let discounted = (underlying_amount.saturating_mul(cf)) / 1_000_000u128;
             let usd = (discounted.saturating_mul(price)) / scale;
             collateral_usd = collateral_usd.saturating_add(usd);
@@ -2441,8 +2480,7 @@ impl SimplePeridottroller {
             panic!("repay too small");
         }
 
-        let repay_args: Vec<Val> =
-            (liquidator.clone(), borrower.clone(), repay).into_val(&env);
+        let repay_args: Vec<Val> = (liquidator.clone(), borrower.clone(), repay).into_val(&env);
         let mut auths = Vec::new(&env);
         auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
             context: ContractContext {
@@ -2500,17 +2538,23 @@ impl SimplePeridottroller {
         } else {
             accrued as i128
         };
-        let auths = vec![&env, InvokerContractAuthEntry::Contract(SubContractInvocation {
-            context: ContractContext {
-                contract: token.clone(),
-                fn_name: Symbol::new(&env, "mint"),
-                args: (user.clone(), amt).into_val(&env),
-            },
-            sub_invocations: vec![&env],
-        })];
+        let auths = vec![
+            &env,
+            InvokerContractAuthEntry::Contract(SubContractInvocation {
+                context: ContractContext {
+                    contract: token.clone(),
+                    fn_name: Symbol::new(&env, "mint"),
+                    args: (user.clone(), amt).into_val(&env),
+                },
+                sub_invocations: vec![&env],
+            }),
+        ];
         env.authorize_as_current_contract(auths);
-        let mint_res =
-            env.try_invoke_contract::<(), InvokeError>(&token, &Symbol::new(&env, "mint"), (user.clone(), amt).into_val(&env));
+        let mint_res = env.try_invoke_contract::<(), InvokeError>(
+            &token,
+            &Symbol::new(&env, "mint"),
+            (user.clone(), amt).into_val(&env),
+        );
         if !matches!(mint_res, Ok(Ok(()))) {
             Self::emit_claim_call_failed(&env, &user, &token, "mint");
             return;
@@ -2754,7 +2798,12 @@ impl SimplePeridottroller {
                 borrow_total = borrow_total.saturating_add(usd);
             }
         }
-        (collateral_total, borrow_total, indeterminate, collateral_indeterminate)
+        (
+            collateral_total,
+            borrow_total,
+            indeterminate,
+            collateral_indeterminate,
+        )
     }
 
     fn sum_positions_usd(
@@ -2849,7 +2898,9 @@ impl SimplePeridottroller {
                 .get(&DataKey::FallbackPriceSetAt(token.clone()));
             if fallback.price > 0
                 && fallback.scale > 0
-                && set_at.map(|t| Self::fallback_price_fresh(&env, t)).unwrap_or(false)
+                && set_at
+                    .map(|t| Self::fallback_price_fresh(&env, t))
+                    .unwrap_or(false)
             {
                 return Some((fallback.price, fallback.scale));
             }
@@ -2984,7 +3035,9 @@ impl SimplePeridottroller {
                 .get(&DataKey::FallbackPriceSetAt(token.clone()));
             if fallback.price > 0
                 && fallback.scale > 0
-                && set_at.map(|t| Self::fallback_price_fresh(env, t)).unwrap_or(false)
+                && set_at
+                    .map(|t| Self::fallback_price_fresh(env, t))
+                    .unwrap_or(false)
             {
                 return Some((fallback.price, fallback.scale));
             }
@@ -3026,7 +3079,9 @@ impl SimplePeridottroller {
                 .get(&DataKey::FallbackPriceSetAt(token.clone()));
             if fallback.price > 0
                 && fallback.scale > 0
-                && set_at.map(|t| Self::fallback_price_fresh(&env, t)).unwrap_or(false)
+                && set_at
+                    .map(|t| Self::fallback_price_fresh(&env, t))
+                    .unwrap_or(false)
             {
                 return (fallback.price, fallback.scale);
             }
@@ -3210,9 +3265,10 @@ impl SimplePeridottroller {
         let uidx: u128 = user_idx_opt.unwrap_or(idx);
         if idx == uidx {
             if user_idx_opt.is_none() {
-                env.storage()
-                    .persistent()
-                    .set(&DataKey::UserSupplyIndex(user.clone(), market.clone()), &idx);
+                env.storage().persistent().set(
+                    &DataKey::UserSupplyIndex(user.clone(), market.clone()),
+                    &idx,
+                );
                 storage::bump_reward_user_ttl(&env, &user, &market);
             }
             return;
@@ -3237,9 +3293,10 @@ impl SimplePeridottroller {
                 .set(&DataKey::Accrued(user.clone()), &acc.saturating_add(add));
             storage::bump_reward_user_ttl(&env, &user, &market);
         }
-        env.storage()
-            .persistent()
-            .set(&DataKey::UserSupplyIndex(user.clone(), market.clone()), &idx);
+        env.storage().persistent().set(
+            &DataKey::UserSupplyIndex(user.clone(), market.clone()),
+            &idx,
+        );
         storage::bump_reward_user_ttl(&env, &user, &market);
     }
 
@@ -3285,9 +3342,10 @@ impl SimplePeridottroller {
                 .set(&DataKey::Accrued(user.clone()), &acc.saturating_add(add));
             storage::bump_reward_user_ttl(&env, &user, &market);
         }
-        env.storage()
-            .persistent()
-            .set(&DataKey::UserBorrowIndex(user.clone(), market.clone()), &idx);
+        env.storage().persistent().set(
+            &DataKey::UserBorrowIndex(user.clone(), market.clone()),
+            &idx,
+        );
         storage::bump_reward_user_ttl(&env, &user, &market);
     }
 

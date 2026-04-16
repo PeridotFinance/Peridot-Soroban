@@ -127,9 +127,48 @@ impl MarginController {
         vault_client.withdraw(&user, &ptoken_amount);
     }
 
+    pub fn propose_upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
+        bump_core_ttl(&env);
+        require_admin(&env, &admin);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        bump_pending_upgrade_ttl(&env);
+    }
+
     pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
         bump_core_ttl(&env);
         require_admin(&env, &admin);
+        bump_pending_upgrade_ttl(&env);
+        let pending_hash: BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 

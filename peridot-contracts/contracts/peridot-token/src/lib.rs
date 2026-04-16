@@ -13,6 +13,8 @@ pub enum DataKey {
     PendingAdmin,
     MaxSupply,
     Initialized,
+    PendingUpgradeHash,
+    PendingUpgradeEta,
 }
 
 /// Peridot reward token contract.
@@ -204,15 +206,55 @@ impl PeridotToken {
         env.storage().persistent().remove(&DataKey::PendingAdmin);
     }
 
+    pub fn propose_upgrade_wasm(env: Env, new_wasm_hash: BytesN<32>) {
+        bump_critical_ttl(&env);
+        require_admin(&env);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        bump_pending_upgrade_ttl(&env);
+    }
+
     pub fn upgrade_wasm(env: Env, new_wasm_hash: BytesN<32>) {
         bump_critical_ttl(&env);
         require_admin(&env);
+        bump_pending_upgrade_ttl(&env);
+        let pending_hash: BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
+const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
 
 fn require_admin(env: &Env) -> Address {
     let admin: Address = env
@@ -240,6 +282,16 @@ fn bump_critical_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

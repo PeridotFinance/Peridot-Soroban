@@ -2760,7 +2760,7 @@ fn test_pause_liquidation_blocks_liquidate() {
     // Pause liquidation on repay market A and create shortfall by dropping collateral price
     comp.set_pause_liquidation(&va_id, &true);
     set_price_and_cache(&comp, &oracle, &oracle_id, &t_b, 100_000i128); // $0.10
-                                          // Should panic
+                                                                        // Should panic
     comp.liquidate(&user, &va_id, &vb_id, &10u128, &admin);
 }
 
@@ -2873,7 +2873,8 @@ fn test_pause_expires_automatically() {
     assert!(comp.is_deposit_paused(&market_id));
 
     let now = env.ledger().timestamp();
-    env.ledger().set_timestamp(now + MAX_PAUSE_DURATION_SECS + 1);
+    env.ledger()
+        .set_timestamp(now + MAX_PAUSE_DURATION_SECS + 1);
     assert!(!comp.is_deposit_paused(&market_id));
     env.as_contract(&comp_id, || {
         let flags: Map<Address, bool> = env
@@ -2985,7 +2986,8 @@ fn test_migrate_legacy_pause_expiries_backfills_and_expires() {
     let next = comp.migrate_legacy_pause_expiries(&0u32, &8u32);
     assert_eq!(next, 1u32);
     let now = env.ledger().timestamp();
-    env.ledger().set_timestamp(now + MAX_PAUSE_DURATION_SECS + 1);
+    env.ledger()
+        .set_timestamp(now + MAX_PAUSE_DURATION_SECS + 1);
     assert!(!comp.is_borrow_paused(&market_id));
 }
 
@@ -3467,7 +3469,10 @@ fn test_get_price_usd_live_refreshes_after_cache_expiry() {
     // Default max age is resolution(300) * k(2) = 600s. After expiry, get_price_usd
     // should refresh from oracle instead of returning None.
     env.ledger().set_timestamp(601);
-    assert_eq!(comp.get_price_usd(&token), Some((1_000_000u128, 1_000_000u128)));
+    assert_eq!(
+        comp.get_price_usd(&token),
+        Some((1_000_000u128, 1_000_000u128))
+    );
 }
 
 #[test]
@@ -3486,7 +3491,10 @@ fn test_fallback_price_has_max_age() {
     comp.initialize(&admin);
 
     comp.set_price_fallback(&token, &Some((1_000_000u128, 1_000_000u128)));
-    assert_eq!(comp.get_price_usd(&token), Some((1_000_000u128, 1_000_000u128)));
+    assert_eq!(
+        comp.get_price_usd(&token),
+        Some((1_000_000u128, 1_000_000u128))
+    );
 
     env.ledger()
         .set_timestamp(MAX_FALLBACK_PRICE_AGE_SECS.saturating_add(1));
@@ -3525,7 +3533,10 @@ fn test_get_price_usd_uses_fallback_when_oracle_refresh_fails() {
     oracle.set_fail_lastprice(&true);
 
     // Must not panic; fallback should still be returned.
-    assert_eq!(comp.get_price_usd(&token), Some((1_000_000u128, 1_000_000u128)));
+    assert_eq!(
+        comp.get_price_usd(&token),
+        Some((1_000_000u128, 1_000_000u128))
+    );
 }
 
 #[test]
@@ -3613,9 +3624,10 @@ fn test_get_price_usd_rejects_fallback_with_zero_scale() {
                 scale: 0u128,
             },
         );
-        env.storage()
-            .persistent()
-            .set(&DataKey::FallbackPriceSetAt(token.clone()), &env.ledger().timestamp());
+        env.storage().persistent().set(
+            &DataKey::FallbackPriceSetAt(token.clone()),
+            &env.ledger().timestamp(),
+        );
     });
 
     assert_eq!(comp.get_price_usd(&token), None);
@@ -3652,7 +3664,10 @@ fn test_backfill_fallback_price_set_at_restores_legacy_fallback() {
     assert_eq!(comp.get_price_usd(&token), None);
 
     comp.backfill_fallback_price_set_at(&token);
-    assert_eq!(comp.get_price_usd(&token), Some((1_000_000u128, 1_000_000u128)));
+    assert_eq!(
+        comp.get_price_usd(&token),
+        Some((1_000_000u128, 1_000_000u128))
+    );
 }
 
 #[test]
@@ -3734,7 +3749,10 @@ fn test_get_price_usd_prefers_live_refresh_over_fallback() {
     oracle.set_price(&token, &2_000_000i128);
 
     // get_price_usd should live-refresh and return oracle price, not stale fallback.
-    assert_eq!(comp.get_price_usd(&token), Some((2_000_000u128, 1_000_000u128)));
+    assert_eq!(
+        comp.get_price_usd(&token),
+        Some((2_000_000u128, 1_000_000u128))
+    );
 }
 
 #[test]
@@ -4360,7 +4378,7 @@ fn test_set_supply_speed_rejects_excessive_values() {
 fn test_accrue_user_market_rejects_external_hints() {
     let env = Env::default();
     // DO NOT mock_all_auths - we want auth to be enforced
-    
+
     let admin = Address::generate(&env);
     let attacker = Address::generate(&env);
 
@@ -4371,7 +4389,7 @@ fn test_accrue_user_market_rejects_external_hints() {
         .address();
     let v_id = env.register(rv::ReceiptVault, ());
     let v = rv::ReceiptVaultClient::new(&env, &v_id);
-    
+
     // Mock only specific auths needed for setup (not for the attack)
     env.mock_all_auths();
     v.initialize(&t, &0u128, &0u128, &admin);
@@ -4383,10 +4401,10 @@ fn test_accrue_user_market_rejects_external_hints() {
     comp.initialize(&admin);
     comp.add_market(&v_id);
     v.set_peridottroller(&comp_id);
-    
+
     // Set up reward speeds so accrual matters
     comp.set_supply_speed(&v_id, &1000u128);
-    
+
     // PERI token for rewards
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
@@ -4400,24 +4418,24 @@ fn test_accrue_user_market_rejects_external_hints() {
         &1_000_000_000i128,
     );
     comp.set_peridot_token(&peri_id);
-    
+
     // Advance time so accrual produces rewards
     let now = env.ledger().timestamp();
     env.ledger().set_timestamp(now + 100);
 
     // Stop mocking all auths - now the attacker cannot satisfy market.require_auth()
     env.set_auths(&[]);
-    
+
     // Attacker tries to call accrue_user_market with malicious hints:
     // - tiny total_ptokens to inflate the index
     // - huge user_ptokens to get massive accrual
     let malicious_hint = AccrualHint {
-        total_ptokens: Some(1u128),        // tiny -> inflates index
+        total_ptokens: Some(1u128), // tiny -> inflates index
         total_borrowed: Some(0u128),
         user_ptokens: Some(1_000_000_000u128), // huge -> massive accrual
         user_borrowed: Some(0u128),
     };
-    
+
     // This should PANIC because attacker can't auth as the market
     comp.accrue_user_market(&attacker, &v_id, &Some(malicious_hint));
 }
@@ -4448,17 +4466,17 @@ fn test_accrue_user_market_allows_no_hints() {
     comp.add_market(&v_id);
     comp.enter_market(&user, &v_id);
     v.set_peridottroller(&comp_id);
-    
+
     // Oracle with $1 price
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
     oracle.initialize(&6u32);
     set_price_and_cache(&comp, &oracle, &oracle_id, &t, 1_000_000i128);
     comp.set_oracle(&oracle_id);
-    
+
     // Set up reward speeds
     comp.set_supply_speed(&v_id, &10u128);
-    
+
     // PERI token
     let peri_id = env.register(pt::PeridotToken, ());
     let peri = pt::PeridotTokenClient::new(&env, &peri_id);
@@ -4472,20 +4490,20 @@ fn test_accrue_user_market_allows_no_hints() {
         &1_000_000_000i128,
     );
     comp.set_peridot_token(&peri_id);
-    
+
     // Fund and deposit
     let mint = token::StellarAssetClient::new(&env, &t);
     mint.mint(&user, &1_000i128);
     v.deposit(&user, &100u128);
-    
+
     // Advance time
     let now = env.ledger().timestamp();
     env.ledger().set_timestamp(now + 5);
-    
+
     // Call accrue_user_market WITHOUT hints (None) - this should succeed
     // because it fetches values on-chain instead of trusting hints
     comp.accrue_user_market(&user, &v_id, &None);
-    
+
     // Verify accrual happened (user should have some accrued rewards)
     let accrued = comp.get_accrued(&user);
     assert!(accrued > 0u128, "Should have accrued rewards");
@@ -4695,7 +4713,10 @@ fn test_find_039_broken_market_returns_fail_closed_shortfall() {
     set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 600_000i128); // $0.60
 
     let (liq, shortfall) = comp.account_liquidity(&alice);
-    assert_eq!(liq, 0u128, "§A: no excess liquidity after collateral price drop");
+    assert_eq!(
+        liq, 0u128,
+        "§A: no excess liquidity after collateral price drop"
+    );
     assert_eq!(
         shortfall, 10u128,
         "§A: $10 shortfall — Alice IS legitimately liquidatable without BrokenMarket (baseline)"
