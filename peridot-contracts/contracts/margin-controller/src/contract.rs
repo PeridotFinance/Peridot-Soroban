@@ -302,7 +302,7 @@ impl MarginController {
         if remaining_borrow > 0 {
             panic!("leverage unsupported pre-swap");
         }
-        if total_received < min_out_oracle {
+        if total_received < min_out_oracle || total_received < amount_with_slippage {
             panic!("slippage too high");
         }
         let p_after = ReceiptVaultClient::new(&env, &position_vault).get_ptoken_balance(&user);
