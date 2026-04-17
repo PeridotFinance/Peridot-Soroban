@@ -485,7 +485,28 @@ impl MarginController {
         }
 
         let id = next_position_id(&env);
-        ReceiptVaultClient::new(&env, &debt_vault).borrow_for_margin(&id, &user, &borrow_amount);
+        let mut position = Position {
+            owner: user.clone(),
+            side,
+            collateral_asset: position_asset.clone(),
+            debt_asset: debt_asset.clone(),
+            collateral_ptokens: 0u128,
+            debt_shares: 0u128,
+            entry_price_scaled: 0u128,
+            opened_at: env.ledger().timestamp(),
+            status: PositionStatus::Open,
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(id), &position);
+        set_position_mode(&env, id, PositionMode::MarginV2);
+        set_position_vaults(&env, id, &collateral_vault, &debt_vault, &position_vault);
+        set_position_initial_lock(&env, id, &collateral_vault, collateral_ptokens);
+        bump_position_ttl(&env, id);
+
+        let debt_vault_client = ReceiptVaultClient::new(&env, &debt_vault);
+        debt_vault_client.init_margin_borrow_state(&id);
+        debt_vault_client.borrow_for_margin(&id, &user, &borrow_amount);
         let received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
             &user,
             &swaps_chain,
@@ -512,23 +533,11 @@ impl MarginController {
         ReceiptVaultClient::new(&env, &position_vault).transfer(&user, &controller, &p_delta_i128);
 
         let entry_price_scaled = borrow_amount.saturating_mul(SCALE_1E6) / received;
-        let position = Position {
-            owner: user.clone(),
-            side,
-            collateral_asset: position_asset,
-            debt_asset,
-            collateral_ptokens: p_delta,
-            debt_shares: 0u128,
-            entry_price_scaled,
-            opened_at: env.ledger().timestamp(),
-            status: PositionStatus::Open,
-        };
+        position.collateral_ptokens = p_delta;
+        position.entry_price_scaled = entry_price_scaled;
         env.storage()
             .persistent()
             .set(&DataKey::Position(id), &position);
-        set_position_mode(&env, id, PositionMode::MarginV2);
-        set_position_vaults(&env, id, &collateral_vault, &debt_vault, &position_vault);
-        set_position_initial_lock(&env, id, &collateral_vault, collateral_ptokens);
         bump_position_ttl(&env, id);
         push_user_position(&env, &user, id);
         id
@@ -1212,6 +1221,24 @@ impl MarginController {
         env.storage()
             .persistent()
             .get(&DataKey::Position(position_id))
+    }
+
+    /// ReceiptVault defense-in-depth callback.
+    /// Returns the owner for an open MarginV2 position and validates debt-vault binding.
+    pub fn get_margin_position_owner(env: Env, position_id: u64, debt_vault: Address) -> Address {
+        bump_core_ttl(&env);
+        let position = get_position_or_panic(&env, position_id);
+        if position.status != PositionStatus::Open {
+            panic!("position not open");
+        }
+        if get_position_mode(&env, position_id) != PositionMode::MarginV2 {
+            panic!("not v2 position");
+        }
+        let vaults = get_position_vaults(&env, position_id, &position);
+        if vaults.debt_vault != debt_vault {
+            panic!("wrong debt vault");
+        }
+        position.owner
     }
 
     pub fn get_user_positions(env: Env, user: Address) -> Vec<u64> {

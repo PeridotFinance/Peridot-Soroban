@@ -432,9 +432,7 @@ impl ReceiptVault {
             .get::<_, bool>(&DataKey::MarginHasBorrowed(position_id))
             .is_none()
         {
-            env.storage()
-                .persistent()
-                .set(&DataKey::MarginHasBorrowed(position_id), &false);
+            panic!("margin borrow state missing");
         }
         bump_margin_borrow_state_ttl(env, position_id);
     }
@@ -447,6 +445,19 @@ impl ReceiptVault {
             .expect("margin controller not set");
         configured.require_auth();
         configured
+    }
+
+    fn require_margin_position_owner(
+        env: &Env,
+        margin_controller: &Address,
+        position_id: u64,
+    ) -> Address {
+        call_contract_or_panic(
+            env,
+            margin_controller,
+            "get_margin_position_owner",
+            (position_id, env.current_contract_address()),
+        )
     }
 
     fn consume_margin_withdraw_bypass(env: &Env, user: &Address) -> bool {
@@ -2284,6 +2295,9 @@ impl ReceiptVault {
             if has_borrowed.unwrap_or(false) {
                 panic!("margin borrow snapshot missing");
             }
+            if has_borrowed.is_none() {
+                panic!("margin borrow state missing");
+            }
             return 0u128;
         };
         if snapshot.principal == 0 {
@@ -2295,6 +2309,46 @@ impl ReceiptVault {
             .get(&DataKey::BorrowIndex)
             .expect("borrow index missing");
         (snapshot.principal.saturating_mul(current_index)) / snapshot.interest_index
+    }
+
+    /// Permissionless TTL extension for position-scoped margin borrow state.
+    pub fn bump_margin_borrow_ttl(env: Env, position_id: u64) {
+        let _ = ensure_initialized(&env);
+        bump_margin_borrow_state_ttl(&env, position_id);
+    }
+
+    /// Admin recovery path for a missing/expired margin-position borrow snapshot.
+    pub fn recover_margin_borrow_snapshot(
+        env: Env,
+        admin: Address,
+        position_id: u64,
+        principal: u128,
+        interest_index: u128,
+    ) {
+        let _ = ensure_initialized(&env);
+        let stored_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if stored_admin != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+        if interest_index == 0 {
+            panic!("invalid borrow index");
+        }
+        let snap = BorrowSnapshot {
+            principal,
+            interest_index,
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarginBorrowSnapshots(position_id), &snap);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarginHasBorrowed(position_id), &(principal > 0));
+        bump_margin_borrow_state_ttl(&env, position_id);
     }
 
     /// Permissionless TTL extension for per-user borrow state.
@@ -2633,10 +2687,39 @@ impl ReceiptVault {
 
     /// Borrow into a margin position namespace.
     /// Callable only by the configured margin controller.
+    pub fn init_margin_borrow_state(env: Env, position_id: u64) {
+        let _ = ensure_initialized(&env);
+        let _margin_controller = Self::require_margin_controller_auth(&env);
+        let has_snapshot = env
+            .storage()
+            .persistent()
+            .get::<_, BorrowSnapshot>(&DataKey::MarginBorrowSnapshots(position_id))
+            .is_some();
+        if has_snapshot {
+            env.storage()
+                .persistent()
+                .set(&DataKey::MarginHasBorrowed(position_id), &true);
+            bump_margin_borrow_state_ttl(&env, position_id);
+            return;
+        }
+        let has_flag = env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&DataKey::MarginHasBorrowed(position_id))
+            .is_some();
+        if !has_flag {
+            env.storage()
+                .persistent()
+                .set(&DataKey::MarginHasBorrowed(position_id), &false);
+        }
+        bump_margin_borrow_state_ttl(&env, position_id);
+    }
+
+    /// Borrow into a margin position namespace.
+    /// Callable only by the configured margin controller.
     pub fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
-        Self::ensure_margin_position_borrow_flag(&env, position_id);
         Self::update_interest(env.clone());
         bump_rates_ready_ttl(&env);
         let storage = env.storage().persistent();
@@ -2646,7 +2729,13 @@ impl ReceiptVault {
         if !rates_ready {
             panic!("rates not configured");
         }
-        let _margin_controller = Self::require_margin_controller_auth(&env);
+        let margin_controller = Self::require_margin_controller_auth(&env);
+        let owner = Self::require_margin_position_owner(&env, &margin_controller, position_id);
+        receiver.require_auth();
+        if receiver != owner {
+            panic!("receiver must be position owner");
+        }
+        Self::ensure_margin_position_borrow_flag(&env, position_id);
         if amount == 0 {
             panic!("bad amount");
         }
@@ -2835,6 +2924,8 @@ impl ReceiptVault {
     pub fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
+        let margin_controller = Self::require_margin_controller_auth(&env);
+        let _owner = Self::require_margin_position_owner(&env, &margin_controller, position_id);
         Self::ensure_margin_position_borrow_flag(&env, position_id);
         let debt_before_accrual = Self::get_margin_borrow_balance(env.clone(), position_id);
         let planned_repay = if amount > debt_before_accrual {
@@ -2843,7 +2934,6 @@ impl ReceiptVault {
             amount
         };
         Self::update_interest(env.clone());
-        let _margin_controller = Self::require_margin_controller_auth(&env);
         let current_debt = Self::get_margin_borrow_balance(env.clone(), position_id);
         if current_debt == 0 {
             return;

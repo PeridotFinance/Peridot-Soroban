@@ -11,6 +11,7 @@ pub trait ReceiptVaultContract {
     fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: i128);
     fn borrow(env: Env, user: Address, amount: u128);
     fn repay(env: Env, user: Address, amount: u128);
+    fn init_margin_borrow_state(env: Env, position_id: u64);
     fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128);
     fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128);
     fn get_underlying_token(env: Env) -> Address;

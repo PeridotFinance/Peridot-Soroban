@@ -551,6 +551,8 @@ impl MockVault {
             .set(&key, &current.saturating_add(amount));
     }
 
+    pub fn init_margin_borrow_state(_env: Env, _position_id: u64) {}
+
     pub fn repay(env: Env, user: Address, amount: u128) {
         let key = MockVaultKey::BorrowBalance(user);
         let current: u128 = env.storage().persistent().get(&key).unwrap_or(0);

@@ -217,6 +217,49 @@ impl MockMarginLockController {
 }
 
 #[contract]
+pub struct MockMarginPositionController;
+
+#[contracttype]
+#[derive(Clone)]
+enum MockMarginPositionKey {
+    Owner(u64),
+    DebtVault(u64),
+}
+
+#[contractimpl]
+impl MockMarginPositionController {
+    pub fn set_position(env: Env, position_id: u64, owner: Address, debt_vault: Address) {
+        env.storage()
+            .persistent()
+            .set(&MockMarginPositionKey::Owner(position_id), &owner);
+        env.storage()
+            .persistent()
+            .set(&MockMarginPositionKey::DebtVault(position_id), &debt_vault);
+    }
+
+    pub fn get_margin_position_owner(env: Env, position_id: u64, debt_vault: Address) -> Address {
+        let owner: Address = env
+            .storage()
+            .persistent()
+            .get(&MockMarginPositionKey::Owner(position_id))
+            .expect("position owner missing");
+        let configured_debt_vault: Address = env
+            .storage()
+            .persistent()
+            .get(&MockMarginPositionKey::DebtVault(position_id))
+            .expect("position vault missing");
+        if configured_debt_vault != debt_vault {
+            panic!("wrong debt vault");
+        }
+        owner
+    }
+
+    pub fn locked_ptokens_in_market(_env: Env, _user: Address, _market: Address) -> u128 {
+        0u128
+    }
+}
+
+#[contract]
 pub struct MockBoostedVault;
 
 #[contracttype]
@@ -1072,6 +1115,53 @@ fn test_withdraw_rejects_margin_locked_ptokens() {
     margin_controller.set_locked(&user, &vault_id, &100u128);
 
     vault.withdraw(&user, &1u128);
+}
+
+#[test]
+#[should_panic(expected = "margin borrow state missing")]
+fn test_get_margin_borrow_balance_missing_state_panics() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let _ = vault.get_margin_borrow_balance(&77u64);
+}
+
+#[test]
+#[should_panic(expected = "receiver must be position owner")]
+fn test_borrow_for_margin_rejects_non_owner_receiver() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let attacker = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&lender, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&lender, &500u128);
+
+    let margin_ctrl_id = env.register(MockMarginPositionController, ());
+    let margin_ctrl = MockMarginPositionControllerClient::new(&env, &margin_ctrl_id);
+    vault.set_margin_controller(&admin, &Some(margin_ctrl_id.clone()));
+
+    let position_id = 1u64;
+    margin_ctrl.set_position(&position_id, &user, &vault_id);
+    vault.init_margin_borrow_state(&position_id);
+
+    vault.borrow_for_margin(&position_id, &attacker, &1u128);
 }
 
 #[test]
