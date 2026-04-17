@@ -168,6 +168,71 @@ fn test_margin_open_policy_rejects_other_user() {
 }
 
 #[test]
+fn test_margin_open_v2_policy_rejects_other_user() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let factory = expected_factory(&env);
+    let owner = Address::generate(&env);
+    let signer = BytesN::from_array(&env, &[1u8; 32]);
+    let peridottroller = Address::generate(&env);
+    let margin = Address::generate(&env);
+    let (contract_id, client) = register_account(&env, &factory);
+    client.initialize(&owner, &signer, &peridottroller, &margin);
+    let other = Address::generate(&env);
+    let swaps_chain = Vec::<(Vec<Address>, BytesN<32>, Address)>::new(&env);
+    env.as_contract(&contract_id, || {
+        let ctx = ContractContext {
+            contract: margin,
+            fn_name: Symbol::new(&env, "open_position_v2"),
+            args: (
+                other,
+                Address::generate(&env),
+                Address::generate(&env),
+                100u128,
+                2u128,
+                Symbol::new(&env, "Long"),
+                swaps_chain,
+                90u128,
+            )
+                .into_val(&env),
+        };
+
+        let res = enforce_contract_policy(&env, &ctx);
+        assert_eq!(res, Err(Error::Unauthorized));
+    });
+}
+
+#[test]
+fn test_margin_transfer_policy_accepts_self() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let factory = expected_factory(&env);
+    let owner = Address::generate(&env);
+    let signer = BytesN::from_array(&env, &[1u8; 32]);
+    let peridottroller = Address::generate(&env);
+    let margin = Address::generate(&env);
+    let (contract_id, client) = register_account(&env, &factory);
+    client.initialize(&owner, &signer, &peridottroller, &margin);
+    let asset = Address::generate(&env);
+
+    env.as_contract(&contract_id, || {
+        let spot_to_margin = ContractContext {
+            contract: margin.clone(),
+            fn_name: Symbol::new(&env, "transfer_spot_to_margin"),
+            args: (contract_id.clone(), asset.clone(), 10u128).into_val(&env),
+        };
+        assert_eq!(enforce_contract_policy(&env, &spot_to_margin), Ok(()));
+
+        let margin_to_spot = ContractContext {
+            contract: margin.clone(),
+            fn_name: Symbol::new(&env, "transfer_margin_to_spot"),
+            args: (contract_id.clone(), asset.clone(), 5u128).into_val(&env),
+        };
+        assert_eq!(enforce_contract_policy(&env, &margin_to_spot), Ok(()));
+    });
+}
+
+#[test]
 fn test_transfer_from_policy_is_rejected_for_allowed_vaults() {
     let env = Env::default();
     env.mock_all_auths();

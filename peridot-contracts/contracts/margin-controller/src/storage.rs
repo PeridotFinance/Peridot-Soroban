@@ -7,12 +7,18 @@ use crate::helpers::{bump_core_ttl, bump_market_ttl};
 pub trait ReceiptVaultContract {
     fn deposit(env: Env, user: Address, amount: u128);
     fn withdraw(env: Env, user: Address, ptoken_amount: u128);
+    fn transfer(env: Env, from: Address, to: Address, amount: i128);
+    fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: i128);
     fn borrow(env: Env, user: Address, amount: u128);
     fn repay(env: Env, user: Address, amount: u128);
+    fn init_margin_borrow_state(env: Env, position_id: u64);
+    fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128);
+    fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128);
     fn get_underlying_token(env: Env) -> Address;
     fn get_exchange_rate(env: Env) -> u128;
     fn get_ptoken_balance(env: Env, user: Address) -> u128;
     fn get_user_borrow_balance(env: Env, user: Address) -> u128;
+    fn get_margin_borrow_balance(env: Env, position_id: u64) -> u128;
 }
 
 #[soroban_sdk::contractclient(name = "PeridottrollerClient")]
@@ -75,6 +81,8 @@ pub enum DataKey {
     PositionCollateralVault(u64),
     PositionDebtVault(u64),
     PositionPositionVault(u64),
+    PositionMode(u64),
+    MarginBalancePtokens(Address, Address), // (user, market)
     PendingUpgradeHash,
     PendingUpgradeEta,
 }
@@ -92,6 +100,13 @@ pub enum PositionStatus {
     Open,
     Closed,
     Liquidated,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PositionMode {
+    Legacy,
+    MarginV2,
 }
 
 #[contracttype]
