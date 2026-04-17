@@ -151,6 +151,22 @@ pub fn set_position_vaults(
     bump_position_ttl(env, position_id);
 }
 
+pub fn set_position_mode(env: &Env, position_id: u64, mode: PositionMode) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::PositionMode(position_id), &mode);
+    bump_position_ttl(env, position_id);
+}
+
+pub fn get_position_mode(env: &Env, position_id: u64) -> PositionMode {
+    let mode: Option<PositionMode> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionMode(position_id));
+    bump_position_ttl(env, position_id);
+    mode.unwrap_or(PositionMode::Legacy)
+}
+
 pub fn get_position_vaults(env: &Env, position_id: u64, position: &Position) -> PositionVaults {
     let collateral_vault: Option<Address> = env
         .storage()
@@ -187,6 +203,12 @@ pub fn clear_position_vaults(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
         .remove(&DataKey::PositionPositionVault(position_id));
+}
+
+pub fn clear_position_mode(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PositionMode(position_id));
 }
 
 /// Private helper that panics if position is missing (used internally by contract methods).
@@ -317,6 +339,10 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     if persistent.has(&position_vault_key) {
         persistent.extend_ttl(&position_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    let mode_key = DataKey::PositionMode(position_id);
+    if persistent.has(&mode_key) {
+        persistent.extend_ttl(&mode_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }
 
 pub fn set_position_initial_lock(
@@ -375,4 +401,21 @@ pub fn bump_debt_shares_ttl(env: &Env, user: &Address, debt_asset: &Address) {
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+}
+
+pub fn get_margin_balance_ptokens(env: &Env, user: &Address, market: &Address) -> u128 {
+    let key = DataKey::MarginBalancePtokens(user.clone(), market.clone());
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    persistent.get(&key).unwrap_or(0u128)
+}
+
+pub fn set_margin_balance_ptokens(env: &Env, user: &Address, market: &Address, value: u128) {
+    let key = DataKey::MarginBalancePtokens(user.clone(), market.clone());
+    env.storage().persistent().set(&key, &value);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
 }

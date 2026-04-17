@@ -416,6 +416,39 @@ impl ReceiptVault {
         bump_user_borrow_state_ttl(env, user);
     }
 
+    fn ensure_margin_position_borrow_flag(env: &Env, position_id: u64) {
+        let has_snapshot = env
+            .storage()
+            .persistent()
+            .get::<_, BorrowSnapshot>(&DataKey::MarginBorrowSnapshots(position_id))
+            .is_some();
+        if has_snapshot {
+            env.storage()
+                .persistent()
+                .set(&DataKey::MarginHasBorrowed(position_id), &true);
+        } else if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&DataKey::MarginHasBorrowed(position_id))
+            .is_none()
+        {
+            env.storage()
+                .persistent()
+                .set(&DataKey::MarginHasBorrowed(position_id), &false);
+        }
+        bump_margin_borrow_state_ttl(env, position_id);
+    }
+
+    fn require_margin_controller_auth(env: &Env) -> Address {
+        let configured: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginController)
+            .expect("margin controller not set");
+        configured.require_auth();
+        configured
+    }
+
     fn consume_margin_withdraw_bypass(env: &Env, user: &Address) -> bool {
         let key = DataKey::MarginWithdrawBypass(user.clone());
         let enabled = env.storage().persistent().get(&key).unwrap_or(false);
@@ -2235,6 +2268,35 @@ impl ReceiptVault {
         (snapshot.principal.saturating_mul(current_index)) / snapshot.interest_index
     }
 
+    /// Get current borrow balance for a margin position namespace.
+    pub fn get_margin_borrow_balance(env: Env, position_id: u64) -> u128 {
+        let _ = ensure_initialized(&env);
+        let has_borrowed: Option<bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginHasBorrowed(position_id));
+        bump_margin_borrow_state_ttl(&env, position_id);
+        let snap: Option<BorrowSnapshot> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginBorrowSnapshots(position_id));
+        let Some(snapshot) = snap else {
+            if has_borrowed.unwrap_or(false) {
+                panic!("margin borrow snapshot missing");
+            }
+            return 0u128;
+        };
+        if snapshot.principal == 0 {
+            return 0u128;
+        }
+        let current_index: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowIndex)
+            .expect("borrow index missing");
+        (snapshot.principal.saturating_mul(current_index)) / snapshot.interest_index
+    }
+
     /// Permissionless TTL extension for per-user borrow state.
     /// Keepers can call this periodically for active borrowers.
     pub fn bump_user_borrow_ttl(env: Env, user: Address) {
@@ -2300,6 +2362,25 @@ impl ReceiptVault {
         }
     }
 
+    fn write_margin_borrow_snapshot(env: &Env, position_id: u64, principal: u128) {
+        let current_index: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowIndex)
+            .expect("borrow index missing");
+        let snap = BorrowSnapshot {
+            principal,
+            interest_index: current_index,
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarginBorrowSnapshots(position_id), &snap);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarginHasBorrowed(position_id), &true);
+        bump_margin_borrow_state_ttl(env, position_id);
+    }
+
     /// Repayment amount applied to principal (interest-only repayment does not reduce principal).
     fn principal_component_of_repay(
         env: &Env,
@@ -2311,6 +2392,25 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get::<_, BorrowSnapshot>(&DataKey::BorrowSnapshots(user.clone()));
+        let Some(snapshot) = snapshot else {
+            return 0u128;
+        };
+        let accrued_interest = current_debt.saturating_sub(snapshot.principal);
+        repay_amount
+            .saturating_sub(accrued_interest)
+            .min(snapshot.principal)
+    }
+
+    fn principal_component_of_margin_repay(
+        env: &Env,
+        position_id: u64,
+        current_debt: u128,
+        repay_amount: u128,
+    ) -> u128 {
+        let snapshot = env
+            .storage()
+            .persistent()
+            .get::<_, BorrowSnapshot>(&DataKey::MarginBorrowSnapshots(position_id));
         let Some(snapshot) = snapshot else {
             return 0u128;
         };
@@ -2531,6 +2631,100 @@ impl ReceiptVault {
         .publish(&env);
     }
 
+    /// Borrow into a margin position namespace.
+    /// Callable only by the configured margin controller.
+    pub fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128) {
+        let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
+        Self::ensure_margin_position_borrow_flag(&env, position_id);
+        Self::update_interest(env.clone());
+        bump_rates_ready_ttl(&env);
+        let storage = env.storage().persistent();
+        let rates_ready = storage
+            .get::<_, bool>(&DataKey::RatesReady)
+            .unwrap_or_else(|| storage.get::<_, Address>(&DataKey::InterestModel).is_some());
+        if !rates_ready {
+            panic!("rates not configured");
+        }
+        let _margin_controller = Self::require_margin_controller_auth(&env);
+        if amount == 0 {
+            panic!("bad amount");
+        }
+
+        let available = Self::get_available_liquidity(env.clone());
+        if available < amount {
+            panic!("Not enough liquidity to borrow");
+        }
+
+        let bcap: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowCap)
+            .unwrap_or(0u128);
+        if bcap > 0 {
+            let principal_total: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowPrincipal)
+                .unwrap_or_else(|| {
+                    env.storage()
+                        .persistent()
+                        .get(&DataKey::TotalBorrowed)
+                        .expect("total borrowed missing")
+                });
+            if principal_total.saturating_add(amount) > bcap {
+                panic!("borrow cap exceeded");
+            }
+        }
+
+        let managed_cash = Self::get_managed_cash(&env);
+        if managed_cash < amount {
+            Self::ensure_liquid_cash(&env, &token_address, amount);
+            let cash_for_borrow = Self::current_live_cash(&env, &token_address);
+            if cash_for_borrow < amount {
+                panic!("borrow liquidity shortfall");
+            }
+        }
+
+        let current = Self::get_margin_borrow_balance(env.clone(), position_id);
+        let new_principal = current.saturating_add(amount);
+        Self::write_margin_borrow_snapshot(&env, position_id, new_principal);
+
+        if bcap > 0 {
+            let total_principal_before: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowPrincipal)
+                .unwrap_or_else(|| {
+                    env.storage()
+                        .persistent()
+                        .get(&DataKey::TotalBorrowed)
+                        .expect("total borrowed missing")
+                });
+            env.storage().persistent().set(
+                &DataKey::TotalBorrowPrincipal,
+                &total_principal_before.saturating_add(amount),
+            );
+        }
+
+        let tb: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::TotalBorrowed)
+            .expect("total borrowed missing");
+        let total_borrows = tb.saturating_add(amount);
+        env.storage()
+            .persistent()
+            .set(&DataKey::TotalBorrowed, &total_borrows);
+
+        let token_client = token::Client::new(&env, &token_address);
+        let amount_i128 = to_i128(amount);
+        let cash_before = Self::current_live_cash(&env, &token_address);
+        token_client.transfer(&env.current_contract_address(), &receiver, &amount_i128);
+        let cash_after = Self::current_live_cash(&env, &token_address);
+        Self::sub_managed_cash(&env, cash_before.saturating_sub(cash_after));
+    }
+
     /// Repay borrowed tokens
     pub fn repay(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
@@ -2634,6 +2828,83 @@ impl ReceiptVault {
             total_borrows: tb_after,
         }
         .publish(&env);
+    }
+
+    /// Repay debt tracked in a margin position namespace.
+    /// Callable only by the configured margin controller.
+    pub fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128) {
+        let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
+        Self::ensure_margin_position_borrow_flag(&env, position_id);
+        let debt_before_accrual = Self::get_margin_borrow_balance(env.clone(), position_id);
+        let planned_repay = if amount > debt_before_accrual {
+            debt_before_accrual
+        } else {
+            amount
+        };
+        Self::update_interest(env.clone());
+        let _margin_controller = Self::require_margin_controller_auth(&env);
+        let current_debt = Self::get_margin_borrow_balance(env.clone(), position_id);
+        if current_debt == 0 {
+            return;
+        }
+        let repay_amount = if planned_repay > current_debt {
+            current_debt
+        } else {
+            planned_repay
+        };
+        let principal_repay_position = Self::principal_component_of_margin_repay(
+            &env,
+            position_id,
+            current_debt,
+            repay_amount,
+        );
+
+        payer.require_auth();
+        let token_client = token::Client::new(&env, &token_address);
+        let repay_i128 = to_i128(repay_amount);
+        let cash_before = Self::current_live_cash(&env, &token_address);
+        token_client.transfer(&payer, &env.current_contract_address(), &repay_i128);
+        let cash_after = Self::current_live_cash(&env, &token_address);
+        Self::add_managed_cash(&env, cash_after.saturating_sub(cash_before));
+
+        let new_principal = current_debt - repay_amount;
+        Self::write_margin_borrow_snapshot(&env, position_id, new_principal);
+
+        let bcap: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowCap)
+            .unwrap_or(0u128);
+        if bcap > 0 {
+            let total_principal_before: u128 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::TotalBorrowPrincipal)
+                .unwrap_or_else(|| {
+                    env.storage()
+                        .persistent()
+                        .get(&DataKey::TotalBorrowed)
+                        .expect("total borrowed missing")
+                });
+            let principal_repay_global = principal_repay_position.min(total_principal_before);
+            let total_principal_after = total_principal_before - principal_repay_global;
+            env.storage()
+                .persistent()
+                .set(&DataKey::TotalBorrowPrincipal, &total_principal_after);
+        }
+
+        let tb: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::TotalBorrowed)
+            .expect("total borrowed missing");
+        let tb_after = tb
+            .checked_sub(repay_amount)
+            .expect("repay exceeds total borrowed");
+        env.storage()
+            .persistent()
+            .set(&DataKey::TotalBorrowed, &tb_after);
     }
 
     /// Execute a flash loan to `receiver`. Receiver must return `amount + fee` within the callback.

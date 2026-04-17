@@ -15,6 +15,8 @@ pub enum DataKey {
     // Borrowing-related keys
     BorrowSnapshots(Address),      // BorrowSnapshot per user
     HasBorrowed(Address),          // bool flag per user
+    MarginBorrowSnapshots(u64),    // BorrowSnapshot per margin position
+    MarginHasBorrowed(u64),        // bool flag per margin position
     TotalBorrowed,                 // u128
     BorrowIndex,                   // u128 (scaled 1e18)
     BorrowYearlyRateScaled,        // u128, scaled 1e6
@@ -50,6 +52,10 @@ const BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = 500_000;
 const BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = 1_000_000;
 const HAS_BORROWED_TTL_THRESHOLD: u32 = 500_000;
 const HAS_BORROWED_TTL_EXTEND_TO: u32 = 1_000_000;
+const MARGIN_BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = 500_000;
+const MARGIN_BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = 1_000_000;
+const MARGIN_HAS_BORROWED_TTL_THRESHOLD: u32 = 500_000;
+const MARGIN_HAS_BORROWED_TTL_EXTEND_TO: u32 = 1_000_000;
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -212,6 +218,35 @@ pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
 pub fn bump_user_borrow_state_ttl(env: &Env, user: &Address) {
     bump_borrow_snapshot_ttl(env, user);
     bump_has_borrowed_ttl(env, user);
+}
+
+pub fn bump_margin_borrow_snapshot_ttl(env: &Env, position_id: u64) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarginBorrowSnapshots(position_id);
+    if persistent.has(&key) {
+        persistent.extend_ttl(
+            &key,
+            MARGIN_BORROW_SNAPSHOT_TTL_THRESHOLD,
+            MARGIN_BORROW_SNAPSHOT_TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_margin_has_borrowed_ttl(env: &Env, position_id: u64) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarginHasBorrowed(position_id);
+    if persistent.has(&key) {
+        persistent.extend_ttl(
+            &key,
+            MARGIN_HAS_BORROWED_TTL_THRESHOLD,
+            MARGIN_HAS_BORROWED_TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_margin_borrow_state_ttl(env: &Env, position_id: u64) {
+    bump_margin_borrow_snapshot_ttl(env, position_id);
+    bump_margin_has_borrowed_ttl(env, position_id);
 }
 
 pub fn bump_borrow_state_ttl(env: &Env) {
