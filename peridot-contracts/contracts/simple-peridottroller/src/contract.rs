@@ -2418,8 +2418,12 @@ impl SimplePeridottroller {
         position_shortfall_usd: Option<u128>,
         max_seize_ptokens: Option<u128>,
     ) -> u128 {
-        // top-level auth for liquidator, to allow token transfer from liquidator in nested calls
-        liquidator.require_auth();
+        // Direct liquidations require liquidator auth at this level.
+        // Margin-path liquidations are already authorized by margin-controller and avoid
+        // liquidator sub-invocation auth entries with dynamic repay amounts.
+        if require_account_shortfall {
+            liquidator.require_auth();
+        }
         let supported: Map<Address, bool> = env
             .storage()
             .persistent()

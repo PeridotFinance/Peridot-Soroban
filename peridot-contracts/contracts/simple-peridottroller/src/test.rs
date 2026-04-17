@@ -20,6 +20,18 @@ fn set_price_and_cache(
     comp.cache_price(token);
 }
 
+fn approve_token_to_vault(
+    env: &Env,
+    token: &Address,
+    owner: &Address,
+    vault: &Address,
+    amount: i128,
+) {
+    let token_client = token::Client::new(env, token);
+    let live_until = env.ledger().sequence().saturating_add(100_000);
+    token_client.approve(owner, vault, &amount, &live_until);
+}
+
 #[test]
 fn test_peridottroller_add_and_enter_market() {
     let env = Env::default();
@@ -1733,6 +1745,7 @@ fn test_liquidation_flow_basic() {
     admin_a.mint(&borrower, &1_000i128);
     admin_b.mint(&borrower, &1_000i128);
     admin_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
 
     // Setup: borrower deposits 100 in B as collateral (CF=50%), borrows 50 in A
     vault_b.set_collateral_factor(&500_000u128);
@@ -1862,6 +1875,7 @@ fn test_liquidate_for_margin_bypasses_account_level_shortfall_gate() {
     admin_a.mint(&borrower, &1_000i128);
     admin_b.mint(&borrower, &1_000i128);
     admin_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
 
     // Borrower is healthy from account perspective (100 collateral @50% CF, 50 debt).
     vault_b.set_collateral_factor(&500_000u128);
@@ -2083,6 +2097,7 @@ fn test_repay_on_behalf_for_liquidator() {
     set_price_and_cache(&comp, &oracle, &oracle_id, &coll_token, 800_000i128);
 
     debt_token_admin_client.mint(&liquidator, &200i128);
+    approve_token_to_vault(&env, &debt_token, &liquidator, &debt_vault_id, 200i128);
     comp.repay_on_behalf_for_liquidator(&borrower, &debt_vault_id, &40u128, &liquidator);
 
     assert_eq!(debt_vault.get_user_borrow_balance(&borrower), 60u128);
@@ -2191,6 +2206,7 @@ fn test_repay_on_behalf_for_liquidator_caps_to_close_factor() {
     set_price_and_cache(&comp, &oracle, &oracle_id, &coll_token, 800_000i128);
 
     debt_token_admin_client.mint(&liquidator, &200i128);
+    approve_token_to_vault(&env, &debt_token, &liquidator, &debt_vault_id, 200i128);
     // Request above close-factor cap (50), function must cap.
     comp.repay_on_behalf_for_liquidator(&borrower, &debt_vault_id, &100u128, &liquidator);
 
@@ -2255,6 +2271,7 @@ fn test_liquidation_capped_by_close_factor() {
     admin_a.mint(&borrower, &1_000i128);
     admin_b.mint(&borrower, &1_000i128);
     admin_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
 
     // Setup positions
     vault_b.set_collateral_factor(&500_000u128); // 50%
@@ -2329,6 +2346,7 @@ fn test_liquidation_succeeds_when_post_repay_redeem_preview_exceeds_seize() {
     mint_a.mint(&lender, &500i128);
     mint_b.mint(&borrower, &500i128);
     mint_a.mint(&liquidator, &200i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 200i128);
 
     vault_b.set_collateral_factor(&500_000u128); // 50%
     vault_a.deposit(&lender, &200u128);
@@ -3194,6 +3212,7 @@ fn test_liquidation_fee_routed_to_reserves() {
     mint_a.mint(&borrower, &1_000i128);
     mint_b.mint(&borrower, &1_000i128);
     mint_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &t_a, &liquidator, &va_id, 1_000i128);
 
     // Positions: borrower collateral in B, debt in A
     vb.set_collateral_factor(&500_000u128);
@@ -3280,6 +3299,7 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
     admin_a.mint(&borrower, &1_000i128);
     admin_b.mint(&borrower, &1_000i128);
     admin_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
 
     vault_b.set_collateral_factor(&500_000u128);
     vault_b.deposit(&borrower, &50u128); // 50 pTokens
@@ -3356,6 +3376,7 @@ fn test_liquidation_clamp_rounding_keeps_nonzero_repay() {
     mint_b.mint(&borrower, &10i128);
     mint_a.mint(&lender, &10i128);
     mint_a.mint(&liquidator, &10i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &va_id, 10i128);
 
     vb.deposit(&borrower, &1u128); // 1 pToken collateral
     va.deposit(&lender, &5u128);
@@ -4109,6 +4130,7 @@ fn test_liquidator_does_not_receive_retroactive_supply_rewards_after_seize() {
     let mint_b = token::StellarAssetClient::new(&env, &tb);
     mint_a.mint(&borrower, &1_000i128);
     mint_b.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &tb, &liquidator, &vb_id, 1_000i128);
 
     // Borrower mints collateral pTokens and borrows from market B.
     va.deposit(&borrower, &100u128);
@@ -4735,6 +4757,7 @@ fn test_find_039_broken_market_returns_fail_closed_shortfall() {
     let mint_a = token::StellarAssetClient::new(&env, &token_a);
     mint_b.mint(&alice, &100i128);
     mint_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
 
     // Alice's position:
     // Collateral: 100 token_b in vault_b, CF = 50% → $50 discounted collateral
@@ -4792,6 +4815,7 @@ fn test_find_039_broken_market_returns_fail_closed_shortfall() {
 fn test_find_039_liquidation_allows_when_known_shortfall_exists() {
     let env = Env::default();
     env.mock_all_auths();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let alice = Address::generate(&env);
@@ -4832,6 +4856,7 @@ fn test_find_039_liquidation_allows_when_known_shortfall_exists() {
     let mint_a = token::StellarAssetClient::new(&env, &token_a);
     mint_b.mint(&alice, &100i128);
     mint_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
 
     comp.set_market_cf(&vault_b_id, &500_000u128);
     vault_b.set_collateral_factor(&500_000u128);
@@ -4844,13 +4869,11 @@ fn test_find_039_liquidation_allows_when_known_shortfall_exists() {
     // Make position underwater before liquidation attempt.
     set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 600_000i128);
 
-    let failing_market_id = env.register(FailingClaimMarket, ());
-    let failing_market = FailingClaimMarketClient::new(&env, &failing_market_id);
-    failing_market.initialize(&token_b);
-    failing_market.set_debt(&alice, &1u128);
-    comp.add_market(&failing_market_id);
-    comp.enter_market(&alice, &failing_market_id);
-    failing_market.set_fail_underlying(&true);
+    let broken_market_id = env.register(BrokenMarket, ());
+    let broken_market = BrokenMarketClient::new(&env, &broken_market_id);
+    broken_market.initialize(&token_b);
+    comp.add_market(&broken_market_id);
+    comp.enter_market(&alice, &broken_market_id);
 
     // Known shortfall from real markets is already non-zero, so liquidation should proceed
     // even if another entered market is indeterminate.
@@ -4904,6 +4927,7 @@ fn test_liquidation_not_blocked_by_unrelated_pbal_read_failure() {
     let mint_a = token::StellarAssetClient::new(&env, &token_a);
     mint_b.mint(&alice, &100i128);
     mint_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
 
     comp.set_market_cf(&vault_b_id, &500_000u128);
     vault_b.set_collateral_factor(&500_000u128);

@@ -2773,12 +2773,17 @@ impl ReceiptVault {
         let principal_repay_user =
             Self::principal_component_of_repay(&env, &borrower, current_debt, repay_amount);
 
-        // Transfer tokens from liquidator
-        liquidator.require_auth();
+        // Pull repayment from liquidator allowance. This avoids requiring liquidator
+        // sub-invocation auth entries that depend on dynamic repay amounts.
         let token_client = token::Client::new(&env, &token_address);
         let repay_i128 = to_i128(repay_amount);
         let cash_before = Self::current_live_cash(&env, &token_address);
-        token_client.transfer(&liquidator, &env.current_contract_address(), &repay_i128);
+        token_client.transfer_from(
+            &env.current_contract_address(),
+            &liquidator,
+            &env.current_contract_address(),
+            &repay_i128,
+        );
         let cash_after = Self::current_live_cash(&env, &token_address);
         Self::add_managed_cash(&env, cash_after.saturating_sub(cash_before));
 
