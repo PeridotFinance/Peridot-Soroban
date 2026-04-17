@@ -8,6 +8,14 @@ use soroban_sdk::{
     contract, contractimpl, contracttype, Address, BytesN, Env, IntoVal, Symbol, Vec,
 };
 
+fn assert_budget_under(env: &Env, max_cpu: u64, max_mem: u64) {
+    let budget = env.cost_estimate().budget();
+    let cpu = budget.cpu_instruction_cost();
+    let mem = budget.memory_bytes_cost();
+    assert!(cpu <= max_cpu, "cpu cost {cpu} exceeds {max_cpu}");
+    assert!(mem <= max_mem, "mem cost {mem} exceeds {max_mem}");
+}
+
 #[contract]
 struct MockOracle;
 
@@ -1106,6 +1114,87 @@ fn test_liquidate_position_v2_marks_liquidated() {
     controller.liquidate_position_v2(&liquidator, &position_id);
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Liquidated);
+}
+
+#[test]
+fn test_open_position_v2_budget_short_min() {
+    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xid) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+
+    env.cost_estimate().budget().reset_unlimited();
+    let _position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+    assert_budget_under(&env, 8_000_000, 1_500_000);
+}
+
+#[test]
+fn test_close_position_v2_budget_short_min() {
+    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xid) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+
+    let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
+    env.cost_estimate().budget().reset_unlimited();
+    controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
+    assert_budget_under(&env, 8_500_000, 1_600_000);
+}
+
+#[test]
+fn test_liquidate_position_v2_budget_short_min() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let liquidator = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+    peridottroller.set_price(&xlm_id, &500_000u128, &1_000_000u128);
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.liquidate_position_v2(&liquidator, &position_id);
+    assert_budget_under(&env, 8_000_000, 1_500_000);
 }
 
 #[test]
