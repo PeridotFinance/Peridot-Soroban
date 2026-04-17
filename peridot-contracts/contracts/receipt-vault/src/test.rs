@@ -1444,6 +1444,8 @@ fn test_repay_on_behalf_via_peridottroller_auth() {
     vault.deposit(&user, &200u128);
     comp.enter_market(&user, &vault_id);
     vault.borrow(&user, &100u128);
+    let live_until = env.ledger().sequence().saturating_add(100_000);
+    token_client.approve(&liquidator, &vault_id, &500i128, &live_until);
 
     let debt_before = vault.get_user_borrow_balance(&user);
     assert_eq!(debt_before, 100u128);
@@ -1546,6 +1548,8 @@ fn test_repay_on_behalf_overpay_after_interest_accrual_uses_pre_accrual_cap() {
     comp.enter_market(&user, &vault_id);
     vault.borrow(&user, &100u128);
     assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+    let live_until = env.ledger().sequence().saturating_add(100_000);
+    token_client.approve(&liquidator, &vault_id, &500i128, &live_until);
 
     let t0 = env.ledger().timestamp();
     env.ledger()
