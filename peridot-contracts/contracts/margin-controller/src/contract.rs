@@ -157,6 +157,9 @@ impl MarginController {
         set_margin_balance_ptokens(&env, &user, &vault, current.saturating_sub(ptoken_amount));
         let controller = env.current_contract_address();
         let amount_i128: i128 = ptoken_amount.try_into().expect("amount too large");
+        let transfer_args: Vec<Val> =
+            (controller.clone(), user.clone(), amount_i128).into_val(&env);
+        Self::authorize_controller_subcall(&env, &vault, "transfer", transfer_args);
         ReceiptVaultClient::new(&env, &vault).transfer(&controller, &user, &amount_i128);
     }
 
@@ -872,6 +875,9 @@ impl MarginController {
         let bal_before = token_client.balance(&controller);
         let vault_client = ReceiptVaultClient::new(&env, &vaults.position_vault);
         Self::begin_margin_withdraw_if_supported(&env, &vaults.position_vault, &controller);
+        let withdraw_args: Vec<Val> =
+            (controller.clone(), position.collateral_ptokens).into_val(&env);
+        Self::authorize_controller_subcall(&env, &vaults.position_vault, "withdraw", withdraw_args);
         vault_client.withdraw(&controller, &position.collateral_ptokens);
         let bal_after = token_client.balance(&controller);
         let collateral_underlying = if bal_after <= bal_before {
@@ -924,11 +930,21 @@ impl MarginController {
         if received < debt_amount {
             panic!("insufficient swap output");
         }
+        let repay_for_margin_args: Vec<Val> =
+            (position_id, controller.clone(), debt_amount).into_val(&env);
+        Self::authorize_controller_subcall(
+            &env,
+            &vaults.debt_vault,
+            "repay_for_margin",
+            repay_for_margin_args,
+        );
         debt_vault_client.repay_for_margin(&position_id, &controller, &debt_amount);
 
         let surplus = received.saturating_sub(debt_amount);
         if surplus > 0 {
             let p_before = debt_vault_client.get_ptoken_balance(&controller);
+            let deposit_args: Vec<Val> = (controller.clone(), surplus).into_val(&env);
+            Self::authorize_controller_subcall(&env, &vaults.debt_vault, "deposit", deposit_args);
             debt_vault_client.deposit(&controller, &surplus);
             let p_after = debt_vault_client.get_ptoken_balance(&controller);
             let p_delta = p_after.saturating_sub(p_before);
@@ -1165,6 +1181,14 @@ impl MarginController {
         if seize_ptokens > 0 {
             let controller = env.current_contract_address();
             let seize_i128: i128 = seize_ptokens.try_into().expect("amount too large");
+            let transfer_args: Vec<Val> =
+                (controller.clone(), liquidator.clone(), seize_i128).into_val(&env);
+            Self::authorize_controller_subcall(
+                &env,
+                &vaults.position_vault,
+                "transfer",
+                transfer_args,
+            );
             ReceiptVaultClient::new(&env, &vaults.position_vault).transfer(
                 &controller,
                 &liquidator,
@@ -1179,6 +1203,14 @@ impl MarginController {
             if initial_ptokens > 0 {
                 let controller = env.current_contract_address();
                 let amt_i128: i128 = initial_ptokens.try_into().expect("amount too large");
+                let transfer_args: Vec<Val> =
+                    (controller.clone(), liquidator.clone(), amt_i128).into_val(&env);
+                Self::authorize_controller_subcall(
+                    &env,
+                    &initial_market,
+                    "transfer",
+                    transfer_args,
+                );
                 ReceiptVaultClient::new(&env, &initial_market).transfer(
                     &controller,
                     &liquidator,
@@ -1348,7 +1380,7 @@ impl MarginController {
             &Symbol::new(env, "is_pool_allowed"),
             (env.current_contract_address(),).into_val(env),
         ) {
-            Ok(Ok(_)) => {}
+            Ok(Ok(true)) => {}
             _ => panic!("invalid swap adapter"),
         }
     }
@@ -1426,11 +1458,27 @@ impl MarginController {
     }
 
     fn begin_margin_withdraw_if_supported(env: &Env, vault: &Address, user: &Address) {
+        let controller = env.current_contract_address();
+        let begin_args: Vec<Val> = (controller.clone(), user.clone()).into_val(env);
+        Self::authorize_controller_subcall(env, vault, "begin_margin_withdraw", begin_args);
         let _ = env.try_invoke_contract::<(), InvokeError>(
             vault,
             &Symbol::new(env, "begin_margin_withdraw"),
-            (env.current_contract_address(), user.clone()).into_val(env),
+            (controller, user.clone()).into_val(env),
         );
+    }
+
+    fn authorize_controller_subcall(env: &Env, contract: &Address, fn_name: &str, args: Vec<Val>) {
+        let mut auths = Vec::new(env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: contract.clone(),
+                fn_name: Symbol::new(env, fn_name),
+                args,
+            },
+            sub_invocations: Vec::new(env),
+        }));
+        env.authorize_as_current_contract(auths);
     }
 
     // No-swap borrow path performs health checks before any additional collateral is added.

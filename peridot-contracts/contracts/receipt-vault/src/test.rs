@@ -791,6 +791,9 @@ fn test_recover_user_borrow_snapshot_restores_missing_state() {
     vault.set_collateral_factor(&1_000_000u128);
     vault.deposit(&user, &1_000u128);
     vault.borrow(&user, &100u128);
+    let mut users = Vec::new(&env);
+    users.push_back(user.clone());
+    vault.migrate_borrow_state_batch(&users);
 
     env.as_contract(&vault_id, || {
         env.storage()
@@ -809,6 +812,66 @@ fn test_recover_user_borrow_snapshot_restores_missing_state() {
     });
     vault.recover_user_borrow_snapshot(&admin, &user, &100u128, &index);
     assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+}
+
+#[test]
+fn test_permissionless_recover_borrow_snapshot_restores_from_canonical_principal() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &2_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&user, &1_000u128);
+    vault.borrow(&user, &100u128);
+    let mut users = Vec::new(&env);
+    users.push_back(user.clone());
+    vault.migrate_borrow_state_batch(&users);
+
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BorrowSnapshots(user.clone()));
+    });
+
+    // Rebuild using canonical principal mirror without admin intervention.
+    vault.recover_borrow_snapshot(&user);
+    assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+}
+
+#[test]
+#[should_panic(expected = "borrow snapshot missing")]
+fn test_get_user_borrow_balance_missing_snapshot_panics_without_recovery() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &2_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&user, &1_000u128);
+    vault.borrow(&user, &100u128);
+
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BorrowSnapshots(user.clone()));
+    });
+
+    let _ = vault.get_user_borrow_balance(&user);
 }
 
 #[test]

@@ -44,6 +44,12 @@ pub enum DataKey {
     MarginWithdrawBypass(Address), // bool one-shot bypass for margin-controller-managed withdraw
     PendingUpgradeHash,            // BytesN<32> target wasm hash for timelocked upgrade
     PendingUpgradeEta,             // u64 unix timestamp when upgrade becomes executable
+    // Debt-state migration and canonical per-account principal mirrors.
+    // Keep new variants appended to preserve existing key discriminants.
+    DebtStateVersion,           // u32 debt-state schema version
+    DebtStateMigratedAt,        // u64 timestamp of current debt-state migration
+    BorrowPrincipal(Address),   // u128 canonical principal per user
+    MarginBorrowPrincipal(u64), // u128 canonical principal per margin position
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
