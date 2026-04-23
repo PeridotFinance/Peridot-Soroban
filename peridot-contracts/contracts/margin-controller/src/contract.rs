@@ -890,6 +890,26 @@ impl MarginController {
             if amount_with_slippage < min_out_oracle {
                 panic!("slippage too high");
             }
+            // close_position_v2 swaps are executed from controller-held collateral,
+            // so pre-authorize the controller for swap-adapter's user.require_auth().
+            let swap_args: Vec<Val> = (
+                controller.clone(),
+                swaps_chain.clone(),
+                position.collateral_asset.clone(),
+                collateral_underlying,
+                amount_with_slippage,
+            )
+                .into_val(&env);
+            let mut auths = Vec::new(&env);
+            auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+                context: ContractContext {
+                    contract: swap_adapter.clone(),
+                    fn_name: Symbol::new(&env, "swap_chained"),
+                    args: swap_args,
+                },
+                sub_invocations: Vec::new(&env),
+            }));
+            env.authorize_as_current_contract(auths);
             received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
                 &controller,
                 &swaps_chain,

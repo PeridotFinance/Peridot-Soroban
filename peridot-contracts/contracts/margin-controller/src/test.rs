@@ -120,6 +120,9 @@ struct MockSwapAdapter;
 #[contract]
 struct MockBadSwapAdapter;
 
+#[contract]
+struct MockAuthSwapAdapter;
+
 #[contracttype]
 enum MockSwapAdapterKey {
     LastAmountIn,
@@ -177,6 +180,29 @@ impl MockBadSwapAdapter {
         let token_out = path.get(path.len() - 1).unwrap();
         MockTokenClient::new(&env, &token_out).mint(&user, &(received as i128));
         received
+    }
+}
+
+#[contractimpl]
+impl MockAuthSwapAdapter {
+    pub fn is_pool_allowed(_env: Env, _pool: Address) -> bool {
+        true
+    }
+
+    pub fn swap_chained(
+        env: Env,
+        user: Address,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        _token_in: Address,
+        amount: u128,
+        _amount_with_slippage: u128,
+    ) -> u128 {
+        user.require_auth();
+        let last = swaps_chain.get(swaps_chain.len() - 1).unwrap();
+        let (path, _, _) = last;
+        let token_out = path.get(path.len() - 1).unwrap();
+        MockTokenClient::new(&env, &token_out).mint(&user, &(amount as i128));
+        amount
     }
 }
 
@@ -1084,6 +1110,65 @@ fn test_open_and_close_position_v2_restores_margin_balance() {
         controller.get_margin_balance_ptokens(&user, &usdt_id),
         200u128
     );
+}
+
+#[test]
+fn test_close_position_v2_authorizes_controller_swap() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().with_mut(|l| l.timestamp = 1);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let usdt_id = env.register(MockToken, ());
+    let xlm_id = env.register(MockToken, ());
+    let usdt = MockTokenClient::new(&env, &usdt_id);
+    let xlm = MockTokenClient::new(&env, &xlm_id);
+    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &6u32);
+    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &6u32);
+
+    let usdt_vault_id = env.register(MockVault, ());
+    let xlm_vault_id = env.register(MockVault, ());
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+    usdt_vault.set_underlying_token(&usdt_id);
+    xlm_vault.set_underlying_token(&xlm_id);
+
+    let peridottroller_id = env.register(MockPeridottroller, ());
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    peridottroller.set_price(&usdt_id, &1_000_000u128, &1_000_000u128);
+    peridottroller.set_price(&xlm_id, &1_000_000u128, &1_000_000u128);
+
+    let swap_adapter_id = env.register(MockAuthSwapAdapter, ());
+    let controller_id = env.register(MarginController, ());
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128);
+    controller.set_market(&admin, &usdt_id, &usdt_vault_id);
+    controller.set_market(&admin, &xlm_id, &xlm_vault_id);
+    usdt_vault.set_margin_controller(&Some(controller_id.clone()));
+    xlm_vault.set_margin_controller(&Some(controller_id.clone()));
+
+    usdt.mint(&user, &1_000_000i128);
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+
+    let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
+    controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
+    let pos_closed = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos_closed.status, PositionStatus::Closed);
 }
 
 #[test]
