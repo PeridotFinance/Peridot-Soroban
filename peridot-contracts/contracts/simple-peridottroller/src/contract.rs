@@ -3594,7 +3594,8 @@ impl SimplePeridottroller {
         storage::bump_reward_user_ttl(&env, &user, &market);
     }
 
-    // UX: allow claiming for many users at once (permissionless)
+    // UX: allow claiming for many users at once (permissionless).
+    // Anyone may trigger this, but rewards are always minted to each target user.
     pub fn claim_all(env: Env, users: Vec<Address>) {
         bump_core_ttl(&env);
         if users.len() > MAX_CLAIM_BATCH {

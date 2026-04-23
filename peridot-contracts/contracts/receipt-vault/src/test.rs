@@ -2542,6 +2542,31 @@ fn test_flash_loan_fee_rounds_up_for_small_amounts() {
 }
 
 #[test]
+fn test_preview_flash_loan_fee_matches_runtime_rounding() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    // 1 / 1e6 fee: tiny loans should still preview a non-zero fee.
+    vault.set_flash_loan_fee(&1u128);
+    assert_eq!(vault.preview_flash_loan_fee(&0u128), 0u128);
+    assert_eq!(vault.preview_flash_loan_fee(&1u128), 1u128);
+    assert_eq!(vault.preview_flash_loan_fee(&10u128), 1u128);
+    assert_eq!(vault.preview_flash_loan_fee(&1_000_000u128), 1u128);
+
+    // 2% fee should be exact for clean multiples.
+    vault.set_flash_loan_fee(&20_000u128);
+    assert_eq!(vault.preview_flash_loan_fee(&100u128), 2u128);
+}
+
+#[test]
 fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();

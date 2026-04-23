@@ -391,6 +391,15 @@ impl ReceiptVault {
         }
     }
 
+    fn compute_flash_loan_fee(amount: u128, fee_scaled: u128) -> u128 {
+        let fee_numerator = amount.saturating_mul(fee_scaled);
+        if fee_numerator == 0 {
+            0u128
+        } else {
+            fee_numerator.saturating_sub(1) / SCALE_1E6 + 1
+        }
+    }
+
     fn ensure_user_borrow_flag(env: &Env, user: &Address) {
         let persistent = env.storage().persistent();
         let has_snapshot = persistent
@@ -1699,6 +1708,17 @@ impl ReceiptVault {
             fee_mantissa: fee_scaled,
         }
         .publish(&env);
+    }
+
+    /// View: preview flash-loan fee for `amount` using the same rounding as `flash_loan`.
+    pub fn preview_flash_loan_fee(env: Env, amount: u128) -> u128 {
+        let _ = ensure_initialized(&env);
+        let fee_scaled: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::FlashLoanFeeScaled)
+            .unwrap_or(0u128);
+        Self::compute_flash_loan_fee(amount, fee_scaled)
     }
 
     /// Admin: set supply cap (0 disables)
@@ -3167,12 +3187,7 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::FlashLoanFeeScaled)
             .unwrap_or(0u128);
-        let fee_numerator = amount.saturating_mul(fee_scaled);
-        let fee = if fee_numerator == 0 {
-            0u128
-        } else {
-            fee_numerator.saturating_sub(1) / SCALE_1E6 + 1
-        };
+        let fee = Self::compute_flash_loan_fee(amount, fee_scaled);
 
         let token_client = token::Client::new(&env, &token_address);
 
