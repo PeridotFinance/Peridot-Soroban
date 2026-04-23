@@ -3167,7 +3167,12 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::FlashLoanFeeScaled)
             .unwrap_or(0u128);
-        let fee = (amount.saturating_mul(fee_scaled)) / SCALE_1E6;
+        let fee_numerator = amount.saturating_mul(fee_scaled);
+        let fee = if fee_numerator == 0 {
+            0u128
+        } else {
+            fee_numerator.saturating_sub(1) / SCALE_1E6 + 1
+        };
 
         let token_client = token::Client::new(&env, &token_address);
 

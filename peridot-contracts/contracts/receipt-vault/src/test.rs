@@ -2509,6 +2509,39 @@ fn test_flash_loan_successfully_repaid() {
 }
 
 #[test]
+fn test_flash_loan_fee_rounds_up_for_small_amounts() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    token_admin_client.mint(&depositor, &1_000i128);
+    vault.deposit(&depositor, &500u128);
+
+    // 0.0001% configured fee; for amount=1 floor math would be 0, ceil math should charge 1.
+    vault.set_flash_loan_fee(&1u128);
+
+    let receiver_id = env.register(FlashLoanRepayer, ());
+    let receiver_client = FlashLoanRepayerClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+    token_admin_client.mint(&receiver_id, &1i128);
+
+    let amount = 1u128;
+    let data = Bytes::new(&env);
+    vault.flash_loan(&receiver_id, &amount, &data);
+
+    assert_eq!(vault.get_total_reserves(), 1u128);
+    assert_eq!(token_client.balance(&vault_id), 501i128);
+}
+
+#[test]
 fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
