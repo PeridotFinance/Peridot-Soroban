@@ -14,6 +14,7 @@ pub trait ReceiptVaultContract {
     fn init_margin_borrow_state(env: Env, position_id: u64);
     fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128);
     fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128);
+    fn update_interest(env: Env);
     fn get_underlying_token(env: Env) -> Address;
     fn get_exchange_rate(env: Env) -> u128;
     fn get_ptoken_balance(env: Env, user: Address) -> u128;

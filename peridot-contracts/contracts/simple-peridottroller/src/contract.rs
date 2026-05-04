@@ -2783,29 +2783,41 @@ impl SimplePeridottroller {
         } else {
             accrued as i128
         };
+        // Distribute from the controller's pre-funded PERI balance instead of
+        // minting. Admin tops up the controller treasury via standard token
+        // transfer; controller doesn't need to be the PERI admin.
+        let controller = env.current_contract_address();
+        let token_client = soroban_sdk::token::Client::new(env, &token);
+        let treasury_balance = token_client.balance(&controller);
+        let payable: i128 = if treasury_balance < amt { treasury_balance } else { amt };
+        if payable <= 0 {
+            // Treasury empty (or negative balance impossible); leave accrued in place.
+            Self::emit_claim_call_failed(env, user, &token, "transfer");
+            return;
+        }
         let auths = vec![
             env,
             InvokerContractAuthEntry::Contract(SubContractInvocation {
                 context: ContractContext {
                     contract: token.clone(),
-                    fn_name: Symbol::new(env, "mint"),
-                    args: (user.clone(), amt).into_val(env),
+                    fn_name: Symbol::new(env, "transfer"),
+                    args: (controller.clone(), user.clone(), payable).into_val(env),
                 },
                 sub_invocations: vec![env],
             }),
         ];
         env.authorize_as_current_contract(auths);
-        let mint_res = env.try_invoke_contract::<(), InvokeError>(
+        let xfer_res = env.try_invoke_contract::<(), InvokeError>(
             &token,
-            &Symbol::new(env, "mint"),
-            (user.clone(), amt).into_val(env),
+            &Symbol::new(env, "transfer"),
+            (controller, user.clone(), payable).into_val(env),
         );
-        if !matches!(mint_res, Ok(Ok(()))) {
-            Self::emit_claim_call_failed(env, user, &token, "mint");
+        if !matches!(xfer_res, Ok(Ok(()))) {
+            Self::emit_claim_call_failed(env, user, &token, "transfer");
             return;
         }
-        let minted = if amt < 0 { 0u128 } else { amt as u128 };
-        let remaining = accrued.saturating_sub(minted);
+        let paid = payable as u128;
+        let remaining = accrued.saturating_sub(paid);
         env.storage()
             .persistent()
             .set(&DataKey::Accrued(user.clone()), &remaining);

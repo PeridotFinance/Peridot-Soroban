@@ -135,8 +135,12 @@ impl MarginController {
             panic!("bad amount");
         }
         let vault = get_market(&env, &asset);
+        Self::assert_margin_lock_configured(&env, &vault);
         let controller = env.current_contract_address();
         let amount_i128: i128 = ptoken_amount.try_into().expect("amount too large");
+        // Set the vault's margin-withdraw bypass for the user so the vault's transfer
+        // skips the controller-side preview_redeem_max (which would re-enter the vault).
+        Self::begin_margin_withdraw_if_supported(&env, &vault, &user);
         ReceiptVaultClient::new(&env, &vault).transfer(&user, &controller, &amount_i128);
         let current = get_margin_balance_ptokens(&env, &user, &vault);
         set_margin_balance_ptokens(&env, &user, &vault, current.saturating_add(ptoken_amount));
@@ -157,6 +161,9 @@ impl MarginController {
         set_margin_balance_ptokens(&env, &user, &vault, current.saturating_sub(ptoken_amount));
         let controller = env.current_contract_address();
         let amount_i128: i128 = ptoken_amount.try_into().expect("amount too large");
+        // Set the vault's margin-withdraw bypass for the controller (the `from`
+        // address) so the vault's transfer skips preview_redeem_max re-entry.
+        Self::begin_margin_withdraw_if_supported(&env, &vault, &controller);
         let transfer_args: Vec<Val> =
             (controller.clone(), user.clone(), amount_i128).into_val(&env);
         Self::authorize_controller_subcall(&env, &vault, "transfer", transfer_args);
@@ -544,6 +551,189 @@ impl MarginController {
         bump_position_ttl(&env, id);
         push_user_position(&env, &user, id);
         id
+    }
+
+    /// V2 no-swap open: consumes pTokens from the user's existing margin
+    /// balance (deposit + `transfer_spot_to_margin` must have happened in
+    /// prior transactions) and borrows the debt asset directly to the user
+    /// via the position-scoped margin namespace. No DEX swap involved.
+    ///
+    /// Uses `borrow_for_margin` instead of `vault.borrow`, which skips the
+    /// vault's `controller.account_liquidity` walk and per-market reward
+    /// accrual. Footprint stays under Soroban's 100-entry per-tx limit.
+    ///
+    /// Open flow (3 user transactions):
+    /// 1. `vault.deposit(user, collateral_amount)` (or `controller.deposit_collateral`)
+    /// 2. `controller.transfer_spot_to_margin(user, collateral_asset, ptokens)`
+    /// 3. `controller.open_position_no_swap_v2(...)`
+    ///
+    /// Close with `close_position_no_swap_v2`. Liquidate with
+    /// `liquidate_position_v2` (collateral lives in `position.collateral_ptokens`).
+    pub fn open_position_no_swap_v2(
+        env: Env,
+        user: Address,
+        collateral_asset: Address,
+        debt_asset: Address,
+        collateral_ptokens: u128,
+        borrow_amount: u128,
+        leverage: u128,
+    ) -> u64 {
+        bump_core_ttl(&env);
+        user.require_auth();
+
+        let max_leverage = get_max_leverage(&env);
+        if leverage < 1 || leverage > max_leverage {
+            panic!("bad leverage");
+        }
+        if collateral_asset == debt_asset {
+            panic!("assets must differ");
+        }
+        if collateral_ptokens == 0 || borrow_amount == 0 {
+            panic!("bad amounts");
+        }
+
+        let collateral_vault = get_market(&env, &collateral_asset);
+        let debt_vault = get_market(&env, &debt_asset);
+        // Margin-lock wiring is asserted at deploy time and re-verified by the
+        // vault's `init_margin_borrow_state` / `borrow_for_margin` via
+        // `require_margin_controller_auth`. Skipping redundant client-side
+        // checks here to stay under the 100-entry per-tx footprint cap.
+
+        // Consume the user's pre-deposited margin custody balance.
+        let free_collateral = get_margin_balance_ptokens(&env, &user, &collateral_vault);
+        if free_collateral < collateral_ptokens {
+            panic!("insufficient margin balance");
+        }
+        set_margin_balance_ptokens(
+            &env,
+            &user,
+            &collateral_vault,
+            free_collateral.saturating_sub(collateral_ptokens),
+        );
+
+        // Read CF once and reuse for both leverage gate and solvency math.
+        let collateral_cf = get_peridottroller(&env).get_market_cf(&collateral_vault);
+        if collateral_cf > SCALE_1E6 {
+            panic!("invalid market cf");
+        }
+        let collateral_price = get_price_usd(&env, &collateral_asset);
+        let debt_price = get_price_usd(&env, &debt_asset);
+        if collateral_price.0 == 0 || collateral_price.1 == 0 {
+            panic!("invalid collateral price");
+        }
+        if debt_price.0 == 0 || debt_price.1 == 0 {
+            panic!("invalid debt price");
+        }
+        let coll_rate = ReceiptVaultClient::new(&env, &collateral_vault).get_exchange_rate();
+        let collateral_underlying = collateral_ptokens.saturating_mul(coll_rate) / SCALE_1E6;
+        let collateral_value =
+            collateral_underlying.saturating_mul(collateral_price.0) / collateral_price.1;
+        let borrow_value = borrow_amount.saturating_mul(debt_price.0) / debt_price.1;
+        let discounted_collateral_value =
+            collateral_value.saturating_mul(collateral_cf) / SCALE_1E6;
+        let target_value = discounted_collateral_value.saturating_mul(leverage);
+        if borrow_value >= target_value {
+            panic!("borrow exceeds leverage");
+        }
+
+        let id = next_position_id(&env);
+        set_position_mode(&env, id, PositionMode::MarginV2);
+        // collateral_vault == position_vault for no-swap V2: the deposit IS the
+        // position collateral. liquidate_position_v2 reads position.collateral_ptokens
+        // and seizes from position_vault custody.
+        set_position_vaults(&env, id, &collateral_vault, &debt_vault, &collateral_vault);
+
+        let debt_vault_client = ReceiptVaultClient::new(&env, &debt_vault);
+        debt_vault_client.init_margin_borrow_state(&id);
+        debt_vault_client.borrow_for_margin(&id, &user, &borrow_amount);
+
+        let entry_price_scaled = if collateral_underlying == 0 {
+            0u128
+        } else {
+            borrow_value
+                .saturating_mul(SCALE_1E6)
+                .saturating_mul(debt_price.1)
+                / debt_price.0
+                / collateral_underlying
+        };
+
+        let position = Position {
+            owner: user.clone(),
+            side: PositionSide::Long,
+            collateral_asset,
+            debt_asset,
+            collateral_ptokens,
+            debt_shares: 0u128,
+            entry_price_scaled,
+            opened_at: env.ledger().timestamp(),
+            status: PositionStatus::Open,
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(id), &position);
+        bump_position_ttl(&env, id);
+        push_user_position(&env, &user, id);
+        id
+    }
+
+    /// Close a no-swap V2 position. The user repays the outstanding margin debt
+    /// directly from their wallet (no swap) and the controller releases the
+    /// collateral pTokens back to the user's margin balance, where they can be
+    /// withdrawn to spot via `transfer_margin_to_spot`.
+    pub fn close_position_no_swap_v2(env: Env, user: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        let mut position = get_position_or_panic(&env, position_id);
+        if position.owner != user {
+            panic!("not owner");
+        }
+        if position.status != PositionStatus::Open {
+            panic!("not open");
+        }
+        if get_position_mode(&env, position_id) != PositionMode::MarginV2 {
+            panic!("not v2 position");
+        }
+        let vaults = get_position_vaults(&env, position_id, &position);
+        // Guard against using this entrypoint for swap-style V2 positions
+        // (where collateral_vault != position_vault). Those must use close_position_v2.
+        if vaults.collateral_vault != vaults.position_vault {
+            panic!("use close_position_v2");
+        }
+
+        let debt_vault_client = ReceiptVaultClient::new(&env, &vaults.debt_vault);
+        // Accrue interest before reading debt so we pay the post-accrual amount
+        // and avoid dust. repay_for_margin's internal pre-accrual cap is sized
+        // against the same updated state, leaving the position at exactly 0.
+        debt_vault_client.update_interest();
+        let debt_amount = debt_vault_client.get_margin_borrow_balance(&position_id);
+        if debt_amount > 0 {
+            // User pays directly from wallet. payer.require_auth() inside
+            // repay_for_margin is satisfied by the user's outer auth tree.
+            debt_vault_client.repay_for_margin(&position_id, &user, &debt_amount);
+        }
+
+        // Release collateral pTokens (in controller custody) back to user's
+        // margin balance map. They can be moved to spot with transfer_margin_to_spot.
+        if position.collateral_ptokens > 0 {
+            let free = get_margin_balance_ptokens(&env, &user, &vaults.position_vault);
+            set_margin_balance_ptokens(
+                &env,
+                &user,
+                &vaults.position_vault,
+                free.saturating_add(position.collateral_ptokens),
+            );
+        }
+
+        position.status = PositionStatus::Closed;
+        position.collateral_ptokens = 0u128;
+        position.debt_shares = 0u128;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(position_id), &position);
+        clear_position_initial_lock(&env, position_id);
+        clear_position_vaults(&env, position_id);
+        clear_position_mode(&env, position_id);
+        remove_user_position(&env, &user, position_id);
     }
 
     pub fn open_position_no_swap(

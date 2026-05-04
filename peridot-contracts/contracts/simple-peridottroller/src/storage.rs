@@ -1,6 +1,6 @@
 use soroban_sdk::{contracttype, Address, Env};
 
-#[contracttype]
+#[contracttype(export = false)]
 pub enum DataKey {
     Admin,
     PendingAdmin,

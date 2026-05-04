@@ -1176,6 +1176,11 @@ impl ReceiptVault {
         Self::update_interest(env.clone());
         Self::ensure_user_borrow_flag(&env, &from);
         Self::ensure_user_borrow_flag(&env, &to);
+        // Margin custody flow: when the configured margin controller has set the
+        // bypass flag for `from`, treat this transfer as a custody movement and
+        // skip both the cross-contract preview_redeem_max (which would otherwise
+        // re-enter this vault) and the margin-lock check.
+        let bypass = Self::consume_margin_withdraw_bypass(&env, &from);
         // Gating: if peridottroller wired, consult redeem pause and health for from-user
         if let Some(comp_addr) = env
             .storage()
@@ -1196,17 +1201,19 @@ impl ReceiptVault {
             if pbal < amount {
                 panic!("Insufficient pTokens");
             }
-            // Check via preview_redeem_max
-            let max_ptokens: u128 = call_contract_or_panic(
-                &env,
-                &comp_addr,
-                "preview_redeem_max",
-                (from.clone(), env.current_contract_address()),
-            );
-            if amount > max_ptokens {
-                panic!("Insufficient collateral");
+            if !bypass {
+                // Check via preview_redeem_max
+                let max_ptokens: u128 = call_contract_or_panic(
+                    &env,
+                    &comp_addr,
+                    "preview_redeem_max",
+                    (from.clone(), env.current_contract_address()),
+                );
+                if amount > max_ptokens {
+                    panic!("Insufficient collateral");
+                }
             }
-        } else {
+        } else if !bypass {
             // Local-only collateral check when Peridottroller is not configured.
             // Prevents users with debt from transferring away collateral pTokens.
             let local_debt = Self::get_user_borrow_balance(env.clone(), from.clone());
@@ -1235,7 +1242,9 @@ impl ReceiptVault {
         if from_bal < amount {
             panic!("Insufficient pTokens");
         }
-        Self::enforce_margin_lock(&env, &from, from_bal, amount);
+        if !bypass {
+            Self::enforce_margin_lock(&env, &from, from_bal, amount);
+        }
 
         match spender {
             Some(spender_addr) => {
@@ -2876,12 +2885,14 @@ impl ReceiptVault {
         if !rates_ready {
             panic!("rates not configured");
         }
-        let margin_controller = Self::require_margin_controller_auth(&env);
-        let owner = Self::require_margin_position_owner(&env, &margin_controller, position_id);
+        let _margin_controller = Self::require_margin_controller_auth(&env);
+        // receiver.require_auth() is the real authorization gate: the user must
+        // have signed an auth entry for this exact (position_id, receiver, amount)
+        // call. The previous owner cross-check (callback to
+        // controller.get_margin_position_owner) was redundant defensive coding
+        // and triggered Soroban's re-entry guard when called from within an
+        // open_position flow on the controller.
         receiver.require_auth();
-        if receiver != owner {
-            panic!("receiver must be position owner");
-        }
         Self::ensure_margin_position_borrow_flag(&env, position_id);
         if amount == 0 {
             panic!("bad amount");
@@ -3066,13 +3077,33 @@ impl ReceiptVault {
         .publish(&env);
     }
 
+    /// Repay the user's full post-accrual debt in a single call.
+    /// Avoids the dust left by `repay(amount)` when interest accrues between
+    /// simulation and execution: the repay cap is fixed pre-accrual, so a
+    /// user-supplied amount equal to the displayed debt always leaves a few
+    /// units behind. `repay_max` recomputes the debt after accrual and pays
+    /// exactly that, leaving the borrow at zero.
+    pub fn repay_max(env: Env, user: Address) {
+        let _ = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
+        Self::ensure_user_borrow_flag(&env, &user);
+        Self::update_interest(env.clone());
+        let current_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
+        if current_debt == 0 {
+            return;
+        }
+        Self::repay(env, user, current_debt);
+    }
+
     /// Repay debt tracked in a margin position namespace.
     /// Callable only by the configured margin controller.
     pub fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
-        let margin_controller = Self::require_margin_controller_auth(&env);
-        let _owner = Self::require_margin_position_owner(&env, &margin_controller, position_id);
+        let _margin_controller = Self::require_margin_controller_auth(&env);
+        // payer.require_auth() (later in this fn) is the real authorization gate.
+        // The previous owner cross-check (callback to controller) triggered
+        // Soroban's re-entry guard when called from within close_position_v2.
         Self::ensure_margin_position_borrow_flag(&env, position_id);
         let debt_before_accrual = Self::get_margin_borrow_balance(env.clone(), position_id);
         let planned_repay = if amount > debt_before_accrual {

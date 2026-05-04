@@ -14,8 +14,8 @@ NETWORK="--network testnet"
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
-WASM_SWAP="$ROOT_DIR/target/wasm32v1-none/release/swap_adapter.wasm"
-WASM_MARGIN="$ROOT_DIR/target/wasm32v1-none/release/margin_controller.wasm"
+WASM_SWAP="$ROOT_DIR/target/wasm32v1-none/release/swap_adapter.optimized.wasm"
+WASM_MARGIN="$ROOT_DIR/target/wasm32v1-none/release/margin_controller.optimized.wasm"
 
 ADMIN=$(stellar keys public-key "$IDENTITY")
 
@@ -42,6 +42,10 @@ stellar contract invoke --id "$SWAP_ID" --source-account "$IDENTITY" $NETWORK --
 echo "Deploying MarginController..."
 MARGIN_ID=$(stellar contract deploy --wasm "$WASM_MARGIN" --source-account "$IDENTITY" $NETWORK)
 echo "MarginController: $MARGIN_ID"
+
+echo "Allowlist MarginController on SwapAdapter (required before MarginController.initialize)..."
+stellar contract invoke --id "$SWAP_ID" --source-account "$IDENTITY" $NETWORK -- \
+  set_pool_allowed --admin "$ADMIN" --pool "$MARGIN_ID" --allowed true
 
 echo "Initialize MarginController..."
 stellar contract invoke --id "$MARGIN_ID" --source-account "$IDENTITY" $NETWORK -- \

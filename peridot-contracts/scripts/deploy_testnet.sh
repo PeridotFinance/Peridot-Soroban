@@ -12,11 +12,11 @@ NETWORK="--network testnet"
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
-WASM_CONTROLLER="$ROOT_DIR/target/wasm32v1-none/release/simple_peridottroller.wasm"
-WASM_VAULT="$ROOT_DIR/target/wasm32v1-none/release/receipt_vault.wasm"
-WASM_JRM="$ROOT_DIR/target/wasm32v1-none/release/jump_rate_model.wasm"
-WASM_PERI="$ROOT_DIR/target/wasm32v1-none/release/peridot_token.wasm"
-WASM_MOCK="$ROOT_DIR/target/wasm32v1-none/release/mock_token.wasm"
+WASM_CONTROLLER="$ROOT_DIR/target/wasm32v1-none/release/simple_peridottroller.optimized.wasm"
+WASM_VAULT="$ROOT_DIR/target/wasm32v1-none/release/receipt_vault.optimized.wasm"
+WASM_JRM="$ROOT_DIR/target/wasm32v1-none/release/jump_rate_model.optimized.wasm"
+WASM_PERI="$ROOT_DIR/target/wasm32v1-none/release/peridot_token.optimized.wasm"
+WASM_MOCK="$ROOT_DIR/target/wasm32v1-none/release/mock_token.optimized.wasm"
 
 echo "Using identity: $IDENTITY (testnet)"
 ADMIN=$(stellar keys public-key "$IDENTITY")
@@ -68,14 +68,6 @@ stellar contract invoke \
   -- \
   initialize --name Peridot --symbol P --decimals 6 --admin "$ADMIN" --max_supply "$PERI_MAX_SUPPLY"
 
-echo "Set PERI admin to controller..."
-stellar contract invoke \
-  --id "$PERI_ID" \
-  --source-account "$IDENTITY" \
-  $NETWORK \
-  -- \
-  set_admin --new_admin "$CTRL_ID"
-
 echo "Point controller to PERI..."
 stellar contract invoke \
   --id "$CTRL_ID" \
@@ -83,6 +75,18 @@ stellar contract invoke \
   $NETWORK \
   -- \
   set_peridot_token --token "$PERI_ID"
+
+# Seed the controller's reward treasury. Claim transfers PERI from this balance,
+# so the controller does NOT need to be the PERI admin. Anyone holding PERI can
+# top up the treasury via standard `transfer`. Top up periodically as emissions deplete it.
+PERI_INITIAL_TREASURY=${PERI_INITIAL_TREASURY:-100000000000}
+echo "Seed controller PERI treasury (admin mints $PERI_INITIAL_TREASURY directly to controller)..."
+stellar contract invoke \
+  --id "$PERI_ID" \
+  --source-account "$IDENTITY" \
+  $NETWORK \
+  -- \
+  mint --to "$CTRL_ID" --amount "$PERI_INITIAL_TREASURY"
 
 echo "Deploying Mock USDT Token..."
 USDT_ID=$(stellar contract deploy \
@@ -147,19 +151,8 @@ stellar contract invoke \
   set_flash_loan_fee --fee_scaled "$FLASH_FEE"
 
 echo "Wire controller + markets..."
-stellar contract invoke \
-  --id "$VA_ID" \
-  --source-account "$IDENTITY" \
-  $NETWORK \
-  -- \
-  set_peridottroller --peridottroller "$CTRL_ID"
-stellar contract invoke \
-  --id "$VB_ID" \
-  --source-account "$IDENTITY" \
-  $NETWORK \
-  -- \
-  set_peridottroller --peridottroller "$CTRL_ID"
-
+# add_market must precede set_peridottroller because the vault's set_peridottroller
+# smoke-tests the controller's accrue_user_market, which requires the market to be supported.
 stellar contract invoke \
   --id "$CTRL_ID" \
   --source-account "$IDENTITY" \
@@ -172,6 +165,19 @@ stellar contract invoke \
   $NETWORK \
   -- \
   add_market --market "$VB_ID"
+
+stellar contract invoke \
+  --id "$VA_ID" \
+  --source-account "$IDENTITY" \
+  $NETWORK \
+  -- \
+  set_peridottroller --peridottroller "$CTRL_ID"
+stellar contract invoke \
+  --id "$VB_ID" \
+  --source-account "$IDENTITY" \
+  $NETWORK \
+  -- \
+  set_peridottroller --peridottroller "$CTRL_ID"
 
 echo "Set market CF and reward speeds..."
 stellar contract invoke \
