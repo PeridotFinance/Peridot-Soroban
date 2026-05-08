@@ -129,7 +129,6 @@ impl PeridotToken {
         live_until_ledger: u32,
     ) {
         bump_critical_ttl(&env);
-        owner.require_auth();
         if amount < 0 {
             panic!("bad amount");
         }
@@ -138,7 +137,6 @@ impl PeridotToken {
 
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         bump_critical_ttl(&env);
-        from.require_auth();
         if amount <= 0 {
             panic!("bad amount");
         }
@@ -147,7 +145,6 @@ impl PeridotToken {
 
     pub fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: i128) {
         bump_critical_ttl(&env);
-        spender.require_auth();
         if amount <= 0 {
             panic!("bad amount");
         }

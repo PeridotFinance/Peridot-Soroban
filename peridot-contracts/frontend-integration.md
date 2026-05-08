@@ -1,28 +1,76 @@
 # Peridot Frontend Integration Guide
 
-This document explains how the frontend can interact with the Peridot Soroban contracts in a Compound-style UI. It assumes you are comfortable with TypeScript/React (or Astro) and have the Stellar CLI installed.
+This guide describes the current audited Peridot lending deployment and the contract calls a frontend should use. It is written for a Compound-style supply/borrow UI on Stellar Soroban.
 
-## 1. High-Level Architecture
+## 1. Production Deployment
 
-- **Controller (`SimplePeridottroller`)** – central risk engine. Contract ID: `CCBAEMMG4STILW6SYTNCIVG44OF4TQDDCYPU7GS3ZOEKLTC75ONTLCI2`
-- **ReceiptVault (XLM market)** – contract ID: `CCHBN5RRP7KH4O7ICSIQTSYFFZBYFEBCF35UOQBGDI7GZZKKWXWVLLPX`
-- **ReceiptVault (USDT market)** – contract ID: `CBP2U7FVTQ2EIAQ474CTYN74KCEU6YLCCGH6KRY2RAMQEDSKREKSAGSO`
-- **Jump Rate Model** – contract ID: `CCIDO7HBNBPUKFWEI3PRA6O6QU2JXUKVIZAERCZWBNGGK7LO7MFBKKOA`
-- **Peridot Reward Token (`P`)** – contract ID: `CBCA56UIBQA3WT2JUIIG2BHW325CMLNAC7CKL33T37GHN25RCGR6SXPB`
-- **Mock USDT (open mint)** – contract ID: `CDBWTU527WNACRCET2NF6RZFQ3WAPJOQM3OQ5VLUNHJRDQ6ICVO2JTJP`
-- **Reflector Oracle** – contract ID: `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63`
-- **Swap Adapter (Aquarius)** – contract ID: `CAGLARN3MUMRGCRNKXZ3SH7NVCZ3P3CDGHL2FQEEXIC4MPAGTQTACY6S`
-- **Margin Controller (true margin trading)** – contract ID: `CAZQWGJDKG2JQYV66VV3ONBDLYAE77YVKSBUNWUY7MV6WVLLHT4URFX7`
-- **Aquarius Router (AMM)** – `CBCFTQSPDBAIZ6R6PJQKSQWKNKWH2QIV3I4J72SHWBIK3ADRRAM5A6GD`
+Mainnet launch is **core lending only**. The live markets are XLM, USDC, and EURC. Margin trading, Aquarius swap adapter flows, and smart-account UX are not part of the current mainnet launch surface.
 
-Your frontend will mainly call the controller and the vault contracts. The controller handles account liquidity checks, oracle pricing, and incentives; each vault exposes ERC20-like `deposit`, `withdraw`, `borrow`, `repay`, and `transfer` entrypoints.
+### 1.1. Mainnet Contract IDs
 
-## 2. Generated Clients (Recommended)
+```ts
+export const PERIDOT_MAINNET = {
+  networkPassphrase: "Public Global Stellar Network ; September 2015",
+  controllerId: "CCVUFGXKFVPAHWMMDDL6HXKUN2B2G73Z27VRM3WXZBBSQEUTNLI6YPEX",
+  oracleId: "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+  periTokenId: "CDNJSOJKURHQUDBO7OHK7Z64R2CNMIAWXENHM24ALK7Y3H56EU6PUOKR",
+  markets: [
+    {
+      symbol: "XLM",
+      vaultId: "CBU4Y7CJFOUZZE3QBOXTKM54UTUYW3SDJWTNMDGJBNCR5HS5UCEKV3BE",
+      underlying: "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      decimals: 7,
+      collateralFactor: 700000n,
+      rateModel: "CCPJFBH5WSNZVMCUQCBM4X5334L6ZL3W4Q33XJAK45RCDHJ2JGJ5AP6A",
+    },
+    {
+      symbol: "USDC",
+      vaultId: "CBVUJJIJTRJNOORPPCVH72DP7YDCOMDHI6WYKP3WOFVEPSCVP3TBXHIN",
+      underlying: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      decimals: 7,
+      collateralFactor: 900000n,
+      rateModel: "CCI5LBBNYOASPQ62GIRY54PDEYWWURJB75HNRAFOU4LTOU3XBC73IB5I",
+    },
+    {
+      symbol: "EURC",
+      vaultId: "CD3WN3PLW63HFZXE56OTRLMBV46WG54TFPGRL4RDQ43HQTTWVB4RPO3G",
+      underlying: "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV",
+      decimals: 7,
+      collateralFactor: 900000n,
+      rateModel: "CCI5LBBNYOASPQ62GIRY54PDEYWWURJB75HNRAFOU4LTOU3XBC73IB5I",
+    },
+  ],
+};
+```
 
-Use `stellar contract bindings` to generate TypeScript clients for each contract:
+Use vault IDs for market actions. Use underlying token IDs for wallet balances, oracle price queries, and user-facing asset labels.
+
+### 1.2. Mainnet RPC
+
+```ts
+const rpcUrl = "https://YOUR_MAINNET_RPC_PROVIDER";
+const networkPassphrase = "Public Global Stellar Network ; September 2015";
+```
+
+For testnet development only:
+
+```ts
+const rpcUrl = "https://soroban-testnet.stellar.org";
+const networkPassphrase = "Test SDF Network ; September 2015";
+```
+
+## 2. Contract Roles
+
+- **SimplePeridottroller**: market registry, oracle pricing, collateral factors, account liquidity, pause checks, liquidation coordination, rewards accounting.
+- **ReceiptVault**: one vault per asset. Handles pToken mint/burn, `deposit`, `withdraw`, `borrow`, `repay`, pToken `transfer`, caps, reserves, flash loans, and interest accrual.
+- **JumpRateModel**: utilization-based borrow/supply rates used by vaults during `update_interest`.
+- **PeridotToken (`P`)**: reward token. Rewards are deployed but disabled at launch because reward speeds are zero.
+
+## 3. Generated Clients
+
+Generate TypeScript bindings from the same WASM artifacts used for deployment:
 
 ```bash
-# From the repo root after building WASMs
 stellar contract bindings typescript \
   --wasm target/wasm32v1-none/release/receipt_vault.wasm \
   --out-dir web/src/contracts/receiptVault
@@ -36,812 +84,242 @@ stellar contract bindings typescript \
   --out-dir web/src/contracts/peridotToken
 ```
 
-Each generated package exports a class with strongly typed methods. Import them into your frontend and pass the contract ID plus RPC details.
+Generated clients are recommended because they keep argument names and Soroban XDR encoding aligned with the contracts.
 
-## 2.1. Smart Accounts (Basic)
+## 4. Read-Only Data
 
-Peridot supports Basic Smart Accounts (contract accounts) that can sign and enforce policy via `__check_auth`. Use the factory to create a smart account for a user, then use that smart account address as the `user`/`borrower` in vault and margin calls.
+### Controller Reads
 
-Factory calls:
-- `initialize(admin)`
-- `set_wasm_hash(account_type=Basic, wasm_hash)`
-- `create_account(config, salt)` → returns smart account address
+- `get_admin()`
+- `get_oracle()`
+- `get_price_usd(token)` -> `Option<(price, scale)>`
+- `get_market_cf(market)` -> scaled by `1e6`
+- `account_liquidity(user)` -> `(liquidityUsd, shortfallUsd)`
+- `get_user_markets(user)` -> entered markets
+- `preview_borrow_max(user, market)` -> max additional borrow in underlying base units
+- `preview_repay_cap(borrower, repay_market)` -> max repay amount after close-factor rules
+- `portfolio(user)` -> `(rows, totals)` where rows are `(market, ptoken_balance, debt, collateral_usd, borrow_usd)`
+- `get_accrued(user)` -> accrued PERI rewards
 
-Basic account constructor config:
-- `owner` (user Address)
-- `signer` (ed25519 public key BytesN<32>)
-- `peridottroller` (SimplePeridottroller contract ID)
-- `margin_controller` (MarginController contract ID)
+### Vault Reads
 
-Once created, the smart account intercepts `require_auth` and verifies signatures. The protocol does not require changes.
+- `get_underlying_token()`
+- `get_exchange_rate()` -> underlying per pToken, scaled `1e6`
+- `get_ptoken_balance(user)`
+- `get_user_borrow_balance(user)`
+- `get_user_collateral_value(user)`
+- `get_available_liquidity()`
+- `get_total_deposited()`
+- `get_total_ptokens()`
+- `get_total_borrowed()`
+- `get_total_reserves()`
+- `get_total_admin_fees()`
 
-## 2.2. Passkeys + Smart Accounts (Recommended UX)
+### Pause Reads
 
-**Important:** the Basic Smart Account verifies **ed25519** signatures only. WebAuthn/passkeys produce **P‑256** (ES256) signatures, so passkeys cannot directly sign Soroban auth payloads. The recommended pattern is:
+For each market vault, call the controller:
 
-1) **Generate an ed25519 keypair in the frontend.**
-2) **Protect the ed25519 private key using a passkey** (WebAuthn) by encrypting it with a passkey‑derived key.
-3) Use the decrypted ed25519 private key to sign the Soroban auth payload when the user approves an action.
+- `is_deposit_paused(market)`
+- `is_borrow_paused(market)`
+- `is_redeem_paused(market)`
+- `is_liquidation_paused(market)`
 
-This gives you passkey UX + secure key storage while still satisfying the contract’s ed25519 verification.
+Disable the relevant UI action if the pause read returns true.
 
-### 2.2.1. Key Model
+## 5. User Flows
 
-- `ed25519_public_key` → stored on-chain as `signer` in the smart account.
-- `ed25519_private_key` → stored **encrypted** in local storage/IndexedDB.
-- `passkey credential` → used to decrypt the private key (local user presence/biometric).
+All amounts are integer base units. XLM, USDC, and EURC SACs are 7-decimal assets on Stellar mainnet.
 
-### 2.2.2. Registration Flow (Passkey + Ed25519)
+### 5.1. Deposit / Supply
 
-**Step A: Create a passkey**
-
-Use a WebAuthn helper (e.g., `@simplewebauthn/browser` or `webauthn-json`) to create a passkey credential:
-
-```ts
-// pseudo-code
-const passkey = await webauthnCreate({
-  rpId: location.hostname,
-  userId: userAddress, // stable per user
-  userName: userAddress,
-  challenge: randomBytes(32),
-});
-// store passkey.id in local storage
-```
-
-**Step B: Create an ed25519 keypair and encrypt it**
+Call the vault for the chosen market:
 
 ```ts
-// pseudo-code
-const { publicKey, privateKey } = ed25519Generate();
-
-// derive a symmetric key using the passkey (see below)
-const kek = await deriveKeyFromPasskey(passkey);
-const encryptedPrivateKey = await aesGcmEncrypt(kek, privateKey);
-
-saveLocal({
-  passkeyId: passkey.id,
-  ed25519PublicKey: publicKey,
-  ed25519PrivateKeyEncrypted: encryptedPrivateKey,
+await vault.deposit({
+  user: userAddress,
+  amount: 10_0000000n, // 10.0000000 units for 7-decimal assets
 });
 ```
 
-**Deriving a key from passkey**
+`deposit` calls `user.require_auth()`, transfers underlying from the user to the vault, mints pTokens, accrues interest, and checks deposit pause state through the controller.
 
-There are two safe approaches:
+### 5.2. Enter Market
 
-1) **WebAuthn PRF extension** (preferred if supported by browser/OS).
-2) **Server-assisted key wrapping** (passkey signs a challenge → server derives a KEK and returns an encrypted key wrapper).
-
-If you don’t have PRF, use a server-assisted flow. The key point: **never store the ed25519 private key unencrypted**.
-
-### 2.2.3. Smart Account Creation (Factory)
-
-Use the ed25519 public key from the previous step as the `signer`.
+After supplying collateral, the user must enter the market for it to count toward cross-market collateral:
 
 ```ts
-const factory = new SmartAccountFactoryClient({
-  contractId: FACTORY_ID,
-  networkPassphrase,
-  rpcUrl,
-});
-
-const salt = hash(ownerAddress); // must match factory requirements
-const config = {
-  account_type: { tag: "Basic" },
-  owner: ownerAddress,
-  signer: ed25519PublicKey, // BytesN<32>
-  peridottroller: CONTROLLER_ID,
-  margin_controller: MARGIN_CONTROLLER_ID,
-};
-
-const smartAccount = await factory.create_account({ config, salt }, { signer: freighterSigner });
-```
-
-### 2.2.4. Signing Flow (Passkey‑Protected Ed25519)
-
-When a transaction requires the smart account to authorize:
-
-1) Build the Soroban transaction normally.
-2) Extract the **auth payload hash** that the smart account expects.
-3) Use passkey to decrypt the ed25519 private key.
-4) Sign the payload hash with ed25519.
-5) Attach the signature(s) to the auth entries and submit.
-
-```ts
-// pseudo-code
-const { tx, authEntries } = await buildSorobanTx(...);
-const payloadHash = authEntries[0].signature_payload; // 32-byte hash
-
-const kek = await deriveKeyFromPasskey(passkey);
-const ed25519PrivateKey = await aesGcmDecrypt(kek, encryptedPrivateKey);
-
-const sig = ed25519Sign(payloadHash, ed25519PrivateKey);
-
-authEntries[0].signatures = [{
-  public_key: ed25519PublicKey,     // BytesN<32>
-  signature: sig,                   // BytesN<64>
-}];
-
-const sent = await submitSorobanTx(tx, authEntries);
-```
-
-### 2.2.5. Adding / Rotating Signers
-
-Use passkey to decrypt the key, then call:
-
-```ts
-await smartAccount.add_signer({ owner: ownerAddress, signer: newEd25519Pub }, { signer: freighterSigner });
-```
-
-For rotation:
-1) Add new signer.
-2) Remove old signer.
-3) Re-encrypt private key as needed.
-
-### 2.2.6. UX Checklist
-
-- **Lock/unlock**: require passkey authentication to sign any smart‑account auth payload.
-- **Device loss**: provide a recovery flow (owner account can add/remove signers).
-- **Multi‑device**: use multiple passkeys, each wrapping the same ed25519 key (or separate signers).
-
-### 2.2.7. Security Notes
-
-- Passkeys **do not sign Soroban payloads directly** (current contract supports ed25519 only).
-- Treat passkeys as a **secure unlock mechanism** for the ed25519 private key.
-- Never store ed25519 private keys in plaintext.
-- Require user presence/biometrics for every smart‑account signature.
-- Always clear decrypted private keys from memory after signing.
-
-### 2.2.8. Soroban Auth Payload Extraction (Detailed)
-
-Soroban uses **auth entries** in the transaction to represent `require_auth` calls. You must sign the **auth payload hash** that corresponds to the smart account’s `__check_auth`.
-
-High‑level steps:
-1) Build the transaction with contract call(s).
-2) Simulate to receive `auth` entries (the hash is provided per entry).
-3) Sign each entry that targets the smart account.
-4) Attach signatures and submit.
-
-Pseudo‑code using `@stellar/stellar-sdk`:
-
-```ts
-import { SorobanRpc, TransactionBuilder, Networks } from "@stellar/stellar-sdk";
-
-const server = new SorobanRpc.Server(rpcUrl);
-const account = await server.getAccount(feePayer);
-
-const tx = new TransactionBuilder(account, {
-  fee: "100000",
-  networkPassphrase: Networks.TESTNET,
-})
-  .addOperation(op)
-  .setTimeout(120)
-  .build();
-
-const sim = await server.simulateTransaction(tx);
-// sim.result.auth is an array of AuthorizationEntry XDRs
-const authEntries = sim.result?.auth ?? [];
-
-// find entries where the smart account is the authorizer
-for (const entry of authEntries) {
-  const payloadHash = entry.signaturePayload(); // 32‑byte hash
-  const sig = ed25519Sign(payloadHash, ed25519PrivateKey);
-  entry.signatures.push({
-    publicKey: ed25519PublicKey,
-    signature: sig,
-  });
-}
-
-const prepared = SorobanRpc.assembleTransaction(tx, sim);
-prepared.sign(feePayerKeypair);
-const send = await server.sendTransaction(prepared);
-```
-
-If you use generated contract clients, they typically wrap the simulate/sign/submit steps. You still need to inject signatures for smart‑account auth entries before submission.
-
-### 2.2.9. Passkey PRF Flow (If Supported)
-
-If your WebAuthn stack supports the PRF extension, you can derive a **stable key‑encryption‑key (KEK)** without server assistance:
-
-```ts
-// 1) Create passkey with PRF enabled
-const credential = await navigator.credentials.create({
-  publicKey: {
-    // ... standard WebAuthn fields ...
-    extensions: { prf: { eval: { first: randomBytes(32) } } },
-  },
-});
-
-// 2) Later, derive KEK on sign
-const assertion = await navigator.credentials.get({
-  publicKey: {
-    // ... standard request fields ...
-    extensions: { prf: { eval: { first: randomBytes(32) } } },
-  },
-});
-
-// Use PRF output as KEK to decrypt ed25519 private key
-const kek = assertion.getClientExtensionResults().prf?.results?.first;
-```
-
-If PRF is not available, use a server‑assisted wrapping flow:
-- Client generates ed25519 keypair
-- Client asks server to wrap the private key using a passkey‑validated challenge
-- Server returns encrypted blob
-
-### 2.2.10. Multi‑Signer / Recovery Pattern
-
-Recommended policy:
-- The EOA (wallet) is the **owner**.
-- The smart account has **one or more ed25519 signers**.
-
-Recovery options:
-1) Owner adds a new signer, then removes the old signer.
-2) Owner updates peridottroller/margin controller if needed.
-3) Optional: a time‑locked recovery flow in the UI (off‑chain).
-
-### 2.2.11. Salt Guidance (Factory)
-
-The factory derives a salted address internally using `owner` + user‑provided salt.
-Recommended client flow:
-
-```ts
-const userSalt = randomBytes(32);
-// pass raw userSalt to factory; it derives final salt internally
-await factory.create_account({ config, salt: userSalt });
-```
-
-Never use a fixed or predictable salt in the UI.
-
-## 3. RPC Configuration
-
-Use the public testnet RPC endpoint:
-
-```ts
-const rpcUrl = "https://soroban-testnet.stellar.org";
-const networkPassphrase = "Test SDF Future Network ; October 2022";
-```
-
-When using Freighter, you can derive the user’s public key and sign transactions locally. The generated clients provide helpers to build and submit transactions; otherwise you can roll your own using `@stellar/stellar-sdk`.
-
-## 4. Core Interaction Flows
-
-### 4.1. Read Market Data (no signature)
-
-- Controller
-
-  - `get_price_usd(token: Address)` → current USD price scaled by `10^decimals`
-  - `account_liquidity(account: Address)` → [liquidity, shortfall] in USD
-  - `get_market_cf(market: Address)` → collateral factor (scaled 1e6)
-
-- Vault
-  - `get_exchange_rate()` → underlying per pToken (scaled 1e6)
-  - `get_ptoken_balance(account: Address)`
-  - `get_user_borrow_balance(account: Address)`
-  - `get_available_liquidity()` → currently borrowable assets
-
-Use these to build supply/borrow tables, account dashboards, and health meters.
-
-### 4.2. Deposit + Enter Market
-
-```ts
-await vault.deposit({ user, amount }, { signer });
-await controller.enter_market({ user, market: vaultId }, { signer });
-```
-
-### 4.3. Borrow
-
-```ts
-await vault.borrow({ user, amount }, { signer });
-```
-
-### 4.4. Repay
-
-```ts
-await vault.repay({ user, amount }, { signer });
-```
-
-### 4.5. Margin Open (Aquarius Swap Adapter)
-
-Peridot uses **Aquarius** on testnet for swaps. You must supply `swaps_chain` from the Aquarius route API (or a known pool route) and enforce your own slippage.
-
-```ts
-await margin.open_position({
-  user,
-  collateral_asset: usdc,
-  debt_asset: xlm,
-  collateral_amount: "10000000",
-  leverage: 2,
-  swaps_chain,
-  amount_out_min,
-}, { signer });
-```
-
-### 4.6. Margin Close (Aquarius)
-
-```ts
-await margin.close_position({
-  user,
-  position_id,
-  swaps_chain,
-  amount_out_min,
-}, { signer });
-```
-
-### 4.7. Liquidation (Aquarius)
-
-```ts
-await margin.liquidate_position({
-  liquidator,
-  position_id,
-  swaps_chain,
-  amount_out_min,
-}, { signer });
-```
-
-### 4.8. Using Smart Accounts as `user`
-
-If the user is a smart account, pass that address as `user` and attach the smart‑account auth signatures as described in 2.2.8.
-
-```ts
-await vault.deposit({ user: smartAccount, amount }, { signer: feePayer });
-```
-
-## 5. Full End‑to‑End Smart Account Flow (Passkeys + Ed25519)
-
-This is an end‑to‑end example using **Soroban RPC** and manual auth signature injection.
-It shows:
-1) building the transaction
-2) simulating to get auth entries
-3) signing smart‑account auth with ed25519
-4) submitting
-
-```ts
-import {
-  SorobanRpc,
-  TransactionBuilder,
-  Networks,
-  xdr,
-} from "@stellar/stellar-sdk";
-
-const server = new SorobanRpc.Server(rpcUrl);
-
-// fee payer is any funded account (could be the owner)
-const feePayer = ownerAddress;
-const feePayerAccount = await server.getAccount(feePayer);
-
-// 1) Build the transaction
-const tx = new TransactionBuilder(feePayerAccount, {
-  fee: "100000",
-  networkPassphrase: Networks.TESTNET,
-})
-  .addOperation(op) // e.g., margin.open_position
-  .setTimeout(120)
-  .build();
-
-// 2) Simulate to obtain auth entries
-const sim = await server.simulateTransaction(tx);
-const authEntries = sim.result?.auth ?? [];
-
-// 3) Sign smart‑account auth entries (ed25519)
-for (const entry of authEntries) {
-  // Filter to only the smart account we control
-  const auth = xdr.SorobanAuthorizationEntry.fromXDR(entry, "base64");
-  const addr = auth.switch().address();
-  if (addr.toString() !== smartAccountAddress) continue;
-
-  const payloadHash = auth.signaturePayload(); // 32 bytes
-  const ed25519PrivateKey = await decryptWithPasskey();
-  const sig = ed25519Sign(payloadHash, ed25519PrivateKey);
-
-  auth.v0().signature().signatures().push(
-    xdr.ScVal.scvMap([
-      xdr.ScMapEntry({
-        key: xdr.ScVal.scvSymbol("public_key"),
-        val: xdr.ScVal.scvBytes(ed25519PublicKey),
-      }),
-      xdr.ScMapEntry({
-        key: xdr.ScVal.scvSymbol("signature"),
-        val: xdr.ScVal.scvBytes(sig),
-      }),
-    ])
-  );
-}
-
-// 4) Assemble & submit
-const prepared = SorobanRpc.assembleTransaction(tx, sim);
-prepared.sign(feePayerKeypair);
-const send = await server.sendTransaction(prepared);
-```
-
-Notes:
-- Use the same ed25519 public key stored in the smart account signer list.
-- Always require passkey user‑presence before decrypting the private key.
-- Clear decrypted private keys from memory after signing.
-
-## 6. Aquarius Swap Adapter (Routing + swaps_chain)
-
-Peridot expects Aquarius `swap_chained` data:
-
-```ts
-type SwapHop = [string[], string /* pool_id */, string /* token_out */];
-type SwapsChain = SwapHop[];
-```
-
-Recommended flow:
-1) Fetch route from Aquarius **Find Path API** (off‑chain).
-2) Build `swaps_chain` for the swap adapter call.
-3) Provide `amount_out_min` from the quote minus slippage.
-
-Example:
-
-```ts
-const swaps_chain: SwapsChain = [
-  [
-    [USDC, XLM],
-    POOL_ID,   // BytesN<32> hex string
-    XLM
-  ],
-];
-
-await margin.open_position({
-  user,
-  collateral_asset: USDC,
-  debt_asset: XLM,
-  collateral_amount: "10000000",
-  leverage: 2,
-  swaps_chain,
-  amount_out_min: "9800000",
-}, { signer });
-```
-
-### 6.1. Off‑chain Find‑Path API (Recommended)
-
-Aquarius provides an HTTP API to compute the **best route** (path + expected output).
-You call it **off‑chain**, then pass the resulting `swaps_chain` into the on‑chain adapter.
-
-Example request (pseudo‑code):
-
-```ts
-const res = await fetch("https://api.aqua.network/api/external/v1/find-path/", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    tokenIn: USDC,
-    tokenOut: XLM,
-    amountIn: "10000000",
-    network: "testnet",
-    // optional: slippageBps, maxHops, etc
-  }),
-});
-
-const route = await res.json();
-const swaps_chain = route.swaps_chain;
-const amount_out = route.amount_out;
-
-const amount_out_min = applySlippage(amount_out, 50); // 0.50% slippage
-```
-
-Use this for:
-- **Open/close** positions
-- **Liquidations** (best price reduces bad debt risk)
-
-**Response shape tip:** Aquarius returns a JSON object that includes the swap route and a quoted output.
-Capture and log the full response once in dev, then map to:
-- `swaps_chain`: array of hops
-- `amount_out`: expected output
-- optionally `path` or `pools` if the API exposes them
-
-### 6.1.1. Route → swaps_chain conversion helper
-
-If the API returns `path` or `pools`, you may need to convert it to `swaps_chain`.
-Use this helper pattern (replace field names to match the actual response):
-
-```ts
-type SwapHop = [string[], string, string]; // [path, poolId, tokenOut]
-type SwapsChain = SwapHop[];
-
-function routeToSwapsChain(route: any): SwapsChain {
-  // Example: route.hops = [{ path: [USDC, XLM], pool_id, token_out }]
-  return route.hops.map((h: any) => [h.path, h.pool_id, h.token_out]);
-}
-```
-
-### 6.1.2. Slippage helper
-
-```ts
-function applySlippage(amountOut: string, bps: number): string {
-  const n = BigInt(amountOut);
-  const min = n - (n * BigInt(bps) / BigInt(10_000));
-  return min.toString();
-}
-```
-
-### 6.1.3. Minimal route cache (recommended)
-
-Cache a good route per pair (USDC↔XLM) for 10–30 seconds to reduce API calls:
-
-```ts
-const cache = new Map<string, { ts: number; route: any }>();
-
-async function getRoute(tokenIn: string, tokenOut: string, amountIn: string) {
-  const key = `${tokenIn}-${tokenOut}`;
-  const now = Date.now();
-  const cached = cache.get(key);
-  if (cached && now - cached.ts < 15_000) return cached.route;
-  const route = await fetchRoute(tokenIn, tokenOut, amountIn);
-  cache.set(key, { ts: now, route });
-  return route;
-}
-```
-
-### 6.2. Hardcoded Fallback Route (No API)
-
-If the API is unavailable, you can use **fixed routes** for high‑liquidity pairs.
-Example: USDC ↔ XLM direct pool.
-
-```ts
-const swaps_chain: SwapsChain = [
-  [[USDC, XLM], POOL_ID_USDC_XLM, XLM],
-];
-
-// You must set a conservative amount_out_min, or you risk swap failure.
-```
-
-Guidelines:
-- Keep the fallback list small (USDC/XLM only).
-- Update pool IDs when liquidity migrates.
-- Only use fallback when API is down.
-
-## 7. Example: Margin Open With Smart Account
-
-```ts
-// fee payer can be owner or relayer
-const feePayer = ownerAddress;
-
-// build op: open_position with user=smartAccountAddress
-const op = margin.open_positionOp({
-  user: smartAccountAddress,
-  collateral_asset: USDC,
-  debt_asset: XLM,
-  collateral_amount: "10000000",
-  leverage: 2,
-  swaps_chain,
-  amount_out_min: "9800000",
-});
-
-// build tx, simulate, inject smart‑account auth, submit
-```
-
-## 8. Example: Margin Close With Smart Account
-
-```ts
-const op = margin.close_positionOp({
-  user: smartAccountAddress,
-  position_id,
-  swaps_chain,
-  amount_out_min: "9900000",
+await controller.enter_market({
+  user: userAddress,
+  market: vaultId,
 });
 ```
 
-## 9. Example: Liquidation With Smart Account as Borrower
+`enter_market` requires user auth. If the user only wants to lend without borrowing, entering is optional. If they want collateral value, entering is required.
 
-Liquidator signs as themselves; borrower is the smart account:
+### 5.3. Withdraw / Redeem
 
 ```ts
-const op = margin.liquidate_positionOp({
-  liquidator: liquidatorAddress,
-  position_id,
-  swaps_chain,
-  amount_out_min: "9500000",
+await vault.withdraw({
+  user: userAddress,
+  ptoken_amount: pTokenAmount,
 });
 ```
 
-### 4.2. Supply / Mint pTokens
+The vault checks pToken balance, market pause state, margin locks if configured, and account liquidity before burning pTokens and returning underlying.
 
-1. User approves vault to withdraw underlying
-2. Call `deposit(user: Address, amount: u128)` on the vault
-
-Example (TypeScript using generated client):
+### 5.4. Borrow
 
 ```ts
-const vault = new ReceiptVaultClient({
-  contractId: "CCBRKJ5ZZZ...",
-  networkPassphrase,
-  rpcUrl,
+await vault.borrow({
+  user: userAddress,
+  amount: borrowAmount,
 });
-
-await vault.deposit(
-  { user: userAddress, amount: BigInt(1_000_000) },
-  { signer: freighterSigner }
-);
 ```
 
-### 4.3. Redeem / Withdraw
-
-Call `withdraw(user, ptoken_amount)` on the same vault. The method handles collateral checks via the controller (if the user has borrow positions).
-
-### 4.4. Borrow
-
-Call `borrow(user, amount)` on the vault. The controller’s `hypothetical_liquidity` is invoked internally to ensure the resulting position is safe. Display the user’s max borrow by reading `preview_borrow_max`.
-
-### 4.5. Repay
-
-Call `repay(user, amount)` with the underlying asset amount. For “max repay,” pass a high number or call `preview_repay_cap` on the controller first.
-
-### 4.6. Rewards
-
-To show accrued rewards and allow claiming:
+Before showing the borrow button, query:
 
 ```ts
-const controller = new SimplePeridottrollerClient({
-  contractId: "CAWEZ...",
-  networkPassphrase,
-  rpcUrl,
+const maxBorrow = await controller.preview_borrow_max({
+  user: userAddress,
+  market: vaultId,
 });
+```
 
+Borrow will fail if the user has not entered enough collateral markets, if the target market is paused, if prices are stale/missing, if the borrow cap is reached, or if vault liquidity is insufficient.
+
+### 5.5. Repay
+
+```ts
+await vault.repay({
+  user: userAddress,
+  amount: repayAmount,
+});
+```
+
+For max repay UX, either pass the displayed borrow balance plus a small buffer or read the current debt with `get_user_borrow_balance`. For liquidation-specific repay caps use `preview_repay_cap`.
+
+### 5.6. Exit Market
+
+```ts
+await controller.exit_market({
+  user: userAddress,
+  market: vaultId,
+});
+```
+
+Exit only succeeds if removing the market does not create a shortfall.
+
+### 5.7. Rewards
+
+Rewards are disabled at mainnet launch. UI can still show accrued rewards:
+
+```ts
 const accrued = await controller.get_accrued({ user: userAddress });
-await controller.claim_self({ user: userAddress }, { signer: freighterSigner });
 ```
 
-`claim_self` mints `P` tokens to the user via the controller→token hook.
-
-## 5. Supported Assets
-
-Store the known asset addresses in your config file:
+When rewards are enabled later, users claim with:
 
 ```ts
-export const markets = [
-  {
-    symbol: "XLM",
-    vaultId: "CCPQYPFNAGQPQTMPAEBGNPNSQJ4FAJYPX6WLYBKE5SO5ZONXANCUEYE7",
-    underlying: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
-    decimals: 7,
-  },
-  {
-    symbol: "USDT",
-    vaultId: "CDM37TMZO2QQQP6CIMU7E6OIBR6IQMM46P5PCSQ5D7AX6GMEFQX7NTKL",
-    underlying: "CBX3DOZH4HUR3EJS6LAKHXN6RARXKMUT33OUMVVSUW5HCXEIECD4WT75",
-    decimals: 6,
-  },
-];
+await controller.claim({ user: userAddress });
 ```
 
-Use these IDs for price queries and UI labels.
+`claim` requires user auth. `claim_self` exists as a convenience wrapper and also requires user auth. `claim_all` loops over `claim`, so it still requires auth for every user in the batch.
 
-## 6. Health Factor Calculation
+## 6. Health and Risk UI
 
-To display the Compound-style health factor:
+Use `account_liquidity(user)` for the primary account health signal:
 
-1. Fetch collateral USD and borrow USD via `account_liquidity`
-2. Compute `healthFactor = collateralUSD / borrowUSD`
-3. Highlight positions where `borrowUSD > collateralUSD` (shortfall > 0).
+```ts
+const [liquidityUsd, shortfallUsd] = await controller.account_liquidity({ user });
+```
 
-For per-market views, call `portfolio(user)` on the controller to get `[market, ptoken_balance, borrow_balance, collateral_usd, borrow_usd]` for each entered market.
+Recommended display:
 
-## 7. Oracle Considerations
+- If `shortfallUsd > 0`, account is liquidatable.
+- If `liquidityUsd > 0`, account has remaining borrow capacity.
+- Health factor can be shown as `collateralUsd / borrowUsd` using `portfolio(user)` totals.
 
-The controller calls the Reflector oracle synchronously. If `get_price_usd` returns `None`, the UI should warn that the oracle is stale or missing. Poll once per page load and cache responses for a few seconds; the oracle updates roughly every 5 minutes.
+`portfolio(user)` returns collateral already discounted by market collateral factors. Do not apply CF a second time in the frontend.
 
-## 8. Leveraged Margin (True Borrow/Swap)
+## 7. Oracle Handling
 
-Margin trading uses real vault borrows + AMM swaps (Aquarius) coordinated by `margin-controller` and `swap-adapter`.
+`get_price_usd(token)` returns `None` when the Reflector oracle price is unavailable, stale, or invalid and no valid fallback exists. UI behavior:
 
-Core calls:
-- `open_position(user, collateral_asset, base_asset, collateral_amount, leverage, side, swaps_chain, amount_with_slippage)`
-- `open_position_no_swap(user, collateral_asset, debt_asset, collateral_amount, borrow_amount, leverage, side)`
-- `open_position_no_swap_short(user, collateral_asset, debt_asset, collateral_amount, borrow_amount, leverage)`
-- `close_position(user, position_id, swaps_chain, amount_with_slippage)`
-- `liquidate_position(liquidator, position_id)` (liquidation uses peridottroller liquidation + vaults)
+- Show an oracle warning for the affected asset.
+- Disable new borrows involving missing-price collateral/debt.
+- Avoid displaying stale cached prices as current values.
+- Poll prices on page load and refresh every few seconds; Reflector cadence is not a frontend guarantee.
 
-Key notes for frontend engineers:
-- **`swaps_chain`** is the Aquarius route payload from find‑path (strict‑send).
-- **`amount_with_slippage`** is the quoted output after applying slippage tolerance.
-- **`side`** is `Long` or `Short`.
+## 8. Liquidation UI / Bots
 
-Recommended UX flow for open/close (Aquarius):
-1. Use Aquarius find‑path off‑chain to get `swaps_chain`.
-2. Compute `amount_with_slippage`.
-3. Call `open_position`/`close_position` with `swaps_chain` and `amount_with_slippage`.
+Core liquidation path:
 
-Budget‑safe open flow (recommended for testnet limits):
-1. User swaps USDC→XLM directly via Aquarius (outside MarginController).
-2. Call `open_position_no_swap` to deposit XLM collateral and borrow USDC (no router call).
+```ts
+await controller.liquidate({
+  liquidator,
+  borrower,
+  repay_market: debtVault,
+  collateral_market: collateralVault,
+  repay_amount,
+});
+```
 
-Budget‑safe short flow:
-1. Call `open_position_no_swap_short` to deposit USDC collateral and borrow XLM.
-2. Swap XLM→USDC via Aquarius in a separate tx.
+Useful helper:
 
-## 10. Boosted Markets (DeFindex Vaults)
-
-Peridot vaults can be configured to forward deposits into a DeFindex vault to earn external yield. This is opt‑in per ReceiptVault via admin.
-
-Admin calls:
-- `set_boosted_vault(admin, defindex_vault_address)`
-- `get_boosted_vault()` (view)
-
-Behavior:
-- On deposit, underlying is forwarded to the DeFindex vault (single‑asset) and the ReceiptVault keeps DeFindex shares.
-- On withdraw, if local cash is insufficient, the ReceiptVault withdraws from DeFindex first.
-- `get_total_underlying` includes the DeFindex‑managed portion for correct exchange‑rate math.
-
-Note: DeFindex vault addresses are in `addresses.md` (BLEND USDC vault for USDC, XLM vault for XLM).
-
-Non‑boosted markets:
-- Do nothing. If `set_boosted_vault` is never called, the ReceiptVault behaves as a normal market.
-
-CLI example (two‑step, USDC → XLM → open):
-```bash
-# Step 1: swap USDC -> XLM via Aquarius off‑chain find‑path + swap_chained
-# (frontend/bot fetches swaps_chain from Aquarius find‑path API)
-stellar contract invoke --id "$SWAP_ADAPTER" --source-account dev --network testnet -- \
-  swap_chained \
-  --user "USER_ADDRESS" \
-  --swaps_chain "$SWAPS_CHAIN" \
-  --token_in "USDC_CONTRACT" \
-  --in_amount 10000000 \
-  --out_min 1
-
-# Step 2: open position without swap
-stellar contract invoke --id "MARGIN_CONTROLLER_ID" --source-account dev --network testnet -- \
-  open_position_no_swap \
-  --user "USER_ADDRESS" \
-  --collateral_asset "XLM_CONTRACT" \
-  --debt_asset "USDC_CONTRACT" \
-  --collateral_amount 15123603 \
-  --borrow_amount 2000000 \
-  --leverage 2 --side Long
+```ts
+await controller.repay_on_behalf_for_liquidator({
+  borrower,
+  repay_market: debtVault,
+  repay_amount,
+  liquidator,
+});
 ```
 
 Notes:
-- Set `amount_out_min` based on your slippage tolerance.
-- Use the swap output as `collateral_amount`.
 
-Liquidation helper (peridottroller):
-- `repay_on_behalf_for_liquidator(borrower, repay_market, repay_amount, liquidator)`
-  - Use this for liquidation bots that want to repay a borrow without seizing collateral.
-  - The peridottroller authorizes the vault call via contract auth, so no vault allowlist is required.
+- `repay_amount` is in the debt market underlying base units.
+- The liquidator must hold enough debt underlying.
+- Liquidation is blocked if the controller reports no shortfall or if the liquidation pause is active.
 
-Example CLI (repay-on-behalf helper):
+## 9. Smart Accounts
+
+The repository still contains Basic Smart Account contracts and factory contracts, but the current mainnet lending deployment does not require them. Standard wallet-auth flows are enough because vault/controller user functions call `user.require_auth()`.
+
+If you integrate smart accounts later:
+
+- BasicSmartAccount verifies ed25519 signatures.
+- WebAuthn/passkeys produce P-256 signatures and cannot directly satisfy the current BasicSmartAccount verifier.
+- Recommended UX is passkey-protected ed25519 key storage: use passkey to unlock/decrypt an ed25519 signer, then sign Soroban auth payloads with ed25519.
+- Treat smart accounts as a separate integration track from the current core lending launch.
+
+## 10. Margin / Swap Adapter Status
+
+MarginController and SwapAdapter are present in the repository, but they are not wired in `scripts/deploy_mainnet.sh` and should not be exposed in the production UI for this launch.
+
+If/when margin is enabled later, update this guide with the deployed mainnet IDs and use the audited margin-specific flows at that time. Do not reuse old testnet IDs or old Aquarius route examples for mainnet.
+
+## 11. Frontend Checklist
+
+- [ ] Configure a production mainnet RPC provider.
+- [ ] Use `Public Global Stellar Network ; September 2015` as the mainnet network passphrase.
+- [ ] Generate TypeScript bindings from current WASMs.
+- [ ] Copy `PERIDOT_MAINNET` into frontend config.
+- [ ] Implement wallet connection and Soroban transaction signing.
+- [ ] Build reusable services for `deposit`, `withdraw`, `enter_market`, `borrow`, `repay`, `exit_market`, `claim`.
+- [ ] Render market APY, exchange rate, pToken balance, borrow balance, and liquidity.
+- [ ] Disable UI actions based on pause states and oracle availability.
+- [ ] Use `preview_borrow_max` before borrow and `account_liquidity` / `portfolio` for health UI.
+- [ ] Keep margin/swap UI disabled until mainnet margin contracts are explicitly deployed and verified.
+
+## 12. Verification Command
+
+After deployment, verify the live mainnet config with:
+
 ```bash
-stellar contract invoke \
-  --id "$PERIDOTTROLLER" \
-  --source-account "$LIQUIDATOR" \
-  $NETWORK -- \
-  repay_on_behalf_for_liquidator \
-  --borrower "$BORROWER" \
-  --repay_market "$REPAY_VAULT" \
-  --repay_amount 40000000 \
-  --liquidator "$LIQUIDATOR"
+CTRL_ID=CCVUFGXKFVPAHWMMDDL6HXKUN2B2G73Z27VRM3WXZBBSQEUTNLI6YPEX \
+VA_ID=CBU4Y7CJFOUZZE3QBOXTKM54UTUYW3SDJWTNMDGJBNCR5HS5UCEKV3BE \
+VB_ID=CBVUJJIJTRJNOORPPCVH72DP7YDCOMDHI6WYKP3WOFVEPSCVP3TBXHIN \
+VC_ID=CD3WN3PLW63HFZXE56OTRLMBV46WG54TFPGRL4RDQ43HQTTWVB4RPO3G \
+IDENTITY=peridot-mainnet \
+bash scripts/verify_mainnet.sh
 ```
-Notes:
-- `repay_amount` is in underlying token base units (e.g., 6 decimals for USDT).
-- The liquidator must hold sufficient underlying balance in the repay market token.
-
-When wiring the frontend, store:
-- `marginControllerId` (from `scripts/deploy_margin_controller_testnet.sh` output)
-- `swapAdapterId`
-- `aquariusRouterId`
-- `peridottrollerId`
-- `oracleId` (Reflector)
-- vault IDs and underlying token IDs (as above)
-
-## 9. Testing
-
-- Use the scripts (`build_wasm.sh`, `deploy_testnet.sh`, `verify_testnet.sh`) to keep the contracts in sync with the frontend environment.
-- For local development, you can target the sandbox (`deploy_sandbox.sh`) and point the frontend RPC to `http://localhost:8000`.
-- Consider adding mock data layers for unit testing UI components without hitting the network.
-
-## 10. Checklist
-
-- [ ] Configure RPC + network passphrase
-- [ ] Generate TypeScript bindings for controller and vaults
-- [ ] Copy contract IDs and asset metadata into the frontend config
-- [ ] Implement wallet connection (Freighter recommended)
-- [ ] Create reusable hooks/services for `deposit`, `withdraw`, `borrow`, `repay`, `claim`
-- [ ] Render health factor and liquidity data via controller reads
-- [ ] Handle oracle stale/missing states gracefully
-- [ ] If using margin, add multi-op transaction builder for swaps
-- [ ] Test flows on testnet before mainnet deployment
-
-With these pieces, you can recreate a Compound-like experience on Stellar Soroban, showing supply/borrow balances, USD valuations, and liquidation status in real time.

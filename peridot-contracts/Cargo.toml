@@ -11,6 +11,7 @@ members = [
   "contracts/smart-account-factory",
   "contracts/mocks/mock-token",
   "contracts/mocks/mock-lending-vault",
+  "contracts/mocks/flash-loan-receiver",
 ]
 
 [workspace.dependencies]

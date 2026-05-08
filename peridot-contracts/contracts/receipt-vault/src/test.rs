@@ -7,6 +7,7 @@ use simple_peridottroller::{SimplePeridottroller, SimplePeridottrollerClient};
 use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
 use soroban_sdk::testutils::storage::Persistent as _;
 use soroban_sdk::testutils::Ledger;
+use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
 use soroban_sdk::{testutils::Address as _, token, Address, Bytes, Env, IntoVal, Symbol, Val, Vec};
@@ -667,7 +668,7 @@ fn test_set_idle_cash_buffer_bps() {
 #[test]
 fn test_deposit_respects_idle_cash_buffer() {
     let env = Env::default();
-    env.mock_all_auths_allowing_non_root_auth();
+    env.mock_all_auths();
 
     let admin = Address::generate(&env);
     let depositor = Address::generate(&env);
@@ -722,7 +723,18 @@ fn test_rebalance_idle_cash_deploys_excess() {
 
     // Lower target to 10% and rebalance.
     vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
-    vault.rebalance_idle_cash(&admin);
+    env.set_auths(&[]);
+    vault
+        .mock_auths(&[MockAuth {
+            address: &admin,
+            invoke: &MockAuthInvoke {
+                contract: &vault_id,
+                fn_name: "rebalance_idle_cash",
+                args: (&admin,).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .rebalance_idle_cash(&admin);
 
     assert_eq!(token_client.balance(&vault_id), 100i128);
     assert_eq!(boosted.balance(&vault_id), 900i128);
@@ -2535,8 +2547,7 @@ fn test_flash_loan_boosted_redemption_tolerates_small_rounding_delta() {
 }
 
 #[test]
-#[should_panic]
-fn test_flash_loan_requires_receiver_auth() {
+fn test_flash_loan_contract_receiver_without_receiver_auth() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -2558,10 +2569,13 @@ fn test_flash_loan_requires_receiver_auth() {
     receiver_client.configure(&token_address);
     token_admin_client.mint(&receiver_id, &50i128);
 
-    // Explicitly remove mocked auth entries so receiver.require_auth() must fail.
+    // Contract receivers cannot sign an account-style require_auth. The vault
+    // invokes the callback directly and the receiver repays from its own balance.
     env.set_auths(&[]);
     let data = Bytes::new(&env);
     vault.flash_loan(&receiver_id, &100u128, &data);
+
+    assert_eq!(vault.get_total_reserves(), 2u128);
 }
 
 #[test]
@@ -3095,6 +3109,71 @@ fn test_ptoken_transfer_and_approve_with_gating() {
 
     // Attempt transfer 101 -> should panic via peridottroller gating
     v.transfer(&user, &other, &101i128);
+}
+
+#[test]
+fn test_ptoken_approve_uses_single_owner_auth() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let other = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    token_admin_client.mint(&user, &1_000i128);
+    vault.deposit(&user, &100u128);
+
+    let live_until_ledger = env.ledger().sequence() + 1000;
+    env.set_auths(&[]);
+    vault
+        .mock_auths(&[MockAuth {
+            address: &user,
+            invoke: &MockAuthInvoke {
+                contract: &vault_id,
+                fn_name: "approve",
+                args: (&user, &other, 50i128, live_until_ledger).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .approve(&user, &other, &50i128, &live_until_ledger);
+
+    assert_eq!(vault.allowance(&user, &other), 50i128);
+}
+
+#[test]
+fn test_ptoken_transfer_with_peridottroller_does_not_reenter_vault() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let other = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_id);
+    vault.set_peridottroller(&comp_id);
+
+    token_admin_client.mint(&user, &1_000i128);
+    vault.deposit(&user, &100u128);
+
+    vault.transfer(&user, &other, &25i128);
+
+    assert_eq!(vault.get_ptoken_balance(&user), 75u128);
+    assert_eq!(vault.get_ptoken_balance(&other), 25u128);
 }
 
 #[test]
