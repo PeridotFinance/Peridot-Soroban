@@ -1,7 +1,7 @@
 use soroban_sdk::{Address, Env, IntoVal, Symbol};
 
-use crate::events::{ExternalCallFailed, InterestOverflow, InvalidSeizeAttempt};
 use crate::constants::SCALE_1E6;
+use crate::events::{ExternalCallFailed, InterestOverflow, InvalidSeizeAttempt};
 
 pub fn abort_seize(
     env: &Env,

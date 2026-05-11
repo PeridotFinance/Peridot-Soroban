@@ -6,6 +6,11 @@ target
 .stellar
 /test_snapshots
 /gitbook
-CLAUDE.md
 .claude
-frontend-integration.md
+#frontend-integration.md
+peridot_smart_accounts_architecture.md
+.codex
+AUDITFINDS.md
+AuditQuestions.md
+SOROBAN_AUDIT_CONTEXT.md
+#CLAUDE.md

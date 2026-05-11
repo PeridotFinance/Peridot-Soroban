@@ -1,6 +1,8 @@
 #![no_std]
 use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
-use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env, IntoVal, Symbol, Vec};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, token, Address, Env, IntoVal, Symbol, Vec,
+};
 
 #[contracttype]
 enum DataKey {
@@ -55,7 +57,13 @@ fn get_token(env: &Env) -> Address {
         .expect("token not set")
 }
 
-fn authorize_transfer_from_self(env: &Env, token: &Address, from: &Address, to: &Address, amount: i128) {
+fn authorize_transfer_from_self(
+    env: &Env,
+    token: &Address,
+    from: &Address,
+    to: &Address,
+    amount: i128,
+) {
     let args = (from.clone(), to.clone(), amount).into_val(env);
     let ctx = ContractContext {
         contract: token.clone(),

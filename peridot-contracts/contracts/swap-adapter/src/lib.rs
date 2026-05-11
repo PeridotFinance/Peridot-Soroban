@@ -2,6 +2,7 @@
 use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, String, Vec};
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+pub const MAX_DEADLINE_SECONDS: u64 = 86_400; // 24h
 
 #[soroban_sdk::contractclient(name = "SoroswapRouterClient")]
 pub trait SoroswapRouter {
@@ -44,7 +45,10 @@ pub trait AquariusPool {
 pub enum DataKey {
     Admin,
     Router,
+    AllowedPool(Address),
     Initialized,
+    PendingUpgradeHash,
+    PendingUpgradeEta,
 }
 
 #[contract]
@@ -56,11 +60,15 @@ impl SwapAdapter {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
         }
-        if env.storage().persistent().get::<_, Address>(&DataKey::Admin).is_some() {
+        if env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::Admin)
+            .is_some()
+        {
             panic!("already initialized");
         }
-        let expected_admin_str =
-            option_env!("SWAP_ADAPTER_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin_str = expected_admin_config();
         let expected_admin = Address::from_string(&String::from_str(&env, expected_admin_str));
         if admin != expected_admin {
             panic!("unexpected admin");
@@ -78,6 +86,27 @@ impl SwapAdapter {
         env.storage().persistent().set(&DataKey::Router, &router);
     }
 
+    pub fn set_pool_allowed(env: Env, admin: Address, pool: Address, allowed: bool) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        let key = DataKey::AllowedPool(pool.clone());
+        if allowed {
+            env.storage().persistent().set(&key, &true);
+            bump_pool_ttl(&env, &pool);
+        } else {
+            env.storage().persistent().remove(&key);
+        }
+    }
+
+    pub fn is_pool_allowed(env: Env, pool: Address) -> bool {
+        bump_critical_ttl(&env);
+        bump_pool_ttl(&env, &pool);
+        env.storage()
+            .persistent()
+            .get(&DataKey::AllowedPool(pool))
+            .unwrap_or(false)
+    }
+
     pub fn swap_exact_tokens_for_tokens(
         env: Env,
         user: Address,
@@ -88,23 +117,46 @@ impl SwapAdapter {
     ) -> u128 {
         bump_critical_ttl(&env);
         user.require_auth();
+        if amount_out_min == 0 {
+            panic!("zero slippage");
+        }
+        if amount_in > i128::MAX as u128 || amount_out_min > i128::MAX as u128 {
+            panic!("amount too large");
+        }
+        let amount_in_i128: i128 = amount_in
+            .try_into()
+            .unwrap_or_else(|_| panic!("amount too large"));
+        let amount_out_min_i128: i128 = amount_out_min
+            .try_into()
+            .unwrap_or_else(|_| panic!("amount too large"));
+        let now = env.ledger().timestamp();
+        if deadline < now {
+            panic!("deadline expired");
+        }
+        if deadline > now.saturating_add(MAX_DEADLINE_SECONDS) {
+            panic!("deadline too far");
+        }
         let router: Address = env
             .storage()
             .persistent()
             .get(&DataKey::Router)
             .expect("router not set");
         let amounts = SoroswapRouterClient::new(&env, &router).swap_exact_tokens_for_tokens(
-            &amount_in.try_into().unwrap(),
-            &amount_out_min.try_into().unwrap(),
+            &amount_in_i128,
+            &amount_out_min_i128,
             &path,
             &user,
             &deadline,
         );
+        if amounts.len() == 0 {
+            panic!("router returned empty amounts");
+        }
         let last = amounts.get(amounts.len() - 1).unwrap();
         if last < 0 {
             panic!("invalid swap output");
         }
-        last.try_into().unwrap()
+        last.try_into()
+            .unwrap_or_else(|_| panic!("invalid swap output"))
     }
 
     pub fn swap_chained(
@@ -117,6 +169,16 @@ impl SwapAdapter {
     ) -> u128 {
         bump_critical_ttl(&env);
         user.require_auth();
+        if swaps_chain.len() == 0 {
+            panic!("bad swaps");
+        }
+        for i in 0..swaps_chain.len() {
+            let (path, _, pool) = swaps_chain.get(i).unwrap();
+            if path.len() < 2 {
+                panic!("bad swaps");
+            }
+            ensure_pool_allowed(&env, &pool);
+        }
         let router: Address = env
             .storage()
             .persistent()
@@ -139,11 +201,8 @@ impl SwapAdapter {
         amount_in: u128,
     ) -> u128 {
         bump_critical_ttl(&env);
-        AquariusPoolClient::new(&env, &pool).estimate_swap(
-            &in_idx,
-            &out_idx,
-            &amount_in,
-        )
+        ensure_pool_allowed(&env, &pool);
+        AquariusPoolClient::new(&env, &pool).estimate_swap(&in_idx, &out_idx, &amount_in)
     }
 
     pub fn swap_pool(
@@ -157,6 +216,7 @@ impl SwapAdapter {
     ) -> u128 {
         bump_critical_ttl(&env);
         user.require_auth();
+        ensure_pool_allowed(&env, &pool);
         AquariusPoolClient::new(&env, &pool).swap(
             &user,
             &in_idx,
@@ -170,9 +230,48 @@ impl SwapAdapter {
         bump_critical_ttl(&env);
     }
 
+    pub fn propose_upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        bump_pending_upgrade_ttl(&env);
+    }
+
     pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
         bump_critical_ttl(&env);
         require_admin(&env, &admin);
+        bump_pending_upgrade_ttl(&env);
+        let pending_hash: BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
@@ -190,8 +289,18 @@ fn require_admin(env: &Env, admin: &Address) {
     admin.require_auth();
 }
 
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
+fn expected_admin_config() -> &'static str {
+    if cfg!(any(test, feature = "test-default-admin")) {
+        option_env!("SWAP_ADAPTER_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
+    } else {
+        option_env!("SWAP_ADAPTER_INIT_ADMIN")
+            .expect("SWAP_ADAPTER_INIT_ADMIN must be set at build time")
+    }
+}
+
+const TTL_THRESHOLD: u32 = 500_000;
+const TTL_EXTEND_TO: u32 = 1_000_000;
+const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
 
 #[cfg(test)]
 mod test;
@@ -208,5 +317,35 @@ fn bump_critical_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_pool_ttl(env: &Env, pool: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::AllowedPool(pool.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn ensure_pool_allowed(env: &Env, pool: &Address) {
+    bump_pool_ttl(env, pool);
+    let allowed: bool = env
+        .storage()
+        .persistent()
+        .get(&DataKey::AllowedPool(pool.clone()))
+        .unwrap_or(false);
+    if !allowed {
+        panic!("pool not allowed");
     }
 }

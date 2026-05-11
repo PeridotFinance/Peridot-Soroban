@@ -5,8 +5,9 @@ use soroban_sdk::{
 
 const SCALE_1E6: u128 = 1_000_000u128;
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
+const TTL_THRESHOLD: u32 = 500_000;
+const TTL_EXTEND_TO: u32 = 1_000_000;
+const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
 
 #[contracttype]
 pub enum DataKey {
@@ -15,6 +16,8 @@ pub enum DataKey {
     JumpMultiplierPerYear, // u128 scaled 1e6
     Kink,                  // u128 scaled 1e6
     Admin,                 // Address
+    PendingUpgradeHash,    // BytesN<32>
+    PendingUpgradeEta,     // u64 unix timestamp
 }
 
 #[contract]
@@ -23,6 +26,15 @@ pub struct JumpRateModel;
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModelInitialized {
+    pub base_rate: u128,
+    pub multiplier: u128,
+    pub jump_multiplier: u128,
+    pub kink: u128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ModelParamsUpdated {
     pub base_rate: u128,
     pub multiplier: u128,
     pub jump_multiplier: u128,
@@ -39,6 +51,7 @@ impl JumpRateModel {
         kink: u128,
         admin: Address,
     ) {
+        admin.require_auth();
         if env
             .storage()
             .persistent()
@@ -54,7 +67,6 @@ impl JumpRateModel {
         if base > 10_000_000u128 || multiplier > 10_000_000u128 || jump > 10_000_000u128 {
             panic!("invalid rate params");
         }
-        admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage()
             .persistent()
@@ -118,6 +130,9 @@ impl JumpRateModel {
     ) -> u128 {
         ensure_initialized(&env);
         bump_ttl(&env);
+        if reserve_factor > SCALE_1E6 {
+            panic!("invalid reserve_factor");
+        }
         let one_minus_rf = SCALE_1E6.saturating_sub(reserve_factor);
         let borrow_rate = Self::get_borrow_rate(env.clone(), cash, borrows, reserves);
         let rate_to_pool = borrow_rate.saturating_mul(one_minus_rf) / SCALE_1E6;
@@ -125,8 +140,81 @@ impl JumpRateModel {
         util.saturating_mul(rate_to_pool) / SCALE_1E6
     }
 
+    pub fn set_params(
+        env: Env,
+        admin: Address,
+        base: u128,
+        multiplier: u128,
+        jump: u128,
+        kink: u128,
+    ) {
+        require_admin(&env, &admin);
+        if kink > SCALE_1E6 {
+            panic!("invalid kink");
+        }
+        if base > 10_000_000u128 || multiplier > 10_000_000u128 || jump > 10_000_000u128 {
+            panic!("invalid rate params");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::BaseRatePerYear, &base);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MultiplierPerYear, &multiplier);
+        env.storage()
+            .persistent()
+            .set(&DataKey::JumpMultiplierPerYear, &jump);
+        env.storage().persistent().set(&DataKey::Kink, &kink);
+        bump_ttl(&env);
+        ModelParamsUpdated {
+            base_rate: base,
+            multiplier,
+            jump_multiplier: jump,
+            kink,
+        }
+        .publish(&env);
+    }
+
+    pub fn propose_upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
+        require_admin(&env, &admin);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        bump_pending_upgrade_ttl(&env);
+    }
+
     pub fn upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
         require_admin(&env, &admin);
+        bump_pending_upgrade_ttl(&env);
+        let pending_hash: BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
@@ -134,19 +222,28 @@ impl JumpRateModel {
         if borrows == 0 {
             return 0;
         }
-        let denom = cash.saturating_add(borrows).saturating_sub(reserves);
+        let assets = cash.saturating_add(borrows);
+        if reserves > assets {
+            panic!("reserves exceed total assets");
+        }
+        let denom = assets - reserves;
         if denom == 0 {
             return 0;
         }
-        borrows.saturating_mul(SCALE_1E6) / denom
+        let util = borrows.saturating_mul(SCALE_1E6) / denom;
+        util.min(SCALE_1E6)
     }
 }
 
 fn ensure_initialized(env: &Env) {
     let persistent = env.storage().persistent();
     if persistent.get::<_, Address>(&DataKey::Admin).is_none()
-        || persistent.get::<_, u128>(&DataKey::BaseRatePerYear).is_none()
-        || persistent.get::<_, u128>(&DataKey::MultiplierPerYear).is_none()
+        || persistent
+            .get::<_, u128>(&DataKey::BaseRatePerYear)
+            .is_none()
+        || persistent
+            .get::<_, u128>(&DataKey::MultiplierPerYear)
+            .is_none()
         || persistent
             .get::<_, u128>(&DataKey::JumpMultiplierPerYear)
             .is_none()
@@ -157,14 +254,22 @@ fn ensure_initialized(env: &Env) {
 }
 
 fn assert_expected_admin(_env: &Env, _admin: &Address) {
-    #[cfg(not(test))]
-    {
-        let expected_admin_str =
-            option_env!("JUMP_RATE_MODEL_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
-        let expected_admin = Address::from_string(&String::from_str(_env, expected_admin_str));
-        if _admin != &expected_admin {
-            panic!("unexpected admin");
-        }
+    let expected_admin_str = expected_admin_config();
+    let expected_admin = Address::from_string(&String::from_str(_env, expected_admin_str));
+    if _admin != &expected_admin {
+        panic!("unexpected admin");
+    }
+}
+
+fn expected_admin_config() -> &'static str {
+    if cfg!(any(
+        test,
+        all(debug_assertions, feature = "test-default-admin")
+    )) {
+        option_env!("JUMP_RATE_MODEL_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
+    } else {
+        option_env!("JUMP_RATE_MODEL_INIT_ADMIN")
+            .expect("JUMP_RATE_MODEL_INIT_ADMIN must be set at build time")
     }
 }
 
@@ -193,16 +298,31 @@ fn bump_ttl(env: &Env) {
         persistent.extend_ttl(&DataKey::MultiplierPerYear, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::JumpMultiplierPerYear) {
-        persistent.extend_ttl(&DataKey::JumpMultiplierPerYear, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::JumpMultiplierPerYear,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::Kink) {
         persistent.extend_ttl(&DataKey::Kink, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 
+fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use soroban_sdk::testutils::Address as _;
 
     #[test]
     fn model_rates() {
@@ -223,5 +343,66 @@ mod test {
         assert!(br_high > br_low);
         let sr = client.get_supply_rate(&1_000u128, &500u128, &0u128, &100_000u128);
         assert!(sr > 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "unexpected admin")]
+    fn initialize_rejects_unexpected_admin() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::generate(&env);
+        let id = env.register(JumpRateModel, ());
+        let client = JumpRateModelClient::new(&env, &id);
+        client.initialize(
+            &20_000u128,
+            &180_000u128,
+            &4_000_000u128,
+            &800_000u128,
+            &admin,
+        );
+    }
+
+    #[test]
+    fn set_params_updates_curve() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let id = env.register(JumpRateModel, ());
+        let client = JumpRateModelClient::new(&env, &id);
+        client.initialize(
+            &20_000u128,
+            &180_000u128,
+            &4_000_000u128,
+            &800_000u128,
+            &admin,
+        );
+        let before = client.get_borrow_rate(&500u128, &500u128, &0u128);
+        client.set_params(
+            &admin,
+            &10_000u128,
+            &120_000u128,
+            &3_000_000u128,
+            &700_000u128,
+        );
+        let after = client.get_borrow_rate(&500u128, &500u128, &0u128);
+        assert!(after != before);
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid reserve_factor")]
+    fn get_supply_rate_rejects_invalid_reserve_factor() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let id = env.register(JumpRateModel, ());
+        let client = JumpRateModelClient::new(&env, &id);
+        client.initialize(
+            &20_000u128,
+            &180_000u128,
+            &4_000_000u128,
+            &800_000u128,
+            &admin,
+        );
+        let _ = client.get_supply_rate(&1_000u128, &500u128, &0u128, &1_000_001u128);
     }
 }

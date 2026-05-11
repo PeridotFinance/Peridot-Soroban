@@ -9,7 +9,22 @@ pub struct OracleUpdated {
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingOracleUpdated {
+    #[topic]
+    pub oracle: Address,
+    pub execute_after: u64,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdminUpdated {
+    #[topic]
+    pub admin: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingAdminUpdated {
     #[topic]
     pub admin: Address,
 }
@@ -22,8 +37,22 @@ pub struct CloseFactorUpdated {
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingCloseFactorUpdated {
+    pub close_factor_mantissa: u128,
+    pub execute_after: u64,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LiquidationIncentiveUpdated {
     pub incentive_mantissa: u128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingLiqIncentiveUpdated {
+    pub incentive_mantissa: u128,
+    pub execute_after: u64,
 }
 
 #[contractevent]
@@ -32,6 +61,15 @@ pub struct MarketCollateralFactorUpdated {
     #[topic]
     pub market: Address,
     pub cf_mantissa: u128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingMarketCFUpdated {
+    #[topic]
+    pub market: Address,
+    pub cf_mantissa: u128,
+    pub execute_after: u64,
 }
 
 #[contractevent]
@@ -160,4 +198,36 @@ pub struct LiquidateBorrow {
     pub collateral_market: Address,
     pub repay_amount: u128,
     pub seize_tokens: u128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClaimExternalCallFailed {
+    #[topic]
+    pub user: Address,
+    #[topic]
+    pub contract: Address,
+    #[topic]
+    pub function: Symbol,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClaimAccruedMissing {
+    #[topic]
+    pub user: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SupplySpeedOverflowDisabled {
+    #[topic]
+    pub market: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BorrowSpeedOverflowDisabled {
+    #[topic]
+    pub market: Address,
 }

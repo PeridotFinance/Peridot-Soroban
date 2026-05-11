@@ -1,6 +1,7 @@
 use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{contract, contractimpl, Env, IntoVal};
 
 #[contract]
@@ -42,6 +43,9 @@ impl MockAquariusRouter {
 #[contract]
 struct MockAquariusPool;
 
+#[contract]
+struct MockSoroswapRouterEmpty;
+
 #[contractimpl]
 impl MockAquariusPool {
     pub fn estimate_swap(_env: Env, _in_idx: u32, _out_idx: u32, amount_in: u128) -> u128 {
@@ -57,6 +61,20 @@ impl MockAquariusPool {
         amount_out_min: u128,
     ) -> u128 {
         amount_out_min
+    }
+}
+
+#[contractimpl]
+impl MockSoroswapRouterEmpty {
+    pub fn swap_exact_tokens_for_tokens(
+        env: Env,
+        _amount_in: i128,
+        _amount_out_min: i128,
+        _path: Vec<Address>,
+        _to: Address,
+        _deadline: u64,
+    ) -> Vec<i128> {
+        Vec::new(&env)
     }
 }
 
@@ -95,7 +113,7 @@ fn test_initialize() {
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
 
     let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
-    let out = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &0u128, &path, &9999u64);
+    let out = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &1u128, &path, &9999u64);
     assert_eq!(out, 100u128);
 }
 
@@ -131,7 +149,7 @@ fn test_set_router() {
     adapter.set_router(&admin, &new_router_id);
 
     let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
-    let out = adapter.swap_exact_tokens_for_tokens(&user, &50u128, &0u128, &path, &9999u64);
+    let out = adapter.swap_exact_tokens_for_tokens(&user, &50u128, &1u128, &path, &9999u64);
     assert_eq!(out, 50u128);
 }
 
@@ -159,6 +177,78 @@ fn test_swap_exact_tokens() {
 }
 
 #[test]
+#[should_panic(expected = "amount too large")]
+fn test_swap_exact_tokens_rejects_amount_over_i128() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let _ = adapter.swap_exact_tokens_for_tokens(
+        &user,
+        &(i128::MAX as u128 + 1),
+        &1u128,
+        &path,
+        &9999u64,
+    );
+}
+
+#[test]
+#[should_panic(expected = "amount too large")]
+fn test_swap_exact_tokens_rejects_amount_out_min_over_i128() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let _ = adapter.swap_exact_tokens_for_tokens(
+        &user,
+        &1u128,
+        &(i128::MAX as u128 + 1),
+        &path,
+        &9999u64,
+    );
+}
+
+#[test]
+#[should_panic(expected = "zero slippage")]
+fn test_swap_exact_tokens_rejects_zero_slippage_min() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &0u128, &path, &9999u64);
+}
+
+#[test]
+#[should_panic(expected = "deadline too far")]
+fn test_swap_exact_tokens_rejects_far_deadline() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let now = env.ledger().timestamp();
+    let too_far = now.saturating_add(MAX_DEADLINE_SECONDS).saturating_add(1);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &1u128, &path, &too_far);
+}
+
+#[test]
+#[should_panic(expected = "router returned empty amounts")]
+fn test_swap_exact_tokens_rejects_empty_router_amounts() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let admin = default_admin(&env);
+    let empty_router_id = env.register(MockSoroswapRouterEmpty, ());
+    adapter.set_router(&admin, &empty_router_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &1u128, &path, &9999u64);
+}
+
+#[test]
+#[should_panic(expected = "deadline expired")]
+fn test_swap_exact_tokens_rejects_past_deadline() {
+    let (env, adapter_id, token_a_id, token_b_id, user) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let path = Vec::from_array(&env, [token_a_id.clone(), token_b_id.clone()]);
+    env.ledger().with_mut(|l| l.timestamp = 100);
+    let _ = adapter.swap_exact_tokens_for_tokens(&user, &100u128, &1u128, &path, &99u64);
+}
+
+#[test]
 fn test_swap_chained() {
     let env = Env::default();
     env.mock_all_auths();
@@ -166,14 +256,46 @@ fn test_swap_chained() {
     let user = Address::generate(&env);
 
     let router_id = env.register(MockAquariusRouter, ());
+    let pool_id = env.register(MockAquariusPool, ());
+    let adapter_id = env.register(SwapAdapter, ());
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    adapter.initialize(&admin, &router_id);
+    adapter.set_pool_allowed(&admin, &pool_id, &true);
+
+    let token_in = Address::generate(&env);
+    let token_out = Address::generate(&env);
+    let path = Vec::from_array(&env, [token_in.clone(), token_out]);
+    let hops = Vec::from_array(
+        &env,
+        [(path, BytesN::from_array(&env, &[1u8; 32]), pool_id)],
+    );
+    let out = adapter.swap_chained(&user, &hops, &token_in, &10u128, &9u128);
+    assert_eq!(out, 9u128);
+}
+
+#[test]
+#[should_panic(expected = "pool not allowed")]
+fn test_swap_chained_requires_allowlisted_pools() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = default_admin(&env);
+    let user = Address::generate(&env);
+
+    let router_id = env.register(MockAquariusRouter, ());
+    let pool_id = env.register(MockAquariusPool, ());
     let adapter_id = env.register(SwapAdapter, ());
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
     adapter.initialize(&admin, &router_id);
 
-    let swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)> = Vec::new(&env);
     let token_in = Address::generate(&env);
-    let out = adapter.swap_chained(&user, &swaps_chain, &token_in, &10u128, &9u128);
-    assert_eq!(out, 9u128);
+    let token_out = Address::generate(&env);
+    let path = Vec::from_array(&env, [token_in.clone(), token_out]);
+    let hops = Vec::from_array(
+        &env,
+        [(path, BytesN::from_array(&env, &[2u8; 32]), pool_id)],
+    );
+
+    let _ = adapter.swap_chained(&user, &hops, &token_in, &10u128, &9u128);
 }
 
 #[test]
@@ -188,12 +310,46 @@ fn test_swap_pool_and_estimate() {
     let adapter_id = env.register(SwapAdapter, ());
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
     adapter.initialize(&admin, &router_id);
+    adapter.set_pool_allowed(&admin, &pool_id, &true);
 
     let est = adapter.estimate_pool_swap(&pool_id, &0u32, &1u32, &123u128);
     assert_eq!(est, 123u128);
 
     let out = adapter.swap_pool(&user, &pool_id, &0u32, &1u32, &100u128, &99u128);
     assert_eq!(out, 99u128);
+}
+
+#[test]
+#[should_panic(expected = "pool not allowed")]
+fn test_swap_pool_requires_allowlisted_pool() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = default_admin(&env);
+    let user = Address::generate(&env);
+
+    let router_id = env.register(MockAquariusRouter, ());
+    let pool_id = env.register(MockAquariusPool, ());
+    let adapter_id = env.register(SwapAdapter, ());
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    adapter.initialize(&admin, &router_id);
+
+    let _ = adapter.swap_pool(&user, &pool_id, &0u32, &1u32, &100u128, &99u128);
+}
+
+#[test]
+#[should_panic(expected = "pool not allowed")]
+fn test_estimate_pool_swap_requires_allowlisted_pool() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = default_admin(&env);
+
+    let router_id = env.register(MockAquariusRouter, ());
+    let pool_id = env.register(MockAquariusPool, ());
+    let adapter_id = env.register(SwapAdapter, ());
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    adapter.initialize(&admin, &router_id);
+
+    let _ = adapter.estimate_pool_swap(&pool_id, &0u32, &1u32, &100u128);
 }
 
 #[test]

@@ -29,7 +29,6 @@ USDT_VAULT=${USDT_VAULT:-CDM37TMZO2QQQP6CIMU7E6OIBR6IQMM46P5PCSQ5D7AX6GMEFQX7NTK
 XLM_VAULT=${XLM_VAULT:-CCPQYPFNAGQPQTMPAEBGNPNSQJ4FAJYPX6WLYBKE5SO5ZONXANCUEYE7}
 
 MAX_LEVERAGE=${MAX_LEVERAGE:-5}
-LIQ_BONUS_SCALED=${LIQ_BONUS_SCALED:-50000}
 
 
 echo "Deploying SwapAdapter..."
@@ -47,7 +46,7 @@ echo "MarginController: $MARGIN_ID"
 echo "Initialize MarginController..."
 stellar contract invoke --id "$MARGIN_ID" --source-account "$IDENTITY" $NETWORK -- \
   initialize --admin "$ADMIN" --peridottroller "$PERIDOTTROLLER" --swap_adapter "$SWAP_ID" \
-  --max_leverage "$MAX_LEVERAGE" --liquidation_bonus_scaled "$LIQ_BONUS_SCALED"
+  --max_leverage "$MAX_LEVERAGE"
 
 echo "Set markets..."
 stellar contract invoke --id "$MARGIN_ID" --source-account "$IDENTITY" $NETWORK -- \

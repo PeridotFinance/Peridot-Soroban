@@ -10,8 +10,11 @@ pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIA
 #[contracttype]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     MaxSupply,
     Initialized,
+    PendingUpgradeHash,
+    PendingUpgradeEta,
 }
 
 /// Peridot reward token contract.
@@ -50,8 +53,7 @@ impl PeridotToken {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
         }
-        let expected_admin_str =
-            option_env!("PERIDOT_TOKEN_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN);
+        let expected_admin_str = expected_admin_config();
         let expected_admin = Address::from_string(&String::from_str(&env, expected_admin_str));
         if admin != expected_admin {
             panic!("unexpected admin");
@@ -119,18 +121,22 @@ impl PeridotToken {
         TokenBase::allowance(&env, &owner, &spender)
     }
 
-    pub fn approve(env: Env, owner: Address, spender: Address, amount: i128) {
+    pub fn approve(
+        env: Env,
+        owner: Address,
+        spender: Address,
+        amount: i128,
+        live_until_ledger: u32,
+    ) {
         bump_critical_ttl(&env);
-        owner.require_auth();
         if amount < 0 {
             panic!("bad amount");
         }
-        TokenBase::approve(&env, &owner, &spender, amount, u32::MAX);
+        TokenBase::approve(&env, &owner, &spender, amount, live_until_ledger);
     }
 
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         bump_critical_ttl(&env);
-        from.require_auth();
         if amount <= 0 {
             panic!("bad amount");
         }
@@ -180,18 +186,72 @@ impl PeridotToken {
     pub fn set_admin(env: Env, new_admin: Address) {
         bump_critical_ttl(&env);
         require_admin(&env);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingAdmin, &new_admin);
+    }
+
+    pub fn accept_admin(env: Env) {
+        bump_critical_ttl(&env);
+        let new_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingAdmin)
+            .expect("pending admin not set");
+        new_admin.require_auth();
         env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.storage().persistent().remove(&DataKey::PendingAdmin);
+    }
+
+    pub fn propose_upgrade_wasm(env: Env, new_wasm_hash: BytesN<32>) {
+        bump_critical_ttl(&env);
+        require_admin(&env);
+        let execute_after = env
+            .ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeHash, &new_wasm_hash);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        bump_pending_upgrade_ttl(&env);
     }
 
     pub fn upgrade_wasm(env: Env, new_wasm_hash: BytesN<32>) {
         bump_critical_ttl(&env);
         require_admin(&env);
+        bump_pending_upgrade_ttl(&env);
+        let pending_hash: BytesN<32> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeHash)
+            .expect("pending upgrade not set");
+        let execute_after: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingUpgradeEta)
+            .expect("pending upgrade eta not set");
+        if pending_hash != new_wasm_hash {
+            panic!("upgrade hash mismatch");
+        }
+        if env.ledger().timestamp() < execute_after {
+            panic!("upgrade timelocked");
+        }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeHash);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
 
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
+const TTL_THRESHOLD: u32 = 500_000;
+const TTL_EXTEND_TO: u32 = 1_000_000;
+const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
 
 fn require_admin(env: &Env) -> Address {
     let admin: Address = env
@@ -209,6 +269,9 @@ fn bump_critical_ttl(env: &Env) {
     if persistent.has(&DataKey::Admin) {
         persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    if persistent.has(&DataKey::PendingAdmin) {
+        persistent.extend_ttl(&DataKey::PendingAdmin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     if persistent.has(&DataKey::MaxSupply) {
         persistent.extend_ttl(&DataKey::MaxSupply, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
@@ -219,30 +282,24 @@ fn bump_critical_ttl(env: &Env) {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use soroban_sdk::testutils::Address as _;
-
-    #[test]
-    fn test_initialize_and_mint() {
-        let env = Env::default();
-        env.mock_all_auths_allowing_non_root_auth();
-        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
-        let id = env.register(PeridotToken, ());
-        let client = PeridotTokenClient::new(&env, &id);
-        client.initialize(
-            &String::from_str(&env, "Peridot"),
-            &String::from_str(&env, "P"),
-            &6u32,
-            &admin,
-            &1_000_000i128,
-        );
-
-        let user = Address::generate(&env);
-        client.mint(&user, &100i128);
-        assert_eq!(client.balance(&user), 100i128);
-        assert_eq!(client.total_supply(), 100i128);
+fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
-
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }
+
+fn expected_admin_config() -> &'static str {
+    if cfg!(any(test, feature = "test-default-admin")) {
+        option_env!("PERIDOT_TOKEN_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
+    } else {
+        option_env!("PERIDOT_TOKEN_INIT_ADMIN")
+            .expect("PERIDOT_TOKEN_INIT_ADMIN must be set at build time")
+    }
+}
+
+#[cfg(test)]
+mod test;

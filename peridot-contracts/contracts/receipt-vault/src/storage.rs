@@ -5,6 +5,7 @@ use stellar_tokens::fungible::Base as TokenBase;
 #[contracttype]
 pub enum DataKey {
     UnderlyingToken,
+    ManagedCash, // u128 internal cash accounting; excludes direct donations
     TotalDeposited,
     InterestRatePerSecond, // u128, scaled by 1_000_000 (6 decimals)
     LastUpdateTime,        // u64
@@ -12,28 +13,49 @@ pub enum DataKey {
     YearlyRateScaled,      // u128, scaled by 1_000_000 (6 decimals)
     InitialExchangeRate,   // u128, scaled 1e6
     // Borrowing-related keys
-    BorrowSnapshots(Address), // BorrowSnapshot per user
-    HasBorrowed(Address),     // bool flag per user
-    TotalBorrowed,            // u128
-    BorrowIndex,              // u128 (scaled 1e18)
-    BorrowYearlyRateScaled,   // u128, scaled 1e6
-    CollateralFactorScaled,   // u128, scaled 1e6 (e.g., 500_000 = 50%)
-    Admin,                    // Address
-    Peridottroller,           // Address (optional)
-    InterestModel,            // Address (optional)
-    ReserveFactorScaled,      // u128 (scaled 1e6), defaults 0
-    AdminFeeScaled,           // u128 (scaled 1e6), defaults 0
-    FlashLoanFeeScaled,       // u128 (scaled 1e6), defaults 0
-    TotalAdminFees,           // u128 accumulated admin fees
-    TotalReserves,            // u128 accumulated reserves
-    SupplyCap,                // u128, max total underlying (principal + interest)
-    BorrowCap,                // u128, max total borrowed
-    Initialized,              // bool flag to prevent re-initialization
-    BoostedVault,             // Optional DeFindex vault address for boosted markets
+    BorrowSnapshots(Address),      // BorrowSnapshot per user
+    HasBorrowed(Address),          // bool flag per user
+    MarginBorrowSnapshots(u64),    // BorrowSnapshot per margin position
+    MarginHasBorrowed(u64),        // bool flag per margin position
+    TotalBorrowed,                 // u128
+    BorrowIndex,                   // u128 (scaled 1e18)
+    BorrowYearlyRateScaled,        // u128, scaled 1e6
+    CollateralFactorScaled,        // u128, scaled 1e6 (e.g., 500_000 = 50%)
+    Admin,                         // Address
+    PendingAdmin,                  // Address pending acceptance
+    Peridottroller,                // Address (optional)
+    InterestModel,                 // Address (optional)
+    ReserveFactorScaled,           // u128 (scaled 1e6), defaults 0
+    AdminFeeScaled,                // u128 (scaled 1e6), defaults 0
+    FlashLoanFeeScaled,            // u128 (scaled 1e6), defaults 0
+    TotalAdminFees,                // u128 accumulated admin fees
+    TotalReserves,                 // u128 accumulated reserves
+    SupplyCap,                     // u128, max total underlying (principal + interest)
+    BorrowCap,                     // u128, max total borrowed
+    Initialized,                   // bool flag to prevent re-initialization
+    BoostedVault,                  // Optional DeFindex vault address for boosted markets
+    BoostedUnderlyingCached,       // u128 cached underlying amount for boosted vault
+    BoostedUnderlyingUpdatedAt,    // u64 timestamp of cached boosted underlying
+    TotalBorrowPrincipal,          // u128 principal-only global borrow total
+    RatesReady,                    // bool, borrow/rate-sensitive operations enabled
+    IdleCashBufferBps,             // u32, target idle cash in basis points (0..=10_000)
+    FlashLoanActive,               // bool reentrancy guard for accounting-sensitive paths
+    MarginController,              // Address (optional), enforces margin collateral locks
+    MarginWithdrawBypass(Address), // bool one-shot bypass for margin-controller-managed withdraw
+    PendingUpgradeHash,            // BytesN<32> target wasm hash for timelocked upgrade
+    PendingUpgradeEta,             // u64 unix timestamp when upgrade becomes executable
 }
 
-const TTL_THRESHOLD: u32 = 100_000;
-const TTL_EXTEND_TO: u32 = 200_000;
+const TTL_THRESHOLD: u32 = 500_000;
+const TTL_EXTEND_TO: u32 = 1_000_000;
+const BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = 500_000;
+const BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = 1_000_000;
+const HAS_BORROWED_TTL_THRESHOLD: u32 = 500_000;
+const HAS_BORROWED_TTL_EXTEND_TO: u32 = 1_000_000;
+const MARGIN_BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = 500_000;
+const MARGIN_BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = 1_000_000;
+const MARGIN_HAS_BORROWED_TTL_THRESHOLD: u32 = 500_000;
+const MARGIN_HAS_BORROWED_TTL_EXTEND_TO: u32 = 1_000_000;
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -73,20 +95,17 @@ pub struct SeizeContext {
 
 pub fn ensure_initialized(env: &Env) -> Address {
     bump_core_ttl(env);
-    let token: Address = env
-        .storage()
-        .persistent()
+    bump_borrow_state_ttl(env);
+    let persistent = env.storage().persistent();
+    let token: Address = persistent
         .get(&DataKey::UnderlyingToken)
         .expect("Vault not initialized");
-    if !env
-        .storage()
-        .persistent()
+    if !persistent
         .get::<_, bool>(&DataKey::Initialized)
         .unwrap_or(false)
     {
-        env.storage().persistent().set(&DataKey::Initialized, &true);
+        panic!("Vault not initialized");
     }
-    bump_core_ttl(env);
     token
 }
 
@@ -95,11 +114,84 @@ pub fn bump_core_ttl(env: &Env) {
     if persistent.has(&DataKey::Admin) {
         persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    if persistent.has(&DataKey::PendingAdmin) {
+        persistent.extend_ttl(&DataKey::PendingAdmin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     if persistent.has(&DataKey::UnderlyingToken) {
         persistent.extend_ttl(&DataKey::UnderlyingToken, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    if persistent.has(&DataKey::ManagedCash) {
+        persistent.extend_ttl(&DataKey::ManagedCash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     if persistent.has(&DataKey::Initialized) {
         persistent.extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::CollateralFactorScaled) {
+        persistent.extend_ttl(
+            &DataKey::CollateralFactorScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+    if persistent.has(&DataKey::Peridottroller) {
+        persistent.extend_ttl(&DataKey::Peridottroller, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::InterestModel) {
+        persistent.extend_ttl(&DataKey::InterestModel, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::ReserveFactorScaled) {
+        persistent.extend_ttl(&DataKey::ReserveFactorScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::AdminFeeScaled) {
+        persistent.extend_ttl(&DataKey::AdminFeeScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::FlashLoanFeeScaled) {
+        persistent.extend_ttl(&DataKey::FlashLoanFeeScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalAdminFees) {
+        persistent.extend_ttl(&DataKey::TotalAdminFees, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalReserves) {
+        persistent.extend_ttl(&DataKey::TotalReserves, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::SupplyCap) {
+        persistent.extend_ttl(&DataKey::SupplyCap, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BorrowCap) {
+        persistent.extend_ttl(&DataKey::BorrowCap, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BoostedVault) {
+        persistent.extend_ttl(&DataKey::BoostedVault, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::BoostedUnderlyingCached) {
+        persistent.extend_ttl(
+            &DataKey::BoostedUnderlyingCached,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+    if persistent.has(&DataKey::BoostedUnderlyingUpdatedAt) {
+        persistent.extend_ttl(
+            &DataKey::BoostedUnderlyingUpdatedAt,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+    if persistent.has(&DataKey::InitialExchangeRate) {
+        persistent.extend_ttl(&DataKey::InitialExchangeRate, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::FlashLoanActive) {
+        persistent.extend_ttl(&DataKey::FlashLoanActive, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 
@@ -107,7 +199,11 @@ pub fn bump_borrow_snapshot_ttl(env: &Env, user: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::BorrowSnapshots(user.clone());
     if persistent.has(&key) {
-        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &key,
+            BORROW_SNAPSHOT_TTL_THRESHOLD,
+            BORROW_SNAPSHOT_TTL_EXTEND_TO,
+        );
     }
 }
 
@@ -115,8 +211,42 @@ pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::HasBorrowed(user.clone());
     if persistent.has(&key) {
-        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(&key, HAS_BORROWED_TTL_THRESHOLD, HAS_BORROWED_TTL_EXTEND_TO);
     }
+}
+
+pub fn bump_user_borrow_state_ttl(env: &Env, user: &Address) {
+    bump_borrow_snapshot_ttl(env, user);
+    bump_has_borrowed_ttl(env, user);
+}
+
+pub fn bump_margin_borrow_snapshot_ttl(env: &Env, position_id: u64) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarginBorrowSnapshots(position_id);
+    if persistent.has(&key) {
+        persistent.extend_ttl(
+            &key,
+            MARGIN_BORROW_SNAPSHOT_TTL_THRESHOLD,
+            MARGIN_BORROW_SNAPSHOT_TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_margin_has_borrowed_ttl(env: &Env, position_id: u64) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarginHasBorrowed(position_id);
+    if persistent.has(&key) {
+        persistent.extend_ttl(
+            &key,
+            MARGIN_HAS_BORROWED_TTL_THRESHOLD,
+            MARGIN_HAS_BORROWED_TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_margin_borrow_state_ttl(env: &Env, position_id: u64) {
+    bump_margin_borrow_snapshot_ttl(env, position_id);
+    bump_margin_has_borrowed_ttl(env, position_id);
 }
 
 pub fn bump_borrow_state_ttl(env: &Env) {
@@ -125,7 +255,11 @@ pub fn bump_borrow_state_ttl(env: &Env) {
         persistent.extend_ttl(&DataKey::YearlyRateScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::BorrowYearlyRateScaled) {
-        persistent.extend_ttl(&DataKey::BorrowYearlyRateScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::BorrowYearlyRateScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::TotalBorrowed) {
         persistent.extend_ttl(&DataKey::TotalBorrowed, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -141,6 +275,23 @@ pub fn bump_borrow_state_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::TotalDeposited) {
         persistent.extend_ttl(&DataKey::TotalDeposited, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalBorrowPrincipal) {
+        persistent.extend_ttl(&DataKey::TotalBorrowPrincipal, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_idle_cash_buffer_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::IdleCashBufferBps) {
+        persistent.extend_ttl(&DataKey::IdleCashBufferBps, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_rates_ready_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::RatesReady) {
+        persistent.extend_ttl(&DataKey::RatesReady, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

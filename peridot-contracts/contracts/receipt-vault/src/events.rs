@@ -61,6 +61,13 @@ pub struct NewAdmin {
     pub admin: Address,
 }
 
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingAdmin {
+    #[topic]
+    pub admin: Address,
+}
+
 /// Mirrors Compound's NewMarketInterestRateModel event.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -125,6 +132,13 @@ pub struct NewBorrowCap {
     pub borrow_cap: u128,
 }
 
+/// Idle cash buffer target update (basis points of total underlying).
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NewIdleCashBuffer {
+    pub idle_cash_buffer_bps: u32,
+}
+
 /// Mirrors Compound's ReservesReduced event.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -149,6 +163,14 @@ pub struct NewPeridottroller {
     pub peridottroller: Address,
 }
 
+/// Emits when the boosted vault address is updated.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BoostedVaultSet {
+    pub old_vault: Option<Address>,
+    pub new_vault: Option<Address>,
+}
+
 /// Flash loan execution log.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -168,6 +190,18 @@ pub struct ExternalCallFailed {
     #[topic]
     pub function: Symbol,
     pub recoverable: bool,
+    pub failure_kind: u32,
+}
+
+/// Dedicated signal for reward accrual failures with user context.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RewardAccrualFailed {
+    #[topic]
+    pub controller: Address,
+    #[topic]
+    pub user: Address,
+    pub operation: Symbol,
     pub failure_kind: u32,
 }
 

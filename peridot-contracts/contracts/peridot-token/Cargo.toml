@@ -9,3 +9,6 @@ stellar-tokens = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[features]
+test-default-admin = []

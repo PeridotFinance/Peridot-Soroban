@@ -1,47 +1,50 @@
-#![cfg(test)]
 use super::*;
-use soroban_sdk::{testutils::Address as _, Address, Env, String};
+use soroban_sdk::testutils::Address as _;
 
 #[test]
-fn test_token_mint_transfer_burn() {
+fn test_initialize_and_mint() {
     let env = Env::default();
-    env.mock_all_auths();
-
-    let admin =
-        Address::from_string(&String::from_str(&env, super::DEFAULT_INIT_ADMIN));
-    let a = Address::generate(&env);
-    let b = Address::generate(&env);
-
+    env.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
     let id = env.register(PeridotToken, ());
-    let c = PeridotTokenClient::new(&env, &id);
-
-    std::env::set_var("PERIDOT_TOKEN_INIT_ADMIN", super::DEFAULT_INIT_ADMIN);
-    c.initialize(
+    let client = PeridotTokenClient::new(&env, &id);
+    client.initialize(
         &String::from_str(&env, "Peridot"),
         &String::from_str(&env, "P"),
         &6u32,
         &admin,
-        &1_000_000_000i128,
+        &1_000_000i128,
     );
 
-    // Mint
-    c.mint(&a, &1000i128);
-    assert_eq!(c.total_supply(), 1000i128);
-    assert_eq!(c.balance_of(&a), 1000i128);
+    let user = Address::generate(&env);
+    client.mint(&user, &100i128);
+    assert_eq!(client.balance(&user), 100i128);
+    assert_eq!(client.total_supply(), 100i128);
+}
 
-    // Transfer
-    c.transfer(&a, &b, &300i128);
-    assert_eq!(c.balance_of(&a), 700i128);
-    assert_eq!(c.balance_of(&b), 300i128);
+#[test]
+#[should_panic]
+fn test_transfer_from_requires_spender_auth() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+    let owner = Address::generate(&env);
+    let spender = Address::generate(&env);
+    let recipient = Address::generate(&env);
 
-    // Approve + transfer_from
-    c.approve(&b, &a, &100i128); // b approves a to spend 100 (symmetry for test)
-    c.transfer_from(&a, &b, &a, &100i128);
-    assert_eq!(c.balance_of(&a), 800i128);
-    assert_eq!(c.balance_of(&b), 200i128);
+    let id = env.register(PeridotToken, ());
+    let client = PeridotTokenClient::new(&env, &id);
+    client.initialize(
+        &String::from_str(&env, "Peridot"),
+        &String::from_str(&env, "P"),
+        &6u32,
+        &admin,
+        &1_000_000i128,
+    );
+    client.mint(&owner, &1000i128);
+    client.approve(&owner, &spender, &500i128, &u32::MAX);
 
-    // Burn
-    c.burn(&a, &200i128);
-    assert_eq!(c.balance_of(&a), 600i128);
-    assert_eq!(c.total_supply(), 800i128);
+    // Remove mocked auth entries and ensure spender auth is required.
+    env.set_auths(&[]);
+    client.transfer_from(&spender, &owner, &recipient, &100i128);
 }

@@ -9,12 +9,12 @@ crate-type = ["cdylib"]
 [dependencies]
 soroban-sdk = { workspace = true }
 receipt-vault = { path = "../receipt-vault" }
-simple-peridottroller = { path = "../simple-peridottroller" }
-swap-adapter = { path = "../swap-adapter" }
+simple-peridottroller = { path = "../simple-peridottroller", features = ["test-default-admin"] }
+swap-adapter = { path = "../swap-adapter", features = ["test-default-admin"] }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
 mock-token = { path = "../mocks/mock-token" }
 receipt-vault = { path = "../receipt-vault" }
-simple-peridottroller = { path = "../simple-peridottroller" }
-swap-adapter = { path = "../swap-adapter" }
+simple-peridottroller = { path = "../simple-peridottroller", features = ["test-default-admin"] }
+swap-adapter = { path = "../swap-adapter", features = ["test-default-admin"] }

@@ -1,23 +1,31 @@
 use soroban_sdk::{contracttype, Address, Env};
 
-#[contracttype]
+#[contracttype(export = false)]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     Initialized,
-    PauseGuardian,              // Address (optional)
-    SupportedMarkets,           // Map<Address, bool>
-    UserMarkets(Address),       // Vec<Address>
-    Oracle,                     // Address
-    CloseFactorScaled,          // u128 scaled 1e6
-    LiquidationIncentiveScaled, // u128 scaled 1e6
-    ReserveRecipient,           // Address for liquidation fee pTokens
-    PauseBorrow,                // Map<Address, bool>
-    PauseRedeem,                // Map<Address, bool>
-    PauseLiquidation,           // Map<Address, bool>
-    PauseDeposit,               // Map<Address, bool>
-    LiquidationFeeScaled,       // u128 scaled 1e6, portion to reserves
-    OracleMaxAgeMultiplier,     // u64 multiplier of resolution (default 2)
-    OracleAssetSymbol(Address), // Optional Reflector symbol override
+    PauseGuardian,                // Address (optional)
+    PauseExpiryMigrationDone,     // bool: legacy pause-expiry migration completed
+    PauseExpiryMigrationCursor,   // u32: next supported-market index to migrate
+    SupportedMarkets,             // Map<Address, bool>
+    UserMarkets(Address),         // Vec<Address>
+    Oracle,                       // Address
+    CloseFactorScaled,            // u128 scaled 1e6
+    LiquidationIncentiveScaled,   // u128 scaled 1e6
+    MarginLiquidationControllers, // Map<Address, bool>
+    ReserveRecipient,             // Address for liquidation fee pTokens
+    PauseBorrow,                  // Map<Address, bool>
+    PauseBorrowUntil,             // Map<Address, u64> pause expiry
+    PauseRedeem,                  // Map<Address, bool>
+    PauseRedeemUntil,             // Map<Address, u64> pause expiry
+    PauseLiquidation,             // Map<Address, bool>
+    PauseLiquidationUntil,        // Map<Address, u64> pause expiry
+    PauseDeposit,                 // Map<Address, bool>
+    PauseDepositUntil,            // Map<Address, u64> pause expiry
+    LiquidationFeeScaled,         // u128 scaled 1e6, portion to reserves
+    OracleMaxAgeMultiplier,       // u64 multiplier of resolution (default 2)
+    OracleAssetSymbol(Address),   // Optional Reflector symbol override
     // Collateral factors per market (scaled 1e6)
     MarketCF(Address),
     // Rewards
@@ -33,6 +41,22 @@ pub enum DataKey {
     Accrued(Address),
     PriceCache(Address),
     FallbackPrice(Address),
+    FallbackPriceSetAt(Address), // u64 timestamp when fallback was set
+    SupportedToken(Address),     // bool: token belongs to at least one supported market
+    MarketUnderlying(Address),   // Address: cached market -> underlying token
+    MarketZeroTotalsVerifiedAt(Address), // u64 timestamp for emergency delist gating
+    BoostedVaultOwner(Address),  // Address: boosted vault -> owning receipt-vault
+    MarketUserCounts,            // Map<Address, u32>: number of users with market in UserMarkets
+    PendingUpgradeHash,          // BytesN<32>: timelocked controller upgrade target
+    PendingUpgradeEta,           // u64: earliest timestamp when upgrade can execute
+    PendingOracle,               // Address: staged oracle update target
+    PendingOracleEta,            // u64: earliest timestamp for staged oracle update
+    PendingCloseFactorScaled,    // u128: staged close factor
+    PendingCloseFactorEta,       // u64: earliest timestamp for staged close factor update
+    PendingLiqIncentiveScaled,   // u128: staged liquidation incentive
+    PendingLiqIncentiveEta,      // u64: earliest timestamp for staged liquidation incentive update
+    PendingMarketCF(Address),    // u128: staged market collateral factor
+    PendingMarketCFEta(Address), // u64: earliest timestamp for staged market CF update
 }
 
 #[contracttype]
@@ -90,8 +114,8 @@ pub fn require_admin(env: Env) {
     admin.require_auth();
 }
 
-const TTL_THRESHOLD: u32 = 100_000_000;
-const TTL_EXTEND_TO: u32 = 200_000_000;
+const TTL_THRESHOLD: u32 = 500_000;
+const TTL_EXTEND_TO: u32 = 1_000_000;
 const MAX_DECIMALS: u32 = 38;
 
 pub fn bump_core_ttl(env: &Env) {
@@ -109,28 +133,24 @@ pub fn bump_core_ttl(env: &Env) {
         persistent.extend_ttl(&DataKey::CloseFactorScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::LiquidationIncentiveScaled) {
-        persistent.extend_ttl(&DataKey::LiquidationIncentiveScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::LiquidationIncentiveScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::ReserveRecipient) {
         persistent.extend_ttl(&DataKey::ReserveRecipient, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseBorrow) {
-        persistent.extend_ttl(&DataKey::PauseBorrow, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseRedeem) {
-        persistent.extend_ttl(&DataKey::PauseRedeem, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseLiquidation) {
-        persistent.extend_ttl(&DataKey::PauseLiquidation, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    if persistent.has(&DataKey::PauseDeposit) {
-        persistent.extend_ttl(&DataKey::PauseDeposit, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::LiquidationFeeScaled) {
         persistent.extend_ttl(&DataKey::LiquidationFeeScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::OracleMaxAgeMultiplier) {
-        persistent.extend_ttl(&DataKey::OracleMaxAgeMultiplier, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(
+            &DataKey::OracleMaxAgeMultiplier,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
     if persistent.has(&DataKey::PeridotToken) {
         persistent.extend_ttl(&DataKey::PeridotToken, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -139,6 +159,99 @@ pub fn bump_core_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_upgrade_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingUpgradeHash) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeHash, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingUpgradeEta) {
+        persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_oracle_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingOracle) {
+        persistent.extend_ttl(&DataKey::PendingOracle, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingOracleEta) {
+        persistent.extend_ttl(&DataKey::PendingOracleEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_close_factor_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingCloseFactorScaled) {
+        persistent.extend_ttl(
+            &DataKey::PendingCloseFactorScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+    if persistent.has(&DataKey::PendingCloseFactorEta) {
+        persistent.extend_ttl(
+            &DataKey::PendingCloseFactorEta,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_pending_liquidation_incentive_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingLiqIncentiveScaled) {
+        persistent.extend_ttl(
+            &DataKey::PendingLiqIncentiveScaled,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+    if persistent.has(&DataKey::PendingLiqIncentiveEta) {
+        persistent.extend_ttl(
+            &DataKey::PendingLiqIncentiveEta,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_pending_market_cf_ttl(env: &Env, market: &Address) {
+    let persistent = env.storage().persistent();
+    let pending_key = DataKey::PendingMarketCF(market.clone());
+    if persistent.has(&pending_key) {
+        persistent.extend_ttl(&pending_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let eta_key = DataKey::PendingMarketCFEta(market.clone());
+    if persistent.has(&eta_key) {
+        persistent.extend_ttl(&eta_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_admin_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingAdmin) {
+        persistent.extend_ttl(&DataKey::PendingAdmin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pause_guardian_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PauseGuardian) {
+        persistent.extend_ttl(&DataKey::PauseGuardian, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_margin_liquidation_controllers_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::MarginLiquidationControllers) {
+        persistent.extend_ttl(
+            &DataKey::MarginLiquidationControllers,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
 }
 
@@ -174,11 +287,82 @@ pub fn bump_fallback_price_ttl(env: &Env, token: &Address) {
     }
 }
 
+pub fn bump_fallback_price_set_at_ttl(env: &Env, token: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::FallbackPriceSetAt(token.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn bump_oracle_asset_symbol_ttl(env: &Env, token: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::OracleAssetSymbol(token.clone());
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_supported_token_ttl(env: &Env, token: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::SupportedToken(token.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_market_underlying_ttl(env: &Env, market: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarketUnderlying(market.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_market_zero_totals_verified_ttl(env: &Env, market: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarketZeroTotalsVerifiedAt(market.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_boosted_vault_owner_ttl(env: &Env, boosted_vault: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::BoostedVaultOwner(boosted_vault.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_reward_market_ttl(env: &Env, market: &Address) {
+    let persistent = env.storage().persistent();
+    let keys = [
+        DataKey::SupplySpeed(market.clone()),
+        DataKey::BorrowSpeed(market.clone()),
+        DataKey::SupplyIndex(market.clone()),
+        DataKey::BorrowIndex(market.clone()),
+        DataKey::SupplyIndexTime(market.clone()),
+        DataKey::BorrowIndexTime(market.clone()),
+    ];
+    for key in keys {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
+}
+
+pub fn bump_reward_user_ttl(env: &Env, user: &Address, market: &Address) {
+    let persistent = env.storage().persistent();
+    let keys = [
+        DataKey::UserSupplyIndex(user.clone(), market.clone()),
+        DataKey::UserBorrowIndex(user.clone(), market.clone()),
+        DataKey::Accrued(user.clone()),
+    ];
+    for key in keys {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
     }
 }
 
