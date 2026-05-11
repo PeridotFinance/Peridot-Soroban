@@ -492,8 +492,8 @@ fn test_borrow_redeems_boosted_liquidity_on_demand() {
     let borrower = Address::generate(&env);
     let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
 
-    token_admin_client.mint(&lender, &2_000i128);
-    token_admin_client.mint(&borrower, &1_000i128);
+    token_admin_client.mint(&lender, &20_000i128);
+    token_admin_client.mint(&borrower, &10_000i128);
 
     let boosted_id = env.register(MockBoostedVault, ());
     let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
@@ -506,20 +506,20 @@ fn test_borrow_redeems_boosted_liquidity_on_demand() {
     vault.set_collateral_factor(&1_000_000u128);
     vault.set_boosted_vault(&admin, &boosted_id);
 
-    vault.deposit(&lender, &1_200u128);
-    vault.deposit(&borrower, &300u128);
+    vault.deposit(&lender, &12_000u128);
+    vault.deposit(&borrower, &10_000u128);
 
     // All deposited liquidity was deployed into boosted vault.
     assert_eq!(token_client.balance(&vault_id), 0i128);
-    assert_eq!(boosted.balance(&vault_id), 1_500i128);
+    assert_eq!(boosted.balance(&vault_id), 22_000i128);
 
     let borrower_before = token_client.balance(&borrower);
-    vault.borrow(&borrower, &200u128);
+    vault.borrow(&borrower, &2_000u128);
     let borrower_after = token_client.balance(&borrower);
 
-    assert_eq!(borrower_after - borrower_before, 200i128);
-    assert_eq!(vault.get_user_borrow_balance(&borrower), 200u128);
-    assert_eq!(vault.get_total_borrowed(), 200u128);
+    assert_eq!(borrower_after - borrower_before, 2_000i128);
+    assert_eq!(vault.get_user_borrow_balance(&borrower), 2_000u128);
+    assert_eq!(vault.get_total_borrowed(), 2_000u128);
 }
 
 #[test]
@@ -533,8 +533,8 @@ fn test_borrow_uses_donated_cash_without_managed_cash_underflow() {
     let donor = Address::generate(&env);
     let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
 
-    token_admin_client.mint(&lender, &2_000i128);
-    token_admin_client.mint(&borrower, &1_000i128);
+    token_admin_client.mint(&lender, &20_000i128);
+    token_admin_client.mint(&borrower, &10_000i128);
     token_admin_client.mint(&donor, &500i128);
 
     let boosted_id = env.register(MockBoostedVault, ());
@@ -548,8 +548,8 @@ fn test_borrow_uses_donated_cash_without_managed_cash_underflow() {
     vault.set_collateral_factor(&1_000_000u128);
     vault.set_boosted_vault(&admin, &boosted_id);
 
-    vault.deposit(&lender, &1_200u128);
-    vault.deposit(&borrower, &300u128);
+    vault.deposit(&lender, &12_000u128);
+    vault.deposit(&borrower, &10_000u128);
     // All managed cash is deployed.
     assert_eq!(token_client.balance(&vault_id), 0i128);
 
@@ -616,7 +616,7 @@ fn test_boosted_fallback_prefers_cached_value_when_stale_and_quote_fails() {
     let depositor = Address::generate(&env);
     let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
 
-    token_admin_client.mint(&depositor, &2_000i128);
+    token_admin_client.mint(&depositor, &20_000i128);
 
     let boosted_id = env.register(MockBoostedVault, ());
     let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
@@ -628,15 +628,15 @@ fn test_boosted_fallback_prefers_cached_value_when_stale_and_quote_fails() {
     vault.enable_static_rates(&admin);
     vault.set_boosted_vault(&admin, &boosted_id);
 
-    vault.deposit(&depositor, &1_000u128);
-    assert_eq!(boosted.balance(&vault_id), 1_000i128);
+    vault.deposit(&depositor, &20_000u128);
+    assert_eq!(boosted.balance(&vault_id), 20_000i128);
 
     // Simulate boosted yield by increasing underlying held by boosted vault.
-    token_admin_client.mint(&boosted_id, &200i128);
-    assert_eq!(token_client.balance(&boosted_id), 1_200i128);
+    token_admin_client.mint(&boosted_id, &2_000i128);
+    assert_eq!(token_client.balance(&boosted_id), 22_000i128);
 
     let healthy_total = vault.get_total_underlying();
-    assert_eq!(healthy_total, 1_200u128);
+    assert_eq!(healthy_total, 22_000u128);
 
     // Force quote failures and age cache beyond max freshness.
     boosted.set_fail_quote(&true);
@@ -674,7 +674,7 @@ fn test_deposit_respects_idle_cash_buffer() {
     let depositor = Address::generate(&env);
     let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
 
-    token_admin_client.mint(&depositor, &2_000i128);
+    token_admin_client.mint(&depositor, &20_000i128);
 
     let boosted_id = env.register(MockBoostedVault, ());
     let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
@@ -688,10 +688,10 @@ fn test_deposit_respects_idle_cash_buffer() {
     // Keep 10% idle in vault cash.
     vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
 
-    vault.deposit(&depositor, &1_000u128);
+    vault.deposit(&depositor, &20_000u128);
 
-    assert_eq!(token_client.balance(&vault_id), 100i128);
-    assert_eq!(boosted.balance(&vault_id), 900i128);
+    assert_eq!(token_client.balance(&vault_id), 2_000i128);
+    assert_eq!(boosted.balance(&vault_id), 18_000i128);
 }
 
 #[test]
@@ -703,7 +703,7 @@ fn test_rebalance_idle_cash_deploys_excess() {
     let depositor = Address::generate(&env);
     let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
 
-    token_admin_client.mint(&depositor, &2_000i128);
+    token_admin_client.mint(&depositor, &20_000i128);
 
     let boosted_id = env.register(MockBoostedVault, ());
     let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
@@ -717,8 +717,8 @@ fn test_rebalance_idle_cash_deploys_excess() {
 
     // Start with 100% idle cash.
     vault.set_idle_cash_buffer_bps(&admin, &10_000u32);
-    vault.deposit(&depositor, &1_000u128);
-    assert_eq!(token_client.balance(&vault_id), 1_000i128);
+    vault.deposit(&depositor, &20_000u128);
+    assert_eq!(token_client.balance(&vault_id), 20_000i128);
     assert_eq!(boosted.balance(&vault_id), 0i128);
 
     // Lower target to 10% and rebalance.
@@ -736,8 +736,40 @@ fn test_rebalance_idle_cash_deploys_excess() {
         }])
         .rebalance_idle_cash(&admin);
 
-    assert_eq!(token_client.balance(&vault_id), 100i128);
-    assert_eq!(boosted.balance(&vault_id), 900i128);
+    assert_eq!(token_client.balance(&vault_id), 2_000i128);
+    assert_eq!(boosted.balance(&vault_id), 18_000i128);
+}
+
+#[test]
+fn test_rebalance_idle_cash_skips_boosted_dust() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&depositor, &20_000i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    // Keep the initial deposit idle, then configure a target that leaves only
+    // 5_000 units as deployable excess. That is below the DeFindex dust guard.
+    vault.set_idle_cash_buffer_bps(&admin, &10_000u32);
+    vault.deposit(&depositor, &20_000u128);
+    vault.set_idle_cash_buffer_bps(&admin, &7_500u32);
+    vault.rebalance_idle_cash(&admin);
+
+    assert_eq!(token_client.balance(&vault_id), 20_000i128);
+    assert_eq!(boosted.balance(&vault_id), 0i128);
 }
 
 #[test]
@@ -2476,12 +2508,12 @@ fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
     vault.enable_static_rates(&admin);
     vault.set_boosted_vault(&admin, &boosted_id);
 
-    token_admin_client.mint(&depositor, &1_000i128);
-    vault.deposit(&depositor, &500u128);
+    token_admin_client.mint(&depositor, &20_000i128);
+    vault.deposit(&depositor, &20_000u128);
 
     // Boosted deposit path deploys all live cash.
     assert_eq!(token_client.balance(&vault_id), 0i128);
-    assert_eq!(boosted.balance(&vault_id), 500i128);
+    assert_eq!(boosted.balance(&vault_id), 20_000i128);
 
     let fee_scaled = 20_000u128; // 2%
     vault.set_flash_loan_fee(&fee_scaled);
@@ -2499,7 +2531,7 @@ fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
 
     // Buffered redemption pulls 101 from boosted, then 100 is loaned out and
     // 100 + fee is repaid, leaving 1 extra unit in live cash.
-    assert_eq!(boosted.balance(&vault_id), 399i128);
+    assert_eq!(boosted.balance(&vault_id), 19_899i128);
     assert_eq!(
         token_client.balance(&vault_id),
         (101 + expected_fee) as i128
@@ -2527,8 +2559,8 @@ fn test_flash_loan_boosted_redemption_tolerates_small_rounding_delta() {
     vault.enable_static_rates(&admin);
     vault.set_boosted_vault(&admin, &boosted_id);
 
-    token_admin_client.mint(&depositor, &1_000i128);
-    vault.deposit(&depositor, &500u128);
+    token_admin_client.mint(&depositor, &20_000i128);
+    vault.deposit(&depositor, &20_000u128);
     assert_eq!(token_client.balance(&vault_id), 0i128);
 
     let fee_scaled = 20_000u128; // 2%
@@ -2777,7 +2809,7 @@ fn test_update_interest_uses_gross_cash_for_model_with_boosted_assets() {
     ));
     let user = Address::generate(&env);
     let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
-    token_admin_client.mint(&user, &10_000i128);
+    token_admin_client.mint(&user, &30_000i128);
 
     let boosted_id = env.register(MockBoostedVault, ());
     let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
@@ -2803,8 +2835,8 @@ fn test_update_interest_uses_gross_cash_for_model_with_boosted_assets() {
     env.mock_all_auths_allowing_non_root_auth();
     vault.set_interest_model(&model_id);
 
-    vault.deposit(&user, &1_000u128);
-    vault.borrow(&user, &500u128);
+    vault.deposit(&user, &20_000u128);
+    vault.borrow(&user, &5_000u128);
 
     // Seed non-zero reserves to exercise the reserve-subtraction path.
     env.as_contract(&vault_id, || {
@@ -2855,7 +2887,7 @@ fn test_update_interest_clamps_inflated_boosted_quote_for_model_cash() {
     ));
     let user = Address::generate(&env);
     let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
-    token_admin_client.mint(&user, &10_000i128);
+    token_admin_client.mint(&user, &30_000i128);
 
     let model_id = env.register(jrm::JumpRateModel, ());
     let model = jrm::JumpRateModelClient::new(&env, &model_id);
@@ -2964,7 +2996,7 @@ fn test_update_interest_ignores_boosted_quote_when_baseline_missing_with_debt() 
     ));
     let user = Address::generate(&env);
     let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
-    token_admin_client.mint(&user, &10_000i128);
+    token_admin_client.mint(&user, &30_000i128);
 
     let model_id = env.register(jrm::JumpRateModel, ());
     let model = jrm::JumpRateModelClient::new(&env, &model_id);
@@ -2988,8 +3020,8 @@ fn test_update_interest_ignores_boosted_quote_when_baseline_missing_with_debt() 
     vault.set_interest_model(&model_id);
     vault.set_boosted_vault(&admin, &boosted_id);
 
-    vault.deposit(&user, &1_000u128);
-    vault.borrow(&user, &500u128);
+    vault.deposit(&user, &20_000u128);
+    vault.borrow(&user, &5_000u128);
     boosted.set_quote_multiplier_bps(&3_000_000u128);
 
     // Force the model-cash baseline to zero while debt remains outstanding.

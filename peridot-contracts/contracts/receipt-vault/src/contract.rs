@@ -187,6 +187,9 @@ impl ReceiptVault {
         if deploy_amount == 0 {
             return 0u128;
         }
+        if deploy_amount < MIN_BOOSTED_DEPLOY_AMOUNT {
+            return 0u128;
+        }
 
         let deploy_i128 = to_i128(deploy_amount);
         let mut amounts_desired: Vec<i128> = Vec::new(env);
