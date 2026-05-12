@@ -324,6 +324,13 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
         && (fn_name == Symbol::new(env, "deposit") || fn_name == Symbol::new(env, "repay"))
     {
         check_first_address_is_self(env, ctx, 0)?;
+    } else if is_vault
+        && (fn_name == Symbol::new(env, "borrow_for_margin")
+            || fn_name == Symbol::new(env, "repay_for_margin"))
+    {
+        // Margin debt helpers are called by the margin controller, but the
+        // vault still requires the receiver/payer to authorize at arg index 1.
+        check_first_address_is_self(env, ctx, 1)?;
     } else if is_vault && fn_name == Symbol::new(env, "withdraw") {
         check_redeem_policy(env, ctx, 0, 1)?;
     } else if is_vault && fn_name == Symbol::new(env, "transfer") {
@@ -337,8 +344,10 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
             || fn_name == Symbol::new(env, "open_position_v2")
             || fn_name == Symbol::new(env, "open_position_no_swap")
             || fn_name == Symbol::new(env, "open_position_no_swap_short")
+            || fn_name == Symbol::new(env, "open_position_no_swap_v2")
             || fn_name == Symbol::new(env, "close_position")
             || fn_name == Symbol::new(env, "close_position_v2")
+            || fn_name == Symbol::new(env, "close_position_no_swap_v2")
             || fn_name == Symbol::new(env, "liquidate_position")
             || fn_name == Symbol::new(env, "liquidate_position_v2"))
     {
@@ -353,6 +362,8 @@ fn is_sensitive_vault_function(env: &Env, fn_name: &Symbol) -> bool {
     *fn_name == Symbol::new(env, "borrow")
         || *fn_name == Symbol::new(env, "deposit")
         || *fn_name == Symbol::new(env, "repay")
+        || *fn_name == Symbol::new(env, "borrow_for_margin")
+        || *fn_name == Symbol::new(env, "repay_for_margin")
         || *fn_name == Symbol::new(env, "withdraw")
         || *fn_name == Symbol::new(env, "transfer")
 }
@@ -366,8 +377,10 @@ fn is_sensitive_margin_function(env: &Env, fn_name: &Symbol) -> bool {
         || *fn_name == Symbol::new(env, "open_position_v2")
         || *fn_name == Symbol::new(env, "open_position_no_swap")
         || *fn_name == Symbol::new(env, "open_position_no_swap_short")
+        || *fn_name == Symbol::new(env, "open_position_no_swap_v2")
         || *fn_name == Symbol::new(env, "close_position")
         || *fn_name == Symbol::new(env, "close_position_v2")
+        || *fn_name == Symbol::new(env, "close_position_no_swap_v2")
         || *fn_name == Symbol::new(env, "liquidate_position")
         || *fn_name == Symbol::new(env, "liquidate_position_v2")
 }
