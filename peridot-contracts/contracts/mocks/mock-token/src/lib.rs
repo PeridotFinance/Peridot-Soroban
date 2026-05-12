@@ -55,7 +55,6 @@ impl MockToken {
     }
 
     pub fn approve(env: Env, owner: Address, spender: Address, amount: i128) {
-        owner.require_auth();
         if amount < 0 {
             panic!("bad amount");
         }

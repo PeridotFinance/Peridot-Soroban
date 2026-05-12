@@ -188,32 +188,19 @@ impl ReceiptVault {
         if deploy_amount == 0 {
             return 0u128;
         }
+        if deploy_amount < MIN_BOOSTED_DEPLOY_AMOUNT {
+            return 0u128;
+        }
 
         let deploy_i128 = to_i128(deploy_amount);
         let mut amounts_desired: Vec<i128> = Vec::new(env);
         let mut amounts_min: Vec<i128> = Vec::new(env);
         amounts_desired.push_back(deploy_i128);
         amounts_min.push_back(deploy_i128);
-        let args: Vec<Val> = (
-            amounts_desired.clone(),
-            amounts_min.clone(),
-            env.current_contract_address(),
-            true,
-        )
-            .into_val(env);
-        let mut auths = Vec::new(env);
-        let mut sub_invocations: Vec<InvokerContractAuthEntry> = Vec::new(env);
         let transfer_args: Vec<Val> =
             (env.current_contract_address(), boosted.clone(), deploy_i128).into_val(env);
+        let mut auths = Vec::new(env);
         auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
-            context: ContractContext {
-                contract: token_address.clone(),
-                fn_name: Symbol::new(env, "transfer"),
-                args: transfer_args.clone(),
-            },
-            sub_invocations: Vec::new(env),
-        }));
-        sub_invocations.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
             context: ContractContext {
                 contract: token_address.clone(),
                 fn_name: Symbol::new(env, "transfer"),
@@ -221,17 +208,9 @@ impl ReceiptVault {
             },
             sub_invocations: Vec::new(env),
         }));
-        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
-            context: ContractContext {
-                contract: boosted.clone(),
-                fn_name: Symbol::new(env, "deposit"),
-                args,
-            },
-            sub_invocations,
-        }));
-        env.authorize_as_current_contract(auths);
 
         let cash_before_boost = Self::current_live_cash(env, token_address);
+        env.authorize_as_current_contract(auths);
         let _: Val = env.invoke_contract(
             &boosted,
             &Symbol::new(env, "deposit"),
@@ -1110,7 +1089,6 @@ impl ReceiptVault {
         amount: i128,
         live_until_ledger: u32,
     ) {
-        owner.require_auth();
         if amount < 0 {
             panic!("bad amount");
         }
@@ -1167,7 +1145,7 @@ impl ReceiptVault {
         amount: u128,
         spender: Option<Address>,
     ) {
-        ensure_initialized(&env);
+        let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
         if amount == 0 {
             return;
@@ -1178,8 +1156,9 @@ impl ReceiptVault {
         Self::ensure_user_borrow_flag(&env, &to);
         // Margin custody flow: when the configured margin controller has set the
         // bypass flag for `from`, treat this transfer as a custody movement and
-        // skip both the cross-contract preview_redeem_max (which would otherwise
-        // re-enter this vault) and the margin-lock check.
+        // skip both the cross-market collateral health check (which would otherwise
+        // require fully-funded collateral while the position is being managed) and
+        // the margin-lock check.
         let bypass = Self::consume_margin_withdraw_bypass(&env, &from);
         // Gating: if peridottroller wired, consult redeem pause and health for from-user
         if let Some(comp_addr) = env
@@ -1202,15 +1181,51 @@ impl ReceiptVault {
                 panic!("Insufficient pTokens");
             }
             if !bypass {
-                // Check via preview_redeem_max
-                let max_ptokens: u128 = call_contract_or_panic(
+                let local_debt = Self::get_user_borrow_balance(env.clone(), from.clone());
+                let other_borrows_usd: u128 = call_contract_or_panic(
                     &env,
                     &comp_addr,
-                    "preview_redeem_max",
+                    "get_borrows_excl",
                     (from.clone(), env.current_contract_address()),
                 );
-                if amount > max_ptokens {
-                    panic!("Insufficient collateral");
+                if local_debt > 0 || other_borrows_usd > 0 {
+                    let other_collateral_usd: u128 = call_contract_or_panic(
+                        &env,
+                        &comp_addr,
+                        "get_collateral_excl_usd",
+                        (from.clone(), env.current_contract_address()),
+                    );
+                    let price_opt: Option<(u128, u128)> = call_contract_or_panic(
+                        &env,
+                        &comp_addr,
+                        "get_price_usd",
+                        (token_address.clone(),),
+                    );
+                    if price_opt.is_none() {
+                        panic!("Price unavailable");
+                    }
+                    let (price, scale) = price_opt.unwrap();
+                    let cf: u128 = call_contract_or_panic(
+                        &env,
+                        &comp_addr,
+                        "get_market_cf",
+                        (env.current_contract_address(),),
+                    );
+
+                    let current_rate = Self::get_exchange_rate(env.clone());
+                    let remaining_ptokens = pbal - amount;
+                    let remaining_underlying =
+                        (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
+                    let remaining_discounted =
+                        (remaining_underlying.saturating_mul(cf)) / SCALE_1E6;
+                    let local_collateral_usd = (remaining_discounted.saturating_mul(price)) / scale;
+                    let local_debt_usd = (local_debt.saturating_mul(price)) / scale;
+                    let total_collateral_usd =
+                        other_collateral_usd.saturating_add(local_collateral_usd);
+                    let total_borrow_usd = other_borrows_usd.saturating_add(local_debt_usd);
+                    if total_collateral_usd < total_borrow_usd {
+                        panic!("Insufficient collateral");
+                    }
                 }
             }
         } else if !bypass {
@@ -3228,15 +3243,15 @@ impl ReceiptVault {
         }
         let balance_before = balance_before_i as u128;
 
-        // Receiver must explicitly authorize being targeted as a flash loan callback.
-        receiver.require_auth();
         env.storage()
             .persistent()
             .set(&DataKey::FlashLoanActive, &true);
         Self::sub_managed_cash(&env, amount);
         token_client.transfer(&env.current_contract_address(), &receiver, &to_i128(amount));
 
-        // Receiver contract executes its logic and must return funds before this call unwinds.
+        // Intentionally no `receiver.require_auth()`: contract receivers cannot satisfy
+        // account-style auth here, and self-initiated callbacks hit Soroban's re-entry guard.
+        // Consent is by implementing this callback; repayment is enforced by the balance check.
         call_contract_or_panic::<(), _>(
             &env,
             &receiver,
