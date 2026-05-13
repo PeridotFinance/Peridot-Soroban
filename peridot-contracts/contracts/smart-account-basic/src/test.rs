@@ -1,6 +1,26 @@
 use super::*;
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::IntoVal;
+use soroban_sdk::{contract, contractimpl, IntoVal};
+
+#[contract]
+struct MockPolicyPeridottroller;
+
+#[contractimpl]
+impl MockPolicyPeridottroller {
+    pub fn preview_redeem_max(_env: Env, _user: Address, _market: Address) -> u128 {
+        u128::MAX
+    }
+
+    pub fn hypothetical_liquidity(
+        _env: Env,
+        _user: Address,
+        _market: Address,
+        _borrow_amount: u128,
+        _underlying: Address,
+    ) -> (u128, u128) {
+        (u128::MAX, 0u128)
+    }
+}
 
 fn assert_budget_under(env: &Env, max_cpu: u64, max_mem: u64) {
     let budget = env.cost_estimate().budget();
@@ -27,7 +47,7 @@ fn test_constructor_and_signers() {
     let factory = expected_factory(&env);
     let owner = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
-    let peridottroller = Address::generate(&env);
+    let peridottroller = env.register(MockPolicyPeridottroller, ());
     let margin = Address::generate(&env);
 
     let (_contract_id, client) = register_account(&env, &factory);
@@ -45,7 +65,7 @@ fn test_add_signer_requires_owner() {
     let factory = expected_factory(&env);
     let owner = Address::generate(&env);
     let signer = BytesN::from_array(&env, &[1u8; 32]);
-    let peridottroller = Address::generate(&env);
+    let peridottroller = env.register(MockPolicyPeridottroller, ());
     let margin = Address::generate(&env);
 
     let (_contract_id, client) = register_account(&env, &factory);
@@ -413,6 +433,41 @@ fn test_transfer_from_policy_is_rejected_for_allowed_vaults() {
 
         let res = enforce_contract_policy(&env, &ctx);
         assert_eq!(res, Err(Error::Unauthorized));
+    });
+}
+
+#[test]
+fn test_vault_ptoken_transfer_requires_protocol_recipient() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let factory = expected_factory(&env);
+    let owner = Address::generate(&env);
+    let signer = BytesN::from_array(&env, &[1u8; 32]);
+    let peridottroller = env.register(MockPolicyPeridottroller, ());
+    let margin = Address::generate(&env);
+    let allowed_vault = Address::generate(&env);
+    let attacker = Address::generate(&env);
+    let (contract_id, client) = register_account(&env, &factory);
+    client.initialize(&owner, &signer, &peridottroller, &margin);
+    client.add_allowed_contract(&owner, &allowed_vault);
+
+    env.as_contract(&contract_id, || {
+        let attacker_ctx = ContractContext {
+            contract: allowed_vault.clone(),
+            fn_name: Symbol::new(&env, "transfer"),
+            args: (contract_id.clone(), attacker, 10i128).into_val(&env),
+        };
+        assert_eq!(
+            enforce_contract_policy(&env, &attacker_ctx),
+            Err(Error::Unauthorized)
+        );
+
+        let margin_ctx = ContractContext {
+            contract: allowed_vault,
+            fn_name: Symbol::new(&env, "transfer"),
+            args: (contract_id.clone(), margin, 10i128).into_val(&env),
+        };
+        assert_eq!(enforce_contract_policy(&env, &margin_ctx), Ok(()));
     });
 }
 

@@ -79,11 +79,17 @@ pub fn compact_user_positions(env: &Env, user: &Address) -> Vec<u64> {
 }
 
 pub fn get_debt_shares_total(env: &Env, user: &Address, debt_asset: &Address) -> u128 {
-    bump_debt_shares_ttl(env, user, debt_asset);
-    env.storage()
-        .persistent()
-        .get(&DataKey::DebtSharesTotal(user.clone(), debt_asset.clone()))
-        .unwrap_or(0u128)
+    let key = DataKey::DebtSharesTotal(user.clone(), debt_asset.clone());
+    if let Some(total) = env.storage().persistent().get::<_, u128>(&key) {
+        bump_debt_shares_ttl(env, user, debt_asset);
+        return total;
+    }
+    let recovered = recover_debt_shares_total_from_positions(env, user, debt_asset);
+    if recovered > 0 {
+        env.storage().persistent().set(&key, &recovered);
+        bump_debt_shares_ttl(env, user, debt_asset);
+    }
+    recovered
 }
 
 pub fn set_debt_shares_total(env: &Env, user: &Address, debt_asset: &Address, value: u128) {
@@ -129,6 +135,28 @@ pub fn debt_for_shares_in_vault(
             / total_shares
     };
     (debt_amount, total_shares, total_debt)
+}
+
+fn recover_debt_shares_total_from_positions(
+    env: &Env,
+    user: &Address,
+    debt_asset: &Address,
+) -> u128 {
+    let mut total = 0u128;
+    let positions = compact_user_positions(env, user);
+    for id in positions.iter() {
+        let position: Option<Position> = env.storage().persistent().get(&DataKey::Position(id));
+        let Some(position) = position else {
+            continue;
+        };
+        if position.status == PositionStatus::Open
+            && position.debt_asset == *debt_asset
+            && position.debt_shares > 0
+        {
+            total = total.saturating_add(position.debt_shares);
+        }
+    }
+    total
 }
 
 pub fn set_position_vaults(

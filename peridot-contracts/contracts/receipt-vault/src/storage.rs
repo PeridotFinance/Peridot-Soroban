@@ -224,6 +224,12 @@ pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
 pub fn bump_user_borrow_state_ttl(env: &Env, user: &Address) {
     bump_borrow_snapshot_ttl(env, user);
     bump_has_borrowed_ttl(env, user);
+    bump_borrow_principal_ttl(env, user);
+}
+
+pub fn bump_user_borrow_live_ttl(env: &Env, user: &Address) {
+    bump_borrow_snapshot_ttl(env, user);
+    bump_has_borrowed_ttl(env, user);
 }
 
 pub fn bump_margin_borrow_snapshot_ttl(env: &Env, position_id: u64) {
@@ -251,6 +257,12 @@ pub fn bump_margin_has_borrowed_ttl(env: &Env, position_id: u64) {
 }
 
 pub fn bump_margin_borrow_state_ttl(env: &Env, position_id: u64) {
+    bump_margin_borrow_snapshot_ttl(env, position_id);
+    bump_margin_has_borrowed_ttl(env, position_id);
+    bump_margin_borrow_principal_ttl(env, position_id);
+}
+
+pub fn bump_margin_borrow_live_ttl(env: &Env, position_id: u64) {
     bump_margin_borrow_snapshot_ttl(env, position_id);
     bump_margin_has_borrowed_ttl(env, position_id);
 }
@@ -284,6 +296,40 @@ pub fn bump_borrow_state_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::TotalBorrowPrincipal) {
         persistent.extend_ttl(&DataKey::TotalBorrowPrincipal, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_debt_state_marker_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::DebtStateVersion) {
+        persistent.extend_ttl(&DataKey::DebtStateVersion, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::DebtStateMigratedAt) {
+        persistent.extend_ttl(&DataKey::DebtStateMigratedAt, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_borrow_principal_ttl(env: &Env, user: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::BorrowPrincipal(user.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(
+            &key,
+            BORROW_SNAPSHOT_TTL_THRESHOLD,
+            BORROW_SNAPSHOT_TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_margin_borrow_principal_ttl(env: &Env, position_id: u64) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarginBorrowPrincipal(position_id);
+    if persistent.has(&key) {
+        persistent.extend_ttl(
+            &key,
+            MARGIN_BORROW_SNAPSHOT_TTL_THRESHOLD,
+            MARGIN_BORROW_SNAPSHOT_TTL_EXTEND_TO,
+        );
     }
 }
 

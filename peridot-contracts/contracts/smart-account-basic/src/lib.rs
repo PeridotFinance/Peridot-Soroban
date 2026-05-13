@@ -335,6 +335,10 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
         check_redeem_policy(env, ctx, 0, 1)?;
     } else if is_vault && fn_name == Symbol::new(env, "transfer") {
         check_redeem_policy(env, ctx, 0, 2)?;
+        let to = get_address_arg(env, ctx, 1)?;
+        if !is_protocol_recipient(env, &to) {
+            return Err(Error::Unauthorized);
+        }
     } else if is_margin
         && (fn_name == Symbol::new(env, "deposit_collateral")
             || fn_name == Symbol::new(env, "withdraw_collateral")
@@ -467,12 +471,7 @@ fn check_redeem_policy(
 ) -> Result<(), Error> {
     let user = get_address_arg(env, ctx, user_index)?;
     require_self_address(env, &user)?;
-    let amount: u128 = ctx
-        .args
-        .get(amount_index)
-        .ok_or(Error::Unauthorized)?
-        .try_into_val(env)
-        .map_err(|_| Error::Unauthorized)?;
+    let amount = get_u128_arg(env, ctx, amount_index)?;
     let peridottroller: Address = env
         .storage()
         .persistent()
@@ -497,6 +496,19 @@ fn get_address_arg(env: &Env, ctx: &ContractContext, index: u32) -> Result<Addre
         .ok_or(Error::Unauthorized)?
         .try_into_val(env)
         .map_err(|_| Error::Unauthorized)
+}
+
+fn get_u128_arg(env: &Env, ctx: &ContractContext, index: u32) -> Result<u128, Error> {
+    let value = ctx.args.get(index).ok_or(Error::Unauthorized)?;
+    let unsigned: Result<u128, _> = value.try_into_val(env);
+    if let Ok(amount) = unsigned {
+        return Ok(amount);
+    }
+    let signed: i128 = value.try_into_val(env).map_err(|_| Error::Unauthorized)?;
+    if signed < 0 {
+        return Err(Error::Unauthorized);
+    }
+    Ok(signed as u128)
 }
 
 fn require_self_address(env: &Env, address: &Address) -> Result<(), Error> {

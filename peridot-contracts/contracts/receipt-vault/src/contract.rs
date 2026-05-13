@@ -395,7 +395,7 @@ impl ReceiptVault {
             // This avoids masking missing debt state for collateralized users.
             persistent.set(&DataKey::HasBorrowed(user.clone()), &false);
         }
-        bump_user_borrow_state_ttl(env, user);
+        bump_user_borrow_live_ttl(env, user);
     }
 
     fn ensure_margin_position_borrow_flag(env: &Env, position_id: u64) {
@@ -411,7 +411,7 @@ impl ReceiptVault {
         {
             panic!("margin borrow state missing");
         }
-        bump_margin_borrow_state_ttl(env, position_id);
+        bump_margin_borrow_live_ttl(env, position_id);
     }
 
     fn require_margin_controller_auth(env: &Env) -> Address {
@@ -728,12 +728,16 @@ impl ReceiptVault {
         if live_cash == 0 {
             return;
         }
-        let bps = Self::idle_cash_buffer_bps(&env) as u128;
+        Self::deposit_excess_idle_cash(&env, &token_address, live_cash);
+    }
+
+    fn deposit_excess_idle_cash(env: &Env, token_address: &Address, live_cash: u128) {
+        let bps = Self::idle_cash_buffer_bps(env) as u128;
         let total_underlying = Self::get_total_underlying(env.clone());
         let desired_idle = total_underlying.saturating_mul(bps) / BPS_SCALE;
         if live_cash > desired_idle {
             let excess = live_cash - desired_idle;
-            let _ = Self::deposit_into_boosted(&env, &token_address, excess);
+            let _ = Self::deposit_into_boosted(env, token_address, excess);
         }
     }
 
@@ -2289,7 +2293,7 @@ impl ReceiptVault {
         let _ = ensure_initialized(&env);
         let persistent = env.storage().persistent();
         let has_borrowed: Option<bool> = persistent.get(&DataKey::HasBorrowed(user.clone()));
-        bump_user_borrow_state_ttl(&env, &user);
+        bump_user_borrow_live_ttl(&env, &user);
         let snap: Option<BorrowSnapshot> = persistent.get(&DataKey::BorrowSnapshots(user.clone()));
         let snapshot = if let Some(snapshot) = snap {
             snapshot
@@ -2338,7 +2342,7 @@ impl ReceiptVault {
         let _ = ensure_initialized(&env);
         let persistent = env.storage().persistent();
         let has_borrowed: Option<bool> = persistent.get(&DataKey::MarginHasBorrowed(position_id));
-        bump_margin_borrow_state_ttl(&env, position_id);
+        bump_margin_borrow_live_ttl(&env, position_id);
         let snap: Option<BorrowSnapshot> =
             persistent.get(&DataKey::MarginBorrowSnapshots(position_id));
         let snapshot = if let Some(snapshot) = snap {
@@ -2455,6 +2459,7 @@ impl ReceiptVault {
         }
         persistent.set(&DataKey::DebtStateVersion, &DEBT_STATE_VERSION_V1);
         persistent.set(&DataKey::DebtStateMigratedAt, &env.ledger().timestamp());
+        bump_debt_state_marker_ttl(&env);
         bump_core_ttl(&env);
     }
 
@@ -2476,6 +2481,7 @@ impl ReceiptVault {
         }
         persistent.set(&DataKey::DebtStateVersion, &DEBT_STATE_VERSION_V1);
         persistent.set(&DataKey::DebtStateMigratedAt, &env.ledger().timestamp());
+        bump_debt_state_marker_ttl(&env);
         bump_core_ttl(&env);
     }
 
@@ -2578,7 +2584,7 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::HasBorrowed(user.clone()), &(principal > 0));
-        bump_user_borrow_state_ttl(env, &user);
+        bump_user_borrow_live_ttl(env, &user);
     }
 
     fn write_margin_borrow_snapshot(env: &Env, position_id: u64, principal: u128) {
@@ -2597,7 +2603,7 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::MarginHasBorrowed(position_id), &(principal > 0));
-        bump_margin_borrow_state_ttl(env, position_id);
+        bump_margin_borrow_live_ttl(env, position_id);
     }
 
     /// Repayment amount applied to principal (interest-only repayment does not reduce principal).
@@ -3285,6 +3291,10 @@ impl ReceiptVault {
                 .set(&DataKey::TotalReserves, &reserves.saturating_add(fee_paid));
         }
         env.storage().persistent().remove(&DataKey::FlashLoanActive);
+        let live_cash = Self::current_live_cash(&env, &token_address);
+        if live_cash > 0 {
+            Self::deposit_excess_idle_cash(&env, &token_address, live_cash);
+        }
 
         FlashLoan {
             receiver: receiver.clone(),

@@ -479,8 +479,14 @@ impl MarginController {
         let coll_rate = ReceiptVaultClient::new(&env, &collateral_vault).get_exchange_rate();
         let collateral_underlying = collateral_ptokens.saturating_mul(coll_rate) / SCALE_1E6;
         let collateral_value = collateral_underlying.saturating_mul(coll_price.0) / coll_price.1;
-        let target_value = collateral_value.saturating_mul(leverage);
-        let borrow_value = target_value.saturating_sub(collateral_value);
+        let collateral_cf = get_peridottroller(&env).get_market_cf(&collateral_vault);
+        if collateral_cf > SCALE_1E6 {
+            panic!("invalid market cf");
+        }
+        let discounted_collateral_value =
+            collateral_value.saturating_mul(collateral_cf) / SCALE_1E6;
+        let target_value = discounted_collateral_value.saturating_mul(leverage);
+        let borrow_value = target_value.saturating_sub(discounted_collateral_value);
         if borrow_value == 0 {
             panic!("zero borrow");
         }
@@ -541,6 +547,19 @@ impl MarginController {
         let controller = env.current_contract_address();
         let p_delta_i128: i128 = p_delta.try_into().expect("amount too large");
         ReceiptVaultClient::new(&env, &position_vault).transfer(&user, &controller, &p_delta_i128);
+
+        let position_cf = get_peridottroller(&env).get_market_cf(&position_vault);
+        if position_cf > SCALE_1E6 {
+            panic!("invalid market cf");
+        }
+        let position_collateral_value =
+            Self::discounted_ptoken_value_usd(&env, &position_vault, p_delta);
+        let combined_collateral_value =
+            discounted_collateral_value.saturating_add(position_collateral_value);
+        let debt_value = borrow_amount.saturating_mul(debt_price.0) / debt_price.1;
+        if combined_collateral_value <= debt_value {
+            panic!("insufficient collateral");
+        }
 
         let entry_price_scaled = borrow_amount.saturating_mul(SCALE_1E6) / received;
         position.collateral_ptokens = p_delta;
@@ -1337,18 +1356,8 @@ impl MarginController {
         }
 
         let debt_price = get_price_usd(&env, &position.debt_asset);
-        let coll_price = get_price_usd(&env, &position.collateral_asset);
-        let exchange_rate =
-            ReceiptVaultClient::new(&env, &vaults.position_vault).get_exchange_rate();
-        let collateral_cf = get_peridottroller(&env).get_market_cf(&vaults.position_vault);
-        if collateral_cf > SCALE_1E6 {
-            panic!("invalid market cf");
-        }
-        let collateral_underlying =
-            position.collateral_ptokens.saturating_mul(exchange_rate) / SCALE_1E6;
-        let collateral_value_raw =
-            collateral_underlying.saturating_mul(coll_price.0) / coll_price.1;
-        let collateral_value = collateral_value_raw.saturating_mul(collateral_cf) / SCALE_1E6;
+        let collateral_value =
+            Self::combined_v2_collateral_value_usd(&env, position_id, &vaults, &position);
         let debt_value = debt_amount.saturating_mul(debt_price.0) / debt_price.1;
         if collateral_value >= debt_value {
             panic!("not liquidatable");
@@ -1356,18 +1365,14 @@ impl MarginController {
 
         debt_vault.repay_for_margin(&position_id, &liquidator, &debt_amount);
 
-        let seize_underlying = debt_value
-            .saturating_mul(DEFAULT_MARGIN_LIQ_BONUS_SCALED)
-            .saturating_mul(coll_price.1)
-            / coll_price.0
-            / SCALE_1E6;
-        let mut seize_ptokens = seize_underlying.saturating_mul(SCALE_1E6) / exchange_rate;
-        if seize_ptokens == 0 {
-            seize_ptokens = 1;
-        }
-        if seize_ptokens > position.collateral_ptokens {
-            seize_ptokens = position.collateral_ptokens;
-        }
+        let mut remaining_seize_value =
+            debt_value.saturating_mul(DEFAULT_MARGIN_LIQ_BONUS_SCALED) / SCALE_1E6;
+        let seize_ptokens = Self::ptokens_for_discounted_value_ceil(
+            &env,
+            &vaults.position_vault,
+            position.collateral_ptokens,
+            remaining_seize_value,
+        );
         if seize_ptokens > 0 {
             let controller = env.current_contract_address();
             let seize_i128: i128 = seize_ptokens.try_into().expect("amount too large");
@@ -1385,14 +1390,23 @@ impl MarginController {
                 &seize_i128,
             );
             position.collateral_ptokens = position.collateral_ptokens.saturating_sub(seize_ptokens);
+            let seized_value =
+                Self::discounted_ptoken_value_usd(&env, &vaults.position_vault, seize_ptokens);
+            remaining_seize_value = remaining_seize_value.saturating_sub(seized_value);
         }
 
         if let Some((initial_market, initial_ptokens)) =
             get_position_initial_lock(&env, position_id)
         {
-            if initial_ptokens > 0 {
+            let initial_seize_ptokens = Self::ptokens_for_discounted_value_ceil(
+                &env,
+                &initial_market,
+                initial_ptokens,
+                remaining_seize_value,
+            );
+            if initial_seize_ptokens > 0 {
                 let controller = env.current_contract_address();
-                let amt_i128: i128 = initial_ptokens.try_into().expect("amount too large");
+                let amt_i128: i128 = initial_seize_ptokens.try_into().expect("amount too large");
                 let transfer_args: Vec<Val> =
                     (controller.clone(), liquidator.clone(), amt_i128).into_val(&env);
                 Self::authorize_controller_subcall(
@@ -1407,8 +1421,27 @@ impl MarginController {
                     &amt_i128,
                 );
             }
+            let initial_remaining = initial_ptokens.saturating_sub(initial_seize_ptokens);
+            if initial_remaining > 0 {
+                let free = get_margin_balance_ptokens(&env, &position.owner, &initial_market);
+                set_margin_balance_ptokens(
+                    &env,
+                    &position.owner,
+                    &initial_market,
+                    free.saturating_add(initial_remaining),
+                );
+            }
         }
 
+        if position.collateral_ptokens > 0 {
+            let free = get_margin_balance_ptokens(&env, &position.owner, &vaults.position_vault);
+            set_margin_balance_ptokens(
+                &env,
+                &position.owner,
+                &vaults.position_vault,
+                free.saturating_add(position.collateral_ptokens),
+            );
+        }
         position.status = PositionStatus::Liquidated;
         position.collateral_ptokens = 0u128;
         position.debt_shares = 0u128;
@@ -1514,23 +1547,25 @@ impl MarginController {
             panic!("invalid debt price");
         }
         let debt_value = debt_amount.saturating_mul(debt_price.0) / debt_price.1;
-        let coll_price = get_price_usd(&env, &position.collateral_asset);
-        if coll_price.0 == 0 || coll_price.1 == 0 {
-            panic!("invalid collateral price");
+        let mut collateral_value = Self::discounted_ptoken_value_usd(
+            &env,
+            &vaults.position_vault,
+            position.collateral_ptokens,
+        );
+        if mode == PositionMode::MarginV2 {
+            if let Some((initial_market, initial_ptokens)) =
+                get_position_initial_lock(&env, position_id)
+            {
+                collateral_value = collateral_value.saturating_add(
+                    Self::discounted_ptoken_value_usd(&env, &initial_market, initial_ptokens),
+                );
+            }
         }
-        let collateral_cf = get_peridottroller(&env).get_market_cf(&vaults.position_vault);
-        if collateral_cf > SCALE_1E6 {
-            return u128::MAX;
-        }
-        let exchange_rate =
-            ReceiptVaultClient::new(&env, &vaults.position_vault).get_exchange_rate();
-        let collateral_underlying =
-            position.collateral_ptokens.saturating_mul(exchange_rate) / SCALE_1E6;
-        let collateral_value_raw =
-            collateral_underlying.saturating_mul(coll_price.0) / coll_price.1;
-        let collateral_value = collateral_value_raw.saturating_mul(collateral_cf) / SCALE_1E6;
         if collateral_value == 0 {
             return 0;
+        }
+        if collateral_value == u128::MAX {
+            return u128::MAX;
         }
         collateral_value.saturating_mul(SCALE_1E6) / debt_value
     }
@@ -1548,6 +1583,98 @@ impl MarginController {
         }
         let max_slippage_bps = get_max_slippage_bps(env);
         expected_out.saturating_mul(SCALE_1E6.saturating_sub(max_slippage_bps)) / SCALE_1E6
+    }
+
+    fn discounted_ptoken_value_usd(env: &Env, vault: &Address, ptokens: u128) -> u128 {
+        if ptokens == 0 {
+            return 0;
+        }
+        let vault_client = ReceiptVaultClient::new(env, vault);
+        let asset = vault_client.get_underlying_token();
+        let price = get_price_usd(env, &asset);
+        if price.0 == 0 || price.1 == 0 {
+            panic!("invalid collateral price");
+        }
+        let cf = get_peridottroller(env).get_market_cf(vault);
+        if cf > SCALE_1E6 {
+            return u128::MAX;
+        }
+        let exchange_rate = vault_client.get_exchange_rate();
+        if exchange_rate == 0 {
+            panic!("invalid exchange rate");
+        }
+        let underlying = ptokens.saturating_mul(exchange_rate) / SCALE_1E6;
+        let raw_value = underlying.saturating_mul(price.0) / price.1;
+        raw_value.saturating_mul(cf) / SCALE_1E6
+    }
+
+    fn combined_v2_collateral_value_usd(
+        env: &Env,
+        position_id: u64,
+        vaults: &PositionVaults,
+        position: &Position,
+    ) -> u128 {
+        let mut value = Self::discounted_ptoken_value_usd(
+            env,
+            &vaults.position_vault,
+            position.collateral_ptokens,
+        );
+        if let Some((initial_market, initial_ptokens)) = get_position_initial_lock(env, position_id)
+        {
+            value = value.saturating_add(Self::discounted_ptoken_value_usd(
+                env,
+                &initial_market,
+                initial_ptokens,
+            ));
+        }
+        value
+    }
+
+    fn ceil_div(numerator: u128, denominator: u128) -> u128 {
+        if denominator == 0 {
+            panic!("division by zero");
+        }
+        if numerator == 0 {
+            0
+        } else {
+            numerator.saturating_sub(1) / denominator + 1
+        }
+    }
+
+    fn ptokens_for_discounted_value_ceil(
+        env: &Env,
+        vault: &Address,
+        available_ptokens: u128,
+        target_value: u128,
+    ) -> u128 {
+        if target_value == 0 || available_ptokens == 0 {
+            return 0;
+        }
+        let available_value = Self::discounted_ptoken_value_usd(env, vault, available_ptokens);
+        if target_value >= available_value {
+            return available_ptokens;
+        }
+        let vault_client = ReceiptVaultClient::new(env, vault);
+        let asset = vault_client.get_underlying_token();
+        let price = get_price_usd(env, &asset);
+        if price.0 == 0 || price.1 == 0 {
+            panic!("invalid collateral price");
+        }
+        let cf = get_peridottroller(env).get_market_cf(vault);
+        if cf > SCALE_1E6 {
+            panic!("invalid market cf");
+        }
+        if cf == 0 {
+            return available_ptokens;
+        }
+        let exchange_rate = vault_client.get_exchange_rate();
+        if exchange_rate == 0 {
+            panic!("invalid exchange rate");
+        }
+        let raw_value = Self::ceil_div(target_value.saturating_mul(SCALE_1E6), cf);
+        let underlying = Self::ceil_div(raw_value.saturating_mul(price.1), price.0);
+        let ptokens = Self::ceil_div(underlying.saturating_mul(SCALE_1E6), exchange_rate);
+        ptokens.min(available_ptokens).max(1)
     }
 
     fn assert_margin_lock_configured(env: &Env, vault: &Address) {

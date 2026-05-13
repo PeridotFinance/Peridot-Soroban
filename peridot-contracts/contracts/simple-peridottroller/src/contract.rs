@@ -2789,7 +2789,11 @@ impl SimplePeridottroller {
         let controller = env.current_contract_address();
         let token_client = soroban_sdk::token::Client::new(env, &token);
         let treasury_balance = token_client.balance(&controller);
-        let payable: i128 = if treasury_balance < amt { treasury_balance } else { amt };
+        let payable: i128 = if treasury_balance < amt {
+            treasury_balance
+        } else {
+            amt
+        };
         if payable <= 0 {
             // Treasury empty (or negative balance impossible); leave accrued in place.
             Self::emit_claim_call_failed(env, user, &token, "transfer");

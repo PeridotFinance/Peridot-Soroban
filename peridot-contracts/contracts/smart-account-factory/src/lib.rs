@@ -14,6 +14,7 @@ pub trait BasicSmartAccount {
         peridottroller: Address,
         margin_controller: Address,
     );
+    fn get_owner(env: Env) -> Address;
 }
 
 /// Factory for deploying smart accounts.
@@ -279,6 +280,20 @@ impl SmartAccountFactory {
         env.storage().persistent().get(&DataKey::UserAccount(user))
     }
 
+    pub fn restore_account(env: Env, user: Address, account: Address) -> Address {
+        bump_ttl(&env);
+        user.require_auth();
+        let owner = BasicSmartAccountClient::new(&env, &account).get_owner();
+        if owner != user {
+            panic!("account owner mismatch");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserAccount(user.clone()), &account);
+        bump_user_account_ttl(&env, &user);
+        account
+    }
+
     pub fn propose_upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
         bump_ttl(&env);
         require_admin(&env, &admin);
@@ -388,6 +403,29 @@ fn bump_account_count_ttl(env: &Env) {
 mod test {
     use super::*;
     use soroban_sdk::testutils::{Address as _, Ledger};
+    use soroban_sdk::{contract, contractimpl};
+
+    #[contract]
+    struct MockBasicAccount;
+
+    #[contractimpl]
+    impl MockBasicAccount {
+        pub fn set_owner(env: Env, owner: Address) {
+            env.storage().persistent().set(&DataKey::Owner, &owner);
+        }
+
+        pub fn get_owner(env: Env) -> Address {
+            env.storage()
+                .persistent()
+                .get(&DataKey::Owner)
+                .expect("owner not set")
+        }
+    }
+
+    #[contracttype]
+    enum DataKey {
+        Owner,
+    }
 
     #[test]
     fn test_initialize_and_set_wasm_hash() {
@@ -422,5 +460,42 @@ mod test {
         let fake_hash = BytesN::from_array(&env, &[2u8; 32]);
         client.approve_hash(&admin, &fake_hash);
         client.set_wasm_hash(&non_admin, &AccountType::Basic, &fake_hash);
+    }
+
+    #[test]
+    fn test_restore_account_relinks_existing_user_account() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let user = Address::generate(&env);
+
+        let factory_id = env.register(SmartAccountFactory, ());
+        let factory = SmartAccountFactoryClient::new(&env, &factory_id);
+        factory.initialize(&admin);
+
+        let account_id = env.register(MockBasicAccount, ());
+        MockBasicAccountClient::new(&env, &account_id).set_owner(&user);
+
+        let restored = factory.restore_account(&user, &account_id);
+        assert_eq!(restored, account_id);
+        assert_eq!(factory.get_account(&user), Some(account_id));
+    }
+
+    #[test]
+    #[should_panic(expected = "account owner mismatch")]
+    fn test_restore_account_rejects_wrong_owner() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let user = Address::generate(&env);
+        let other = Address::generate(&env);
+
+        let factory_id = env.register(SmartAccountFactory, ());
+        let factory = SmartAccountFactoryClient::new(&env, &factory_id);
+        factory.initialize(&admin);
+
+        let account_id = env.register(MockBasicAccount, ());
+        MockBasicAccountClient::new(&env, &account_id).set_owner(&other);
+        factory.restore_account(&user, &account_id);
     }
 }
