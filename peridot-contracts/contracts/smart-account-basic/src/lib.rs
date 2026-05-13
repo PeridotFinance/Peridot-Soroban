@@ -56,6 +56,7 @@ pub enum DataKey {
     Peridottroller,
     MarginController,
     AllowedContract(Address),
+    AllowedContractUnderlying(Address),
     Initialized,
     PendingUpgradeHash,
     PendingUpgradeEta,
@@ -197,12 +198,32 @@ impl BasicSmartAccount {
         bump_allowed_contract_ttl(&env, &contract);
     }
 
+    pub fn add_allowed_vault(env: Env, owner: Address, vault: Address, underlying: Address) {
+        bump_ttl(&env);
+        require_owner(&env, &owner);
+        let reported = ReceiptVaultClient::new(&env, &vault).get_underlying_token();
+        if reported != underlying {
+            panic!("underlying mismatch");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::AllowedContract(vault.clone()), &true);
+        env.storage().persistent().set(
+            &DataKey::AllowedContractUnderlying(vault.clone()),
+            &underlying,
+        );
+        bump_allowed_contract_ttl(&env, &vault);
+    }
+
     pub fn remove_allowed_contract(env: Env, owner: Address, contract: Address) {
         bump_ttl(&env);
         require_owner(&env, &owner);
         env.storage()
             .persistent()
-            .remove(&DataKey::AllowedContract(contract));
+            .remove(&DataKey::AllowedContract(contract.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::AllowedContractUnderlying(contract));
     }
 
     pub fn is_allowed_contract(env: Env, contract: Address) -> bool {
@@ -324,10 +345,21 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
         && (fn_name == Symbol::new(env, "deposit") || fn_name == Symbol::new(env, "repay"))
     {
         check_first_address_is_self(env, ctx, 0)?;
+    } else if is_vault
+        && (fn_name == Symbol::new(env, "borrow_for_margin")
+            || fn_name == Symbol::new(env, "repay_for_margin"))
+    {
+        // Margin debt helpers are called by the margin controller, but the
+        // vault still requires the receiver/payer to authorize at arg index 1.
+        check_first_address_is_self(env, ctx, 1)?;
     } else if is_vault && fn_name == Symbol::new(env, "withdraw") {
         check_redeem_policy(env, ctx, 0, 1)?;
     } else if is_vault && fn_name == Symbol::new(env, "transfer") {
         check_redeem_policy(env, ctx, 0, 2)?;
+        let to = get_address_arg(env, ctx, 1)?;
+        if !is_protocol_recipient(env, &to) {
+            return Err(Error::Unauthorized);
+        }
     } else if is_margin
         && (fn_name == Symbol::new(env, "deposit_collateral")
             || fn_name == Symbol::new(env, "withdraw_collateral")
@@ -337,8 +369,10 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
             || fn_name == Symbol::new(env, "open_position_v2")
             || fn_name == Symbol::new(env, "open_position_no_swap")
             || fn_name == Symbol::new(env, "open_position_no_swap_short")
+            || fn_name == Symbol::new(env, "open_position_no_swap_v2")
             || fn_name == Symbol::new(env, "close_position")
             || fn_name == Symbol::new(env, "close_position_v2")
+            || fn_name == Symbol::new(env, "close_position_no_swap_v2")
             || fn_name == Symbol::new(env, "liquidate_position")
             || fn_name == Symbol::new(env, "liquidate_position_v2"))
     {
@@ -353,6 +387,8 @@ fn is_sensitive_vault_function(env: &Env, fn_name: &Symbol) -> bool {
     *fn_name == Symbol::new(env, "borrow")
         || *fn_name == Symbol::new(env, "deposit")
         || *fn_name == Symbol::new(env, "repay")
+        || *fn_name == Symbol::new(env, "borrow_for_margin")
+        || *fn_name == Symbol::new(env, "repay_for_margin")
         || *fn_name == Symbol::new(env, "withdraw")
         || *fn_name == Symbol::new(env, "transfer")
 }
@@ -366,8 +402,10 @@ fn is_sensitive_margin_function(env: &Env, fn_name: &Symbol) -> bool {
         || *fn_name == Symbol::new(env, "open_position_v2")
         || *fn_name == Symbol::new(env, "open_position_no_swap")
         || *fn_name == Symbol::new(env, "open_position_no_swap_short")
+        || *fn_name == Symbol::new(env, "open_position_no_swap_v2")
         || *fn_name == Symbol::new(env, "close_position")
         || *fn_name == Symbol::new(env, "close_position_v2")
+        || *fn_name == Symbol::new(env, "close_position_no_swap_v2")
         || *fn_name == Symbol::new(env, "liquidate_position")
         || *fn_name == Symbol::new(env, "liquidate_position_v2")
 }
@@ -433,7 +471,15 @@ fn check_borrow_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
         .get(&DataKey::Peridottroller)
         .ok_or(Error::NotInitialized)?;
 
+    let expected_underlying: Address = env
+        .storage()
+        .persistent()
+        .get(&DataKey::AllowedContractUnderlying(ctx.contract.clone()))
+        .ok_or(Error::Unauthorized)?;
     let underlying = ReceiptVaultClient::new(env, &ctx.contract).get_underlying_token();
+    if underlying != expected_underlying {
+        return Err(Error::Unauthorized);
+    }
     let (_liq, shortfall) = PeridottrollerClient::new(env, &peridottroller).hypothetical_liquidity(
         &user,
         &ctx.contract,
@@ -454,12 +500,7 @@ fn check_redeem_policy(
 ) -> Result<(), Error> {
     let user = get_address_arg(env, ctx, user_index)?;
     require_self_address(env, &user)?;
-    let amount: u128 = ctx
-        .args
-        .get(amount_index)
-        .ok_or(Error::Unauthorized)?
-        .try_into_val(env)
-        .map_err(|_| Error::Unauthorized)?;
+    let amount = get_u128_arg(env, ctx, amount_index)?;
     let peridottroller: Address = env
         .storage()
         .persistent()
@@ -484,6 +525,19 @@ fn get_address_arg(env: &Env, ctx: &ContractContext, index: u32) -> Result<Addre
         .ok_or(Error::Unauthorized)?
         .try_into_val(env)
         .map_err(|_| Error::Unauthorized)
+}
+
+fn get_u128_arg(env: &Env, ctx: &ContractContext, index: u32) -> Result<u128, Error> {
+    let value = ctx.args.get(index).ok_or(Error::Unauthorized)?;
+    let unsigned: Result<u128, _> = value.try_into_val(env);
+    if let Ok(amount) = unsigned {
+        return Ok(amount);
+    }
+    let signed: i128 = value.try_into_val(env).map_err(|_| Error::Unauthorized)?;
+    if signed < 0 {
+        return Err(Error::Unauthorized);
+    }
+    Ok(signed as u128)
 }
 
 fn require_self_address(env: &Env, address: &Address) -> Result<(), Error> {
@@ -619,6 +673,10 @@ fn bump_allowed_contract_ttl(env: &Env, contract: &Address) {
     let key = DataKey::AllowedContract(contract.clone());
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let underlying_key = DataKey::AllowedContractUnderlying(contract.clone());
+    if persistent.has(&underlying_key) {
+        persistent.extend_ttl(&underlying_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

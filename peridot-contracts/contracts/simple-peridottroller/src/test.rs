@@ -904,6 +904,58 @@ fn test_hypothetical_liquidity_with_hint_ignores_refresh_failure_for_zero_positi
 }
 
 #[test]
+#[should_panic(expected = "market not supported")]
+fn test_hypothetical_liquidity_with_hint_rejects_delisted_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let market_id = env.register(rv::ReceiptVault, ());
+    let market = rv::ReceiptVaultClient::new(&env, &market_id);
+    market.initialize(&token, &0u128, &0u128, &admin);
+    market.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+    comp.enter_market(&user, &market_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128);
+
+    // Simulate delist while user market membership still contains the old market.
+    env.as_contract(&comp_id, || {
+        let mut markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        markets.set(market_id.clone(), false);
+        env.storage()
+            .persistent()
+            .set(&DataKey::SupportedMarkets, &markets);
+    });
+
+    let hint = MarketLiquidityHint {
+        ptoken_balance: 10u128,
+        user_borrowed: 0u128,
+        exchange_rate: 1_000_000u128,
+    };
+    let _ = env.as_contract(&market_id, || {
+        comp.hypothetical_liquidity_with_hint(&user, &market_id, &1u128, &token, &hint)
+    });
+}
+
+#[test]
 fn test_get_borrows_excl_counts_debt_from_unsupported_entered_market() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -1232,6 +1284,13 @@ struct FailingPeridotToken;
 impl FailingPeridotToken {
     pub fn mint(_env: Env, _to: Address, _amount: i128) {
         panic!("mint unavailable");
+    }
+    // Pretend a non-empty treasury balance so claim attempts the transfer.
+    pub fn balance(_env: Env, _id: Address) -> i128 {
+        i128::MAX / 2
+    }
+    pub fn transfer(_env: Env, _from: Address, _to: Address, _amount: i128) {
+        panic!("transfer unavailable");
     }
 }
 
@@ -3976,6 +4035,8 @@ fn test_rewards_accrual_and_claim() {
         &1_000_000_000i128,
     );
     comp.set_peridot_token(&peri_id);
+    // Pre-fund the controller treasury so claim can transfer from it.
+    peri.mint(&comp_id, &1_000_000i128);
 
     // Supply reward speed = 10 PERI/sec
     comp.set_supply_speed(&v_id, &10u128);
@@ -3991,7 +4052,7 @@ fn test_rewards_accrual_and_claim() {
 
     // Claim
     comp.claim(&user);
-    // Expect minted PERI ~ 10 * 5 = 50 to user
+    // Expect 10 * 5 = 50 PERI transferred from treasury to user
     assert_eq!(peri.balance_of(&user), 50i128);
 }
 
@@ -4067,6 +4128,8 @@ fn test_borrow_side_rewards_and_claim() {
         &1_000_000_000i128,
     );
     comp.set_peridot_token(&peri_id);
+    // Pre-fund the controller treasury so claim can transfer from it.
+    peri.mint(&comp_id, &1_000_000i128);
     comp.set_borrow_speed(&va_id, &7u128);
 
     // Advance 6s and claim
@@ -4214,6 +4277,8 @@ fn test_claim_skips_failing_market_and_claims_from_healthy_market() {
         &1_000_000_000i128,
     );
     comp.set_peridot_token(&peri_id);
+    // Pre-fund the controller treasury so claim can transfer from it.
+    peri.mint(&comp_id, &1_000_000i128);
 
     // Rewards only on the healthy market.
     comp.set_supply_speed(&v_id, &10u128);
@@ -4356,6 +4421,26 @@ fn test_claim_all_rejects_oversized_batch() {
     for _ in 0..(MAX_CLAIM_BATCH + 1) {
         users.push_back(Address::generate(&env));
     }
+    env.as_contract(&comp_id, || {
+        SimplePeridottroller::claim_all(env.clone(), users.clone());
+    });
+}
+
+#[test]
+fn test_claim_all_permissionless_without_user_auth() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    // No user auth entries present; batch claim should still be callable.
+    env.set_auths(&[]);
+    let mut users = Vec::new(&env);
+    users.push_back(user);
     env.as_contract(&comp_id, || {
         SimplePeridottroller::claim_all(env.clone(), users.clone());
     });

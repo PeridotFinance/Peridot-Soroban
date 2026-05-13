@@ -2105,6 +2105,7 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         // This path may refresh cross-market state; restrict it to the calling market.
         market.require_auth();
+        Self::require_market_supported(&env, &market);
         let markets = Self::get_user_markets(env.clone(), user.clone());
         if !markets.contains(market.clone()) {
             panic!("market not entered");
@@ -2743,16 +2744,20 @@ impl SimplePeridottroller {
     pub fn claim(env: Env, user: Address) {
         bump_core_ttl(&env);
         user.require_auth();
+        Self::claim_internal(&env, &user);
+    }
+
+    fn claim_internal(env: &Env, user: &Address) {
         // Accrue and distribute on all entered markets
         let markets = Self::get_user_markets(env.clone(), user.clone());
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
-            let _ = Self::claim_market_best_effort(&env, &user, &m);
+            let _ = Self::claim_market_best_effort(env, user, &m);
         }
         let accrued_key = DataKey::Accrued(user.clone());
         if !env.storage().persistent().has(&accrued_key) {
             if markets.len() > 0 {
-                ClaimAccruedMissing { user: user.clone() }.publish(&env);
+                ClaimAccruedMissing { user: user.clone() }.publish(env);
             }
             return;
         }
@@ -2778,32 +2783,48 @@ impl SimplePeridottroller {
         } else {
             accrued as i128
         };
+        // Distribute from the controller's pre-funded PERI balance instead of
+        // minting. Admin tops up the controller treasury via standard token
+        // transfer; controller doesn't need to be the PERI admin.
+        let controller = env.current_contract_address();
+        let token_client = soroban_sdk::token::Client::new(env, &token);
+        let treasury_balance = token_client.balance(&controller);
+        let payable: i128 = if treasury_balance < amt {
+            treasury_balance
+        } else {
+            amt
+        };
+        if payable <= 0 {
+            // Treasury empty (or negative balance impossible); leave accrued in place.
+            Self::emit_claim_call_failed(env, user, &token, "transfer");
+            return;
+        }
         let auths = vec![
-            &env,
+            env,
             InvokerContractAuthEntry::Contract(SubContractInvocation {
                 context: ContractContext {
                     contract: token.clone(),
-                    fn_name: Symbol::new(&env, "mint"),
-                    args: (user.clone(), amt).into_val(&env),
+                    fn_name: Symbol::new(env, "transfer"),
+                    args: (controller.clone(), user.clone(), payable).into_val(env),
                 },
-                sub_invocations: vec![&env],
+                sub_invocations: vec![env],
             }),
         ];
         env.authorize_as_current_contract(auths);
-        let mint_res = env.try_invoke_contract::<(), InvokeError>(
+        let xfer_res = env.try_invoke_contract::<(), InvokeError>(
             &token,
-            &Symbol::new(&env, "mint"),
-            (user.clone(), amt).into_val(&env),
+            &Symbol::new(env, "transfer"),
+            (controller, user.clone(), payable).into_val(env),
         );
-        if !matches!(mint_res, Ok(Ok(()))) {
-            Self::emit_claim_call_failed(&env, &user, &token, "mint");
+        if !matches!(xfer_res, Ok(Ok(()))) {
+            Self::emit_claim_call_failed(env, user, &token, "transfer");
             return;
         }
-        let minted = if amt < 0 { 0u128 } else { amt as u128 };
-        let remaining = accrued.saturating_sub(minted);
+        let paid = payable as u128;
+        let remaining = accrued.saturating_sub(paid);
         env.storage()
             .persistent()
-            .set(&DataKey::Accrued(user), &remaining);
+            .set(&DataKey::Accrued(user.clone()), &remaining);
     }
 
     pub fn get_accrued(env: Env, user: Address) -> u128 {
@@ -3589,7 +3610,8 @@ impl SimplePeridottroller {
         storage::bump_reward_user_ttl(&env, &user, &market);
     }
 
-    // UX: allow claiming for many users at once (permissionless)
+    // UX: allow claiming for many users at once (permissionless).
+    // Anyone may trigger this, but rewards are always minted to each target user.
     pub fn claim_all(env: Env, users: Vec<Address>) {
         bump_core_ttl(&env);
         if users.len() > MAX_CLAIM_BATCH {
@@ -3597,7 +3619,7 @@ impl SimplePeridottroller {
         }
         for i in 0..users.len() {
             let u = users.get(i).unwrap();
-            Self::claim(env.clone(), u);
+            Self::claim_internal(&env, &u);
         }
     }
 
@@ -3605,7 +3627,7 @@ impl SimplePeridottroller {
     pub fn claim_self(env: Env, user: Address) {
         bump_core_ttl(&env);
         user.require_auth();
-        Self::claim(env, user);
+        Self::claim_internal(&env, &user);
     }
 
     // UX: portfolio view summarizing per-market balances and USD totals

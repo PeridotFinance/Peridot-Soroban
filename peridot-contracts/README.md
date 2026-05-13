@@ -58,8 +58,12 @@ Mocks (for tests only) live under `contracts/mocks/`.
   - `withdraw(user, ptoken_amount)` → burns pTokens, returns underlying (USD-gated when peridottroller set)
   - `borrow(user, amount)` → USD risk check via peridottroller; liquidity-guarded
   - `repay(user, amount)`
+  - `bump_user_borrow_ttl(user)` / `bump_margin_borrow_ttl(position_id)` (permissionless keepalive)
+  - `recover_borrow_snapshot(user)` / `recover_margin_snapshot(position_id)` (permissionless snapshot rebuild when canonical principal mirror exists)
+  - `migrate_borrow_state_batch(users)` / `migrate_margin_state_batch(position_ids)` (permissionless migration + TTL keepalive batch)
 - Flash loans
-  - `flash_loan(receiver, amount, data)` → transfers underlying to `receiver`, then expects repayment of `amount + fee` (fee = `amount * flash_loan_fee_scaled / 1e6`).
+  - `flash_loan(receiver, amount, data)` → transfers underlying to `receiver`, then expects repayment of `amount + fee` (fee uses ceil division: `ceil(amount * flash_loan_fee_scaled / 1e6)`).
+  - `preview_flash_loan_fee(amount)` → deterministic fee preview using the exact same rounding as `flash_loan`.
   - `receiver` must implement `on_flash_loan(vault: Address, amount: u128, fee: u128, data: Bytes)`; the vault reverts if the callback fails or does not return the required funds.
   - Flash loan fees accrue to reserves after repayment and respect peridottroller pause checks and liquidity guards.
 - pToken (ERC20-like)
@@ -420,7 +424,8 @@ vault.reduce_admin_fees(&amount);
 - Multi-claim and self-claim:
 
 ```rust
-// Claim for a batch of users (permissionless)
+// Claim for a batch of users (permissionless).
+// Third parties can trigger claim timing, but rewards are always minted to each user.
 peridottroller.claim_all(&vec![user1, user2, user3]);
 
 // User claims their own rewards (auth required for user)

@@ -14,6 +14,7 @@ pub trait ReceiptVaultContract {
     fn init_margin_borrow_state(env: Env, position_id: u64);
     fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128);
     fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128);
+    fn update_interest(env: Env);
     fn get_underlying_token(env: Env) -> Address;
     fn get_exchange_rate(env: Env) -> u128;
     fn get_ptoken_balance(env: Env, user: Address) -> u128;
@@ -179,17 +180,19 @@ pub fn get_max_slippage_bps(env: &Env) -> u128 {
 }
 
 pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {
-    let peridottroller_addr: Address = env
-        .storage()
-        .persistent()
-        .get(&DataKey::Peridottroller)
-        .expect("peridottroller not set");
+    let peridottroller_addr: Address = {
+        bump_core_ttl(env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::Peridottroller)
+            .expect("peridottroller not set")
+    };
     let _ = env.try_invoke_contract::<Option<(u128, u128)>, InvokeError>(
         &peridottroller_addr,
         &Symbol::new(env, "cache_price"),
         (asset.clone(),).into_val(env),
     );
-    let peridottroller = get_peridottroller(env);
+    let peridottroller = PeridottrollerClient::new(env, &peridottroller_addr);
     let (num, den) = peridottroller
         .get_price_usd(asset)
         .expect("price unavailable");

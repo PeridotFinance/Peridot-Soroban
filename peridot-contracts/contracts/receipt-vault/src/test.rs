@@ -835,6 +835,9 @@ fn test_recover_user_borrow_snapshot_restores_missing_state() {
     vault.set_collateral_factor(&1_000_000u128);
     vault.deposit(&user, &1_000u128);
     vault.borrow(&user, &100u128);
+    let mut users = Vec::new(&env);
+    users.push_back(user.clone());
+    vault.migrate_borrow_state_batch(&users);
 
     env.as_contract(&vault_id, || {
         env.storage()
@@ -853,6 +856,66 @@ fn test_recover_user_borrow_snapshot_restores_missing_state() {
     });
     vault.recover_user_borrow_snapshot(&admin, &user, &100u128, &index);
     assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+}
+
+#[test]
+fn test_permissionless_recover_borrow_snapshot_restores_from_canonical_principal() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &2_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&user, &1_000u128);
+    vault.borrow(&user, &100u128);
+    let mut users = Vec::new(&env);
+    users.push_back(user.clone());
+    vault.migrate_borrow_state_batch(&users);
+
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BorrowSnapshots(user.clone()));
+    });
+
+    // Rebuild using canonical principal mirror without admin intervention.
+    vault.recover_borrow_snapshot(&user);
+    assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+}
+
+#[test]
+#[should_panic(expected = "borrow snapshot missing")]
+fn test_get_user_borrow_balance_missing_snapshot_panics_without_recovery() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &2_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&user, &1_000u128);
+    vault.borrow(&user, &100u128);
+
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BorrowSnapshots(user.clone()));
+    });
+
+    let _ = vault.get_user_borrow_balance(&user);
 }
 
 #[test]
@@ -1178,15 +1241,22 @@ fn test_get_margin_borrow_balance_missing_state_panics() {
     let _ = vault.get_margin_borrow_balance(&77u64);
 }
 
+/// borrow_for_margin requires the receiver to authorize the call. The earlier
+/// "receiver must be position owner" defense did a callback into the margin
+/// controller's `get_margin_position_owner` which triggered Soroban's re-entry
+/// guard when the call-stack already contained the controller (the actual
+/// production path). The receiver.require_auth() check provides the same
+/// protection: only the user who signs the auth tree can pull funds, so a
+/// buggy controller passing a non-owner receiver only succeeds if the receiver
+/// signed for it — which they wouldn't if they aren't the position owner.
 #[test]
-#[should_panic(expected = "receiver must be position owner")]
-fn test_borrow_for_margin_rejects_non_owner_receiver() {
+#[should_panic(expected = "margin borrow state missing")]
+fn test_borrow_for_margin_requires_init_margin_borrow_state() {
     let env = Env::default();
     env.mock_all_auths();
 
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
-    let attacker = Address::generate(&env);
     let lender = Address::generate(&env);
     let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
     token_admin_client.mint(&lender, &1_000i128);
@@ -1198,14 +1268,10 @@ fn test_borrow_for_margin_rejects_non_owner_receiver() {
     vault.deposit(&lender, &500u128);
 
     let margin_ctrl_id = env.register(MockMarginPositionController, ());
-    let margin_ctrl = MockMarginPositionControllerClient::new(&env, &margin_ctrl_id);
     vault.set_margin_controller(&admin, &Some(margin_ctrl_id.clone()));
 
-    let position_id = 1u64;
-    margin_ctrl.set_position(&position_id, &user, &vault_id);
-    vault.init_margin_borrow_state(&position_id);
-
-    vault.borrow_for_margin(&position_id, &attacker, &1u128);
+    // Without init_margin_borrow_state, borrow_for_margin must reject.
+    vault.borrow_for_margin(&1u64, &user, &1u128);
 }
 
 #[test]
@@ -1779,6 +1845,67 @@ fn test_repay_overpay_after_interest_accrual_uses_pre_accrual_cap() {
     assert_eq!(token_client.balance(&user), 800i128);
     // Interest accrued during update_interest remains outstanding.
     assert!(vault_client.get_user_borrow_balance(&user) > 0u128);
+}
+
+#[test]
+fn test_repay_max_zeroes_post_accrual_debt() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.ledger().with_mut(|l| l.timestamp = 1);
+
+    let admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        jrm::DEFAULT_INIT_ADMIN,
+    ));
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &1000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    // 100% APR borrow rate so a year of elapsed time produces material interest.
+    vault.initialize(&token_address, &0u128, &1_000_000u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    vault.deposit(&user, &200u128);
+    vault.borrow(&user, &100u128);
+    assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+
+    let t0 = env.ledger().timestamp();
+    env.ledger()
+        .with_mut(|l| l.timestamp = t0 + 365 * 24 * 60 * 60);
+
+    // repay_max recomputes debt post-accrual and pays exactly that.
+    vault.repay_max(&user);
+    assert_eq!(vault.get_user_borrow_balance(&user), 0u128);
+    // The user paid principal + a year of interest.
+    assert!(token_client.balance(&user) < 800i128);
+}
+
+#[test]
+fn test_repay_max_no_op_without_debt() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.ledger().with_mut(|l| l.timestamp = 1);
+
+    let admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        jrm::DEFAULT_INIT_ADMIN,
+    ));
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &100i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    vault.deposit(&user, &50u128);
+    // No outstanding borrow → repay_max returns silently.
+    vault.repay_max(&user);
+    assert_eq!(vault.get_user_borrow_balance(&user), 0u128);
 }
 
 #[test]
@@ -2490,6 +2617,64 @@ fn test_flash_loan_successfully_repaid() {
 }
 
 #[test]
+fn test_flash_loan_fee_rounds_up_for_small_amounts() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    token_admin_client.mint(&depositor, &1_000i128);
+    vault.deposit(&depositor, &500u128);
+
+    // 0.0001% configured fee; for amount=1 floor math would be 0, ceil math should charge 1.
+    vault.set_flash_loan_fee(&1u128);
+
+    let receiver_id = env.register(FlashLoanRepayer, ());
+    let receiver_client = FlashLoanRepayerClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+    token_admin_client.mint(&receiver_id, &1i128);
+
+    let amount = 1u128;
+    let data = Bytes::new(&env);
+    vault.flash_loan(&receiver_id, &amount, &data);
+
+    assert_eq!(vault.get_total_reserves(), 1u128);
+    assert_eq!(token_client.balance(&vault_id), 501i128);
+}
+
+#[test]
+fn test_preview_flash_loan_fee_matches_runtime_rounding() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    // 1 / 1e6 fee: tiny loans should still preview a non-zero fee.
+    vault.set_flash_loan_fee(&1u128);
+    assert_eq!(vault.preview_flash_loan_fee(&0u128), 0u128);
+    assert_eq!(vault.preview_flash_loan_fee(&1u128), 1u128);
+    assert_eq!(vault.preview_flash_loan_fee(&10u128), 1u128);
+    assert_eq!(vault.preview_flash_loan_fee(&1_000_000u128), 1u128);
+
+    // 2% fee should be exact for clean multiples.
+    vault.set_flash_loan_fee(&20_000u128);
+    assert_eq!(vault.preview_flash_loan_fee(&100u128), 2u128);
+}
+
+#[test]
 fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -2537,6 +2722,42 @@ fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
         (101 + expected_fee) as i128
     );
     assert_eq!(vault.get_total_reserves(), expected_fee);
+}
+
+#[test]
+fn test_flash_loan_redeposits_large_idle_cash_after_repayment() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin_client.mint(&depositor, &30_000i128);
+    vault.deposit(&depositor, &30_000u128);
+    assert_eq!(token_client.balance(&vault_id), 0i128);
+
+    let receiver_id = env.register(FlashLoanRepayer, ());
+    let receiver_client = FlashLoanRepayerClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+    token_admin_client.mint(&receiver_id, &1i128);
+
+    vault.flash_loan(&receiver_id, &15_000u128, &Bytes::new(&env));
+
+    // A large flash loan temporarily redeems boosted shares, but repayment
+    // should be re-deployed instead of leaving yield-bearing funds idle.
+    assert_eq!(token_client.balance(&vault_id), 0i128);
+    assert_eq!(boosted.balance(&vault_id), 30_000i128);
 }
 
 #[test]
