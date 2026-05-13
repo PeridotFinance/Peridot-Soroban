@@ -1072,6 +1072,7 @@ impl MarginController {
         );
 
         let debt_vault_client = ReceiptVaultClient::new(&env, &vaults.debt_vault);
+        debt_vault_client.update_interest();
         let debt_amount = debt_vault_client.get_margin_borrow_balance(&position_id);
         if debt_amount == 0 {
             panic!("zero debt");
@@ -1148,6 +1149,9 @@ impl MarginController {
             repay_for_margin_args,
         );
         debt_vault_client.repay_for_margin(&position_id, &controller, &debt_amount);
+        if debt_vault_client.get_margin_borrow_balance(&position_id) != 0 {
+            panic!("debt remains");
+        }
 
         let surplus = received.saturating_sub(debt_amount);
         if surplus > 0 {
@@ -1350,6 +1354,7 @@ impl MarginController {
         }
         let vaults = get_position_vaults(&env, position_id, &position);
         let debt_vault = ReceiptVaultClient::new(&env, &vaults.debt_vault);
+        debt_vault.update_interest();
         let debt_amount = debt_vault.get_margin_borrow_balance(&position_id);
         if debt_amount == 0 {
             panic!("zero debt");
@@ -1364,6 +1369,9 @@ impl MarginController {
         }
 
         debt_vault.repay_for_margin(&position_id, &liquidator, &debt_amount);
+        if debt_vault.get_margin_borrow_balance(&position_id) != 0 {
+            panic!("debt remains");
+        }
 
         let mut remaining_seize_value =
             debt_value.saturating_mul(DEFAULT_MARGIN_LIQ_BONUS_SCALED) / SCALE_1E6;

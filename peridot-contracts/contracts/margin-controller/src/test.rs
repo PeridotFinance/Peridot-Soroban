@@ -220,6 +220,8 @@ enum MockVaultKey {
     UnderlyingToken,
     MarginController,
     WithdrawPayoutBps,
+    MarginInterestIncrement,
+    LastMarginPosition,
 }
 
 #[contractimpl]
@@ -577,6 +579,28 @@ impl MockVault {
         1_000_000u128
     }
 
+    pub fn update_interest(env: Env) {
+        let increment: u128 = env
+            .storage()
+            .persistent()
+            .get(&MockVaultKey::MarginInterestIncrement)
+            .unwrap_or(0);
+        if increment == 0 {
+            return;
+        }
+        if let Some(position_id) = env
+            .storage()
+            .persistent()
+            .get::<_, u64>(&MockVaultKey::LastMarginPosition)
+        {
+            let key = MockVaultKey::MarginBorrow(position_id);
+            let current: u128 = env.storage().persistent().get(&key).unwrap_or(0);
+            env.storage()
+                .persistent()
+                .set(&key, &current.saturating_add(increment));
+        }
+    }
+
     pub fn borrow(env: Env, user: Address, amount: u128) {
         let key = MockVaultKey::BorrowBalance(user);
         let current: u128 = env.storage().persistent().get(&key).unwrap_or(0);
@@ -601,6 +625,9 @@ impl MockVault {
         env.storage()
             .persistent()
             .set(&key, &current.saturating_add(amount));
+        env.storage()
+            .persistent()
+            .set(&MockVaultKey::LastMarginPosition, &position_id);
     }
 
     pub fn repay_for_margin(env: Env, position_id: u64, _payer: Address, amount: u128) {
@@ -616,6 +643,12 @@ impl MockVault {
             .persistent()
             .get(&MockVaultKey::MarginBorrow(position_id))
             .unwrap_or(0)
+    }
+
+    pub fn set_margin_interest_increment(env: Env, amount: u128) {
+        env.storage()
+            .persistent()
+            .set(&MockVaultKey::MarginInterestIncrement, &amount);
     }
 
     pub fn set_margin_controller(env: Env, margin_controller: Option<Address>) {
@@ -1292,6 +1325,40 @@ fn test_liquidate_position_v2_marks_liquidated() {
     peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
     peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
     controller.liquidate_position_v2(&liquidator, &position_id);
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
+}
+
+#[test]
+fn test_liquidate_position_v2_accrues_margin_debt_before_repay() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let liquidator = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+
+    usdt_vault.set_margin_interest_increment(&5u128);
+    peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
+    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
+
+    controller.liquidate_position_v2(&liquidator, &position_id);
+
+    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Liquidated);
 }

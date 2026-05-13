@@ -15,7 +15,7 @@ pub fn next_position_id(env: &Env) -> u64 {
         .storage()
         .persistent()
         .get(&DataKey::PositionCounter)
-        .unwrap_or(0u64);
+        .expect("position counter missing");
     if id == u64::MAX {
         panic!("position id overflow");
     }

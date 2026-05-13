@@ -56,6 +56,7 @@ pub enum DataKey {
     Peridottroller,
     MarginController,
     AllowedContract(Address),
+    AllowedContractUnderlying(Address),
     Initialized,
     PendingUpgradeHash,
     PendingUpgradeEta,
@@ -197,12 +198,32 @@ impl BasicSmartAccount {
         bump_allowed_contract_ttl(&env, &contract);
     }
 
+    pub fn add_allowed_vault(env: Env, owner: Address, vault: Address, underlying: Address) {
+        bump_ttl(&env);
+        require_owner(&env, &owner);
+        let reported = ReceiptVaultClient::new(&env, &vault).get_underlying_token();
+        if reported != underlying {
+            panic!("underlying mismatch");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::AllowedContract(vault.clone()), &true);
+        env.storage().persistent().set(
+            &DataKey::AllowedContractUnderlying(vault.clone()),
+            &underlying,
+        );
+        bump_allowed_contract_ttl(&env, &vault);
+    }
+
     pub fn remove_allowed_contract(env: Env, owner: Address, contract: Address) {
         bump_ttl(&env);
         require_owner(&env, &owner);
         env.storage()
             .persistent()
-            .remove(&DataKey::AllowedContract(contract));
+            .remove(&DataKey::AllowedContract(contract.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::AllowedContractUnderlying(contract));
     }
 
     pub fn is_allowed_contract(env: Env, contract: Address) -> bool {
@@ -450,7 +471,15 @@ fn check_borrow_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error> {
         .get(&DataKey::Peridottroller)
         .ok_or(Error::NotInitialized)?;
 
+    let expected_underlying: Address = env
+        .storage()
+        .persistent()
+        .get(&DataKey::AllowedContractUnderlying(ctx.contract.clone()))
+        .ok_or(Error::Unauthorized)?;
     let underlying = ReceiptVaultClient::new(env, &ctx.contract).get_underlying_token();
+    if underlying != expected_underlying {
+        return Err(Error::Unauthorized);
+    }
     let (_liq, shortfall) = PeridottrollerClient::new(env, &peridottroller).hypothetical_liquidity(
         &user,
         &ctx.contract,
@@ -644,6 +673,10 @@ fn bump_allowed_contract_ttl(env: &Env, contract: &Address) {
     let key = DataKey::AllowedContract(contract.clone());
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let underlying_key = DataKey::AllowedContractUnderlying(contract.clone());
+    if persistent.has(&underlying_key) {
+        persistent.extend_ttl(&underlying_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

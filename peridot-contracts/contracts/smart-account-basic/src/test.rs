@@ -22,6 +22,25 @@ impl MockPolicyPeridottroller {
     }
 }
 
+#[contract]
+struct MockReceiptVault;
+
+#[contractimpl]
+impl MockReceiptVault {
+    pub fn get_underlying_token(env: Env) -> Address {
+        env.storage()
+            .persistent()
+            .get(&Symbol::new(&env, "Underlying"))
+            .expect("underlying not set")
+    }
+
+    pub fn set_underlying_token(env: Env, token: Address) {
+        env.storage()
+            .persistent()
+            .set(&Symbol::new(&env, "Underlying"), &token);
+    }
+}
+
 fn assert_budget_under(env: &Env, max_cpu: u64, max_mem: u64) {
     let budget = env.cost_estimate().budget();
     let cpu = budget.cpu_instruction_cost();
@@ -492,6 +511,47 @@ fn test_sensitive_call_on_unlisted_vault_is_rejected() {
         };
         let res = enforce_contract_policy(&env, &ctx);
         assert_eq!(res, Err(Error::Unauthorized));
+    });
+}
+
+#[test]
+fn test_vault_borrow_requires_configured_underlying() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let factory = expected_factory(&env);
+    let owner = Address::generate(&env);
+    let signer = BytesN::from_array(&env, &[1u8; 32]);
+    let peridottroller = env.register(MockPolicyPeridottroller, ());
+    let margin = Address::generate(&env);
+    let underlying = Address::generate(&env);
+    let vault_id = env.register(MockReceiptVault, ());
+    let vault = MockReceiptVaultClient::new(&env, &vault_id);
+    vault.set_underlying_token(&underlying);
+
+    let (contract_id, client) = register_account(&env, &factory);
+    client.initialize(&owner, &signer, &peridottroller, &margin);
+    client.add_allowed_contract(&owner, &vault_id);
+
+    env.as_contract(&contract_id, || {
+        let ctx = ContractContext {
+            contract: vault_id.clone(),
+            fn_name: Symbol::new(&env, "borrow"),
+            args: (contract_id.clone(), 10u128).into_val(&env),
+        };
+        assert_eq!(
+            enforce_contract_policy(&env, &ctx),
+            Err(Error::Unauthorized)
+        );
+    });
+
+    client.add_allowed_vault(&owner, &vault_id, &underlying);
+    env.as_contract(&contract_id, || {
+        let ctx = ContractContext {
+            contract: vault_id,
+            fn_name: Symbol::new(&env, "borrow"),
+            args: (contract_id.clone(), 10u128).into_val(&env),
+        };
+        assert_eq!(enforce_contract_policy(&env, &ctx), Ok(()));
     });
 }
 
