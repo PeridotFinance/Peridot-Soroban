@@ -595,3 +595,27 @@ fn test_token_transfer_context_requires_protocol_recipient() {
         assert_eq!(res, Ok(()));
     });
 }
+
+#[test]
+fn test_unknown_non_protocol_contract_call_is_rejected() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let factory = expected_factory(&env);
+    let owner = Address::generate(&env);
+    let signer = BytesN::from_array(&env, &[1u8; 32]);
+    let peridottroller = Address::generate(&env);
+    let margin = Address::generate(&env);
+    let attacker_contract = Address::generate(&env);
+    let (contract_id, client) = register_account(&env, &factory);
+    client.initialize(&owner, &signer, &peridottroller, &margin);
+
+    env.as_contract(&contract_id, || {
+        let ctx = ContractContext {
+            contract: attacker_contract,
+            fn_name: Symbol::new(&env, "burn"),
+            args: (contract_id.clone(), 10i128).into_val(&env),
+        };
+        let res = enforce_contract_policy(&env, &ctx);
+        assert_eq!(res, Err(Error::Unauthorized));
+    });
+}

@@ -46,10 +46,11 @@ pub enum DataKey {
     PendingUpgradeEta,             // u64 unix timestamp when upgrade becomes executable
     // Debt-state migration and canonical per-account principal mirrors.
     // Keep new variants appended to preserve existing key discriminants.
-    DebtStateVersion,           // u32 debt-state schema version
-    DebtStateMigratedAt,        // u64 timestamp of current debt-state migration
-    BorrowPrincipal(Address),   // u128 canonical principal per user
-    MarginBorrowPrincipal(u64), // u128 canonical principal per margin position
+    DebtStateVersion,                // u32 debt-state schema version
+    DebtStateMigratedAt,             // u64 timestamp of current debt-state migration
+    BorrowPrincipal(Address),        // u128 canonical principal per user
+    MarginBorrowPrincipal(u64),      // u128 canonical principal per margin position
+    MarginWithdrawBypassV2(Address), // scoped bypass for margin-controller-managed withdraw
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -85,6 +86,14 @@ pub(crate) struct ControllerAccrualHint {
     pub total_borrowed: Option<u128>,
     pub user_ptokens: Option<u128>,
     pub user_borrowed: Option<u128>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MarginWithdrawBypassScope {
+    pub recipient: Address,
+    pub max_ptokens: u128,
+    pub ledger_sequence: u32,
 }
 
 #[contracttype]

@@ -379,6 +379,10 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
         check_first_address_is_self(env, ctx, 0)?;
     } else if is_vault || is_margin {
         return Err(Error::Unauthorized);
+    } else {
+        // This is a policy account, not a general-purpose account. Unknown
+        // contracts/functions must not receive this account's authorization.
+        return Err(Error::Unauthorized);
     }
     Ok(())
 }

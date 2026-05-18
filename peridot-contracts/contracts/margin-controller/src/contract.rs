@@ -123,7 +123,7 @@ impl MarginController {
             panic!("collateral locked");
         }
         let vault_client = ReceiptVaultClient::new(&env, &vault);
-        Self::begin_margin_withdraw_if_supported(&env, &vault, &user);
+        Self::begin_margin_withdraw_if_supported(&env, &vault, &user, &user, ptoken_amount);
         vault_client.withdraw(&user, &ptoken_amount);
     }
 
@@ -140,7 +140,7 @@ impl MarginController {
         let amount_i128: i128 = ptoken_amount.try_into().expect("amount too large");
         // Set the vault's margin-withdraw bypass for the user so the vault's transfer
         // skips the controller-side preview_redeem_max (which would re-enter the vault).
-        Self::begin_margin_withdraw_if_supported(&env, &vault, &user);
+        Self::begin_margin_withdraw_if_supported(&env, &vault, &user, &controller, ptoken_amount);
         ReceiptVaultClient::new(&env, &vault).transfer(&user, &controller, &amount_i128);
         let current = get_margin_balance_ptokens(&env, &user, &vault);
         set_margin_balance_ptokens(&env, &user, &vault, current.saturating_add(ptoken_amount));
@@ -163,7 +163,7 @@ impl MarginController {
         let amount_i128: i128 = ptoken_amount.try_into().expect("amount too large");
         // Set the vault's margin-withdraw bypass for the controller (the `from`
         // address) so the vault's transfer skips preview_redeem_max re-entry.
-        Self::begin_margin_withdraw_if_supported(&env, &vault, &controller);
+        Self::begin_margin_withdraw_if_supported(&env, &vault, &controller, &user, ptoken_amount);
         let transfer_args: Vec<Val> =
             (controller.clone(), user.clone(), amount_i128).into_val(&env);
         Self::authorize_controller_subcall(&env, &vault, "transfer", transfer_args);
@@ -953,7 +953,13 @@ impl MarginController {
         if position.collateral_asset == position.debt_asset {
             ReceiptVaultClient::new(&env, &vaults.debt_vault).repay(&user, &debt_amount);
             let vault_client = ReceiptVaultClient::new(&env, &vaults.position_vault);
-            Self::begin_margin_withdraw_if_supported(&env, &vaults.position_vault, &user);
+            Self::begin_margin_withdraw_if_supported(
+                &env,
+                &vaults.position_vault,
+                &user,
+                &user,
+                position.collateral_ptokens,
+            );
             vault_client.withdraw(&user, &position.collateral_ptokens);
 
             let new_total_shares = total_shares.saturating_sub(position.debt_shares);
@@ -978,7 +984,13 @@ impl MarginController {
         let token_client = token::TokenClient::new(&env, &underlying_token);
         let bal_before = token_client.balance(&user);
         let vault_client = ReceiptVaultClient::new(&env, &vaults.position_vault);
-        Self::begin_margin_withdraw_if_supported(&env, &vaults.position_vault, &user);
+        Self::begin_margin_withdraw_if_supported(
+            &env,
+            &vaults.position_vault,
+            &user,
+            &user,
+            position.collateral_ptokens,
+        );
         vault_client.withdraw(&user, &position.collateral_ptokens);
         let bal_after = token_client.balance(&user);
         let collateral_underlying = if bal_after <= bal_before {
@@ -1084,7 +1096,13 @@ impl MarginController {
         let token_client = token::TokenClient::new(&env, &underlying_token);
         let bal_before = token_client.balance(&controller);
         let vault_client = ReceiptVaultClient::new(&env, &vaults.position_vault);
-        Self::begin_margin_withdraw_if_supported(&env, &vaults.position_vault, &controller);
+        Self::begin_margin_withdraw_if_supported(
+            &env,
+            &vaults.position_vault,
+            &controller,
+            &controller,
+            position.collateral_ptokens,
+        );
         let withdraw_args: Vec<Val> =
             (controller.clone(), position.collateral_ptokens).into_val(&env);
         Self::authorize_controller_subcall(&env, &vaults.position_vault, "withdraw", withdraw_args);
@@ -1106,28 +1124,22 @@ impl MarginController {
             if amount_with_slippage < min_out_oracle {
                 panic!("slippage too high");
             }
-            // close_position_v2 swaps are executed from controller-held collateral,
-            // so pre-authorize the controller for swap-adapter's user.require_auth().
-            let swap_args: Vec<Val> = (
-                controller.clone(),
-                swaps_chain.clone(),
-                position.collateral_asset.clone(),
-                collateral_underlying,
-                amount_with_slippage,
-            )
-                .into_val(&env);
-            let mut auths = Vec::new(&env);
-            auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
-                context: ContractContext {
-                    contract: swap_adapter.clone(),
-                    fn_name: Symbol::new(&env, "swap_chained"),
-                    args: swap_args,
-                },
-                sub_invocations: Vec::new(&env),
-            }));
-            env.authorize_as_current_contract(auths);
+            // Move withdrawn collateral back to the signer and execute the
+            // swap as the signer. This avoids impossible controller auth for
+            // router-internal token transfers.
+            let collateral_i128: i128 = collateral_underlying.try_into().expect("amount too large");
+            let collateral_transfer_args: Vec<Val> =
+                (controller.clone(), user.clone(), collateral_i128).into_val(&env);
+            Self::authorize_controller_subcall(
+                &env,
+                &underlying_token,
+                "transfer",
+                collateral_transfer_args,
+            );
+            token_client.transfer(&controller, &user, &collateral_i128);
+
             received = SwapAdapterClient::new(&env, &swap_adapter).swap_chained(
-                &controller,
+                &user,
                 &swaps_chain,
                 &position.collateral_asset,
                 &collateral_underlying,
@@ -1136,6 +1148,11 @@ impl MarginController {
             if received < min_out_oracle {
                 panic!("slippage too high");
             }
+            let debt_underlying =
+                ReceiptVaultClient::new(&env, &vaults.debt_vault).get_underlying_token();
+            let debt_token = token::TokenClient::new(&env, &debt_underlying);
+            let received_i128: i128 = received.try_into().expect("amount too large");
+            debt_token.transfer(&user, &controller, &received_i128);
         }
         if received < debt_amount {
             panic!("insufficient swap output");
@@ -1171,7 +1188,6 @@ impl MarginController {
                 );
             }
         }
-
         if let Some((initial_market, initial_ptokens)) =
             get_position_initial_lock(&env, position_id)
         {
@@ -1778,18 +1794,30 @@ impl MarginController {
             return;
         }
         let vault = ReceiptVaultClient::new(env, &initial_market);
-        Self::begin_margin_withdraw_if_supported(env, &initial_market, user);
+        Self::begin_margin_withdraw_if_supported(env, &initial_market, user, user, initial_ptokens);
         vault.withdraw(user, &initial_ptokens);
     }
 
-    fn begin_margin_withdraw_if_supported(env: &Env, vault: &Address, user: &Address) {
+    fn begin_margin_withdraw_if_supported(
+        env: &Env,
+        vault: &Address,
+        user: &Address,
+        recipient: &Address,
+        max_ptokens: u128,
+    ) {
         let controller = env.current_contract_address();
-        let begin_args: Vec<Val> = (controller.clone(), user.clone()).into_val(env);
+        let begin_args: Vec<Val> = (
+            controller.clone(),
+            user.clone(),
+            recipient.clone(),
+            max_ptokens,
+        )
+            .into_val(env);
         Self::authorize_controller_subcall(env, vault, "begin_margin_withdraw", begin_args);
         let _ = env.try_invoke_contract::<(), InvokeError>(
             vault,
             &Symbol::new(env, "begin_margin_withdraw"),
-            (controller, user.clone()).into_val(env),
+            (controller, user.clone(), recipient.clone(), max_ptokens).into_val(env),
         );
     }
 

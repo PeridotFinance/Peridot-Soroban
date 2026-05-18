@@ -859,7 +859,8 @@ fn test_recover_user_borrow_snapshot_restores_missing_state() {
 }
 
 #[test]
-fn test_permissionless_recover_borrow_snapshot_restores_from_canonical_principal() {
+#[should_panic(expected = "admin recovery required")]
+fn test_permissionless_recover_borrow_snapshot_is_disabled() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -885,13 +886,12 @@ fn test_permissionless_recover_borrow_snapshot_restores_from_canonical_principal
             .remove(&DataKey::BorrowSnapshots(user.clone()));
     });
 
-    // Rebuild using canonical principal mirror without admin intervention.
     vault.recover_borrow_snapshot(&user);
-    assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
 }
 
 #[test]
-fn test_get_user_borrow_balance_rebuilds_from_canonical_principal_without_flag() {
+#[should_panic(expected = "borrow state missing")]
+fn test_get_user_borrow_balance_fails_closed_without_snapshot_or_flag() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -920,7 +920,7 @@ fn test_get_user_borrow_balance_rebuilds_from_canonical_principal_without_flag()
             .remove(&DataKey::HasBorrowed(user.clone()));
     });
 
-    assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+    let _ = vault.get_user_borrow_balance(&user);
 }
 
 #[test]
@@ -1249,7 +1249,7 @@ fn test_margin_transfer_bypass_does_not_skip_debt_collateral_check() {
 
     let margin_controller_id = env.register(MockMarginLockController, ());
     vault.set_margin_controller(&admin, &Some(margin_controller_id.clone()));
-    vault.begin_margin_withdraw(&margin_controller_id, &user);
+    vault.begin_margin_withdraw(&margin_controller_id, &user, &margin_controller_id, &1u128);
 
     // The one-shot bypass may only skip margin-lock accounting for controller
     // custody. It must not allow a borrower to move away debt-backing pTokens.

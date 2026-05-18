@@ -49,6 +49,7 @@ pub enum DataKey {
     Initialized,
     PendingUpgradeHash,
     PendingUpgradeEta,
+    AllowedPoolBinding(BytesN<32>, Address),
 }
 
 #[contract]
@@ -104,6 +105,36 @@ impl SwapAdapter {
         env.storage()
             .persistent()
             .get(&DataKey::AllowedPool(pool))
+            .unwrap_or(false)
+    }
+
+    pub fn set_pool_binding(
+        env: Env,
+        admin: Address,
+        pool_id: BytesN<32>,
+        pool: Address,
+        allowed: bool,
+    ) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        if pool_id.to_array() == [0u8; 32] {
+            panic!("bad pool id");
+        }
+        let key = DataKey::AllowedPoolBinding(pool_id.clone(), pool.clone());
+        if allowed {
+            env.storage().persistent().set(&key, &true);
+            bump_pool_binding_ttl(&env, &pool_id, &pool);
+        } else {
+            env.storage().persistent().remove(&key);
+        }
+    }
+
+    pub fn is_pool_binding_allowed(env: Env, pool_id: BytesN<32>, pool: Address) -> bool {
+        bump_critical_ttl(&env);
+        bump_pool_binding_ttl(&env, &pool_id, &pool);
+        env.storage()
+            .persistent()
+            .get(&DataKey::AllowedPoolBinding(pool_id, pool))
             .unwrap_or(false)
     }
 
@@ -173,11 +204,11 @@ impl SwapAdapter {
             panic!("bad swaps");
         }
         for i in 0..swaps_chain.len() {
-            let (path, _, pool) = swaps_chain.get(i).unwrap();
+            let (path, pool_id, pool) = swaps_chain.get(i).unwrap();
             if path.len() < 2 {
                 panic!("bad swaps");
             }
-            ensure_pool_allowed(&env, &pool);
+            ensure_pool_binding_allowed(&env, &pool_id, &pool);
         }
         let router: Address = env
             .storage()
@@ -338,6 +369,14 @@ fn bump_pool_ttl(env: &Env, pool: &Address) {
     }
 }
 
+fn bump_pool_binding_ttl(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::AllowedPoolBinding(pool_id.clone(), pool.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 fn ensure_pool_allowed(env: &Env, pool: &Address) {
     bump_pool_ttl(env, pool);
     let allowed: bool = env
@@ -347,5 +386,20 @@ fn ensure_pool_allowed(env: &Env, pool: &Address) {
         .unwrap_or(false);
     if !allowed {
         panic!("pool not allowed");
+    }
+}
+
+fn ensure_pool_binding_allowed(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
+    if pool_id.to_array() == [0u8; 32] {
+        panic!("bad swaps");
+    }
+    bump_pool_binding_ttl(env, pool_id, pool);
+    let allowed: bool = env
+        .storage()
+        .persistent()
+        .get(&DataKey::AllowedPoolBinding(pool_id.clone(), pool.clone()))
+        .unwrap_or(false);
+    if !allowed {
+        panic!("pool binding not allowed");
     }
 }

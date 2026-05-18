@@ -284,8 +284,8 @@ pub fn validate_swaps_chain(
         if pool_id.to_array() == [0u8; 32] {
             panic!("bad swaps");
         }
-        if !adapter.is_pool_allowed(&pool) {
-            panic!("pool not allowed");
+        if !adapter.is_pool_binding_allowed(&pool_id, &pool) {
+            panic!("pool binding not allowed");
         }
         let hop_in = path.get(0).unwrap();
         if hop_in != current {

@@ -134,6 +134,10 @@ impl MockSwapAdapter {
         true
     }
 
+    pub fn is_pool_binding_allowed(_env: Env, _pool_id: BytesN<32>, _pool: Address) -> bool {
+        true
+    }
+
     pub fn swap_chained(
         env: Env,
         user: Address,
@@ -166,6 +170,10 @@ impl MockBadSwapAdapter {
         true
     }
 
+    pub fn is_pool_binding_allowed(_env: Env, _pool_id: BytesN<32>, _pool: Address) -> bool {
+        true
+    }
+
     pub fn swap_chained(
         env: Env,
         user: Address,
@@ -186,6 +194,10 @@ impl MockBadSwapAdapter {
 #[contractimpl]
 impl MockAuthSwapAdapter {
     pub fn is_pool_allowed(_env: Env, _pool: Address) -> bool {
+        true
+    }
+
+    pub fn is_pool_binding_allowed(_env: Env, _pool_id: BytesN<32>, _pool: Address) -> bool {
         true
     }
 
@@ -669,7 +681,14 @@ impl MockVault {
             .get(&MockVaultKey::MarginController)
     }
 
-    pub fn begin_margin_withdraw(_env: Env, _margin_controller: Address, _user: Address) {}
+    pub fn begin_margin_withdraw(
+        _env: Env,
+        _margin_controller: Address,
+        _user: Address,
+        _recipient: Address,
+        _max_ptokens: u128,
+    ) {
+    }
 
     pub fn set_withdraw_payout_bps(env: Env, payout_bps: u128) {
         env.storage()
