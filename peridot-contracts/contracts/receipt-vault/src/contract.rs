@@ -384,13 +384,17 @@ impl ReceiptVault {
         let has_snapshot = persistent
             .get::<_, BorrowSnapshot>(&DataKey::BorrowSnapshots(user.clone()))
             .is_some();
+        let has_borrowed = persistent.get::<_, bool>(&DataKey::HasBorrowed(user.clone()));
         if has_snapshot {
             persistent.set(&DataKey::HasBorrowed(user.clone()), &true);
-        } else if persistent
-            .get::<_, bool>(&DataKey::HasBorrowed(user.clone()))
-            .is_none()
-            && ptoken_balance(env, user) == 0
+        } else if has_borrowed != Some(false)
+            && persistent
+                .get::<_, u128>(&DataKey::BorrowPrincipal(user.clone()))
+                .unwrap_or(0)
+                > 0
         {
+            persistent.set(&DataKey::HasBorrowed(user.clone()), &true);
+        } else if has_borrowed.is_none() && ptoken_balance(env, user) == 0 {
             // Only initialize false flags for accounts without collateral.
             // This avoids masking missing debt state for collateralized users.
             persistent.set(&DataKey::HasBorrowed(user.clone()), &false);
@@ -403,12 +407,17 @@ impl ReceiptVault {
         let has_snapshot = persistent
             .get::<_, BorrowSnapshot>(&DataKey::MarginBorrowSnapshots(position_id))
             .is_some();
+        let has_borrowed = persistent.get::<_, bool>(&DataKey::MarginHasBorrowed(position_id));
         if has_snapshot {
             persistent.set(&DataKey::MarginHasBorrowed(position_id), &true);
-        } else if persistent
-            .get::<_, bool>(&DataKey::MarginHasBorrowed(position_id))
-            .is_none()
+        } else if has_borrowed != Some(false)
+            && persistent
+                .get::<_, u128>(&DataKey::MarginBorrowPrincipal(position_id))
+                .unwrap_or(0)
+                > 0
         {
+            persistent.set(&DataKey::MarginHasBorrowed(position_id), &true);
+        } else if has_borrowed.is_none() {
             panic!("margin borrow state missing");
         }
         bump_margin_borrow_live_ttl(env, position_id);
@@ -444,6 +453,23 @@ impl ReceiptVault {
             env.storage().persistent().remove(&key);
         }
         enabled
+    }
+
+    fn consume_margin_transfer_bypass(env: &Env, user: &Address, to: &Address) -> bool {
+        let key = DataKey::MarginWithdrawBypass(user.clone());
+        let enabled = env.storage().persistent().get(&key).unwrap_or(false);
+        if enabled {
+            env.storage().persistent().remove(&key);
+        }
+        if !enabled {
+            return false;
+        }
+        let configured: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginController)
+            .expect("margin controller not set");
+        *to == configured
     }
 
     fn enforce_margin_lock(
@@ -1158,12 +1184,10 @@ impl ReceiptVault {
         Self::update_interest(env.clone());
         Self::ensure_user_borrow_flag(&env, &from);
         Self::ensure_user_borrow_flag(&env, &to);
-        // Margin custody flow: when the configured margin controller has set the
-        // bypass flag for `from`, treat this transfer as a custody movement and
-        // skip both the cross-market collateral health check (which would otherwise
-        // require fully-funded collateral while the position is being managed) and
-        // the margin-lock check.
-        let bypass = Self::consume_margin_withdraw_bypass(&env, &from);
+        // Margin custody flow: only the configured margin controller may receive
+        // pTokens via the one-shot bypass. Collateral health checks still run;
+        // the bypass only skips margin-lock accounting for controller custody moves.
+        let bypass = Self::consume_margin_transfer_bypass(&env, &from, &to);
         // Gating: if peridottroller wired, consult redeem pause and health for from-user
         if let Some(comp_addr) = env
             .storage()
@@ -1184,55 +1208,52 @@ impl ReceiptVault {
             if pbal < amount {
                 panic!("Insufficient pTokens");
             }
-            if !bypass {
-                let local_debt = Self::get_user_borrow_balance(env.clone(), from.clone());
-                let other_borrows_usd: u128 = call_contract_or_panic(
+            let local_debt = Self::get_user_borrow_balance(env.clone(), from.clone());
+            let other_borrows_usd: u128 = call_contract_or_panic(
+                &env,
+                &comp_addr,
+                "get_borrows_excl",
+                (from.clone(), env.current_contract_address()),
+            );
+            if local_debt > 0 || other_borrows_usd > 0 {
+                let other_collateral_usd: u128 = call_contract_or_panic(
                     &env,
                     &comp_addr,
-                    "get_borrows_excl",
+                    "get_collateral_excl_usd",
                     (from.clone(), env.current_contract_address()),
                 );
-                if local_debt > 0 || other_borrows_usd > 0 {
-                    let other_collateral_usd: u128 = call_contract_or_panic(
-                        &env,
-                        &comp_addr,
-                        "get_collateral_excl_usd",
-                        (from.clone(), env.current_contract_address()),
-                    );
-                    let price_opt: Option<(u128, u128)> = call_contract_or_panic(
-                        &env,
-                        &comp_addr,
-                        "get_price_usd",
-                        (token_address.clone(),),
-                    );
-                    if price_opt.is_none() {
-                        panic!("Price unavailable");
-                    }
-                    let (price, scale) = price_opt.unwrap();
-                    let cf: u128 = call_contract_or_panic(
-                        &env,
-                        &comp_addr,
-                        "get_market_cf",
-                        (env.current_contract_address(),),
-                    );
+                let price_opt: Option<(u128, u128)> = call_contract_or_panic(
+                    &env,
+                    &comp_addr,
+                    "get_price_usd",
+                    (token_address.clone(),),
+                );
+                if price_opt.is_none() {
+                    panic!("Price unavailable");
+                }
+                let (price, scale) = price_opt.unwrap();
+                let cf: u128 = call_contract_or_panic(
+                    &env,
+                    &comp_addr,
+                    "get_market_cf",
+                    (env.current_contract_address(),),
+                );
 
-                    let current_rate = Self::get_exchange_rate(env.clone());
-                    let remaining_ptokens = pbal - amount;
-                    let remaining_underlying =
-                        (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
-                    let remaining_discounted =
-                        (remaining_underlying.saturating_mul(cf)) / SCALE_1E6;
-                    let local_collateral_usd = (remaining_discounted.saturating_mul(price)) / scale;
-                    let local_debt_usd = (local_debt.saturating_mul(price)) / scale;
-                    let total_collateral_usd =
-                        other_collateral_usd.saturating_add(local_collateral_usd);
-                    let total_borrow_usd = other_borrows_usd.saturating_add(local_debt_usd);
-                    if total_collateral_usd < total_borrow_usd {
-                        panic!("Insufficient collateral");
-                    }
+                let current_rate = Self::get_exchange_rate(env.clone());
+                let remaining_ptokens = pbal - amount;
+                let remaining_underlying =
+                    (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
+                let remaining_discounted = (remaining_underlying.saturating_mul(cf)) / SCALE_1E6;
+                let local_collateral_usd = (remaining_discounted.saturating_mul(price)) / scale;
+                let local_debt_usd = (local_debt.saturating_mul(price)) / scale;
+                let total_collateral_usd =
+                    other_collateral_usd.saturating_add(local_collateral_usd);
+                let total_borrow_usd = other_borrows_usd.saturating_add(local_debt_usd);
+                if total_collateral_usd < total_borrow_usd {
+                    panic!("Insufficient collateral");
                 }
             }
-        } else if !bypass {
+        } else {
             // Local-only collateral check when Peridottroller is not configured.
             // Prevents users with debt from transferring away collateral pTokens.
             let local_debt = Self::get_user_borrow_balance(env.clone(), from.clone());
@@ -2297,32 +2318,36 @@ impl ReceiptVault {
         let snap: Option<BorrowSnapshot> = persistent.get(&DataKey::BorrowSnapshots(user.clone()));
         let snapshot = if let Some(snapshot) = snap {
             snapshot
-        } else if has_borrowed.unwrap_or(false)
-            && persistent.has(&DataKey::BorrowPrincipal(user.clone()))
-        {
-            let principal: u128 = persistent
-                .get(&DataKey::BorrowPrincipal(user.clone()))
-                .expect("canonical borrow principal missing");
-            let current_index: u128 = persistent
-                .get(&DataKey::BorrowIndex)
-                .expect("borrow index missing");
-            let rebuilt = BorrowSnapshot {
-                principal,
-                interest_index: current_index,
-            };
-            persistent.set(&DataKey::BorrowSnapshots(user.clone()), &rebuilt);
-            persistent.set(&DataKey::HasBorrowed(user.clone()), &(principal > 0));
-            bump_user_borrow_state_ttl(&env, &user);
-            rebuilt
         } else {
-            if has_borrowed.unwrap_or(false) {
-                panic!("borrow snapshot missing");
+            if has_borrowed != Some(false) {
+                let principal: u128 = persistent
+                    .get(&DataKey::BorrowPrincipal(user.clone()))
+                    .unwrap_or(0);
+                if principal > 0 {
+                    let current_index: u128 = persistent
+                        .get(&DataKey::BorrowIndex)
+                        .expect("borrow index missing");
+                    let rebuilt = BorrowSnapshot {
+                        principal,
+                        interest_index: current_index,
+                    };
+                    persistent.set(&DataKey::BorrowSnapshots(user.clone()), &rebuilt);
+                    persistent.set(&DataKey::HasBorrowed(user.clone()), &(principal > 0));
+                    bump_user_borrow_state_ttl(&env, &user);
+                    rebuilt
+                } else {
+                    if has_borrowed.unwrap_or(false) {
+                        panic!("borrow snapshot missing");
+                    }
+                    // Fail closed for collateralized accounts with missing borrow state.
+                    if has_borrowed.is_none() && ptoken_balance(&env, &user) > 0 {
+                        panic!("borrow state missing");
+                    }
+                    return 0u128;
+                }
+            } else {
+                return 0u128;
             }
-            // Fail closed for collateralized accounts with missing borrow state.
-            if has_borrowed.is_none() && ptoken_balance(&env, &user) > 0 {
-                panic!("borrow state missing");
-            }
-            return 0u128;
         };
         if snapshot.principal == 0 {
             return 0u128;
@@ -2347,31 +2372,35 @@ impl ReceiptVault {
             persistent.get(&DataKey::MarginBorrowSnapshots(position_id));
         let snapshot = if let Some(snapshot) = snap {
             snapshot
-        } else if has_borrowed.unwrap_or(false)
-            && persistent.has(&DataKey::MarginBorrowPrincipal(position_id))
-        {
-            let principal: u128 = persistent
-                .get(&DataKey::MarginBorrowPrincipal(position_id))
-                .expect("canonical margin principal missing");
-            let current_index: u128 = persistent
-                .get(&DataKey::BorrowIndex)
-                .expect("borrow index missing");
-            let rebuilt = BorrowSnapshot {
-                principal,
-                interest_index: current_index,
-            };
-            persistent.set(&DataKey::MarginBorrowSnapshots(position_id), &rebuilt);
-            persistent.set(&DataKey::MarginHasBorrowed(position_id), &(principal > 0));
-            bump_margin_borrow_state_ttl(&env, position_id);
-            rebuilt
         } else {
-            if has_borrowed.unwrap_or(false) {
-                panic!("margin borrow snapshot missing");
+            if has_borrowed != Some(false) {
+                let principal: u128 = persistent
+                    .get(&DataKey::MarginBorrowPrincipal(position_id))
+                    .unwrap_or(0);
+                if principal > 0 {
+                    let current_index: u128 = persistent
+                        .get(&DataKey::BorrowIndex)
+                        .expect("borrow index missing");
+                    let rebuilt = BorrowSnapshot {
+                        principal,
+                        interest_index: current_index,
+                    };
+                    persistent.set(&DataKey::MarginBorrowSnapshots(position_id), &rebuilt);
+                    persistent.set(&DataKey::MarginHasBorrowed(position_id), &(principal > 0));
+                    bump_margin_borrow_state_ttl(&env, position_id);
+                    rebuilt
+                } else {
+                    if has_borrowed.unwrap_or(false) {
+                        panic!("margin borrow snapshot missing");
+                    }
+                    if has_borrowed.is_none() {
+                        panic!("margin borrow state missing");
+                    }
+                    return 0u128;
+                }
+            } else {
+                return 0u128;
             }
-            if has_borrowed.is_none() {
-                panic!("margin borrow state missing");
-            }
-            return 0u128;
         };
         if snapshot.principal == 0 {
             return 0u128;
@@ -3197,10 +3226,11 @@ impl ReceiptVault {
     }
 
     /// Execute a flash loan to `receiver`. Receiver must return `amount + fee` within the callback.
-    pub fn flash_loan(env: Env, receiver: Address, amount: u128, data: Bytes) {
+    pub fn flash_loan(env: Env, initiator: Address, receiver: Address, amount: u128, data: Bytes) {
         if amount == 0 {
             panic!("invalid flash amount");
         }
+        initiator.require_auth();
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
         Self::update_interest(env.clone());

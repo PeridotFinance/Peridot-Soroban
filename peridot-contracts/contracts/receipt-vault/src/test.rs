@@ -891,8 +891,7 @@ fn test_permissionless_recover_borrow_snapshot_restores_from_canonical_principal
 }
 
 #[test]
-#[should_panic(expected = "borrow snapshot missing")]
-fn test_get_user_borrow_balance_missing_snapshot_panics_without_recovery() {
+fn test_get_user_borrow_balance_rebuilds_from_canonical_principal_without_flag() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -908,14 +907,20 @@ fn test_get_user_borrow_balance_missing_snapshot_panics_without_recovery() {
     vault.set_collateral_factor(&1_000_000u128);
     vault.deposit(&user, &1_000u128);
     vault.borrow(&user, &100u128);
+    let mut users = Vec::new(&env);
+    users.push_back(user.clone());
+    vault.migrate_borrow_state_batch(&users);
 
     env.as_contract(&vault_id, || {
         env.storage()
             .persistent()
             .remove(&DataKey::BorrowSnapshots(user.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::HasBorrowed(user.clone()));
     });
 
-    let _ = vault.get_user_borrow_balance(&user);
+    assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
 }
 
 #[test]
@@ -1222,6 +1227,33 @@ fn test_withdraw_rejects_margin_locked_ptokens() {
     margin_controller.set_locked(&user, &vault_id, &100u128);
 
     vault.withdraw(&user, &1u128);
+}
+
+#[test]
+#[should_panic(expected = "Insufficient collateral")]
+fn test_margin_transfer_bypass_does_not_skip_debt_collateral_check() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&user, &100u128);
+    vault.borrow(&user, &50u128);
+
+    let margin_controller_id = env.register(MockMarginLockController, ());
+    vault.set_margin_controller(&admin, &Some(margin_controller_id.clone()));
+    vault.begin_margin_withdraw(&margin_controller_id, &user);
+
+    // The one-shot bypass may only skip margin-lock accounting for controller
+    // custody. It must not allow a borrower to move away debt-backing pTokens.
+    vault.transfer(&user, &margin_controller_id, &1i128);
 }
 
 #[test]
@@ -2603,7 +2635,7 @@ fn test_flash_loan_successfully_repaid() {
     let expected_fee = (amount * fee_scaled) / 1_000_000u128;
     let data = Bytes::new(&env);
 
-    vault.flash_loan(&receiver_id, &amount, &data);
+    vault.flash_loan(&depositor, &receiver_id, &amount, &data);
 
     assert_eq!(vault.get_total_reserves(), expected_fee);
     assert_eq!(
@@ -2643,7 +2675,7 @@ fn test_flash_loan_fee_rounds_up_for_small_amounts() {
 
     let amount = 1u128;
     let data = Bytes::new(&env);
-    vault.flash_loan(&receiver_id, &amount, &data);
+    vault.flash_loan(&depositor, &receiver_id, &amount, &data);
 
     assert_eq!(vault.get_total_reserves(), 1u128);
     assert_eq!(token_client.balance(&vault_id), 501i128);
@@ -2712,7 +2744,7 @@ fn test_flash_loan_redeems_boosted_liquidity_on_demand() {
     let expected_fee = (amount * fee_scaled) / 1_000_000u128;
     let data = Bytes::new(&env);
 
-    vault.flash_loan(&receiver_id, &amount, &data);
+    vault.flash_loan(&depositor, &receiver_id, &amount, &data);
 
     // Buffered redemption pulls 101 from boosted, then 100 is loaned out and
     // 100 + fee is repaid, leaving 1 extra unit in live cash.
@@ -2752,7 +2784,7 @@ fn test_flash_loan_redeposits_large_idle_cash_after_repayment() {
     receiver_client.configure(&token_address);
     token_admin_client.mint(&receiver_id, &1i128);
 
-    vault.flash_loan(&receiver_id, &15_000u128, &Bytes::new(&env));
+    vault.flash_loan(&depositor, &receiver_id, &15_000u128, &Bytes::new(&env));
 
     // A large flash loan temporarily redeems boosted shares, but repayment
     // should be re-deployed instead of leaving yield-bearing funds idle.
@@ -2796,7 +2828,7 @@ fn test_flash_loan_boosted_redemption_tolerates_small_rounding_delta() {
     // Buffered redemption should still source enough live cash for the loan.
     let amount = 100u128;
     let data = Bytes::new(&env);
-    vault.flash_loan(&receiver_id, &amount, &data);
+    vault.flash_loan(&depositor, &receiver_id, &amount, &data);
 }
 
 #[test]
@@ -2823,12 +2855,49 @@ fn test_flash_loan_contract_receiver_without_receiver_auth() {
     token_admin_client.mint(&receiver_id, &50i128);
 
     // Contract receivers cannot sign an account-style require_auth. The vault
-    // invokes the callback directly and the receiver repays from its own balance.
+    // authenticates the initiator only, invokes the callback directly, and the
+    // receiver repays from its own balance.
     env.set_auths(&[]);
     let data = Bytes::new(&env);
-    vault.flash_loan(&receiver_id, &100u128, &data);
+    vault
+        .mock_auths(&[MockAuth {
+            address: &depositor,
+            invoke: &MockAuthInvoke {
+                contract: &vault_id,
+                fn_name: "flash_loan",
+                args: (&depositor, &receiver_id, 100u128, data.clone()).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .flash_loan(&depositor, &receiver_id, &100u128, &data);
 
     assert_eq!(vault.get_total_reserves(), 2u128);
+}
+
+#[test]
+#[should_panic]
+fn test_flash_loan_requires_initiator_auth() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let depositor = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    token_admin_client.mint(&depositor, &1_000i128);
+    vault.deposit(&depositor, &500u128);
+
+    let receiver_id = env.register(FlashLoanRepayer, ());
+    let receiver_client = FlashLoanRepayerClient::new(&env, &receiver_id);
+    receiver_client.configure(&token_address);
+
+    env.set_auths(&[]);
+    vault.flash_loan(&depositor, &receiver_id, &100u128, &Bytes::new(&env));
 }
 
 #[test]
@@ -2855,7 +2924,7 @@ fn test_flash_loan_missing_fee_panics() {
     receiver_client.configure(&token_address);
     let data = Bytes::new(&env);
 
-    vault.flash_loan(&receiver_id, &100u128, &data);
+    vault.flash_loan(&depositor, &receiver_id, &100u128, &data);
 }
 
 #[test]

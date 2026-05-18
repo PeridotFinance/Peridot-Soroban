@@ -62,7 +62,7 @@ Mocks (for tests only) live under `contracts/mocks/`.
   - `recover_borrow_snapshot(user)` / `recover_margin_snapshot(position_id)` (permissionless snapshot rebuild when canonical principal mirror exists)
   - `migrate_borrow_state_batch(users)` / `migrate_margin_state_batch(position_ids)` (permissionless migration + TTL keepalive batch)
 - Flash loans
-  - `flash_loan(receiver, amount, data)` → transfers underlying to `receiver`, then expects repayment of `amount + fee` (fee uses ceil division: `ceil(amount * flash_loan_fee_scaled / 1e6)`).
+  - `flash_loan(initiator, receiver, amount, data)` → requires `initiator` auth, transfers underlying to `receiver`, then expects repayment of `amount + fee` (fee uses ceil division: `ceil(amount * flash_loan_fee_scaled / 1e6)`).
   - `preview_flash_loan_fee(amount)` → deterministic fee preview using the exact same rounding as `flash_loan`.
   - `receiver` must implement `on_flash_loan(vault: Address, amount: u128, fee: u128, data: Bytes)`; the vault reverts if the callback fails or does not return the required funds.
   - Flash loan fees accrue to reserves after repayment and respect peridottroller pause checks and liquidity guards.
