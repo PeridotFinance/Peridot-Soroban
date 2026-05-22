@@ -1522,6 +1522,69 @@ fn test_close_position_v2_budget_short_min() {
 }
 
 #[test]
+#[should_panic(expected = "debt asset mismatch")]
+fn test_close_position_v2_rejects_debt_underlying_mismatch() {
+    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xid) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+
+    usdt_vault.set_underlying_token(&xlm_id);
+    let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
+    controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
+}
+
+#[test]
+#[should_panic(expected = "collateral asset mismatch")]
+fn test_close_position_v2_rejects_collateral_underlying_mismatch() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+
+    xlm_vault.set_underlying_token(&usdt_id);
+    let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
+    controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
+}
+
+#[test]
 fn test_liquidate_position_v2_budget_short_min() {
     let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
         setup_short_min();

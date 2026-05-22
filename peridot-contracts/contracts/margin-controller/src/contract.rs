@@ -1093,6 +1093,9 @@ impl MarginController {
         let controller = env.current_contract_address();
         let underlying_token =
             ReceiptVaultClient::new(&env, &vaults.position_vault).get_underlying_token();
+        if underlying_token != position.collateral_asset {
+            panic!("collateral asset mismatch");
+        }
         let token_client = token::TokenClient::new(&env, &underlying_token);
         let bal_before = token_client.balance(&controller);
         let vault_client = ReceiptVaultClient::new(&env, &vaults.position_vault);
@@ -1150,6 +1153,9 @@ impl MarginController {
             }
             let debt_underlying =
                 ReceiptVaultClient::new(&env, &vaults.debt_vault).get_underlying_token();
+            if debt_underlying != position.debt_asset {
+                panic!("debt asset mismatch");
+            }
             let debt_token = token::TokenClient::new(&env, &debt_underlying);
             let received_i128: i128 = received.try_into().expect("amount too large");
             debt_token.transfer(&user, &controller, &received_i128);
