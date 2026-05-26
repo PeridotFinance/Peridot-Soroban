@@ -497,6 +497,9 @@ impl MarginController {
         }
         let coll_rate = ReceiptVaultClient::new(&env, &collateral_vault).get_exchange_rate();
         let collateral_underlying = collateral_ptokens.saturating_mul(coll_rate) / SCALE_1E6;
+        if collateral_underlying == 0 {
+            panic!("zero collateral");
+        }
         let collateral_value =
             collateral_underlying.saturating_mul(collateral_price.0) / collateral_price.1;
         let borrow_value = borrow_amount.saturating_mul(debt_price.0) / debt_price.1;
