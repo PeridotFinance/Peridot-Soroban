@@ -705,14 +705,6 @@ impl MarginController {
         }
         let debt_token = token::TokenClient::new(&env, &debt_underlying);
 
-        // Mark closed before external calls. Any later panic rolls the tx back,
-        // while successful execution prevents reentrant reuse of this position.
-        position.status = PositionStatus::Closed;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Position(position_id), &position);
-        bump_position_ttl(&env, position_id);
-
         let underlying_token =
             ReceiptVaultClient::new(&env, &vaults.position_vault).get_underlying_token();
         if underlying_token != position.collateral_asset {
@@ -1214,10 +1206,13 @@ impl MarginController {
     }
 
     fn entry_price_scaled(numerator: u128, denominator: u128) -> u128 {
+        if denominator == 0 {
+            panic!("entry price division by zero");
+        }
         numerator
             .checked_mul(SCALE_1E6)
-            .and_then(|scaled| scaled.checked_div(denominator))
-            .unwrap_or(0)
+            .expect("entry price overflow")
+            / denominator
     }
 
     fn ceil_div(numerator: u128, denominator: u128) -> u128 {
