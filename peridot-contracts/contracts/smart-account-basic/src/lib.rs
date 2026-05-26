@@ -130,6 +130,14 @@ impl BasicSmartAccount {
             .expect("owner not set")
     }
 
+    pub fn get_factory(env: Env) -> Address {
+        bump_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::Factory)
+            .expect("factory not set")
+    }
+
     pub fn has_signer(env: Env, signer: BytesN<32>) -> bool {
         bump_ttl(&env);
         bump_signer_ttl(&env, &signer);
@@ -548,10 +556,17 @@ fn require_self_address(env: &Env, address: &Address) -> Result<(), Error> {
 
 fn is_allowed_vault_contract(env: &Env, contract: &Address) -> bool {
     bump_allowed_contract_ttl(env, contract);
-    env.storage()
+    let explicitly_allowed = env
+        .storage()
         .persistent()
         .get(&DataKey::AllowedContract(contract.clone()))
-        .unwrap_or(false)
+        .unwrap_or(false);
+    if !explicitly_allowed {
+        return false;
+    }
+    env.storage()
+        .persistent()
+        .has(&DataKey::AllowedContractUnderlying(contract.clone()))
 }
 
 fn is_margin_controller_contract(env: &Env, contract: &Address) -> bool {

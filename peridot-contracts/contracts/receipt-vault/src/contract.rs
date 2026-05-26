@@ -2363,7 +2363,7 @@ impl ReceiptVault {
             .get(&DataKey::BorrowIndex)
             .expect("borrow index missing");
         // principal * current_index / user_index
-        (snapshot.principal.saturating_mul(current_index)) / snapshot.interest_index
+        Self::checked_mul_div_u128(snapshot.principal, current_index, snapshot.interest_index)
     }
 
     /// Get current borrow balance for a margin position namespace.
@@ -2394,7 +2394,7 @@ impl ReceiptVault {
         let current_index: u128 = persistent
             .get(&DataKey::BorrowIndex)
             .expect("borrow index missing");
-        (snapshot.principal.saturating_mul(current_index)) / snapshot.interest_index
+        Self::checked_mul_div_u128(snapshot.principal, current_index, snapshot.interest_index)
     }
 
     /// Permissionless TTL extension for position-scoped margin borrow state.

@@ -366,9 +366,9 @@ pub fn bump_reward_user_ttl(env: &Env, user: &Address, market: &Address) {
     }
 }
 
-pub fn pow10_u128(decimals: u32) -> u128 {
+pub fn pow10_u128(decimals: u32) -> Option<u128> {
     if decimals > MAX_DECIMALS {
-        panic!("decimals too large");
+        return None;
     }
     let mut result: u128 = 1;
     let mut i = 0u32;
@@ -376,5 +376,5 @@ pub fn pow10_u128(decimals: u32) -> u128 {
         result = result.saturating_mul(10);
         i += 1;
     }
-    result
+    Some(result)
 }

@@ -15,6 +15,7 @@ pub trait BasicSmartAccount {
         margin_controller: Address,
     );
     fn get_owner(env: Env) -> Address;
+    fn get_factory(env: Env) -> Address;
 }
 
 /// Factory for deploying smart accounts.
@@ -283,7 +284,12 @@ impl SmartAccountFactory {
     pub fn restore_account(env: Env, user: Address, account: Address) -> Address {
         bump_ttl(&env);
         user.require_auth();
-        let owner = BasicSmartAccountClient::new(&env, &account).get_owner();
+        let account_client = BasicSmartAccountClient::new(&env, &account);
+        let factory = account_client.get_factory();
+        if factory != env.current_contract_address() {
+            panic!("account factory mismatch");
+        }
+        let owner = account_client.get_owner();
         if owner != user {
             panic!("account owner mismatch");
         }
@@ -414,16 +420,28 @@ mod test {
             env.storage().persistent().set(&DataKey::Owner, &owner);
         }
 
+        pub fn set_factory(env: Env, factory: Address) {
+            env.storage().persistent().set(&DataKey::Factory, &factory);
+        }
+
         pub fn get_owner(env: Env) -> Address {
             env.storage()
                 .persistent()
                 .get(&DataKey::Owner)
                 .expect("owner not set")
         }
+
+        pub fn get_factory(env: Env) -> Address {
+            env.storage()
+                .persistent()
+                .get(&DataKey::Factory)
+                .expect("factory not set")
+        }
     }
 
     #[contracttype]
     enum DataKey {
+        Factory,
         Owner,
     }
 
@@ -475,6 +493,7 @@ mod test {
 
         let account_id = env.register(MockBasicAccount, ());
         MockBasicAccountClient::new(&env, &account_id).set_owner(&user);
+        MockBasicAccountClient::new(&env, &account_id).set_factory(&factory_id);
 
         let restored = factory.restore_account(&user, &account_id);
         assert_eq!(restored, account_id);
@@ -496,6 +515,26 @@ mod test {
 
         let account_id = env.register(MockBasicAccount, ());
         MockBasicAccountClient::new(&env, &account_id).set_owner(&other);
+        MockBasicAccountClient::new(&env, &account_id).set_factory(&factory_id);
+        factory.restore_account(&user, &account_id);
+    }
+
+    #[test]
+    #[should_panic(expected = "account factory mismatch")]
+    fn test_restore_account_rejects_foreign_factory() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+        let user = Address::generate(&env);
+        let foreign_factory = Address::generate(&env);
+
+        let factory_id = env.register(SmartAccountFactory, ());
+        let factory = SmartAccountFactoryClient::new(&env, &factory_id);
+        factory.initialize(&admin);
+
+        let account_id = env.register(MockBasicAccount, ());
+        MockBasicAccountClient::new(&env, &account_id).set_owner(&user);
+        MockBasicAccountClient::new(&env, &account_id).set_factory(&foreign_factory);
         factory.restore_account(&user, &account_id);
     }
 }

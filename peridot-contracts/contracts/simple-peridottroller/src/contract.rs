@@ -3193,7 +3193,9 @@ impl SimplePeridottroller {
             Ok(Ok(v)) => v,
             _ => return None,
         };
-        let scale = pow10_u128(dec);
+        let Some(scale) = pow10_u128(dec) else {
+            return None;
+        };
         if scale == 0 {
             return None;
         }

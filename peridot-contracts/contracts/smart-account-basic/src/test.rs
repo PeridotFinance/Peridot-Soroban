@@ -59,6 +59,18 @@ fn expected_factory(env: &Env) -> Address {
     Address::from_string(&soroban_sdk::String::from_str(env, DEFAULT_FACTORY_ADDRESS))
 }
 
+fn register_allowed_vault<'a>(
+    env: &'a Env,
+    client: &BasicSmartAccountClient<'a>,
+    owner: &Address,
+) -> (Address, Address) {
+    let underlying = Address::generate(env);
+    let vault_id = env.register(MockReceiptVault, ());
+    MockReceiptVaultClient::new(env, &vault_id).set_underlying_token(&underlying);
+    client.add_allowed_vault(owner, &vault_id, &underlying);
+    (vault_id, underlying)
+}
+
 #[test]
 fn test_constructor_and_signers() {
     let env = Env::default();
@@ -73,6 +85,7 @@ fn test_constructor_and_signers() {
     client.initialize(&owner, &signer, &peridottroller, &margin);
 
     assert_eq!(client.get_owner(), owner);
+    assert_eq!(client.get_factory(), factory);
     assert!(client.has_signer(&signer));
 }
 
@@ -163,10 +176,9 @@ fn test_vault_deposit_policy_accepts_self() {
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
     let margin = Address::generate(&env);
-    let allowed_vault = Address::generate(&env);
     let (contract_id, client) = register_account(&env, &factory);
     client.initialize(&owner, &signer, &peridottroller, &margin);
-    client.add_allowed_contract(&owner, &allowed_vault);
+    let (allowed_vault, _) = register_allowed_vault(&env, &client, &owner);
     env.as_contract(&contract_id, || {
         let ctx = ContractContext {
             contract: allowed_vault,
@@ -344,10 +356,9 @@ fn test_margin_vault_debt_policy_accepts_self_and_rejects_other_user() {
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
     let margin = Address::generate(&env);
-    let allowed_vault = Address::generate(&env);
     let (contract_id, client) = register_account(&env, &factory);
     client.initialize(&owner, &signer, &peridottroller, &margin);
-    client.add_allowed_contract(&owner, &allowed_vault);
+    let (allowed_vault, _) = register_allowed_vault(&env, &client, &owner);
     let other = Address::generate(&env);
 
     env.as_contract(&contract_id, || {
@@ -409,10 +420,9 @@ fn test_leveraged_margin_policy_budget() {
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
     let margin = Address::generate(&env);
-    let allowed_vault = Address::generate(&env);
     let (contract_id, client) = register_account(&env, &factory);
     client.initialize(&owner, &signer, &peridottroller, &margin);
-    client.add_allowed_contract(&owner, &allowed_vault);
+    let (allowed_vault, _) = register_allowed_vault(&env, &client, &owner);
 
     env.as_contract(&contract_id, || {
         env.cost_estimate().budget().reset_unlimited();
@@ -462,10 +472,9 @@ fn test_transfer_from_policy_is_rejected_for_allowed_vaults() {
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = Address::generate(&env);
     let margin = Address::generate(&env);
-    let allowed_vault = Address::generate(&env);
     let (contract_id, client) = register_account(&env, &factory);
     client.initialize(&owner_account, &signer, &peridottroller, &margin);
-    client.add_allowed_contract(&owner_account, &allowed_vault);
+    let (allowed_vault, _) = register_allowed_vault(&env, &client, &owner_account);
     let owner = Address::generate(&env);
     let to = Address::generate(&env);
     env.as_contract(&contract_id, || {
@@ -489,11 +498,10 @@ fn test_vault_ptoken_transfer_requires_protocol_recipient() {
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let peridottroller = env.register(MockPolicyPeridottroller, ());
     let margin = Address::generate(&env);
-    let allowed_vault = Address::generate(&env);
     let attacker = Address::generate(&env);
     let (contract_id, client) = register_account(&env, &factory);
     client.initialize(&owner, &signer, &peridottroller, &margin);
-    client.add_allowed_contract(&owner, &allowed_vault);
+    let (allowed_vault, _) = register_allowed_vault(&env, &client, &owner);
 
     env.as_contract(&contract_id, || {
         let attacker_ctx = ContractContext {
@@ -581,6 +589,44 @@ fn test_vault_borrow_requires_configured_underlying() {
 }
 
 #[test]
+fn test_generic_allowed_contract_is_not_protocol_recipient() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let factory = expected_factory(&env);
+    let owner = Address::generate(&env);
+    let signer = BytesN::from_array(&env, &[1u8; 32]);
+    let peridottroller = Address::generate(&env);
+    let margin = Address::generate(&env);
+    let token_contract = Address::generate(&env);
+    let generic_allowed = Address::generate(&env);
+    let (contract_id, client) = register_account(&env, &factory);
+    client.initialize(&owner, &signer, &peridottroller, &margin);
+    client.add_allowed_contract(&owner, &generic_allowed);
+
+    env.as_contract(&contract_id, || {
+        let token_ctx = ContractContext {
+            contract: token_contract,
+            fn_name: Symbol::new(&env, "transfer"),
+            args: (contract_id.clone(), generic_allowed.clone(), 10i128).into_val(&env),
+        };
+        assert_eq!(
+            enforce_contract_policy(&env, &token_ctx),
+            Err(Error::Unauthorized)
+        );
+
+        let vault_ctx = ContractContext {
+            contract: generic_allowed,
+            fn_name: Symbol::new(&env, "deposit"),
+            args: (contract_id.clone(), 10u128).into_val(&env),
+        };
+        assert_eq!(
+            enforce_contract_policy(&env, &vault_ctx),
+            Err(Error::Unauthorized)
+        );
+    });
+}
+
+#[test]
 fn test_non_contract_auth_context_is_rejected() {
     let env = Env::default();
     let wasm_hash = BytesN::from_array(&env, &[7u8; 32]);
@@ -605,10 +651,9 @@ fn test_token_transfer_context_requires_protocol_recipient() {
     let peridottroller = Address::generate(&env);
     let margin = Address::generate(&env);
     let token_contract = Address::generate(&env);
-    let allowed_vault = Address::generate(&env);
     let (contract_id, client) = register_account(&env, &factory);
     client.initialize(&owner, &signer, &peridottroller, &margin);
-    client.add_allowed_contract(&owner, &allowed_vault);
+    let (allowed_vault, _) = register_allowed_vault(&env, &client, &owner);
 
     env.as_contract(&contract_id, || {
         let ctx = ContractContext {
