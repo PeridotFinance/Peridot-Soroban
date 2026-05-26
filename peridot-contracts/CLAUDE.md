@@ -54,7 +54,7 @@ MarginController (leveraged trading, optional)
 
 ### Supporting Contracts
 
-- **`margin-controller`** / **`swap-adapter`**: Leveraged margin trading via Aquarius DEX.
+- **`margin-controller`** / **`swap-adapter`**: Optional leveraged margin trading via Aquarius DEX. Legacy Margin V1 exports are disabled; new work must target Margin V2 entrypoints only.
 - **`mocks/mock-token`**, **`mocks/mock-lending-vault`**: Test-only mocks.
 
 ### Key Patterns

@@ -376,6 +376,31 @@ fn test_margin_vault_debt_policy_accepts_self_and_rejects_other_user() {
 }
 
 #[test]
+fn test_legacy_margin_policy_is_rejected() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let factory = expected_factory(&env);
+    let owner = Address::generate(&env);
+    let signer = BytesN::from_array(&env, &[1u8; 32]);
+    let peridottroller = Address::generate(&env);
+    let margin = Address::generate(&env);
+    let (contract_id, client) = register_account(&env, &factory);
+    client.initialize(&owner, &signer, &peridottroller, &margin);
+
+    env.as_contract(&contract_id, || {
+        let legacy_open = ContractContext {
+            contract: margin,
+            fn_name: Symbol::new(&env, "open_position"),
+            args: (contract_id.clone(),).into_val(&env),
+        };
+        assert_eq!(
+            enforce_contract_policy(&env, &legacy_open),
+            Err(Error::Unauthorized)
+        );
+    });
+}
+
+#[test]
 fn test_leveraged_margin_policy_budget() {
     let env = Env::default();
     env.mock_all_auths();

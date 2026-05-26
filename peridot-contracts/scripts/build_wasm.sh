@@ -16,9 +16,11 @@ declare -A CRATE_TO_WASM=(
   [mock-lending-vault]=mock_lending_vault
   [swap-adapter]=swap_adapter
   [margin-controller]=margin_controller
+  [smart-account-basic]=smart_account_basic
+  [smart-account-factory]=smart_account_factory
 )
 
-for crate in receipt-vault simple-peridottroller jump-rate-model peridot-token mock-token mock-lending-vault swap-adapter margin-controller; do
+for crate in receipt-vault simple-peridottroller jump-rate-model peridot-token mock-token mock-lending-vault swap-adapter margin-controller smart-account-basic smart-account-factory; do
   echo "→ $crate"
   stellar contract build --package "$crate"
   wasm_name=${CRATE_TO_WASM[$crate]}

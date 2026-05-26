@@ -365,15 +365,10 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
             || fn_name == Symbol::new(env, "withdraw_collateral")
             || fn_name == Symbol::new(env, "transfer_spot_to_margin")
             || fn_name == Symbol::new(env, "transfer_margin_to_spot")
-            || fn_name == Symbol::new(env, "open_position")
             || fn_name == Symbol::new(env, "open_position_v2")
-            || fn_name == Symbol::new(env, "open_position_no_swap")
-            || fn_name == Symbol::new(env, "open_position_no_swap_short")
             || fn_name == Symbol::new(env, "open_position_no_swap_v2")
-            || fn_name == Symbol::new(env, "close_position")
             || fn_name == Symbol::new(env, "close_position_v2")
             || fn_name == Symbol::new(env, "close_position_no_swap_v2")
-            || fn_name == Symbol::new(env, "liquidate_position")
             || fn_name == Symbol::new(env, "liquidate_position_v2"))
     {
         check_first_address_is_self(env, ctx, 0)?;

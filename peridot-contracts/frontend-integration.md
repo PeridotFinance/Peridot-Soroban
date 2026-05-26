@@ -6,6 +6,10 @@ This guide describes the current audited Peridot lending deployment and the cont
 
 Mainnet launch is **core lending only**. The live markets are XLM, USDC, and EURC. Margin trading, Aquarius swap adapter flows, and smart-account UX are not part of the current mainnet launch surface.
 
+Margin V1 entrypoints are intentionally disabled in the contract and must not be integrated:
+`open_position`, `open_position_no_swap`, `open_position_no_swap_short`, `close_position`, and `liquidate_position`.
+Any future leveraged-margin UI must use Margin V2 only: `open_position_v2`, `open_position_no_swap_v2`, `close_position_v2`, `close_position_no_swap_v2`, and `liquidate_position_v2`.
+
 ### 1.1. Mainnet Contract IDs
 
 ```ts
