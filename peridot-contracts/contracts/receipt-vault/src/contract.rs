@@ -1129,6 +1129,10 @@ impl ReceiptVault {
         if amount < 0 {
             panic!("bad amount");
         }
+        // owner.require_auth() is enforced by TokenBase::approve internally.
+        // Soroban treats a duplicate require_auth() in the same frame as an error
+        // (ExistingValue), so we rely on the library call rather than duplicating it.
+        // The guarantee is verified by test_ptoken_approve_rejects_without_owner_auth.
         TokenBase::approve(&env, &owner, &spender, amount, live_until_ledger);
     }
 

@@ -160,6 +160,29 @@ pub fn bump_core_ttl(env: &Env) {
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    // Pause maps are bumped lazily inside is_pause_active (called on every
+    // borrow/deposit/redeem/liquidation check) rather than here, so that
+    // bump_core_ttl doesn't add 8 footprint entries to every operation.
+}
+
+/// Extend TTL for all eight pause persistent keys.
+pub fn bump_pause_maps_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    let pause_keys = [
+        DataKey::PauseBorrow,
+        DataKey::PauseBorrowUntil,
+        DataKey::PauseRedeem,
+        DataKey::PauseRedeemUntil,
+        DataKey::PauseLiquidation,
+        DataKey::PauseLiquidationUntil,
+        DataKey::PauseDeposit,
+        DataKey::PauseDepositUntil,
+    ];
+    for key in pause_keys {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
 }
 
 pub fn bump_pending_upgrade_ttl(env: &Env) {

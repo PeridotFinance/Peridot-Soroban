@@ -1234,33 +1234,47 @@ impl SimplePeridottroller {
         until_key: DataKey,
         market: &Address,
     ) -> bool {
-        let mut flags: Map<Address, bool> = env
-            .storage()
-            .persistent()
+        let persistent = env.storage().persistent();
+        let mut flags: Map<Address, bool> = persistent
             .get(&pause_key)
             .unwrap_or(Map::new(env));
         if !flags.get(market.clone()).unwrap_or(false) {
+            // pause_key is already in the footprint from the get() above, so
+            // extend_ttl here adds no new entries. Bump so a set-but-inactive
+            // market pause map doesn't silently expire between admin calls.
+            if persistent.has(&pause_key) {
+                persistent.extend_ttl(&pause_key, 500_000, 1_000_000);
+            }
             return false;
         }
-        let mut untils: Map<Address, u64> = env
-            .storage()
-            .persistent()
+        let mut untils: Map<Address, u64> = persistent
             .get(&until_key)
             .unwrap_or(Map::new(env));
         let Some(expires_at) = untils.get(market.clone()) else {
             // Fail closed on inconsistent pause metadata.
+            if persistent.has(&pause_key) {
+                persistent.extend_ttl(&pause_key, 500_000, 1_000_000);
+            }
             return true;
         };
         let now = env.ledger().timestamp();
         if now <= expires_at {
+            // Both keys already in footprint from reads above; extend_ttl adds
+            // no new entries. Required so an active pause cannot silently expire.
+            if persistent.has(&pause_key) {
+                persistent.extend_ttl(&pause_key, 500_000, 1_000_000);
+            }
+            if persistent.has(&until_key) {
+                persistent.extend_ttl(&until_key, 500_000, 1_000_000);
+            }
             return true;
         }
 
         // Self-heal stale pause entries once the pause has expired.
         flags.remove(market.clone());
         untils.remove(market.clone());
-        env.storage().persistent().set(&pause_key, &flags);
-        env.storage().persistent().set(&until_key, &untils);
+        persistent.set(&pause_key, &flags);
+        persistent.set(&until_key, &untils);
         false
     }
 
@@ -2862,12 +2876,16 @@ impl SimplePeridottroller {
             panic!("market not supported");
         }
 
-        // When hints are provided, require authorization from the market contract.
-        // This prevents external attackers from manipulating total_ptokens/total_borrowed
-        // to inflate reward indexes, or user_ptokens/user_borrowed to inflate accruals.
-        // The ReceiptVault contract satisfies this when calling during user operations.
+        // Auth gating prevents arbitrary addresses from being written into persistent storage:
+        // - With hints: require market.require_auth() to prevent manipulated totals/balances.
+        //   ReceiptVault satisfies this when calling during user operations.
+        // - Without hints: require user.require_auth() to prevent spam — anyone could otherwise
+        //   call accrue_user_market(victim, market, None) to anchor a UserSupplyIndex entry
+        //   for an arbitrary address at the current global index, locking out their future rewards.
         if hint.is_some() {
             market.require_auth();
+        } else {
+            user.require_auth();
         }
 
         let hint = hint.unwrap_or(AccrualHint {
@@ -3528,6 +3546,10 @@ impl SimplePeridottroller {
         let uidx: u128 = user_idx_opt.unwrap_or(idx);
         if idx == uidx {
             if user_idx_opt.is_none() {
+                // Anchor the user's index at the current global index so future
+                // reward deltas are computed correctly. This write is safe here
+                // because accrue_user_market requires user.require_auth() when
+                // hint is None, preventing storage-spam from arbitrary addresses.
                 env.storage().persistent().set(
                     &DataKey::UserSupplyIndex(user.clone(), market.clone()),
                     &idx,

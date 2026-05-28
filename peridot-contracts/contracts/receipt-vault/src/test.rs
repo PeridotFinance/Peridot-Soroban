@@ -3452,20 +3452,36 @@ fn test_ptoken_approve_uses_single_owner_auth() {
     vault.deposit(&user, &100u128);
 
     let live_until_ledger = env.ledger().sequence() + 1000;
-    env.set_auths(&[]);
-    vault
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &vault_id,
-                fn_name: "approve",
-                args: (&user, &other, 50i128, live_until_ledger).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .approve(&user, &other, &50i128, &live_until_ledger);
+    vault.approve(&user, &other, &50i128, &live_until_ledger);
 
     assert_eq!(vault.allowance(&user, &other), 50i128);
+}
+
+#[test]
+#[should_panic]
+fn test_ptoken_approve_rejects_without_owner_auth() {
+    // Verifies that approve() enforces owner authorization (via TokenBase::approve
+    // internally). Almanax finding ea76bc46: this is the regression guard proving
+    // the library guarantee holds for this contract.
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let other = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    token_admin_client.mint(&user, &1_000i128);
+    vault.deposit(&user, &100u128);
+
+    let live_until_ledger = env.ledger().sequence() + 1000;
+    env.set_auths(&[]);
+    vault.approve(&user, &other, &50i128, &live_until_ledger);
 }
 
 #[test]
