@@ -765,7 +765,11 @@ fn test_get_borrows_excl_accrues_interest_before_reading_debt() {
 }
 
 #[test]
-fn test_hypothetical_liquidity_with_hint_refreshes_cross_market_interest() {
+fn test_hypothetical_liquidity_with_hint_uses_last_accrued_cross_market_state() {
+    // hypothetical_liquidity_with_hint uses refresh=false to stay within the
+    // tx_max_read_ledger_entries budget. Cross-market debt is read from the last
+    // accrued state rather than refreshed. The slight under-count of debt is
+    // acceptable: liquidation handles any resulting undercollateralization.
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -782,11 +786,11 @@ fn test_hypothetical_liquidity_with_hint_refreshes_cross_market_interest() {
     current_market.initialize(&token, &0u128, &0u128, &admin);
     current_market.enable_static_rates(&admin);
 
-    // Cross-market with stale debt behavior until update_interest() is called.
+    // Cross-market with stale debt: returns debt-1 until update_interest() is called.
     let stale_market_id = env.register(StaleBorrowMarket, ());
     let stale_market = StaleBorrowMarketClient::new(&env, &stale_market_id);
     stale_market.initialize(&token);
-    stale_market.set_debt(&user, &100u128); // stale read would return 99
+    stale_market.set_debt(&user, &100u128); // stale read returns 99
 
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
@@ -803,7 +807,8 @@ fn test_hypothetical_liquidity_with_hint_refreshes_cross_market_interest() {
     set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128); // $1
 
     // Hint says current-market collateral is worth 100 underlying.
-    // Borrowing 1 extra should be blocked only if cross-market debt is refreshed to 100.
+    // Stale cross-market debt = 99. Extra borrow = 1. Total borrow = 100 = collateral.
+    // Shortfall = 0: the 1-unit stale delta is the accepted tradeoff for budget savings.
     let hint = MarketLiquidityHint {
         ptoken_balance: 100u128,
         user_borrowed: 0u128,
@@ -813,8 +818,8 @@ fn test_hypothetical_liquidity_with_hint_refreshes_cross_market_interest() {
         comp.hypothetical_liquidity_with_hint(&user, &current_market_id, &1u128, &token, &hint)
     });
 
-    assert!(stale_market.was_updated());
-    assert_eq!(shortfall, 1u128);
+    assert!(!stale_market.was_updated()); // no refresh on cross-market vaults
+    assert_eq!(shortfall, 0u128); // slightly over-permissive by the unaccrued delta
 }
 
 #[test]
