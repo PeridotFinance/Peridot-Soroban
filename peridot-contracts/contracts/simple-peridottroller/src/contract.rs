@@ -2982,9 +2982,14 @@ impl SimplePeridottroller {
                     }
                 };
 
-            // For borrow-path hypothetical checks, refresh only markets with a position
-            // and then re-read user balances to use fresh values.
-            if refresh_market_state && (pbal > 0 || debt > 0) {
+            // For borrow-path hypothetical checks, refresh only markets with outstanding debt.
+            // Collateral-only markets (pbal > 0, debt = 0) do not need refresh — the exchange
+            // rate being slightly stale makes the check more conservative, not less safe.
+            // Refreshing collateral-only markets unnecessarily loads the JumpRateModel into the
+            // transaction footprint, exhausting tx_max_read_ledger_entries for users with
+            // cross-market collateral positions (FIND-039 budget fix).
+            // FIND-043 is preserved: refresh still fires whenever cross-market debt > 0.
+            if refresh_market_state && debt > 0 {
                 let refreshed = env.try_invoke_contract::<(), InvokeError>(
                     &m,
                     &Symbol::new(&env, "update_interest"),
