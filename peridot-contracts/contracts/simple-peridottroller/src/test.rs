@@ -5086,3 +5086,615 @@ fn test_find_039_liquidation_rejects_when_only_indeterminate_signal() {
     // Known positions are not underwater; indeterminate alone must not authorize liquidation.
     comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Mock: CollateralOnlyUpdateFailMarket
+//
+// Simulates a cross-market vault where the user holds collateral (pbal > 0)
+// but has no outstanding debt (debt = 0). update_interest panics, modelling
+// any market whose JumpRateModel is expensive to load into the tx footprint.
+//
+// Used to verify the `debt > 0` guard in sum_positions_usd_for_markets: refresh
+// must be skipped for collateral-only markets to avoid tx_max_read_ledger_entries
+// exhaustion (FIND-039 budget fix) while preserving FIND-043 for debt markets.
+// ──────────────────────────────────────────────────────────────────────────────
+#[contract]
+struct CollateralOnlyUpdateFailMarket;
+
+#[contracttype]
+enum CollateralOnlyMarketKey {
+    Underlying,
+    Pbal(Address),
+}
+
+#[contractimpl]
+impl CollateralOnlyUpdateFailMarket {
+    pub fn initialize(env: Env, underlying: Address) {
+        env.storage()
+            .persistent()
+            .set(&CollateralOnlyMarketKey::Underlying, &underlying);
+    }
+
+    pub fn set_pbal(env: Env, user: Address, pbal: u128) {
+        env.storage()
+            .persistent()
+            .set(&CollateralOnlyMarketKey::Pbal(user), &pbal);
+    }
+
+    pub fn get_underlying_token(env: Env) -> Address {
+        env.storage()
+            .persistent()
+            .get(&CollateralOnlyMarketKey::Underlying)
+            .expect("underlying not set")
+    }
+
+    pub fn update_interest(_env: Env) {
+        panic!("update_interest must not be called for collateral-only market");
+    }
+
+    pub fn get_ptoken_balance(env: Env, user: Address) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&CollateralOnlyMarketKey::Pbal(user))
+            .unwrap_or(0u128)
+    }
+
+    pub fn get_user_borrow_balance(_env: Env, _user: Address) -> u128 {
+        0u128
+    }
+
+    pub fn get_exchange_rate(_env: Env) -> u128 {
+        1_000_000u128
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Security edge-case tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Direct regression for the `debt > 0` guard in sum_positions_usd_for_markets.
+// A cross-market with pbal > 0 and debt = 0 must NOT have update_interest called.
+// If the old `pbal > 0 || debt > 0` condition were still in place, this test
+// would panic because CollateralOnlyUpdateFailMarket.update_interest panics.
+#[test]
+fn test_hypothetical_liquidity_with_hint_skips_refresh_for_collateral_only_cross_market() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let current_market_id = env.register(rv::ReceiptVault, ());
+    let current_market = rv::ReceiptVaultClient::new(&env, &current_market_id);
+    current_market.initialize(&token, &0u128, &0u128, &admin);
+    current_market.enable_static_rates(&admin);
+
+    // Cross-market: pbal=100, debt=0. update_interest panics on any call.
+    let coll_only_id = env.register(CollateralOnlyUpdateFailMarket, ());
+    let coll_only = CollateralOnlyUpdateFailMarketClient::new(&env, &coll_only_id);
+    coll_only.initialize(&token);
+    coll_only.set_pbal(&user, &100u128);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&current_market_id);
+    comp.add_market(&coll_only_id);
+    comp.enter_market(&user, &current_market_id);
+    comp.enter_market(&user, &coll_only_id);
+    comp.set_market_cf(&current_market_id, &1_000_000u128);
+    comp.set_market_cf(&coll_only_id, &1_000_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128);
+
+    let hint = MarketLiquidityHint {
+        ptoken_balance: 50u128,
+        user_borrowed: 0u128,
+        exchange_rate: 1_000_000u128,
+    };
+    // Must not panic: refresh skipped because cross-market debt == 0.
+    let (_liq, shortfall) = env.as_contract(&current_market_id, || {
+        comp.hypothetical_liquidity_with_hint(&user, &current_market_id, &0u128, &token, &hint)
+    });
+    assert_eq!(shortfall, 0u128);
+}
+
+// Verify both invariants together:
+//  - FIND-043: cross-market with outstanding debt IS refreshed.
+//  - FIND-039 budget fix: collateral-only cross-market is NOT refreshed.
+#[test]
+fn test_hypothetical_liquidity_with_hint_refreshes_debt_market_not_collateral_only() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+
+    let current_market_id = env.register(rv::ReceiptVault, ());
+    let current_market = rv::ReceiptVaultClient::new(&env, &current_market_id);
+    current_market.initialize(&token, &0u128, &0u128, &admin);
+    current_market.enable_static_rates(&admin);
+
+    // Cross-market A: has debt → must be refreshed (FIND-043).
+    let debt_market_id = env.register(StaleBorrowMarket, ());
+    let debt_market = StaleBorrowMarketClient::new(&env, &debt_market_id);
+    debt_market.initialize(&token);
+    debt_market.set_debt(&user, &50u128);
+
+    // Cross-market B: pbal=100, debt=0, update_interest panics.
+    // If refresh is incorrectly triggered here, the test panics.
+    let coll_only_id = env.register(CollateralOnlyUpdateFailMarket, ());
+    let coll_only = CollateralOnlyUpdateFailMarketClient::new(&env, &coll_only_id);
+    coll_only.initialize(&token);
+    coll_only.set_pbal(&user, &100u128);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&current_market_id);
+    comp.add_market(&debt_market_id);
+    comp.add_market(&coll_only_id);
+    comp.enter_market(&user, &current_market_id);
+    comp.enter_market(&user, &debt_market_id);
+    comp.enter_market(&user, &coll_only_id);
+    comp.set_market_cf(&current_market_id, &1_000_000u128);
+    comp.set_market_cf(&coll_only_id, &1_000_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128);
+
+    let hint = MarketLiquidityHint {
+        ptoken_balance: 200u128,
+        user_borrowed: 0u128,
+        exchange_rate: 1_000_000u128,
+    };
+    let (_liq, shortfall) = env.as_contract(&current_market_id, || {
+        comp.hypothetical_liquidity_with_hint(&user, &current_market_id, &0u128, &token, &hint)
+    });
+
+    assert!(
+        debt_market.was_updated(),
+        "cross-market with debt must be refreshed (FIND-043)"
+    );
+    assert_eq!(shortfall, 0u128);
+}
+
+// Depositing into a market with CF=0 must not create any borrowing capacity.
+// Without this guard, a user could set up a CF=0 position then borrow
+// against it if the collateral check were incorrectly skipped.
+#[test]
+#[should_panic(expected = "Insufficient collateral")]
+fn test_zero_cf_market_deposits_cannot_unlock_borrowing() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ()); // CF = 0
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    // Do NOT call set_market_cf for vault_b: the default stored value is 0,
+    // so deposits into vault_b provide zero collateral power.
+    comp.enter_market(&user, &vault_a_id);
+    comp.enter_market(&user, &vault_b_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_a.mint(&lender, &1_000i128);
+    mint_b.mint(&user, &1_000i128);
+
+    vault_a.deposit(&lender, &100u128);
+    vault_b.deposit(&user, &1_000u128); // large deposit, but CF=0 → zero collateral power
+
+    // Any borrow against a CF=0 position must fail.
+    vault_a.borrow(&user, &1u128);
+}
+
+// Self-liquidation (borrower == liquidator) is permitted by the protocol.
+// It is not a drain vector: the borrower repays their own debt and receives
+// their own pTokens back (minus any protocol fee sent to the reserve recipient).
+// Net effect: position health improves, protocol fees increase.
+#[test]
+fn test_self_liquidation_reduces_own_debt() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.enter_market(&borrower, &vault_a_id);
+    comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_a.mint(&borrower, &1_000i128);
+    mint_b.mint(&borrower, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &borrower, &vault_a_id, 1_000i128);
+
+    vault_b.set_collateral_factor(&500_000u128);
+    vault_b.deposit(&borrower, &100u128); // $50 collateral power
+    vault_a.deposit(&borrower, &200u128);
+    vault_a.borrow(&borrower, &50u128); // borrow at limit
+
+    // Drop collateral price to create shortfall.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 400_000i128);
+
+    let debt_before = vault_a.get_user_borrow_balance(&borrower);
+    let pbal_b_before = vault_b.get_ptoken_balance(&borrower);
+
+    // Borrower self-liquidates: repay 25 (half of 50, within close factor cap).
+    comp.liquidate(&borrower, &vault_a_id, &vault_b_id, &25u128, &borrower);
+
+    let debt_after = vault_a.get_user_borrow_balance(&borrower);
+    let pbal_b_after = vault_b.get_ptoken_balance(&borrower);
+
+    // Debt must decrease: the borrower paid token_a to reduce their own position.
+    assert_eq!(
+        debt_after,
+        debt_before - 25u128,
+        "debt must decrease by repay amount"
+    );
+    // With no liquidation fee configured, seized pTokens transfer from borrower
+    // to liquidator (= borrower), so the net pToken balance is unchanged.
+    // The borrower's gain is reduced debt at the cost of their own token_a.
+    assert_eq!(
+        pbal_b_after,
+        pbal_b_before,
+        "without a protocol fee, self-liquidation is net-zero on pToken balance"
+    );
+}
+
+// The margin-path liquidation gate requires a non-zero position_shortfall_usd.
+// Zero shortfall on a margin position must be rejected regardless of
+// account-level health, preventing spurious margin liquidations.
+#[test]
+#[should_panic(expected = "position shortfall required")]
+fn test_liquidate_for_margin_zero_position_shortfall_panics() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let controller = env.register(MockMarginController, ());
+
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.enter_market(&borrower, &vault_a_id);
+    comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    comp.set_margin_liquidation_ctrl(&controller, &true);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_a.mint(&borrower, &1_000i128);
+    mint_b.mint(&borrower, &1_000i128);
+    mint_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
+
+    vault_b.set_collateral_factor(&500_000u128);
+    vault_b.deposit(&borrower, &100u128);
+    vault_a.deposit(&liquidator, &200u128);
+    vault_a.borrow(&borrower, &50u128);
+
+    // position_shortfall_usd = 0 must be rejected.
+    comp.liquidate_for_margin(
+        &controller,
+        &borrower,
+        &vault_a_id,
+        &vault_b_id,
+        &25u128,
+        &liquidator,
+        &0u128,
+        &1_000u128,
+    );
+}
+
+// Borrowing exactly at the collateral limit (liquidity = 0 after borrow) is allowed.
+#[test]
+fn test_borrow_at_exact_collateral_limit_succeeds() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.set_market_cf(&vault_b_id, &1_000_000u128); // 100% CF: $1 deposit → $1 capacity
+    comp.enter_market(&user, &vault_a_id);
+    comp.enter_market(&user, &vault_b_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_a.mint(&lender, &500i128);
+    mint_b.mint(&user, &500i128);
+
+    vault_b.set_collateral_factor(&1_000_000u128);
+    vault_b.deposit(&user, &100u128); // $100 collateral → capacity = $100
+    vault_a.deposit(&lender, &200u128);
+
+    vault_a.borrow(&user, &100u128);
+    assert_eq!(vault_a.get_user_borrow_balance(&user), 100u128);
+}
+
+// Borrowing one unit beyond the collateral limit must be rejected.
+#[test]
+#[should_panic(expected = "Insufficient collateral")]
+fn test_borrow_one_unit_over_collateral_limit_panics() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.set_market_cf(&vault_b_id, &1_000_000u128);
+    comp.enter_market(&user, &vault_a_id);
+    comp.enter_market(&user, &vault_b_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_a.mint(&lender, &500i128);
+    mint_b.mint(&user, &500i128);
+
+    vault_b.set_collateral_factor(&1_000_000u128);
+    vault_b.deposit(&user, &100u128); // capacity = $100
+    vault_a.deposit(&lender, &200u128);
+
+    // One unit over capacity must be rejected.
+    vault_a.borrow(&user, &101u128);
+}
+
+// With close factor set to the protocol maximum (90%), a liquidator can repay
+// up to 90% of the borrower's outstanding debt in a single transaction.
+// Attempting to repay the full 100% is silently capped to 90%.
+#[test]
+fn test_max_close_factor_liquidation_caps_repay_at_90_percent() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let token_admin_a = Address::generate(&env);
+    let token_a = env
+        .register_stellar_asset_contract_v2(token_admin_a.clone())
+        .address();
+    let token_admin_b = Address::generate(&env);
+    let token_b = env
+        .register_stellar_asset_contract_v2(token_admin_b.clone())
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.enter_market(&borrower, &vault_a_id);
+    comp.enter_market(&borrower, &vault_b_id);
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    comp.set_close_factor(&900_000u128); // 90% — protocol maximum
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_a.mint(&borrower, &1_000i128);
+    mint_b.mint(&borrower, &1_000i128);
+    mint_a.mint(&liquidator, &1_000i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
+
+    vault_b.set_collateral_factor(&500_000u128);
+    // 300 pTokens: $150 collateral power at CF=50%, enough to borrow $100.
+    // After price drops to $0.40 the seize of 242 pTokens still fits within
+    // the 300 available, so the close-factor cap—not available collateral—is
+    // the binding constraint on repay.
+    vault_b.deposit(&borrower, &300u128);
+    vault_a.deposit(&liquidator, &300u128);
+    vault_a.borrow(&borrower, &100u128);
+
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 400_000i128); // shortfall
+
+    // Liquidator requests full repay (100) but close factor 90% caps it at 90.
+    comp.liquidate(&borrower, &vault_a_id, &vault_b_id, &100u128, &liquidator);
+
+    assert_eq!(
+        vault_a.get_user_borrow_balance(&borrower),
+        10u128,
+        "10 units of debt must remain after 90% close-factor cap"
+    );
+}
