@@ -3,7 +3,6 @@ import {
   Contract,
   Keypair,
   TransactionBuilder,
-  BASE_FEE,
   rpc,
   scValToNative,
   xdr,
@@ -11,19 +10,20 @@ import {
 
 import { sleep } from './utils.js';
 
-const DUMMY_SOURCE = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+// 500_000 stroops = 0.05 XLM; keeps mainnet transactions off the floor.
+const INCLUSION_FEE = '500000';
 
 export class SorobanClient {
-  private readonly dummyAccount = new Account(DUMMY_SOURCE, '0');
-
   constructor(private readonly server: rpc.Server, private readonly networkPassphrase: string) {}
 
   async call<T>(contractId: string, method: string, args: xdr.ScVal[]): Promise<T> {
     const contract = new Contract(contractId);
     const op = contract.call(method, ...args);
 
-    const tx = new TransactionBuilder(this.dummyAccount, {
-      fee: BASE_FEE,
+    // Use a dummy account for read-only simulation — sequence number is irrelevant.
+    const dummy = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
+    const tx = new TransactionBuilder(dummy, {
+      fee: INCLUSION_FEE,
       networkPassphrase: this.networkPassphrase,
     })
       .addOperation(op)
@@ -32,10 +32,12 @@ export class SorobanClient {
 
     const sim = await this.server.simulateTransaction(tx);
     if (!rpc.Api.isSimulationSuccess(sim)) {
-      const message = sim.error || 'simulation failed';
-      throw new Error(`Simulation error calling ${method}: ${message}`);
+      throw new Error(`Simulation error calling ${method}: ${sim.error ?? 'unknown'}`);
     }
-    return scValToNative(sim.result?.retval) as T;
+    if (!sim.result) {
+      throw new Error(`No result returned from simulation of ${method}`);
+    }
+    return scValToNative(sim.result.retval) as T;
   }
 
   async invoke(
@@ -44,29 +46,26 @@ export class SorobanClient {
     method: string,
     args: xdr.ScVal[],
   ): Promise<rpc.Api.GetTransactionResponse> {
-    const accountResponse = await this.server.getAccount(signer.publicKey());
-    const sequence =
-      typeof accountResponse.sequence === 'string'
-        ? accountResponse.sequence
-        : accountResponse.sequence.toString();
-    const account = new Account(accountResponse.accountId, sequence);
+    // getAccount returns a ready-to-use Account with the current sequence number.
+    const account = await this.server.getAccount(signer.publicKey());
     const contract = new Contract(contractId);
     const op = contract.call(method, ...args);
 
     let tx = new TransactionBuilder(account, {
-      fee: BASE_FEE,
+      fee: INCLUSION_FEE,
       networkPassphrase: this.networkPassphrase,
     })
       .addOperation(op)
       .setTimeout(30)
       .build();
 
+    // prepareTransaction fills in Soroban resource fees and auth entries.
     tx = await this.server.prepareTransaction(tx);
     tx.sign(signer);
 
     const send = await this.server.sendTransaction(tx);
-    if (send.status === rpc.Api.SendTransactionStatus.ERROR) {
-      throw new Error(`sendTransaction failed: ${send.errorResultXdr}`);
+    if (send.status === 'ERROR') {
+      throw new Error(`sendTransaction failed: ${send.errorResult?.toXDR('base64') ?? 'unknown'}`);
     }
 
     return this.awaitFinality(send.hash);
@@ -83,7 +82,7 @@ export class SorobanClient {
         return res;
       }
       if (res.status === rpc.Api.GetTransactionStatus.FAILED) {
-        throw new Error(`transaction ${hash} failed: ${res.resultXdr}`);
+        throw new Error(`transaction ${hash} failed`);
       }
       await sleep(1000);
     }

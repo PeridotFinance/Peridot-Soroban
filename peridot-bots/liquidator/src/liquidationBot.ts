@@ -18,17 +18,15 @@ interface LiquidationPlan {
   seizeAmount: bigint;
 }
 
-interface EventCursor {
-  cursor?: string;
-  startLedger?: number;
-}
-
+// Remove borrowers from the map after this long with no activity and no debt.
+const BORROWER_STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 const MAX_FAILURE_DELAY_MS = 60_000;
 
 export class LiquidationBot {
   private readonly borrowerState = new Map<string, BorrowerState>();
   private readonly liquidator: Keypair;
-  private readonly eventCursor: EventCursor = {};
+  private cursor?: string;
+  private startLedger?: number;
   private readonly contractIds: string[];
 
   constructor(
@@ -39,13 +37,12 @@ export class LiquidationBot {
     this.liquidator = Keypair.fromSecret(config.liquidatorSecret);
     this.contractIds = [
       config.peridottrollerId,
-      ...config.markets.map(market => market.vaultId),
+      ...config.markets.map(m => m.vaultId),
     ];
   }
 
   async start(): Promise<void> {
     await this.bootstrapCursor();
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
         await this.pollEvents();
@@ -59,83 +56,75 @@ export class LiquidationBot {
         console.error(`[scan] ${formatError(error)}`);
       }
 
+      this.cleanupStaleBorrowers();
       await sleep(this.config.pollIntervalMs);
     }
   }
 
   private async bootstrapCursor(): Promise<void> {
     const latest = await this.server.getLatestLedger();
-    const start = Math.max(0, latest.sequence - this.config.eventBacklog);
-    this.eventCursor.startLedger = start;
+    this.startLedger = Math.max(0, latest.sequence - this.config.eventBacklog);
     console.info(
-      `Starting liquidation bot at ledger ${latest.sequence} (backlog ${this.config.eventBacklog})`,
+      `[bot] starting at ledger ${latest.sequence} (backlog ${this.config.eventBacklog})`,
     );
   }
 
   private async pollEvents(): Promise<void> {
-    const request = {
-      cursor: this.eventCursor.cursor,
-      startLedger: this.eventCursor.cursor ? undefined : this.eventCursor.startLedger,
+    const request: rpc.Server.GetEventsRequest = {
+      filters: [{ type: 'contract', contractIds: this.contractIds }],
+      ...(this.cursor ? { cursor: this.cursor } : { startLedger: this.startLedger }),
       limit: this.config.eventPageSize,
-      filters: [
-        {
-          type: 'contract',
-          contractIds: this.contractIds,
-        },
-      ],
-    } satisfies rpc.Api.GetEventsRequest;
+    };
 
     const res = await this.server.getEvents(request);
-    if (res.events.length === 0) {
-      return;
+
+    // Always advance cursor even on empty pages so we don't re-scan old ledgers.
+    if (res.cursor) {
+      this.cursor = res.cursor;
     }
 
-    for (const eventInfo of res.events) {
-      this.handleEvent(eventInfo);
+    for (const event of res.events) {
+      this.handleEvent(event);
     }
-    this.eventCursor.cursor = res.cursor;
   }
 
-  private handleEvent(event: rpc.Api.EventInfo): void {
-    if (!Array.isArray(event.topic)) {
+  private handleEvent(event: rpc.Api.EventResponse): void {
+    if (!Array.isArray(event.topic) || event.topic.length === 0) {
       return;
     }
-    const topics = event.topic.map(topic => scValToNative(topic));
-    if (topics.length === 0) {
-      return;
-    }
+
+    const topics = event.topic.map(t => scValToNative(t));
     const eventName = topics[0];
     if (typeof eventName !== 'string') {
       return;
     }
 
-    const lower = eventName.toLowerCase();
-    if (
-      lower === 'market_entered' ||
-      lower === 'borrow_event' ||
-      lower === 'mint' ||
-      lower === 'repayborrow'
-    ) {
-      const candidate = this.extractAddress(topics[1]);
-      if (candidate) {
-        this.trackBorrower(candidate);
-      }
-    } else if (lower === 'market_exited') {
-      const candidate = this.extractAddress(topics[1]);
-      if (candidate) {
-        this.borrowerState.delete(candidate);
-      }
-    }
-  }
+    const name = eventName.toLowerCase();
 
-  private extractAddress(value: unknown): string | undefined {
-    if (typeof value === 'string') {
-      return value;
+    if (name === 'borrow_event') {
+      // BorrowEvent: topics = ["borrow_event", borrower]
+      const borrower = extractAddress(topics[1]);
+      if (borrower) this.trackBorrower(borrower);
+    } else if (name === 'repay_borrow') {
+      // RepayBorrow: topics = ["repay_borrow", payer, borrower]
+      // Track the borrower (topics[2]), not the payer (topics[1]).
+      const borrower = extractAddress(topics[2]);
+      if (borrower) this.refreshBorrower(borrower);
+    } else if (name === 'market_entered') {
+      // MarketEntered: topics = ["market_entered", account, market]
+      const account = extractAddress(topics[1]);
+      if (account) this.trackBorrower(account);
+    } else if (name === 'market_exited') {
+      // MarketExited: topics = ["market_exited", account, market]
+      // Do NOT remove borrower here — they may still have debt in other markets.
+      // Cleanup happens in cleanupStaleBorrowers() after verifying zero debt.
+      const account = extractAddress(topics[1]);
+      if (account) this.refreshBorrower(account);
+    } else if (name === 'mint') {
+      // Mint (deposit): topics = ["mint", minter]
+      const minter = extractAddress(topics[1]);
+      if (minter) this.trackBorrower(minter);
     }
-    if (value && typeof value === 'object' && 'address' in value) {
-      return (value as { address: string }).address;
-    }
-    return undefined;
   }
 
   private trackBorrower(address: string): void {
@@ -145,7 +134,16 @@ export class LiquidationBot {
       state.lastSeen = now;
     } else {
       this.borrowerState.set(address, { lastSeen: now, failures: 0 });
-      console.info(`[events] tracking borrower ${address}`);
+      console.info(`[events] tracking ${address}`);
+    }
+  }
+
+  private refreshBorrower(address: string): void {
+    const state = this.borrowerState.get(address);
+    if (state) {
+      state.lastSeen = Date.now();
+      // Force re-evaluation on next scan cycle.
+      state.lastEvaluated = undefined;
     }
   }
 
@@ -155,12 +153,10 @@ export class LiquidationBot {
       if (state.lastEvaluated && now - state.lastEvaluated < this.config.borrowerRefreshMs) {
         continue;
       }
-
-      // Back off on repeated failures.
       if (
         state.failures > 0 &&
         state.lastEvaluated &&
-        now - state.lastEvaluated < Math.min(MAX_FAILURE_DELAY_MS, state.failures * 5000)
+        now - state.lastEvaluated < Math.min(MAX_FAILURE_DELAY_MS, state.failures * 5_000)
       ) {
         continue;
       }
@@ -181,6 +177,19 @@ export class LiquidationBot {
     }
   }
 
+  private cleanupStaleBorrowers(): void {
+    const now = Date.now();
+    for (const [address, state] of this.borrowerState) {
+      if (now - state.lastSeen < BORROWER_STALE_MS) continue;
+      // Remove only if the borrower was recently evaluated and had no debt.
+      // If never evaluated, keep them until the scanner confirms no shortfall.
+      if (state.lastEvaluated && state.failures === 0) {
+        this.borrowerState.delete(address);
+        console.info(`[cleanup] removed stale borrower ${address}`);
+      }
+    }
+  }
+
   private async evaluateBorrower(borrower: string): Promise<LiquidationPlan | null> {
     const [_liquidity, shortfall] = await this.contracts.call<[bigint, bigint]>(
       this.config.peridottrollerId,
@@ -193,7 +202,24 @@ export class LiquidationBot {
     }
 
     const repayCandidate = await this.pickRepayMarket(borrower);
-    if (!repayCandidate) {
+    if (!repayCandidate) return null;
+
+    // Check liquidator has enough UNDERLYING token balance before going further.
+    // repay_on_behalf calls transfer_from on the underlying token (not the pToken).
+    const underlyingToken = await this.contracts
+      .call<string>(repayCandidate.market.vaultId, 'get_underlying_token', [])
+      .catch(() => null);
+    if (!underlyingToken) {
+      console.warn(`[plan] could not resolve underlying token for ${repayCandidate.market.symbol}`);
+      return null;
+    }
+    const liquidatorBalance = await this.contracts
+      .call<bigint>(underlyingToken, 'balance', [toAddress(this.liquidator.publicKey())])
+      .catch(() => 0n);
+    if (liquidatorBalance < repayCandidate.repayAmount) {
+      console.warn(
+        `[plan] insufficient underlying balance for ${repayCandidate.market.symbol}: have ${liquidatorBalance}, need ${repayCandidate.repayAmount}`,
+      );
       return null;
     }
 
@@ -202,9 +228,7 @@ export class LiquidationBot {
       repayCandidate.market,
       repayCandidate.repayAmount,
     );
-    if (!collateralCandidate) {
-      return null;
-    }
+    if (!collateralCandidate) return null;
 
     console.info(
       `[plan] borrower=${borrower} shortfall=${shortfall} repay=${repayCandidate.market.symbol} amount=${repayCandidate.repayAmount} collateral=${collateralCandidate.market.symbol} seize=${collateralCandidate.seizeAmount}`,
@@ -222,33 +246,30 @@ export class LiquidationBot {
   private async pickRepayMarket(
     borrower: string,
   ): Promise<{ market: MarketConfig; repayAmount: bigint } | null> {
-    let chosen: { market: MarketConfig; debt: bigint } | undefined;
+    // Query all markets in parallel.
+    const debts = await Promise.all(
+      this.config.markets.map(market =>
+        this.contracts
+          .call<bigint>(market.vaultId, 'get_user_borrow_balance', [toAddress(borrower)])
+          .then(debt => ({ market, debt }))
+          .catch(() => ({ market, debt: 0n })),
+      ),
+    );
 
-    for (const market of this.config.markets) {
-      const debt = await this.contracts.call<bigint>(market.vaultId, 'get_user_borrow_balance', [
+    const chosen = debts.filter(d => d.debt > 0n).sort((a, b) => (b.debt > a.debt ? 1 : -1))[0];
+    if (!chosen) return null;
+
+    const cap = await this.contracts
+      .call<bigint>(this.config.peridottrollerId, 'preview_repay_cap', [
         toAddress(borrower),
-      ]);
-      if (debt <= 0n) {
-        continue;
-      }
-      if (!chosen || debt > chosen.debt) {
-        chosen = { market, debt };
-      }
-    }
+        toAddress(chosen.market.vaultId),
+      ])
+      // If the preview call fails, default to 50% (default close factor) so we don't
+      // submit a repay_amount that exceeds the on-chain cap and get rejected.
+      .catch(() => chosen.debt / 2n);
 
-    if (!chosen) {
-      return null;
-    }
-
-    const cap = await this.contracts.call<bigint>(this.config.peridottrollerId, 'preview_repay_cap', [
-      toAddress(borrower),
-      toAddress(chosen.market.vaultId),
-    ]);
-
-    const repayAmount = cap === 0n ? chosen.debt : cap < chosen.debt ? cap : chosen.debt;
-    if (repayAmount === 0n) {
-      return null;
-    }
+    const repayAmount = cap < chosen.debt ? cap : chosen.debt;
+    if (repayAmount === 0n) return null;
 
     return { market: chosen.market, repayAmount };
   }
@@ -258,32 +279,34 @@ export class LiquidationBot {
     repayMarket: MarketConfig,
     repayAmount: bigint,
   ): Promise<{ market: MarketConfig; seizeAmount: bigint } | null> {
-    let best: { market: MarketConfig; seizeAmount: bigint } | null = null;
+    // Query all collateral markets in parallel.
+    const candidates = await Promise.all(
+      this.config.markets
+        .filter(m => m.vaultId !== repayMarket.vaultId)
+        .map(async market => {
+          const balance = await this.contracts
+            .call<bigint>(market.vaultId, 'get_ptoken_balance', [toAddress(borrower)])
+            .catch(() => 0n);
+          if (balance <= 0n) return null;
 
-    for (const market of this.config.markets) {
-      const balance = await this.contracts.call<bigint>(market.vaultId, 'get_ptoken_balance', [
-        toAddress(borrower),
-      ]);
-      if (balance <= 0n) {
-        continue;
-      }
+          const seize = await this.contracts
+            .call<bigint>(this.config.peridottrollerId, 'preview_seize_ptokens', [
+              toAddress(repayMarket.vaultId),
+              toAddress(market.vaultId),
+              toU128(repayAmount),
+            ])
+            .catch(() => 0n);
 
-      const seize = await this.contracts.call<bigint>(
-        this.config.peridottrollerId,
-        'preview_seize_ptokens',
-        [toAddress(repayMarket.vaultId), toAddress(market.vaultId), toU128(repayAmount)],
-      );
+          if (seize <= 0n || seize > balance) return null;
+          return { market, seizeAmount: seize };
+        }),
+    );
 
-      if (seize <= 0n) {
-        continue;
-      }
+    const valid = candidates.filter((c): c is NonNullable<typeof c> => c !== null);
+    if (valid.length === 0) return null;
 
-      if (!best || seize > best.seizeAmount) {
-        best = { market, seizeAmount: seize };
-      }
-    }
-
-    return best;
+    // Pick the collateral market that yields the highest seize amount.
+    return valid.sort((a, b) => (b.seizeAmount > a.seizeAmount ? 1 : -1))[0];
   }
 
   private async executeLiquidation(plan: LiquidationPlan): Promise<void> {
@@ -300,14 +323,23 @@ export class LiquidationBot {
       ],
     );
 
-    const result = response.result?.retval as xdr.ScVal | undefined;
-    const nativeResult = result ? scValToNative(result) : null;
+    const successResponse = response as rpc.Api.GetSuccessfulTransactionResponse;
+    const returnValue = successResponse.returnValue
+      ? scValToNative(successResponse.returnValue)
+      : null;
+
     console.info(
-      `[success] borrower=${plan.borrower} repay=${plan.repayMarket.symbol} amount=${plan.repayAmount} collateral=${plan.collateralMarket.symbol} seize=${plan.seizeAmount} result=${describeNative(
-        nativeResult,
-      )}`,
+      `[success] borrower=${plan.borrower} repay=${plan.repayMarket.symbol} amount=${plan.repayAmount} collateral=${plan.collateralMarket.symbol} seize=${plan.seizeAmount} result=${JSON.stringify(returnValue)}`,
     );
   }
+}
+
+function extractAddress(value: unknown): string | undefined {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'address' in value) {
+    return (value as { address: string }).address;
+  }
+  return undefined;
 }
 
 function formatError(error: unknown): string {
@@ -315,24 +347,4 @@ function formatError(error: unknown): string {
     return `${error.message}${error.stack ? `\n${error.stack}` : ''}`;
   }
   return String(error);
-}
-
-function describeNative(value: unknown): string {
-  if (value === null || value === undefined) {
-    return 'null';
-  }
-  if (typeof value === 'bigint') {
-    return value.toString();
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(describeNative).join(', ')}]`;
-  }
-  if (typeof value === 'object') {
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return value.toString();
-    }
-  }
-  return String(value);
 }

@@ -2897,40 +2897,51 @@ impl SimplePeridottroller {
             }
             let market_cf: u128 = Self::get_market_cf(env.clone(), m.clone());
 
-            // Get pToken balance — fail-open for collateral by default.
-            // A read failure alone should not poison account health unless debt/position
-            // evidence later shows this market is material to solvency.
-            let mut pbal_known = true;
-            let mut pbal: u128 = match env.try_invoke_contract::<u128, InvokeError>(
+            // Attempt get_account_snapshot (new vaults) — collapses 4 cross-contract reads
+            // into 1. Falls back to individual calls for old vaults / test mocks that lack it.
+            let snapshot = env.try_invoke_contract::<(u128, u128, u128, Address), InvokeError>(
                 &m,
-                &Symbol::new(&env, "get_ptoken_balance"),
+                &Symbol::new(&env, "get_account_snapshot"),
                 (user.clone(),).into_val(&env),
-            ) {
-                Ok(Ok(bal)) => bal,
-                _ => {
-                    pbal_known = false;
-                    if market_cf > 0 {
-                        collateral_indeterminate = true;
-                    }
-                    0u128
-                }
-            };
+            );
 
-            // Get borrow balance — fail-closed on debt read failure
-            let mut debt: u128 = match env.try_invoke_contract::<u128, InvokeError>(
-                &m,
-                &Symbol::new(&env, "get_user_borrow_balance"),
-                (user.clone(),).into_val(&env),
-            ) {
-                Ok(Ok(bal)) => bal,
-                _ => {
-                    indeterminate = true;
-                    if pbal_known && pbal > 0 && market_cf > 0 {
-                        collateral_indeterminate = true;
+            let (mut pbal, mut pbal_known, mut debt, mut snapshot_rate, mut token_opt) =
+                match snapshot {
+                    Ok(Ok((p, d, r, t))) => (p, true, d, Some(r), Some(t)),
+                    _ => {
+                        // Fallback: individual calls (old vault or mock without snapshot)
+                        let mut pk = true;
+                        let p: u128 = match env.try_invoke_contract::<u128, InvokeError>(
+                            &m,
+                            &Symbol::new(&env, "get_ptoken_balance"),
+                            (user.clone(),).into_val(&env),
+                        ) {
+                            Ok(Ok(bal)) => bal,
+                            _ => {
+                                pk = false;
+                                if market_cf > 0 {
+                                    collateral_indeterminate = true;
+                                }
+                                0u128
+                            }
+                        };
+                        let d: u128 = match env.try_invoke_contract::<u128, InvokeError>(
+                            &m,
+                            &Symbol::new(&env, "get_user_borrow_balance"),
+                            (user.clone(),).into_val(&env),
+                        ) {
+                            Ok(Ok(bal)) => bal,
+                            _ => {
+                                indeterminate = true;
+                                if pk && p > 0 && market_cf > 0 {
+                                    collateral_indeterminate = true;
+                                }
+                                continue;
+                            }
+                        };
+                        (p, pk, d, None::<u128>, None::<Address>)
                     }
-                    continue;
-                }
-            };
+                };
 
             // For borrow-path hypothetical checks, refresh only markets with outstanding debt.
             // Collateral-only markets (pbal > 0, debt = 0) do not need refresh — the exchange
@@ -2953,27 +2964,66 @@ impl SimplePeridottroller {
                     continue;
                 }
 
-                pbal = match env.try_invoke_contract::<u128, InvokeError>(
-                    &m,
-                    &Symbol::new(&env, "get_ptoken_balance"),
-                    (user.clone(),).into_val(&env),
-                ) {
-                    Ok(Ok(bal)) => bal,
-                    _ => {
-                        pbal_known = false;
-                        if market_cf > 0 {
-                            collateral_indeterminate = true;
-                        }
-                        0u128
+                // Re-read post-accrual state. Try snapshot first, then individual calls.
+                let refreshed_snap =
+                    env.try_invoke_contract::<(u128, u128, u128, Address), InvokeError>(
+                        &m,
+                        &Symbol::new(&env, "get_account_snapshot"),
+                        (user.clone(),).into_val(&env),
+                    );
+                match refreshed_snap {
+                    Ok(Ok((new_p, new_d, new_r, new_t))) => {
+                        pbal = new_p;
+                        debt = new_d;
+                        snapshot_rate = Some(new_r);
+                        token_opt = Some(new_t);
                     }
-                };
+                    _ => {
+                        pbal = match env.try_invoke_contract::<u128, InvokeError>(
+                            &m,
+                            &Symbol::new(&env, "get_ptoken_balance"),
+                            (user.clone(),).into_val(&env),
+                        ) {
+                            Ok(Ok(bal)) => bal,
+                            _ => {
+                                pbal_known = false;
+                                if market_cf > 0 {
+                                    collateral_indeterminate = true;
+                                }
+                                0u128
+                            }
+                        };
+                        debt = match env.try_invoke_contract::<u128, InvokeError>(
+                            &m,
+                            &Symbol::new(&env, "get_user_borrow_balance"),
+                            (user.clone(),).into_val(&env),
+                        ) {
+                            Ok(Ok(bal)) => bal,
+                            _ => {
+                                indeterminate = true;
+                                if pbal_known && pbal > 0 && market_cf > 0 {
+                                    collateral_indeterminate = true;
+                                }
+                                continue;
+                            }
+                        };
+                    }
+                }
+            }
 
-                debt = match env.try_invoke_contract::<u128, InvokeError>(
+            if pbal == 0 && debt == 0 {
+                continue;
+            }
+
+            // Resolve underlying token — already known from snapshot, else individual call.
+            let token: Address = match token_opt {
+                Some(t) => t,
+                None => match env.try_invoke_contract::<Address, InvokeError>(
                     &m,
-                    &Symbol::new(&env, "get_user_borrow_balance"),
-                    (user.clone(),).into_val(&env),
+                    &Symbol::new(&env, "get_underlying_token"),
+                    ().into_val(&env),
                 ) {
-                    Ok(Ok(bal)) => bal,
+                    Ok(Ok(addr)) => addr,
                     _ => {
                         indeterminate = true;
                         if pbal_known && pbal > 0 && market_cf > 0 {
@@ -2981,28 +3031,7 @@ impl SimplePeridottroller {
                         }
                         continue;
                     }
-                };
-            }
-
-            if pbal == 0 && debt == 0 {
-                continue;
-            }
-
-            // If this market has any position, inability to resolve underlying token
-            // makes health valuation indeterminate (cannot safely skip potential debt).
-            let token: Address = match env.try_invoke_contract::<Address, InvokeError>(
-                &m,
-                &Symbol::new(&env, "get_underlying_token"),
-                ().into_val(&env),
-            ) {
-                Ok(Ok(addr)) => addr,
-                _ => {
-                    indeterminate = true;
-                    if pbal_known && pbal > 0 && market_cf > 0 {
-                        collateral_indeterminate = true;
-                    }
-                    continue;
-                }
+                },
             };
 
             // Get price — fail-closed when debt exists
@@ -3022,14 +3051,17 @@ impl SimplePeridottroller {
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
             if pbal > 0 {
-                // Exchange rate failure → treat as 0 collateral, still count debt
-                let rate: u128 = match env.try_invoke_contract::<u128, InvokeError>(
-                    &m,
-                    &Symbol::new(&env, "get_exchange_rate"),
-                    ().into_val(&env),
-                ) {
-                    Ok(Ok(r)) if r > 0 => r,
-                    _ => 0u128,
+                // Use exchange rate from snapshot when available; else individual call.
+                let rate: u128 = match snapshot_rate {
+                    Some(r) if r > 0 => r,
+                    _ => match env.try_invoke_contract::<u128, InvokeError>(
+                        &m,
+                        &Symbol::new(&env, "get_exchange_rate"),
+                        ().into_val(&env),
+                    ) {
+                        Ok(Ok(r)) if r > 0 => r,
+                        _ => 0u128,
+                    },
                 };
                 let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
                 let discounted = (underlying_amount.saturating_mul(market_cf)) / 1_000_000u128;
