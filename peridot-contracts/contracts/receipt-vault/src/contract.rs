@@ -226,6 +226,13 @@ impl ReceiptVault {
         let moved = cash_before_boost.saturating_sub(cash_after_boost);
         if moved > 0 {
             Self::sub_managed_cash(env, moved);
+            let cached = Self::cached_boosted_underlying(env);
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedUnderlyingCached, &cached.saturating_add(moved));
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedUnderlyingUpdatedAt, &env.ledger().timestamp());
         }
         moved
     }
@@ -282,8 +289,15 @@ impl ReceiptVault {
             shares_to_withdraw = share_balance;
         }
 
+        // Build min_amounts_out with the same number of elements as the boosted vault's
+        // asset list (one per managed asset). We set all minimums to 0 and rely on the
+        // post-check in the caller instead of an in-vault slippage guard. This avoids
+        // failures caused by performance-fee deductions or strategy rounding that can
+        // reduce the returned amount by more than the previous 1-unit tolerance.
         let mut min_amounts_out: Vec<i128> = Vec::new(env);
-        min_amounts_out.push_back(to_i128(needed_cash.saturating_sub(1)));
+        for _ in 0..total_amounts.len() {
+            min_amounts_out.push_back(0i128);
+        }
         let args: Vec<Val> = (
             to_i128(shares_to_withdraw),
             min_amounts_out.clone(),
@@ -302,20 +316,33 @@ impl ReceiptVault {
         env.authorize_as_current_contract(auths);
 
         let cash_before = Self::current_live_cash(env, token_address);
-        let _: Val = env.invoke_contract(
+        // Use try_call_contract so a boosted-vault failure surfaces as
+        // "withdraw liquidity shortfall" in the caller rather than an opaque panic.
+        let result: Result<Val, _> = try_call_contract(
+            env,
             &boosted,
-            &Symbol::new(env, "withdraw"),
+            "withdraw",
             (
                 to_i128(shares_to_withdraw),
                 min_amounts_out,
                 env.current_contract_address(),
-            )
-                .into_val(env),
+            ),
         );
+        if let Err(ref e) = result {
+            emit_external_call_failure(env, &boosted, e, false);
+        }
         let cash_after = Self::current_live_cash(env, token_address);
         let received = cash_after.saturating_sub(cash_before);
         if received > 0 {
             Self::add_managed_cash(env, received);
+            let cached = Self::cached_boosted_underlying(env);
+            env.storage().persistent().set(
+                &DataKey::BoostedUnderlyingCached,
+                &cached.saturating_sub(received),
+            );
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedUnderlyingUpdatedAt, &env.ledger().timestamp());
         }
     }
 
@@ -744,6 +771,31 @@ impl ReceiptVault {
         Self::idle_cash_buffer_bps(&env)
     }
 
+    /// Pull the specified amount of underlying from the boosted vault into idle cash.
+    /// Call this before a large withdraw to pre-fund idle cash so the withdrawal
+    /// transaction itself does not need to call the boosted vault (avoiding budget limits).
+    /// No auth required — pulling into the vault is always beneficial.
+    pub fn prepare_liquidity(env: Env, amount: u128) {
+        let token_address = ensure_initialized(&env);
+        Self::ensure_liquid_cash(&env, &token_address, amount);
+    }
+
+    /// Permissionless: refresh the cached boosted-underlying value from live DeFindex data.
+    /// Call this from a keeper/rebalance bot after each rebalance so that `update_interest`
+    /// uses a fresh value without paying the DeFindex call cost on every user transaction.
+    pub fn refresh_boosted_underlying(env: Env) {
+        let value = Self::get_boosted_underlying(&env);
+        if value == 0 {
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedUnderlyingCached, &0u128);
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedUnderlyingUpdatedAt, &env.ledger().timestamp());
+        }
+        // When value > 0, get_boosted_underlying already wrote to BoostedUnderlyingCached.
+    }
+
     /// Admin: move excess live cash into boosted vault to match target buffer.
     pub fn rebalance_idle_cash(env: Env, admin: Address) {
         let token_address = ensure_initialized(&env);
@@ -1116,6 +1168,20 @@ impl ReceiptVault {
     /// Get user's pToken balance
     pub fn get_ptoken_balance(env: Env, user: Address) -> u128 {
         ptoken_balance(&env, &user)
+    }
+
+    /// Return (ptoken_balance, borrow_balance, exchange_rate, underlying_token) in one call.
+    /// Peridottroller uses this in account-health loops to replace 4 cross-contract reads with 1.
+    pub fn get_account_snapshot(env: Env, user: Address) -> (u128, u128, u128, Address) {
+        let pbal = ptoken_balance(&env, &user);
+        let debt = Self::get_user_borrow_balance(env.clone(), user);
+        let rate = Self::get_exchange_rate(env.clone());
+        let token: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UnderlyingToken)
+            .expect("underlying not set");
+        (pbal, debt, rate, token)
     }
 
     // ERC20-like pToken API
@@ -1969,7 +2035,7 @@ impl ReceiptVault {
         // If baseline is unavailable while borrows are outstanding, fail-safe by
         // ignoring boosted cash for this accrual tick.
         let cached_before = Self::cached_boosted_underlying(&env);
-        let boosted_reported = Self::get_boosted_underlying(&env);
+        let boosted_reported = cached_before;
         let boosted_accounting = Self::estimate_boosted_underlying_from_accounting(&env);
         let boosted_baseline = cached_before.max(boosted_accounting);
         let boosted_cap = if boosted_baseline == 0 {

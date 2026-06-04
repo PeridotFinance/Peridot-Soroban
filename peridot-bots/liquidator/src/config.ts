@@ -17,6 +17,10 @@ export interface BotConfig {
   minShortfall: bigint;
   eventBacklog: number;
   eventPageSize: number;
+  // Maps vaultId -> underlying token contract ID, used by the rebalance bot.
+  // If omitted, rebalancing is disabled.
+  underlyingTokens: Record<string, string>;
+  rebalancePollIntervalMs: number;
 }
 
 const DEFAULT_MARKETS: MarketConfig[] = [
@@ -117,6 +121,17 @@ export function loadConfig(): BotConfig {
     throw new Error('MIN_SHORTFALL cannot be negative');
   }
 
+  const underlyingTokensRaw = process.env.UNDERLYING_TOKENS_JSON;
+  let underlyingTokens: Record<string, string> = {};
+  if (underlyingTokensRaw) {
+    try {
+      underlyingTokens = JSON.parse(underlyingTokensRaw);
+    } catch {
+      throw new Error('UNDERLYING_TOKENS_JSON must be valid JSON');
+    }
+  }
+  const rebalancePollIntervalMs = Number(process.env.REBALANCE_POLL_INTERVAL_MS ?? 60_000);
+
   return {
     rpcUrl,
     networkPassphrase,
@@ -128,5 +143,7 @@ export function loadConfig(): BotConfig {
     minShortfall,
     eventBacklog,
     eventPageSize,
+    underlyingTokens,
+    rebalancePollIntervalMs,
   };
 }

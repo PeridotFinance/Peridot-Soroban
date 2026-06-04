@@ -7,7 +7,7 @@ target
 /test_snapshots
 /gitbook
 .claude
-#frontend-integration.md
+frontend-integration.md
 peridot_smart_accounts_architecture.md
 .codex
 AUDITFINDS.md
@@ -15,3 +15,4 @@ AuditQuestions.md
 SOROBAN_AUDIT_CONTEXT.md
 CLAUDE.md
 ALMANAX_KNOWLEDGE_BASE.md
+DEPLOYMENT.md
