@@ -102,6 +102,111 @@ impl MarginController {
             .set(&DataKey::SwapAdapter, &swap_adapter);
     }
 
+    pub fn set_open_fee_bps(env: Env, admin: Address, fee_bps: u128) {
+        bump_core_ttl(&env);
+        require_admin(&env, &admin);
+        if fee_bps > MAX_BASIS_FEE_BPS {
+            panic!("fee too high");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::OpenFeeBps, &fee_bps);
+    }
+
+    pub fn set_close_fee_bps(env: Env, admin: Address, fee_bps: u128) {
+        bump_core_ttl(&env);
+        require_admin(&env, &admin);
+        if fee_bps > MAX_BASIS_FEE_BPS {
+            panic!("fee too high");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::CloseFeeBps, &fee_bps);
+    }
+
+    /// Accrue any pending fees and transfer claimable pTokens into the
+    /// caller's free margin balance. Returns the number of pTokens claimed.
+    pub fn claim_margin_fees(env: Env, user: Address, asset: Address) -> u128 {
+        bump_core_ttl(&env);
+        user.require_auth();
+        let vault = get_market(&env, &asset);
+        accrue_user_fee(&env, &user, &vault);
+        let accrued_key = DataKey::UserMarginFeeAccrued(user.clone(), vault.clone());
+        let accrued: u128 = env
+            .storage()
+            .persistent()
+            .get(&accrued_key)
+            .unwrap_or(0);
+        if accrued == 0 {
+            return 0;
+        }
+        // Move accrued pTokens into user's free margin balance.
+        // (accrue_user_fee above already advanced UserMarginFeeIndex to current fee_index,
+        //  so this balance increase won't cause back-pay on the next interaction.)
+        let free = get_margin_balance_ptokens(&env, &user, &vault);
+        set_margin_balance_ptokens(&env, &user, &vault, free.saturating_add(accrued));
+        update_total_margin_ptokens(&env, &vault, accrued, true);
+        env.storage().persistent().set(&accrued_key, &0u128);
+        accrued
+    }
+
+    /// Returns total pTokens claimable by `user` for market `asset`,
+    /// including earnings not yet snapshotted.
+    pub fn get_claimable_margin_fees(env: Env, user: Address, asset: Address) -> u128 {
+        bump_core_ttl(&env);
+        let vault = get_market(&env, &asset);
+        let fee_index = get_margin_fee_index(&env, &vault);
+        let user_index = get_user_margin_fee_index(&env, &user, &vault);
+        let delta = fee_index.saturating_sub(user_index);
+        let pending = if delta > 0 {
+            let user_bal = get_margin_balance_ptokens(&env, &user, &vault);
+            delta.saturating_mul(user_bal) / MARGIN_FEE_PRECISION
+        } else {
+            0
+        };
+        let accrued_key = DataKey::UserMarginFeeAccrued(user.clone(), vault.clone());
+        let accrued: u128 = env
+            .storage()
+            .persistent()
+            .get(&accrued_key)
+            .unwrap_or(0);
+        accrued.saturating_add(pending)
+    }
+
+    pub fn get_margin_fee_index(env: Env, asset: Address) -> u128 {
+        bump_core_ttl(&env);
+        let vault = get_market(&env, &asset);
+        get_margin_fee_index(&env, &vault)
+    }
+
+    /// Admin function: move orphaned fee pTokens (collected when pool was empty)
+    /// into `recipient`'s free margin balance. Returns the amount swept.
+    pub fn sweep_orphan_fees(
+        env: Env,
+        admin: Address,
+        asset: Address,
+        recipient: Address,
+    ) -> u128 {
+        bump_core_ttl(&env);
+        require_admin(&env, &admin);
+        let vault = get_market(&env, &asset);
+        let orphan_key = DataKey::MarginFeeOrphan(vault.clone());
+        let orphan: u128 = env
+            .storage()
+            .persistent()
+            .get(&orphan_key)
+            .unwrap_or(0);
+        if orphan == 0 {
+            return 0;
+        }
+        accrue_user_fee(&env, &recipient, &vault);
+        let free = get_margin_balance_ptokens(&env, &recipient, &vault);
+        set_margin_balance_ptokens(&env, &recipient, &vault, free.saturating_add(orphan));
+        update_total_margin_ptokens(&env, &vault, orphan, true);
+        env.storage().persistent().set(&orphan_key, &0u128);
+        orphan
+    }
+
     pub fn deposit_collateral(env: Env, user: Address, asset: Address, amount: u128) {
         bump_core_ttl(&env);
         user.require_auth();
@@ -142,8 +247,11 @@ impl MarginController {
         // skips the controller-side preview_redeem_max (which would re-enter the vault).
         Self::begin_margin_withdraw_if_supported(&env, &vault, &user, &controller, ptoken_amount);
         ReceiptVaultClient::new(&env, &vault).transfer(&user, &controller, &amount_i128);
+        // Accrue pending fees with OLD balance before increasing it.
+        accrue_user_fee(&env, &user, &vault);
         let current = get_margin_balance_ptokens(&env, &user, &vault);
         set_margin_balance_ptokens(&env, &user, &vault, current.saturating_add(ptoken_amount));
+        update_total_margin_ptokens(&env, &vault, ptoken_amount, true);
     }
 
     /// Move pTokens from margin custody back to spot wallet.
@@ -158,7 +266,10 @@ impl MarginController {
         if current < ptoken_amount {
             panic!("insufficient margin balance");
         }
+        // Accrue pending fees with OLD balance before decreasing it.
+        accrue_user_fee(&env, &user, &vault);
         set_margin_balance_ptokens(&env, &user, &vault, current.saturating_sub(ptoken_amount));
+        update_total_margin_ptokens(&env, &vault, ptoken_amount, false);
         let controller = env.current_contract_address();
         let amount_i128: i128 = ptoken_amount.try_into().expect("amount too large");
         // Set the vault's margin-withdraw bypass for the controller (the `from`
@@ -306,16 +417,30 @@ impl MarginController {
         Self::assert_margin_lock_configured(&env, &debt_vault);
         Self::assert_margin_lock_configured(&env, &position_vault);
 
+        let open_fee_bps: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::OpenFeeBps)
+            .unwrap_or(0);
+        // Fee scales with leverage: higher leverage = higher cost to LP providers.
+        let open_fee_ptokens = collateral_ptokens
+            .saturating_mul(leverage)
+            .saturating_mul(open_fee_bps)
+            / BPS_SCALE;
+        let total_deduct = collateral_ptokens.saturating_add(open_fee_ptokens);
         let free_collateral = get_margin_balance_ptokens(&env, &user, &collateral_vault);
-        if free_collateral < collateral_ptokens {
+        if free_collateral < total_deduct {
             panic!("insufficient margin balance");
         }
+        // Accrue pending fees with OLD balance before decreasing it.
+        accrue_user_fee(&env, &user, &collateral_vault);
         set_margin_balance_ptokens(
             &env,
             &user,
             &collateral_vault,
-            free_collateral.saturating_sub(collateral_ptokens),
+            free_collateral.saturating_sub(total_deduct),
         );
+        update_total_margin_ptokens(&env, &collateral_vault, total_deduct, false);
 
         let coll_price = get_price_usd(&env, &collateral_asset);
         let debt_price = get_price_usd(&env, &debt_asset);
@@ -419,6 +544,8 @@ impl MarginController {
             .persistent()
             .set(&DataKey::Position(id), &position);
         bump_position_ttl(&env, id);
+        // Distribute open fee to LP holders of the collateral vault.
+        collect_margin_fee(&env, &collateral_vault, open_fee_ptokens);
         push_user_position(&env, &user, id);
         id
     }
@@ -473,12 +600,15 @@ impl MarginController {
         if free_collateral < collateral_ptokens {
             panic!("insufficient margin balance");
         }
+        // Accrue pending fees with OLD balance before decreasing it (no open fee for no-swap).
+        accrue_user_fee(&env, &user, &collateral_vault);
         set_margin_balance_ptokens(
             &env,
             &user,
             &collateral_vault,
             free_collateral.saturating_sub(collateral_ptokens),
         );
+        update_total_margin_ptokens(&env, &collateral_vault, collateral_ptokens, false);
 
         // No-swap V2 sends borrowed funds to the user instead of re-collateralizing
         // them, so leverage is not a meaningful multiplier here. Enforce LTV
@@ -582,6 +712,7 @@ impl MarginController {
         // Release collateral pTokens (in controller custody) back to user's
         // margin balance map. They can be moved to spot with transfer_margin_to_spot.
         if position.collateral_ptokens > 0 {
+            accrue_user_fee(&env, &user, &vaults.position_vault);
             let free = get_margin_balance_ptokens(&env, &user, &vaults.position_vault);
             set_margin_balance_ptokens(
                 &env,
@@ -589,6 +720,7 @@ impl MarginController {
                 &vaults.position_vault,
                 free.saturating_add(position.collateral_ptokens),
             );
+            update_total_margin_ptokens(&env, &vaults.position_vault, position.collateral_ptokens, true);
         }
 
         position.status = PositionStatus::Closed;
@@ -786,6 +918,11 @@ impl MarginController {
             panic!("debt remains");
         }
 
+        let close_fee_bps: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::CloseFeeBps)
+            .unwrap_or(0);
         let surplus = received.saturating_sub(debt_amount);
         if surplus > 0 {
             let p_before = debt_vault_client.get_ptoken_balance(&controller);
@@ -795,19 +932,29 @@ impl MarginController {
             let p_after = debt_vault_client.get_ptoken_balance(&controller);
             let p_delta = p_after.saturating_sub(p_before);
             if p_delta > 0 {
-                let free = get_margin_balance_ptokens(&env, &user, &vaults.debt_vault);
-                set_margin_balance_ptokens(
-                    &env,
-                    &user,
-                    &vaults.debt_vault,
-                    free.saturating_add(p_delta),
-                );
+                let close_fee_ptokens = p_delta.saturating_mul(close_fee_bps) / BPS_SCALE;
+                let user_ptokens = p_delta.saturating_sub(close_fee_ptokens);
+                if user_ptokens > 0 {
+                    // Accrue pending fees with OLD balance before increasing it.
+                    accrue_user_fee(&env, &user, &vaults.debt_vault);
+                    let free = get_margin_balance_ptokens(&env, &user, &vaults.debt_vault);
+                    set_margin_balance_ptokens(
+                        &env,
+                        &user,
+                        &vaults.debt_vault,
+                        free.saturating_add(user_ptokens),
+                    );
+                    update_total_margin_ptokens(&env, &vaults.debt_vault, user_ptokens, true);
+                }
+                // Distribute close fee to LP holders of the debt vault.
+                collect_margin_fee(&env, &vaults.debt_vault, close_fee_ptokens);
             }
         }
         if let Some((initial_market, initial_ptokens)) =
             get_position_initial_lock(&env, position_id)
         {
             if initial_ptokens > 0 {
+                accrue_user_fee(&env, &user, &initial_market);
                 let free = get_margin_balance_ptokens(&env, &user, &initial_market);
                 set_margin_balance_ptokens(
                     &env,
@@ -815,6 +962,7 @@ impl MarginController {
                     &initial_market,
                     free.saturating_add(initial_ptokens),
                 );
+                update_total_margin_ptokens(&env, &initial_market, initial_ptokens, true);
             }
         }
 
@@ -955,6 +1103,7 @@ impl MarginController {
             }
             let initial_remaining = initial_ptokens.saturating_sub(initial_seize_ptokens);
             if remaining_debt == 0 && initial_remaining > 0 {
+                accrue_user_fee(&env, &position.owner, &initial_market);
                 let free = get_margin_balance_ptokens(&env, &position.owner, &initial_market);
                 set_margin_balance_ptokens(
                     &env,
@@ -962,6 +1111,7 @@ impl MarginController {
                     &initial_market,
                     free.saturating_add(initial_remaining),
                 );
+                update_total_margin_ptokens(&env, &initial_market, initial_remaining, true);
             }
             if remaining_debt > 0 && initial_remaining > 0 {
                 set_position_initial_lock(&env, position_id, &initial_market, initial_remaining);
@@ -979,6 +1129,7 @@ impl MarginController {
         }
 
         if position.collateral_ptokens > 0 {
+            accrue_user_fee(&env, &position.owner, &vaults.position_vault);
             let free = get_margin_balance_ptokens(&env, &position.owner, &vaults.position_vault);
             set_margin_balance_ptokens(
                 &env,
@@ -986,6 +1137,7 @@ impl MarginController {
                 &vaults.position_vault,
                 free.saturating_add(position.collateral_ptokens),
             );
+            update_total_margin_ptokens(&env, &vaults.position_vault, position.collateral_ptokens, true);
         }
         position.status = PositionStatus::Liquidated;
         position.collateral_ptokens = 0u128;

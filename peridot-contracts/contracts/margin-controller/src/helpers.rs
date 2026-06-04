@@ -298,6 +298,126 @@ pub fn validate_swaps_chain(
     }
 }
 
+pub fn get_total_margin_ptokens(env: &Env, vault: &Address) -> u128 {
+    let key = DataKey::TotalMarginPtokens(vault.clone());
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    persistent.get(&key).unwrap_or(0u128)
+}
+
+pub fn update_total_margin_ptokens(env: &Env, vault: &Address, amount: u128, add: bool) {
+    if amount == 0 {
+        return;
+    }
+    let key = DataKey::TotalMarginPtokens(vault.clone());
+    let current = get_total_margin_ptokens(env, vault);
+    let new_val = if add {
+        current.saturating_add(amount)
+    } else {
+        current.saturating_sub(amount)
+    };
+    env.storage().persistent().set(&key, &new_val);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+pub fn get_margin_fee_index(env: &Env, vault: &Address) -> u128 {
+    let key = DataKey::MarginFeeIndex(vault.clone());
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    persistent.get(&key).unwrap_or(0u128)
+}
+
+pub fn get_user_margin_fee_index(env: &Env, user: &Address, vault: &Address) -> u128 {
+    let key = DataKey::UserMarginFeeIndex(user.clone(), vault.clone());
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    persistent.get(&key).unwrap_or(0u128)
+}
+
+/// Snapshot pending fee earnings into `UserMarginFeeAccrued`, then advance
+/// the user's fee-index snapshot to the current global index.
+/// Must be called BEFORE any `MarginBalancePtokens` change for `(user, vault)`.
+pub fn accrue_user_fee(env: &Env, user: &Address, vault: &Address) {
+    let fee_index = get_margin_fee_index(env, vault);
+    let user_index = get_user_margin_fee_index(env, user, vault);
+    let delta = fee_index.saturating_sub(user_index);
+    if delta > 0 {
+        let user_bal = get_margin_balance_ptokens(env, user, vault);
+        if user_bal > 0 {
+            let pending = delta.saturating_mul(user_bal) / MARGIN_FEE_PRECISION;
+            if pending > 0 {
+                let accrued_key = DataKey::UserMarginFeeAccrued(user.clone(), vault.clone());
+                let accrued: u128 = env
+                    .storage()
+                    .persistent()
+                    .get(&accrued_key)
+                    .unwrap_or(0);
+                env.storage()
+                    .persistent()
+                    .set(&accrued_key, &accrued.saturating_add(pending));
+                env.storage()
+                    .persistent()
+                    .extend_ttl(&accrued_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+            }
+        }
+    }
+    let user_index_key = DataKey::UserMarginFeeIndex(user.clone(), vault.clone());
+    env.storage()
+        .persistent()
+        .set(&user_index_key, &fee_index);
+    env.storage()
+        .persistent()
+        .extend_ttl(&user_index_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+/// Distribute `fee_ptokens` to the current LP pool of `vault`.
+/// If the pool is empty, accumulates to `MarginFeeOrphan` for admin sweep.
+pub fn collect_margin_fee(env: &Env, vault: &Address, fee_ptokens: u128) {
+    if fee_ptokens == 0 {
+        return;
+    }
+    let total = get_total_margin_ptokens(env, vault);
+    if total == 0 {
+        let orphan_key = DataKey::MarginFeeOrphan(vault.clone());
+        let orphan: u128 = env
+            .storage()
+            .persistent()
+            .get(&orphan_key)
+            .unwrap_or(0);
+        env.storage()
+            .persistent()
+            .set(&orphan_key, &orphan.saturating_add(fee_ptokens));
+        env.storage()
+            .persistent()
+            .extend_ttl(&orphan_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        return;
+    }
+    let delta = fee_ptokens.saturating_mul(MARGIN_FEE_PRECISION) / total;
+    if delta == 0 {
+        return;
+    }
+    let index_key = DataKey::MarginFeeIndex(vault.clone());
+    let current: u128 = env
+        .storage()
+        .persistent()
+        .get(&index_key)
+        .unwrap_or(0);
+    env.storage()
+        .persistent()
+        .set(&index_key, &current.saturating_add(delta));
+    env.storage()
+        .persistent()
+        .extend_ttl(&index_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
 pub fn bump_core_ttl(env: &Env) {
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::Admin) {
@@ -320,6 +440,12 @@ pub fn bump_core_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::Initialized) {
         persistent.extend_ttl(&DataKey::Initialized, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::OpenFeeBps) {
+        persistent.extend_ttl(&DataKey::OpenFeeBps, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::CloseFeeBps) {
+        persistent.extend_ttl(&DataKey::CloseFeeBps, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

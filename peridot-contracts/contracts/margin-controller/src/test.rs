@@ -1750,3 +1750,393 @@ fn test_deposit_and_withdraw_collateral() {
     let ptokens_after = vault.get_ptoken_balance(&user);
     assert_eq!(ptokens_after, 0);
 }
+
+// ─── Margin-fee helpers ───────────────────────────────────────────────────────
+
+/// Returns (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, xlm_vault_id)
+/// using MockVault so tests control exchange rate / payout exactly.
+fn setup_for_fees() -> (Env, Address, Address, Address, Address, Address, Address) {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().with_mut(|l| l.timestamp = 1);
+
+    let admin = Address::generate(&env);
+
+    let usdt_id = env.register(MockToken, ());
+    let xlm_id = env.register(MockToken, ());
+    MockTokenClient::new(&env, &usdt_id).initialize(
+        &"USDT".into_val(&env),
+        &"USDT".into_val(&env),
+        &6u32,
+    );
+    MockTokenClient::new(&env, &xlm_id).initialize(
+        &"XLM".into_val(&env),
+        &"XLM".into_val(&env),
+        &6u32,
+    );
+
+    let usdt_vault_id = env.register(MockVault, ());
+    let xlm_vault_id = env.register(MockVault, ());
+    MockVaultClient::new(&env, &usdt_vault_id).set_underlying_token(&usdt_id);
+    MockVaultClient::new(&env, &xlm_vault_id).set_underlying_token(&xlm_id);
+
+    let peridottroller_id = env.register(MockPeridottroller, ());
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    peridottroller.set_price(&usdt_id, &1_000_000u128, &1_000_000u128);
+    peridottroller.set_price(&xlm_id, &1_000_000u128, &1_000_000u128);
+
+    let swap_adapter_id = env.register(MockSwapAdapter, ());
+
+    let controller_id = env.register(MarginController, ());
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128);
+    controller.set_market(&admin, &usdt_id, &usdt_vault_id);
+    controller.set_market(&admin, &xlm_id, &xlm_vault_id);
+    MockVaultClient::new(&env, &usdt_vault_id).set_margin_controller(&Some(controller_id.clone()));
+    MockVaultClient::new(&env, &xlm_vault_id).set_margin_controller(&Some(controller_id.clone()));
+
+    (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, xlm_vault_id)
+}
+
+// ─── Fee admin / caps ─────────────────────────────────────────────────────────
+
+#[test]
+#[should_panic]
+fn test_set_open_fee_bps_non_admin_panics() {
+    let (env, _admin, controller_id, usdt_id, _xlm_id, _usdt_vid, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let not_admin = Address::generate(&env);
+    controller.set_open_fee_bps(&not_admin, &100u128);
+}
+
+#[test]
+#[should_panic]
+fn test_set_open_fee_bps_over_cap_panics() {
+    let (env, admin, controller_id, _usdt_id, _xlm_id, _usdt_vid, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    // MAX_BASIS_FEE_BPS = 500; 501 should panic.
+    controller.set_open_fee_bps(&admin, &501u128);
+}
+
+#[test]
+#[should_panic]
+fn test_set_close_fee_bps_over_cap_panics() {
+    let (env, admin, controller_id, _usdt_id, _xlm_id, _usdt_vid, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    controller.set_close_fee_bps(&admin, &501u128);
+}
+
+// ─── Open fee: deduction + LP distribution ────────────────────────────────────
+
+#[test]
+fn test_open_fee_deducted_and_distributed_proportionally() {
+    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    let lp1 = Address::generate(&env);
+    let lp2 = Address::generate(&env);
+    let trader = Address::generate(&env);
+
+    // 1% open fee.
+    controller.set_open_fee_bps(&admin, &100u128);
+
+    // LP1 and LP2 each place 1_000_000 pTokens in margin custody.
+    usdt_vault.deposit(&lp1, &1_000_000u128);
+    usdt_vault.deposit(&lp2, &1_000_000u128);
+    controller.transfer_spot_to_margin(&lp1, &usdt_id, &1_000_000u128);
+    controller.transfer_spot_to_margin(&lp2, &usdt_id, &1_000_000u128);
+
+    // Trader needs collateral (1_000_000) + open fee (1_000_000 * 2 * 100 / 10_000 = 20_000).
+    usdt_vault.deposit(&trader, &1_020_000u128);
+    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_020_000u128);
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&trader, &usdt_id),
+        1_020_000u128
+    );
+
+    // Open: collateral=1_000_000, leverage=2 → open_fee = 1_000_000 * 2 * 100 / 10_000 = 20_000.
+    // With collateral=1_000_000 and leverage=2: borrow_amount=1_000_000.
+    // Oracle min_out = 1_000_000 * 950_000 / 1_000_000 = 950_000 (5% max slippage).
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.open_position_v2(
+        &trader,
+        &usdt_id,
+        &xlm_id,
+        &1_000_000u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &950_000u128,
+    );
+
+    // Trader's free margin is fully consumed (collateral + fee).
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&trader, &usdt_id),
+        0u128
+    );
+
+    // After deduction, TotalMarginPtokens = 2_000_000 (lp1 + lp2).
+    // delta = 20_000 * 1e18 / 2_000_000 = 1e16.
+    // Each LP (1_000_000 ptokens) earns 1e16 * 1_000_000 / 1e18 = 10_000 pTokens.
+    assert_eq!(
+        controller.get_claimable_margin_fees(&lp1, &usdt_id),
+        10_000u128
+    );
+    assert_eq!(
+        controller.get_claimable_margin_fees(&lp2, &usdt_id),
+        10_000u128
+    );
+    // Trader's free balance is 0 so they earn nothing.
+    assert_eq!(
+        controller.get_claimable_margin_fees(&trader, &usdt_id),
+        0u128
+    );
+
+    // Claim for LP1.
+    let claimed = controller.claim_margin_fees(&lp1, &usdt_id);
+    assert_eq!(claimed, 10_000u128);
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&lp1, &usdt_id),
+        1_010_000u128 // 1_000_000 original + 10_000 claimed
+    );
+    assert_eq!(controller.get_claimable_margin_fees(&lp1, &usdt_id), 0u128);
+}
+
+#[test]
+#[should_panic]
+fn test_open_fee_insufficient_margin_for_fee_panics() {
+    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let trader = Address::generate(&env);
+
+    controller.set_open_fee_bps(&admin, &100u128);
+
+    // Trader deposits exactly collateral but NOT the fee.
+    usdt_vault.deposit(&trader, &1_000_000u128);
+    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_000_000u128);
+
+    // Should panic: free margin = 1_000_000, but need 1_020_000.
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.open_position_v2(
+        &trader,
+        &usdt_id,
+        &xlm_id,
+        &1_000_000u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &950_000u128,
+    );
+}
+
+// ─── Close fee: deduction from surplus ────────────────────────────────────────
+
+#[test]
+fn test_close_fee_deducted_from_surplus() {
+    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, xlm_vault_id) =
+        setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+
+    // 1% close fee, no open fee.
+    controller.set_close_fee_bps(&admin, &100u128);
+
+    let lp1 = Address::generate(&env);
+    let trader = Address::generate(&env);
+
+    // LP1 provides 2_000_000 margin pTokens.
+    usdt_vault.deposit(&lp1, &2_000_000u128);
+    controller.transfer_spot_to_margin(&lp1, &usdt_id, &2_000_000u128);
+
+    // Trader opens with 1_000_000 collateral at leverage 2 (no open fee).
+    usdt_vault.deposit(&trader, &1_000_000u128);
+    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_000_000u128);
+
+    let open_swaps = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &trader,
+        &usdt_id,
+        &xlm_id,
+        &1_000_000u128,
+        &2u128,
+        &PositionSide::Long,
+        &open_swaps,
+        &950_000u128,
+    );
+
+    // Make position vault pay out 200% on withdraw so position is worth 2× on close.
+    // position.collateral_ptokens = 1_000_000 xlm ptokens.
+    // withdraw(1_000_000) → 2_000_000 xlm underlying → swap → 2_000_000 usdt received.
+    // debt_amount = 1_000_000. surplus = 1_000_000.
+    xlm_vault.set_withdraw_payout_bps(&2_000_000u128);
+
+    // On close: swap xlm → usdt. collateral_underlying = 2_000_000.
+    // min_out_oracle = 2_000_000 * 950_000 / 1_000_000 = 1_900_000.
+    let close_swaps = mock_swaps_chain(&env, &xlm_id, &usdt_id);
+    controller.close_position_v2(&trader, &position_id, &close_swaps, &1_900_000u128);
+
+    // surplus ptokens = 1_000_000 (MockVault 1:1 deposit).
+    // close_fee = 1_000_000 * 100 / 10_000 = 10_000 pTokens.
+    // user_ptokens = 990_000 credited to trader from surplus.
+    // Trader also gets back the initial_lock ptokens (1_000_000 collateral).
+    let trader_balance = controller.get_margin_balance_ptokens(&trader, &usdt_id);
+    // trader gets: 990_000 (surplus net) + 1_000_000 (initial_lock return) = 1_990_000.
+    assert_eq!(trader_balance, 1_990_000u128);
+
+    // LP1's claimable should be non-zero: fee = 10_000, distributed among the pool.
+    let lp1_claimable = controller.get_claimable_margin_fees(&lp1, &usdt_id);
+    assert!(lp1_claimable > 0, "lp1 should earn close fee");
+    // LP1 holds 2_000_000 ptokens. After trader's 990_000 added, pool ~ 2_990_000.
+    // lp1_share = 10_000 * 2_000_000 / 2_990_000 ≈ 6_688.
+    assert!(lp1_claimable <= 10_000u128, "cannot earn more than total fee");
+}
+
+// ─── Total pToken tracking ────────────────────────────────────────────────────
+
+#[test]
+fn test_total_margin_ptokens_tracks_transfers_and_positions() {
+    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+
+    // No open fee for this test.
+    controller.set_open_fee_bps(&admin, &0u128);
+
+    usdt_vault.deposit(&user1, &1_000u128);
+    controller.transfer_spot_to_margin(&user1, &usdt_id, &1_000u128);
+    assert_eq!(controller.get_margin_fee_index(&usdt_id), 0u128); // no fees yet
+
+    usdt_vault.deposit(&user2, &500u128);
+    controller.transfer_spot_to_margin(&user2, &usdt_id, &500u128);
+
+    // Transfer back 200 for user1.
+    controller.transfer_margin_to_spot(&user1, &usdt_id, &200u128);
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&user1, &usdt_id),
+        800u128
+    );
+
+    // Open position with user1's remaining 800 (collateral=400, leverage=2, no fee).
+    // borrow_amount = 400. min_out_oracle = 400 * 950_000 / 1_000_000 = 380.
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.open_position_v2(
+        &user1,
+        &usdt_id,
+        &xlm_id,
+        &400u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &380u128,
+    );
+    // user1's free margin = 800 - 400 = 400 after deducting collateral.
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&user1, &usdt_id),
+        400u128
+    );
+}
+
+// ─── Orphan fee + sweep ───────────────────────────────────────────────────────
+
+#[test]
+fn test_orphan_fee_collected_when_no_lp_pool() {
+    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    // 1% open fee; no LP has any free margin.
+    controller.set_open_fee_bps(&admin, &100u128);
+
+    let trader = Address::generate(&env);
+    // Trader is the only participant; open_fee goes to orphan since TotalMarginPtokens=0
+    // after deducting trader's own balance.
+    usdt_vault.deposit(&trader, &1_020_000u128);
+    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_020_000u128);
+
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.open_position_v2(
+        &trader,
+        &usdt_id,
+        &xlm_id,
+        &1_000_000u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &950_000u128,
+    );
+
+    // Fee index stays 0 because fee went to orphan (no LP to distribute to).
+    assert_eq!(controller.get_margin_fee_index(&usdt_id), 0u128);
+    // Nothing claimable by trader since their balance is 0 and fee_index=0.
+    assert_eq!(
+        controller.get_claimable_margin_fees(&trader, &usdt_id),
+        0u128
+    );
+
+    // Admin sweeps orphan to self.
+    let swept = controller.sweep_orphan_fees(&admin, &usdt_id, &admin);
+    assert_eq!(swept, 20_000u128);
+    // After sweep, orphan = 0 and admin's margin balance = 20_000.
+    assert_eq!(controller.get_margin_balance_ptokens(&admin, &usdt_id), 20_000u128);
+    assert_eq!(controller.sweep_orphan_fees(&admin, &usdt_id, &admin), 0u128);
+}
+
+// ─── Accrual ordering: no back-pay on new deposit ────────────────────────────
+
+#[test]
+fn test_accrual_no_backpay_on_new_deposit() {
+    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    // 1% open fee.
+    controller.set_open_fee_bps(&admin, &100u128);
+
+    let lp1 = Address::generate(&env);
+    let lp2 = Address::generate(&env);
+    let trader = Address::generate(&env);
+
+    // LP1 deposits first and is the sole LP when the first fee is collected.
+    usdt_vault.deposit(&lp1, &1_000_000u128);
+    controller.transfer_spot_to_margin(&lp1, &usdt_id, &1_000_000u128);
+
+    usdt_vault.deposit(&trader, &1_020_000u128);
+    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_020_000u128);
+
+    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    // Trader opens — fee=20_000, goes entirely to LP1 (only LP in pool of 1_000_000).
+    // delta = 20_000 * 1e18 / 1_000_000 = 2e13.
+    // LP1 claimable = 2e13 * 1_000_000 / 1e18 = 20_000.
+    controller.open_position_v2(
+        &trader,
+        &usdt_id,
+        &xlm_id,
+        &1_000_000u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain,
+        &950_000u128,
+    );
+    assert_eq!(
+        controller.get_claimable_margin_fees(&lp1, &usdt_id),
+        20_000u128
+    );
+
+    // LP2 now enters the pool — they should NOT receive any of the fee that was
+    // collected before they deposited (no back-pay invariant).
+    usdt_vault.deposit(&lp2, &1_000_000u128);
+    controller.transfer_spot_to_margin(&lp2, &usdt_id, &1_000_000u128);
+    assert_eq!(controller.get_claimable_margin_fees(&lp2, &usdt_id), 0u128);
+
+    // LP1's existing claimable is unaffected by LP2 joining.
+    assert_eq!(
+        controller.get_claimable_margin_fees(&lp1, &usdt_id),
+        20_000u128
+    );
+}

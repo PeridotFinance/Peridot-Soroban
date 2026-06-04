@@ -10,3 +10,6 @@ pub const MAX_SWAP_PATH_LEN: u32 = 5;
 pub const TTL_THRESHOLD: u32 = 500_000;
 pub const TTL_EXTEND_TO: u32 = 1_000_000;
 pub const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
+pub const BPS_SCALE: u128 = 10_000u128;
+pub const MAX_BASIS_FEE_BPS: u128 = 500u128; // 5% max per open/close
+pub const MARGIN_FEE_PRECISION: u128 = 1_000_000_000_000_000_000u128; // 1e18
