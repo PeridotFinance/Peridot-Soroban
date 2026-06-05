@@ -3154,6 +3154,10 @@ fn test_update_interest_uses_gross_cash_for_model_with_boosted_assets() {
 
     let now = env.ledger().timestamp();
     env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    // Simulate keeper refreshing the cache after the time jump so the staleness
+    // guard in update_interest uses the live value (0 boosted shares here) rather
+    // than the accounting fallback.
+    vault.refresh_boosted_underlying();
     vault.update_interest();
 
     let tb_after = vault.get_total_borrowed();

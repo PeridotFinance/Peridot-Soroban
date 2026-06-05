@@ -214,6 +214,14 @@ pub struct InterestOverflow {
     pub elapsed: u128,
 }
 
+/// Emitted when shares were redeemed from the boosted vault but zero underlying was returned.
+/// Indicates a 100% performance fee, a vault malfunction, or extreme rounding.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BoostedRedeemZeroReturn {
+    pub shares_redeemed: u128,
+}
+
 /// Logs failed liquidation attempts for monitoring.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -333,6 +333,15 @@ impl ReceiptVault {
         }
         let cash_after = Self::current_live_cash(env, token_address);
         let received = cash_after.saturating_sub(cash_before);
+        // Post-withdraw invariant: if shares were redeemed but nothing came back, the boosted
+        // vault either charged a 100% fee or malfunctioned. Emit an event so monitors can detect
+        // this without panicking (a panic here would DoS all withdrawals).
+        if received == 0 && shares_to_withdraw > 0 && result.is_ok() {
+            BoostedRedeemZeroReturn {
+                shares_redeemed: shares_to_withdraw,
+            }
+            .publish(env);
+        }
         if received > 0 {
             Self::add_managed_cash(env, received);
             let cached = Self::cached_boosted_underlying(env);
@@ -774,9 +783,16 @@ impl ReceiptVault {
     /// Pull the specified amount of underlying from the boosted vault into idle cash.
     /// Call this before a large withdraw to pre-fund idle cash so the withdrawal
     /// transaction itself does not need to call the boosted vault (avoiding budget limits).
-    /// No auth required — pulling into the vault is always beneficial.
+    /// Restricted to admin to prevent griefing: a permissionless version lets any caller
+    /// force a full DeFindex redemption, disrupting yield for all depositors.
     pub fn prepare_liquidity(env: Env, amount: u128) {
         let token_address = ensure_initialized(&env);
+        let admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        admin.require_auth();
         Self::ensure_liquid_cash(&env, &token_address, amount);
     }
 
@@ -2035,7 +2051,19 @@ impl ReceiptVault {
         // If baseline is unavailable while borrows are outstanding, fail-safe by
         // ignoring boosted cash for this accrual tick.
         let cached_before = Self::cached_boosted_underlying(&env);
-        let boosted_reported = cached_before;
+        let updated_at: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BoostedUnderlyingUpdatedAt)
+            .unwrap_or(0);
+        let cache_age = env.ledger().timestamp().saturating_sub(updated_at);
+        let boosted_reported = if cache_age > BOOSTED_CACHE_MAX_AGE_SECS {
+            // Cache is stale — use accounting-based estimate so rate inputs remain fresh
+            // even when no keeper has called refresh_boosted_underlying recently.
+            Self::estimate_boosted_underlying_from_accounting(&env)
+        } else {
+            cached_before
+        };
         let boosted_accounting = Self::estimate_boosted_underlying_from_accounting(&env);
         let boosted_baseline = cached_before.max(boosted_accounting);
         let boosted_cap = if boosted_baseline == 0 {
