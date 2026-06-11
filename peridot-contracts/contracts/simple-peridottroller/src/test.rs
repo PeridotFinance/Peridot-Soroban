@@ -766,10 +766,8 @@ fn test_get_borrows_excl_accrues_interest_before_reading_debt() {
 
 #[test]
 fn test_hypothetical_liquidity_with_hint_uses_last_accrued_cross_market_state() {
-    // hypothetical_liquidity_with_hint uses refresh=false to stay within the
-    // tx_max_read_ledger_entries budget. Cross-market debt is read from the last
-    // accrued state rather than refreshed. The slight under-count of debt is
-    // acceptable: liquidation handles any resulting undercollateralization.
+    // Debt-bearing cross-markets are refreshed before borrow approval, while
+    // collateral-only markets are skipped by a separate budget regression below.
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -807,8 +805,8 @@ fn test_hypothetical_liquidity_with_hint_uses_last_accrued_cross_market_state() 
     set_price_and_cache(&comp, &oracle, &oracle_id, &token, 1_000_000i128); // $1
 
     // Hint says current-market collateral is worth 100 underlying.
-    // Stale cross-market debt = 99. Extra borrow = 1. Total borrow = 100 = collateral.
-    // Shortfall = 0: the 1-unit stale delta is the accepted tradeoff for budget savings.
+    // Refreshed cross-market debt = 100. Extra borrow = 1.
+    // Total borrow = 101 > collateral, so the borrow path must fail closed.
     let hint = MarketLiquidityHint {
         ptoken_balance: 100u128,
         user_borrowed: 0u128,
@@ -818,8 +816,8 @@ fn test_hypothetical_liquidity_with_hint_uses_last_accrued_cross_market_state() 
         comp.hypothetical_liquidity_with_hint(&user, &current_market_id, &1u128, &token, &hint)
     });
 
-    assert!(!stale_market.was_updated()); // no refresh on cross-market vaults
-    assert_eq!(shortfall, 0u128); // slightly over-permissive by the unaccrued delta
+    assert!(stale_market.was_updated());
+    assert_eq!(shortfall, 1u128);
 }
 
 #[test]
@@ -4666,6 +4664,65 @@ fn test_accrue_user_market_allows_no_hints() {
 }
 
 #[test]
+fn test_new_supplier_does_not_receive_historical_supply_rewards() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let existing_user = Address::generate(&env);
+    let new_user = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin.clone())
+        .address();
+    let market = env.register(rv::ReceiptVault, ());
+    let vault = rv::ReceiptVaultClient::new(&env, &market);
+    vault.initialize(&token, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market);
+    comp.set_peridot_token(&Address::generate(&env));
+    comp.set_supply_speed(&market, &10u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 10);
+
+    let grow_index_hint = AccrualHint {
+        total_ptokens: Some(100u128),
+        total_borrowed: Some(0u128),
+        user_ptokens: Some(100u128),
+        user_borrowed: Some(0u128),
+    };
+    comp.accrue_user_market(&existing_user, &market, &Some(grow_index_hint));
+    assert_eq!(comp.get_accrued(&existing_user), 0u128);
+
+    // A fresh address receives pTokens after historical index growth. Its first
+    // accrual anchors at the current market index and must not receive rewards
+    // from before it held pTokens.
+    let first_new_user_hint = AccrualHint {
+        total_ptokens: Some(100u128),
+        total_borrowed: Some(0u128),
+        user_ptokens: Some(50u128),
+        user_borrowed: Some(0u128),
+    };
+    comp.accrue_user_market(&new_user, &market, &Some(first_new_user_hint));
+    assert_eq!(comp.get_accrued(&new_user), 0u128);
+
+    env.ledger().set_timestamp(now + 11);
+    let second_new_user_hint = AccrualHint {
+        total_ptokens: Some(100u128),
+        total_borrowed: Some(0u128),
+        user_ptokens: Some(50u128),
+        user_borrowed: Some(0u128),
+    };
+    comp.accrue_user_market(&new_user, &market, &Some(second_new_user_hint));
+    assert_eq!(comp.get_accrued(&new_user), 5u128);
+}
+
+#[test]
 #[should_panic(expected = "market not supported")]
 fn test_accrue_user_market_rejects_unsupported_market_without_hints() {
     let env = Env::default();
@@ -5507,8 +5564,7 @@ fn test_self_liquidation_reduces_own_debt() {
     // to liquidator (= borrower), so the net pToken balance is unchanged.
     // The borrower's gain is reduced debt at the cost of their own token_a.
     assert_eq!(
-        pbal_b_after,
-        pbal_b_before,
+        pbal_b_after, pbal_b_before,
         "without a protocol fee, self-liquidation is net-zero on pToken balance"
     );
 }

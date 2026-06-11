@@ -355,11 +355,7 @@ pub fn accrue_user_fee(env: &Env, user: &Address, vault: &Address) {
             let pending = delta.saturating_mul(user_bal) / MARGIN_FEE_PRECISION;
             if pending > 0 {
                 let accrued_key = DataKey::UserMarginFeeAccrued(user.clone(), vault.clone());
-                let accrued: u128 = env
-                    .storage()
-                    .persistent()
-                    .get(&accrued_key)
-                    .unwrap_or(0);
+                let accrued: u128 = env.storage().persistent().get(&accrued_key).unwrap_or(0);
                 env.storage()
                     .persistent()
                     .set(&accrued_key, &accrued.saturating_add(pending));
@@ -370,9 +366,7 @@ pub fn accrue_user_fee(env: &Env, user: &Address, vault: &Address) {
         }
     }
     let user_index_key = DataKey::UserMarginFeeIndex(user.clone(), vault.clone());
-    env.storage()
-        .persistent()
-        .set(&user_index_key, &fee_index);
+    env.storage().persistent().set(&user_index_key, &fee_index);
     env.storage()
         .persistent()
         .extend_ttl(&user_index_key, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -387,11 +381,7 @@ pub fn collect_margin_fee(env: &Env, vault: &Address, fee_ptokens: u128) {
     let total = get_total_margin_ptokens(env, vault);
     if total == 0 {
         let orphan_key = DataKey::MarginFeeOrphan(vault.clone());
-        let orphan: u128 = env
-            .storage()
-            .persistent()
-            .get(&orphan_key)
-            .unwrap_or(0);
+        let orphan: u128 = env.storage().persistent().get(&orphan_key).unwrap_or(0);
         env.storage()
             .persistent()
             .set(&orphan_key, &orphan.saturating_add(fee_ptokens));
@@ -405,11 +395,7 @@ pub fn collect_margin_fee(env: &Env, vault: &Address, fee_ptokens: u128) {
         return;
     }
     let index_key = DataKey::MarginFeeIndex(vault.clone());
-    let current: u128 = env
-        .storage()
-        .persistent()
-        .get(&index_key)
-        .unwrap_or(0);
+    let current: u128 = env.storage().persistent().get(&index_key).unwrap_or(0);
     env.storage()
         .persistent()
         .set(&index_key, &current.saturating_add(delta));

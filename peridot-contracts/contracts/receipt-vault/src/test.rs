@@ -3751,16 +3751,26 @@ enum TwoAssetKey {
 #[contractimpl]
 impl TwoAssetBoostedVault {
     pub fn initialize(env: Env, underlying: Address) {
-        env.storage().persistent().set(&TwoAssetKey::Underlying, &underlying);
-        env.storage().persistent().set(&TwoAssetKey::TotalShares, &0i128);
+        env.storage()
+            .persistent()
+            .set(&TwoAssetKey::Underlying, &underlying);
+        env.storage()
+            .persistent()
+            .set(&TwoAssetKey::TotalShares, &0i128);
     }
 
     pub fn balance(env: Env, owner: Address) -> i128 {
-        env.storage().persistent().get(&TwoAssetKey::Share(owner)).unwrap_or(0i128)
+        env.storage()
+            .persistent()
+            .get(&TwoAssetKey::Share(owner))
+            .unwrap_or(0i128)
     }
 
     pub fn total_supply(env: Env) -> i128 {
-        env.storage().persistent().get(&TwoAssetKey::TotalShares).unwrap_or(0i128)
+        env.storage()
+            .persistent()
+            .get(&TwoAssetKey::TotalShares)
+            .unwrap_or(0i128)
     }
 
     /// Returns [primary_underlying, 0] — two elements, same as a vault that
@@ -3778,37 +3788,72 @@ impl TwoAssetBoostedVault {
             out.push_back(0i128);
             return out;
         }
-        let token: Address = env.storage().persistent().get(&TwoAssetKey::Underlying).expect("not init");
+        let token: Address = env
+            .storage()
+            .persistent()
+            .get(&TwoAssetKey::Underlying)
+            .expect("not init");
         let bal = token::Client::new(&env, &token).balance(&env.current_contract_address());
-        let amount = if bal > 0 { shares.saturating_mul(bal) / total_shares } else { 0 };
+        let amount = if bal > 0 {
+            shares.saturating_mul(bal) / total_shares
+        } else {
+            0
+        };
         out.push_back(amount);
         out.push_back(0i128);
         out
     }
 
-    pub fn deposit(env: Env, amounts_desired: Vec<i128>, _amounts_min: Vec<i128>, to: Address, _invest: bool) -> i128 {
+    pub fn deposit(
+        env: Env,
+        amounts_desired: Vec<i128>,
+        _amounts_min: Vec<i128>,
+        to: Address,
+        _invest: bool,
+    ) -> i128 {
         let amount = amounts_desired.get(0).unwrap_or(0);
-        if amount <= 0 { return 0; }
-        let token: Address = env.storage().persistent().get(&TwoAssetKey::Underlying).expect("not init");
+        if amount <= 0 {
+            return 0;
+        }
+        let token: Address = env
+            .storage()
+            .persistent()
+            .get(&TwoAssetKey::Underlying)
+            .expect("not init");
         token::Client::new(&env, &token).transfer(&to, &env.current_contract_address(), &amount);
         let prev = Self::balance(env.clone(), to.clone());
         let supply = Self::total_supply(env.clone());
-        env.storage().persistent().set(&TwoAssetKey::Share(to), &(prev + amount));
-        env.storage().persistent().set(&TwoAssetKey::TotalShares, &(supply + amount));
+        env.storage()
+            .persistent()
+            .set(&TwoAssetKey::Share(to), &(prev + amount));
+        env.storage()
+            .persistent()
+            .set(&TwoAssetKey::TotalShares, &(supply + amount));
         amount
     }
 
     /// Enforces min_amounts_out.len() == 2 — same check DefIndex applies.
     pub fn withdraw(env: Env, shares: i128, min_amounts_out: Vec<i128>, to: Address) -> Vec<i128> {
-        assert!(min_amounts_out.len() == 2, "min_amounts_out length mismatch");
+        assert!(
+            min_amounts_out.len() == 2,
+            "min_amounts_out length mismatch"
+        );
         let amounts = Self::get_asset_amounts_per_shares(env.clone(), shares);
         let out = amounts.get(0).unwrap_or(0);
-        let token: Address = env.storage().persistent().get(&TwoAssetKey::Underlying).expect("not init");
+        let token: Address = env
+            .storage()
+            .persistent()
+            .get(&TwoAssetKey::Underlying)
+            .expect("not init");
         token::Client::new(&env, &token).transfer(&env.current_contract_address(), &to, &out);
         let owner_shares = Self::balance(env.clone(), to.clone());
         let supply = Self::total_supply(env.clone());
-        env.storage().persistent().set(&TwoAssetKey::Share(to), &(owner_shares - shares));
-        env.storage().persistent().set(&TwoAssetKey::TotalShares, &(supply - shares));
+        env.storage()
+            .persistent()
+            .set(&TwoAssetKey::Share(to), &(owner_shares - shares));
+        env.storage()
+            .persistent()
+            .set(&TwoAssetKey::TotalShares, &(supply - shares));
         amounts
     }
 }
@@ -3844,8 +3889,16 @@ fn test_withdraw_succeeds_despite_boosted_haircut() {
     vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
 
     vault.deposit(&user, &20_000u128);
-    assert_eq!(token_client.balance(&vault_id), 2_000i128, "idle cash should be 10%");
-    assert_eq!(boosted.balance(&vault_id), 18_000i128, "90% should be boosted");
+    assert_eq!(
+        token_client.balance(&vault_id),
+        2_000i128,
+        "idle cash should be 10%"
+    );
+    assert_eq!(
+        boosted.balance(&vault_id),
+        18_000i128,
+        "90% should be boosted"
+    );
 
     // Set a 5-unit haircut AFTER the deposit (simulate performance fee on gains).
     // Old code: min_amounts_out=[needed-1]; haircut >= 1 → "slippage" panic.

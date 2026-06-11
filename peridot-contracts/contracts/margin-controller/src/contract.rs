@@ -132,11 +132,7 @@ impl MarginController {
         let vault = get_market(&env, &asset);
         accrue_user_fee(&env, &user, &vault);
         let accrued_key = DataKey::UserMarginFeeAccrued(user.clone(), vault.clone());
-        let accrued: u128 = env
-            .storage()
-            .persistent()
-            .get(&accrued_key)
-            .unwrap_or(0);
+        let accrued: u128 = env.storage().persistent().get(&accrued_key).unwrap_or(0);
         if accrued == 0 {
             return 0;
         }
@@ -165,11 +161,7 @@ impl MarginController {
             0
         };
         let accrued_key = DataKey::UserMarginFeeAccrued(user.clone(), vault.clone());
-        let accrued: u128 = env
-            .storage()
-            .persistent()
-            .get(&accrued_key)
-            .unwrap_or(0);
+        let accrued: u128 = env.storage().persistent().get(&accrued_key).unwrap_or(0);
         accrued.saturating_add(pending)
     }
 
@@ -181,21 +173,12 @@ impl MarginController {
 
     /// Admin function: move orphaned fee pTokens (collected when pool was empty)
     /// into `recipient`'s free margin balance. Returns the amount swept.
-    pub fn sweep_orphan_fees(
-        env: Env,
-        admin: Address,
-        asset: Address,
-        recipient: Address,
-    ) -> u128 {
+    pub fn sweep_orphan_fees(env: Env, admin: Address, asset: Address, recipient: Address) -> u128 {
         bump_core_ttl(&env);
         require_admin(&env, &admin);
         let vault = get_market(&env, &asset);
         let orphan_key = DataKey::MarginFeeOrphan(vault.clone());
-        let orphan: u128 = env
-            .storage()
-            .persistent()
-            .get(&orphan_key)
-            .unwrap_or(0);
+        let orphan: u128 = env.storage().persistent().get(&orphan_key).unwrap_or(0);
         if orphan == 0 {
             return 0;
         }
@@ -722,7 +705,12 @@ impl MarginController {
                 &vaults.position_vault,
                 free.saturating_add(position.collateral_ptokens),
             );
-            update_total_margin_ptokens(&env, &vaults.position_vault, position.collateral_ptokens, true);
+            update_total_margin_ptokens(
+                &env,
+                &vaults.position_vault,
+                position.collateral_ptokens,
+                true,
+            );
         }
 
         position.status = PositionStatus::Closed;
@@ -934,10 +922,8 @@ impl MarginController {
             let p_after = debt_vault_client.get_ptoken_balance(&controller);
             let p_delta = p_after.saturating_sub(p_before);
             if p_delta > 0 {
-                let close_fee_ptokens = p_delta
-                    .checked_mul(close_fee_bps)
-                    .expect("fee overflow")
-                    / BPS_SCALE;
+                let close_fee_ptokens =
+                    p_delta.checked_mul(close_fee_bps).expect("fee overflow") / BPS_SCALE;
                 let user_ptokens = p_delta.saturating_sub(close_fee_ptokens);
                 if user_ptokens > 0 {
                     // Accrue pending fees with OLD balance before increasing it.
@@ -1142,7 +1128,12 @@ impl MarginController {
                 &vaults.position_vault,
                 free.saturating_add(position.collateral_ptokens),
             );
-            update_total_margin_ptokens(&env, &vaults.position_vault, position.collateral_ptokens, true);
+            update_total_margin_ptokens(
+                &env,
+                &vaults.position_vault,
+                position.collateral_ptokens,
+                true,
+            );
         }
         position.status = PositionStatus::Liquidated;
         position.collateral_ptokens = 0u128;

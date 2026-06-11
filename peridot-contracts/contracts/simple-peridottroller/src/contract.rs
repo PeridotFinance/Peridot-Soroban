@@ -1235,9 +1235,7 @@ impl SimplePeridottroller {
         market: &Address,
     ) -> bool {
         let persistent = env.storage().persistent();
-        let mut flags: Map<Address, bool> = persistent
-            .get(&pause_key)
-            .unwrap_or(Map::new(env));
+        let mut flags: Map<Address, bool> = persistent.get(&pause_key).unwrap_or(Map::new(env));
         if !flags.get(market.clone()).unwrap_or(false) {
             // pause_key is already in the footprint from the get() above, so
             // extend_ttl here adds no new entries. Bump so a set-but-inactive
@@ -1247,9 +1245,7 @@ impl SimplePeridottroller {
             }
             return false;
         }
-        let mut untils: Map<Address, u64> = persistent
-            .get(&until_key)
-            .unwrap_or(Map::new(env));
+        let mut untils: Map<Address, u64> = persistent.get(&until_key).unwrap_or(Map::new(env));
         let Some(expires_at) = untils.get(market.clone()) else {
             // Fail closed on inconsistent pause metadata.
             if persistent.has(&pause_key) {
@@ -3012,8 +3008,8 @@ impl SimplePeridottroller {
                 }
 
                 // Re-read post-accrual state. Try snapshot first, then individual calls.
-                let refreshed_snap =
-                    env.try_invoke_contract::<(u128, u128, u128, Address), InvokeError>(
+                let refreshed_snap = env
+                    .try_invoke_contract::<(u128, u128, u128, Address), InvokeError>(
                         &m,
                         &Symbol::new(&env, "get_account_snapshot"),
                         (user.clone(),).into_val(&env),
@@ -3584,11 +3580,27 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupplyIndex(market.clone()))
             .unwrap_or(INDEX_SCALE_1E18);
-        let uidx: u128 = env
+        let user_idx_opt: Option<u128> = env
             .storage()
             .persistent()
-            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()))
-            .unwrap_or(INDEX_SCALE_1E18);
+            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()));
+        let Some(uidx) = user_idx_opt else {
+            let pbal: u128 = user_ptokens_hint.unwrap_or_else(|| {
+                env.invoke_contract(
+                    &market,
+                    &Symbol::new(&env, "get_ptoken_balance"),
+                    (user.clone(),).into_val(&env),
+                )
+            });
+            if user_ptokens_hint.is_some() || pbal > 0 {
+                env.storage().persistent().set(
+                    &DataKey::UserSupplyIndex(user.clone(), market.clone()),
+                    &idx,
+                );
+                storage::bump_reward_user_ttl(&env, &user, &market);
+            }
+            return;
+        };
         if idx == uidx {
             return;
         }

@@ -1795,7 +1795,15 @@ fn setup_for_fees() -> (Env, Address, Address, Address, Address, Address, Addres
     MockVaultClient::new(&env, &usdt_vault_id).set_margin_controller(&Some(controller_id.clone()));
     MockVaultClient::new(&env, &xlm_vault_id).set_margin_controller(&Some(controller_id.clone()));
 
-    (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, xlm_vault_id)
+    (
+        env,
+        admin,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    )
 }
 
 // ─── Fee admin / caps ─────────────────────────────────────────────────────────
@@ -1991,7 +1999,10 @@ fn test_close_fee_deducted_from_surplus() {
     assert!(lp1_claimable > 0, "lp1 should earn close fee");
     // LP1 holds 2_000_000 ptokens. After trader's 990_000 added, pool ~ 2_990_000.
     // lp1_share = 10_000 * 2_000_000 / 2_990_000 ≈ 6_688.
-    assert!(lp1_claimable <= 10_000u128, "cannot earn more than total fee");
+    assert!(
+        lp1_claimable <= 10_000u128,
+        "cannot earn more than total fee"
+    );
 }
 
 // ─── Total pToken tracking ────────────────────────────────────────────────────
@@ -2083,8 +2094,14 @@ fn test_orphan_fee_collected_when_no_lp_pool() {
     let swept = controller.sweep_orphan_fees(&admin, &usdt_id, &admin);
     assert_eq!(swept, 20_000u128);
     // After sweep, orphan = 0 and admin's margin balance = 20_000.
-    assert_eq!(controller.get_margin_balance_ptokens(&admin, &usdt_id), 20_000u128);
-    assert_eq!(controller.sweep_orphan_fees(&admin, &usdt_id, &admin), 0u128);
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&admin, &usdt_id),
+        20_000u128
+    );
+    assert_eq!(
+        controller.sweep_orphan_fees(&admin, &usdt_id, &admin),
+        0u128
+    );
 }
 
 // ─── Accrual ordering: no back-pay on new deposit ────────────────────────────

@@ -227,12 +227,14 @@ impl ReceiptVault {
         if moved > 0 {
             Self::sub_managed_cash(env, moved);
             let cached = Self::cached_boosted_underlying(env);
-            env.storage()
-                .persistent()
-                .set(&DataKey::BoostedUnderlyingCached, &cached.saturating_add(moved));
-            env.storage()
-                .persistent()
-                .set(&DataKey::BoostedUnderlyingUpdatedAt, &env.ledger().timestamp());
+            env.storage().persistent().set(
+                &DataKey::BoostedUnderlyingCached,
+                &cached.saturating_add(moved),
+            );
+            env.storage().persistent().set(
+                &DataKey::BoostedUnderlyingUpdatedAt,
+                &env.ledger().timestamp(),
+            );
         }
         moved
     }
@@ -349,9 +351,10 @@ impl ReceiptVault {
                 &DataKey::BoostedUnderlyingCached,
                 &cached.saturating_sub(received),
             );
-            env.storage()
-                .persistent()
-                .set(&DataKey::BoostedUnderlyingUpdatedAt, &env.ledger().timestamp());
+            env.storage().persistent().set(
+                &DataKey::BoostedUnderlyingUpdatedAt,
+                &env.ledger().timestamp(),
+            );
         }
     }
 
@@ -805,9 +808,10 @@ impl ReceiptVault {
             env.storage()
                 .persistent()
                 .set(&DataKey::BoostedUnderlyingCached, &0u128);
-            env.storage()
-                .persistent()
-                .set(&DataKey::BoostedUnderlyingUpdatedAt, &env.ledger().timestamp());
+            env.storage().persistent().set(
+                &DataKey::BoostedUnderlyingUpdatedAt,
+                &env.ledger().timestamp(),
+            );
         }
         // When value > 0, get_boosted_underlying already wrote to BoostedUnderlyingCached.
     }

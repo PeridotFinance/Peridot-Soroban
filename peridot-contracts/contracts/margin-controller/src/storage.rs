@@ -89,11 +89,11 @@ pub enum DataKey {
     PendingUpgradeEta,
     OpenFeeBps,
     CloseFeeBps,
-    MarginFeeIndex(Address),              // vault -> accumulated fee per pToken * 1e18
+    MarginFeeIndex(Address), // vault -> accumulated fee per pToken * 1e18
     UserMarginFeeIndex(Address, Address), // (user, vault) -> snapshot of MarginFeeIndex
     UserMarginFeeAccrued(Address, Address), // (user, vault) -> claimable pTokens
-    TotalMarginPtokens(Address),          // vault -> total free-margin pTokens
-    MarginFeeOrphan(Address),             // vault -> fee pTokens with no LP recipients
+    TotalMarginPtokens(Address), // vault -> total free-margin pTokens
+    MarginFeeOrphan(Address), // vault -> fee pTokens with no LP recipients
 }
 
 #[contracttype]
