@@ -3430,6 +3430,7 @@ impl SimplePeridottroller {
 }
 
 // Rewards internals
+#[contractimpl]
 impl SimplePeridottroller {
     fn accrue_market(
         env: Env,

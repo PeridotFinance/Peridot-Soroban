@@ -12,6 +12,17 @@ use crate::storage::*;
 #[contract]
 pub struct MarginController;
 
+/// Snapshot of a vault's pricing inputs, fetched once via cross-contract calls
+/// and reused for repeated valuation math within a single entrypoint. Used by
+/// `liquidate_position_v2` to avoid re-reading price/rate/CF (each `get_price_usd`
+/// hits the oracle) ~5x per liquidation, which otherwise exceeds the CPU budget.
+struct VaultValCtx {
+    price_num: u128,
+    price_den: u128,
+    rate: u128,
+    cf: u128,
+}
+
 #[contractimpl]
 impl MarginController {
     pub fn initialize(
@@ -1000,15 +1011,31 @@ impl MarginController {
         if debt_price.0 == 0 || debt_price.1 == 0 {
             panic!("invalid debt price");
         }
-        let collateral_value =
-            Self::combined_v2_collateral_value_usd(&env, position_id, &vaults, &position);
+        // Fetch each collateral vault's pricing inputs once and reuse them for all
+        // valuation math below. Re-reading via the cross-contract helpers (each
+        // get_price_usd hits the oracle) ~5x per liquidation exceeds the CPU budget.
+        let initial_lock = get_position_initial_lock(&env, position_id);
+        let pos_ctx = Self::vault_val_ctx(&env, &vaults.position_vault);
+        let init_ctx = initial_lock
+            .as_ref()
+            .map(|(market, _)| Self::vault_val_ctx(&env, market));
+
+        let mut collateral_value =
+            Self::ctx_discounted_value(&pos_ctx, position.collateral_ptokens);
+        if let (Some((_, initial_ptokens)), Some(ctx)) = (&initial_lock, &init_ctx) {
+            collateral_value =
+                collateral_value.saturating_add(Self::ctx_discounted_value(ctx, *initial_ptokens));
+        }
         let debt_value = debt_amount.saturating_mul(debt_price.0) / debt_price.1;
         if collateral_value >= debt_value {
             panic!("not liquidatable");
         }
 
-        let raw_collateral_value =
-            Self::combined_v2_raw_collateral_value_usd(&env, position_id, &vaults, &position);
+        let mut raw_collateral_value = Self::ctx_raw_value(&pos_ctx, position.collateral_ptokens);
+        if let (Some((_, initial_ptokens)), Some(ctx)) = (&initial_lock, &init_ctx) {
+            raw_collateral_value =
+                raw_collateral_value.saturating_add(Self::ctx_raw_value(ctx, *initial_ptokens));
+        }
         if raw_collateral_value == 0 {
             panic!("no collateral");
         }
@@ -1038,15 +1065,24 @@ impl MarginController {
         }
         let mut remaining_seize_value =
             repaid_value.saturating_mul(DEFAULT_MARGIN_LIQ_BONUS_SCALED) / SCALE_1E6;
-        let seize_ptokens = Self::ptokens_for_raw_value_ceil(
-            &env,
-            &vaults.position_vault,
+        let seize_ptokens = Self::ctx_ptokens_for_raw_value_ceil(
+            &pos_ctx,
             position.collateral_ptokens,
             remaining_seize_value,
         );
         if seize_ptokens > 0 {
             let controller = env.current_contract_address();
             let seize_i128: i128 = seize_ptokens.try_into().expect("amount too large");
+            // Arm the vault's margin bypass so the seize transfer out of controller
+            // custody skips enforce_margin_lock, which would otherwise call back into
+            // locked_ptokens_in_market on this controller mid-liquidation (re-entry trap).
+            Self::begin_margin_withdraw_if_supported(
+                &env,
+                &vaults.position_vault,
+                &controller,
+                &liquidator,
+                seize_ptokens,
+            );
             let transfer_args: Vec<Val> =
                 (controller.clone(), liquidator.clone(), seize_i128).into_val(&env);
             Self::authorize_controller_subcall(
@@ -1061,23 +1097,27 @@ impl MarginController {
                 &seize_i128,
             );
             position.collateral_ptokens = position.collateral_ptokens.saturating_sub(seize_ptokens);
-            let seized_value =
-                Self::raw_ptoken_value_usd(&env, &vaults.position_vault, seize_ptokens);
+            let seized_value = Self::ctx_raw_value(&pos_ctx, seize_ptokens);
             remaining_seize_value = remaining_seize_value.saturating_sub(seized_value);
         }
 
-        if let Some((initial_market, initial_ptokens)) =
-            get_position_initial_lock(&env, position_id)
+        if let (Some((initial_market, initial_ptokens)), Some(ctx)) =
+            (initial_lock.clone(), init_ctx.as_ref())
         {
-            let initial_seize_ptokens = Self::ptokens_for_raw_value_ceil(
-                &env,
-                &initial_market,
-                initial_ptokens,
-                remaining_seize_value,
-            );
+            let initial_seize_ptokens =
+                Self::ctx_ptokens_for_raw_value_ceil(ctx, initial_ptokens, remaining_seize_value);
             if initial_seize_ptokens > 0 {
                 let controller = env.current_contract_address();
                 let amt_i128: i128 = initial_seize_ptokens.try_into().expect("amount too large");
+                // Same bypass arming as the position-collateral seize above, to avoid
+                // the re-entry trap on the initial-lock collateral transfer.
+                Self::begin_margin_withdraw_if_supported(
+                    &env,
+                    &initial_market,
+                    &controller,
+                    &liquidator,
+                    initial_seize_ptokens,
+                );
                 let transfer_args: Vec<Val> =
                     (controller.clone(), liquidator.clone(), amt_i128).into_val(&env);
                 Self::authorize_controller_subcall(
@@ -1277,6 +1317,60 @@ impl MarginController {
         expected_out.saturating_mul(SCALE_1E6.saturating_sub(max_slippage_scaled)) / SCALE_1E6
     }
 
+    /// Fetch a vault's pricing inputs once (underlying asset, oracle price,
+    /// exchange rate, collateral factor) for reuse across valuation math.
+    fn vault_val_ctx(env: &Env, vault: &Address) -> VaultValCtx {
+        let vault_client = ReceiptVaultClient::new(env, vault);
+        let asset = vault_client.get_underlying_token();
+        let price = get_price_usd(env, &asset);
+        if price.0 == 0 || price.1 == 0 {
+            panic!("invalid collateral price");
+        }
+        let rate = vault_client.get_exchange_rate();
+        if rate == 0 {
+            panic!("invalid exchange rate");
+        }
+        let cf = get_peridottroller(env).get_market_cf(vault).min(SCALE_1E6);
+        VaultValCtx {
+            price_num: price.0,
+            price_den: price.1,
+            rate,
+            cf,
+        }
+    }
+
+    /// Raw (undiscounted) USD value of pTokens using a cached context.
+    fn ctx_raw_value(ctx: &VaultValCtx, ptokens: u128) -> u128 {
+        if ptokens == 0 {
+            return 0;
+        }
+        let underlying = ptokens.saturating_mul(ctx.rate) / SCALE_1E6;
+        underlying.saturating_mul(ctx.price_num) / ctx.price_den
+    }
+
+    /// Collateral-factor-discounted USD value of pTokens using a cached context.
+    fn ctx_discounted_value(ctx: &VaultValCtx, ptokens: u128) -> u128 {
+        Self::ctx_raw_value(ctx, ptokens).saturating_mul(ctx.cf) / SCALE_1E6
+    }
+
+    /// pTokens needed to cover `target_raw_value`, rounded up, using a cached context.
+    fn ctx_ptokens_for_raw_value_ceil(
+        ctx: &VaultValCtx,
+        available_ptokens: u128,
+        target_raw_value: u128,
+    ) -> u128 {
+        if target_raw_value == 0 || available_ptokens == 0 {
+            return 0;
+        }
+        let available_value = Self::ctx_raw_value(ctx, available_ptokens);
+        if target_raw_value >= available_value {
+            return available_ptokens;
+        }
+        let underlying = Self::ceil_div(target_raw_value.saturating_mul(ctx.price_den), ctx.price_num);
+        let ptokens = Self::ceil_div(underlying.saturating_mul(SCALE_1E6), ctx.rate);
+        ptokens.min(available_ptokens).max(1)
+    }
+
     fn discounted_ptoken_value_usd(env: &Env, vault: &Address, ptokens: u128) -> u128 {
         if ptokens == 0 {
             return 0;
@@ -1295,47 +1389,6 @@ impl MarginController {
         let underlying = ptokens.saturating_mul(exchange_rate) / SCALE_1E6;
         let raw_value = underlying.saturating_mul(price.0) / price.1;
         raw_value.saturating_mul(cf) / SCALE_1E6
-    }
-
-    fn combined_v2_collateral_value_usd(
-        env: &Env,
-        position_id: u64,
-        vaults: &PositionVaults,
-        position: &Position,
-    ) -> u128 {
-        let mut value = Self::discounted_ptoken_value_usd(
-            env,
-            &vaults.position_vault,
-            position.collateral_ptokens,
-        );
-        if let Some((initial_market, initial_ptokens)) = get_position_initial_lock(env, position_id)
-        {
-            value = value.saturating_add(Self::discounted_ptoken_value_usd(
-                env,
-                &initial_market,
-                initial_ptokens,
-            ));
-        }
-        value
-    }
-
-    fn combined_v2_raw_collateral_value_usd(
-        env: &Env,
-        position_id: u64,
-        vaults: &PositionVaults,
-        position: &Position,
-    ) -> u128 {
-        let mut value =
-            Self::raw_ptoken_value_usd(env, &vaults.position_vault, position.collateral_ptokens);
-        if let Some((initial_market, initial_ptokens)) = get_position_initial_lock(env, position_id)
-        {
-            value = value.saturating_add(Self::raw_ptoken_value_usd(
-                env,
-                &initial_market,
-                initial_ptokens,
-            ));
-        }
-        value
     }
 
     fn raw_ptoken_value_usd(env: &Env, vault: &Address, ptokens: u128) -> u128 {

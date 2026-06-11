@@ -1,6 +1,53 @@
-# Testnet Deploy (dev)
+# Testnet Deploy (dev) — current (stress-test v2, leveraged-fix)
+
+Deployed from the `leveraged-fix` line with two fixes applied and verified on-chain:
+1. Controller `#[contractimpl]` fix (claim_self / claim_all / portfolio now exported).
+2. `liquidate_position_v2` fix — arms the `begin_margin_withdraw` bypass before each
+   seize transfer (resolves the re-entry trap) and caches each collateral vault's
+   price/rate/CF once instead of ~5 cross-contract re-reads (resolves the CPU-budget
+   overrun). Leveraged liquidation now succeeds for both non-boosted and boosted
+   collateral (verified: 50% close-factor repay + 8% bonus seize, position stays Open).
+
+XLM and Mock USDT both use a `[1,1]` fallback price on the controller. Vaults wired
+to the (optimized) margin controller; margin controller registered as a liquidation
+controller. Vault C (token C) is an extra non-boosted market added for liquidation
+testing; its `set_peridottroller` is intentionally unset (the controller already has
+PERI wired, which makes the set_peridottroller smoke-test re-enter — not needed for
+margin borrow/repay).
 
 - Admin (dev): `GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ`
+- Controller (SimplePeridottroller): `CCYGQBDST63V7DETAHTZXQWQXM7MUOCEUH5O5CLKLGEBEBCSLSOZEF2Y`
+- JumpRateModel: `CAX4SS3C3WZEWLUZ7TD52ZTNC5WVVADQWKB25JQOOVK4N6DOOIHW3HAZ`
+- PERI Token: `CDZ5GFKXJXFXALZV2U4IDCCBJPYPF45ZGLAIUKVX3YMACUDIV426AEIZ`
+- Mock USDT (open mint): `CBA2YE2L3COVPLERAVGBG674QTWOX2XHBPQ6XSPA7JS2YY6DDG73J7MB`
+- Vault A (XLM, boosted → DeFindex): `CBTS2HKJJVXLTF6IWP7UBOSNSO44UQ5X4NNVLNDVTF5M5QLFMQVRFBGE`
+- Vault B (USDT): `CB5TTE2R5KZMYGDQQTQY6GCV6SSX5N3TLAZRQUCD52WCZHT7G6DU2S5E`
+- Mock Token C (open mint): `CB5D2UIVYTM54U37SSHX2QATDLUSBUSBKVGJDATP2RIV44JLRH4B5RVI`
+- Vault C (token C, non-boosted): `CBA55N4ND5UECCSX3QS7DZQ5R64UDDG6K7YQDAVARK3W6AZ5UXQ5BE4U`
+- XLM native asset contract (TOKEN_A): `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
+- SwapAdapter: `CCIYQP3EUBXQYWJNMNUHI7LD35AEHXYNLMJCHZSEFTMDUOA4C5YHOZN5`
+- MarginController (optimized, current): `CBERFOE7AAYGZQXZHXQTWN65BP3CHE3LUP6HTKKM6QWDNDIGU5GJGBQH`
+- Aquarius Router (swap adapter router): `CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK`
+- DeFindex XLM Vault (boosted target for Vault A): `CCLV4H7WTLJQ7ATLHBBQV2WW3OINF3FOY5XZ7VPHZO7NH3D2ZS4GFSF6`
+- Env file: `/tmp/peridot-stress-v2.env`
+
+Superseded margin controllers on this core (re-wired away): `CBQLN5IF...` (re-entry
++ budget bug), `CB4FJW5P...` (re-entry fixed, budget bug). Vaults now point at the
+optimized `CBERFOE7...`.
+
+## Previous testnet deployments (superseded)
+
+Stress-test v1:
+
+- Controller: CAVDLV7NHVRQZMVSELDRJJSSQEKONH5WV7UUY42XMBESGIHDUX5BUSX5
+- XLM Vault: CC6QBFMUVB6Y2WOLE2ATAYPHXAO3RJXXYX3TDWRW5XO6QEIK3MP636IN
+- USDT Vault: CDWSNIAAJ4I3W45KHPOYBJGGQWO4TOIQTHCOMCPLQQJGEA5KBMEC4VS4
+- Mock USDT: CDYOVDSNL2XTKKNB762AVKPOZ2K7OOCB3EJRHE4A7JHPLI2SFLJEC3RU
+- MarginController: CARHBTXIK3KDAN6T5FRQSXJALYOYDHKXEBCOHXAUC5ZDPJUY4SJQH2MP
+- SwapAdapter: CDJILKXCSF74NY4VZX77OI6MBA6LEICJFKCJB7UY42UYXR7XNI6HBTNC
+
+Older deployment:
+
 - Controller (SimplePeridottroller): `CCBAEMMG4STILW6SYTNCIVG44OF4TQDDCYPU7GS3ZOEKLTC75ONTLCI2`
 - JumpRateModel: `CCIDO7HBNBPUKFWEI3PRA6O6QU2JXUKVIZAERCZWBNGGK7LO7MFBKKOA`
 - PERI Token: `CBCA56UIBQA3WT2JUIIG2BHW325CMLNAC7CKL33T37GHN25RCGR6SXPB`
@@ -10,8 +57,7 @@
 - Vault B (USDT): `CBP2U7FVTQ2EIAQ474CTYN74KCEU6YLCCGH6KRY2RAMQEDSKREKSAGSO`
 - Vault C (USDC): `CBVTTRAXYESGIUYYK2XTQGUBWIXVZG6EMAJGFP2XFXB2N4SR5LEY6QT7`
 - Vault D (BLEND USDC): `CCKPULOPSBOM6CWSDJGJ7K7I72BMPBOAEGPXPGM4NUKHTQ4HMOSB23ZU`
-- XLM native asset contract: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
-  MarginController: CAZQWGJDKG2JQYV66VV3ONBDLYAE77YVKSBUNWUY7MV6WVLLHT4URFX7
+- MarginController: CAZQWGJDKG2JQYV66VV3ONBDLYAE77YVKSBUNWUY7MV6WVLLHT4URFX7
   SwapAdapter: CAGLARN3MUMRGCRNKXZ3SH7NVCZ3P3CDGHL2FQEEXIC4MPAGTQTACY6S
   SmartAccountFactory: CA7O44S46V3KTQKKDJ5DMIKIPBZOHXKYIKXRV4HMBA7OKZSMNUOB7DOG
   BasicSmartAccount (dev): CAJNDPSZ55K7CTIGQZXUHCXW3OI226Q2XQ5WYUEFQP4PUWVGDGOVV7P2

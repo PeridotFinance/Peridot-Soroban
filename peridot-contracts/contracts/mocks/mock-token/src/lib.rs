@@ -58,7 +58,13 @@ impl MockToken {
         if amount < 0 {
             panic!("bad amount");
         }
-        TokenBase::approve(&env, &owner, &spender, amount, u32::MAX);
+        TokenBase::approve(
+            &env,
+            &owner,
+            &spender,
+            amount,
+            env.ledger().max_live_until_ledger(),
+        );
     }
 
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
