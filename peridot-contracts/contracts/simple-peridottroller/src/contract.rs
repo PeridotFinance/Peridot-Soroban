@@ -1950,8 +1950,16 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
+            if !supported.get(m.clone()).unwrap_or(false) {
+                continue;
+            }
             let debt: u128 = env.invoke_contract(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
@@ -3576,23 +3584,12 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupplyIndex(market.clone()))
             .unwrap_or(INDEX_SCALE_1E18);
-        let user_idx_opt: Option<u128> = env
+        let uidx: u128 = env
             .storage()
             .persistent()
-            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()));
-        let uidx: u128 = user_idx_opt.unwrap_or(idx);
+            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()))
+            .unwrap_or(INDEX_SCALE_1E18);
         if idx == uidx {
-            if user_idx_opt.is_none() {
-                // Anchor the user's index at the current global index so future
-                // reward deltas are computed correctly. This write is safe here
-                // because accrue_user_market requires user.require_auth() when
-                // hint is None, preventing storage-spam from arbitrary addresses.
-                env.storage().persistent().set(
-                    &DataKey::UserSupplyIndex(user.clone(), market.clone()),
-                    &idx,
-                );
-                storage::bump_reward_user_ttl(&env, &user, &market);
-            }
             return;
         }
         let pbal: u128 = user_ptokens_hint.unwrap_or_else(|| {

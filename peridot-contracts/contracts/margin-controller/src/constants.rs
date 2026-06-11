@@ -1,6 +1,6 @@
 pub const SCALE_1E6: u128 = 1_000_000u128;
-pub const DEFAULT_MAX_SLIPPAGE_BPS: u128 = 50_000u128; // 5%
-pub const MAX_SLIPPAGE_BPS_CAP: u128 = 500_000u128; // 50%
+pub const DEFAULT_MAX_SLIPPAGE_SCALED: u128 = 50_000u128; // 5% (1e6-scaled)
+pub const MAX_SLIPPAGE_SCALED_CAP: u128 = 500_000u128; // 50% (1e6-scaled)
 pub const MAX_USER_POSITIONS: u32 = 64;
 pub const MAX_LEVERAGE_CAP: u128 = 10;
 pub const DEFAULT_MARGIN_LIQ_BONUS_SCALED: u128 = 1_080_000u128; // 8%

@@ -71,7 +71,7 @@ pub enum DataKey {
     Peridottroller,
     SwapAdapter,
     MaxLeverage,
-    MaxSlippageBps,
+    MaxSlippageScaled,
     Market(Address),
     PositionCounter,
     Position(u64),
@@ -179,12 +179,12 @@ pub fn get_max_leverage(env: &Env) -> u128 {
         .unwrap_or(1u128)
 }
 
-pub fn get_max_slippage_bps(env: &Env) -> u128 {
+pub fn get_max_slippage_scaled(env: &Env) -> u128 {
     bump_core_ttl(env);
     env.storage()
         .persistent()
-        .get(&DataKey::MaxSlippageBps)
-        .unwrap_or(DEFAULT_MAX_SLIPPAGE_BPS)
+        .get(&DataKey::MaxSlippageScaled)
+        .unwrap_or(DEFAULT_MAX_SLIPPAGE_SCALED)
 }
 
 pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {

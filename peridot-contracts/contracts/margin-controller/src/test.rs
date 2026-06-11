@@ -1675,7 +1675,7 @@ fn test_set_params_non_admin_panics() {
 }
 
 #[test]
-fn test_set_max_slippage_bps() {
+fn test_set_max_slippage_scaled() {
     let (env, controller_id, _, _, _, _, _, _) = setup();
     let _controller = MarginControllerClient::new(&env, &controller_id);
     let admin = Address::generate(&env);
@@ -1685,12 +1685,12 @@ fn test_set_max_slippage_bps() {
     let comp = Address::generate(&env);
     let swap = env.register(MockSwapAdapter, ());
     fresh.initialize(&admin, &comp, &swap, &3u128);
-    fresh.set_max_slippage_bps(&admin, &25_000u128);
+    fresh.set_max_slippage_scaled(&admin, &25_000u128);
 }
 
 #[test]
 #[should_panic(expected = "invalid slippage")]
-fn test_set_max_slippage_bps_rejects_zero() {
+fn test_set_max_slippage_scaled_rejects_zero() {
     let (env, _controller_id, _, _, _, _, _, _) = setup();
     let admin = Address::generate(&env);
     let fresh_id = env.register(MarginController, ());
@@ -1698,7 +1698,7 @@ fn test_set_max_slippage_bps_rejects_zero() {
     let comp = Address::generate(&env);
     let swap = env.register(MockSwapAdapter, ());
     fresh.initialize(&admin, &comp, &swap, &3u128);
-    fresh.set_max_slippage_bps(&admin, &0u128);
+    fresh.set_max_slippage_scaled(&admin, &0u128);
 }
 
 #[test]

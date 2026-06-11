@@ -46,7 +46,7 @@ impl MarginController {
             .set(&DataKey::MaxLeverage, &max_leverage);
         env.storage()
             .persistent()
-            .set(&DataKey::MaxSlippageBps, &DEFAULT_MAX_SLIPPAGE_BPS);
+            .set(&DataKey::MaxSlippageScaled, &DEFAULT_MAX_SLIPPAGE_SCALED);
         env.storage()
             .persistent()
             .set(&DataKey::PositionCounter, &0u64);
@@ -82,15 +82,15 @@ impl MarginController {
             .set(&DataKey::MaxLeverage, &max_leverage);
     }
 
-    pub fn set_max_slippage_bps(env: Env, admin: Address, max_slippage_bps: u128) {
+    pub fn set_max_slippage_scaled(env: Env, admin: Address, max_slippage_scaled: u128) {
         bump_core_ttl(&env);
         require_admin(&env, &admin);
-        if max_slippage_bps == 0 || max_slippage_bps > MAX_SLIPPAGE_BPS_CAP {
+        if max_slippage_scaled == 0 || max_slippage_scaled > MAX_SLIPPAGE_SCALED_CAP {
             panic!("invalid slippage");
         }
         env.storage()
             .persistent()
-            .set(&DataKey::MaxSlippageBps, &max_slippage_bps);
+            .set(&DataKey::MaxSlippageScaled, &max_slippage_scaled);
     }
 
     pub fn set_swap_adapter(env: Env, admin: Address, swap_adapter: Address) {
@@ -424,8 +424,10 @@ impl MarginController {
             .unwrap_or(0);
         // Fee scales with leverage: higher leverage = higher cost to LP providers.
         let open_fee_ptokens = collateral_ptokens
-            .saturating_mul(leverage)
-            .saturating_mul(open_fee_bps)
+            .checked_mul(leverage)
+            .expect("fee overflow")
+            .checked_mul(open_fee_bps)
+            .expect("fee overflow")
             / BPS_SCALE;
         let total_deduct = collateral_ptokens.saturating_add(open_fee_ptokens);
         let free_collateral = get_margin_balance_ptokens(&env, &user, &collateral_vault);
@@ -932,7 +934,10 @@ impl MarginController {
             let p_after = debt_vault_client.get_ptoken_balance(&controller);
             let p_delta = p_after.saturating_sub(p_before);
             if p_delta > 0 {
-                let close_fee_ptokens = p_delta.saturating_mul(close_fee_bps) / BPS_SCALE;
+                let close_fee_ptokens = p_delta
+                    .checked_mul(close_fee_bps)
+                    .expect("fee overflow")
+                    / BPS_SCALE;
                 let user_ptokens = p_delta.saturating_sub(close_fee_ptokens);
                 if user_ptokens > 0 {
                     // Accrue pending fees with OLD balance before increasing it.
@@ -1277,8 +1282,8 @@ impl MarginController {
         if expected_out == 0 {
             panic!("swap amount too small");
         }
-        let max_slippage_bps = get_max_slippage_bps(env);
-        expected_out.saturating_mul(SCALE_1E6.saturating_sub(max_slippage_bps)) / SCALE_1E6
+        let max_slippage_scaled = get_max_slippage_scaled(env);
+        expected_out.saturating_mul(SCALE_1E6.saturating_sub(max_slippage_scaled)) / SCALE_1E6
     }
 
     fn discounted_ptoken_value_usd(env: &Env, vault: &Address, ptokens: u128) -> u128 {
