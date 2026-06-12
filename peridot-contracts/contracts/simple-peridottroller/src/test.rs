@@ -5167,6 +5167,92 @@ fn test_liquidation_blocked_when_collateral_indeterminate_market_has_cf() {
     comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
 }
 
+// FIND 0c08187f: a collateral market whose balance reads fine but whose price is
+// unavailable AND which carries no debt must still mark collateral_indeterminate.
+// Otherwise its collateral is silently dropped, manufacturing an artificial shortfall
+// and allowing wrongful liquidation of collateral in other (priced) markets.
+#[test]
+#[should_panic(expected = "health indeterminate")]
+fn test_liquidation_blocked_when_priced_collateral_market_loses_price() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let token_a = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_c = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    let vault_c_id = env.register(rv::ReceiptVault, ());
+    let vault_c = rv::ReceiptVaultClient::new(&env, &vault_c_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+    vault_c.initialize(&token_c, &0u128, &0u128, &admin);
+    vault_c.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    comp.add_market(&vault_c_id);
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+    vault_c.set_peridottroller(&comp_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    // token_a and token_b are priced; token_c is intentionally left unpriced.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    let mint_c = token::StellarAssetClient::new(&env, &token_c);
+    mint_b.mint(&alice, &100i128);
+    mint_c.mint(&alice, &100i128);
+    mint_a.mint(&liquidator, &1_000i128);
+
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    vault_b.set_collateral_factor(&500_000u128);
+    comp.set_market_cf(&vault_c_id, &500_000u128);
+    vault_c.set_collateral_factor(&500_000u128);
+    comp.enter_market(&alice, &vault_b_id);
+    comp.enter_market(&alice, &vault_a_id);
+    vault_b.deposit(&alice, &100u128);
+    vault_a.deposit(&liquidator, &200u128);
+    // Borrow while only A+B are entered to stay within the cross-market footprint budget.
+    vault_a.borrow(&alice, &40u128);
+
+    // Make the known (priced) position underwater: token_b collateral 100*0.5*0.6 = 30
+    // vs token_a debt 40 -> shortfall 10.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 600_000i128);
+
+    // Now add Alice's collateral-only position in the unpriced market (no debt here).
+    // token_c price is never set -> its collateral would be omitted. The fix must flag
+    // collateral_indeterminate so this liquidation fails closed instead of seizing
+    // Alice's vault_b collateral on a shortfall that ignores her vault_c collateral.
+    vault_c.deposit(&alice, &100u128);
+    comp.enter_market(&alice, &vault_c_id);
+    comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
+}
+
 #[test]
 #[should_panic(expected = "health indeterminate")]
 fn test_find_039_liquidation_rejects_when_only_indeterminate_signal() {

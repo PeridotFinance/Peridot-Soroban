@@ -3082,16 +3082,22 @@ impl SimplePeridottroller {
                 },
             };
 
-            // Get price — fail-closed when debt exists
+            // Get price — fail-closed.
             let (price, scale) = match Self::try_require_price(&env, &token) {
                 Some((p, s)) if p > 0 => (p, s),
                 _ => {
+                    // Missing/invalid price. If the account holds priced collateral here
+                    // (pbal > 0, cf > 0), omitting it would understate collateral and could
+                    // manufacture an artificial shortfall, so flag collateral_indeterminate to
+                    // make liquidation fail closed (FIND 0c08187f) — this must happen even when
+                    // the market carries no debt. Outstanding debt additionally marks the borrow
+                    // side indeterminate. Markets with no collateral contribution (cf == 0 or
+                    // pbal == 0) can be skipped silently.
+                    if pbal_known && pbal > 0 && market_cf > 0 {
+                        collateral_indeterminate = true;
+                    }
                     if debt > 0 {
                         indeterminate = true;
-                        if pbal_known && pbal > 0 && market_cf > 0 {
-                            collateral_indeterminate = true;
-                        }
-                        continue;
                     }
                     continue;
                 }

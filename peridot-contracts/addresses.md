@@ -1,43 +1,63 @@
-# Testnet Deploy (dev) — current (stress-test v3, leveraged-fix + Almanax fixes)
+# Testnet Deploy (dev) — current (stress-test v4, leveraged-fix + Almanax fixes)
 
-Fresh full deploy from the `leveraged-fix` line with all fixes from this work applied
-and verified on-chain:
-1. Controller `#[contractimpl]` fix (claim_self / claim_all / portfolio now exported —
-   verified callable here).
+Fresh full deploy from the `leveraged-fix` line with all fixes from this work applied.
+Fixes carried from v3 (still present):
+1. Controller `#[contractimpl]` fix (claim_self / claim_all / portfolio exported).
 2. `liquidate_position_v2` — `begin_margin_withdraw` bypass armed before each seize
-   (re-entry trap fixed) + per-vault price/rate/CF cached once instead of ~5 cross-
-   contract re-reads (CPU-budget overrun fixed). Verified: 50% close-factor repay + 8%
-   bonus seize, position stays Open.
-3. Almanax #3 — checked liquidation math in `liquidate_internal` (peridottroller) and
-   `liquidate_position_v2` (margin): overflow now traps instead of saturating.
-4. Almanax #5 — `set_market` rejects asset↔vault-underlying mismatch (verified: a
-   mismatched mapping reverts, correct mapping accepted).
+   (re-entry fix) + per-vault price/rate/CF cached once (CPU-budget fix).
+3. Almanax #3 — checked liquidation math (peridottroller + margin).
+4. Almanax #5 — `set_market` rejects asset↔vault-underlying mismatch.
 5. Almanax #4 — `token_balance` traps on negative balances.
-6. Almanax #6 — margin withdraw bypass validates scope before removing the entry.
+6. Almanax #6 — margin withdraw bypass validates scope before removing.
+
+New in v4 (this batch):
+7. Almanax 27add6c7 — `collect_margin_fee` carries a `MarginFeeRemainder` so sub-unit
+   fees accumulate instead of being dropped on `delta==0`.
+8. Almanax bf888b9c — `accrue_market` only advances Supply/BorrowIndexTime when
+   `delta>0` (or no suppliers/overflow), so rounding intervals fold forward instead of
+   being discarded (kills permissionless-claim emission griefing).
+9. Almanax 0c08187f — `sum_positions_usd` flags `collateral_indeterminate` for an
+   unpriced collateral-only market (pbal>0, cf>0, debt==0) so liquidation fails closed
+   instead of dropping that collateral and manufacturing a shortfall.
+   (Almanax 49aa8d8e "expired borrow state erases debt" was a FALSE POSITIVE: borrow
+   state is persistent, which archives on TTL expiry and forces restore — it never
+   silently reads as 0.)
+
+On-chain stress verification of this deployment (all PASS): deposit/borrow;
+`account_liquidity` exact (collateral 90M − debt 40M = 50M liquidity); reward claim
+accrued PERI on both supply (dev 2475) and borrow (borrower 195) sides via the reworked
+`accrue_market`; liquidation repaid 8M XLM (debt 40M→32M) and seized 25,920,000 USDT
+pTokens (8M × 1.08 bonus ÷ ⅓ price — exact); `set_market` accepted correct mappings and
+rejected the asset↔vault mismatch. `collect_margin_fee` (margin fee remainder) is
+covered by the 36 margin unit tests — a live margin open needs Aquarius liquidity for
+the mock token, which testnet lacks, so it was not exercised on-chain.
 
 XLM and Mock USDT both use a `[1,1]` fallback price on the controller. Vaults wired to
-the margin controller; margin controller registered as a liquidation controller. This
-deployment's Vault A is NOT boosted (no DeFindex forwarding) unless explicitly set.
+the margin controller; margin controller registered as a liquidation controller. Vault A
+is NOT boosted (no DeFindex forwarding) unless explicitly set.
 
 - Admin (dev): `GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ`
-- Controller (SimplePeridottroller): `CCZPTPSB64ZGOVHFZDMT7LJL5KJASITHC7KANNJW2C6SEJ356OVIHPZL`
-- JumpRateModel: `CDRFLTMLVNMYTYJVWNQ5KX3LQVS4RB5NMJKLWW466EVVYL7PLE6ZBJR5`
-- PERI Token: `CAOCR3UMETCPZP52X2MR7TIRWDTODQMABY4S7QNVQTKP5GX4PGRD3BLQ`
-- Mock USDT (open mint): `CAGZEAZZGTZRZKP34ESBHQLRZOM3Y3YUZRFAJKDOF5BLQ5GGLCM53SWS`
-- Vault A (XLM, non-boosted): `CBP3CPUJTNGEAPU4CDB346A4ZOZR3NDVPHAL7FVUNO3NNBBZZ47DNB5M`
-- Vault B (USDT): `CCSVBWIWJKHIMAJ5AQBEXPSWVLWNX3V33X24RWDMJFWPTDZIAEC6XFNR`
+- Controller (SimplePeridottroller): `CB5VERSVU273I37N6ROZQWP6JMHX3HGPXOJW2KGJLBNLRLORLE4UCQCC`
+- JumpRateModel: `CCBP5KFPYIM4YZ2RCB6UN2IG5FXFP4JUGCRN4TWHWGUYELP6OZN74UYH`
+- PERI Token: `CAVGNIPEPR4HUGYXKED4RCX2PSKRZBQWVSFWH5XE5KQTNWY5HHQMULLS`
+- Mock USDT (open mint): `CD5WCVRHMUP3VLYYW4UGMJJ2WGN6MFWYLFYLXDXWBLWR5QEDPKOARIQ6`
+- Vault A (XLM, non-boosted): `CD62XUGTHVR3DWFDLBFT6FOSGHEGYZIGD3GOBUYNH2FJBWXGKH5BEIQR`
+- Vault B (USDT): `CAOYPA2G4EEZ3FIP4T7SHKEFPKIDIPSFMOJ2AWQ5JFPVQY3TQVVTGFAD`
 - XLM native asset contract (TOKEN_A): `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
-- SwapAdapter: `CC46IJGPIMO3RYUA4QM5AM3STQJL7KNDJX5T6PV2G4SRPNX3LREATIQC`
-- MarginController (current): `CASOVXZFDQF3TQBJTU64NHT6DVBBALQCZGQJID4BNBL4ZPYBTACV5CHL`
+- SwapAdapter: `CDNORMOHG5ANATLKOT3KQKY74SMHBVZ6JBPRT2JXEWQJD7UTLP4MD53L`
+- MarginController (current): `CBOWU62EOI5GURA6J7YNZQODVBV5IBK7CDF3YJC7D3HTP52XVBHFXMFM`
 - Aquarius Router (swap adapter router): `CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK`
 - DeFindex XLM Vault (available boosted target): `CCLV4H7WTLJQ7ATLHBBQV2WW3OINF3FOY5XZ7VPHZO7NH3D2ZS4GFSF6`
-- Env file: `/tmp/peridot-stress-v2.env`
+- Test borrower identity: `GCR4RQVE5A6OJ73ZWTNSCPJMC5L3GB42NFFI664CF255F2R4PEA7C4LQ`
 
 ## Previous testnet deployments (superseded)
 
-Stress-test v2 core (`CCYGQBDS...`) had the same controller/vault fixes but pre-dates
-the Almanax checked-math/binding fixes; its margin controllers `CBQLN5IF...`,
-`CB4FJW5P...`, `CBERFOE7...` (and Vault C `CBA55N4N...`) are superseded by v3 above.
+Stress-test v3 core (`CCZPTPSB...`, margin `CASOVXZF...`, swap `CC46IJGP...`, vaults
+`CBP3CPUJ...`/`CCSVBWIW...`) had fixes 1–6 above but pre-dates the v4 Almanax fixes
+(7–9); superseded by v4.
+
+Stress-test v2 core (`CCYGQBDS...`) and its margin controllers `CBQLN5IF...`,
+`CB4FJW5P...`, `CBERFOE7...` (and Vault C `CBA55N4N...`) are superseded.
 
 ## Previous testnet deployments (superseded)
 
