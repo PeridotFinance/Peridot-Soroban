@@ -499,13 +499,17 @@ impl ReceiptVault {
         else {
             return false;
         };
-        env.storage().persistent().remove(&key);
+        // Validate scope BEFORE removing the entry. Removing first would let any
+        // mismatched caller (e.g. an approved spender doing transfer_from on the
+        // owner's pTokens) burn a still-valid bypass and grief the owner's margin
+        // flow. Only consume the one-shot bypass when it actually matches.
         if scope.ledger_sequence != env.ledger().sequence()
             || scope.recipient != *recipient
             || ptoken_amount > scope.max_ptokens
         {
             return false;
         }
+        env.storage().persistent().remove(&key);
         true
     }
 

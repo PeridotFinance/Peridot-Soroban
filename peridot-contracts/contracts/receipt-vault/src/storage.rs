@@ -376,7 +376,8 @@ pub fn token_balance(env: &Env, token: &Address, owner: &Address) -> i128 {
     use soroban_sdk::{InvokeError, Symbol, Val, Vec};
     let args: Vec<Val> = (owner.clone(),).into_val(env);
     let sym_balance = Symbol::new(env, "balance");
-    match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance, args.clone()) {
+    let result = match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance, args.clone())
+    {
         Ok(Ok(result)) => result,
         _ => {
             let sym_balance_of = Symbol::new(env, "balance_of");
@@ -385,7 +386,14 @@ pub fn token_balance(env: &Env, token: &Address, owner: &Address) -> i128 {
                 _ => panic!("balance lookup failed"),
             }
         }
+    };
+    // A compliant token never reports a negative balance. Reject it rather than
+    // letting it flow into live-cash accounting, where a non-standard or malicious
+    // underlying could distort liquidity checks and boosted-vault decisions.
+    if result < 0 {
+        panic!("negative token balance");
     }
+    result
 }
 
 pub fn to_i128(amount: u128) -> i128 {

@@ -2523,7 +2523,7 @@ impl SimplePeridottroller {
         if debt == 0 {
             panic!("no debt");
         }
-        let max_repay = (debt.saturating_mul(close_factor)) / 1_000_000u128;
+        let max_repay = debt.checked_mul(close_factor).expect("liq overflow") / 1_000_000u128;
         let mut repay = if repay_amount > max_repay {
             max_repay
         } else {
@@ -2546,9 +2546,13 @@ impl SimplePeridottroller {
         );
         let (pb, sb) = Self::require_price(env.clone(), borrow_token.clone());
         let (pc, sc) = Self::require_price(env.clone(), coll_token.clone());
-        let repay_usd = (repay.saturating_mul(pb)) / sb;
-        let seize_underlying_usd = (repay_usd.saturating_mul(li_scaled)) / 1_000_000u128;
-        let seize_underlying = (seize_underlying_usd.saturating_mul(sc)) / pc;
+        // Checked math throughout: on overflow these would otherwise saturate to
+        // u128::MAX, inflating seize_ptokens and (via the rescale below) letting a
+        // liquidator seize full collateral for a negligible repay. Fail closed instead.
+        let repay_usd = repay.checked_mul(pb).expect("liq overflow") / sb;
+        let seize_underlying_usd =
+            repay_usd.checked_mul(li_scaled).expect("liq overflow") / 1_000_000u128;
+        let seize_underlying = seize_underlying_usd.checked_mul(sc).expect("liq overflow") / pc;
         let rate: u128 = env.invoke_contract(
             &collateral_market,
             &Symbol::new(&env, "get_exchange_rate"),
@@ -2557,7 +2561,8 @@ impl SimplePeridottroller {
         if rate == 0 {
             panic!("invalid exchange rate");
         }
-        let mut seize_ptokens = (seize_underlying.saturating_mul(1_000_000u128)) / rate;
+        let mut seize_ptokens =
+            seize_underlying.checked_mul(1_000_000u128).expect("liq overflow") / rate;
 
         // Clamp to available collateral and proportionally scale repay down first,
         // so liquidators never pay for collateral that cannot be seized.
@@ -2578,7 +2583,7 @@ impl SimplePeridottroller {
         if seize_ptokens > seize_cap {
             // Scale repay down with ceil-div so tiny-but-nonzero collateral does
             // not round to zero and block liquidation.
-            let scaled = repay.saturating_mul(seize_cap);
+            let scaled = repay.checked_mul(seize_cap).expect("liq overflow");
             repay = if scaled == 0 {
                 0
             } else {
@@ -2589,13 +2594,13 @@ impl SimplePeridottroller {
             }
             seize_ptokens = seize_cap;
         }
-        let repay_usd = (repay.saturating_mul(pb)) / sb;
+        let repay_usd = repay.checked_mul(pb).expect("liq overflow") / sb;
         let liq_fee: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::LiquidationFeeScaled)
             .unwrap_or(0u128);
-        let mut fee_ptokens = (seize_ptokens.saturating_mul(liq_fee)) / 1_000_000u128;
+        let mut fee_ptokens = seize_ptokens.checked_mul(liq_fee).expect("liq overflow") / 1_000_000u128;
         let fee_recipient = if fee_ptokens > 0 {
             env.storage()
                 .persistent()

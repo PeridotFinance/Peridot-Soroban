@@ -1,39 +1,43 @@
-# Testnet Deploy (dev) — current (stress-test v2, leveraged-fix)
+# Testnet Deploy (dev) — current (stress-test v3, leveraged-fix + Almanax fixes)
 
-Deployed from the `leveraged-fix` line with two fixes applied and verified on-chain:
-1. Controller `#[contractimpl]` fix (claim_self / claim_all / portfolio now exported).
-2. `liquidate_position_v2` fix — arms the `begin_margin_withdraw` bypass before each
-   seize transfer (resolves the re-entry trap) and caches each collateral vault's
-   price/rate/CF once instead of ~5 cross-contract re-reads (resolves the CPU-budget
-   overrun). Leveraged liquidation now succeeds for both non-boosted and boosted
-   collateral (verified: 50% close-factor repay + 8% bonus seize, position stays Open).
+Fresh full deploy from the `leveraged-fix` line with all fixes from this work applied
+and verified on-chain:
+1. Controller `#[contractimpl]` fix (claim_self / claim_all / portfolio now exported —
+   verified callable here).
+2. `liquidate_position_v2` — `begin_margin_withdraw` bypass armed before each seize
+   (re-entry trap fixed) + per-vault price/rate/CF cached once instead of ~5 cross-
+   contract re-reads (CPU-budget overrun fixed). Verified: 50% close-factor repay + 8%
+   bonus seize, position stays Open.
+3. Almanax #3 — checked liquidation math in `liquidate_internal` (peridottroller) and
+   `liquidate_position_v2` (margin): overflow now traps instead of saturating.
+4. Almanax #5 — `set_market` rejects asset↔vault-underlying mismatch (verified: a
+   mismatched mapping reverts, correct mapping accepted).
+5. Almanax #4 — `token_balance` traps on negative balances.
+6. Almanax #6 — margin withdraw bypass validates scope before removing the entry.
 
-XLM and Mock USDT both use a `[1,1]` fallback price on the controller. Vaults wired
-to the (optimized) margin controller; margin controller registered as a liquidation
-controller. Vault C (token C) is an extra non-boosted market added for liquidation
-testing; its `set_peridottroller` is intentionally unset (the controller already has
-PERI wired, which makes the set_peridottroller smoke-test re-enter — not needed for
-margin borrow/repay).
+XLM and Mock USDT both use a `[1,1]` fallback price on the controller. Vaults wired to
+the margin controller; margin controller registered as a liquidation controller. This
+deployment's Vault A is NOT boosted (no DeFindex forwarding) unless explicitly set.
 
 - Admin (dev): `GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ`
-- Controller (SimplePeridottroller): `CCYGQBDST63V7DETAHTZXQWQXM7MUOCEUH5O5CLKLGEBEBCSLSOZEF2Y`
-- JumpRateModel: `CAX4SS3C3WZEWLUZ7TD52ZTNC5WVVADQWKB25JQOOVK4N6DOOIHW3HAZ`
-- PERI Token: `CDZ5GFKXJXFXALZV2U4IDCCBJPYPF45ZGLAIUKVX3YMACUDIV426AEIZ`
-- Mock USDT (open mint): `CBA2YE2L3COVPLERAVGBG674QTWOX2XHBPQ6XSPA7JS2YY6DDG73J7MB`
-- Vault A (XLM, boosted → DeFindex): `CBTS2HKJJVXLTF6IWP7UBOSNSO44UQ5X4NNVLNDVTF5M5QLFMQVRFBGE`
-- Vault B (USDT): `CB5TTE2R5KZMYGDQQTQY6GCV6SSX5N3TLAZRQUCD52WCZHT7G6DU2S5E`
-- Mock Token C (open mint): `CB5D2UIVYTM54U37SSHX2QATDLUSBUSBKVGJDATP2RIV44JLRH4B5RVI`
-- Vault C (token C, non-boosted): `CBA55N4ND5UECCSX3QS7DZQ5R64UDDG6K7YQDAVARK3W6AZ5UXQ5BE4U`
+- Controller (SimplePeridottroller): `CCZPTPSB64ZGOVHFZDMT7LJL5KJASITHC7KANNJW2C6SEJ356OVIHPZL`
+- JumpRateModel: `CDRFLTMLVNMYTYJVWNQ5KX3LQVS4RB5NMJKLWW466EVVYL7PLE6ZBJR5`
+- PERI Token: `CAOCR3UMETCPZP52X2MR7TIRWDTODQMABY4S7QNVQTKP5GX4PGRD3BLQ`
+- Mock USDT (open mint): `CAGZEAZZGTZRZKP34ESBHQLRZOM3Y3YUZRFAJKDOF5BLQ5GGLCM53SWS`
+- Vault A (XLM, non-boosted): `CBP3CPUJTNGEAPU4CDB346A4ZOZR3NDVPHAL7FVUNO3NNBBZZ47DNB5M`
+- Vault B (USDT): `CCSVBWIWJKHIMAJ5AQBEXPSWVLWNX3V33X24RWDMJFWPTDZIAEC6XFNR`
 - XLM native asset contract (TOKEN_A): `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
-- SwapAdapter: `CCIYQP3EUBXQYWJNMNUHI7LD35AEHXYNLMJCHZSEFTMDUOA4C5YHOZN5`
-- MarginController (optimized, current): `CBERFOE7AAYGZQXZHXQTWN65BP3CHE3LUP6HTKKM6QWDNDIGU5GJGBQH`
+- SwapAdapter: `CC46IJGPIMO3RYUA4QM5AM3STQJL7KNDJX5T6PV2G4SRPNX3LREATIQC`
+- MarginController (current): `CASOVXZFDQF3TQBJTU64NHT6DVBBALQCZGQJID4BNBL4ZPYBTACV5CHL`
 - Aquarius Router (swap adapter router): `CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK`
-- DeFindex XLM Vault (boosted target for Vault A): `CCLV4H7WTLJQ7ATLHBBQV2WW3OINF3FOY5XZ7VPHZO7NH3D2ZS4GFSF6`
+- DeFindex XLM Vault (available boosted target): `CCLV4H7WTLJQ7ATLHBBQV2WW3OINF3FOY5XZ7VPHZO7NH3D2ZS4GFSF6`
 - Env file: `/tmp/peridot-stress-v2.env`
 
-Superseded margin controllers on this core (re-wired away): `CBQLN5IF...` (re-entry
-+ budget bug), `CB4FJW5P...` (re-entry fixed, budget bug). Vaults now point at the
-optimized `CBERFOE7...`.
+## Previous testnet deployments (superseded)
+
+Stress-test v2 core (`CCYGQBDS...`) had the same controller/vault fixes but pre-dates
+the Almanax checked-math/binding fixes; its margin controllers `CBQLN5IF...`,
+`CB4FJW5P...`, `CBERFOE7...` (and Vault C `CBA55N4N...`) are superseded by v3 above.
 
 ## Previous testnet deployments (superseded)
 

@@ -68,6 +68,14 @@ impl MarginController {
     pub fn set_market(env: Env, admin: Address, asset: Address, vault: Address) {
         bump_core_ttl(&env);
         require_admin(&env, &admin);
+        // Bind the mapping to the vault's actual underlying. Pricing uses the
+        // user-supplied asset address while rates/borrows use the mapped vault;
+        // a mismatch would value positions against the wrong oracle asset and
+        // could enable undercollateralized borrows. Fail fast on misconfiguration.
+        let vault_underlying = ReceiptVaultClient::new(&env, &vault).get_underlying_token();
+        if vault_underlying != asset {
+            panic!("vault underlying mismatch");
+        }
         env.storage()
             .persistent()
             .set(&DataKey::Market(asset.clone()), &vault);
@@ -1026,7 +1034,9 @@ impl MarginController {
             collateral_value =
                 collateral_value.saturating_add(Self::ctx_discounted_value(ctx, *initial_ptokens));
         }
-        let debt_value = debt_amount.saturating_mul(debt_price.0) / debt_price.1;
+        // Checked math for the liquidation value/seize computation: saturating to
+        // u128::MAX on overflow could understate debt or over-inflate the seize.
+        let debt_value = debt_amount.checked_mul(debt_price.0).expect("liq overflow") / debt_price.1;
         if collateral_value >= debt_value {
             panic!("not liquidatable");
         }
@@ -1039,13 +1049,19 @@ impl MarginController {
         if raw_collateral_value == 0 {
             panic!("no collateral");
         }
-        let close_factor_repay =
-            debt_amount.saturating_mul(DEFAULT_MARGIN_CLOSE_FACTOR_SCALED) / SCALE_1E6;
+        let close_factor_repay = debt_amount
+            .checked_mul(DEFAULT_MARGIN_CLOSE_FACTOR_SCALED)
+            .expect("liq overflow")
+            / SCALE_1E6;
         let max_repay_by_close_factor = close_factor_repay.max(1).min(debt_amount);
-        let max_repay_value_by_collateral =
-            raw_collateral_value.saturating_mul(SCALE_1E6) / DEFAULT_MARGIN_LIQ_BONUS_SCALED;
-        let max_repay_by_collateral =
-            max_repay_value_by_collateral.saturating_mul(debt_price.1) / debt_price.0;
+        let max_repay_value_by_collateral = raw_collateral_value
+            .checked_mul(SCALE_1E6)
+            .expect("liq overflow")
+            / DEFAULT_MARGIN_LIQ_BONUS_SCALED;
+        let max_repay_by_collateral = max_repay_value_by_collateral
+            .checked_mul(debt_price.1)
+            .expect("liq overflow")
+            / debt_price.0;
         if max_repay_by_collateral == 0 {
             panic!("collateral too small");
         }
@@ -1059,12 +1075,14 @@ impl MarginController {
             panic!("repay failed");
         }
 
-        let repaid_value = repay_amount.saturating_mul(debt_price.0) / debt_price.1;
+        let repaid_value = repay_amount.checked_mul(debt_price.0).expect("liq overflow") / debt_price.1;
         if repaid_value == 0 {
             panic!("repay too small");
         }
-        let mut remaining_seize_value =
-            repaid_value.saturating_mul(DEFAULT_MARGIN_LIQ_BONUS_SCALED) / SCALE_1E6;
+        let mut remaining_seize_value = repaid_value
+            .checked_mul(DEFAULT_MARGIN_LIQ_BONUS_SCALED)
+            .expect("liq overflow")
+            / SCALE_1E6;
         let seize_ptokens = Self::ctx_ptokens_for_raw_value_ceil(
             &pos_ctx,
             position.collateral_ptokens,
@@ -1340,17 +1358,22 @@ impl MarginController {
     }
 
     /// Raw (undiscounted) USD value of pTokens using a cached context.
+    /// Checked math: overflow fails closed rather than saturating to u128::MAX,
+    /// which in the liquidation seize math could over-inflate the seized amount.
     fn ctx_raw_value(ctx: &VaultValCtx, ptokens: u128) -> u128 {
         if ptokens == 0 {
             return 0;
         }
-        let underlying = ptokens.saturating_mul(ctx.rate) / SCALE_1E6;
-        underlying.saturating_mul(ctx.price_num) / ctx.price_den
+        let underlying = ptokens.checked_mul(ctx.rate).expect("liq overflow") / SCALE_1E6;
+        underlying.checked_mul(ctx.price_num).expect("liq overflow") / ctx.price_den
     }
 
     /// Collateral-factor-discounted USD value of pTokens using a cached context.
     fn ctx_discounted_value(ctx: &VaultValCtx, ptokens: u128) -> u128 {
-        Self::ctx_raw_value(ctx, ptokens).saturating_mul(ctx.cf) / SCALE_1E6
+        Self::ctx_raw_value(ctx, ptokens)
+            .checked_mul(ctx.cf)
+            .expect("liq overflow")
+            / SCALE_1E6
     }
 
     /// pTokens needed to cover `target_raw_value`, rounded up, using a cached context.
@@ -1366,8 +1389,14 @@ impl MarginController {
         if target_raw_value >= available_value {
             return available_ptokens;
         }
-        let underlying = Self::ceil_div(target_raw_value.saturating_mul(ctx.price_den), ctx.price_num);
-        let ptokens = Self::ceil_div(underlying.saturating_mul(SCALE_1E6), ctx.rate);
+        let underlying = Self::ceil_div(
+            target_raw_value.checked_mul(ctx.price_den).expect("liq overflow"),
+            ctx.price_num,
+        );
+        let ptokens = Self::ceil_div(
+            underlying.checked_mul(SCALE_1E6).expect("liq overflow"),
+            ctx.rate,
+        );
         ptokens.min(available_ptokens).max(1)
     }
 
