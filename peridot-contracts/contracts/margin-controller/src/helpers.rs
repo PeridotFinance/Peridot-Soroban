@@ -390,7 +390,27 @@ pub fn collect_margin_fee(env: &Env, vault: &Address, fee_ptokens: u128) {
             .extend_ttl(&orphan_key, TTL_THRESHOLD, TTL_EXTEND_TO);
         return;
     }
-    let delta = fee_ptokens.saturating_mul(MARGIN_FEE_PRECISION) / total;
+    // Carry forward the sub-unit remainder from prior calls so that fees too small to
+    // move the index at the current pool size are not silently dropped (they stay
+    // deducted from user margin balances, so dropping them would strand pTokens in the
+    // controller and short LP fee revenue). The remainder accumulates in 1e18-scaled
+    // numerator units until it is large enough to bump the index by >= 1.
+    let remainder_key = DataKey::MarginFeeRemainder(vault.clone());
+    let remainder: u128 = env.storage().persistent().get(&remainder_key).unwrap_or(0);
+    let numerator = fee_ptokens
+        .checked_mul(MARGIN_FEE_PRECISION)
+        .and_then(|v| v.checked_add(remainder))
+        // Astronomically large fees only: distribute without the carried remainder rather
+        // than panic.
+        .unwrap_or_else(|| fee_ptokens.saturating_mul(MARGIN_FEE_PRECISION));
+    let delta = numerator / total;
+    let new_remainder = numerator % total;
+    env.storage()
+        .persistent()
+        .set(&remainder_key, &new_remainder);
+    env.storage()
+        .persistent()
+        .extend_ttl(&remainder_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     if delta == 0 {
         return;
     }

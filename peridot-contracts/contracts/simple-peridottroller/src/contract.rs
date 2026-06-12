@@ -3467,18 +3467,43 @@ impl SimplePeridottroller {
                             ().into_val(&env),
                         )
                     });
-                    if total_ptokens > 0 {
-                        let mut idx: u128 = env
-                            .storage()
+                    if total_ptokens == 0 {
+                        // No suppliers this interval; advance the clock so nothing accrues.
+                        env.storage()
                             .persistent()
-                            .get(&DataKey::SupplyIndex(market.clone()))
-                            .unwrap_or(INDEX_SCALE_1E18);
+                            .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+                        storage::bump_reward_market_ttl(&env, &market);
+                    } else {
                         let product = speed
                             .checked_mul(dt_s as u128)
                             .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
-                        let delta = match product {
-                            Some(total) => total / total_ptokens,
+                        match product {
+                            Some(total) => {
+                                let delta = total / total_ptokens;
+                                if delta > 0 {
+                                    let idx: u128 = env
+                                        .storage()
+                                        .persistent()
+                                        .get(&DataKey::SupplyIndex(market.clone()))
+                                        .unwrap_or(INDEX_SCALE_1E18)
+                                        .saturating_add(delta);
+                                    env.storage()
+                                        .persistent()
+                                        .set(&DataKey::SupplyIndex(market.clone()), &idx);
+                                    env.storage()
+                                        .persistent()
+                                        .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+                                    storage::bump_reward_market_ttl(&env, &market);
+                                }
+                                // delta == 0: the emission for this interval rounds below one
+                                // index unit. Leave SupplyIndexTime untouched so the elapsed
+                                // time folds into the next accrual instead of being discarded
+                                // (otherwise anyone can grief emissions by forcing tiny dt via
+                                // permissionless claim_all, FIND bf888b9c).
+                            }
                             None => {
+                                // Overflow: disable the speed and advance the clock. Accrual is
+                                // now off, so the stale dt cannot resume.
                                 env.storage()
                                     .persistent()
                                     .set(&DataKey::SupplySpeed(market.clone()), &0u128);
@@ -3486,19 +3511,13 @@ impl SimplePeridottroller {
                                     market: market.clone(),
                                 }
                                 .publish(&env);
-                                0u128
+                                env.storage()
+                                    .persistent()
+                                    .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+                                storage::bump_reward_market_ttl(&env, &market);
                             }
-                        };
-                        idx = idx.saturating_add(delta);
-                        env.storage()
-                            .persistent()
-                            .set(&DataKey::SupplyIndex(market.clone()), &idx);
-                        storage::bump_reward_market_ttl(&env, &market);
+                        }
                     }
-                    env.storage()
-                        .persistent()
-                        .set(&DataKey::SupplyIndexTime(market.clone()), &now);
-                    storage::bump_reward_market_ttl(&env, &market);
                 }
             } else {
                 env.storage()
@@ -3531,18 +3550,40 @@ impl SimplePeridottroller {
                             ().into_val(&env),
                         )
                     });
-                    if total_borrowed > 0 {
-                        let mut idx: u128 = env
-                            .storage()
+                    if total_borrowed == 0 {
+                        // No borrowers this interval; advance the clock so nothing accrues.
+                        env.storage()
                             .persistent()
-                            .get(&DataKey::BorrowIndex(market.clone()))
-                            .unwrap_or(INDEX_SCALE_1E18);
+                            .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+                        storage::bump_reward_market_ttl(&env, &market);
+                    } else {
                         let product = speed
                             .checked_mul(dt_b as u128)
                             .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
-                        let delta = match product {
-                            Some(total) => total / total_borrowed,
+                        match product {
+                            Some(total) => {
+                                let delta = total / total_borrowed;
+                                if delta > 0 {
+                                    let idx: u128 = env
+                                        .storage()
+                                        .persistent()
+                                        .get(&DataKey::BorrowIndex(market.clone()))
+                                        .unwrap_or(INDEX_SCALE_1E18)
+                                        .saturating_add(delta);
+                                    env.storage()
+                                        .persistent()
+                                        .set(&DataKey::BorrowIndex(market.clone()), &idx);
+                                    env.storage()
+                                        .persistent()
+                                        .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+                                    storage::bump_reward_market_ttl(&env, &market);
+                                }
+                                // delta == 0: rounds below one index unit. Leave
+                                // BorrowIndexTime untouched so the elapsed time folds into the
+                                // next accrual instead of being discarded (FIND bf888b9c).
+                            }
                             None => {
+                                // Overflow: disable the speed and advance the clock.
                                 env.storage()
                                     .persistent()
                                     .set(&DataKey::BorrowSpeed(market.clone()), &0u128);
@@ -3550,19 +3591,13 @@ impl SimplePeridottroller {
                                     market: market.clone(),
                                 }
                                 .publish(&env);
-                                0u128
+                                env.storage()
+                                    .persistent()
+                                    .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+                                storage::bump_reward_market_ttl(&env, &market);
                             }
-                        };
-                        idx = idx.saturating_add(delta);
-                        env.storage()
-                            .persistent()
-                            .set(&DataKey::BorrowIndex(market.clone()), &idx);
-                        storage::bump_reward_market_ttl(&env, &market);
+                        }
                     }
-                    env.storage()
-                        .persistent()
-                        .set(&DataKey::BorrowIndexTime(market.clone()), &now);
-                    storage::bump_reward_market_ttl(&env, &market);
                 }
             } else {
                 env.storage()

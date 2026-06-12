@@ -94,6 +94,7 @@ pub enum DataKey {
     UserMarginFeeAccrued(Address, Address), // (user, vault) -> claimable pTokens
     TotalMarginPtokens(Address), // vault -> total free-margin pTokens
     MarginFeeOrphan(Address), // vault -> fee pTokens with no LP recipients
+    MarginFeeRemainder(Address), // vault -> undistributed fee numerator (1e18-scaled) carried forward
 }
 
 #[contracttype]
