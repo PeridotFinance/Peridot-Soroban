@@ -577,7 +577,7 @@ impl SimplePeridottroller {
     pub fn set_close_factor(env: Env, close_factor_scaled: u128) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        if close_factor_scaled > MAX_CLOSE_FACTOR {
+        if close_factor_scaled < MIN_CLOSE_FACTOR || close_factor_scaled > MAX_CLOSE_FACTOR {
             panic!("invalid close factor");
         }
         let persistent = env.storage().persistent();

@@ -4,6 +4,9 @@ pub const MAX_USER_MARKETS: u32 = 8;
 pub const MAX_CLAIM_BATCH: u32 = 32;
 pub const MAX_ORACLE_MAX_AGE_MULTIPLIER: u64 = 10;
 pub const MIN_MARKET_CF: u128 = 10_000u128; // 1%
+                                            // Keep close-factor math viable for every non-dust debt amount:
+                                            // for debt >= 2, debt * 50% floors to at least 1 smallest debt unit.
+pub const MIN_CLOSE_FACTOR: u128 = 500_000u128; // 50%
 pub const MAX_CLOSE_FACTOR: u128 = 900_000u128; // 90%
 pub const MAX_LIQUIDATION_INCENTIVE: u128 = 1_200_000u128; // 120%
 pub const MAX_REWARD_SPEED_PER_SEC: u128 = 1_000_000_000_000u128;

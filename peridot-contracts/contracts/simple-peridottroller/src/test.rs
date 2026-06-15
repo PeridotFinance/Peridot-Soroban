@@ -2277,6 +2277,34 @@ fn test_repay_on_behalf_for_liquidator_caps_to_close_factor() {
 }
 
 #[test]
+#[should_panic(expected = "invalid close factor")]
+fn test_set_close_factor_rejects_below_viable_minimum() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    comp.set_close_factor(&(MIN_CLOSE_FACTOR - 1));
+}
+
+#[test]
+fn test_set_close_factor_accepts_viable_minimum() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+
+    comp.set_close_factor(&MIN_CLOSE_FACTOR);
+    assert_eq!(comp.get_close_factor_scaled(), MIN_CLOSE_FACTOR);
+}
+
+#[test]
 fn test_liquidation_capped_by_close_factor() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
