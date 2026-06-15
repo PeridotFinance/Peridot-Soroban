@@ -1332,8 +1332,10 @@ impl MarginController {
         }
         // Checked math for the liquidation value/seize computation: saturating to
         // u128::MAX on overflow could understate debt or over-inflate the seize.
-        let debt_value =
-            debt_amount.checked_mul(debt_price.0).expect("liq overflow") / debt_price.1;
+        let debt_value = Self::ceil_div(
+            debt_amount.checked_mul(debt_price.0).expect("liq overflow"),
+            debt_price.1,
+        );
         if collateral_value >= debt_value {
             panic!("not liquidatable");
         }
@@ -1343,27 +1345,36 @@ impl MarginController {
             raw_collateral_value =
                 raw_collateral_value.saturating_add(Self::ctx_raw_value(ctx, *initial_ptokens));
         }
-        if raw_collateral_value == 0 {
+        let has_collateral_ptokens = position.collateral_ptokens > 0
+            || initial_lock
+                .as_ref()
+                .map(|(_, ptokens)| *ptokens > 0)
+                .unwrap_or(false);
+        if !has_collateral_ptokens {
             panic!("no collateral");
         }
-        let close_factor_repay = debt_amount
+        let mut close_factor_repay = debt_amount
             .checked_mul(close_factor_scaled)
             .expect("liq overflow")
             / SCALE_1E6;
         if close_factor_repay == 0 {
-            panic!("repay too small");
+            // Dust debt must still be liquidatable under fractional close
+            // factors; otherwise a 1-unit debt is permanently stuck.
+            close_factor_repay = 1;
         }
         let max_repay_by_close_factor = close_factor_repay.min(debt_amount);
         let max_repay_value_by_collateral = raw_collateral_value
             .checked_mul(SCALE_1E6)
             .expect("liq overflow")
             / liquidation_incentive_scaled;
-        let max_repay_by_collateral = max_repay_value_by_collateral
+        let mut max_repay_by_collateral = max_repay_value_by_collateral
             .checked_mul(debt_price.1)
             .expect("liq overflow")
             / debt_price.0;
         if max_repay_by_collateral == 0 {
-            panic!("collateral too small");
+            // If there is any pToken collateral, allow a 1-unit repay and seize
+            // the dust collateral instead of making the position unliquidatable.
+            max_repay_by_collateral = 1;
         }
         let repay_amount = max_repay_by_close_factor
             .min(max_repay_by_collateral)
@@ -1375,10 +1386,12 @@ impl MarginController {
             panic!("repay failed");
         }
 
-        let repaid_value = repay_amount
-            .checked_mul(debt_price.0)
-            .expect("liq overflow")
-            / debt_price.1;
+        let repaid_value = Self::ceil_div(
+            repay_amount
+                .checked_mul(debt_price.0)
+                .expect("liq overflow"),
+            debt_price.1,
+        );
         if repaid_value == 0 {
             panic!("repay too small");
         }
@@ -1817,7 +1830,9 @@ impl MarginController {
         }
         let min_unit_value = Self::ctx_raw_value(ctx, 1);
         if min_unit_value > 0 && target_raw_value < min_unit_value {
-            return 0;
+            // Dust liquidation target: seize one smallest pToken unit rather
+            // than reverting and leaving an unhealthy position stuck forever.
+            return 1u128.min(available_ptokens);
         }
         let underlying = Self::ceil_div(
             target_raw_value

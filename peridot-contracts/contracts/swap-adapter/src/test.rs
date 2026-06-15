@@ -4,6 +4,14 @@ use soroban_sdk::testutils::Address as _;
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{contract, contractimpl, Env, IntoVal};
 
+fn assert_budget_under(env: &Env, max_cpu: u64, max_mem: u64) {
+    let budget = env.cost_estimate().budget();
+    let cpu = budget.cpu_instruction_cost();
+    let mem = budget.memory_bytes_cost();
+    assert!(cpu <= max_cpu, "cpu cost {cpu} exceeds {max_cpu}");
+    assert!(mem <= max_mem, "mem cost {mem} exceeds {max_mem}");
+}
+
 #[contract]
 struct MockSoroswapRouter;
 
@@ -380,6 +388,73 @@ fn test_bump_ttl() {
     let (env, adapter_id, _, _, _) = setup();
     let adapter = SwapAdapterClient::new(&env, &adapter_id);
     adapter.bump_ttl();
+}
+
+#[test]
+fn test_bump_ttl_does_not_iterate_large_route_lists() {
+    let (env, adapter_id, _, _, _) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let admin = default_admin(&env);
+
+    for i in 0..20u8 {
+        let pool = env.register(MockAquariusPool, ());
+        let pool_id = BytesN::from_array(&env, &[i.saturating_add(1); 32]);
+        adapter.set_pool_allowed(&admin, &pool, &true);
+        adapter.set_pool_binding(&admin, &pool_id, &pool, &true);
+    }
+
+    env.cost_estimate().budget().reset_unlimited();
+    adapter.bump_ttl();
+    assert_budget_under(&env, 1_500_000, 350_000);
+}
+
+#[test]
+fn test_bump_route_ttl_batch_paginates_route_entries() {
+    let (env, adapter_id, _, _, _) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let admin = default_admin(&env);
+
+    for i in 0..10u8 {
+        let pool = env.register(MockAquariusPool, ());
+        let pool_id = BytesN::from_array(&env, &[i.saturating_add(1); 32]);
+        adapter.set_pool_allowed(&admin, &pool, &true);
+        adapter.set_pool_binding(&admin, &pool_id, &pool, &true);
+    }
+
+    let next = adapter.bump_route_ttl_batch(&0u32, &0u32, &4u32);
+    assert_eq!(next, (4u32, 4u32));
+    let next = adapter.bump_route_ttl_batch(&next.0, &next.1, &4u32);
+    assert_eq!(next, (8u32, 8u32));
+    let next = adapter.bump_route_ttl_batch(&next.0, &next.1, &4u32);
+    assert_eq!(next, (10u32, 10u32));
+}
+
+#[test]
+#[should_panic(expected = "too many pools")]
+fn test_set_pool_allowed_rejects_pool_list_over_cap() {
+    let (env, adapter_id, _, _, _) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let admin = default_admin(&env);
+
+    for _ in 0..=MAX_ALLOWED_POOLS {
+        let pool = env.register(MockAquariusPool, ());
+        adapter.set_pool_allowed(&admin, &pool, &true);
+    }
+}
+
+#[test]
+#[should_panic(expected = "too many pool bindings")]
+fn test_set_pool_binding_rejects_binding_list_over_cap() {
+    let (env, adapter_id, _, _, _) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let admin = default_admin(&env);
+
+    for i in 0..=MAX_ALLOWED_POOL_BINDINGS {
+        let pool = env.register(MockAquariusPool, ());
+        let byte = (i as u8).wrapping_add(1);
+        let pool_id = BytesN::from_array(&env, &[byte; 32]);
+        adapter.set_pool_binding(&admin, &pool_id, &pool, &true);
+    }
 }
 
 #[test]

@@ -1511,6 +1511,58 @@ fn test_liquidate_position_v2_bad_debt_absorb_budget_short_min() {
 }
 
 #[test]
+fn test_liquidate_position_v2_dust_debt_uses_one_unit_repay_floor() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+    let liquidator = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &1u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &1u128);
+    let position_id =
+        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &1u128, &1u128, &1u128);
+
+    // With a 50% close factor, 1 * 0.5 floors to zero unless the liquidation
+    // path explicitly floors the repay to one smallest debt unit.
+    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
+    controller.liquidate_position_v2(&liquidator, &position_id);
+
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
+    assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
+}
+
+#[test]
+fn test_liquidate_position_v2_dust_seize_uses_one_ptoken_floor() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+    let liquidator = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &1u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &1u128);
+    let position_id =
+        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &1u128, &1u128, &1u128);
+
+    // The liquidation target is 1 raw-value unit, but one collateral pToken is
+    // worth 2 raw units. The old min-unit guard returned zero seized pTokens.
+    peridottroller.set_price(&usdt_id, &2_000_000u128, &1_000_000u128);
+    peridottroller.set_market_cf(&usdt_vault_id, &100_000u128);
+    controller.liquidate_position_v2(&liquidator, &position_id);
+
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
+    assert_eq!(pos.collateral_ptokens, 0u128);
+    assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
+}
+
+#[test]
 fn test_liquidate_position_v2_accrues_margin_debt_before_repay() {
     let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
         setup_short_min();

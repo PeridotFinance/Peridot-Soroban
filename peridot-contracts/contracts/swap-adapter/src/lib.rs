@@ -3,6 +3,9 @@ use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, St
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 pub const MAX_DEADLINE_SECONDS: u64 = 86_400; // 24h
+pub const MAX_ALLOWED_POOLS: u32 = 64;
+pub const MAX_ALLOWED_POOL_BINDINGS: u32 = 128;
+pub const MAX_ROUTE_TTL_BUMP_PER_CALL: u32 = 16;
 
 #[soroban_sdk::contractclient(name = "SoroswapRouterClient")]
 pub trait SoroswapRouter {
@@ -265,7 +268,24 @@ impl SwapAdapter {
 
     pub fn bump_ttl(env: Env) {
         bump_critical_ttl(&env);
-        bump_all_route_ttl(&env);
+        bump_route_list_ttl(&env);
+    }
+
+    pub fn bump_route_ttl_batch(
+        env: Env,
+        pools_start: u32,
+        bindings_start: u32,
+        limit: u32,
+    ) -> (u32, u32) {
+        bump_critical_ttl(&env);
+        let bounded_limit = if limit == 0 || limit > MAX_ROUTE_TTL_BUMP_PER_CALL {
+            MAX_ROUTE_TTL_BUMP_PER_CALL
+        } else {
+            limit
+        };
+        let next_pools = bump_pool_route_ttl_range(&env, pools_start, bounded_limit);
+        let next_bindings = bump_binding_route_ttl_range(&env, bindings_start, bounded_limit);
+        (next_pools, next_bindings)
     }
 
     pub fn propose_upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
@@ -384,6 +404,9 @@ fn add_allowed_pool_to_list(env: &Env, pool: &Address) {
         }
     }
     pools.push_back(pool.clone());
+    if pools.len() > MAX_ALLOWED_POOLS {
+        panic!("too many pools");
+    }
     env.storage().persistent().set(&key, &pools);
     env.storage()
         .persistent()
@@ -425,6 +448,9 @@ fn add_allowed_binding_to_list(env: &Env, pool_id: &BytesN<32>, pool: &Address) 
         }
     }
     bindings.push_back((pool_id.clone(), pool.clone()));
+    if bindings.len() > MAX_ALLOWED_POOL_BINDINGS {
+        panic!("too many pool bindings");
+    }
     env.storage().persistent().set(&key, &bindings);
     env.storage()
         .persistent()
@@ -450,26 +476,60 @@ fn remove_allowed_binding_from_list(env: &Env, pool_id: &BytesN<32>, pool: &Addr
         .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
 }
 
-fn bump_all_route_ttl(env: &Env) {
+fn bump_route_list_ttl(env: &Env) {
     let persistent = env.storage().persistent();
     let pool_list_key = DataKey::AllowedPoolsList;
     if persistent.has(&pool_list_key) {
         persistent.extend_ttl(&pool_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    let pools: Vec<Address> = persistent.get(&pool_list_key).unwrap_or(Vec::new(env));
-    for pool in pools.iter() {
-        bump_pool_ttl(env, &pool);
     }
 
     let binding_list_key = DataKey::AllowedPoolBindingsList;
     if persistent.has(&binding_list_key) {
         persistent.extend_ttl(&binding_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+}
+
+fn bump_pool_route_ttl_range(env: &Env, start: u32, limit: u32) -> u32 {
+    let persistent = env.storage().persistent();
+    let pool_list_key = DataKey::AllowedPoolsList;
+    if persistent.has(&pool_list_key) {
+        persistent.extend_ttl(&pool_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let pools: Vec<Address> = persistent.get(&pool_list_key).unwrap_or(Vec::new(env));
+    let len = pools.len();
+    if start >= len {
+        return len;
+    }
+    let end = start.saturating_add(limit).min(len);
+    let mut i = start;
+    while i < end {
+        let pool = pools.get(i).expect("pool missing");
+        bump_pool_ttl(env, &pool);
+        i += 1;
+    }
+    end
+}
+
+fn bump_binding_route_ttl_range(env: &Env, start: u32, limit: u32) -> u32 {
+    let persistent = env.storage().persistent();
+    let binding_list_key = DataKey::AllowedPoolBindingsList;
+    if persistent.has(&binding_list_key) {
+        persistent.extend_ttl(&binding_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     let bindings: Vec<(BytesN<32>, Address)> =
         persistent.get(&binding_list_key).unwrap_or(Vec::new(env));
-    for (pool_id, pool) in bindings.iter() {
-        bump_pool_binding_ttl(env, &pool_id, &pool);
+    let len = bindings.len();
+    if start >= len {
+        return len;
     }
+    let end = start.saturating_add(limit).min(len);
+    let mut i = start;
+    while i < end {
+        let (pool_id, pool) = bindings.get(i).expect("binding missing");
+        bump_pool_binding_ttl(env, &pool_id, &pool);
+        i += 1;
+    }
+    end
 }
 
 fn bump_pool_ttl(env: &Env, pool: &Address) {
