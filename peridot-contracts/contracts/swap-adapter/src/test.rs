@@ -421,12 +421,22 @@ fn test_bump_route_ttl_batch_paginates_route_entries() {
         adapter.set_pool_binding(&admin, &pool_id, &pool, &true);
     }
 
-    let next = adapter.bump_route_ttl_batch(&0u32, &0u32, &4u32);
+    let next = adapter.bump_route_ttl_batch(&admin, &0u32, &0u32, &4u32);
     assert_eq!(next, (4u32, 4u32));
-    let next = adapter.bump_route_ttl_batch(&next.0, &next.1, &4u32);
+    let next = adapter.bump_route_ttl_batch(&admin, &next.0, &next.1, &4u32);
     assert_eq!(next, (8u32, 8u32));
-    let next = adapter.bump_route_ttl_batch(&next.0, &next.1, &4u32);
+    let next = adapter.bump_route_ttl_batch(&admin, &next.0, &next.1, &4u32);
     assert_eq!(next, (10u32, 10u32));
+}
+
+#[test]
+#[should_panic(expected = "not admin")]
+fn test_bump_route_ttl_batch_requires_admin() {
+    let (env, adapter_id, _, _, _) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let non_admin = Address::generate(&env);
+
+    adapter.bump_route_ttl_batch(&non_admin, &0u32, &0u32, &4u32);
 }
 
 #[test]

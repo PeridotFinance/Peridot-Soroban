@@ -1332,10 +1332,11 @@ impl MarginController {
         }
         // Checked math for the liquidation value/seize computation: saturating to
         // u128::MAX on overflow could understate debt or over-inflate the seize.
-        let debt_value = Self::ceil_div(
-            debt_amount.checked_mul(debt_price.0).expect("liq overflow"),
-            debt_price.1,
-        );
+        // Liquidatability gate is borrower-safe: collateral and debt values
+        // both floor their final division. Ceil is reserved for post-gate
+        // repay/seize sizing where dust conservatism is intentional.
+        let debt_value =
+            debt_amount.checked_mul(debt_price.0).expect("liq overflow") / debt_price.1;
         if collateral_value >= debt_value {
             panic!("not liquidatable");
         }
@@ -1358,9 +1359,13 @@ impl MarginController {
             .expect("liq overflow")
             / SCALE_1E6;
         if close_factor_repay == 0 {
-            // Dust debt must still be liquidatable under fractional close
-            // factors; otherwise a 1-unit debt is permanently stuck.
-            close_factor_repay = 1;
+            if debt_amount <= 1 {
+                // True dust debt must still be liquidatable under fractional
+                // close factors; otherwise a 1-unit debt is permanently stuck.
+                close_factor_repay = 1;
+            } else {
+                panic!("repay too small");
+            }
         }
         let max_repay_by_close_factor = close_factor_repay.min(debt_amount);
         let max_repay_value_by_collateral = raw_collateral_value

@@ -273,11 +273,13 @@ impl SwapAdapter {
 
     pub fn bump_route_ttl_batch(
         env: Env,
+        admin: Address,
         pools_start: u32,
         bindings_start: u32,
         limit: u32,
     ) -> (u32, u32) {
         bump_critical_ttl(&env);
+        require_admin(&env, &admin);
         let bounded_limit = if limit == 0 || limit > MAX_ROUTE_TTL_BUMP_PER_CALL {
             MAX_ROUTE_TTL_BUMP_PER_CALL
         } else {

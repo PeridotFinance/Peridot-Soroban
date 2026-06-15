@@ -34,6 +34,7 @@ enum MockPeridottrollerKey {
     MarketCF(Address),
     BorrowPaused(Address),
     LiquidationPaused(Address),
+    CloseFactor,
     Liquidity(Address),
     Shortfall(Address),
     LastBorrower,
@@ -372,8 +373,11 @@ impl MockPeridottroller {
             .unwrap_or(false)
     }
 
-    pub fn get_close_factor_scaled(_env: Env) -> u128 {
-        500_000u128
+    pub fn get_close_factor_scaled(env: Env) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::CloseFactor)
+            .unwrap_or(500_000u128)
     }
 
     pub fn get_liquidation_incentive_scaled(_env: Env) -> u128 {
@@ -421,6 +425,12 @@ impl MockPeridottroller {
         env.storage()
             .persistent()
             .set(&MockPeridottrollerKey::LiquidationPaused(market), &paused);
+    }
+
+    pub fn set_close_factor_scaled(env: Env, close_factor: u128) {
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::CloseFactor, &close_factor);
     }
 
     pub fn set_liquidate_repay_bps(env: Env, bps: u128) {
@@ -1536,6 +1546,26 @@ fn test_liquidate_position_v2_dust_debt_uses_one_unit_repay_floor() {
 }
 
 #[test]
+#[should_panic(expected = "repay too small")]
+fn test_liquidate_position_v2_repay_floor_only_applies_to_one_unit_dust() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let liquidator = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &3u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &3u128);
+    let position_id =
+        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &3u128, &2u128, &1u128);
+
+    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
+    peridottroller.set_close_factor_scaled(&1u128);
+    controller.liquidate_position_v2(&liquidator, &position_id);
+}
+
+#[test]
 fn test_liquidate_position_v2_dust_seize_uses_one_ptoken_floor() {
     let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
         setup_short_min();
@@ -1560,6 +1590,28 @@ fn test_liquidate_position_v2_dust_seize_uses_one_ptoken_floor() {
     assert_eq!(pos.status, PositionStatus::Liquidated);
     assert_eq!(pos.collateral_ptokens, 0u128);
     assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
+}
+
+#[test]
+#[should_panic(expected = "not liquidatable")]
+fn test_liquidate_position_v2_floor_rounds_solvent_dust_gate_borrower_safe() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let liquidator = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &1u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &1u128);
+    let position_id =
+        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &1u128, &1u128, &1u128);
+
+    // Exact values are both 0.5 USD, so this is solvent. Floor-vs-floor keeps
+    // both sides at 0; a ceil-rounded debt gate would incorrectly liquidate.
+    peridottroller.set_price(&usdt_id, &500_000u128, &1_000_000u128);
+    peridottroller.set_price(&xlm_id, &500_000u128, &1_000_000u128);
+    controller.liquidate_position_v2(&liquidator, &position_id);
 }
 
 #[test]
