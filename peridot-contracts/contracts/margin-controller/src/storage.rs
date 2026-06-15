@@ -14,6 +14,8 @@ pub trait ReceiptVaultContract {
     fn init_margin_borrow_state(env: Env, position_id: u64);
     fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128);
     fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128);
+    fn repay_full_for_margin(env: Env, position_id: u64, payer: Address, max_amount: u128) -> u128;
+    fn absorb_margin_bad_debt(env: Env, position_id: u64) -> u128;
     fn update_interest(env: Env);
     fn get_underlying_token(env: Env) -> Address;
     fn get_exchange_rate(env: Env) -> u128;
@@ -28,7 +30,14 @@ pub trait PeridottrollerContract {
     fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)>;
     fn cache_price(env: Env, token: Address) -> Option<(u128, u128)>;
     fn enter_market(env: Env, user: Address, market: Address);
+    fn is_market_supported(env: Env, market: Address) -> bool;
+    fn is_borrow_paused(env: Env, market: Address) -> bool;
+    fn is_liquidation_paused(env: Env, market: Address) -> bool;
     fn get_market_cf(env: Env, market: Address) -> u128;
+    fn get_close_factor_scaled(env: Env) -> u128;
+    fn get_liquidation_incentive_scaled(env: Env) -> u128;
+    fn get_liquidation_fee_scaled(env: Env) -> u128;
+    fn get_reserve_recipient(env: Env) -> Option<Address>;
     fn liquidate(
         env: Env,
         borrower: Address,
@@ -95,6 +104,10 @@ pub enum DataKey {
     TotalMarginPtokens(Address), // vault -> total free-margin pTokens
     MarginFeeOrphan(Address), // vault -> fee pTokens with no LP recipients
     MarginFeeRemainder(Address), // vault -> undistributed fee numerator (1e18-scaled) carried forward
+    PendingPeridottroller,
+    PendingPeridottrollerEta,
+    PendingSwapAdapter,
+    PendingSwapAdapterEta,
 }
 
 #[contracttype]

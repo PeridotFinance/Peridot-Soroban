@@ -1347,6 +1347,123 @@ fn test_margin_borrow_repay_happy_path() {
 }
 
 #[test]
+fn test_repay_full_for_margin_overpay_refunds_and_clears_debt() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&lender, &1_000i128);
+    token_admin_client.mint(&user, &20i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&lender, &500u128);
+
+    let margin_ctrl_id = env.register(MockMarginPositionController, ());
+    let margin_ctrl = MockMarginPositionControllerClient::new(&env, &margin_ctrl_id);
+    vault.set_margin_controller(&admin, &Some(margin_ctrl_id.clone()));
+
+    let position_id = 17u64;
+    margin_ctrl.set_position(&position_id, &user, &vault_id);
+    vault.init_margin_borrow_state(&position_id);
+    vault.borrow_for_margin(&position_id, &user, &100u128);
+    assert_eq!(token_client.balance(&user), 120i128);
+
+    env.cost_estimate().budget().reset_unlimited();
+    let repaid = vault.repay_full_for_margin(&position_id, &user, &120u128);
+    assert_budget_under(&env, 5_000_000, 950_000);
+
+    assert_eq!(repaid, 100u128);
+    assert_eq!(vault.get_margin_borrow_balance(&position_id), 0u128);
+    assert_eq!(vault.get_total_borrowed(), 0u128);
+    assert_eq!(token_client.balance(&user), 20i128);
+}
+
+#[test]
+fn test_absorb_margin_bad_debt_uses_reserves_and_records_remainder() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&lender, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&lender, &500u128);
+
+    let margin_ctrl_id = env.register(MockMarginPositionController, ());
+    let margin_ctrl = MockMarginPositionControllerClient::new(&env, &margin_ctrl_id);
+    vault.set_margin_controller(&admin, &Some(margin_ctrl_id.clone()));
+
+    let position_id = 18u64;
+    margin_ctrl.set_position(&position_id, &user, &vault_id);
+    vault.init_margin_borrow_state(&position_id);
+    vault.borrow_for_margin(&position_id, &user, &100u128);
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .set(&DataKey::TotalReserves, &40u128);
+    });
+
+    env.cost_estimate().budget().reset_unlimited();
+    let absorbed = vault.absorb_margin_bad_debt(&position_id);
+    assert_budget_under(&env, 4_500_000, 900_000);
+
+    assert_eq!(absorbed, 100u128);
+    assert_eq!(vault.get_margin_borrow_balance(&position_id), 0u128);
+    assert_eq!(vault.get_total_borrowed(), 0u128);
+    assert_eq!(vault.get_total_reserves(), 0u128);
+    assert_eq!(vault.get_total_bad_debt(), 60u128);
+}
+
+#[test]
+#[should_panic(expected = "borrow paused")]
+fn test_borrow_for_margin_respects_peridottroller_pause() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&lender, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&lender, &500u128);
+
+    let comp = setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        500_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+    comp.set_pause_borrow(&vault_id, &true);
+
+    let margin_ctrl_id = env.register(MockMarginPositionController, ());
+    vault.set_margin_controller(&admin, &Some(margin_ctrl_id.clone()));
+
+    let position_id = 7u64;
+    vault.init_margin_borrow_state(&position_id);
+    vault.borrow_for_margin(&position_id, &user, &100u128);
+}
+
+#[test]
 fn test_recover_margin_borrow_snapshot_restores_missing_state() {
     let env = Env::default();
     env.mock_all_auths();

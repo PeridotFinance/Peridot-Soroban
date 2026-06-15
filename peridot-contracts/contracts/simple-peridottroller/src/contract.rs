@@ -232,6 +232,16 @@ impl SimplePeridottroller {
         }
     }
 
+    pub fn is_market_supported(env: Env, market: Address) -> bool {
+        bump_core_ttl(&env);
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        markets.get(market).unwrap_or(false)
+    }
+
     fn is_margin_liquidation_controller_allowed(env: &Env, controller: &Address) -> bool {
         storage::bump_margin_liquidation_controllers_ttl(env);
         let controllers: Map<Address, bool> = env
@@ -321,6 +331,30 @@ impl SimplePeridottroller {
         .publish(env);
     }
 
+    fn clear_all_price_caches(env: &Env) {
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(env));
+        let keys = markets.keys();
+        for i in 0..keys.len() {
+            let market = keys.get(i).unwrap();
+            if !markets.get(market.clone()).unwrap_or(false) {
+                continue;
+            }
+            if let Some(token) = env
+                .storage()
+                .persistent()
+                .get::<_, Address>(&DataKey::MarketUnderlying(market))
+            {
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::PriceCache(token));
+            }
+        }
+    }
+
     pub fn initialize(env: Env, admin: Address) {
         bump_core_ttl(&env);
         if env.storage().instance().has(&DataKey::Initialized) {
@@ -389,6 +423,7 @@ impl SimplePeridottroller {
         if current.is_none() {
             persistent.remove(&DataKey::PendingOracle);
             persistent.remove(&DataKey::PendingOracleEta);
+            Self::clear_all_price_caches(&env);
             persistent.set(&DataKey::Oracle, &oracle);
             OracleUpdated {
                 oracle: oracle.clone(),
@@ -399,6 +434,7 @@ impl SimplePeridottroller {
 
         let delay = Self::admin_param_change_delay_secs();
         if delay == 0 {
+            Self::clear_all_price_caches(&env);
             persistent.set(&DataKey::Oracle, &oracle);
             OracleUpdated {
                 oracle: oracle.clone(),
@@ -431,6 +467,7 @@ impl SimplePeridottroller {
             }
             persistent.remove(&DataKey::PendingOracle);
             persistent.remove(&DataKey::PendingOracleEta);
+            Self::clear_all_price_caches(&env);
             persistent.set(&DataKey::Oracle, &oracle);
             OracleUpdated {
                 oracle: oracle.clone(),
@@ -802,6 +839,37 @@ impl SimplePeridottroller {
         .publish(&env);
     }
 
+    pub fn get_close_factor_scaled(env: Env) -> u128 {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::CloseFactorScaled)
+            .unwrap_or(500_000u128)
+    }
+
+    pub fn get_liquidation_incentive_scaled(env: Env) -> u128 {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::LiquidationIncentiveScaled)
+            .unwrap_or(1_080_000u128)
+    }
+
+    pub fn get_liquidation_fee_scaled(env: Env) -> u128 {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::LiquidationFeeScaled)
+            .unwrap_or(0u128)
+    }
+
+    pub fn get_reserve_recipient(env: Env) -> Option<Address> {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::ReserveRecipient)
+    }
+
     pub fn set_oracle_max_age_multiplier(env: Env, k: u64) {
         bump_core_ttl(&env);
         require_admin(env.clone());
@@ -827,6 +895,9 @@ impl SimplePeridottroller {
                 .persistent()
                 .remove(&DataKey::OracleAssetSymbol(token.clone())),
         }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PriceCache(token.clone()));
         OracleAssetSymbolMapped { token, symbol }.publish(&env);
     }
 
@@ -846,6 +917,9 @@ impl SimplePeridottroller {
                     &DataKey::FallbackPriceSetAt(token.clone()),
                     &env.ledger().timestamp(),
                 );
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::PriceCache(token.clone()));
                 FallbackPriceUpdated {
                     token,
                     price: Some(p),
@@ -860,6 +934,9 @@ impl SimplePeridottroller {
                 env.storage()
                     .persistent()
                     .remove(&DataKey::FallbackPriceSetAt(token.clone()));
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::PriceCache(token.clone()));
                 FallbackPriceUpdated {
                     token,
                     price: None,
@@ -2561,8 +2638,10 @@ impl SimplePeridottroller {
         if rate == 0 {
             panic!("invalid exchange rate");
         }
-        let mut seize_ptokens =
-            seize_underlying.checked_mul(1_000_000u128).expect("liq overflow") / rate;
+        let mut seize_ptokens = seize_underlying
+            .checked_mul(1_000_000u128)
+            .expect("liq overflow")
+            / rate;
 
         // Clamp to available collateral and proportionally scale repay down first,
         // so liquidators never pay for collateral that cannot be seized.
@@ -2600,7 +2679,8 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::LiquidationFeeScaled)
             .unwrap_or(0u128);
-        let mut fee_ptokens = seize_ptokens.checked_mul(liq_fee).expect("liq overflow") / 1_000_000u128;
+        let mut fee_ptokens =
+            seize_ptokens.checked_mul(liq_fee).expect("liq overflow") / 1_000_000u128;
         let fee_recipient = if fee_ptokens > 0 {
             env.storage()
                 .persistent()
@@ -3307,6 +3387,9 @@ impl SimplePeridottroller {
                     .get(&DataKey::OracleMaxAgeMultiplier)
                     .unwrap_or(2u64);
                 let max_age = res.saturating_mul(k);
+                if pd.timestamp > now {
+                    return None;
+                }
                 if pd.timestamp + max_age < now {
                     return None;
                 }
@@ -3424,6 +3507,9 @@ impl SimplePeridottroller {
 
     fn cached_price_fresh(env: &Env, cached_timestamp: u64, cached_resolution: u32) -> bool {
         let now = env.ledger().timestamp();
+        if cached_timestamp > now {
+            return false;
+        }
         let k: u64 = env
             .storage()
             .persistent()

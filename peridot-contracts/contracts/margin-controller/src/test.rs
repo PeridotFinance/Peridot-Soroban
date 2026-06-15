@@ -32,6 +32,8 @@ enum MockPeridottrollerKey {
     CachePriceShouldPanic,
     AccountLiquidityShouldPanic,
     MarketCF(Address),
+    BorrowPaused(Address),
+    LiquidationPaused(Address),
     Liquidity(Address),
     Shortfall(Address),
     LastBorrower,
@@ -352,8 +354,38 @@ impl MockPeridottroller {
             .unwrap_or(false)
     }
 
-    pub fn is_borrow_paused(_env: Env, _market: Address) -> bool {
-        false
+    pub fn is_borrow_paused(env: Env, market: Address) -> bool {
+        env.storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::BorrowPaused(market))
+            .unwrap_or(false)
+    }
+
+    pub fn is_market_supported(_env: Env, _market: Address) -> bool {
+        true
+    }
+
+    pub fn is_liquidation_paused(env: Env, market: Address) -> bool {
+        env.storage()
+            .persistent()
+            .get(&MockPeridottrollerKey::LiquidationPaused(market))
+            .unwrap_or(false)
+    }
+
+    pub fn get_close_factor_scaled(_env: Env) -> u128 {
+        500_000u128
+    }
+
+    pub fn get_liquidation_incentive_scaled(_env: Env) -> u128 {
+        1_080_000u128
+    }
+
+    pub fn get_liquidation_fee_scaled(_env: Env) -> u128 {
+        0u128
+    }
+
+    pub fn get_reserve_recipient(_env: Env) -> Option<Address> {
+        None
     }
 
     pub fn track_borrow_market(_env: Env, _user: Address, _market: Address) {}
@@ -377,6 +409,18 @@ impl MockPeridottroller {
         env.storage()
             .persistent()
             .set(&MockPeridottrollerKey::MarketCF(market), &cf);
+    }
+
+    pub fn set_borrow_paused(env: Env, market: Address, paused: bool) {
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::BorrowPaused(market), &paused);
+    }
+
+    pub fn set_liquidation_paused(env: Env, market: Address, paused: bool) {
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::LiquidationPaused(market), &paused);
     }
 
     pub fn set_liquidate_repay_bps(env: Env, bps: u128) {
@@ -650,6 +694,28 @@ impl MockVault {
             .set(&key, &current.saturating_sub(amount.min(current)));
     }
 
+    pub fn repay_full_for_margin(
+        env: Env,
+        position_id: u64,
+        _payer: Address,
+        max_amount: u128,
+    ) -> u128 {
+        let key = MockVaultKey::MarginBorrow(position_id);
+        let current: u128 = env.storage().persistent().get(&key).unwrap_or(0);
+        if max_amount < current {
+            panic!("max repay too small");
+        }
+        env.storage().persistent().set(&key, &0u128);
+        current
+    }
+
+    pub fn absorb_margin_bad_debt(env: Env, position_id: u64) -> u128 {
+        let key = MockVaultKey::MarginBorrow(position_id);
+        let current: u128 = env.storage().persistent().get(&key).unwrap_or(0);
+        env.storage().persistent().set(&key, &0u128);
+        current
+    }
+
     pub fn get_margin_borrow_balance(env: Env, position_id: u64) -> u128 {
         env.storage()
             .persistent()
@@ -709,8 +775,8 @@ fn setup_min() -> (Env, Address, Address, Address, Address) {
     let xlm_id = env.register(MockToken, ());
     let usdt = MockTokenClient::new(&env, &usdt_id);
     let xlm = MockTokenClient::new(&env, &xlm_id);
-    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &6u32);
-    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &6u32);
+    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &7u32);
+    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &7u32);
 
     let usdt_vault_id = env.register(ReceiptVault, ());
     let xlm_vault_id = env.register(ReceiptVault, ());
@@ -775,8 +841,8 @@ fn setup_min_with_vaults() -> (
     let xlm_id = env.register(MockToken, ());
     let usdt = MockTokenClient::new(&env, &usdt_id);
     let xlm = MockTokenClient::new(&env, &xlm_id);
-    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &6u32);
-    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &6u32);
+    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &7u32);
+    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &7u32);
 
     let usdt_vault_id = env.register(ReceiptVault, ());
     let xlm_vault_id = env.register(ReceiptVault, ());
@@ -848,8 +914,8 @@ fn setup_short_min() -> (
     let xlm_id = env.register(MockToken, ());
     let usdt = MockTokenClient::new(&env, &usdt_id);
     let xlm = MockTokenClient::new(&env, &xlm_id);
-    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &6u32);
-    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &6u32);
+    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &7u32);
+    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &7u32);
 
     let usdt_vault_id = env.register(MockVault, ());
     let xlm_vault_id = env.register(MockVault, ());
@@ -914,8 +980,8 @@ fn setup() -> (
     let xlm_id = env.register(MockToken, ());
     let usdt = MockTokenClient::new(&env, &usdt_id);
     let xlm = MockTokenClient::new(&env, &xlm_id);
-    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &6u32);
-    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &6u32);
+    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &7u32);
+    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &7u32);
 
     let usdt_vault_id = env.register(ReceiptVault, ());
     let xlm_vault_id = env.register(ReceiptVault, ());
@@ -1001,8 +1067,8 @@ fn setup_without_pre_enter_market() -> (
     let xlm_id = env.register(MockToken, ());
     let usdt = MockTokenClient::new(&env, &usdt_id);
     let xlm = MockTokenClient::new(&env, &xlm_id);
-    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &6u32);
-    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &6u32);
+    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &7u32);
+    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &7u32);
 
     let usdt_vault_id = env.register(ReceiptVault, ());
     let xlm_vault_id = env.register(ReceiptVault, ());
@@ -1222,8 +1288,8 @@ fn test_close_position_v2_authorizes_controller_swap() {
     let xlm_id = env.register(MockToken, ());
     let usdt = MockTokenClient::new(&env, &usdt_id);
     let xlm = MockTokenClient::new(&env, &xlm_id);
-    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &6u32);
-    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &6u32);
+    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &7u32);
+    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &7u32);
 
     let usdt_vault_id = env.register(MockVault, ());
     let xlm_vault_id = env.register(MockVault, ());
@@ -1266,6 +1332,70 @@ fn test_close_position_v2_authorizes_controller_swap() {
     controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
     let pos_closed = controller.get_position(&position_id).unwrap();
     assert_eq!(pos_closed.status, PositionStatus::Closed);
+}
+
+#[test]
+fn test_close_position_v2_repay_only_returns_all_collateral_without_swap() {
+    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+
+    controller.close_position_v2_repay_only(&user, &position_id, &100u128);
+
+    let pos_closed = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos_closed.status, PositionStatus::Closed);
+    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&user, &usdt_id),
+        200u128
+    );
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&user, &xlm_id),
+        100u128
+    );
+    assert_eq!(xlm_vault.get_ptoken_balance(&controller_id), 100u128);
+}
+
+#[test]
+fn test_close_position_v2_repay_only_budget_short_min() {
+    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.close_position_v2_repay_only(&user, &position_id, &100u128);
+    assert_budget_under(&env, 5_500_000, 1_100_000);
 }
 
 #[test]
@@ -1332,6 +1462,52 @@ fn test_liquidate_position_v2_caps_repay_by_available_raw_collateral() {
     assert_eq!(pos.status, PositionStatus::Open);
     assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 41u128);
     assert_eq!(pos.collateral_ptokens, 10u128);
+}
+
+#[test]
+fn test_liquidate_position_v2_absorbs_residual_bad_debt_when_collateral_exhausted() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+    let liquidator = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &100u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &100u128);
+    let position_id =
+        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &100u128, &50u128, &1u128);
+
+    // 100 pTokens are worth 27 debt-asset units. A 50% close factor repays 25,
+    // seizes all collateral, and leaves 25 of margin debt to absorb.
+    peridottroller.set_price(&usdt_id, &270_000u128, &1_000_000u128);
+    controller.liquidate_position_v2(&liquidator, &position_id);
+
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
+    assert_eq!(pos.collateral_ptokens, 0u128);
+    assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
+}
+
+#[test]
+fn test_liquidate_position_v2_bad_debt_absorb_budget_short_min() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let liquidator = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &100u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &100u128);
+    let position_id =
+        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &100u128, &50u128, &1u128);
+    peridottroller.set_price(&usdt_id, &270_000u128, &1_000_000u128);
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.liquidate_position_v2(&liquidator, &position_id);
+    assert_budget_under(&env, 7_500_000, 1_400_000);
 }
 
 #[test]
@@ -1420,6 +1596,32 @@ fn test_open_position_v2_applies_collateral_factor_to_borrow_sizing() {
     // Raw collateral is 200, but with CF=50% the leverage base is 100.
     // 2x therefore borrows 100, not the previous raw-collateral 200.
     assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 100u128);
+}
+
+#[test]
+#[should_panic(expected = "borrow paused")]
+fn test_open_position_v2_rejects_paused_debt_market() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    peridottroller.set_borrow_paused(&usdt_vault_id, &true);
+
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
 }
 
 #[test]
@@ -1666,6 +1868,31 @@ fn test_set_market_and_params() {
 }
 
 #[test]
+#[should_panic(expected = "unsupported token decimals")]
+fn test_set_market_rejects_unsupported_token_decimals() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().with_mut(|l| l.timestamp = 1);
+
+    let admin = Address::generate(&env);
+    let token_id = env.register(MockToken, ());
+    MockTokenClient::new(&env, &token_id).initialize(
+        &"BAD".into_val(&env),
+        &"BAD".into_val(&env),
+        &6u32,
+    );
+    let vault_id = env.register(MockVault, ());
+    MockVaultClient::new(&env, &vault_id).set_underlying_token(&token_id);
+
+    let comp = env.register(MockPeridottroller, ());
+    let swap = env.register(MockSwapAdapter, ());
+    let controller_id = env.register(MarginController, ());
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    controller.initialize(&admin, &comp, &swap, &3u128);
+    controller.set_market(&admin, &token_id, &vault_id);
+}
+
+#[test]
 #[should_panic(expected = "not admin")]
 fn test_set_params_non_admin_panics() {
     let (env, controller_id, _, _, _, _, _, _) = setup();
@@ -1715,6 +1942,64 @@ fn test_set_swap_adapter_rejects_invalid_contract() {
     let not_adapter = Address::generate(&env);
     controller.set_swap_adapter(&admin, &not_adapter);
 }
+
+#[test]
+#[should_panic(expected = "config timelocked")]
+fn test_execute_peridottroller_update_rejects_before_timelock() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let admin: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    });
+    let new_peridottroller = Address::generate(&env);
+
+    controller.set_peridottroller(&admin, &new_peridottroller);
+    controller.execute_peridottroller_update(&admin);
+}
+
+#[test]
+fn test_execute_config_updates_after_timelock() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let admin: Address = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    });
+    let new_peridottroller = Address::generate(&env);
+    let new_swap_adapter = env.register(MockSwapAdapter, ());
+
+    controller.set_peridottroller(&admin, &new_peridottroller);
+    controller.set_swap_adapter(&admin, &new_swap_adapter);
+    env.ledger()
+        .with_mut(|l| l.timestamp = 1u64.saturating_add(UPGRADE_TIMELOCK_SECS));
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.execute_peridottroller_update(&admin);
+    controller.execute_swap_adapter_update(&admin);
+    assert_budget_under(&env, 3_000_000, 600_000);
+
+    let (stored_peridottroller, stored_swap): (Address, Address) =
+        env.as_contract(&controller_id, || {
+            (
+                env.storage()
+                    .persistent()
+                    .get(&DataKey::Peridottroller)
+                    .expect("peridottroller not set"),
+                env.storage()
+                    .persistent()
+                    .get(&DataKey::SwapAdapter)
+                    .expect("swap adapter not set"),
+            )
+        });
+    assert_eq!(stored_peridottroller, new_peridottroller);
+    assert_eq!(stored_swap, new_swap_adapter);
+}
+
 #[test]
 fn test_get_user_positions_prunes_missing_entries() {
     let (env, controller_id, _usdt_id, _xlm_id, user) = setup_min();
@@ -1767,12 +2052,12 @@ fn setup_for_fees() -> (Env, Address, Address, Address, Address, Address, Addres
     MockTokenClient::new(&env, &usdt_id).initialize(
         &"USDT".into_val(&env),
         &"USDT".into_val(&env),
-        &6u32,
+        &7u32,
     );
     MockTokenClient::new(&env, &xlm_id).initialize(
         &"XLM".into_val(&env),
         &"XLM".into_val(&env),
-        &6u32,
+        &7u32,
     );
 
     let usdt_vault_id = env.register(MockVault, ());
@@ -1811,7 +2096,7 @@ fn setup_for_fees() -> (Env, Address, Address, Address, Address, Address, Addres
 #[test]
 #[should_panic]
 fn test_set_open_fee_bps_non_admin_panics() {
-    let (env, _admin, controller_id, usdt_id, _xlm_id, _usdt_vid, _xlm_vid) = setup_for_fees();
+    let (env, _admin, controller_id, _usdt_id, _xlm_id, _usdt_vid, _xlm_vid) = setup_for_fees();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let not_admin = Address::generate(&env);
     controller.set_open_fee_bps(&not_admin, &100u128);

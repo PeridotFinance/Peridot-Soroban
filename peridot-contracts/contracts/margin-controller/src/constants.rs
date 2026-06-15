@@ -1,4 +1,5 @@
 pub const SCALE_1E6: u128 = 1_000_000u128;
+pub const REQUIRED_UNDERLYING_DECIMALS: u32 = 7;
 pub const DEFAULT_MAX_SLIPPAGE_SCALED: u128 = 50_000u128; // 5% (1e6-scaled)
 pub const MAX_SLIPPAGE_SCALED_CAP: u128 = 500_000u128; // 50% (1e6-scaled)
 pub const MAX_USER_POSITIONS: u32 = 64;

@@ -50,6 +50,8 @@ pub enum DataKey {
     PendingUpgradeHash,
     PendingUpgradeEta,
     AllowedPoolBinding(BytesN<32>, Address),
+    AllowedPoolsList,
+    AllowedPoolBindingsList,
 }
 
 #[contract]
@@ -93,9 +95,11 @@ impl SwapAdapter {
         let key = DataKey::AllowedPool(pool.clone());
         if allowed {
             env.storage().persistent().set(&key, &true);
+            add_allowed_pool_to_list(&env, &pool);
             bump_pool_ttl(&env, &pool);
         } else {
             env.storage().persistent().remove(&key);
+            remove_allowed_pool_from_list(&env, &pool);
         }
     }
 
@@ -123,9 +127,11 @@ impl SwapAdapter {
         let key = DataKey::AllowedPoolBinding(pool_id.clone(), pool.clone());
         if allowed {
             env.storage().persistent().set(&key, &true);
+            add_allowed_binding_to_list(&env, &pool_id, &pool);
             bump_pool_binding_ttl(&env, &pool_id, &pool);
         } else {
             env.storage().persistent().remove(&key);
+            remove_allowed_binding_from_list(&env, &pool_id, &pool);
         }
     }
 
@@ -259,6 +265,7 @@ impl SwapAdapter {
 
     pub fn bump_ttl(env: Env) {
         bump_critical_ttl(&env);
+        bump_all_route_ttl(&env);
     }
 
     pub fn propose_upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
@@ -358,6 +365,110 @@ fn bump_pending_upgrade_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::PendingUpgradeEta) {
         persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn add_allowed_pool_to_list(env: &Env, pool: &Address) {
+    let key = DataKey::AllowedPoolsList;
+    let mut pools: Vec<Address> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
+    for existing in pools.iter() {
+        if existing == *pool {
+            env.storage()
+                .persistent()
+                .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+            return;
+        }
+    }
+    pools.push_back(pool.clone());
+    env.storage().persistent().set(&key, &pools);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn remove_allowed_pool_from_list(env: &Env, pool: &Address) {
+    let key = DataKey::AllowedPoolsList;
+    let pools: Vec<Address> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
+    let mut out = Vec::new(env);
+    for existing in pools.iter() {
+        if existing != *pool {
+            out.push_back(existing);
+        }
+    }
+    env.storage().persistent().set(&key, &out);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn add_allowed_binding_to_list(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
+    let key = DataKey::AllowedPoolBindingsList;
+    let mut bindings: Vec<(BytesN<32>, Address)> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
+    for (existing_id, existing_pool) in bindings.iter() {
+        if existing_id == *pool_id && existing_pool == *pool {
+            env.storage()
+                .persistent()
+                .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+            return;
+        }
+    }
+    bindings.push_back((pool_id.clone(), pool.clone()));
+    env.storage().persistent().set(&key, &bindings);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn remove_allowed_binding_from_list(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
+    let key = DataKey::AllowedPoolBindingsList;
+    let bindings: Vec<(BytesN<32>, Address)> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
+    let mut out = Vec::new(env);
+    for (existing_id, existing_pool) in bindings.iter() {
+        if !(existing_id == *pool_id && existing_pool == *pool) {
+            out.push_back((existing_id, existing_pool));
+        }
+    }
+    env.storage().persistent().set(&key, &out);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn bump_all_route_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    let pool_list_key = DataKey::AllowedPoolsList;
+    if persistent.has(&pool_list_key) {
+        persistent.extend_ttl(&pool_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let pools: Vec<Address> = persistent.get(&pool_list_key).unwrap_or(Vec::new(env));
+    for pool in pools.iter() {
+        bump_pool_ttl(env, &pool);
+    }
+
+    let binding_list_key = DataKey::AllowedPoolBindingsList;
+    if persistent.has(&binding_list_key) {
+        persistent.extend_ttl(&binding_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let bindings: Vec<(BytesN<32>, Address)> =
+        persistent.get(&binding_list_key).unwrap_or(Vec::new(env));
+    for (pool_id, pool) in bindings.iter() {
+        bump_pool_binding_ttl(env, &pool_id, &pool);
     }
 }
 

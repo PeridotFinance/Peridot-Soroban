@@ -51,6 +51,7 @@ pub enum DataKey {
     BorrowPrincipal(Address),        // u128 canonical principal per user
     MarginBorrowPrincipal(u64),      // u128 canonical principal per margin position
     MarginWithdrawBypassV2(Address), // scoped bypass for margin-controller-managed withdraw
+    TotalBadDebt, // u128 cumulative unreserved debt absorbed by margin controller
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -151,6 +152,9 @@ pub fn bump_core_ttl(env: &Env) {
     if persistent.has(&DataKey::Peridottroller) {
         persistent.extend_ttl(&DataKey::Peridottroller, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    if persistent.has(&DataKey::MarginController) {
+        persistent.extend_ttl(&DataKey::MarginController, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     if persistent.has(&DataKey::InterestModel) {
         persistent.extend_ttl(&DataKey::InterestModel, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
@@ -168,6 +172,9 @@ pub fn bump_core_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::TotalReserves) {
         persistent.extend_ttl(&DataKey::TotalReserves, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalBadDebt) {
+        persistent.extend_ttl(&DataKey::TotalBadDebt, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::SupplyCap) {
         persistent.extend_ttl(&DataKey::SupplyCap, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -376,17 +383,17 @@ pub fn token_balance(env: &Env, token: &Address, owner: &Address) -> i128 {
     use soroban_sdk::{InvokeError, Symbol, Val, Vec};
     let args: Vec<Val> = (owner.clone(),).into_val(env);
     let sym_balance = Symbol::new(env, "balance");
-    let result = match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance, args.clone())
-    {
-        Ok(Ok(result)) => result,
-        _ => {
-            let sym_balance_of = Symbol::new(env, "balance_of");
-            match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance_of, args) {
-                Ok(Ok(result)) => result,
-                _ => panic!("balance lookup failed"),
+    let result =
+        match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance, args.clone()) {
+            Ok(Ok(result)) => result,
+            _ => {
+                let sym_balance_of = Symbol::new(env, "balance_of");
+                match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance_of, args) {
+                    Ok(Ok(result)) => result,
+                    _ => panic!("balance lookup failed"),
+                }
             }
-        }
-    };
+        };
     // A compliant token never reports a negative balance. Reject it rather than
     // letting it flow into live-cash accounting, where a non-standard or malicious
     // underlying could distort liquidity checks and boosted-vault decisions.

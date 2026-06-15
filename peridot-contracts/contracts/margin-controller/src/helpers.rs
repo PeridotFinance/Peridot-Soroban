@@ -397,12 +397,14 @@ pub fn collect_margin_fee(env: &Env, vault: &Address, fee_ptokens: u128) {
     // numerator units until it is large enough to bump the index by >= 1.
     let remainder_key = DataKey::MarginFeeRemainder(vault.clone());
     let remainder: u128 = env.storage().persistent().get(&remainder_key).unwrap_or(0);
+    // Fail closed on overflow rather than silently dropping the carried remainder, matching the
+    // checked-arithmetic posture used across open/health/liquidation valuation. A position large
+    // enough to overflow this product is expected to revert earlier at open valuation, so this
+    // panic is unlikely to be reachable in practice; we fail closed regardless.
     let numerator = fee_ptokens
         .checked_mul(MARGIN_FEE_PRECISION)
         .and_then(|v| v.checked_add(remainder))
-        // Astronomically large fees only: distribute without the carried remainder rather
-        // than panic.
-        .unwrap_or_else(|| fee_ptokens.saturating_mul(MARGIN_FEE_PRECISION));
+        .expect("margin fee overflow");
     let delta = numerator / total;
     let new_remainder = numerator % total;
     env.storage()
@@ -452,6 +454,30 @@ pub fn bump_core_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::CloseFeeBps) {
         persistent.extend_ttl(&DataKey::CloseFeeBps, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingPeridottroller) {
+        persistent.extend_ttl(
+            &DataKey::PendingPeridottroller,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+    if persistent.has(&DataKey::PendingPeridottrollerEta) {
+        persistent.extend_ttl(
+            &DataKey::PendingPeridottrollerEta,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+    if persistent.has(&DataKey::PendingSwapAdapter) {
+        persistent.extend_ttl(&DataKey::PendingSwapAdapter, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::PendingSwapAdapterEta) {
+        persistent.extend_ttl(
+            &DataKey::PendingSwapAdapterEta,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
     }
 }
 

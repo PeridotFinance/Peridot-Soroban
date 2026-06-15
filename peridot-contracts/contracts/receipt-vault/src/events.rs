@@ -147,6 +147,18 @@ pub struct ReservesReduced {
     pub total_reserves: u128,
 }
 
+/// Margin-controller bad debt absorption.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MarginBadDebtAbsorbed {
+    pub position_id: u64,
+    pub debt_amount: u128,
+    pub reserves_used: u128,
+    pub bad_debt: u128,
+    pub total_borrows: u128,
+    pub total_reserves: u128,
+}
+
 /// Mirrors Compound's AdminFeesReduced event.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
