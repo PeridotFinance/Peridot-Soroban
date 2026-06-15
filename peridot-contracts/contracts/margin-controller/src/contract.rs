@@ -815,7 +815,7 @@ impl MarginController {
     pub fn close_position_no_swap_v2(env: Env, user: Address, position_id: u64) {
         bump_core_ttl(&env);
         user.require_auth();
-        let mut position = get_position_or_panic(&env, position_id);
+        let position = get_position_or_panic(&env, position_id);
         if position.owner != user {
             panic!("not owner");
         }
@@ -866,15 +866,7 @@ impl MarginController {
             );
         }
 
-        position.status = PositionStatus::Closed;
-        position.collateral_ptokens = 0u128;
-        position.debt_shares = 0u128;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Position(position_id), &position);
-        clear_position_initial_lock(&env, position_id);
-        clear_position_vaults(&env, position_id);
-        clear_position_mode(&env, position_id);
+        clear_position_storage(&env, position_id);
         remove_user_position(&env, &user, position_id);
     }
 
@@ -890,7 +882,7 @@ impl MarginController {
     ) {
         bump_core_ttl(&env);
         user.require_auth();
-        let mut position = get_position_or_panic(&env, position_id);
+        let position = get_position_or_panic(&env, position_id);
         if position.owner != user {
             panic!("not owner");
         }
@@ -940,15 +932,7 @@ impl MarginController {
             }
         }
 
-        position.status = PositionStatus::Closed;
-        position.collateral_ptokens = 0u128;
-        position.debt_shares = 0u128;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Position(position_id), &position);
-        clear_position_initial_lock(&env, position_id);
-        clear_position_vaults(&env, position_id);
-        clear_position_mode(&env, position_id);
+        clear_position_storage(&env, position_id);
         remove_user_position(&env, &user, position_id);
     }
 
@@ -1022,7 +1006,7 @@ impl MarginController {
         if amount_with_slippage == 0 {
             panic!("bad slippage");
         }
-        let mut position = get_position_or_panic(&env, position_id);
+        let position = get_position_or_panic(&env, position_id);
         if position.owner != user {
             panic!("not owner");
         }
@@ -1238,15 +1222,7 @@ impl MarginController {
             }
         }
 
-        position.status = PositionStatus::Closed;
-        position.collateral_ptokens = 0u128;
-        position.debt_shares = 0u128;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Position(position_id), &position);
-        clear_position_initial_lock(&env, position_id);
-        clear_position_vaults(&env, position_id);
-        clear_position_mode(&env, position_id);
+        clear_position_storage(&env, position_id);
         remove_user_position(&env, &user, position_id);
     }
 
@@ -1578,13 +1554,7 @@ impl MarginController {
                     absorb_args,
                 );
                 debt_vault.absorb_margin_bad_debt(&position_id);
-                position.status = PositionStatus::Liquidated;
-                position.debt_shares = 0u128;
-                env.storage()
-                    .persistent()
-                    .set(&DataKey::Position(position_id), &position);
-                clear_position_vaults(&env, position_id);
-                clear_position_mode(&env, position_id);
+                clear_position_storage(&env, position_id);
                 remove_user_position(&env, &position.owner, position_id);
                 return;
             }
@@ -1611,20 +1581,13 @@ impl MarginController {
                 true,
             );
         }
-        position.status = PositionStatus::Liquidated;
-        position.collateral_ptokens = 0u128;
-        position.debt_shares = 0u128;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Position(position_id), &position);
-        clear_position_vaults(&env, position_id);
-        clear_position_mode(&env, position_id);
+        clear_position_storage(&env, position_id);
         remove_user_position(&env, &position.owner, position_id);
     }
 
     pub fn locked_ptokens_in_market(env: Env, user: Address, market: Address) -> u128 {
         bump_core_ttl(&env);
-        let position_ids = compact_user_positions(&env, &user);
+        let position_ids = read_user_positions(&env, &user);
         let mut total_locked = 0u128;
         for position_id in position_ids.iter() {
             let position: Option<Position> = env
@@ -1637,18 +1600,18 @@ impl MarginController {
             if position.status != PositionStatus::Open {
                 continue;
             }
-            let mode = get_position_mode(&env, position_id);
+            let mode = get_position_mode_no_bump(&env, position_id);
             if mode == PositionMode::MarginV2 {
                 continue;
             }
 
-            let vaults = get_position_vaults(&env, position_id, &position);
+            let vaults = get_position_vaults_no_bump(&env, position_id, &position);
             if vaults.position_vault == market {
                 total_locked = total_locked.saturating_add(position.collateral_ptokens);
             }
 
             if let Some((initial_market, initial_ptokens)) =
-                get_position_initial_lock(&env, position_id)
+                get_position_initial_lock_no_bump(&env, position_id)
             {
                 if initial_market == market {
                     total_locked = total_locked.saturating_add(initial_ptokens);
@@ -1660,7 +1623,6 @@ impl MarginController {
 
     pub fn get_position(env: Env, position_id: u64) -> Option<Position> {
         bump_core_ttl(&env);
-        bump_position_ttl(&env, position_id);
         env.storage()
             .persistent()
             .get(&DataKey::Position(position_id))
@@ -1686,7 +1648,7 @@ impl MarginController {
 
     pub fn get_user_positions(env: Env, user: Address) -> Vec<u64> {
         bump_core_ttl(&env);
-        compact_user_positions(&env, &user)
+        read_user_positions(&env, &user)
     }
 
     pub fn get_health_factor(env: Env, position_id: u64) -> u128 {

@@ -78,6 +78,21 @@ pub fn compact_user_positions(env: &Env, user: &Address) -> Vec<u64> {
     out
 }
 
+pub fn read_user_positions(env: &Env, user: &Address) -> Vec<u64> {
+    let positions: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::UserPositions(user.clone()))
+        .unwrap_or(Vec::new(env));
+    let mut out = Vec::new(env);
+    for id in positions.iter() {
+        if env.storage().persistent().has(&DataKey::Position(id)) {
+            out.push_back(id);
+        }
+    }
+    out
+}
+
 pub fn get_debt_shares_total(env: &Env, user: &Address, debt_asset: &Address) -> u128 {
     let key = DataKey::DebtSharesTotal(user.clone(), debt_asset.clone());
     if let Some(total) = env.storage().persistent().get::<_, u128>(&key) {
@@ -195,6 +210,13 @@ pub fn get_position_mode(env: &Env, position_id: u64) -> PositionMode {
     mode.unwrap_or(PositionMode::Legacy)
 }
 
+pub fn get_position_mode_no_bump(env: &Env, position_id: u64) -> PositionMode {
+    env.storage()
+        .persistent()
+        .get(&DataKey::PositionMode(position_id))
+        .unwrap_or(PositionMode::Legacy)
+}
+
 pub fn get_position_vaults(env: &Env, position_id: u64, position: &Position) -> PositionVaults {
     let collateral_vault: Option<Address> = env
         .storage()
@@ -221,6 +243,33 @@ pub fn get_position_vaults(env: &Env, position_id: u64, position: &Position) -> 
     resolved
 }
 
+pub fn get_position_vaults_no_bump(
+    env: &Env,
+    position_id: u64,
+    position: &Position,
+) -> PositionVaults {
+    let collateral_vault: Option<Address> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionCollateralVault(position_id));
+    let debt_vault: Option<Address> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionDebtVault(position_id));
+    let position_vault: Option<Address> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionPositionVault(position_id));
+
+    PositionVaults {
+        collateral_vault: collateral_vault
+            .unwrap_or_else(|| get_market(env, &position.collateral_asset)),
+        debt_vault: debt_vault.unwrap_or_else(|| get_market(env, &position.debt_asset)),
+        position_vault: position_vault
+            .unwrap_or_else(|| get_market(env, &position.collateral_asset)),
+    }
+}
+
 pub fn clear_position_vaults(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
@@ -237,6 +286,15 @@ pub fn clear_position_mode(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
         .remove(&DataKey::PositionMode(position_id));
+}
+
+pub fn clear_position_storage(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::Position(position_id));
+    clear_position_initial_lock(env, position_id);
+    clear_position_vaults(env, position_id);
+    clear_position_mode(env, position_id);
 }
 
 /// Private helper that panics if position is missing (used internally by contract methods).
@@ -561,6 +619,22 @@ pub fn get_position_initial_lock(env: &Env, position_id: u64) -> Option<(Address
         .get(&DataKey::PositionInitialLockPtokens(position_id))
         .unwrap_or(0u128);
     bump_position_ttl(env, position_id);
+    Some((market, ptoken_amount))
+}
+
+pub fn get_position_initial_lock_no_bump(env: &Env, position_id: u64) -> Option<(Address, u128)> {
+    let market: Option<Address> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionInitialLockMarket(position_id));
+    let Some(market) = market else {
+        return None;
+    };
+    let ptoken_amount: u128 = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PositionInitialLockPtokens(position_id))
+        .unwrap_or(0u128);
     Some((market, ptoken_amount))
 }
 

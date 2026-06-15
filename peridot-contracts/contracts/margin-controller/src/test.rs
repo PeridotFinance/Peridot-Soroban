@@ -1194,8 +1194,7 @@ fn test_open_and_close_position_no_swap_v2() {
     // Close: user pays debt from wallet, gets collateral pTokens back to margin balance
     controller.close_position_no_swap_v2(&user, &id);
 
-    let pos = controller.get_position(&id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Closed);
+    assert!(controller.get_position(&id).is_none());
     // Collateral pTokens released to user's margin balance for the collateral vault
     let margin_bal = controller.get_margin_balance_ptokens(&user, &usdt_id);
     assert_eq!(margin_bal, 100u128);
@@ -1277,8 +1276,8 @@ fn test_open_and_close_position_v2_restores_margin_balance() {
     let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
     controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
 
-    let pos_closed = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos_closed.status, PositionStatus::Closed);
+    assert!(controller.get_position(&position_id).is_none());
+    assert_eq!(controller.get_user_positions(&user).len(), 0);
     assert_eq!(
         controller.get_margin_balance_ptokens(&user, &usdt_id),
         200u128
@@ -1340,8 +1339,7 @@ fn test_close_position_v2_authorizes_controller_swap() {
 
     let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
     controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
-    let pos_closed = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos_closed.status, PositionStatus::Closed);
+    assert!(controller.get_position(&position_id).is_none());
 }
 
 #[test]
@@ -1368,8 +1366,7 @@ fn test_close_position_v2_repay_only_returns_all_collateral_without_swap() {
 
     controller.close_position_v2_repay_only(&user, &position_id, &100u128);
 
-    let pos_closed = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos_closed.status, PositionStatus::Closed);
+    assert!(controller.get_position(&position_id).is_none());
     assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
     assert_eq!(
         controller.get_margin_balance_ptokens(&user, &usdt_id),
@@ -1494,9 +1491,7 @@ fn test_liquidate_position_v2_absorbs_residual_bad_debt_when_collateral_exhauste
     peridottroller.set_price(&usdt_id, &270_000u128, &1_000_000u128);
     controller.liquidate_position_v2(&liquidator, &position_id);
 
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Liquidated);
-    assert_eq!(pos.collateral_ptokens, 0u128);
+    assert!(controller.get_position(&position_id).is_none());
     assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
 }
 
@@ -1540,8 +1535,7 @@ fn test_liquidate_position_v2_dust_debt_uses_one_unit_repay_floor() {
     peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
     controller.liquidate_position_v2(&liquidator, &position_id);
 
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Liquidated);
+    assert!(controller.get_position(&position_id).is_none());
     assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
 }
 
@@ -1586,9 +1580,7 @@ fn test_liquidate_position_v2_dust_seize_uses_one_ptoken_floor() {
     peridottroller.set_market_cf(&usdt_vault_id, &100_000u128);
     controller.liquidate_position_v2(&liquidator, &position_id);
 
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Liquidated);
-    assert_eq!(pos.collateral_ptokens, 0u128);
+    assert!(controller.get_position(&position_id).is_none());
     assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
 }
 
@@ -2105,7 +2097,7 @@ fn test_execute_config_updates_after_timelock() {
 }
 
 #[test]
-fn test_get_user_positions_prunes_missing_entries() {
+fn test_get_user_positions_filters_missing_entries() {
     let (env, controller_id, _usdt_id, _xlm_id, user) = setup_min();
     let controller = MarginControllerClient::new(&env, &controller_id);
 
