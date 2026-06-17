@@ -15,9 +15,9 @@ members = [
 ]
 
 [workspace.dependencies]
-soroban-sdk = "25.0.0"
-stellar-tokens = { path = "../../openzeppelin-stellar-contracts/packages/tokens" }
-stellar-contract-utils = { path = "../../openzeppelin-stellar-contracts/packages/contract-utils" }
+soroban-sdk = { version = "25.3.0", features = ["experimental_spec_shaking_v2"] }
+stellar-tokens = { path = "../openzeppelin-stellar-contracts/packages/tokens" }
+stellar-contract-utils = { path = "../openzeppelin-stellar-contracts/packages/contract-utils" }
 
 [profile.release]
 opt-level = "z"

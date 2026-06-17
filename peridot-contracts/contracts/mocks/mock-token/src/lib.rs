@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String};
+use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, MuxedAddress, String};
 use stellar_tokens::fungible::Base as TokenBase;
 
 #[contracttype]
@@ -71,7 +71,7 @@ impl MockToken {
         if amount <= 0 {
             panic!("bad amount");
         }
-        TokenBase::transfer(&env, &from, &to, amount);
+        TokenBase::transfer(&env, &from, &MuxedAddress::from(to), amount);
     }
 
     pub fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: i128) {

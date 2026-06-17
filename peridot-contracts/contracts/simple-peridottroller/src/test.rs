@@ -32,6 +32,10 @@ fn approve_token_to_vault(
     token_client.approve(owner, vault, &amount, &live_until);
 }
 
+fn allow_heavy_liquidation_functional_test(env: &Env) {
+    env.cost_estimate().disable_resource_limits();
+}
+
 #[test]
 fn test_peridottroller_add_and_enter_market() {
     let env = Env::default();
@@ -1753,6 +1757,7 @@ fn test_redeem_gating_allows_within_limit() {
 fn test_liquidation_flow_basic() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -1882,6 +1887,7 @@ fn test_set_margin_liquidation_ctrl_allows_multiple_entries() {
 fn test_liquidate_for_margin_bypasses_account_level_shortfall_gate() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -2308,6 +2314,7 @@ fn test_set_close_factor_accepts_viable_minimum() {
 fn test_liquidation_capped_by_close_factor() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -2388,6 +2395,7 @@ fn test_liquidation_capped_by_close_factor() {
 fn test_liquidation_succeeds_when_post_repay_redeem_preview_exceeds_seize() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -3246,6 +3254,7 @@ fn test_guardian_cannot_unpause() {
 fn test_liquidation_fee_routed_to_reserves() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -3339,6 +3348,7 @@ fn test_liquidation_fee_routed_to_reserves() {
 fn test_liquidation_seize_clamps_to_available_ptokens() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -3417,6 +3427,7 @@ fn test_liquidation_seize_clamps_to_available_ptokens() {
 fn test_liquidation_clamp_rounding_keeps_nonzero_repay() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -4175,6 +4186,7 @@ fn test_liquidator_does_not_receive_retroactive_supply_rewards_after_seize() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
     env.cost_estimate().budget().reset_unlimited();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -4991,6 +5003,7 @@ fn test_find_039_liquidation_allows_when_known_shortfall_exists() {
     let env = Env::default();
     env.mock_all_auths();
     env.cost_estimate().budget().reset_unlimited();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let alice = Address::generate(&env);
@@ -5062,6 +5075,7 @@ fn test_find_039_liquidation_allows_when_known_shortfall_exists() {
 fn test_liquidation_not_blocked_by_unrelated_pbal_read_failure() {
     let env = Env::default();
     env.mock_all_auths();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let alice = Address::generate(&env);
@@ -5604,6 +5618,7 @@ fn test_zero_cf_market_deposits_cannot_unlock_borrowing() {
 fn test_self_liquidation_reduces_own_debt() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);
@@ -5888,6 +5903,7 @@ fn test_borrow_one_unit_over_collateral_limit_panics() {
 fn test_max_close_factor_liquidation_caps_repay_at_90_percent() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
+    allow_heavy_liquidation_functional_test(&env);
 
     let admin = Address::generate(&env);
     let borrower = Address::generate(&env);

@@ -164,6 +164,12 @@ impl ReceiptVault {
         }
     }
 
+    fn require_exact_repay_received(received: u128, expected: u128) {
+        if received != expected {
+            panic!("repay transfer shortfall");
+        }
+    }
+
     fn idle_cash_buffer_bps(env: &Env) -> u32 {
         let value: Option<u32> = env.storage().persistent().get(&DataKey::IdleCashBufferBps);
         if value.is_some() {
@@ -1234,14 +1240,20 @@ impl ReceiptVault {
         if amount < 0 {
             panic!("bad amount");
         }
-        Self::transfer_internal(env, from, to.address(), amount as u128, None);
+        Self::transfer_internal(env, from, to, amount as u128, None);
     }
 
     pub fn transfer_from(env: Env, spender: Address, owner: Address, to: Address, amount: i128) {
         if amount < 0 {
             panic!("bad amount");
         }
-        Self::transfer_internal(env, owner, to, amount as u128, Some(spender));
+        Self::transfer_internal(
+            env,
+            owner,
+            MuxedAddress::from(to),
+            amount as u128,
+            Some(spender),
+        );
     }
 
     pub fn balance(env: Env, account: Address) -> i128 {
@@ -1272,10 +1284,11 @@ impl ReceiptVault {
     fn transfer_internal(
         env: Env,
         from: Address,
-        to: Address,
+        to: MuxedAddress,
         amount: u128,
         spender: Option<Address>,
     ) {
+        let to_address = to.address();
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
         if amount == 0 {
@@ -1284,11 +1297,11 @@ impl ReceiptVault {
         // Ensure collateral checks use the latest debt/index state.
         Self::update_interest(env.clone());
         Self::ensure_user_borrow_flag(&env, &from);
-        Self::ensure_user_borrow_flag(&env, &to);
+        Self::ensure_user_borrow_flag(&env, &to_address);
         // Margin custody flow: only the configured margin controller may receive
         // pTokens via the one-shot bypass. Collateral health checks still run;
         // the bypass only skips margin-lock accounting for controller custody moves.
-        let bypass = Self::consume_margin_transfer_bypass(&env, &from, &to, amount);
+        let bypass = Self::consume_margin_transfer_bypass(&env, &from, &to_address, amount);
         // Gating: if peridottroller wired, consult redeem pause and health for from-user
         if let Some(comp_addr) = env
             .storage()
@@ -1389,7 +1402,7 @@ impl ReceiptVault {
 
         match spender {
             Some(spender_addr) => {
-                TokenBase::transfer_from(&env, &spender_addr, &from, &to, to_i128(amount));
+                TokenBase::transfer_from(&env, &spender_addr, &from, &to_address, to_i128(amount));
             }
             None => {
                 TokenBase::transfer(&env, &from, &to, to_i128(amount));
@@ -1413,10 +1426,13 @@ impl ReceiptVault {
         let to_hint = ControllerAccrualHint {
             total_ptokens: Some(total_ptokens_now),
             total_borrowed: Some(total_borrowed_now),
-            user_ptokens: Some(ptoken_balance(&env, &to)),
-            user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), to.clone())),
+            user_ptokens: Some(ptoken_balance(&env, &to_address)),
+            user_borrowed: Some(Self::get_user_borrow_balance(
+                env.clone(),
+                to_address.clone(),
+            )),
         };
-        Self::accrue_user_rewards(&env, &to, to_hint, "transfer");
+        Self::accrue_user_rewards(&env, &to_address, to_hint, "transfer");
     }
 
     /// Get total amount deposited in the vault
@@ -3158,7 +3174,9 @@ impl ReceiptVault {
         let cash_before = Self::current_live_cash(&env, &token_address);
         token_client.transfer(&user, &env.current_contract_address(), &repay_i128);
         let cash_after = Self::current_live_cash(&env, &token_address);
-        Self::add_managed_cash(&env, cash_after.saturating_sub(cash_before));
+        let received = cash_after.saturating_sub(cash_before);
+        Self::require_exact_repay_received(received, repay_amount);
+        Self::add_managed_cash(&env, received);
 
         // Update snapshot and totals
         let new_principal = current_debt - repay_amount;
@@ -3266,7 +3284,9 @@ impl ReceiptVault {
         let cash_before = Self::current_live_cash(&env, &token_address);
         token_client.transfer(&payer, &env.current_contract_address(), &repay_i128);
         let cash_after = Self::current_live_cash(&env, &token_address);
-        Self::add_managed_cash(&env, cash_after.saturating_sub(cash_before));
+        let received = cash_after.saturating_sub(cash_before);
+        Self::require_exact_repay_received(received, repay_amount);
+        Self::add_managed_cash(&env, received);
 
         let new_principal = current_debt - repay_amount;
         Self::write_margin_borrow_snapshot(&env, position_id, new_principal);
@@ -3618,7 +3638,9 @@ impl ReceiptVault {
             &repay_i128,
         );
         let cash_after = Self::current_live_cash(&env, &token_address);
-        Self::add_managed_cash(&env, cash_after.saturating_sub(cash_before));
+        let received = cash_after.saturating_sub(cash_before);
+        Self::require_exact_repay_received(received, repay_amount);
+        Self::add_managed_cash(&env, received);
 
         // Update borrower snapshot and totals
         let new_principal = current_debt - repay_amount;
@@ -3720,7 +3742,9 @@ impl ReceiptVault {
             if let Some(recipient) = seize_ctx.fee_recipient {
                 let fee_i128 = to_i128(seize_ctx.fee_ptokens);
                 TokenBase::update(&env, Some(&borrower), Some(&recipient), fee_i128);
-                stellar_tokens::fungible::emit_transfer(&env, &borrower, &recipient, fee_i128);
+                stellar_tokens::fungible::emit_transfer(
+                    &env, &borrower, &recipient, None, fee_i128,
+                );
                 remaining = remaining.saturating_sub(seize_ctx.fee_ptokens);
             }
         }
@@ -3730,6 +3754,7 @@ impl ReceiptVault {
                 &env,
                 &borrower,
                 &liquidator,
+                None,
                 to_i128(remaining),
             );
         }

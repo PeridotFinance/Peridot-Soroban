@@ -7,23 +7,22 @@ echo "Building all contract WASMs (wasm32v1-none release)..."
 
 pushd "$ROOT_DIR" >/dev/null
 
-declare -A CRATE_TO_WASM=(
-  [receipt-vault]=receipt_vault
-  [simple-peridottroller]=simple_peridottroller
-  [jump-rate-model]=jump_rate_model
-  [peridot-token]=peridot_token
-  [mock-token]=mock_token
-  [mock-lending-vault]=mock_lending_vault
-  [swap-adapter]=swap_adapter
-  [margin-controller]=margin_controller
-  [smart-account-basic]=smart_account_basic
-  [smart-account-factory]=smart_account_factory
-)
-
 for crate in receipt-vault simple-peridottroller jump-rate-model peridot-token mock-token mock-lending-vault swap-adapter margin-controller smart-account-basic smart-account-factory; do
   echo "→ $crate"
   stellar contract build --package "$crate"
-  wasm_name=${CRATE_TO_WASM[$crate]}
+  case "$crate" in
+    receipt-vault) wasm_name=receipt_vault ;;
+    simple-peridottroller) wasm_name=simple_peridottroller ;;
+    jump-rate-model) wasm_name=jump_rate_model ;;
+    peridot-token) wasm_name=peridot_token ;;
+    mock-token) wasm_name=mock_token ;;
+    mock-lending-vault) wasm_name=mock_lending_vault ;;
+    swap-adapter) wasm_name=swap_adapter ;;
+    margin-controller) wasm_name=margin_controller ;;
+    smart-account-basic) wasm_name=smart_account_basic ;;
+    smart-account-factory) wasm_name=smart_account_factory ;;
+    *) echo "unknown crate: $crate" >&2; exit 1 ;;
+  esac
   wasm_path="target/wasm32v1-none/release/${wasm_name}.wasm"
   optimized_path="target/wasm32v1-none/release/${wasm_name}.optimized.wasm"
   if [[ -f "$wasm_path" ]]; then

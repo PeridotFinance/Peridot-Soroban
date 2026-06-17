@@ -30,14 +30,14 @@ enum OracleKey {
     Resolution,
 }
 
-#[contracttype(export = false)]
+#[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum OracleAsset {
     Stellar(Address),
     Other(Symbol),
 }
 
-#[contracttype(export = false)]
+#[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct OraclePriceData {
     pub price: i128,
@@ -95,6 +95,117 @@ fn create_test_token<'a>(
         token::Client::new(env, &contract_address),
         token::StellarAssetClient::new(env, &contract_address),
     )
+}
+
+#[contract]
+pub struct UnderDeliverToken;
+
+#[contracttype]
+#[derive(Clone)]
+enum UnderDeliverTokenKey {
+    Balance(Address),
+    Allowance(Address, Address),
+    TransferHaircut,
+}
+
+fn underdeliver_balance(env: &Env, owner: &Address) -> i128 {
+    env.storage()
+        .persistent()
+        .get(&UnderDeliverTokenKey::Balance(owner.clone()))
+        .unwrap_or(0i128)
+}
+
+fn set_underdeliver_balance(env: &Env, owner: &Address, balance: i128) {
+    env.storage()
+        .persistent()
+        .set(&UnderDeliverTokenKey::Balance(owner.clone()), &balance);
+}
+
+fn apply_underdeliver_transfer(env: &Env, from: &Address, to: &Address, amount: i128) {
+    if amount < 0 {
+        panic!("negative amount");
+    }
+    let from_balance = underdeliver_balance(env, from);
+    if from_balance < amount {
+        panic!("insufficient balance");
+    }
+    let haircut: i128 = env
+        .storage()
+        .persistent()
+        .get(&UnderDeliverTokenKey::TransferHaircut)
+        .unwrap_or(0i128);
+    let credited = amount.saturating_sub(haircut.max(0));
+    set_underdeliver_balance(env, from, from_balance - amount);
+    let to_balance = underdeliver_balance(env, to);
+    set_underdeliver_balance(env, to, to_balance.saturating_add(credited));
+}
+
+#[contractimpl]
+impl UnderDeliverToken {
+    pub fn initialize(env: Env) {
+        env.storage()
+            .persistent()
+            .set(&UnderDeliverTokenKey::TransferHaircut, &0i128);
+    }
+
+    pub fn set_transfer_haircut(env: Env, haircut: i128) {
+        env.storage()
+            .persistent()
+            .set(&UnderDeliverTokenKey::TransferHaircut, &haircut);
+    }
+
+    pub fn mint(env: Env, to: Address, amount: i128) {
+        if amount < 0 {
+            panic!("negative amount");
+        }
+        let balance = underdeliver_balance(&env, &to);
+        set_underdeliver_balance(&env, &to, balance.saturating_add(amount));
+    }
+
+    pub fn balance(env: Env, owner: Address) -> i128 {
+        underdeliver_balance(&env, &owner)
+    }
+
+    pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
+        from.require_auth();
+        apply_underdeliver_transfer(&env, &from, &to, amount);
+    }
+
+    pub fn approve(
+        env: Env,
+        from: Address,
+        spender: Address,
+        amount: i128,
+        _expiration_ledger: u32,
+    ) {
+        from.require_auth();
+        env.storage()
+            .persistent()
+            .set(&UnderDeliverTokenKey::Allowance(from, spender), &amount);
+    }
+
+    pub fn allowance(env: Env, from: Address, spender: Address) -> i128 {
+        env.storage()
+            .persistent()
+            .get(&UnderDeliverTokenKey::Allowance(from, spender))
+            .unwrap_or(0i128)
+    }
+
+    pub fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
+        let allowance_key = UnderDeliverTokenKey::Allowance(from.clone(), spender);
+        let allowance: i128 = env
+            .storage()
+            .persistent()
+            .get(&allowance_key)
+            .unwrap_or(0i128);
+        if allowance < amount {
+            panic!("insufficient allowance");
+        }
+        env.storage()
+            .persistent()
+            .set(&allowance_key, &(allowance - amount));
+        apply_underdeliver_transfer(&env, &from, &to, amount);
+    }
 }
 
 fn setup_peridottroller_with_fallback<'a>(
@@ -1347,6 +1458,39 @@ fn test_margin_borrow_repay_happy_path() {
 }
 
 #[test]
+#[should_panic(expected = "repay transfer shortfall")]
+fn test_repay_for_margin_rejects_under_delivered_transfer() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let token_address = env.register(UnderDeliverToken, ());
+    let token = UnderDeliverTokenClient::new(&env, &token_address);
+    token.initialize();
+    token.mint(&lender, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&lender, &500u128);
+
+    let margin_ctrl_id = env.register(MockMarginPositionController, ());
+    let margin_ctrl = MockMarginPositionControllerClient::new(&env, &margin_ctrl_id);
+    vault.set_margin_controller(&admin, &Some(margin_ctrl_id.clone()));
+
+    let position_id = 8u64;
+    margin_ctrl.set_position(&position_id, &user, &vault_id);
+    vault.init_margin_borrow_state(&position_id);
+    vault.borrow_for_margin(&position_id, &user, &100u128);
+
+    token.set_transfer_haircut(&1i128);
+    vault.repay_for_margin(&position_id, &user, &40u128);
+}
+
+#[test]
 fn test_repay_full_for_margin_overpay_refunds_and_clears_debt() {
     let env = Env::default();
     env.mock_all_auths();
@@ -1859,6 +2003,34 @@ fn test_borrow_and_repay_flow() {
 }
 
 #[test]
+#[should_panic(expected = "repay transfer shortfall")]
+fn test_repay_rejects_under_delivered_transfer() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        jrm::DEFAULT_INIT_ADMIN,
+    ));
+    let user = Address::generate(&env);
+    let token_address = env.register(UnderDeliverToken, ());
+    let token = UnderDeliverTokenClient::new(&env, &token_address);
+    token.initialize();
+    token.mint(&user, &1_000i128);
+
+    let vault_contract_id = env.register(ReceiptVault, ());
+    let vault_client = ReceiptVaultClient::new(&env, &vault_contract_id);
+    vault_client.initialize(&token_address, &0u128, &0u128, &admin);
+    vault_client.enable_static_rates(&admin);
+
+    vault_client.deposit(&user, &200u128);
+    vault_client.borrow(&user, &80u128);
+
+    token.set_transfer_haircut(&1i128);
+    vault_client.repay(&user, &50u128);
+}
+
+#[test]
 fn test_borrow_with_peridottroller_same_market_hint() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -1954,6 +2126,61 @@ fn test_repay_on_behalf_via_peridottroller_auth() {
 
     let liquidator_balance = token_client.balance(&liquidator);
     assert_eq!(liquidator_balance, 460i128);
+}
+
+#[test]
+#[should_panic(expected = "repay transfer shortfall")]
+fn test_repay_on_behalf_rejects_under_delivered_transfer() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let token_address = env.register(UnderDeliverToken, ());
+    let token = UnderDeliverTokenClient::new(&env, &token_address);
+    token.initialize();
+    token.mint(&user, &500i128);
+    token.mint(&liquidator, &500i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let comp = setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        800_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    vault.deposit(&user, &200u128);
+    comp.enter_market(&user, &vault_id);
+    vault.borrow(&user, &100u128);
+    let live_until = env.ledger().sequence().saturating_add(100_000);
+    token.approve(&liquidator, &vault_id, &500i128, &live_until);
+    token.set_transfer_haircut(&1i128);
+
+    let comp_id = comp.address.clone();
+    env.as_contract(&comp_id, || {
+        let repay_args: Vec<Val> = (liquidator.clone(), user.clone(), 40u128).into_val(&env);
+        let mut auths = Vec::new(&env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: vault_id.clone(),
+                fn_name: Symbol::new(&env, "repay_on_behalf"),
+                args: repay_args,
+            },
+            sub_invocations: Vec::new(&env),
+        }));
+        env.authorize_as_current_contract(auths);
+        let vault_client = ReceiptVaultClient::new(&env, &vault_id);
+        vault_client.repay_on_behalf(&liquidator, &user, &40u128);
+    });
 }
 
 #[test]
