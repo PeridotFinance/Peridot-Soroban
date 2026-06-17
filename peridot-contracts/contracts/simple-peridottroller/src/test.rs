@@ -2,7 +2,7 @@
 use super::*;
 use peridot_token as pt;
 use receipt_vault as rv;
-use soroban_sdk::testutils::Ledger;
+use soroban_sdk::testutils::{Ledger, MockAuth, MockAuthInvoke};
 use soroban_sdk::token;
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
@@ -1852,6 +1852,60 @@ fn test_liquidate_for_margin_rejects_unauthorized_controller() {
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
+
+    comp.liquidate_for_margin(
+        &controller,
+        &borrower,
+        &market_a,
+        &market_b,
+        &10u128,
+        &liquidator,
+        &1u128,
+        &1u128,
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_liquidate_for_margin_requires_liquidator_auth() {
+    let env = Env::default();
+
+    let controller = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let market_a = Address::generate(&env);
+    let market_b = Address::generate(&env);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    env.as_contract(&comp_id, || {
+        let mut controllers = Map::new(&env);
+        controllers.set(controller.clone(), true);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarginLiquidationControllers, &controllers);
+    });
+
+    let args: Vec<soroban_sdk::Val> = (
+        controller.clone(),
+        borrower.clone(),
+        market_a.clone(),
+        market_b.clone(),
+        10u128,
+        liquidator.clone(),
+        1u128,
+        1u128,
+    )
+        .into_val(&env);
+    env.mock_auths(&[MockAuth {
+        address: &controller,
+        invoke: &MockAuthInvoke {
+            contract: &comp_id,
+            fn_name: "liquidate_for_margin",
+            args,
+            sub_invokes: &[],
+        },
+    }]);
 
     comp.liquidate_for_margin(
         &controller,

@@ -356,12 +356,18 @@ pub fn validate_swaps_chain(
     }
 }
 
-pub fn get_total_margin_ptokens(env: &Env, vault: &Address) -> u128 {
+fn bump_total_margin_ptokens_ttl(env: &Env, vault: &Address) {
     let key = DataKey::TotalMarginPtokens(vault.clone());
     let persistent = env.storage().persistent();
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+}
+
+pub fn get_total_margin_ptokens(env: &Env, vault: &Address) -> u128 {
+    let key = DataKey::TotalMarginPtokens(vault.clone());
+    let persistent = env.storage().persistent();
+    bump_total_margin_ptokens_ttl(env, vault);
     persistent.get(&key).unwrap_or(0u128)
 }
 
@@ -668,6 +674,7 @@ pub fn get_margin_balance_ptokens(env: &Env, user: &Address, market: &Address) -
     let persistent = env.storage().persistent();
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        bump_total_margin_ptokens_ttl(env, market);
     }
     persistent.get(&key).unwrap_or(0u128)
 }
@@ -678,4 +685,5 @@ pub fn set_margin_balance_ptokens(env: &Env, user: &Address, market: &Address, v
     env.storage()
         .persistent()
         .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    bump_total_margin_ptokens_ttl(env, market);
 }

@@ -2490,6 +2490,7 @@ impl SimplePeridottroller {
         if !Self::is_margin_liquidation_controller_allowed(&env, &controller) {
             panic!("unauthorized controller");
         }
+        liquidator.require_auth();
         Self::liquidate_internal(
             env,
             borrower,
@@ -2514,9 +2515,7 @@ impl SimplePeridottroller {
         position_shortfall_usd: Option<u128>,
         max_seize_ptokens: Option<u128>,
     ) -> u128 {
-        // Direct liquidations require liquidator auth at this level.
-        // Margin-path liquidations are already authorized by margin-controller and avoid
-        // liquidator sub-invocation auth entries with dynamic repay amounts.
+        // Public entrypoints require liquidator auth before reaching this shared path.
         if require_account_shortfall {
             liquidator.require_auth();
         }

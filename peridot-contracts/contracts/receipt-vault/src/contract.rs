@@ -170,6 +170,46 @@ impl ReceiptVault {
         }
     }
 
+    fn user_borrow_principal(env: &Env, user: &Address) -> u128 {
+        let persistent = env.storage().persistent();
+        let principal_key = DataKey::BorrowPrincipal(user.clone());
+        if let Some(principal) = persistent.get::<_, u128>(&principal_key) {
+            bump_borrow_principal_ttl(env, user);
+            return principal;
+        }
+        if let Some(snapshot) =
+            persistent.get::<_, BorrowSnapshot>(&DataKey::BorrowSnapshots(user.clone()))
+        {
+            if snapshot.principal == 0
+                && persistent.get::<_, bool>(&DataKey::HasBorrowed(user.clone())) != Some(true)
+            {
+                return 0u128;
+            }
+            panic!("borrow principal missing");
+        }
+        0u128
+    }
+
+    fn margin_borrow_principal(env: &Env, position_id: u64) -> u128 {
+        let persistent = env.storage().persistent();
+        let principal_key = DataKey::MarginBorrowPrincipal(position_id);
+        if let Some(principal) = persistent.get::<_, u128>(&principal_key) {
+            bump_margin_borrow_principal_ttl(env, position_id);
+            return principal;
+        }
+        if let Some(snapshot) =
+            persistent.get::<_, BorrowSnapshot>(&DataKey::MarginBorrowSnapshots(position_id))
+        {
+            if snapshot.principal == 0
+                && persistent.get::<_, bool>(&DataKey::MarginHasBorrowed(position_id)) != Some(true)
+            {
+                return 0u128;
+            }
+            panic!("margin borrow principal missing");
+        }
+        0u128
+    }
+
     fn idle_cash_buffer_bps(env: &Env) -> u32 {
         let value: Option<u32> = env.storage().persistent().get(&DataKey::IdleCashBufferBps);
         if value.is_some() {
@@ -2673,15 +2713,20 @@ impl ReceiptVault {
         bump_user_borrow_state_ttl(&env, &user);
     }
 
-    /// Internal: write user's borrow snapshot
-    fn write_borrow_snapshot(env: &Env, user: Address, principal: u128) {
+    /// Internal: write user's borrow snapshot and true principal mirror.
+    fn write_borrow_snapshot_with_principal(
+        env: &Env,
+        user: Address,
+        debt_principal: u128,
+        borrow_principal: u128,
+    ) {
         let current_index: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::BorrowIndex)
             .expect("borrow index missing");
         let snap = BorrowSnapshot {
-            principal,
+            principal: debt_principal,
             interest_index: current_index,
         };
         env.storage()
@@ -2689,32 +2734,39 @@ impl ReceiptVault {
             .set(&DataKey::BorrowSnapshots(user.clone()), &snap);
         env.storage()
             .persistent()
-            .set(&DataKey::HasBorrowed(user.clone()), &(principal > 0));
+            .set(&DataKey::HasBorrowed(user.clone()), &(debt_principal > 0));
         env.storage()
             .persistent()
-            .set(&DataKey::BorrowPrincipal(user.clone()), &principal);
+            .set(&DataKey::BorrowPrincipal(user.clone()), &borrow_principal);
         bump_user_borrow_state_ttl(env, &user);
     }
 
-    fn write_margin_borrow_snapshot(env: &Env, position_id: u64, principal: u128) {
+    fn write_margin_borrow_snapshot_with_principal(
+        env: &Env,
+        position_id: u64,
+        debt_principal: u128,
+        borrow_principal: u128,
+    ) {
         let current_index: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::BorrowIndex)
             .expect("borrow index missing");
         let snap = BorrowSnapshot {
-            principal,
+            principal: debt_principal,
             interest_index: current_index,
         };
         env.storage()
             .persistent()
             .set(&DataKey::MarginBorrowSnapshots(position_id), &snap);
-        env.storage()
-            .persistent()
-            .set(&DataKey::MarginHasBorrowed(position_id), &(principal > 0));
-        env.storage()
-            .persistent()
-            .set(&DataKey::MarginBorrowPrincipal(position_id), &principal);
+        env.storage().persistent().set(
+            &DataKey::MarginHasBorrowed(position_id),
+            &(debt_principal > 0),
+        );
+        env.storage().persistent().set(
+            &DataKey::MarginBorrowPrincipal(position_id),
+            &borrow_principal,
+        );
         bump_margin_borrow_state_ttl(env, position_id);
     }
 
@@ -2725,17 +2777,9 @@ impl ReceiptVault {
         current_debt: u128,
         repay_amount: u128,
     ) -> u128 {
-        let snapshot = env
-            .storage()
-            .persistent()
-            .get::<_, BorrowSnapshot>(&DataKey::BorrowSnapshots(user.clone()));
-        let Some(snapshot) = snapshot else {
-            return 0u128;
-        };
-        let accrued_interest = current_debt.saturating_sub(snapshot.principal);
-        repay_amount
-            .saturating_sub(accrued_interest)
-            .min(snapshot.principal)
+        let principal = Self::user_borrow_principal(env, user);
+        let accrued_interest = current_debt.saturating_sub(principal);
+        repay_amount.saturating_sub(accrued_interest).min(principal)
     }
 
     fn principal_component_of_margin_repay(
@@ -2744,17 +2788,9 @@ impl ReceiptVault {
         current_debt: u128,
         repay_amount: u128,
     ) -> u128 {
-        let snapshot = env
-            .storage()
-            .persistent()
-            .get::<_, BorrowSnapshot>(&DataKey::MarginBorrowSnapshots(position_id));
-        let Some(snapshot) = snapshot else {
-            return 0u128;
-        };
-        let accrued_interest = current_debt.saturating_sub(snapshot.principal);
-        repay_amount
-            .saturating_sub(accrued_interest)
-            .min(snapshot.principal)
+        let principal = Self::margin_borrow_principal(env, position_id);
+        let accrued_interest = current_debt.saturating_sub(principal);
+        repay_amount.saturating_sub(accrued_interest).min(principal)
     }
 
     /// Get available liquidity = total_underlying - total_borrowed
@@ -2918,10 +2954,17 @@ impl ReceiptVault {
             }
         }
 
-        // Update totals and user snapshot
-        let new_principal =
-            Self::get_user_borrow_balance(env.clone(), user.clone()).saturating_add(amount);
-        Self::write_borrow_snapshot(&env, user.clone(), new_principal);
+        // Update totals, debt snapshot, and true-principal mirror.
+        let current_debt = Self::get_user_borrow_balance(env.clone(), user.clone());
+        let current_borrow_principal = Self::user_borrow_principal(&env, &user);
+        let new_debt_principal = current_debt.saturating_add(amount);
+        let new_borrow_principal = current_borrow_principal.saturating_add(amount);
+        Self::write_borrow_snapshot_with_principal(
+            &env,
+            user.clone(),
+            new_debt_principal,
+            new_borrow_principal,
+        );
 
         if bcap > 0 {
             let total_principal_before: u128 = env
@@ -2962,7 +3005,7 @@ impl ReceiptVault {
         BorrowEvent {
             borrower: user.clone(),
             borrow_amount: amount,
-            account_borrows: new_principal,
+            account_borrows: new_debt_principal,
             total_borrows,
         }
         .publish(&env);
@@ -3082,8 +3125,15 @@ impl ReceiptVault {
         }
 
         let current = Self::get_margin_borrow_balance(env.clone(), position_id);
-        let new_principal = current.saturating_add(amount);
-        Self::write_margin_borrow_snapshot(&env, position_id, new_principal);
+        let current_borrow_principal = Self::margin_borrow_principal(&env, position_id);
+        let new_debt_principal = current.saturating_add(amount);
+        let new_borrow_principal = current_borrow_principal.saturating_add(amount);
+        Self::write_margin_borrow_snapshot_with_principal(
+            &env,
+            position_id,
+            new_debt_principal,
+            new_borrow_principal,
+        );
 
         if bcap > 0 {
             let total_principal_before: u128 = env
@@ -3180,7 +3230,14 @@ impl ReceiptVault {
 
         // Update snapshot and totals
         let new_principal = current_debt - repay_amount;
-        Self::write_borrow_snapshot(&env, user.clone(), new_principal);
+        let borrow_principal_after =
+            Self::user_borrow_principal(&env, &user).saturating_sub(principal_repay_user);
+        Self::write_borrow_snapshot_with_principal(
+            &env,
+            user.clone(),
+            new_principal,
+            borrow_principal_after,
+        );
 
         let bcap: u128 = env
             .storage()
@@ -3289,7 +3346,14 @@ impl ReceiptVault {
         Self::add_managed_cash(&env, received);
 
         let new_principal = current_debt - repay_amount;
-        Self::write_margin_borrow_snapshot(&env, position_id, new_principal);
+        let borrow_principal_after = Self::margin_borrow_principal(&env, position_id)
+            .saturating_sub(principal_repay_position);
+        Self::write_margin_borrow_snapshot_with_principal(
+            &env,
+            position_id,
+            new_principal,
+            borrow_principal_after,
+        );
 
         let bcap: u128 = env
             .storage()
@@ -3376,7 +3440,7 @@ impl ReceiptVault {
             current_debt,
             current_debt,
         );
-        Self::write_margin_borrow_snapshot(&env, position_id, 0u128);
+        Self::write_margin_borrow_snapshot_with_principal(&env, position_id, 0u128, 0u128);
 
         let bcap: u128 = env
             .storage()
@@ -3435,7 +3499,7 @@ impl ReceiptVault {
             current_debt,
             current_debt,
         );
-        Self::write_margin_borrow_snapshot(&env, position_id, 0u128);
+        Self::write_margin_borrow_snapshot_with_principal(&env, position_id, 0u128, 0u128);
 
         let storage = env.storage().persistent();
         let total_borrowed: u128 = storage
@@ -3644,7 +3708,14 @@ impl ReceiptVault {
 
         // Update borrower snapshot and totals
         let new_principal = current_debt - repay_amount;
-        Self::write_borrow_snapshot(&env, borrower.clone(), new_principal);
+        let borrow_principal_after =
+            Self::user_borrow_principal(&env, &borrower).saturating_sub(principal_repay_user);
+        Self::write_borrow_snapshot_with_principal(
+            &env,
+            borrower.clone(),
+            new_principal,
+            borrow_principal_after,
+        );
 
         let bcap: u128 = env
             .storage()

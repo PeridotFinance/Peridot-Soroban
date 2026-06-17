@@ -2,6 +2,7 @@ use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::ReceiptVault;
 use simple_peridottroller::SimplePeridottroller;
+use soroban_sdk::testutils::storage::Persistent as _;
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{
@@ -2432,6 +2433,51 @@ fn test_total_margin_ptokens_tracks_transfers_and_positions() {
         controller.get_margin_balance_ptokens(&user1, &usdt_id),
         400u128
     );
+}
+
+#[test]
+fn test_margin_balance_read_bumps_total_margin_ptokens_ttl() {
+    let (env, _admin, controller_id, usdt_id, _xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let user = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &1_000u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &1_000u128);
+
+    let total_key = DataKey::TotalMarginPtokens(usdt_vault_id.clone());
+    let balance_key = DataKey::MarginBalancePtokens(user.clone(), usdt_vault_id.clone());
+    let initial_total_ttl = env.as_contract(&controller_id, || {
+        env.storage().persistent().get_ttl(&total_key)
+    });
+    env.ledger()
+        .set_sequence_number(initial_total_ttl.saturating_sub(10_000));
+
+    let total_ttl_before = env.as_contract(&controller_id, || {
+        env.storage().persistent().get_ttl(&total_key)
+    });
+    assert!(
+        total_ttl_before < 500_000,
+        "test setup expected total TTL below bump threshold, got {total_ttl_before}"
+    );
+
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&user, &usdt_id),
+        1_000u128
+    );
+
+    env.as_contract(&controller_id, || {
+        let total_ttl_after = env.storage().persistent().get_ttl(&total_key);
+        let balance_ttl_after = env.storage().persistent().get_ttl(&balance_key);
+        assert!(
+            total_ttl_after > 500_000,
+            "expected bumped total margin TTL, got {total_ttl_after}"
+        );
+        assert!(
+            balance_ttl_after > 500_000,
+            "expected bumped user margin balance TTL, got {balance_ttl_after}"
+        );
+    });
 }
 
 // ─── Orphan fee + sweep ───────────────────────────────────────────────────────

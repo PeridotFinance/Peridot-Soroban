@@ -2780,6 +2780,100 @@ fn test_borrow_cap_not_released_by_interest_only_repay() {
     vault.borrow(&user, &1u128);
 }
 
+#[test]
+#[should_panic(expected = "borrow cap exceeded")]
+fn test_borrow_cap_not_released_by_capitalized_interest_repay() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &5_000i128);
+    token_admin_client.mint(&lender, &5_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&lender, &2_000u128);
+    vault.deposit(&user, &1_000u128);
+
+    let model_id = env.register(MockRateModel, ());
+    let model = MockRateModelClient::new(&env, &model_id);
+    model.initialize(&0u128, &1_000_000u128);
+    vault.set_interest_model(&model_id);
+
+    vault.set_borrow_cap(&101u128);
+    vault.borrow(&user, &100u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault.update_interest();
+    assert_eq!(vault.get_user_borrow_balance(&user), 200u128);
+
+    // This borrow rewrites the debt snapshot after interest has accrued. The
+    // borrow-cap principal mirror must still only increase by the new 1 unit.
+    vault.borrow(&user, &1u128);
+    assert_eq!(vault.get_user_borrow_balance(&user), 201u128);
+
+    // Repaying the old accrued interest must not release borrow-cap principal.
+    vault.repay(&user, &100u128);
+
+    // True principal outstanding is still 101, so any additional borrow must fail.
+    vault.borrow(&user, &1u128);
+}
+
+#[test]
+#[should_panic(expected = "borrow cap exceeded")]
+fn test_margin_borrow_cap_not_released_by_capitalized_interest_repay() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&lender, &5_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&lender, &2_000u128);
+
+    let model_id = env.register(MockRateModel, ());
+    let model = MockRateModelClient::new(&env, &model_id);
+    model.initialize(&0u128, &1_000_000u128);
+    vault.set_interest_model(&model_id);
+    vault.set_borrow_cap(&101u128);
+
+    let margin_ctrl_id = env.register(MockMarginPositionController, ());
+    let margin_ctrl = MockMarginPositionControllerClient::new(&env, &margin_ctrl_id);
+    vault.set_margin_controller(&admin, &Some(margin_ctrl_id.clone()));
+
+    let position_id = 99u64;
+    margin_ctrl.set_position(&position_id, &user, &vault_id);
+    vault.init_margin_borrow_state(&position_id);
+    vault.borrow_for_margin(&position_id, &user, &100u128);
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault.update_interest();
+    assert_eq!(vault.get_margin_borrow_balance(&position_id), 200u128);
+
+    vault.borrow_for_margin(&position_id, &user, &1u128);
+    assert_eq!(vault.get_margin_borrow_balance(&position_id), 201u128);
+
+    vault.repay_for_margin(&position_id, &user, &100u128);
+
+    vault.borrow_for_margin(&position_id, &user, &1u128);
+}
+
 // Mock rate model providing constant yearly rates
 #[contract]
 struct MockRateModel;
