@@ -170,6 +170,49 @@ impl ReceiptVault {
         }
     }
 
+    fn total_borrowed_for_state_repair(env: &Env) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::TotalBorrowed)
+            .unwrap_or(0u128)
+    }
+
+    fn sync_user_borrow_state_for_ptoken_read(env: &Env, user: &Address, ptoken_balance: u128) {
+        if ptoken_balance == 0 {
+            return;
+        }
+        let persistent = env.storage().persistent();
+        let flag_key = DataKey::HasBorrowed(user.clone());
+        match persistent.get::<_, bool>(&flag_key) {
+            Some(false) => {
+                bump_has_borrowed_ttl(env, user);
+                return;
+            }
+            Some(true) => {
+                bump_user_borrow_state_ttl(env, user);
+                return;
+            }
+            None => {}
+        }
+
+        let has_snapshot = persistent.has(&DataKey::BorrowSnapshots(user.clone()));
+        let principal: u128 = persistent
+            .get(&DataKey::BorrowPrincipal(user.clone()))
+            .unwrap_or(0u128);
+        if has_snapshot || principal > 0 {
+            bump_user_borrow_state_ttl(env, user);
+        } else if Self::total_borrowed_for_state_repair(env) == 0 {
+            persistent.set(&flag_key, &false);
+            bump_has_borrowed_ttl(env, user);
+        }
+    }
+
+    fn read_ptoken_balance_with_borrow_ttl(env: &Env, user: &Address) -> u128 {
+        let balance = ptoken_balance(env, user);
+        Self::sync_user_borrow_state_for_ptoken_read(env, user, balance);
+        balance
+    }
+
     fn user_borrow_principal(env: &Env, user: &Address) -> u128 {
         let persistent = env.storage().persistent();
         let principal_key = DataKey::BorrowPrincipal(user.clone());
@@ -479,10 +522,11 @@ impl ReceiptVault {
                 > 0
         {
             persistent.set(&DataKey::HasBorrowed(user.clone()), &true);
-        } else if has_borrowed.is_none() && ptoken_balance(env, user) == 0 {
-            // Only initialize false flags for accounts without collateral.
-            // This avoids masking missing debt state for collateralized users.
-            persistent.set(&DataKey::HasBorrowed(user.clone()), &false);
+        } else if has_borrowed.is_none() {
+            let pbal = ptoken_balance(env, user);
+            if pbal == 0 || Self::total_borrowed_for_state_repair(env) == 0 {
+                persistent.set(&DataKey::HasBorrowed(user.clone()), &false);
+            }
         }
         bump_user_borrow_live_ttl(env, user);
     }
@@ -1227,7 +1271,8 @@ impl ReceiptVault {
 
     /// Get user's balance in the vault in underlying terms (pTokens × exchange rate)
     pub fn get_user_balance(env: Env, user: Address) -> u128 {
-        let pbal = ptoken_balance(&env, &user);
+        let _ = ensure_initialized(&env);
+        let pbal = Self::read_ptoken_balance_with_borrow_ttl(&env, &user);
         if pbal == 0 {
             return 0u128;
         }
@@ -1237,12 +1282,14 @@ impl ReceiptVault {
 
     /// Get user's pToken balance
     pub fn get_ptoken_balance(env: Env, user: Address) -> u128 {
-        ptoken_balance(&env, &user)
+        let _ = ensure_initialized(&env);
+        Self::read_ptoken_balance_with_borrow_ttl(&env, &user)
     }
 
     /// Return (ptoken_balance, borrow_balance, exchange_rate, underlying_token) in one call.
     /// Peridottroller uses this in account-health loops to replace 4 cross-contract reads with 1.
     pub fn get_account_snapshot(env: Env, user: Address) -> (u128, u128, u128, Address) {
+        let _ = ensure_initialized(&env);
         let pbal = ptoken_balance(&env, &user);
         let debt = Self::get_user_borrow_balance(env.clone(), user);
         let rate = Self::get_exchange_rate(env.clone());
@@ -1298,7 +1345,11 @@ impl ReceiptVault {
 
     pub fn balance(env: Env, account: Address) -> i128 {
         let _ = ensure_initialized(&env);
-        TokenBase::balance(&env, &account)
+        let balance = TokenBase::balance(&env, &account);
+        if balance > 0 {
+            Self::sync_user_borrow_state_for_ptoken_read(&env, &account, balance as u128);
+        }
+        balance
     }
 
     pub fn total_supply(env: Env) -> i128 {
@@ -2517,9 +2568,15 @@ impl ReceiptVault {
                 let principal: u128 = persistent
                     .get(&DataKey::BorrowPrincipal(user.clone()))
                     .unwrap_or(0);
-                if principal > 0 || ptoken_balance(&env, &user) > 0 {
+                if principal > 0 {
                     panic!("borrow state missing");
                 }
+                let pbal = ptoken_balance(&env, &user);
+                if pbal > 0 && Self::total_borrowed_for_state_repair(&env) > 0 {
+                    panic!("borrow state missing");
+                }
+                persistent.set(&DataKey::HasBorrowed(user.clone()), &false);
+                bump_has_borrowed_ttl(&env, &user);
             }
             return 0u128;
         };

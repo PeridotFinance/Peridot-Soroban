@@ -110,17 +110,26 @@ impl SimplePeridottroller {
         );
 
         let mut user_ptokens_hint: Option<u128> = None;
-        let supply_index: u128 = env
+        let supply_index_opt: Option<u128> = env
             .storage()
             .persistent()
-            .get(&DataKey::SupplyIndex(market.clone()))
-            .unwrap_or(INDEX_SCALE_1E18);
-        let user_supply_index: u128 = env
+            .get(&DataKey::SupplyIndex(market.clone()));
+        let supply_index = supply_index_opt.unwrap_or(INDEX_SCALE_1E18);
+        let user_supply_index_opt: Option<u128> = env
             .storage()
             .persistent()
-            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()))
-            .unwrap_or(INDEX_SCALE_1E18);
-        if supply_index != user_supply_index {
+            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()));
+        let user_supply_index = user_supply_index_opt.unwrap_or(INDEX_SCALE_1E18);
+        let supply_rewards_relevant = supply_speed > 0
+            || supply_index_opt
+                .map(|idx| idx != INDEX_SCALE_1E18)
+                .unwrap_or(false)
+            || user_supply_index_opt.is_some()
+            || env
+                .storage()
+                .persistent()
+                .has(&DataKey::SupplyIndexTime(market.clone()));
+        if supply_rewards_relevant && supply_index != user_supply_index {
             let user_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
                 market,
                 &Symbol::new(env, "get_ptoken_balance"),
@@ -161,7 +170,9 @@ impl SimplePeridottroller {
             user_borrowed_hint = Some(user_borrowed);
         }
 
-        Self::distribute_supply(env.clone(), user.clone(), market.clone(), user_ptokens_hint);
+        if supply_rewards_relevant {
+            Self::distribute_supply(env.clone(), user.clone(), market.clone(), user_ptokens_hint);
+        }
         Self::distribute_borrow(
             env.clone(),
             user.clone(),

@@ -900,8 +900,7 @@ fn test_bump_user_borrow_ttl_permissionless() {
 }
 
 #[test]
-#[should_panic(expected = "borrow state missing")]
-fn test_missing_borrow_state_panics_for_collateralized_account() {
+fn test_collateral_only_missing_borrow_state_recovers_when_no_global_debt() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -926,7 +925,44 @@ fn test_missing_borrow_state_panics_for_collateralized_account() {
             .remove(&DataKey::HasBorrowed(user.clone()));
     });
 
-    let _ = vault.get_user_borrow_balance(&user);
+    assert_eq!(vault.get_user_borrow_balance(&user), 0u128);
+    vault.withdraw(&user, &100u128);
+    assert_eq!(vault.get_ptoken_balance(&user), 400u128);
+}
+
+#[test]
+fn test_ptoken_balance_read_bumps_user_borrow_state_ttl() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&user, &500u128);
+
+    env.as_contract(&vault_id, || {
+        let key = DataKey::HasBorrowed(user.clone());
+        env.storage().persistent().remove(&key);
+    });
+
+    assert_eq!(vault.get_ptoken_balance(&user), 500u128);
+
+    env.as_contract(&vault_id, || {
+        let ttl_after = env
+            .storage()
+            .persistent()
+            .get_ttl(&DataKey::HasBorrowed(user.clone()));
+        assert!(
+            ttl_after > 4_000_000,
+            "expected long borrow-state ttl after pToken balance read, got {ttl_after}"
+        );
+    });
 }
 
 #[test]
