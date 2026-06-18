@@ -2294,6 +2294,52 @@ fn test_open_fee_deducted_and_distributed_proportionally() {
 }
 
 #[test]
+#[should_panic(expected = "margin fee overflow")]
+fn test_get_claimable_margin_fees_reverts_on_pending_overflow() {
+    let (env, _admin, controller_id, usdt_id, _xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let user = Address::generate(&env);
+
+    env.as_contract(&controller_id, || {
+        env.storage().persistent().set(
+            &DataKey::MarginBalancePtokens(user.clone(), usdt_vault_id.clone()),
+            &2u128,
+        );
+        env.storage()
+            .persistent()
+            .set(&DataKey::TotalMarginPtokens(usdt_vault_id.clone()), &2u128);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarginFeeIndex(usdt_vault_id.clone()), &u128::MAX);
+    });
+
+    controller.get_claimable_margin_fees(&user, &usdt_id);
+}
+
+#[test]
+#[should_panic(expected = "margin fee overflow")]
+fn test_claim_margin_fees_reverts_on_pending_overflow() {
+    let (env, _admin, controller_id, usdt_id, _xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let user = Address::generate(&env);
+
+    env.as_contract(&controller_id, || {
+        env.storage().persistent().set(
+            &DataKey::MarginBalancePtokens(user.clone(), usdt_vault_id.clone()),
+            &2u128,
+        );
+        env.storage()
+            .persistent()
+            .set(&DataKey::TotalMarginPtokens(usdt_vault_id.clone()), &2u128);
+        env.storage()
+            .persistent()
+            .set(&DataKey::MarginFeeIndex(usdt_vault_id.clone()), &u128::MAX);
+    });
+
+    controller.claim_margin_fees(&user, &usdt_id);
+}
+
+#[test]
 #[should_panic]
 fn test_open_fee_insufficient_margin_for_fee_panics() {
     let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();

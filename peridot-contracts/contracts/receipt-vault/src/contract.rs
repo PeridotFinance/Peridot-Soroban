@@ -2656,7 +2656,14 @@ impl ReceiptVault {
             if let Some(snapshot) =
                 persistent.get::<_, BorrowSnapshot>(&DataKey::BorrowSnapshots(user.clone()))
             {
-                persistent.set(&DataKey::BorrowPrincipal(user.clone()), &snapshot.principal);
+                let principal_key = DataKey::BorrowPrincipal(user.clone());
+                // Existing mirrors are canonical true principal; a debt snapshot may include
+                // capitalized interest, so permissionless migration must never increase it.
+                let principal = persistent
+                    .get::<_, u128>(&principal_key)
+                    .map(|existing| existing.min(snapshot.principal))
+                    .unwrap_or(snapshot.principal);
+                persistent.set(&principal_key, &principal);
             }
             bump_user_borrow_state_ttl(&env, &user);
         }
@@ -2675,10 +2682,14 @@ impl ReceiptVault {
             if let Some(snapshot) =
                 persistent.get::<_, BorrowSnapshot>(&DataKey::MarginBorrowSnapshots(position_id))
             {
-                persistent.set(
-                    &DataKey::MarginBorrowPrincipal(position_id),
-                    &snapshot.principal,
-                );
+                let principal_key = DataKey::MarginBorrowPrincipal(position_id);
+                // Existing mirrors are canonical true principal; a debt snapshot may include
+                // capitalized interest, so permissionless migration must never increase it.
+                let principal = persistent
+                    .get::<_, u128>(&principal_key)
+                    .map(|existing| existing.min(snapshot.principal))
+                    .unwrap_or(snapshot.principal);
+                persistent.set(&principal_key, &principal);
             }
             bump_margin_borrow_state_ttl(&env, position_id);
         }

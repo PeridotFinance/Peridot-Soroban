@@ -378,9 +378,9 @@ pub fn update_total_margin_ptokens(env: &Env, vault: &Address, amount: u128, add
     let key = DataKey::TotalMarginPtokens(vault.clone());
     let current = get_total_margin_ptokens(env, vault);
     let new_val = if add {
-        current.saturating_add(amount)
+        current.checked_add(amount).expect("margin total overflow")
     } else {
-        current.saturating_sub(amount)
+        current.checked_sub(amount).expect("margin total underflow")
     };
     env.storage().persistent().set(&key, &new_val);
     env.storage()
@@ -406,6 +406,13 @@ pub fn get_user_margin_fee_index(env: &Env, user: &Address, vault: &Address) -> 
     persistent.get(&key).unwrap_or(0u128)
 }
 
+pub fn compute_margin_fee_pending(delta: u128, user_bal: u128) -> u128 {
+    if delta == 0 || user_bal == 0 {
+        return 0;
+    }
+    delta.checked_mul(user_bal).expect("margin fee overflow") / MARGIN_FEE_PRECISION
+}
+
 /// Snapshot pending fee earnings into `UserMarginFeeAccrued`, then advance
 /// the user's fee-index snapshot to the current global index.
 /// Must be called BEFORE any `MarginBalancePtokens` change for `(user, vault)`.
@@ -416,13 +423,12 @@ pub fn accrue_user_fee(env: &Env, user: &Address, vault: &Address) {
     if delta > 0 {
         let user_bal = get_margin_balance_ptokens(env, user, vault);
         if user_bal > 0 {
-            let pending = delta.saturating_mul(user_bal) / MARGIN_FEE_PRECISION;
+            let pending = compute_margin_fee_pending(delta, user_bal);
             if pending > 0 {
                 let accrued_key = DataKey::UserMarginFeeAccrued(user.clone(), vault.clone());
                 let accrued: u128 = env.storage().persistent().get(&accrued_key).unwrap_or(0);
-                env.storage()
-                    .persistent()
-                    .set(&accrued_key, &accrued.saturating_add(pending));
+                let new_accrued = accrued.checked_add(pending).expect("margin fee overflow");
+                env.storage().persistent().set(&accrued_key, &new_accrued);
                 env.storage()
                     .persistent()
                     .extend_ttl(&accrued_key, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -446,9 +452,10 @@ pub fn collect_margin_fee(env: &Env, vault: &Address, fee_ptokens: u128) {
     if total == 0 {
         let orphan_key = DataKey::MarginFeeOrphan(vault.clone());
         let orphan: u128 = env.storage().persistent().get(&orphan_key).unwrap_or(0);
-        env.storage()
-            .persistent()
-            .set(&orphan_key, &orphan.saturating_add(fee_ptokens));
+        let new_orphan = orphan
+            .checked_add(fee_ptokens)
+            .expect("margin fee overflow");
+        env.storage().persistent().set(&orphan_key, &new_orphan);
         env.storage()
             .persistent()
             .extend_ttl(&orphan_key, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -482,9 +489,8 @@ pub fn collect_margin_fee(env: &Env, vault: &Address, fee_ptokens: u128) {
     }
     let index_key = DataKey::MarginFeeIndex(vault.clone());
     let current: u128 = env.storage().persistent().get(&index_key).unwrap_or(0);
-    env.storage()
-        .persistent()
-        .set(&index_key, &current.saturating_add(delta));
+    let new_index = current.checked_add(delta).expect("margin fee overflow");
+    env.storage().persistent().set(&index_key, &new_index);
     env.storage()
         .persistent()
         .extend_ttl(&index_key, TTL_THRESHOLD, TTL_EXTEND_TO);

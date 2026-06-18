@@ -234,7 +234,8 @@ impl MarginController {
         // (accrue_user_fee above already advanced UserMarginFeeIndex to current fee_index,
         //  so this balance increase won't cause back-pay on the next interaction.)
         let free = get_margin_balance_ptokens(&env, &user, &vault);
-        set_margin_balance_ptokens(&env, &user, &vault, free.saturating_add(accrued));
+        let new_free = free.checked_add(accrued).expect("margin fee overflow");
+        set_margin_balance_ptokens(&env, &user, &vault, new_free);
         update_total_margin_ptokens(&env, &vault, accrued, true);
         env.storage().persistent().set(&accrued_key, &0u128);
         accrued
@@ -250,13 +251,13 @@ impl MarginController {
         let delta = fee_index.saturating_sub(user_index);
         let pending = if delta > 0 {
             let user_bal = get_margin_balance_ptokens(&env, &user, &vault);
-            delta.saturating_mul(user_bal) / MARGIN_FEE_PRECISION
+            compute_margin_fee_pending(delta, user_bal)
         } else {
             0
         };
         let accrued_key = DataKey::UserMarginFeeAccrued(user.clone(), vault.clone());
         let accrued: u128 = env.storage().persistent().get(&accrued_key).unwrap_or(0);
-        accrued.saturating_add(pending)
+        accrued.checked_add(pending).expect("margin fee overflow")
     }
 
     pub fn get_margin_fee_index(env: Env, asset: Address) -> u128 {
@@ -278,7 +279,8 @@ impl MarginController {
         }
         accrue_user_fee(&env, &recipient, &vault);
         let free = get_margin_balance_ptokens(&env, &recipient, &vault);
-        set_margin_balance_ptokens(&env, &recipient, &vault, free.saturating_add(orphan));
+        let new_free = free.checked_add(orphan).expect("margin fee overflow");
+        set_margin_balance_ptokens(&env, &recipient, &vault, new_free);
         update_total_margin_ptokens(&env, &vault, orphan, true);
         env.storage().persistent().set(&orphan_key, &0u128);
         orphan
