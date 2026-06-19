@@ -29,6 +29,9 @@ Aquarius pool status for current XLM/mock-USDT pair:
 - Pool was funded with `1,000,000,000` XLM units and `1,000,000,000` mock-USDT
   units, then skewed by swapping `100,000,000` mock-USDT units to XLM so XLM->USDT
   clears the controller's 1:1 oracle-min check.
+- Pool was later rebalanced with an `87,000,000` XLM-unit swap into mock-USDT,
+  returning `95,034,080` mock-USDT to `dev` and moving reserves to roughly 1:1
+  (`999,912,914` XLM / `1,000,360,176` mock-USDT before the next long test).
 - Final SwapAdapter binding allows this pool ID/address pair and also allowlists the
   pool address for estimates.
 - Full manual smoke after the pToken-finalize redeploy:
@@ -44,6 +47,23 @@ Aquarius pool status for current XLM/mock-USDT pair:
     USDT-vault deposit minted `1,081,819` pTokens, and `finalize_open_ptokens_v2`
     opened the position with health factor `2,081,818`. `close_position_v2_repay_only`
     then closed it; `get_position(1)=null` and XLM margin debt returned to `0`.
+  - Additional leveraged short stress: `3x` with `1,000,000` USDT margin pTokens
+    opened position `2`, borrowed `1,800,034` XLM, swapped to `2,157,299` mock-USDT,
+    deposited for `2,157,258` pTokens, finalized with health factor `1,578,628`,
+    then closed; `get_position(2)=null`, Alice positions `[]`, and XLM margin debt
+    returned to `0`.
+  - Non-mutating `4x` short budget simulation also passed: simulated borrow
+    `2,700,051` XLM and adapter estimate `3,220,085` mock-USDT out.
+  - Before rebalancing, the reverse long route was blocked by current pool pricing,
+    not budget: USDT->XLM estimate for `900,017` USDT was `747,327` XLM, below the
+    5% oracle minimum `855,017`, so Aquarius rejected the swap.
+  - After rebalancing, the full routed long flow also passed: `begin_open_position_v2`
+    opened position `3`, borrowed `900,017` mock-USDT, adapter `swap_chained`
+    returned `896,111` XLM, XLM-vault deposit minted `896,111` pTokens, and
+    `finalize_open_ptokens_v2` opened the position with health factor `1,696,961`.
+    `close_position_v2_repay_only` then closed it; `get_position(3)=null`, Alice
+    positions `[]`, and USDT margin debt returned to `0`. Post-test USDT->XLM
+    estimate for `900,017` USDT is `894,505` XLM, still above the `855,017` minimum.
   - Final exchange rates read after the smoke: XLM vault `1,000,000`, USDT vault
     `1,000,019`.
 - Recommended live routed open flow is now:
