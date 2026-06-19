@@ -93,6 +93,7 @@ pub enum DataKey {
     PositionDebtVault(u64),
     PositionPositionVault(u64),
     PositionMode(u64),
+    PendingOpenPosition(u64),
     MarginBalancePtokens(Address, Address), // (user, market)
     PendingUpgradeHash,
     PendingUpgradeEta,
@@ -123,6 +124,7 @@ pub enum PositionStatus {
     Open,
     Closed,
     Liquidated,
+    PendingOpen,
 }
 
 #[contracttype]
@@ -144,6 +146,23 @@ pub struct Position {
     pub entry_price_scaled: u128,
     pub opened_at: u64,
     pub status: PositionStatus,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingOpenPosition {
+    pub owner: Address,
+    pub collateral_asset: Address,
+    pub debt_asset: Address,
+    pub position_asset: Address,
+    pub collateral_vault: Address,
+    pub debt_vault: Address,
+    pub position_vault: Address,
+    pub collateral_ptokens: u128,
+    pub open_fee_ptokens: u128,
+    pub borrow_amount: u128,
+    pub min_position_amount: u128,
+    pub expires_at: u64,
 }
 
 pub fn require_admin(env: &Env, admin: &Address) {

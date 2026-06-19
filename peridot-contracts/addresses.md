@@ -1,4 +1,71 @@
-# Testnet Deploy (dev) — current (stress-test v4, leveraged-fix + Almanax fixes)
+# Testnet Deploy (dev) — current no-$P deployment
+
+Fresh no-rewards deployment from this branch. `$P` is intentionally not wired as a
+controller reward token. SwapAdapter + MarginController were freshly redeployed after
+the pToken-finalized split-open fix, avoiding the 24h upgrade timelock.
+
+- Admin (dev): `GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ`
+- Alice: `GCOAFEN2VLTOAZR3RVSJ2QGLY4TCVMSFGVNWVI3YMQ6NLJJCCTAJT5TZ`
+- Bob: `GBFSIHBLGGDU26EV6MZK64R5UEZU3WLRKM7VRVVCQTHBTI72HLPVUCRW`
+- Controller (SimplePeridottroller): `CDMXPWG55776NECXQMWNBXMEQXZUAWA2AJBCQS7SU7SA64XHMO3KB3O6`
+- XLM Vault: `CB32OVY4AADCHQT3DLKJYW5QVTWY5MOX7BBNZFT3SDHZ5HPSDDEA2THJ`
+- USDT Vault: `CCEW6NSPCV7XUEQV75ZMII5HK5DGXK5JP2QOTGLV4UFLDBPEKRGO4Y4B`
+- JumpRateModel: `CDF2GSHMMJR6OU3PBMHO642MSCEKIZV75SYOBP74Q4RZWDKK7VFOTKDZ`
+- Mock USDT (7 decimals, open mint): `CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY`
+- XLM native asset contract: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
+- SwapAdapter (pool-direct Aquarius single-hop build): `CARPR3UOIPGF7OIQITV5273SMEGKRCJP65MNKN2HLV32EKXTVUP72GBV`
+- MarginController: `CAZOVGMZ4DAUI3ZX3OM243T3HLBGWS2KQYECFNT4LLG3IYX6BJAFSOEE`
+- Working Aquarius testnet router: `CBCFTQSPDBAIZ6R6PJQKSQWKNKWH2QIV3I4J72SHWBIK3ADRRAM5A6GD`
+- Non-testnet/stale router to avoid on testnet: `CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK`
+
+Aquarius pool status for current XLM/mock-USDT pair:
+- Token order: `[XLM, Mock USDT]`.
+- AQUA payment token: `CDNVQW44C3HALYNVQ4SOBXY5EWYTGVYXX6JPESOLQDABJI5FC5LTRRUE`
+  (`AQUA:GAHPYWLK6YRN7CVYZOO4H3VDRZ7PVF5UJGLZCSPAEIKJE2XSWF5LAGER`, 7 decimals).
+- `dev` created the AQUA trustline, swapped `100,000` XLM units into `10,683,815`
+  AQUA units on Aquarius, then paid the `10,000,000` AQUA standard-pool creation fee.
+- Pool ID: `9ac7a9cde23ac2ada11105eeaa42e43c2ea8332ca0aa8f41f58d7160274d718e`.
+- Pool address: `CCMNSENXDBNJSY72BDIPH5CCXLLHBKZ4LXTRKDLKZN4UI2NJFQLWTLD6`.
+- Pool was funded with `1,000,000,000` XLM units and `1,000,000,000` mock-USDT
+  units, then skewed by swapping `100,000,000` mock-USDT units to XLM so XLM->USDT
+  clears the controller's 1:1 oracle-min check.
+- Final SwapAdapter binding allows this pool ID/address pair and also allowlists the
+  pool address for estimates.
+- Full manual smoke after the pToken-finalize redeploy:
+  - Bob XLM lending deposit of `10,000,000` units minted `10,000,000` pTokens;
+    withdraw of `1,000,000` pTokens returned `1,000,000` XLM units.
+  - Alice USDT borrow/repay of `1,000,000` units against existing XLM pToken
+    collateral passed; debt returned to `0`.
+  - Bob USDT borrow/repay passed after entering the USDT market; debt returned to
+    `0`.
+  - Routed leveraged short flow passed with the live Aquarius pool:
+    `begin_open_position_v2` opened pending position `1`, borrowed `900,017` XLM
+    units, adapter `swap_chained` returned `1,081,840` mock-USDT units, separate
+    USDT-vault deposit minted `1,081,819` pTokens, and `finalize_open_ptokens_v2`
+    opened the position with health factor `2,081,818`. `close_position_v2_repay_only`
+    then closed it; `get_position(1)=null` and XLM margin debt returned to `0`.
+  - Final exchange rates read after the smoke: XLM vault `1,000,000`, USDT vault
+    `1,000,019`.
+- Recommended live routed open flow is now:
+  1. `begin_open_position_v2`
+  2. adapter `swap_chained`
+  3. direct deposit of received position asset into the position vault
+  4. `finalize_open_ptokens_v2`
+  The monolithic `open_position_v2` and the deposit-in-finalize
+  `finalize_open_position_v2` path remain too heavy for the current live
+  testnet route.
+
+Superseded no-`$P` margin deploys:
+- split-open before pToken finalizer: SwapAdapter `CB6R6YZWWPACDX5JSPFLOF4PGH4BH5D6BHDC6IDVXH2DSXQCYCQJ62JB`,
+  MarginController `CC2KR57IUIB3LZPGYK3INI4QWM4IKO3H2DXHM6SNQNC2UOBHEXBXZQTJ`
+- direct-pool split-open attempt: SwapAdapter `CAMJEGX5BFZ5TVSUVJ5RDKFDSSLVMXRVK4JKPKP6GRQBNRBFVUT2HI5R`,
+  MarginController `CDTP4VSVHHJRBGFWPSNQ65FQ3AFZAZEIWCDYLTC23AN7QAOBWC2QCZ5E`
+- pre route-index redeploy: SwapAdapter `CCOFZJTN64COWDL46AJLZBSV7OJWLFXDL7YFWY2CD47SY2VW7TN3LN57`,
+  MarginController `CD5PQCAWFM7LZS6U2BYEXNF3DUSRLTV66O5XL3EKNXEUG5ZIWGL3PQ5R`
+
+## Previous testnet deployments (superseded)
+
+# Testnet Deploy (dev) — stress-test v4, leveraged-fix + Almanax fixes
 
 Fresh full deploy from the `leveraged-fix` line with all fixes from this work applied.
 Fixes carried from v3 (still present):

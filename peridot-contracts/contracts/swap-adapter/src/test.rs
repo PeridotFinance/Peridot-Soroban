@@ -2,7 +2,7 @@ use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::testutils::Ledger;
-use soroban_sdk::{contract, contractimpl, Env, IntoVal};
+use soroban_sdk::{contract, contractimpl, Env, IntoVal, String};
 
 fn assert_budget_under(env: &Env, max_cpu: u64, max_mem: u64) {
     let budget = env.cost_estimate().budget();
@@ -36,6 +36,19 @@ struct MockAquariusRouter;
 
 #[contractimpl]
 impl MockAquariusRouter {
+    pub fn swap(
+        _env: Env,
+        _user: Address,
+        _tokens: Vec<Address>,
+        _token_in: Address,
+        _token_out: Address,
+        _pool_index: BytesN<32>,
+        _in_amount: u128,
+        out_min: u128,
+    ) -> u128 {
+        out_min
+    }
+
     pub fn swap_chained(
         _env: Env,
         _user: Address,
@@ -50,6 +63,9 @@ impl MockAquariusRouter {
 
 #[contract]
 struct MockAquariusPool;
+
+#[contract]
+struct MockAquariusPoolIndices;
 
 #[contract]
 struct MockSoroswapRouterEmpty;
@@ -69,6 +85,26 @@ impl MockAquariusPool {
         amount_out_min: u128,
     ) -> u128 {
         amount_out_min
+    }
+}
+
+#[contractimpl]
+impl MockAquariusPoolIndices {
+    pub fn estimate_swap(_env: Env, _in_idx: u32, _out_idx: u32, amount_in: u128) -> u128 {
+        amount_in
+    }
+
+    pub fn swap(
+        _env: Env,
+        _user: Address,
+        in_idx: u32,
+        out_idx: u32,
+        _amount_in: u128,
+        _amount_out_min: u128,
+    ) -> u128 {
+        (in_idx as u128)
+            .saturating_mul(10)
+            .saturating_add(out_idx as u128)
     }
 }
 
@@ -277,6 +313,29 @@ fn test_swap_chained() {
     let hops = Vec::from_array(&env, [(path, pool_id, pool)]);
     let out = adapter.swap_chained(&user, &hops, &token_in, &10u128, &9u128);
     assert_eq!(out, 9u128);
+}
+
+#[test]
+fn test_swap_chained_infers_reverse_pool_indices() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = default_admin(&env);
+    let user = Address::generate(&env);
+
+    let router_id = env.register(MockAquariusRouter, ());
+    let pool = env.register(MockAquariusPoolIndices, ());
+    let adapter_id = env.register(SwapAdapter, ());
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    adapter.initialize(&admin, &router_id);
+    let pool_id = BytesN::from_array(&env, &[7u8; 32]);
+    adapter.set_pool_binding(&admin, &pool_id, &pool, &true);
+
+    let token_0 = Address::generate(&env);
+    let token_1 = Address::generate(&env);
+    let pool_tokens = Vec::from_array(&env, [token_0.clone(), token_1.clone()]);
+    let hops = Vec::from_array(&env, [(pool_tokens, pool_id, pool)]);
+    let out = adapter.swap_chained(&user, &hops, &token_1, &10u128, &1u128);
+    assert_eq!(out, 10u128);
 }
 
 #[test]

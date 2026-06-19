@@ -21,6 +21,17 @@ pub trait SoroswapRouter {
 
 #[soroban_sdk::contractclient(name = "AquariusRouterClient")]
 pub trait AquariusRouter {
+    fn swap(
+        env: Env,
+        user: Address,
+        tokens: Vec<Address>,
+        token_in: Address,
+        token_out: Address,
+        pool_index: BytesN<32>,
+        in_amount: u128,
+        out_min: u128,
+    ) -> u128;
+
     fn swap_chained(
         env: Env,
         user: Address,
@@ -212,25 +223,46 @@ impl SwapAdapter {
         if swaps_chain.len() == 0 {
             panic!("bad swaps");
         }
+        if amount == 0 || amount_with_slippage == 0 {
+            panic!("bad amount");
+        }
         for i in 0..swaps_chain.len() {
-            let (path, pool_id, pool) = swaps_chain.get(i).unwrap();
-            if path.len() < 2 {
+            let (pool_tokens, pool_id, pool) = swaps_chain.get(i).unwrap();
+            if pool_tokens.len() != 2 {
                 panic!("bad swaps");
             }
             ensure_pool_binding_allowed(&env, &pool_id, &pool);
         }
-        let router: Address = env
+        let _router: Address = env
             .storage()
             .persistent()
             .get(&DataKey::Router)
             .expect("router not set");
-        AquariusRouterClient::new(&env, &router).swap_chained(
-            &user,
-            &swaps_chain,
-            &token_in,
-            &amount,
-            &amount_with_slippage,
-        )
+        let mut current_token = token_in;
+        let mut current_amount = amount;
+        for i in 0..swaps_chain.len() {
+            let (pool_tokens, _pool_id, pool) = swaps_chain.get(i).unwrap();
+            // Custom low-budget route format: two pool tokens plus the direct pool address.
+            // The output token is inferred as the other token in the pool.
+            let (hop_out, in_idx, out_idx) = infer_two_token_hop(&pool_tokens, &current_token);
+            let min_out = if i == swaps_chain.len() - 1 {
+                amount_with_slippage
+            } else {
+                1u128
+            };
+            current_amount = AquariusPoolClient::new(&env, &pool).swap(
+                &user,
+                &in_idx,
+                &out_idx,
+                &current_amount,
+                &min_out,
+            );
+            if current_amount == 0 {
+                panic!("swap failed");
+            }
+            current_token = hop_out;
+        }
+        current_amount
     }
 
     pub fn estimate_pool_swap(
@@ -347,6 +379,21 @@ fn require_admin(env: &Env, admin: &Address) {
     }
     bump_critical_ttl(env);
     admin.require_auth();
+}
+
+fn infer_two_token_hop(pool_tokens: &Vec<Address>, current_token: &Address) -> (Address, u32, u32) {
+    if pool_tokens.len() != 2 {
+        panic!("bad swaps");
+    }
+    let token_0 = pool_tokens.get(0).unwrap();
+    let token_1 = pool_tokens.get(1).unwrap();
+    if token_0 == current_token.clone() {
+        (token_1, 0u32, 1u32)
+    } else if token_1 == current_token.clone() {
+        (token_0, 1u32, 0u32)
+    } else {
+        panic!("bad swaps");
+    }
 }
 
 fn expected_admin_config() -> &'static str {

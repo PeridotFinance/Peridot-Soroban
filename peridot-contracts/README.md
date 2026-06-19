@@ -176,11 +176,12 @@ stellar contract invoke --id "$VAULT" --source-account dev --network testnet -- 
 
 - Overview
 
-  - The peridottroller can distribute Peridot Tokens to suppliers and borrowers per-market using per-second speeds.
+  - Rewards are optional and are not wired by the current testnet/mainnet deployment scripts.
+  - If a reward token is explicitly configured later, the peridottroller can distribute Peridot Tokens to suppliers and borrowers per-market using per-second speeds.
   - Rewards accrue lazily on user actions (deposit/withdraw/borrow/repay) and are minted on `claim(user)`.
   - Speeds are set per market independently for supply and borrow sides and are denominated in Peridot base units (decimals typically 6).
 
-- Deploy Peridot Token and wire rewards
+- Optional: deploy Peridot Token and wire rewards
 
 ```rust
 // Deploy Peridot Token (symbol "P", 6 decimals) with admin = peridottroller
@@ -247,10 +248,10 @@ bash scripts/deploy_sandbox.sh
 
 The deploy script:
 
-- Deploys `SimplePeridottroller`, `JumpRateModel`, `PeridotToken`, and two `ReceiptVault` markets
-- Initializes PERI and wires it to the controller
+- Deploys `SimplePeridottroller`, `JumpRateModel`, a mock USDT token, and two `ReceiptVault` markets
+- Leaves `$P` rewards unwired
 - Adds markets to the controller, wires controller to vaults
-- Configures CF and reward speeds
+- Configures collateral factors
 
 Update `TOKEN_A`/`TOKEN_B` placeholders in `scripts/deploy_sandbox.sh` with real asset contract addresses.
 
@@ -294,7 +295,7 @@ bash scripts/verify_testnet.sh
 
 ### Teardown (testnet)
 
-To pause markets and zero reward speeds (safe teardown/reset):
+To pause markets during teardown/reset:
 
 ```bash
 export CTRL_ID=<controller_id>
@@ -424,6 +425,7 @@ vault.reduce_admin_fees(&amount);
 - Multi-claim and self-claim:
 
 ```rust
+// Only relevant if a reward token is explicitly configured.
 // Claim for a batch of users (permissionless).
 // Third parties can trigger claim timing, but rewards are always minted to each user.
 peridottroller.claim_all(&vec![user1, user2, user3]);

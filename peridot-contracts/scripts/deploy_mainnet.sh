@@ -58,15 +58,15 @@ SEED_EURC=100000000    # 10 EURC  (7 decimals)
 # ── $P token — no rewards or treasury at launch ───────────────────────────────
 # Reward speeds stay 0. The admin holds the $P mint authority and funds the
 # controller treasury only when rewards are activated.
-PERI_MAX_SUPPLY=100000000000000   # 100M tokens (6 decimals)
+P_TOKEN_MAX_SUPPLY=100000000000000   # 100M tokens (6 decimals)
 
 # ── WASM paths ────────────────────────────────────────────────────────────────
 WASM_CONTROLLER="$ROOT_DIR/target/wasm32v1-none/release/simple_peridottroller.optimized.wasm"
 WASM_VAULT="$ROOT_DIR/target/wasm32v1-none/release/receipt_vault.optimized.wasm"
 WASM_JRM="$ROOT_DIR/target/wasm32v1-none/release/jump_rate_model.optimized.wasm"
-WASM_PERI="$ROOT_DIR/target/wasm32v1-none/release/peridot_token.optimized.wasm"
+WASM_P_TOKEN="$ROOT_DIR/target/wasm32v1-none/release/peridot_token.optimized.wasm"
 
-for f in "$WASM_CONTROLLER" "$WASM_VAULT" "$WASM_JRM" "$WASM_PERI"; do
+for f in "$WASM_CONTROLLER" "$WASM_VAULT" "$WASM_JRM" "$WASM_P_TOKEN"; do
   [[ -f "$f" ]] || { echo "ERROR: $f not found. Run build_wasm.sh first with INIT_ADMIN set." >&2; exit 1; }
 done
 
@@ -126,7 +126,7 @@ deploy_hash() {
 echo "[0/14] Uploading WASM artifacts..."
 CTRL_HASH=$(upload_wasm "SimplePeridottroller" "$WASM_CONTROLLER")
 JRM_HASH=$(upload_wasm "JumpRateModel" "$WASM_JRM")
-PERI_HASH=$(upload_wasm "PeridotToken" "$WASM_PERI")
+P_TOKEN_HASH=$(upload_wasm "PeridotToken" "$WASM_P_TOKEN")
 VAULT_HASH=$(upload_wasm "ReceiptVault" "$WASM_VAULT")
 
 # ── SimplePeridottroller ──────────────────────────────────────────────────────
@@ -153,14 +153,14 @@ inv --id "$JRM_STB_ID" -- initialize \
 
 # ── PeridotToken ($P) ─────────────────────────────────────────────────────────
 echo "[4/14] Deploying PeridotToken (\$P)..."
-PERI_ID=$(deploy_hash "Deploying PeridotToken instance..." "$PERI_HASH")
-echo "        $PERI_ID"
-inv --id "$PERI_ID" -- initialize \
-  --name "Peridot" --symbol "P" --decimals 6 --admin "$ADMIN" --max_supply "$PERI_MAX_SUPPLY"
+P_TOKEN_ID=$(deploy_hash "Deploying PeridotToken instance..." "$P_TOKEN_HASH")
+echo "        $P_TOKEN_ID"
+inv --id "$P_TOKEN_ID" -- initialize \
+  --name "Peridot" --symbol "P" --decimals 6 --admin "$ADMIN" --max_supply "$P_TOKEN_MAX_SUPPLY"
 
-# Register $P with the controller. Speeds stay at 0 — no rewards distributed
-# until the admin explicitly sets speeds AND funds the controller treasury.
-inv --id "$CTRL_ID" -- set_peridot_token --token "$PERI_ID"
+# $P is intentionally not registered with the controller at launch.
+# With no reward token configured, reward accrual paths return early and no
+# supplier/borrower rewards are distributed.
 
 # ── ReceiptVault markets ──────────────────────────────────────────────────────
 echo "[5/14] Deploying ReceiptVault (XLM)..."
@@ -239,7 +239,7 @@ echo "================================================"
 echo " Controller  : $CTRL_ID"
 echo " JRM Volatile: $JRM_VOL_ID  (XLM)"
 echo " JRM Stable  : $JRM_STB_ID  (USDC + EURC)"
-echo " PERI (\$P)   : $PERI_ID"
+echo " \$P token    : $P_TOKEN_ID"
 echo " Vault XLM   : $VA_ID"
 echo " Vault USDC  : $VB_ID"
 echo " Vault EURC  : $VC_ID"
@@ -247,8 +247,4 @@ echo " Oracle      : $ORACLE_ID"
 echo ""
 echo "Next steps:"
 echo "  1. Verify: CTRL_ID=$CTRL_ID VA_ID=$VA_ID VB_ID=$VB_ID bash scripts/verify_testnet.sh"
-echo "  2. When ready to activate \$P rewards:"
-echo "     a. Mint treasury to controller:"
-echo "        stellar contract invoke --id $PERI_ID $NETWORK -- mint --to $CTRL_ID --amount <N>"
-echo "     b. Set reward speeds:"
-echo "        stellar contract invoke --id $CTRL_ID $NETWORK -- set_supply_speed --market <vault> --speed_per_sec <N>"
+echo "  2. \$P is not wired as a controller reward token."

@@ -292,6 +292,7 @@ pub fn clear_position_storage(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
         .remove(&DataKey::Position(position_id));
+    clear_pending_open_position(env, position_id);
     clear_position_initial_lock(env, position_id);
     clear_position_vaults(env, position_id);
     clear_position_mode(env, position_id);
@@ -306,6 +307,34 @@ pub fn get_position_or_panic(env: &Env, position_id: u64) -> Position {
         .expect("position missing")
 }
 
+pub fn set_pending_open_position(env: &Env, position_id: u64, pending: &PendingOpenPosition) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::PendingOpenPosition(position_id), pending);
+    bump_position_ttl(env, position_id);
+}
+
+pub fn get_pending_open_position(env: &Env, position_id: u64) -> Option<PendingOpenPosition> {
+    let pending = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PendingOpenPosition(position_id));
+    if pending.is_some() {
+        bump_position_ttl(env, position_id);
+    }
+    pending
+}
+
+pub fn get_pending_open_position_or_panic(env: &Env, position_id: u64) -> PendingOpenPosition {
+    get_pending_open_position(env, position_id).expect("pending open missing")
+}
+
+pub fn clear_pending_open_position(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PendingOpenPosition(position_id));
+}
+
 pub fn validate_swaps_chain(
     env: &Env,
     swap_adapter: &Address,
@@ -317,18 +346,12 @@ pub fn validate_swaps_chain(
         panic!("bad swaps");
     }
     let (first_path, _, _) = swaps_chain.get(0).unwrap();
-    if first_path.len() < 2 || first_path.len() > MAX_SWAP_PATH_LEN {
-        panic!("bad swaps");
-    }
-    if first_path.get(0).unwrap() != *expected_in {
+    if first_path.len() != 2 {
         panic!("bad swaps");
     }
 
     let (last_path, _, _) = swaps_chain.get(swaps_chain.len() - 1).unwrap();
-    if last_path.len() < 2 || last_path.len() > MAX_SWAP_PATH_LEN {
-        panic!("bad swaps");
-    }
-    if last_path.get(last_path.len() - 1).unwrap() != *expected_out {
+    if last_path.len() != 2 {
         panic!("bad swaps");
     }
 
@@ -336,7 +359,7 @@ pub fn validate_swaps_chain(
     let mut current = expected_in.clone();
     for i in 0..swaps_chain.len() {
         let (path, pool_id, pool) = swaps_chain.get(i).unwrap();
-        if path.len() < 2 || path.len() > MAX_SWAP_PATH_LEN {
+        if path.len() != 2 {
             panic!("bad swaps");
         }
         if pool_id.to_array() == [0u8; 32] {
@@ -345,13 +368,21 @@ pub fn validate_swaps_chain(
         if !adapter.is_pool_binding_allowed(&pool_id, &pool) {
             panic!("pool binding not allowed");
         }
-        let hop_in = path.get(0).unwrap();
-        if hop_in != current {
-            panic!("bad swaps");
-        }
-        current = path.get(path.len() - 1).unwrap();
+        current = infer_two_token_hop_output(&path, &current);
     }
     if current != *expected_out {
+        panic!("bad swaps");
+    }
+}
+
+fn infer_two_token_hop_output(pool_tokens: &Vec<Address>, current_token: &Address) -> Address {
+    let token_0 = pool_tokens.get(0).unwrap();
+    let token_1 = pool_tokens.get(1).unwrap();
+    if token_0 == current_token.clone() {
+        token_1
+    } else if token_1 == current_token.clone() {
+        token_0
+    } else {
         panic!("bad swaps");
     }
 }
@@ -598,6 +629,10 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     let mode_key = DataKey::PositionMode(position_id);
     if persistent.has(&mode_key) {
         persistent.extend_ttl(&mode_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let pending_key = DataKey::PendingOpenPosition(position_id);
+    if persistent.has(&pending_key) {
+        persistent.extend_ttl(&pending_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 
