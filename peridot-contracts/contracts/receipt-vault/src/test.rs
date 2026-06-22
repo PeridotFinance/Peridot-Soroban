@@ -931,7 +931,7 @@ fn test_collateral_only_missing_borrow_state_recovers_when_no_global_debt() {
 }
 
 #[test]
-fn test_ptoken_balance_read_bumps_user_borrow_state_ttl() {
+fn test_ptoken_balance_read_does_not_create_false_borrow_marker() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -954,14 +954,11 @@ fn test_ptoken_balance_read_bumps_user_borrow_state_ttl() {
     assert_eq!(vault.get_ptoken_balance(&user), 500u128);
 
     env.as_contract(&vault_id, || {
-        let ttl_after = env
+        let flag: Option<bool> = env
             .storage()
             .persistent()
-            .get_ttl(&DataKey::HasBorrowed(user.clone()));
-        assert!(
-            ttl_after > 4_000_000,
-            "expected long borrow-state ttl after pToken balance read, got {ttl_after}"
-        );
+            .get(&DataKey::HasBorrowed(user.clone()));
+        assert_eq!(flag, None);
     });
 }
 
@@ -2165,7 +2162,7 @@ fn test_repay_on_behalf_via_peridottroller_auth() {
 }
 
 #[test]
-fn test_seize_initializes_fresh_recipient_borrow_state() {
+fn test_seize_fresh_recipient_usable_without_false_borrow_marker() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -2237,6 +2234,18 @@ fn test_seize_initializes_fresh_recipient_borrow_state() {
     assert_eq!(vault.get_ptoken_balance(&fee_recipient), 5u128);
     assert_eq!(vault.get_user_borrow_balance(&liquidator), 0u128);
     assert_eq!(vault.get_user_borrow_balance(&fee_recipient), 0u128);
+    env.as_contract(&vault_id, || {
+        let liquidator_flag: Option<bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::HasBorrowed(liquidator.clone()));
+        let fee_flag: Option<bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::HasBorrowed(fee_recipient.clone()));
+        assert_eq!(liquidator_flag, None);
+        assert_eq!(fee_flag, None);
+    });
 
     vault.withdraw(&liquidator, &1u128);
     vault.withdraw(&fee_recipient, &1u128);
@@ -4184,6 +4193,49 @@ fn test_ptoken_transfer_with_peridottroller_does_not_reenter_vault() {
 
     assert_eq!(vault.get_ptoken_balance(&user), 75u128);
     assert_eq!(vault.get_ptoken_balance(&other), 25u128);
+}
+
+#[test]
+fn test_ptoken_transfer_to_fresh_recipient_does_not_create_false_borrow_marker() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let sender = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+
+    token_admin_client.mint(&lender, &2_000i128);
+    token_admin_client.mint(&borrower, &1_000i128);
+    token_admin_client.mint(&sender, &100i128);
+    vault.deposit(&lender, &1_000u128);
+    vault.deposit(&borrower, &500u128);
+    vault.borrow(&borrower, &100u128);
+    assert_eq!(vault.get_total_borrowed(), 100u128);
+
+    vault.deposit(&sender, &50u128);
+    vault.transfer(&sender, &recipient, &1i128);
+
+    assert_eq!(vault.get_ptoken_balance(&recipient), 1u128);
+    assert_eq!(vault.get_user_borrow_balance(&recipient), 0u128);
+    env.as_contract(&vault_id, || {
+        let flag: Option<bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::HasBorrowed(recipient.clone()));
+        assert_eq!(flag, None);
+    });
+
+    vault.withdraw(&recipient, &1u128);
+    assert_eq!(vault.get_ptoken_balance(&recipient), 0u128);
 }
 
 #[test]

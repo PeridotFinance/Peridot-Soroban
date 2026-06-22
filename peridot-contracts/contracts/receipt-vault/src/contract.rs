@@ -174,13 +174,6 @@ impl ReceiptVault {
         }
     }
 
-    fn total_borrowed_for_state_repair(env: &Env) -> u128 {
-        env.storage()
-            .persistent()
-            .get(&DataKey::TotalBorrowed)
-            .unwrap_or(0u128)
-    }
-
     fn sync_user_borrow_state_for_ptoken_read(env: &Env, user: &Address, ptoken_balance: u128) {
         if ptoken_balance == 0 {
             return;
@@ -204,10 +197,8 @@ impl ReceiptVault {
             .get(&DataKey::BorrowPrincipal(user.clone()))
             .unwrap_or(0u128);
         if has_snapshot || principal > 0 {
+            persistent.set(&flag_key, &true);
             bump_user_borrow_state_ttl(env, user);
-        } else if Self::total_borrowed_for_state_repair(env) == 0 {
-            persistent.set(&flag_key, &false);
-            bump_has_borrowed_ttl(env, user);
         }
     }
 
@@ -526,11 +517,8 @@ impl ReceiptVault {
                 > 0
         {
             persistent.set(&DataKey::HasBorrowed(user.clone()), &true);
-        } else if has_borrowed.is_none() {
-            let pbal = ptoken_balance(env, user);
-            if pbal == 0 || Self::total_borrowed_for_state_repair(env) == 0 {
-                persistent.set(&DataKey::HasBorrowed(user.clone()), &false);
-            }
+        } else if has_borrowed.is_none() && ptoken_balance(env, user) == 0 {
+            persistent.set(&DataKey::HasBorrowed(user.clone()), &false);
         }
         bump_user_borrow_live_ttl(env, user);
     }
@@ -1393,7 +1381,6 @@ impl ReceiptVault {
         // Ensure collateral checks use the latest debt/index state.
         Self::update_interest(env.clone());
         Self::ensure_user_borrow_flag(&env, &from);
-        Self::ensure_user_borrow_flag(&env, &to_address);
         // Margin custody flow: only the configured margin controller may receive
         // pTokens via the one-shot bypass. Collateral health checks still run;
         // the bypass only skips margin-lock accounting for controller custody moves.
@@ -2576,12 +2563,6 @@ impl ReceiptVault {
                 if principal > 0 {
                     panic!("borrow state missing");
                 }
-                let pbal = ptoken_balance(&env, &user);
-                if pbal > 0 && Self::total_borrowed_for_state_repair(&env) > 0 {
-                    panic!("borrow state missing");
-                }
-                persistent.set(&DataKey::HasBorrowed(user.clone()), &false);
-                bump_has_borrowed_ttl(&env, &user);
             }
             return 0u128;
         };
@@ -2777,9 +2758,15 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::BorrowSnapshots(user.clone()), &snap);
-        env.storage()
-            .persistent()
-            .set(&DataKey::HasBorrowed(user.clone()), &(principal > 0));
+        if principal > 0 {
+            env.storage()
+                .persistent()
+                .set(&DataKey::HasBorrowed(user.clone()), &true);
+        } else {
+            env.storage()
+                .persistent()
+                .remove(&DataKey::HasBorrowed(user.clone()));
+        }
         env.storage()
             .persistent()
             .set(&DataKey::BorrowPrincipal(user.clone()), &principal);
@@ -2805,9 +2792,15 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .set(&DataKey::BorrowSnapshots(user.clone()), &snap);
-        env.storage()
-            .persistent()
-            .set(&DataKey::HasBorrowed(user.clone()), &(debt_principal > 0));
+        if debt_principal > 0 {
+            env.storage()
+                .persistent()
+                .set(&DataKey::HasBorrowed(user.clone()), &true);
+        } else {
+            env.storage()
+                .persistent()
+                .remove(&DataKey::HasBorrowed(user.clone()));
+        }
         env.storage()
             .persistent()
             .set(&DataKey::BorrowPrincipal(user.clone()), &borrow_principal);
@@ -3884,7 +3877,6 @@ impl ReceiptVault {
         let mut remaining = ptoken_amount;
         if seize_ctx.fee_ptokens > 0 {
             if let Some(recipient) = seize_ctx.fee_recipient {
-                Self::ensure_user_borrow_flag(&env, &recipient);
                 let fee_i128 = to_i128(seize_ctx.fee_ptokens);
                 TokenBase::update(&env, Some(&borrower), Some(&recipient), fee_i128);
                 stellar_tokens::fungible::emit_transfer(
@@ -3894,7 +3886,6 @@ impl ReceiptVault {
             }
         }
         if remaining > 0 {
-            Self::ensure_user_borrow_flag(&env, &liquidator);
             TokenBase::update(&env, Some(&borrower), Some(&liquidator), to_i128(remaining));
             stellar_tokens::fungible::emit_transfer(
                 &env,
