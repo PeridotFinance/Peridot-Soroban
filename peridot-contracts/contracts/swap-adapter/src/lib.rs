@@ -119,11 +119,7 @@ impl SwapAdapter {
 
     pub fn is_pool_allowed(env: Env, pool: Address) -> bool {
         bump_critical_ttl(&env);
-        bump_pool_ttl(&env, &pool);
-        env.storage()
-            .persistent()
-            .get(&DataKey::AllowedPool(pool))
-            .unwrap_or(false)
+        pool_allowed(&env, &pool)
     }
 
     pub fn set_pool_binding(
@@ -151,6 +147,9 @@ impl SwapAdapter {
 
     pub fn is_pool_binding_allowed(env: Env, pool_id: BytesN<32>, pool: Address) -> bool {
         bump_critical_ttl(&env);
+        if !pool_allowed(&env, &pool) {
+            return false;
+        }
         bump_pool_binding_ttl(&env, &pool_id, &pool);
         env.storage()
             .persistent()
@@ -232,6 +231,7 @@ impl SwapAdapter {
                 panic!("bad swaps");
             }
             ensure_pool_binding_allowed(&env, &pool_id, &pool);
+            ensure_pool_allowed(&env, &pool);
         }
         let _router: Address = env
             .storage()
@@ -598,15 +598,17 @@ fn bump_pool_binding_ttl(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
 }
 
 fn ensure_pool_allowed(env: &Env, pool: &Address) {
-    bump_pool_ttl(env, pool);
-    let allowed: bool = env
-        .storage()
-        .persistent()
-        .get(&DataKey::AllowedPool(pool.clone()))
-        .unwrap_or(false);
-    if !allowed {
+    if !pool_allowed(env, pool) {
         panic!("pool not allowed");
     }
+}
+
+fn pool_allowed(env: &Env, pool: &Address) -> bool {
+    bump_pool_ttl(env, pool);
+    env.storage()
+        .persistent()
+        .get(&DataKey::AllowedPool(pool.clone()))
+        .unwrap_or(false)
 }
 
 fn ensure_pool_binding_allowed(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
