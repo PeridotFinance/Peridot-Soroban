@@ -352,6 +352,15 @@ impl SimplePeridottroller {
         } else {
             env.storage().persistent().remove(&token_key);
         }
+        let mut counts: Map<Address, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey::MarketUserCounts)
+            .unwrap_or(Map::new(env));
+        counts.remove(market.clone());
+        env.storage()
+            .instance()
+            .set(&DataKey::MarketUserCounts, &counts);
         MarketRemoved {
             market: market.clone(),
         }
@@ -837,6 +846,29 @@ impl SimplePeridottroller {
             market: market.clone(),
             cf_mantissa: cf_scaled,
             execute_after,
+        }
+        .publish(&env);
+    }
+
+    // Emergency escape hatch for a supported market whose collateral valuation is
+    // broken. Normal CF updates reject zero and are timelocked after initial set;
+    // this path lets governance immediately stop treating the market as collateral
+    // so unknown exchange rates cannot freeze liquidations across other markets.
+    pub fn emergency_disable_collateral(env: Env, market: Address, acknowledge_risk: bool) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        if !acknowledge_risk {
+            panic!("ack required");
+        }
+        Self::require_market_supported(&env, &market);
+        let persistent = env.storage().persistent();
+        persistent.remove(&DataKey::PendingMarketCF(market.clone()));
+        persistent.remove(&DataKey::PendingMarketCFEta(market.clone()));
+        persistent.set(&DataKey::MarketCF(market.clone()), &0u128);
+        storage::bump_market_cf_ttl(&env, &market);
+        MarketCollateralFactorUpdated {
+            market,
+            cf_mantissa: 0u128,
         }
         .publish(&env);
     }
@@ -1791,6 +1823,7 @@ impl SimplePeridottroller {
 
         // Defense in depth: only supported markets can be queried by exit checks.
         Self::require_market_supported(&env, &market);
+        let market_cf = Self::get_market_cf(env.clone(), market.clone());
 
         // Safety: block exit if user has pTokens or borrow balance in this market
         // Use try_invoke_contract and fail-closed: reject exit if we cannot verify safety
@@ -1804,7 +1837,7 @@ impl SimplePeridottroller {
             Ok(Ok(bal)) => bal,
             _ => panic!("Cannot verify collateral balance - market unavailable"),
         };
-        if pbal > 0 {
+        if pbal > 0 && market_cf > 0 {
             panic!("Cannot exit with collateral in market");
         }
 
@@ -1844,6 +1877,44 @@ impl SimplePeridottroller {
         env.storage()
             .instance()
             .set(&DataKey::MarketUserCounts, &counts);
+        MarketExited {
+            account: user.clone(),
+            market,
+        }
+        .publish(&env);
+    }
+
+    pub fn exit_unsupported_market(env: Env, user: Address, market: Address) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if markets.get(market.clone()).unwrap_or(false) {
+            panic!("market supported");
+        }
+        storage::bump_user_markets_ttl(&env, &user);
+        let entered: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserMarkets(user.clone()))
+            .unwrap_or(Vec::new(&env));
+        if !entered.contains(market.clone()) {
+            return;
+        }
+
+        let mut new_vec = Vec::new(&env);
+        for i in 0..entered.len() {
+            let m = entered.get(i).unwrap();
+            if m != market {
+                new_vec.push_back(m);
+            }
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserMarkets(user.clone()), &new_vec);
         MarketExited {
             account: user.clone(),
             market,
@@ -1906,7 +1977,8 @@ impl SimplePeridottroller {
     // This intentionally bypasses cross-contract total checks but still requires:
     // - admin auth
     // - explicit risk acknowledgement
-    // - zero entered users tracked in the controller
+    // - zero expected borrows
+    // - zero controller collateral factor if users or residual pTokens remain
     pub fn force_remove_market(
         env: Env,
         market: Address,
@@ -1925,8 +1997,8 @@ impl SimplePeridottroller {
         if !acknowledge_risk {
             panic!("ack required");
         }
-        if expected_total_ptokens > 0 || expected_total_borrowed > 0 {
-            panic!("expected active positions");
+        if expected_total_borrowed > 0 {
+            panic!("expected active borrows");
         }
         let markets: Map<Address, bool> = env
             .storage()
@@ -1941,8 +2013,11 @@ impl SimplePeridottroller {
             .instance()
             .get(&DataKey::MarketUserCounts)
             .unwrap_or(Map::new(&env));
-        if counts.get(market.clone()).unwrap_or(0u32) > 0 {
-            panic!("market has active users");
+        let active_users = counts.get(market.clone()).unwrap_or(0u32);
+        if active_users > 0 || expected_total_ptokens > 0 {
+            if Self::get_market_cf(env.clone(), market.clone()) != 0 {
+                panic!("market collateral enabled");
+            }
         }
         if !Self::are_market_openings_paused(&env, &market) {
             panic!("market not paused");
@@ -1960,16 +2035,18 @@ impl SimplePeridottroller {
         } else {
             panic!("market underlying missing");
         };
-        let verified_at: u64 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::MarketZeroTotalsVerifiedAt(market.clone()))
-            .unwrap_or_else(|| panic!("missing zero-totals proof"));
-        storage::bump_market_zero_totals_verified_ttl(&env, &market);
-        let now = env.ledger().timestamp();
-        if now.saturating_sub(verified_at) > FORCE_REMOVE_ZERO_TOTALS_MAX_AGE_SECS {
-            panic!("stale zero-totals proof");
-        };
+        if expected_total_ptokens == 0 {
+            let verified_at: u64 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::MarketZeroTotalsVerifiedAt(market.clone()))
+                .unwrap_or_else(|| panic!("missing zero-totals proof"));
+            storage::bump_market_zero_totals_verified_ttl(&env, &market);
+            let now = env.ledger().timestamp();
+            if now.saturating_sub(verified_at) > FORCE_REMOVE_ZERO_TOTALS_MAX_AGE_SECS {
+                panic!("stale zero-totals proof");
+            };
+        }
         Self::apply_market_removal(&env, &market, &effective_removed_token, markets, false);
     }
 
@@ -2025,6 +2102,10 @@ impl SimplePeridottroller {
             if !supported.get(m.clone()).unwrap_or(false) {
                 continue;
             }
+            let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
+            if cf == 0 {
+                continue;
+            }
             let pbal: u128 = env.invoke_contract(
                 &m,
                 &Symbol::new(&env, "get_ptoken_balance"),
@@ -2036,7 +2117,6 @@ impl SimplePeridottroller {
                     &Symbol::new(&env, "get_exchange_rate"),
                     ().into_val(&env),
                 );
-                let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
                 let underlying = (pbal.saturating_mul(rate)) / 1_000_000u128;
                 let discounted = (underlying.saturating_mul(cf)) / 1_000_000u128;
                 total = total.saturating_add(discounted);
@@ -3210,7 +3290,7 @@ impl SimplePeridottroller {
             };
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
-            if pbal > 0 {
+            if pbal > 0 && market_cf > 0 {
                 // Use exchange rate from snapshot when available; else individual call.
                 // A missing/zero rate on a collateral-enabled market must fail closed:
                 // omitting the pToken collateral can manufacture an artificial shortfall.
@@ -3231,7 +3311,8 @@ impl SimplePeridottroller {
                     let discounted = (underlying_amount.saturating_mul(market_cf)) / 1_000_000u128;
                     let usd = (discounted.saturating_mul(price)) / scale;
                     collateral_total = collateral_total.saturating_add(usd);
-                } else if pbal_known && market_cf > 0 {
+                } else if pbal_known {
+                    indeterminate = true;
                     collateral_indeterminate = true;
                 }
             }
