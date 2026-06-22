@@ -1408,15 +1408,7 @@ impl ReceiptVault {
         // pTokens via the one-shot bypass. Collateral health checks still run;
         // the bypass only skips margin-lock accounting for controller custody moves.
         let bypass = Self::consume_margin_transfer_bypass(&env, &from, &to_address, amount);
-        if !Self::has_user_borrow_state(&env, &to_address)
-            && Self::total_borrowed_for_state_repair(&env) > 0
-        {
-            if bypass {
-                Self::mark_user_not_borrowed_if_state_missing(&env, &to_address);
-            } else {
-                panic!("recipient borrow state missing");
-            }
-        }
+        let to_had_borrow_state = Self::has_user_borrow_state(&env, &to_address);
         // Gating: if peridottroller wired, consult redeem pause and health for from-user
         if let Some(comp_addr) = env
             .storage()
@@ -1531,6 +1523,14 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::TotalBorrowed)
             .expect("total borrowed missing");
+        let to_ptokens_now = ptoken_balance(&env, &to_address);
+        if !to_had_borrow_state {
+            if to_ptokens_now == amount || total_borrowed_now == 0 || bypass {
+                Self::mark_user_not_borrowed_if_state_missing(&env, &to_address);
+            } else {
+                panic!("recipient borrow state missing");
+            }
+        }
         let from_hint = ControllerAccrualHint {
             total_ptokens: Some(total_ptokens_now),
             total_borrowed: Some(total_borrowed_now),
@@ -1541,7 +1541,7 @@ impl ReceiptVault {
         let to_hint = ControllerAccrualHint {
             total_ptokens: Some(total_ptokens_now),
             total_borrowed: Some(total_borrowed_now),
-            user_ptokens: Some(ptoken_balance(&env, &to_address)),
+            user_ptokens: Some(to_ptokens_now),
             user_borrowed: Some(Self::get_user_borrow_balance(
                 env.clone(),
                 to_address.clone(),
