@@ -215,7 +215,7 @@ fn test_margin_open_policy_rejects_other_user() {
                 100u128,
                 2u128,
                 Symbol::new(&env, "Long"),
-                swaps_chain,
+                swaps_chain.clone(),
                 90u128,
             )
                 .into_val(&env),
@@ -250,7 +250,7 @@ fn test_margin_open_v2_policy_rejects_other_user() {
                 100u128,
                 2u128,
                 Symbol::new(&env, "Long"),
-                swaps_chain,
+                swaps_chain.clone(),
                 90u128,
             )
                 .into_val(&env),
@@ -303,7 +303,7 @@ fn test_margin_split_open_v2_policy_accepts_self_and_rejects_other_user() {
                 100u128,
                 2u128,
                 Symbol::new(&env, "Long"),
-                swaps_chain,
+                swaps_chain.clone(),
                 90u128,
             )
                 .into_val(&env),
@@ -319,6 +319,13 @@ fn test_margin_split_open_v2_policy_accepts_self_and_rejects_other_user() {
             args: (contract_id.clone(), 7u64, 100u128).into_val(&env),
         };
         assert_eq!(enforce_contract_policy(&env, &finalize_self), Ok(()));
+
+        let finalize_swap_self = ContractContext {
+            contract: margin.clone(),
+            fn_name: Symbol::new(&env, "finalize_open_swap_v2"),
+            args: (contract_id.clone(), 7u64, swaps_chain.clone(), 100u128).into_val(&env),
+        };
+        assert_eq!(enforce_contract_policy(&env, &finalize_swap_self), Ok(()));
 
         let finalize_ptokens_self = ContractContext {
             contract: margin.clone(),
