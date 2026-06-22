@@ -5,7 +5,9 @@ set -euo pipefail
 # Prereqs:
 # - stellar-cli configured with a funded identity on testnet
 #   e.g. stellar keys generate --global dev --network testnet --fund
-# - Build WASMs first: bash scripts/build_wasm.sh (produces wasm32v1-none artifacts)
+# - Build WASMs first with the target admin baked into init guards:
+#     ADMIN=$(stellar keys public-key "${IDENTITY:-dev}")
+#     INIT_ADMIN=$ADMIN bash scripts/build_wasm.sh
 
 IDENTITY=${IDENTITY:-dev}
 NETWORK="--network testnet"

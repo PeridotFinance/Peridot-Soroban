@@ -8,10 +8,9 @@ set -euo pipefail
 # Prerequisites:
 #   1. Build WASMs with INIT_ADMIN baked in:
 #        ADMIN=$(stellar keys public-key peridot-mainnet)
-#        SIMPLE_PERIDOTTROLLER_INIT_ADMIN=$ADMIN \
-#        JUMP_RATE_MODEL_INIT_ADMIN=$ADMIN \
-#        PERIDOT_TOKEN_INIT_ADMIN=$ADMIN \
-#        bash scripts/build_wasm.sh
+#        INIT_ADMIN=$ADMIN bash scripts/build_wasm.sh
+#      Use per-contract *_INIT_ADMIN variables instead when a contract should
+#      intentionally initialize under a different admin.
 #   2. Fund peridot-mainnet with ~100 XLM.
 
 IDENTITY=${IDENTITY:-peridot-mainnet}

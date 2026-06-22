@@ -15,6 +15,6 @@ swap-adapter = { path = "../swap-adapter", features = ["test-default-admin"] }
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
 mock-token = { path = "../mocks/mock-token" }
-receipt-vault = { path = "../receipt-vault" }
+receipt-vault = { path = "../receipt-vault", features = ["test-default-admin"] }
 simple-peridottroller = { path = "../simple-peridottroller", features = ["test-default-admin"] }
 swap-adapter = { path = "../swap-adapter", features = ["test-default-admin"] }

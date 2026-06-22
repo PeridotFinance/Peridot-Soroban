@@ -8,6 +8,9 @@ publish = false
 crate-type = ["lib", "cdylib"]
 doctest = false
 
+[features]
+test-default-admin = []
+
 [dependencies]
 soroban-sdk = { workspace = true }
 stellar-tokens = { workspace = true }

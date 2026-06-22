@@ -242,6 +242,7 @@ cd /home/josh/soroban/peridot-lending/receipt-vault && cargo test
 Build WASMs and deploy to Soroban sandbox:
 
 ```bash
+export INIT_ADMIN=$(soroban keys address alice)
 bash scripts/build_wasm.sh
 bash scripts/deploy_sandbox.sh
 ```
@@ -260,8 +261,9 @@ Update `TOKEN_A`/`TOKEN_B` placeholders in `scripts/deploy_sandbox.sh` with real
 Set up a testnet identity and deploy:
 
 ```bash
-soroban config identity generate dev
+stellar keys generate --global dev --network testnet --fund
 export IDENTITY=dev
+export INIT_ADMIN=$(stellar keys public-key "$IDENTITY")
 bash scripts/build_wasm.sh
 bash scripts/deploy_testnet.sh
 ```

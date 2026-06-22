@@ -14,6 +14,7 @@ use crate::storage::*;
 #[contract]
 pub struct ReceiptVault;
 
+pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
 const BPS_SCALE: u128 = 10_000u128;
 const BOOSTED_MODEL_CASH_TOLERANCE_BPS: u128 = 500u128; // 5%
@@ -688,6 +689,7 @@ impl ReceiptVault {
         {
             panic!("already initialized");
         }
+        assert_expected_admin(&env, &admin);
         storage.set(&DataKey::Initialized, &true);
         #[cfg(test)]
         {
@@ -3899,5 +3901,52 @@ impl ReceiptVault {
                 to_i128(remaining),
             );
         }
+    }
+}
+
+fn assert_expected_admin(env: &Env, admin: &Address) {
+    if let Some(expected_admin_str) = expected_admin_config() {
+        assert_admin_matches_config(env, admin, expected_admin_str);
+    }
+}
+
+fn assert_admin_matches_config(env: &Env, admin: &Address, expected_admin_str: &str) {
+    let expected_admin = Address::from_string(&String::from_str(env, expected_admin_str));
+    if admin != &expected_admin {
+        panic!("unexpected admin");
+    }
+}
+
+fn expected_admin_config() -> Option<&'static str> {
+    if cfg!(any(test, feature = "test-default-admin")) {
+        option_env!("RECEIPT_VAULT_INIT_ADMIN")
+    } else {
+        Some(
+            option_env!("RECEIPT_VAULT_INIT_ADMIN")
+                .expect("RECEIPT_VAULT_INIT_ADMIN must be set at build time"),
+        )
+    }
+}
+
+#[cfg(test)]
+mod init_admin_guard_tests {
+    use super::*;
+    use soroban_sdk::testutils::Address as _;
+
+    #[test]
+    #[should_panic(expected = "unexpected admin")]
+    fn expected_admin_guard_rejects_mismatch() {
+        let env = Env::default();
+        let attacker = Address::generate(&env);
+
+        assert_admin_matches_config(&env, &attacker, DEFAULT_INIT_ADMIN);
+    }
+
+    #[test]
+    fn expected_admin_guard_accepts_configured_admin() {
+        let env = Env::default();
+        let admin = Address::from_string(&String::from_str(&env, DEFAULT_INIT_ADMIN));
+
+        assert_admin_matches_config(&env, &admin, DEFAULT_INIT_ADMIN);
     }
 }

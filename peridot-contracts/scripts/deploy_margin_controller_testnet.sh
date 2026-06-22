@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Build these WASMs with the target admin baked into the init guard, for example:
 #   ADMIN=$(stellar keys public-key "${IDENTITY:-dev}")
-#   SWAP_ADAPTER_INIT_ADMIN=$ADMIN MARGIN_CONTROLLER_INIT_ADMIN=$ADMIN bash scripts/build_wasm.sh
+#   INIT_ADMIN=$ADMIN bash scripts/build_wasm.sh
 #
 # Optional env:
 #   IDENTITY (default: dev)

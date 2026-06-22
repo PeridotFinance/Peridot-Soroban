@@ -7,6 +7,45 @@ echo "Building all contract WASMs (wasm32v1-none release)..."
 
 pushd "$ROOT_DIR" >/dev/null
 
+INIT_ADMIN_VALUE=${INIT_ADMIN:-${ADMIN:-}}
+if [[ -n "$INIT_ADMIN_VALUE" ]]; then
+  for var in \
+    RECEIPT_VAULT_INIT_ADMIN \
+    SIMPLE_PERIDOTTROLLER_INIT_ADMIN \
+    JUMP_RATE_MODEL_INIT_ADMIN \
+    PERIDOT_TOKEN_INIT_ADMIN \
+    SWAP_ADAPTER_INIT_ADMIN \
+    MARGIN_CONTROLLER_INIT_ADMIN \
+    SMART_ACCOUNT_FACTORY_INIT_ADMIN
+  do
+    if [[ -z "${!var:-}" ]]; then
+      export "$var=$INIT_ADMIN_VALUE"
+    fi
+  done
+  echo "Using shared INIT_ADMIN/ADMIN for unset init-admin build guards."
+fi
+
+missing_init_admin_vars=()
+for var in \
+  RECEIPT_VAULT_INIT_ADMIN \
+  SIMPLE_PERIDOTTROLLER_INIT_ADMIN \
+  JUMP_RATE_MODEL_INIT_ADMIN \
+  PERIDOT_TOKEN_INIT_ADMIN \
+  SWAP_ADAPTER_INIT_ADMIN \
+  MARGIN_CONTROLLER_INIT_ADMIN \
+  SMART_ACCOUNT_FACTORY_INIT_ADMIN
+do
+  if [[ -z "${!var:-}" ]]; then
+    missing_init_admin_vars+=("$var")
+  fi
+done
+
+if (( ${#missing_init_admin_vars[@]} > 0 )); then
+  echo "ERROR: missing init-admin build guard(s): ${missing_init_admin_vars[*]}" >&2
+  echo "Set INIT_ADMIN=<admin public key> to use one admin for all contracts, or set per-contract *_INIT_ADMIN variables." >&2
+  exit 1
+fi
+
 for crate in receipt-vault simple-peridottroller jump-rate-model peridot-token mock-token mock-lending-vault swap-adapter margin-controller smart-account-basic smart-account-factory; do
   echo "→ $crate"
   stellar contract build --package "$crate"
