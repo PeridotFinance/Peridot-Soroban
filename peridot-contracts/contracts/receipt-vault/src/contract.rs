@@ -202,6 +202,29 @@ impl ReceiptVault {
         }
     }
 
+    fn total_borrowed_for_state_repair(env: &Env) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::TotalBorrowed)
+            .unwrap_or(0u128)
+    }
+
+    fn has_user_borrow_state(env: &Env, user: &Address) -> bool {
+        let persistent = env.storage().persistent();
+        persistent.has(&DataKey::HasBorrowed(user.clone()))
+            || persistent.has(&DataKey::BorrowSnapshots(user.clone()))
+            || persistent.has(&DataKey::BorrowPrincipal(user.clone()))
+    }
+
+    fn mark_user_not_borrowed_if_state_missing(env: &Env, user: &Address) {
+        if !Self::has_user_borrow_state(env, user) {
+            env.storage()
+                .persistent()
+                .set(&DataKey::HasBorrowed(user.clone()), &false);
+        }
+        bump_user_borrow_live_ttl(env, user);
+    }
+
     fn read_ptoken_balance_with_borrow_ttl(env: &Env, user: &Address) -> u128 {
         let balance = ptoken_balance(env, user);
         Self::sync_user_borrow_state_for_ptoken_read(env, user, balance);
@@ -1385,6 +1408,15 @@ impl ReceiptVault {
         // pTokens via the one-shot bypass. Collateral health checks still run;
         // the bypass only skips margin-lock accounting for controller custody moves.
         let bypass = Self::consume_margin_transfer_bypass(&env, &from, &to_address, amount);
+        if !Self::has_user_borrow_state(&env, &to_address)
+            && Self::total_borrowed_for_state_repair(&env) > 0
+        {
+            if bypass {
+                Self::mark_user_not_borrowed_if_state_missing(&env, &to_address);
+            } else {
+                panic!("recipient borrow state missing");
+            }
+        }
         // Gating: if peridottroller wired, consult redeem pause and health for from-user
         if let Some(comp_addr) = env
             .storage()
@@ -2557,11 +2589,18 @@ impl ReceiptVault {
                 panic!("borrow snapshot missing");
             }
             if has_borrowed.is_none() {
-                let principal: u128 = persistent
-                    .get(&DataKey::BorrowPrincipal(user.clone()))
-                    .unwrap_or(0);
-                if principal > 0 {
-                    panic!("borrow state missing");
+                let principal_key = DataKey::BorrowPrincipal(user.clone());
+                let principal_opt: Option<u128> = persistent.get(&principal_key);
+                if let Some(principal) = principal_opt {
+                    bump_borrow_principal_ttl(&env, &user);
+                    if principal > 0 {
+                        panic!("borrow state missing");
+                    }
+                } else {
+                    let pbal = ptoken_balance(&env, &user);
+                    if pbal > 0 && Self::total_borrowed_for_state_repair(&env) > 0 {
+                        panic!("borrow state missing");
+                    }
                 }
             }
             return 0u128;
@@ -2765,7 +2804,7 @@ impl ReceiptVault {
         } else {
             env.storage()
                 .persistent()
-                .remove(&DataKey::HasBorrowed(user.clone()));
+                .set(&DataKey::HasBorrowed(user.clone()), &false);
         }
         env.storage()
             .persistent()
@@ -2799,7 +2838,7 @@ impl ReceiptVault {
         } else {
             env.storage()
                 .persistent()
-                .remove(&DataKey::HasBorrowed(user.clone()));
+                .set(&DataKey::HasBorrowed(user.clone()), &false);
         }
         env.storage()
             .persistent()
@@ -3882,6 +3921,7 @@ impl ReceiptVault {
                 stellar_tokens::fungible::emit_transfer(
                     &env, &borrower, &recipient, None, fee_i128,
                 );
+                Self::mark_user_not_borrowed_if_state_missing(&env, &recipient);
                 remaining = remaining.saturating_sub(seize_ctx.fee_ptokens);
             }
         }
@@ -3894,6 +3934,7 @@ impl ReceiptVault {
                 None,
                 to_i128(remaining),
             );
+            Self::mark_user_not_borrowed_if_state_missing(&env, &liquidator);
         }
     }
 }

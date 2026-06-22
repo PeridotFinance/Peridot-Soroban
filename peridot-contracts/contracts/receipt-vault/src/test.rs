@@ -2162,7 +2162,7 @@ fn test_repay_on_behalf_via_peridottroller_auth() {
 }
 
 #[test]
-fn test_seize_fresh_recipient_usable_without_false_borrow_marker() {
+fn test_seize_initializes_fresh_recipient_borrow_state() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
@@ -2243,14 +2243,50 @@ fn test_seize_fresh_recipient_usable_without_false_borrow_marker() {
             .storage()
             .persistent()
             .get(&DataKey::HasBorrowed(fee_recipient.clone()));
-        assert_eq!(liquidator_flag, None);
-        assert_eq!(fee_flag, None);
+        assert_eq!(liquidator_flag, Some(false));
+        assert_eq!(fee_flag, Some(false));
     });
 
     vault.withdraw(&liquidator, &1u128);
     vault.withdraw(&fee_recipient, &1u128);
     assert_eq!(vault.get_ptoken_balance(&liquidator), 44u128);
     assert_eq!(vault.get_ptoken_balance(&fee_recipient), 4u128);
+}
+
+#[test]
+#[should_panic(expected = "borrow state missing")]
+fn test_get_user_borrow_balance_fails_closed_when_all_borrow_markers_expire() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &2_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&user, &1_000u128);
+    vault.borrow(&user, &100u128);
+    assert_eq!(vault.get_total_borrowed(), 100u128);
+    assert_eq!(vault.get_ptoken_balance(&user), 1_000u128);
+
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BorrowSnapshots(user.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BorrowPrincipal(user.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::HasBorrowed(user.clone()));
+    });
+
+    let _ = vault.get_user_borrow_balance(&user);
 }
 
 #[test]
@@ -4201,6 +4237,42 @@ fn test_ptoken_transfer_to_fresh_recipient_does_not_create_false_borrow_marker()
     env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
+    let sender = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+
+    token_admin_client.mint(&sender, &100i128);
+
+    vault.deposit(&sender, &50u128);
+    vault.transfer(&sender, &recipient, &1i128);
+
+    assert_eq!(vault.get_ptoken_balance(&recipient), 1u128);
+    assert_eq!(vault.get_user_borrow_balance(&recipient), 0u128);
+    env.as_contract(&vault_id, || {
+        let flag: Option<bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::HasBorrowed(recipient.clone()));
+        assert_eq!(flag, None);
+    });
+
+    vault.withdraw(&recipient, &1u128);
+    assert_eq!(vault.get_ptoken_balance(&recipient), 0u128);
+}
+
+#[test]
+#[should_panic(expected = "recipient borrow state missing")]
+fn test_ptoken_transfer_to_fresh_recipient_rejects_ambiguous_borrow_state() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
     let lender = Address::generate(&env);
     let borrower = Address::generate(&env);
     let sender = Address::generate(&env);
@@ -4223,19 +4295,6 @@ fn test_ptoken_transfer_to_fresh_recipient_does_not_create_false_borrow_marker()
 
     vault.deposit(&sender, &50u128);
     vault.transfer(&sender, &recipient, &1i128);
-
-    assert_eq!(vault.get_ptoken_balance(&recipient), 1u128);
-    assert_eq!(vault.get_user_borrow_balance(&recipient), 0u128);
-    env.as_contract(&vault_id, || {
-        let flag: Option<bool> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::HasBorrowed(recipient.clone()));
-        assert_eq!(flag, None);
-    });
-
-    vault.withdraw(&recipient, &1u128);
-    assert_eq!(vault.get_ptoken_balance(&recipient), 0u128);
 }
 
 #[test]
@@ -4251,6 +4310,7 @@ fn test_transfer_accrues_interest_before_collateral_check() {
     let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
 
     token_admin_client.mint(&user, &1_000i128);
+    token_admin_client.mint(&other, &1i128);
     token_admin_client.mint(&lender, &2_000i128);
 
     let vault_id = env.register(ReceiptVault, ());
@@ -4261,6 +4321,7 @@ fn test_transfer_accrues_interest_before_collateral_check() {
     vault.set_borrow_rate(&1_000_000u128); // 100% APR
 
     vault.deposit(&lender, &1_000u128);
+    vault.deposit(&other, &1u128);
     vault.deposit(&user, &100u128);
     vault.borrow(&user, &79u128);
 
