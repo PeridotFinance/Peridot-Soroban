@@ -3212,21 +3212,28 @@ impl SimplePeridottroller {
             // Collateral: pToken balance * exchange rate * collateral factor * price
             if pbal > 0 {
                 // Use exchange rate from snapshot when available; else individual call.
-                let rate: u128 = match snapshot_rate {
-                    Some(r) if r > 0 => r,
-                    _ => match env.try_invoke_contract::<u128, InvokeError>(
+                // A missing/zero rate on a collateral-enabled market must fail closed:
+                // omitting the pToken collateral can manufacture an artificial shortfall.
+                let rate: Option<u128> = match snapshot_rate {
+                    Some(r) if r > 0 => Some(r),
+                    Some(_) => None,
+                    None => match env.try_invoke_contract::<u128, InvokeError>(
                         &m,
                         &Symbol::new(&env, "get_exchange_rate"),
                         ().into_val(&env),
                     ) {
-                        Ok(Ok(r)) if r > 0 => r,
-                        _ => 0u128,
+                        Ok(Ok(r)) if r > 0 => Some(r),
+                        _ => None,
                     },
                 };
-                let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
-                let discounted = (underlying_amount.saturating_mul(market_cf)) / 1_000_000u128;
-                let usd = (discounted.saturating_mul(price)) / scale;
-                collateral_total = collateral_total.saturating_add(usd);
+                if let Some(rate) = rate {
+                    let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
+                    let discounted = (underlying_amount.saturating_mul(market_cf)) / 1_000_000u128;
+                    let usd = (discounted.saturating_mul(price)) / scale;
+                    collateral_total = collateral_total.saturating_add(usd);
+                } else if pbal_known && market_cf > 0 {
+                    collateral_indeterminate = true;
+                }
             }
 
             // Borrows: borrow balance * price

@@ -5349,6 +5349,160 @@ fn test_liquidation_blocked_when_priced_collateral_market_loses_price() {
     comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
 }
 
+// FIND 41ea605d: if an entered collateral market has pTokens, a collateral
+// factor, and a missing exchange rate, liquidation must fail closed instead of
+// valuing that collateral at zero and manufacturing a shortfall.
+#[test]
+#[should_panic(expected = "health indeterminate")]
+fn test_liquidation_blocked_when_exchange_rate_unavailable_for_collateral() {
+    let env = Env::default();
+    env.mock_all_auths();
+    allow_heavy_liquidation_functional_test(&env);
+
+    let admin = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let token_a = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_c = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_c, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_a.mint(&liquidator, &1_000i128);
+    mint_b.mint(&alice, &100i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
+
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    vault_b.set_collateral_factor(&500_000u128);
+    comp.enter_market(&alice, &vault_b_id);
+    comp.enter_market(&alice, &vault_a_id);
+    vault_b.deposit(&alice, &100u128);
+    vault_a.deposit(&liquidator, &200u128);
+    vault_a.borrow(&alice, &40u128);
+
+    // Known markets alone look underwater: 100 B * 0.5 CF * $0.60 = $30
+    // against $40 debt. The third collateral market would make Alice healthy.
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 600_000i128);
+
+    let fail_market_id = env.register(ExchangeRateFailCollateralMarket, ());
+    let fail_market = ExchangeRateFailCollateralMarketClient::new(&env, &fail_market_id);
+    fail_market.initialize(&token_c);
+    fail_market.set_pbal(&alice, &100u128);
+    comp.add_market(&fail_market_id);
+    comp.set_market_cf(&fail_market_id, &500_000u128);
+    comp.enter_market(&alice, &fail_market_id);
+
+    comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
+}
+
+// FIND 41ea605d: a snapshot exchange rate of zero is not usable collateral
+// data. Even if the market's standalone get_exchange_rate would return a valid
+// rate, the zero snapshot must make the collateral contribution indeterminate.
+#[test]
+#[should_panic(expected = "health indeterminate")]
+fn test_liquidation_blocked_when_snapshot_exchange_rate_zero_for_collateral() {
+    let env = Env::default();
+    env.mock_all_auths();
+    allow_heavy_liquidation_functional_test(&env);
+
+    let admin = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+
+    let token_a = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_b = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+    let token_c = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let vault_a_id = env.register(rv::ReceiptVault, ());
+    let vault_a = rv::ReceiptVaultClient::new(&env, &vault_a_id);
+    let vault_b_id = env.register(rv::ReceiptVault, ());
+    let vault_b = rv::ReceiptVaultClient::new(&env, &vault_b_id);
+    vault_a.initialize(&token_a, &0u128, &0u128, &admin);
+    vault_a.enable_static_rates(&admin);
+    vault_b.initialize(&token_b, &0u128, &0u128, &admin);
+    vault_b.enable_static_rates(&admin);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&vault_a_id);
+    comp.add_market(&vault_b_id);
+    vault_a.set_peridottroller(&comp_id);
+    vault_b.set_peridottroller(&comp_id);
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&6u32);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_a, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 1_000_000i128);
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_c, 1_000_000i128);
+    comp.set_oracle(&oracle_id);
+
+    let mint_a = token::StellarAssetClient::new(&env, &token_a);
+    let mint_b = token::StellarAssetClient::new(&env, &token_b);
+    mint_a.mint(&liquidator, &1_000i128);
+    mint_b.mint(&alice, &100i128);
+    approve_token_to_vault(&env, &token_a, &liquidator, &vault_a_id, 1_000i128);
+
+    comp.set_market_cf(&vault_b_id, &500_000u128);
+    vault_b.set_collateral_factor(&500_000u128);
+    comp.enter_market(&alice, &vault_b_id);
+    comp.enter_market(&alice, &vault_a_id);
+    vault_b.deposit(&alice, &100u128);
+    vault_a.deposit(&liquidator, &200u128);
+    vault_a.borrow(&alice, &40u128);
+
+    set_price_and_cache(&comp, &oracle, &oracle_id, &token_b, 600_000i128);
+
+    let zero_rate_market_id = env.register(SnapshotZeroRateCollateralMarket, ());
+    let zero_rate_market = SnapshotZeroRateCollateralMarketClient::new(&env, &zero_rate_market_id);
+    zero_rate_market.initialize(&token_c);
+    zero_rate_market.set_pbal(&alice, &100u128);
+    comp.add_market(&zero_rate_market_id);
+    comp.set_market_cf(&zero_rate_market_id, &500_000u128);
+    comp.enter_market(&alice, &zero_rate_market_id);
+
+    comp.liquidate(&alice, &vault_a_id, &vault_b_id, &10u128, &liquidator);
+}
+
 #[test]
 #[should_panic(expected = "health indeterminate")]
 fn test_find_039_liquidation_rejects_when_only_indeterminate_signal() {
@@ -5470,6 +5624,99 @@ impl CollateralOnlyUpdateFailMarket {
 
     pub fn get_user_borrow_balance(_env: Env, _user: Address) -> u128 {
         0u128
+    }
+
+    pub fn get_exchange_rate(_env: Env) -> u128 {
+        1_000_000u128
+    }
+}
+
+#[contract]
+struct ExchangeRateFailCollateralMarket;
+
+#[contracttype]
+enum ExchangeRateFailCollateralMarketKey {
+    Underlying,
+    Pbal(Address),
+}
+
+#[contractimpl]
+impl ExchangeRateFailCollateralMarket {
+    pub fn initialize(env: Env, underlying: Address) {
+        env.storage().persistent().set(
+            &ExchangeRateFailCollateralMarketKey::Underlying,
+            &underlying,
+        );
+    }
+
+    pub fn set_pbal(env: Env, user: Address, pbal: u128) {
+        env.storage()
+            .persistent()
+            .set(&ExchangeRateFailCollateralMarketKey::Pbal(user), &pbal);
+    }
+
+    pub fn get_underlying_token(env: Env) -> Address {
+        env.storage()
+            .persistent()
+            .get(&ExchangeRateFailCollateralMarketKey::Underlying)
+            .expect("underlying not set")
+    }
+
+    pub fn get_ptoken_balance(env: Env, user: Address) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&ExchangeRateFailCollateralMarketKey::Pbal(user))
+            .unwrap_or(0u128)
+    }
+
+    pub fn get_user_borrow_balance(_env: Env, _user: Address) -> u128 {
+        0u128
+    }
+
+    pub fn get_exchange_rate(_env: Env) -> u128 {
+        panic!("exchange rate unavailable");
+    }
+}
+
+#[contract]
+struct SnapshotZeroRateCollateralMarket;
+
+#[contracttype]
+enum SnapshotZeroRateCollateralMarketKey {
+    Underlying,
+    Pbal(Address),
+}
+
+#[contractimpl]
+impl SnapshotZeroRateCollateralMarket {
+    pub fn initialize(env: Env, underlying: Address) {
+        env.storage().persistent().set(
+            &SnapshotZeroRateCollateralMarketKey::Underlying,
+            &underlying,
+        );
+    }
+
+    pub fn set_pbal(env: Env, user: Address, pbal: u128) {
+        env.storage()
+            .persistent()
+            .set(&SnapshotZeroRateCollateralMarketKey::Pbal(user), &pbal);
+    }
+
+    pub fn get_underlying_token(env: Env) -> Address {
+        env.storage()
+            .persistent()
+            .get(&SnapshotZeroRateCollateralMarketKey::Underlying)
+            .expect("underlying not set")
+    }
+
+    pub fn get_account_snapshot(env: Env, user: Address) -> (u128, u128, u128, Address) {
+        let pbal = env
+            .storage()
+            .persistent()
+            .get(&SnapshotZeroRateCollateralMarketKey::Pbal(user))
+            .unwrap_or(0u128);
+        let underlying = Self::get_underlying_token(env);
+        (pbal, 0u128, 0u128, underlying)
     }
 
     pub fn get_exchange_rate(_env: Env) -> u128 {
