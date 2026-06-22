@@ -3879,6 +3879,7 @@ impl ReceiptVault {
         let mut remaining = ptoken_amount;
         if seize_ctx.fee_ptokens > 0 {
             if let Some(recipient) = seize_ctx.fee_recipient {
+                Self::ensure_user_borrow_flag(&env, &recipient);
                 let fee_i128 = to_i128(seize_ctx.fee_ptokens);
                 TokenBase::update(&env, Some(&borrower), Some(&recipient), fee_i128);
                 stellar_tokens::fungible::emit_transfer(
@@ -3888,6 +3889,7 @@ impl ReceiptVault {
             }
         }
         if remaining > 0 {
+            Self::ensure_user_borrow_flag(&env, &liquidator);
             TokenBase::update(&env, Some(&borrower), Some(&liquidator), to_i128(remaining));
             stellar_tokens::fungible::emit_transfer(
                 &env,

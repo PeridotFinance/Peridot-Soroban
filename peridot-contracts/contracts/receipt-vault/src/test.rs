@@ -2165,6 +2165,86 @@ fn test_repay_on_behalf_via_peridottroller_auth() {
 }
 
 #[test]
+fn test_seize_initializes_fresh_recipient_borrow_state() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let borrower = Address::generate(&env);
+    let liquidator = Address::generate(&env);
+    let fee_recipient = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&borrower, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+
+    let comp = setup_peridottroller_with_fallback(
+        &env,
+        &admin,
+        &vault_id,
+        &token_address,
+        1_000_000u128,
+        1_000_000u128,
+        1_000_000u128,
+    );
+
+    vault.deposit(&borrower, &500u128);
+    comp.enter_market(&borrower, &vault_id);
+    vault.borrow(&borrower, &100u128);
+    assert_eq!(vault.get_total_borrowed(), 100u128);
+    assert_eq!(vault.get_ptoken_balance(&liquidator), 0u128);
+    assert_eq!(vault.get_ptoken_balance(&fee_recipient), 0u128);
+
+    let ctx = SeizeContext {
+        liquidity: 0,
+        shortfall: 1,
+        max_redeem_ptokens: 50,
+        seize_ptokens: 50,
+        fee_recipient: Some(fee_recipient.clone()),
+        fee_ptokens: 5,
+        expires_at: env.ledger().timestamp().saturating_add(100),
+    };
+
+    let comp_id = comp.address.clone();
+    env.as_contract(&comp_id, || {
+        let seize_args: Vec<Val> = (
+            borrower.clone(),
+            liquidator.clone(),
+            50u128,
+            Some(ctx.clone()),
+        )
+            .into_val(&env);
+        let mut auths = Vec::new(&env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: vault_id.clone(),
+                fn_name: Symbol::new(&env, "seize"),
+                args: seize_args,
+            },
+            sub_invocations: Vec::new(&env),
+        }));
+        env.authorize_as_current_contract(auths);
+        let vault_client = ReceiptVaultClient::new(&env, &vault_id);
+        vault_client.seize(&borrower, &liquidator, &50u128, &Some(ctx));
+    });
+
+    assert_eq!(vault.get_ptoken_balance(&liquidator), 45u128);
+    assert_eq!(vault.get_ptoken_balance(&fee_recipient), 5u128);
+    assert_eq!(vault.get_user_borrow_balance(&liquidator), 0u128);
+    assert_eq!(vault.get_user_borrow_balance(&fee_recipient), 0u128);
+
+    vault.withdraw(&liquidator, &1u128);
+    vault.withdraw(&fee_recipient, &1u128);
+    assert_eq!(vault.get_ptoken_balance(&liquidator), 44u128);
+    assert_eq!(vault.get_ptoken_balance(&fee_recipient), 4u128);
+}
+
+#[test]
 #[should_panic(expected = "repay transfer shortfall")]
 fn test_repay_on_behalf_rejects_under_delivered_transfer() {
     let env = Env::default();
