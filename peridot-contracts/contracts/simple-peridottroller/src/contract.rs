@@ -8,6 +8,9 @@ use crate::events::*;
 use crate::storage;
 use crate::storage::*;
 
+#[cfg(all(feature = "test-default-admin", target_arch = "wasm32"))]
+compile_error!("simple-peridottroller test-default-admin must not be enabled for Wasm builds");
+
 #[contract]
 pub struct SimplePeridottroller;
 
@@ -191,15 +194,28 @@ impl SimplePeridottroller {
         }
     }
 
+    #[cfg(any(
+        test,
+        all(
+            feature = "test-default-admin",
+            debug_assertions,
+            not(target_arch = "wasm32")
+        )
+    ))]
     fn expected_admin_config() -> Option<&'static str> {
-        if cfg!(any(test, feature = "test-default-admin")) {
-            option_env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN")
-        } else {
-            Some(
-                option_env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN")
-                    .expect("SIMPLE_PERIDOTTROLLER_INIT_ADMIN must be set at build time"),
-            )
-        }
+        option_env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN")
+    }
+
+    #[cfg(not(any(
+        test,
+        all(
+            feature = "test-default-admin",
+            debug_assertions,
+            not(target_arch = "wasm32")
+        )
+    )))]
+    fn expected_admin_config() -> Option<&'static str> {
+        Some(env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN"))
     }
 
     fn ensure_user_market_entered(env: &Env, user: &Address, market: &Address) {

@@ -11,6 +11,9 @@ use crate::events::*;
 use crate::helpers::*;
 use crate::storage::*;
 
+#[cfg(all(feature = "test-default-admin", target_arch = "wasm32"))]
+compile_error!("receipt-vault test-default-admin must not be enabled for Wasm builds");
+
 #[contract]
 pub struct ReceiptVault;
 
@@ -3917,15 +3920,28 @@ fn assert_admin_matches_config(env: &Env, admin: &Address, expected_admin_str: &
     }
 }
 
+#[cfg(any(
+    test,
+    all(
+        feature = "test-default-admin",
+        debug_assertions,
+        not(target_arch = "wasm32")
+    )
+))]
 fn expected_admin_config() -> Option<&'static str> {
-    if cfg!(any(test, feature = "test-default-admin")) {
-        option_env!("RECEIPT_VAULT_INIT_ADMIN")
-    } else {
-        Some(
-            option_env!("RECEIPT_VAULT_INIT_ADMIN")
-                .expect("RECEIPT_VAULT_INIT_ADMIN must be set at build time"),
-        )
-    }
+    option_env!("RECEIPT_VAULT_INIT_ADMIN")
+}
+
+#[cfg(not(any(
+    test,
+    all(
+        feature = "test-default-admin",
+        debug_assertions,
+        not(target_arch = "wasm32")
+    )
+)))]
+fn expected_admin_config() -> Option<&'static str> {
+    Some(env!("RECEIPT_VAULT_INIT_ADMIN"))
 }
 
 #[cfg(test)]
