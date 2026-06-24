@@ -528,7 +528,11 @@ impl MarginController {
         update_total_margin_ptokens(&env, &collateral_vault, total_deduct, false);
 
         let coll_price = get_price_usd(&env, &collateral_asset);
-        let debt_price = get_price_usd(&env, &debt_asset);
+        let debt_price = if debt_asset == collateral_asset {
+            coll_price
+        } else {
+            get_price_usd(&env, &debt_asset)
+        };
         if coll_price.0 == 0 || coll_price.1 == 0 {
             panic!("invalid collateral price");
         }
@@ -566,8 +570,15 @@ impl MarginController {
         if borrow_amount == 0 {
             panic!("borrow too small");
         }
+        let position_price = if position_asset == collateral_asset {
+            coll_price
+        } else if position_asset == debt_asset {
+            debt_price
+        } else {
+            get_price_usd(&env, &position_asset)
+        };
         let min_out_oracle =
-            Self::oracle_min_out(&env, &debt_asset, &position_asset, borrow_amount);
+            Self::oracle_min_out_from_prices(&env, debt_price, position_price, borrow_amount);
         if amount_with_slippage < min_out_oracle {
             panic!("slippage too high");
         }
@@ -752,7 +763,11 @@ impl MarginController {
         update_total_margin_ptokens(&env, &collateral_vault, total_deduct, false);
 
         let coll_price = get_price_usd(&env, &collateral_asset);
-        let debt_price = get_price_usd(&env, &debt_asset);
+        let debt_price = if debt_asset == collateral_asset {
+            coll_price
+        } else {
+            get_price_usd(&env, &debt_asset)
+        };
         if coll_price.0 == 0 || coll_price.1 == 0 {
             panic!("invalid collateral price");
         }
@@ -790,8 +805,15 @@ impl MarginController {
         if borrow_amount == 0 {
             panic!("borrow too small");
         }
+        let position_price = if position_asset == collateral_asset {
+            coll_price
+        } else if position_asset == debt_asset {
+            debt_price
+        } else {
+            get_price_usd(&env, &position_asset)
+        };
         let min_out_oracle =
-            Self::oracle_min_out(&env, &debt_asset, &position_asset, borrow_amount);
+            Self::oracle_min_out_from_prices(&env, debt_price, position_price, borrow_amount);
         if amount_with_slippage < min_out_oracle {
             panic!("slippage too high");
         }
@@ -2291,6 +2313,15 @@ impl MarginController {
     fn oracle_min_out(env: &Env, token_in: &Address, token_out: &Address, amount_in: u128) -> u128 {
         let in_price = get_price_usd(env, token_in);
         let out_price = get_price_usd(env, token_out);
+        Self::oracle_min_out_from_prices(env, in_price, out_price, amount_in)
+    }
+
+    fn oracle_min_out_from_prices(
+        env: &Env,
+        in_price: (u128, u128),
+        out_price: (u128, u128),
+        amount_in: u128,
+    ) -> u128 {
         if in_price.0 == 0 || in_price.1 == 0 || out_price.0 == 0 || out_price.1 == 0 {
             panic!("invalid price");
         }
