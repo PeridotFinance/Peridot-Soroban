@@ -2326,21 +2326,58 @@ impl MarginController {
             panic!("invalid price");
         }
         let max_slippage_scaled = get_max_slippage_scaled(env);
-        let numerator = amount_in
-            .checked_mul(in_price.0)
-            .and_then(|v| v.checked_mul(out_price.1))
-            .and_then(|v| v.checked_mul(SCALE_1E6.saturating_sub(max_slippage_scaled)))
+        let mut n_amount = amount_in;
+        let mut n_in_price = in_price.0;
+        let mut n_out_scale = out_price.1;
+        let mut n_slippage = SCALE_1E6.saturating_sub(max_slippage_scaled);
+        let mut d_in_scale = in_price.1;
+        let mut d_out_price = out_price.0;
+        let mut d_scale = SCALE_1E6;
+
+        Self::cancel_factor(&mut n_amount, &mut d_in_scale);
+        Self::cancel_factor(&mut n_amount, &mut d_out_price);
+        Self::cancel_factor(&mut n_amount, &mut d_scale);
+        Self::cancel_factor(&mut n_in_price, &mut d_in_scale);
+        Self::cancel_factor(&mut n_in_price, &mut d_out_price);
+        Self::cancel_factor(&mut n_in_price, &mut d_scale);
+        Self::cancel_factor(&mut n_out_scale, &mut d_in_scale);
+        Self::cancel_factor(&mut n_out_scale, &mut d_out_price);
+        Self::cancel_factor(&mut n_out_scale, &mut d_scale);
+        Self::cancel_factor(&mut n_slippage, &mut d_in_scale);
+        Self::cancel_factor(&mut n_slippage, &mut d_out_price);
+        Self::cancel_factor(&mut n_slippage, &mut d_scale);
+
+        let numerator = n_amount
+            .checked_mul(n_in_price)
+            .and_then(|v| v.checked_mul(n_out_scale))
+            .and_then(|v| v.checked_mul(n_slippage))
             .expect("oracle min overflow");
-        let denominator = in_price
-            .1
-            .checked_mul(out_price.0)
-            .and_then(|v| v.checked_mul(SCALE_1E6))
+        let denominator = d_in_scale
+            .checked_mul(d_out_price)
+            .and_then(|v| v.checked_mul(d_scale))
             .expect("oracle min overflow");
         let min_out = Self::ceil_div(numerator, denominator);
         if min_out == 0 {
             panic!("swap amount too small");
         }
         min_out
+    }
+
+    fn cancel_factor(numerator: &mut u128, denominator: &mut u128) {
+        let divisor = Self::gcd(*numerator, *denominator);
+        if divisor > 1 {
+            *numerator /= divisor;
+            *denominator /= divisor;
+        }
+    }
+
+    fn gcd(mut a: u128, mut b: u128) -> u128 {
+        while b != 0 {
+            let r = a % b;
+            a = b;
+            b = r;
+        }
+        a
     }
 
     /// Fetch a vault's pricing inputs once (underlying asset, oracle price,

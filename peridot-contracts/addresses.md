@@ -2,7 +2,8 @@
 
 Fresh no-rewards deployment from this branch. `$P` is intentionally not wired as a
 controller reward token. SwapAdapter + MarginController were freshly redeployed after
-the pToken-finalized split-open fix, avoiding the 24h upgrade timelock.
+the routed split-open budget and oracle-min overflow fixes, avoiding the 24h upgrade
+timelock.
 
 - Admin (dev): `GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ`
 - Alice: `GCOAFEN2VLTOAZR3RVSJ2QGLY4TCVMSFGVNWVI3YMQ6NLJJCCTAJT5TZ`
@@ -13,8 +14,8 @@ the pToken-finalized split-open fix, avoiding the 24h upgrade timelock.
 - JumpRateModel: `CDF2GSHMMJR6OU3PBMHO642MSCEKIZV75SYOBP74Q4RZWDKK7VFOTKDZ`
 - Mock USDT (7 decimals, open mint): `CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY`
 - XLM native asset contract: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
-- SwapAdapter (pool-direct Aquarius single-hop build): `CARPR3UOIPGF7OIQITV5273SMEGKRCJP65MNKN2HLV32EKXTVUP72GBV`
-- MarginController: `CAZOVGMZ4DAUI3ZX3OM243T3HLBGWS2KQYECFNT4LLG3IYX6BJAFSOEE`
+- SwapAdapter (pool-direct Aquarius single-hop build): `CCFXUYLPRFWLOSLT3KRVXZAXECZX5KN7KFQE5G7GDBS4Z2KGZRRYWFCZ`
+- MarginController: `CB5UZHITW3G72PWTBSEBIY4WLB77LAG7RKAIZCD5URRANWRZ2J3OCHEU`
 - Reflector Oracle: `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63`
 - Controller oracle mappings:
   - XLM native SAC `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` -> Reflector `XLM`
@@ -41,6 +42,15 @@ Aquarius pool status for current XLM/mock-USDT pair:
   (`999,912,914` XLM / `1,000,360,176` mock-USDT before the next long test).
 - Final SwapAdapter binding allows this pool ID/address pair and also allowlists the
   pool address for estimates.
+- Post-final-redeploy verification:
+  - `cargo test --workspace` passed locally before deployment.
+  - XLM and USDT vaults both read back `get_margin_controller =
+    CB5UZHITW3G72PWTBSEBIY4WLB77LAG7RKAIZCD5URRANWRZ2J3OCHEU`.
+  - New SwapAdapter readbacks: pool allowed `true`, pool binding allowed `true`.
+  - Alice's temporary USDT margin-balance test was swept back out; final readback is
+    `0`.
+  - `begin_open_position_v2` routed short simulation on the final controller
+    succeeded and returned simulated position id `1`.
 - Full manual smoke after the pToken-finalize redeploy:
   - Bob XLM lending deposit of `10,000,000` units minted `10,000,000` pTokens;
     withdraw of `1,000,000` pTokens returned `1,000,000` XLM units.
@@ -83,6 +93,11 @@ Aquarius pool status for current XLM/mock-USDT pair:
   testnet route.
 
 Superseded no-`$P` margin deploys:
+- pool-direct pre-budget/overflow-fix pair: SwapAdapter `CARPR3UOIPGF7OIQITV5273SMEGKRCJP65MNKN2HLV32EKXTVUP72GBV`,
+  MarginController `CAZOVGMZ4DAUI3ZX3OM243T3HLBGWS2KQYECFNT4LLG3IYX6BJAFSOEE`
+- intermediate routed-budget redeploy superseded by oracle-min overflow fix:
+  SwapAdapter `CARPRZBE5ICKOGEU4KDCDHIOAYRUPFDCWIXK7NOJZ27HSZY764YZ3SVJ`,
+  MarginController `CBZFCLTSKHBDI6M7PNV6WBOCJZ7X7YVJ5IYSXPGYVAPFQCPCCYX57A5Z`
 - split-open before pToken finalizer: SwapAdapter `CB6R6YZWWPACDX5JSPFLOF4PGH4BH5D6BHDC6IDVXH2DSXQCYCQJ62JB`,
   MarginController `CC2KR57IUIB3LZPGYK3INI4QWM4IKO3H2DXHM6SNQNC2UOBHEXBXZQTJ`
 - direct-pool split-open attempt: SwapAdapter `CAMJEGX5BFZ5TVSUVJ5RDKFDSSLVMXRVK4JKPKP6GRQBNRBFVUT2HI5R`,
