@@ -764,6 +764,9 @@ impl MarginController {
         Self::repay_margin_from_controller(env, &vaults.debt_vault, position_id, repay_amount);
         let remaining_debt = debt_vault_client.get_margin_borrow_balance(&position_id);
         if remaining_debt > 0 {
+            if liquidator.is_none() {
+                panic!("debt remains");
+            }
             Self::authorize_controller_subcall(
                 env,
                 &vaults.debt_vault,

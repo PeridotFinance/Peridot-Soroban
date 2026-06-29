@@ -165,6 +165,7 @@ enum MockSwapAdapterKey {
 enum MockAquariusPoolKey {
     LastAmountIn,
     LastUser,
+    PayoutBps,
 }
 
 #[contractimpl]
@@ -292,7 +293,17 @@ impl MockAquariusPool {
         env.storage()
             .persistent()
             .set(&MockAquariusPoolKey::LastUser, &user);
+        let payout_bps: u128 = env
+            .storage()
+            .persistent()
+            .get(&MockAquariusPoolKey::PayoutBps)
+            .unwrap_or(1_000_000u128);
+        let amount_out = amount_in.saturating_mul(payout_bps) / 1_000_000u128;
+        if amount_out < _amount_out_min {
+            panic!("slippage too high");
+        }
         let amount_i128: i128 = amount_in.try_into().expect("amount too large");
+        let amount_out_i128: i128 = amount_out.try_into().expect("amount too large");
         let (token_in, token_out) = if in_idx == 0 && out_idx == 1 {
             let token_in: Address = env
                 .storage()
@@ -324,8 +335,8 @@ impl MockAquariusPool {
         if token_in_client.balance(&user) >= amount_i128 {
             token_in_client.transfer(&user, &env.current_contract_address(), &amount_i128);
         }
-        MockTokenClient::new(&env, &token_out).mint(&user, &amount_i128);
-        amount_in
+        MockTokenClient::new(&env, &token_out).mint(&user, &amount_out_i128);
+        amount_out
     }
 
     pub fn set_tokens(env: Env, token_0: Address, token_1: Address) {
@@ -348,6 +359,12 @@ impl MockAquariusPool {
         env.storage()
             .persistent()
             .get(&MockAquariusPoolKey::LastUser)
+    }
+
+    pub fn set_payout_bps(env: Env, payout_bps: u128) {
+        env.storage()
+            .persistent()
+            .set(&MockAquariusPoolKey::PayoutBps, &payout_bps);
     }
 }
 
@@ -1510,6 +1527,47 @@ fn test_liquidate_position_v3_uses_maintenance_margin_not_lending_cf() {
     let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
     assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
     assert!(MockTokenClient::new(&env, &usdt_id).balance(&liquidator) > 0i128);
+}
+
+#[test]
+fn test_owner_close_position_v3_reverts_when_collateral_cannot_repay_debt() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    peridottroller.set_price(&xlm_id, &800_000u128, &1_000_000u128);
+    MockAquariusPoolClient::new(&env, &pool).set_payout_bps(&800_000u128);
+
+    assert!(controller
+        .try_close_position_v3(&user, &position_id, &3_800u128)
+        .is_err());
+
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    assert_eq!(
+        usdt_vault.get_margin_borrow_balance(&position_id),
+        4_500u128
+    );
+    assert!(controller.get_position(&position_id).is_some());
 }
 
 /// Functional correctness of open_position_no_swap_v2 with real ReceiptVault +
