@@ -337,6 +337,20 @@ fn test_margin_split_open_v2_policy_accepts_self_and_rejects_other_user() {
             Ok(())
         );
 
+        let supply_ptokens_self = ContractContext {
+            contract: margin.clone(),
+            fn_name: Symbol::new(&env, "supply_open_ptokens_v2"),
+            args: (contract_id.clone(), 7u64, 100u128).into_val(&env),
+        };
+        assert_eq!(enforce_contract_policy(&env, &supply_ptokens_self), Ok(()));
+
+        let activate_self = ContractContext {
+            contract: margin.clone(),
+            fn_name: Symbol::new(&env, "activate_open_position_v2"),
+            args: (contract_id.clone(), 7u64).into_val(&env),
+        };
+        assert_eq!(enforce_contract_policy(&env, &activate_self), Ok(()));
+
         let cancel_self = ContractContext {
             contract: margin.clone(),
             fn_name: Symbol::new(&env, "cancel_pending_open_v2"),

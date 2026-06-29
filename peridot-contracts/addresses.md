@@ -2,8 +2,7 @@
 
 Fresh no-rewards deployment from this branch. `$P` is intentionally not wired as a
 controller reward token. SwapAdapter + MarginController were freshly redeployed after
-the routed split-open budget and oracle-min overflow fixes, avoiding the 24h upgrade
-timelock.
+the routed split activation budget fix, avoiding the 24h upgrade timelock.
 
 - Admin (dev): `GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ`
 - Alice: `GCOAFEN2VLTOAZR3RVSJ2QGLY4TCVMSFGVNWVI3YMQ6NLJJCCTAJT5TZ`
@@ -14,8 +13,8 @@ timelock.
 - JumpRateModel: `CDF2GSHMMJR6OU3PBMHO642MSCEKIZV75SYOBP74Q4RZWDKK7VFOTKDZ`
 - Mock USDT (7 decimals, open mint): `CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY`
 - XLM native asset contract: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
-- SwapAdapter (pool-direct Aquarius single-hop build): `CCFXUYLPRFWLOSLT3KRVXZAXECZX5KN7KFQE5G7GDBS4Z2KGZRRYWFCZ`
-- MarginController: `CB5UZHITW3G72PWTBSEBIY4WLB77LAG7RKAIZCD5URRANWRZ2J3OCHEU`
+- SwapAdapter (pool-direct Aquarius single-hop build): `CDEQ6H4TST4DSFBUSZV6VMRSSBVOZAOYWKOGGVGZJKGXFZECBQVRS557`
+- MarginController: `CAP4ULN6PZVPU3GDFBHW4HZGSIZ2CN4YFD7CT4R5OZ3K7A6FS6LEQQO3`
 - Reflector Oracle: `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63`
 - Controller oracle mappings:
   - XLM native SAC `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` -> Reflector `XLM`
@@ -42,16 +41,58 @@ Aquarius pool status for current XLM/mock-USDT pair:
   (`999,912,914` XLM / `1,000,360,176` mock-USDT before the next long test).
 - Final SwapAdapter binding allows this pool ID/address pair and also allowlists the
   pool address for estimates.
-- Post-final-redeploy verification:
-  - `cargo test --workspace` passed locally before deployment.
-  - XLM and USDT vaults both read back `get_margin_controller =
-    CB5UZHITW3G72PWTBSEBIY4WLB77LAG7RKAIZCD5URRANWRZ2J3OCHEU`.
+- Latest split-activation redeploy verification:
+  - `cargo test --workspace` passed locally after the code change.
+  - XLM and USDT vaults were rewired to MarginController
+    `CAP4ULN6PZVPU3GDFBHW4HZGSIZ2CN4YFD7CT4R5OZ3K7A6FS6LEQQO3`.
   - New SwapAdapter readbacks: pool allowed `true`, pool binding allowed `true`.
-  - Alice's temporary USDT margin-balance test was swept back out; final readback is
-    `0`.
-  - `begin_open_position_v2` routed short simulation on the final controller
-    succeeded and returned simulated position id `1`.
-- Full manual smoke after the pToken-finalize redeploy:
+  - Live routed short split flow passed:
+    - Alice moved `500,000` USDT pTokens into margin.
+    - `begin_open_position_v2` returned position `1` with pending
+      `borrow_amount = 2,433,124` XLM units and `min_position_amount = 450,000`.
+    - Adapter `swap_chained` returned `2,390,804` mock-USDT units.
+    - USDT vault deposit minted `2,390,758` pTokens.
+    - `supply_open_ptokens_v2` moved those pTokens into controller custody.
+    - `activate_open_position_v2` succeeded without budget failure and borrowed
+      `2,433,124` XLM units back to Alice.
+    - Open readback: `status = Open`, `collateral_ptokens = 2,390,758`,
+      `entry_price_scaled = 1,017,701`, health factor `5,781,537`, pending state
+      `null`, supplied-pending state `null`.
+  - Routed close through the current Aquarius pool failed the controller oracle
+    min-out guard, because the test pool's reverse USDT->XLM execution price is
+    too far from oracle. This is a pool-pricing issue, not a budget issue.
+  - `close_position_v2_repay_only` passed and cleared the position:
+    `get_position(1)=null`, XLM margin debt `0`, Alice positions `[]`.
+  - Alice's final USDT margin balance on the new controller was swept back to
+    spot; the cleanup transfer moved `2,890,758` pTokens.
+- Historical pre-activation flow check on the previous controller:
+  - Local `cargo test --workspace` passed.
+  - XLM vault deposit/withdraw passed: Bob deposited `1,000,000` XLM units, minted
+    `1,000,000` pTokens, then withdrew `1,000,000` pTokens for `1,000,000` XLM
+    units.
+  - Standard borrow/repay passed: Alice borrowed `500,000` mock-USDT units against
+    XLM pToken collateral, repaid `500,000`, and USDT debt returned to `0`.
+  - Margin custody transfer passed: Alice moved `1,000,000` USDT pTokens into the
+    margin controller and later swept them back to spot.
+  - No-swap V2 open/close passed: position `1` opened with `100,000` USDT pTokens
+    collateral and `10,000` XLM debt, then `close_position_no_swap_v2` cleared it;
+    position and margin debt returned to `0`.
+  - Pending-open cancel passed: position `2` created with `100,000` USDT pTokens,
+    pending debt read `0`, `cancel_pending_open_v2(..., max_repay_amount=0)` cleared
+    it and restored the margin balance.
+  - Routed short `begin_open_position_v2` passed for position `3`; pending
+    `borrow_amount` was `4,872,561` XLM units and the adapter quote for that input
+    was `4,845,284` mock-USDT units.
+  - Routed finalization was not live-safe on that deployment:
+    `finalize_open_swap_v2`, `finalize_open_ptokens_v2`, and monolithic
+    `open_position_v2` all hit `HostError: Error(Budget, ExceededLimit)` in live
+    simulation. Pending positions were canceled and final readbacks were clean:
+    Alice positions `[]`, USDT margin balance `0`, XLM debt `0`, USDT debt `0`.
+  - Long-side routed begin with `amount_with_slippage=90,000` correctly failed
+    before state change under live Reflector pricing; the pool quote for `900,000`
+    mock-USDT -> XLM was `894,489` XLM units, far below the oracle-min output with
+    XLM priced around `0.1845` USDT.
+- Historical manual smoke after the pToken-finalize redeploy:
   - Bob XLM lending deposit of `10,000,000` units minted `10,000,000` pTokens;
     withdraw of `1,000,000` pTokens returned `1,000,000` XLM units.
   - Alice USDT borrow/repay of `1,000,000` units against existing XLM pToken
@@ -81,16 +122,17 @@ Aquarius pool status for current XLM/mock-USDT pair:
     `close_position_v2_repay_only` then closed it; `get_position(3)=null`, Alice
     positions `[]`, and USDT margin debt returned to `0`. Post-test USDT->XLM
     estimate for `900,017` USDT is `894,505` XLM, still above the `855,017` minimum.
-  - Final exchange rates read after the smoke: XLM vault `1,000,000`, USDT vault
+  - Final exchange rates read after that smoke: XLM vault `1,000,000`, USDT vault
     `1,000,019`.
 - Recommended live routed open flow is now:
   1. `begin_open_position_v2`
-  2. adapter `swap_chained`
+  2. adapter `swap_chained` using `pending.borrow_amount`
   3. direct deposit of received position asset into the position vault
-  4. `finalize_open_ptokens_v2`
-  The monolithic `open_position_v2` and the deposit-in-finalize
-  `finalize_open_position_v2` path remain too heavy for the current live
-  testnet route.
+  4. `supply_open_ptokens_v2` using the actual pToken delta
+  5. `activate_open_position_v2`
+  The monolithic `open_position_v2`, `finalize_open_swap_v2`, and the older
+  deposit/pToken finalizers combine too much work for the current live testnet
+  route and should not be the default frontend path.
 
 Superseded no-`$P` margin deploys:
 - pool-direct pre-budget/overflow-fix pair: SwapAdapter `CARPR3UOIPGF7OIQITV5273SMEGKRCJP65MNKN2HLV32EKXTVUP72GBV`,

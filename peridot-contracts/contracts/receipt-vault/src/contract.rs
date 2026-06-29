@@ -577,19 +577,6 @@ impl ReceiptVault {
         configured
     }
 
-    fn require_margin_position_owner(
-        env: &Env,
-        margin_controller: &Address,
-        position_id: u64,
-    ) -> Address {
-        call_contract_or_panic(
-            env,
-            margin_controller,
-            "get_margin_position_owner",
-            (position_id, env.current_contract_address()),
-        )
-    }
-
     fn consume_margin_withdraw_bypass(
         env: &Env,
         user: &Address,
@@ -3166,14 +3153,16 @@ impl ReceiptVault {
         if !rates_ready {
             panic!("rates not configured");
         }
-        let _margin_controller = Self::require_margin_controller_auth(&env);
+        let margin_controller = Self::require_margin_controller_auth(&env);
         // receiver.require_auth() is the real authorization gate: the user must
         // have signed an auth entry for this exact (position_id, receiver, amount)
         // call. The previous owner cross-check (callback to
         // controller.get_margin_position_owner) was redundant defensive coding
         // and triggered Soroban's re-entry guard when called from within an
         // open_position flow on the controller.
-        receiver.require_auth();
+        if receiver != margin_controller {
+            receiver.require_auth();
+        }
         Self::ensure_margin_position_borrow_flag(&env, position_id);
         if amount == 0 {
             panic!("bad amount");
@@ -3273,6 +3262,17 @@ impl ReceiptVault {
         token_client.transfer(&env.current_contract_address(), &receiver, &amount_i128);
         let cash_after = Self::current_live_cash(&env, &token_address);
         Self::sub_managed_cash(&env, cash_before.saturating_sub(cash_after));
+    }
+
+    /// Borrow into a margin position namespace and send funds to the configured
+    /// margin controller. This is used by controller-custodied margin positions.
+    pub fn borrow_for_margin_to_controller(env: Env, position_id: u64, amount: u128) {
+        let receiver: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginController)
+            .expect("margin controller not set");
+        Self::borrow_for_margin(env, position_id, receiver, amount);
     }
 
     /// Repay borrowed tokens

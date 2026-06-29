@@ -293,6 +293,9 @@ pub fn clear_position_storage(env: &Env, position_id: u64) {
         .persistent()
         .remove(&DataKey::Position(position_id));
     clear_pending_open_position(env, position_id);
+    clear_pending_open_supplied_collateral(env, position_id);
+    clear_pending_perps_open_position(env, position_id);
+    clear_perps_position_data(env, position_id);
     clear_position_initial_lock(env, position_id);
     clear_position_vaults(env, position_id);
     clear_position_mode(env, position_id);
@@ -329,10 +332,166 @@ pub fn get_pending_open_position_or_panic(env: &Env, position_id: u64) -> Pendin
     get_pending_open_position(env, position_id).expect("pending open missing")
 }
 
+pub fn set_pending_perps_open_position(
+    env: &Env,
+    position_id: u64,
+    pending: &PendingPerpsOpenPosition,
+) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::PendingPerpsOpenPosition(position_id), pending);
+    bump_position_ttl(env, position_id);
+}
+
+pub fn get_pending_perps_open_position(
+    env: &Env,
+    position_id: u64,
+) -> Option<PendingPerpsOpenPosition> {
+    let pending = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PendingPerpsOpenPosition(position_id));
+    if pending.is_some() {
+        bump_position_ttl(env, position_id);
+    }
+    pending
+}
+
+pub fn get_pending_perps_open_position_or_panic(
+    env: &Env,
+    position_id: u64,
+) -> PendingPerpsOpenPosition {
+    get_pending_perps_open_position(env, position_id).expect("pending perps open missing")
+}
+
+pub fn clear_pending_perps_open_position(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PendingPerpsOpenPosition(position_id));
+}
+
+pub fn set_perps_position_data(env: &Env, position_id: u64, data: &PerpsPositionData) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::PerpsPositionData(position_id), data);
+    bump_position_ttl(env, position_id);
+}
+
+pub fn get_perps_position_data(env: &Env, position_id: u64) -> Option<PerpsPositionData> {
+    let data = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PerpsPositionData(position_id));
+    if data.is_some() {
+        bump_position_ttl(env, position_id);
+    }
+    data
+}
+
+pub fn get_perps_position_data_or_panic(env: &Env, position_id: u64) -> PerpsPositionData {
+    get_perps_position_data(env, position_id).expect("perps position missing")
+}
+
+pub fn clear_perps_position_data(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PerpsPositionData(position_id));
+}
+
+pub fn set_perps_pair_config(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+    config: &PerpsPairConfig,
+) {
+    env.storage().persistent().set(
+        &DataKey::PerpsPairConfig(margin_asset.clone(), base_asset.clone(), side.clone()),
+        config,
+    );
+    bump_perps_pair_config_ttl(env, margin_asset, base_asset, side);
+}
+
+pub fn get_perps_pair_config(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+) -> Option<PerpsPairConfig> {
+    let config = env.storage().persistent().get(&DataKey::PerpsPairConfig(
+        margin_asset.clone(),
+        base_asset.clone(),
+        side.clone(),
+    ));
+    if config.is_some() {
+        bump_perps_pair_config_ttl(env, margin_asset, base_asset, side);
+    }
+    config
+}
+
+pub fn get_perps_pair_config_or_default(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+) -> PerpsPairConfig {
+    get_perps_pair_config(env, margin_asset, base_asset, side).unwrap_or(PerpsPairConfig {
+        max_leverage: MAX_LEVERAGE_CAP,
+        maintenance_margin_scaled: DEFAULT_PERPS_MAINTENANCE_MARGIN_SCALED,
+        liquidation_incentive_scaled: DEFAULT_PERPS_LIQUIDATION_INCENTIVE_SCALED,
+    })
+}
+
 pub fn clear_pending_open_position(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
         .remove(&DataKey::PendingOpenPosition(position_id));
+}
+
+pub fn set_pending_open_supplied_collateral(
+    env: &Env,
+    position_id: u64,
+    ptokens: u128,
+    position_amount: u128,
+) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::PendingOpenSuppliedPtokens(position_id), &ptokens);
+    env.storage().persistent().set(
+        &DataKey::PendingOpenSuppliedAmount(position_id),
+        &position_amount,
+    );
+    bump_position_ttl(env, position_id);
+}
+
+pub fn get_pending_open_supplied_collateral(env: &Env, position_id: u64) -> Option<(u128, u128)> {
+    let ptokens: Option<u128> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PendingOpenSuppliedPtokens(position_id));
+    let Some(ptokens) = ptokens else {
+        return None;
+    };
+    let position_amount: u128 = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PendingOpenSuppliedAmount(position_id))
+        .unwrap_or(0u128);
+    bump_position_ttl(env, position_id);
+    Some((ptokens, position_amount))
+}
+
+pub fn get_pending_open_supplied_collateral_or_panic(env: &Env, position_id: u64) -> (u128, u128) {
+    get_pending_open_supplied_collateral(env, position_id).expect("pending collateral missing")
+}
+
+pub fn clear_pending_open_supplied_collateral(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PendingOpenSuppliedPtokens(position_id));
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PendingOpenSuppliedAmount(position_id));
 }
 
 pub fn validate_swaps_chain(
@@ -600,6 +759,19 @@ pub fn bump_market_ttl(env: &Env, asset: &Address) {
     }
 }
 
+pub fn bump_perps_pair_config_ttl(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+) {
+    let key = DataKey::PerpsPairConfig(margin_asset.clone(), base_asset.clone(), side.clone());
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn bump_position_ttl(env: &Env, position_id: u64) {
     let persistent = env.storage().persistent();
     let key = DataKey::Position(position_id);
@@ -633,6 +805,22 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     let pending_key = DataKey::PendingOpenPosition(position_id);
     if persistent.has(&pending_key) {
         persistent.extend_ttl(&pending_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let pending_perps_key = DataKey::PendingPerpsOpenPosition(position_id);
+    if persistent.has(&pending_perps_key) {
+        persistent.extend_ttl(&pending_perps_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let perps_position_key = DataKey::PerpsPositionData(position_id);
+    if persistent.has(&perps_position_key) {
+        persistent.extend_ttl(&perps_position_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let pending_supplied_ptokens_key = DataKey::PendingOpenSuppliedPtokens(position_id);
+    if persistent.has(&pending_supplied_ptokens_key) {
+        persistent.extend_ttl(&pending_supplied_ptokens_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let pending_supplied_amount_key = DataKey::PendingOpenSuppliedAmount(position_id);
+    if persistent.has(&pending_supplied_amount_key) {
+        persistent.extend_ttl(&pending_supplied_amount_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

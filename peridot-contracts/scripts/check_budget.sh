@@ -20,8 +20,10 @@ set -uo pipefail
 #   SWAPS_CHAIN           default: current XLM -> mock-USDT Aquarius route
 #   TOKEN_IN              default: current native XLM SAC
 #   SWAP_AMOUNT           default: AMOUNT_WITH_SLIPPAGE
-#   POSITION_ID           when set, simulates finalize/cancel
-#   POSITION_PTOKENS      when set with POSITION_ID, simulates finalize_open_ptokens_v2
+#   POSITION_ID           when set, simulates pending-position follow-up calls
+#   POSITION_PTOKENS      when set with POSITION_ID, simulates supply_open_ptokens_v2
+#   ACTIVATE_POSITION     when set with POSITION_ID, simulates activate_open_position_v2
+#   LEGACY_POSITION_PTOKENS when set with POSITION_ID, simulates finalize_open_ptokens_v2
 #   POSITION_AMOUNT       when set with POSITION_ID, simulates legacy finalize_open_position_v2
 #   MAX_REPAY_AMOUNT      when set with POSITION_ID, simulates cancel_pending_open_v2
 
@@ -108,19 +110,32 @@ fi
 
 if [[ -n "${POSITION_ID:-}" ]]; then
   if [[ -n "${POSITION_PTOKENS:-}" ]]; then
+    run_margin_sim "supply_open_ptokens_v2" \
+      supply_open_ptokens_v2 \
+      --user "$USER" \
+      --position_id "$POSITION_ID" \
+      --position_ptokens "$POSITION_PTOKENS"
+  fi
+
+  if [[ -n "${ACTIVATE_POSITION:-}" ]]; then
+    run_margin_sim "activate_open_position_v2" \
+      activate_open_position_v2 \
+      --user "$USER" \
+      --position_id "$POSITION_ID"
+  fi
+
+  if [[ -n "${LEGACY_POSITION_PTOKENS:-}" ]]; then
     run_margin_sim "finalize_open_ptokens_v2" \
       finalize_open_ptokens_v2 \
       --user "$USER" \
       --position_id "$POSITION_ID" \
-      --position_ptokens "$POSITION_PTOKENS"
+      --position_ptokens "$LEGACY_POSITION_PTOKENS"
   elif [[ -n "${POSITION_AMOUNT:-}" ]]; then
     run_margin_sim "finalize_open_position_v2" \
       finalize_open_position_v2 \
       --user "$USER" \
       --position_id "$POSITION_ID" \
       --position_amount "$POSITION_AMOUNT"
-  else
-    echo "Skipping finalize: POSITION_PTOKENS or POSITION_AMOUNT is not set." >&2
   fi
 
   if [[ -n "${MAX_REPAY_AMOUNT:-}" ]]; then

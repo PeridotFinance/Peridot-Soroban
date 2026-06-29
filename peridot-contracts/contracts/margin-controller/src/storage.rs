@@ -13,6 +13,7 @@ pub trait ReceiptVaultContract {
     fn repay(env: Env, user: Address, amount: u128);
     fn init_margin_borrow_state(env: Env, position_id: u64);
     fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128);
+    fn borrow_for_margin_to_controller(env: Env, position_id: u64, amount: u128);
     fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128);
     fn repay_full_for_margin(env: Env, position_id: u64, payer: Address, max_amount: u128) -> u128;
     fn absorb_margin_bad_debt(env: Env, position_id: u64) -> u128;
@@ -22,6 +23,19 @@ pub trait ReceiptVaultContract {
     fn get_ptoken_balance(env: Env, user: Address) -> u128;
     fn get_user_borrow_balance(env: Env, user: Address) -> u128;
     fn get_margin_borrow_balance(env: Env, position_id: u64) -> u128;
+}
+
+#[soroban_sdk::contractclient(name = "AquariusPoolClient")]
+pub trait AquariusPoolContract {
+    fn estimate_swap(env: Env, in_idx: u32, out_idx: u32, amount_in: u128) -> u128;
+    fn swap(
+        env: Env,
+        user: Address,
+        in_idx: u32,
+        out_idx: u32,
+        amount_in: u128,
+        amount_out_min: u128,
+    ) -> u128;
 }
 
 #[soroban_sdk::contractclient(name = "PeridottrollerClient")]
@@ -109,6 +123,11 @@ pub enum DataKey {
     PendingPeridottrollerEta,
     PendingSwapAdapter,
     PendingSwapAdapterEta,
+    PendingOpenSuppliedPtokens(u64),
+    PendingOpenSuppliedAmount(u64),
+    PerpsPairConfig(Address, Address, PositionSide), // (margin_asset, base_asset, side)
+    PendingPerpsOpenPosition(u64),
+    PerpsPositionData(u64),
 }
 
 #[contracttype]
@@ -132,6 +151,7 @@ pub enum PositionStatus {
 pub enum PositionMode {
     Legacy,
     MarginV2,
+    PerpsV3,
 }
 
 #[contracttype]
@@ -163,6 +183,50 @@ pub struct PendingOpenPosition {
     pub borrow_amount: u128,
     pub min_position_amount: u128,
     pub expires_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PerpsPairConfig {
+    pub max_leverage: u128,
+    pub maintenance_margin_scaled: u128,
+    pub liquidation_incentive_scaled: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingPerpsOpenPosition {
+    pub owner: Address,
+    pub margin_asset: Address,
+    pub base_asset: Address,
+    pub side: PositionSide,
+    pub margin_vault: Address,
+    pub debt_vault: Address,
+    pub position_vault: Address,
+    pub margin_ptokens: u128,
+    pub margin_amount: u128,
+    pub notional_value: u128,
+    pub borrow_amount: u128,
+    pub min_position_amount: u128,
+    pub pool_tokens: Vec<Address>,
+    pub pool_id: BytesN<32>,
+    pub pool: Address,
+    pub expires_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PerpsPositionData {
+    pub margin_asset: Address,
+    pub base_asset: Address,
+    pub side: PositionSide,
+    pub margin_amount: u128,
+    pub notional_value: u128,
+    pub maintenance_margin_scaled: u128,
+    pub liquidation_incentive_scaled: u128,
+    pub pool_tokens: Vec<Address>,
+    pub pool_id: BytesN<32>,
+    pub pool: Address,
 }
 
 pub fn require_admin(env: &Env, admin: &Address) {
@@ -234,6 +298,17 @@ pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {
         (asset.clone(),).into_val(env),
     );
     let peridottroller = PeridottrollerClient::new(env, &peridottroller_addr);
+    let (num, den) = peridottroller
+        .get_price_usd(asset)
+        .expect("price unavailable");
+    if num == 0 || den == 0 {
+        panic!("invalid price");
+    }
+    (num, den)
+}
+
+pub fn get_price_usd_cache_first(env: &Env, asset: &Address) -> (u128, u128) {
+    let peridottroller = get_peridottroller(env);
     let (num, den) = peridottroller
         .get_price_usd(asset)
         .expect("price unavailable");

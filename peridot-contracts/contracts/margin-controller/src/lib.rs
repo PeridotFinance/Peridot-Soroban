@@ -3,6 +3,7 @@
 mod constants;
 mod contract;
 mod helpers;
+mod perps;
 mod storage;
 
 pub use constants::*;
