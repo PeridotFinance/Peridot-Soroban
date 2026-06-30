@@ -249,6 +249,7 @@ pub fn bump_user_borrow_state_ttl(env: &Env, user: &Address) {
 pub fn bump_user_borrow_live_ttl(env: &Env, user: &Address) {
     bump_borrow_snapshot_ttl(env, user);
     bump_has_borrowed_ttl(env, user);
+    bump_borrow_principal_ttl(env, user);
 }
 
 pub fn bump_margin_borrow_snapshot_ttl(env: &Env, position_id: u64) {
@@ -284,6 +285,7 @@ pub fn bump_margin_borrow_state_ttl(env: &Env, position_id: u64) {
 pub fn bump_margin_borrow_live_ttl(env: &Env, position_id: u64) {
     bump_margin_borrow_snapshot_ttl(env, position_id);
     bump_margin_has_borrowed_ttl(env, position_id);
+    bump_margin_borrow_principal_ttl(env, position_id);
 }
 
 pub fn bump_borrow_state_ttl(env: &Env) {

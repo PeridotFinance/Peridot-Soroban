@@ -939,6 +939,18 @@ impl MarginController {
         Self::execute_open_position_v3_impl(&env, user, position_id);
     }
 
+    pub fn swap_open_position_v3(env: Env, user: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        Self::swap_open_position_v3_impl(&env, user, position_id);
+    }
+
+    pub fn activate_open_position_v3(env: Env, user: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        Self::activate_open_position_v3_impl(&env, user, position_id);
+    }
+
     pub fn cancel_pending_open_v3(env: Env, user: Address, position_id: u64) {
         bump_core_ttl(&env);
         user.require_auth();
@@ -948,6 +960,14 @@ impl MarginController {
     pub fn get_pending_perps_open(env: Env, position_id: u64) -> Option<PendingPerpsOpenPosition> {
         bump_core_ttl(&env);
         get_pending_perps_open_position(&env, position_id)
+    }
+
+    pub fn get_pending_perps_open_execution(
+        env: Env,
+        position_id: u64,
+    ) -> Option<PendingPerpsOpenExecution> {
+        bump_core_ttl(&env);
+        get_pending_perps_open_execution(&env, position_id)
     }
 
     pub fn get_perps_position(env: Env, position_id: u64) -> Option<PerpsPositionData> {

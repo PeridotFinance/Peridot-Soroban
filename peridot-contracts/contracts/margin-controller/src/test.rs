@@ -1346,7 +1346,8 @@ fn open_perps_long_10x(
         &pool,
         &(margin_ptokens.saturating_mul(10)),
     );
-    controller.execute_open_position_v3(user, &position_id);
+    controller.swap_open_position_v3(user, &position_id);
+    controller.activate_open_position_v3(user, &position_id);
     (position_id, pool, pool_id, pool_tokens)
 }
 
@@ -1402,6 +1403,68 @@ fn test_open_position_v3_long_uses_full_notional_from_controller_custody() {
     let pool_client = MockAquariusPoolClient::new(&env, &pool);
     assert_eq!(pool_client.get_last_swap_amount_in(), 5_000u128);
     assert_eq!(pool_client.get_last_user().unwrap(), controller_id);
+}
+
+#[test]
+fn test_open_position_v3_split_records_swap_before_activation() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
+    usdt_vault.deposit(&user, &500u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &500u128);
+    let (pool, pool_id, pool_tokens) = setup_perps_pool(&env, &usdt_id, &xlm_id);
+
+    let position_id = controller.begin_open_position_v3(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &500u128,
+        &10u128,
+        &PositionSide::Long,
+        &pool_tokens,
+        &pool_id,
+        &pool,
+        &5_000u128,
+    );
+    controller.swap_open_position_v3(&user, &position_id);
+
+    let execution = controller
+        .get_pending_perps_open_execution(&position_id)
+        .unwrap();
+    assert_eq!(execution.margin_received, 500u128);
+    assert_eq!(execution.position_amount, 5_000u128);
+    assert!(controller.get_pending_perps_open(&position_id).is_some());
+    assert_eq!(
+        usdt_vault.get_margin_borrow_balance(&position_id),
+        4_500u128
+    );
+    assert_eq!(xlm_vault.get_ptoken_balance(&controller_id), 0u128);
+
+    controller.activate_open_position_v3(&user, &position_id);
+
+    let position = controller.get_position(&position_id).unwrap();
+    assert_eq!(position.status, PositionStatus::Open);
+    assert_eq!(position.collateral_ptokens, 5_000u128);
+    assert!(controller
+        .get_pending_perps_open_execution(&position_id)
+        .is_none());
+    assert!(controller.get_pending_perps_open(&position_id).is_none());
+    assert_eq!(
+        xlm_vault.get_ptoken_balance(&controller_id),
+        position.collateral_ptokens
+    );
 }
 
 #[test]
@@ -1470,7 +1533,8 @@ fn test_open_position_v3_short_borrows_base_and_custodies_quote_collateral() {
         &pool,
         &5_000u128,
     );
-    controller.execute_open_position_v3(&user, &position_id);
+    controller.swap_open_position_v3(&user, &position_id);
+    controller.activate_open_position_v3(&user, &position_id);
 
     let position = controller.get_position(&position_id).unwrap();
     assert_eq!(position.status, PositionStatus::Open);
@@ -2296,6 +2360,65 @@ fn test_activate_open_position_v2_budget_short_min() {
     controller.activate_open_position_v2(&user, &position_id);
     assert_budget_under(&env, 4_500_000, 900_000);
     assert_last_invocation_resources_under(&env, 80, 35, 16_000_000);
+}
+
+#[test]
+fn test_swap_open_position_v3_budget_short_min() {
+    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let (pool, pool_id, pool_tokens) = setup_perps_pool(&env, &usdt_id, &xlm_id);
+    let position_id = controller.begin_open_position_v3(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &10u128,
+        &PositionSide::Long,
+        &pool_tokens,
+        &pool_id,
+        &pool,
+        &1_000u128,
+    );
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.swap_open_position_v3(&user, &position_id);
+    assert_budget_under(&env, 8_000_000, 1_600_000);
+    assert_last_invocation_resources_under(&env, 90, 40, 22_000_000);
+}
+
+#[test]
+fn test_activate_open_position_v3_budget_short_min() {
+    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let (pool, pool_id, pool_tokens) = setup_perps_pool(&env, &usdt_id, &xlm_id);
+    let position_id = controller.begin_open_position_v3(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &10u128,
+        &PositionSide::Long,
+        &pool_tokens,
+        &pool_id,
+        &pool,
+        &1_000u128,
+    );
+    controller.swap_open_position_v3(&user, &position_id);
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.activate_open_position_v3(&user, &position_id);
+    assert_budget_under(&env, 8_000_000, 1_600_000);
+    assert_last_invocation_resources_under(&env, 90, 40, 22_000_000);
 }
 
 #[test]

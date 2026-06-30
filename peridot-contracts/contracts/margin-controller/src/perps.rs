@@ -178,29 +178,14 @@ impl MarginController {
     }
 
     pub(crate) fn execute_open_position_v3_impl(env: &Env, user: Address, position_id: u64) {
-        let mut position = get_position_or_panic(env, position_id);
-        if position.owner != user {
-            panic!("not owner");
-        }
-        if position.status != PositionStatus::PendingOpen {
-            panic!("not pending open");
-        }
-        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
-            panic!("not v3 position");
-        }
-        let pending = get_pending_perps_open_position_or_panic(env, position_id);
-        if pending.owner != user {
-            panic!("not owner");
-        }
-        if env.ledger().timestamp() > pending.expires_at {
-            panic!("pending open expired");
-        }
-        let vaults = get_position_vaults(env, position_id, &position);
-        if vaults.collateral_vault != pending.margin_vault
-            || vaults.debt_vault != pending.debt_vault
-            || vaults.position_vault != pending.position_vault
-        {
-            panic!("pending vault mismatch");
+        Self::swap_open_position_v3_impl(env, user.clone(), position_id);
+        Self::activate_open_position_v3_impl(env, user, position_id);
+    }
+
+    pub(crate) fn swap_open_position_v3_impl(env: &Env, user: Address, position_id: u64) {
+        let (position, pending, vaults) = Self::load_pending_perps_open(env, &user, position_id);
+        if get_pending_perps_open_execution(env, position_id).is_some() {
+            panic!("open already swapped");
         }
 
         let controller = env.current_contract_address();
@@ -231,10 +216,10 @@ impl MarginController {
             panic!("margin withdraw failed");
         }
 
-        let debt_vault_client = ReceiptVaultClient::new(env, &pending.debt_vault);
+        let debt_vault_client = ReceiptVaultClient::new(env, &vaults.debt_vault);
         Self::authorize_controller_subcall(
             env,
-            &pending.debt_vault,
+            &vaults.debt_vault,
             "borrow_for_margin_to_controller",
             (position_id, pending.borrow_amount).into_val(env),
         );
@@ -250,7 +235,7 @@ impl MarginController {
             PositionSide::Long => (pending.margin_asset.clone(), pending.base_asset.clone()),
             PositionSide::Short => (pending.base_asset.clone(), pending.margin_asset.clone()),
         };
-        let received_from_swap = Self::direct_pool_swap_as_controller(
+        let reported_received = Self::direct_pool_swap_as_controller(
             env,
             &pending.pool_tokens,
             &pending.pool,
@@ -259,39 +244,61 @@ impl MarginController {
             trade_amount,
             pending.min_position_amount,
         );
+        if reported_received < pending.min_position_amount {
+            panic!("slippage too high");
+        }
+        let position_bal_after = position_token.balance(&controller);
+        let received_from_swap = if position_bal_after <= position_bal_before {
+            0u128
+        } else {
+            (position_bal_after - position_bal_before) as u128
+        };
         if received_from_swap < pending.min_position_amount {
             panic!("slippage too high");
         }
         let position_amount = match pending.side.clone() {
-            PositionSide::Long => {
-                let after = position_token.balance(&controller);
-                if after <= position_bal_before {
-                    0u128
-                } else {
-                    (after - position_bal_before) as u128
-                }
-            }
+            PositionSide::Long => received_from_swap,
             PositionSide::Short => margin_received.saturating_add(received_from_swap),
         };
         if position_amount == 0 {
             panic!("swap failed");
         }
 
-        let position_vault_client = ReceiptVaultClient::new(env, &pending.position_vault);
+        set_pending_perps_open_execution(
+            env,
+            position_id,
+            &PendingPerpsOpenExecution {
+                margin_received,
+                position_amount,
+            },
+        );
+    }
+
+    pub(crate) fn activate_open_position_v3_impl(env: &Env, user: Address, position_id: u64) {
+        let (mut position, pending, vaults) =
+            Self::load_pending_perps_open(env, &user, position_id);
+        let execution = get_pending_perps_open_execution_or_panic(env, position_id);
+        if execution.margin_received == 0 || execution.position_amount == 0 {
+            panic!("pending execution missing");
+        }
+
+        let controller = env.current_contract_address();
+        let position_vault_client = ReceiptVaultClient::new(env, &vaults.position_vault);
         let p_before = position_vault_client.get_ptoken_balance(&controller);
         Self::authorize_controller_vault_deposit(
             env,
-            &pending.position_vault,
+            &vaults.position_vault,
             &position.collateral_asset,
             &controller,
-            position_amount,
+            execution.position_amount,
         );
-        position_vault_client.deposit(&controller, &position_amount);
+        position_vault_client.deposit(&controller, &execution.position_amount);
         let p_after = position_vault_client.get_ptoken_balance(&controller);
         let p_delta = p_after.saturating_sub(p_before);
         if p_delta == 0 {
             panic!("no collateral minted");
         }
+        let debt_vault_client = ReceiptVaultClient::new(env, &vaults.debt_vault);
         let debt_amount = debt_vault_client.get_margin_borrow_balance(&position_id);
         if debt_amount == 0 {
             panic!("zero debt");
@@ -306,7 +313,7 @@ impl MarginController {
             margin_asset: pending.margin_asset.clone(),
             base_asset: pending.base_asset.clone(),
             side: pending.side.clone(),
-            margin_amount: margin_received,
+            margin_amount: execution.margin_received,
             notional_value: pending.notional_value,
             maintenance_margin_scaled: config.maintenance_margin_scaled,
             liquidation_incentive_scaled: config.liquidation_incentive_scaled,
@@ -315,7 +322,7 @@ impl MarginController {
             pool: pending.pool.clone(),
         };
         let entry_denominator = match pending.side.clone() {
-            PositionSide::Long => position_amount,
+            PositionSide::Long => execution.position_amount,
             PositionSide::Short => pending.borrow_amount,
         };
         position.collateral_ptokens = p_delta;
@@ -331,7 +338,40 @@ impl MarginController {
             panic!("insufficient margin");
         }
         clear_pending_perps_open_position(env, position_id);
+        clear_pending_perps_open_execution(env, position_id);
         bump_position_ttl(env, position_id);
+    }
+
+    fn load_pending_perps_open(
+        env: &Env,
+        user: &Address,
+        position_id: u64,
+    ) -> (Position, PendingPerpsOpenPosition, PositionVaults) {
+        let position = get_position_or_panic(env, position_id);
+        if position.owner != *user {
+            panic!("not owner");
+        }
+        if position.status != PositionStatus::PendingOpen {
+            panic!("not pending open");
+        }
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let pending = get_pending_perps_open_position_or_panic(env, position_id);
+        if pending.owner != *user {
+            panic!("not owner");
+        }
+        if env.ledger().timestamp() > pending.expires_at {
+            panic!("pending open expired");
+        }
+        let vaults = get_position_vaults(env, position_id, &position);
+        if vaults.collateral_vault != pending.margin_vault
+            || vaults.debt_vault != pending.debt_vault
+            || vaults.position_vault != pending.position_vault
+        {
+            panic!("pending vault mismatch");
+        }
+        (position, pending, vaults)
     }
 
     pub(crate) fn cancel_pending_open_v3_impl(env: &Env, user: Address, position_id: u64) {

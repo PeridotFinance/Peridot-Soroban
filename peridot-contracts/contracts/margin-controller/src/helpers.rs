@@ -295,6 +295,7 @@ pub fn clear_position_storage(env: &Env, position_id: u64) {
     clear_pending_open_position(env, position_id);
     clear_pending_open_supplied_collateral(env, position_id);
     clear_pending_perps_open_position(env, position_id);
+    clear_pending_perps_open_execution(env, position_id);
     clear_perps_position_data(env, position_id);
     clear_position_initial_lock(env, position_id);
     clear_position_vaults(env, position_id);
@@ -368,6 +369,44 @@ pub fn clear_pending_perps_open_position(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
         .remove(&DataKey::PendingPerpsOpenPosition(position_id));
+}
+
+pub fn set_pending_perps_open_execution(
+    env: &Env,
+    position_id: u64,
+    execution: &PendingPerpsOpenExecution,
+) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::PendingPerpsOpenExecution(position_id), execution);
+    bump_position_ttl(env, position_id);
+}
+
+pub fn get_pending_perps_open_execution(
+    env: &Env,
+    position_id: u64,
+) -> Option<PendingPerpsOpenExecution> {
+    let execution = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PendingPerpsOpenExecution(position_id));
+    if execution.is_some() {
+        bump_position_ttl(env, position_id);
+    }
+    execution
+}
+
+pub fn get_pending_perps_open_execution_or_panic(
+    env: &Env,
+    position_id: u64,
+) -> PendingPerpsOpenExecution {
+    get_pending_perps_open_execution(env, position_id).expect("pending perps execution missing")
+}
+
+pub fn clear_pending_perps_open_execution(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PendingPerpsOpenExecution(position_id));
 }
 
 pub fn set_perps_position_data(env: &Env, position_id: u64, data: &PerpsPositionData) {
@@ -809,6 +848,10 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     let pending_perps_key = DataKey::PendingPerpsOpenPosition(position_id);
     if persistent.has(&pending_perps_key) {
         persistent.extend_ttl(&pending_perps_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let pending_perps_execution_key = DataKey::PendingPerpsOpenExecution(position_id);
+    if persistent.has(&pending_perps_execution_key) {
+        persistent.extend_ttl(&pending_perps_execution_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     let perps_position_key = DataKey::PerpsPositionData(position_id);
     if persistent.has(&perps_position_key) {

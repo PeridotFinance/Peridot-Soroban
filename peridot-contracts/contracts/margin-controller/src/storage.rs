@@ -127,6 +127,7 @@ pub enum DataKey {
     PendingOpenSuppliedAmount(u64),
     PerpsPairConfig(Address, Address, PositionSide), // (margin_asset, base_asset, side)
     PendingPerpsOpenPosition(u64),
+    PendingPerpsOpenExecution(u64),
     PerpsPositionData(u64),
 }
 
@@ -212,6 +213,13 @@ pub struct PendingPerpsOpenPosition {
     pub pool_id: BytesN<32>,
     pub pool: Address,
     pub expires_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingPerpsOpenExecution {
+    pub margin_received: u128,
+    pub position_amount: u128,
 }
 
 #[contracttype]

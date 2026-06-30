@@ -900,6 +900,51 @@ fn test_bump_user_borrow_ttl_permissionless() {
 }
 
 #[test]
+fn test_user_borrow_balance_read_bumps_borrow_principal_ttl() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &2_000i128);
+    token_admin_client.mint(&lender, &2_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&lender, &1_000u128);
+    vault.deposit(&user, &1_000u128);
+    vault.borrow(&user, &100u128);
+
+    env.ledger().set_sequence_number(40_000);
+    let before = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get_ttl(&DataKey::BorrowPrincipal(user.clone()))
+    });
+    assert!(
+        before < 4_982_720,
+        "expected principal ttl under bump threshold, got {before}"
+    );
+
+    assert_eq!(vault.get_user_borrow_balance(&user), 100u128);
+
+    let after = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get_ttl(&DataKey::BorrowPrincipal(user.clone()))
+    });
+    assert!(
+        after > before,
+        "expected borrow principal ttl to be bumped, before {before}, after {after}"
+    );
+}
+
+#[test]
 fn test_collateral_only_missing_borrow_state_recovers_when_no_global_debt() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -1722,6 +1767,10 @@ fn test_bump_margin_borrow_ttl_permissionless() {
             .storage()
             .persistent()
             .get_ttl(&DataKey::MarginHasBorrowed(position_id));
+        let principal_ttl = env
+            .storage()
+            .persistent()
+            .get_ttl(&DataKey::MarginBorrowPrincipal(position_id));
         assert!(
             snap_ttl > 100_000,
             "expected bumped ttl for margin borrow snapshot, got {snap_ttl}"
@@ -1730,7 +1779,61 @@ fn test_bump_margin_borrow_ttl_permissionless() {
             flag_ttl > 100_000,
             "expected bumped ttl for margin borrow flag, got {flag_ttl}"
         );
+        assert!(
+            principal_ttl > 100_000,
+            "expected bumped ttl for margin borrow principal, got {principal_ttl}"
+        );
     });
+}
+
+#[test]
+fn test_margin_borrow_balance_read_bumps_borrow_principal_ttl() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&lender, &2_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&lender, &1_000u128);
+
+    let margin_ctrl_id = env.register(MockMarginPositionController, ());
+    let margin_ctrl = MockMarginPositionControllerClient::new(&env, &margin_ctrl_id);
+    vault.set_margin_controller(&admin, &Some(margin_ctrl_id.clone()));
+
+    let position_id = 10u64;
+    margin_ctrl.set_position(&position_id, &user, &vault_id);
+    vault.init_margin_borrow_state(&position_id);
+    vault.borrow_for_margin(&position_id, &user, &100u128);
+
+    env.ledger().set_sequence_number(40_000);
+    let before = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get_ttl(&DataKey::MarginBorrowPrincipal(position_id))
+    });
+    assert!(
+        before < 4_982_720,
+        "expected margin principal ttl under bump threshold, got {before}"
+    );
+
+    assert_eq!(vault.get_margin_borrow_balance(&position_id), 100u128);
+
+    let after = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get_ttl(&DataKey::MarginBorrowPrincipal(position_id))
+    });
+    assert!(
+        after > before,
+        "expected margin borrow principal ttl to be bumped, before {before}, after {after}"
+    );
 }
 
 #[test]
