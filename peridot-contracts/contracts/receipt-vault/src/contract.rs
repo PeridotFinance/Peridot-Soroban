@@ -25,6 +25,15 @@ const DEBT_STATE_VERSION_V1: u32 = 1u32;
 
 #[contractimpl]
 impl ReceiptVault {
+    fn ensure_fee_factors_within_cap(reserve_factor_scaled: u128, admin_fee_scaled: u128) {
+        if reserve_factor_scaled > SCALE_1E6
+            || admin_fee_scaled > SCALE_1E6
+            || reserve_factor_scaled.saturating_add(admin_fee_scaled) > SCALE_1E6
+        {
+            panic!("fee factors exceed 100%");
+        }
+    }
+
     fn gcd_u128(mut a: u128, mut b: u128) -> u128 {
         while b != 0 {
             let r = a % b;
@@ -1941,6 +1950,12 @@ impl ReceiptVault {
         if reserve_factor_scaled > 1_000_000u128 {
             panic!("Invalid reserve factor");
         }
+        let admin_fee_scaled: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::AdminFeeScaled)
+            .unwrap_or(0u128);
+        Self::ensure_fee_factors_within_cap(reserve_factor_scaled, admin_fee_scaled);
         env.storage()
             .persistent()
             .set(&DataKey::ReserveFactorScaled, &reserve_factor_scaled);
@@ -1962,6 +1977,12 @@ impl ReceiptVault {
         if admin_fee_scaled > 1_000_000u128 {
             panic!("Invalid admin fee");
         }
+        let reserve_factor_scaled: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::ReserveFactorScaled)
+            .unwrap_or(0u128);
+        Self::ensure_fee_factors_within_cap(reserve_factor_scaled, admin_fee_scaled);
         env.storage()
             .persistent()
             .set(&DataKey::AdminFeeScaled, &admin_fee_scaled);
@@ -2285,6 +2306,7 @@ impl ReceiptVault {
                 .persistent()
                 .get(&DataKey::AdminFeeScaled)
                 .unwrap_or(0u128);
+            Self::ensure_fee_factors_within_cap(rf, af);
             let to_reserves = (borrow_interest_total.saturating_mul(rf)) / SCALE_1E6;
             let to_admin = (borrow_interest_total.saturating_mul(af)) / SCALE_1E6;
             let _to_suppliers = borrow_interest_total

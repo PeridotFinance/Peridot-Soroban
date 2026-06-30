@@ -4684,6 +4684,50 @@ fn test_claim_all_permissionless_without_user_auth() {
 }
 
 #[test]
+fn test_claim_all_does_not_anchor_missing_reward_index() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let token = Address::generate(&env);
+
+    let market_id = env.register(FailingClaimMarket, ());
+    let market = FailingClaimMarketClient::new(&env, &market_id);
+    market.initialize(&token);
+
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.add_market(&market_id);
+    comp.enter_market(&user, &market_id);
+
+    env.as_contract(&comp_id, || {
+        env.storage().persistent().set(
+            &DataKey::SupplyIndex(market_id.clone()),
+            &(INDEX_SCALE_1E18 + 1_000u128),
+        );
+        env.storage()
+            .persistent()
+            .remove(&DataKey::UserSupplyIndex(user.clone(), market_id.clone()));
+    });
+
+    env.set_auths(&[]);
+    let mut users = Vec::new(&env);
+    users.push_back(user.clone());
+    env.as_contract(&comp_id, || {
+        SimplePeridottroller::claim_all(env.clone(), users.clone());
+    });
+
+    let anchored: Option<u128> = env.as_contract(&comp_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::UserSupplyIndex(user, market_id))
+    });
+    assert!(anchored.is_none());
+}
+
+#[test]
 #[should_panic(expected = "invalid max age mult")]
 fn test_set_oracle_max_age_multiplier_rejects_large_values() {
     let env = Env::default();

@@ -2099,6 +2099,86 @@ fn test_reserve_accrual_and_reduce() {
 }
 
 #[test]
+fn test_reserve_and_admin_fee_combined_cap_allows_exact_100_percent() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::from_string(&soroban_sdk::String::from_str(&env, DEFAULT_INIT_ADMIN));
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &1_000_000u128, &admin);
+
+    vault.set_reserve_factor(&400_000u128);
+    vault.set_admin_fee(&600_000u128);
+}
+
+#[test]
+#[should_panic(expected = "fee factors exceed 100%")]
+fn test_set_reserve_factor_rejects_combined_fee_over_cap() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::from_string(&soroban_sdk::String::from_str(&env, DEFAULT_INIT_ADMIN));
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &1_000_000u128, &admin);
+
+    vault.set_admin_fee(&600_000u128);
+    vault.set_reserve_factor(&500_000u128);
+}
+
+#[test]
+#[should_panic(expected = "fee factors exceed 100%")]
+fn test_set_admin_fee_rejects_combined_fee_over_cap() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::from_string(&soroban_sdk::String::from_str(&env, DEFAULT_INIT_ADMIN));
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &1_000_000u128, &admin);
+
+    vault.set_reserve_factor(&600_000u128);
+    vault.set_admin_fee(&500_000u128);
+}
+
+#[test]
+#[should_panic(expected = "fee factors exceed 100%")]
+fn test_update_interest_rejects_legacy_combined_fee_over_cap() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::from_string(&soroban_sdk::String::from_str(&env, DEFAULT_INIT_ADMIN));
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &1_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &1_000_000u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&user, &200u128);
+    vault.borrow(&user, &100u128);
+
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .set(&DataKey::ReserveFactorScaled, &700_000u128);
+        env.storage()
+            .persistent()
+            .set(&DataKey::AdminFeeScaled, &400_000u128);
+    });
+
+    let now = env.ledger().timestamp();
+    env.ledger().set_timestamp(now + 365 * 24 * 60 * 60);
+    vault.update_interest();
+}
+
+#[test]
 fn test_borrow_and_repay_flow() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();

@@ -2955,9 +2955,13 @@ impl SimplePeridottroller {
             let m = markets.get(i).unwrap();
             let _ = Self::claim_market_best_effort(env, user, &m);
         }
+        Self::pay_accrued_rewards(env, user, markets.len() > 0);
+    }
+
+    fn pay_accrued_rewards(env: &Env, user: &Address, emit_missing: bool) {
         let accrued_key = DataKey::Accrued(user.clone());
         if !env.storage().persistent().has(&accrued_key) {
-            if markets.len() > 0 {
+            if emit_missing {
                 ClaimAccruedMissing { user: user.clone() }.publish(env);
             }
             return;
@@ -3920,8 +3924,9 @@ impl SimplePeridottroller {
         storage::bump_reward_user_ttl(&env, &user, &market);
     }
 
-    // UX: allow claiming for many users at once (permissionless).
-    // Anyone may trigger this, but rewards are always minted to each target user.
+    // UX: allow payout of already-accrued rewards for many users at once.
+    // Permissionless batch claims intentionally do not run per-market distribution:
+    // doing so could anchor missing/expired reward indexes for another user.
     pub fn claim_all(env: Env, users: Vec<Address>) {
         bump_core_ttl(&env);
         if users.len() > MAX_CLAIM_BATCH {
@@ -3929,7 +3934,7 @@ impl SimplePeridottroller {
         }
         for i in 0..users.len() {
             let u = users.get(i).unwrap();
-            Self::claim_internal(&env, &u);
+            Self::pay_accrued_rewards(&env, &u, false);
         }
     }
 
