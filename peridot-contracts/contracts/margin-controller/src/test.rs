@@ -1562,45 +1562,7 @@ fn test_activate_open_position_v3_allows_swapped_pending_after_expiry() {
 }
 
 #[test]
-fn test_force_activate_open_position_v3_recovers_abandoned_swapped_pending() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        _peridottroller_id,
-        usdt_vault_id,
-        _xlm_vault_id,
-    ) = setup_min_with_vaults();
-    env.cost_estimate().disable_resource_limits();
-    env.cost_estimate().budget().reset_unlimited();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-
-    let (position_id, _pool, _pool_id, _pool_tokens) = begin_and_swap_perps_long_10x(
-        &env,
-        &controller,
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &usdt_vault_id,
-        500u128,
-    );
-    let pending = controller.get_pending_perps_open(&position_id).unwrap();
-    env.ledger()
-        .with_mut(|l| l.timestamp = pending.expires_at.saturating_add(1));
-
-    controller.force_activate_open_position_v3(&position_id);
-
-    let position = controller.get_position(&position_id).unwrap();
-    assert_eq!(position.status, PositionStatus::Open);
-    assert!(controller
-        .get_pending_perps_open_execution(&position_id)
-        .is_none());
-}
-
-#[test]
-fn test_force_activate_open_position_v3_opens_liquidatable_after_price_move() {
+fn test_activate_open_position_v3_rejects_under_maintenance_after_price_move() {
     let (
         env,
         controller_id,
@@ -1630,11 +1592,34 @@ fn test_force_activate_open_position_v3_opens_liquidatable_after_price_move() {
         &1_000_000u128,
     );
 
-    controller.force_activate_open_position_v3(&position_id);
+    assert!(controller
+        .try_activate_open_position_v3(&user, &position_id)
+        .is_err());
 
     let position = controller.get_position(&position_id).unwrap();
-    assert_eq!(position.status, PositionStatus::Open);
-    assert_eq!(controller.get_health_factor(&position_id), 0u128);
+    assert_eq!(position.status, PositionStatus::PendingOpen);
+    assert!(controller
+        .get_pending_perps_open_execution(&position_id)
+        .is_some());
+    assert!(controller.get_pending_perps_open(&position_id).is_some());
+
+    let liquidator = Address::generate(&env);
+    assert!(controller
+        .try_liquidate_position_v3(&liquidator, &position_id)
+        .is_err());
+
+    let pending = controller.get_pending_perps_open(&position_id).unwrap();
+    env.ledger()
+        .with_mut(|l| l.timestamp = pending.expires_at.saturating_add(1));
+    controller.liquidate_position_v3(&liquidator, &position_id);
+
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
+    assert!(controller.get_position(&position_id).is_none());
+    assert!(controller.get_pending_perps_open(&position_id).is_none());
+    assert!(controller
+        .get_pending_perps_open_execution(&position_id)
+        .is_none());
 }
 
 #[test]

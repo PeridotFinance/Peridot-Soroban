@@ -288,21 +288,7 @@ impl MarginController {
             &pending,
             &vaults,
             &execution,
-        );
-    }
-
-    pub(crate) fn force_activate_open_position_v3_impl(env: &Env, position_id: u64) {
-        let execution = get_pending_perps_open_execution_or_panic(env, position_id);
-        let user = get_position_or_panic(env, position_id).owner;
-        let (mut position, pending, vaults) =
-            Self::load_pending_perps_open(env, &user, position_id, false);
-        Self::activate_open_position_v3_from_execution(
-            env,
-            position_id,
-            &mut position,
-            &pending,
-            &vaults,
-            &execution,
+            true,
         );
     }
 
@@ -313,7 +299,8 @@ impl MarginController {
         pending: &PendingPerpsOpenPosition,
         vaults: &PositionVaults,
         execution: &PendingPerpsOpenExecution,
-    ) {
+        enforce_open_health: bool,
+    ) -> (Position, PerpsPositionData) {
         if execution.margin_received == 0 || execution.position_amount == 0 {
             panic!("pending execution missing");
         }
@@ -369,9 +356,19 @@ impl MarginController {
             .persistent()
             .set(&DataKey::Position(position_id), position);
         set_perps_position_data(env, position_id, &perps);
+
+        if enforce_open_health {
+            let risk = Self::perps_risk_values(env, position_id, position, &perps, false, true);
+            if risk.equity <= risk.maintenance_required {
+                panic!("insufficient margin");
+            }
+        }
+
+        let activated = position.clone();
         clear_pending_perps_open_position(env, position_id);
         clear_pending_perps_open_execution(env, position_id);
         bump_position_ttl(env, position_id);
+        (activated, perps)
     }
 
     fn load_pending_perps_open(
@@ -496,14 +493,18 @@ impl MarginController {
 
     pub(crate) fn liquidate_position_v3_impl(env: &Env, liquidator: Address, position_id: u64) {
         let position = get_position_or_panic(env, position_id);
-        if position.status != PositionStatus::Open {
-            panic!("not open");
-        }
         if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
             panic!("not v3 position");
         }
         if liquidator == position.owner {
             panic!("self liquidation");
+        }
+        if position.status == PositionStatus::PendingOpen {
+            Self::liquidate_pending_open_position_v3_impl(env, liquidator, position_id, position);
+            return;
+        }
+        if position.status != PositionStatus::Open {
+            panic!("not open");
         }
         let perps = get_perps_position_data_or_panic(env, position_id);
         let risk = Self::perps_risk_values(env, position_id, &position, &perps, true, true);
@@ -515,6 +516,52 @@ impl MarginController {
             &position.owner,
             position_id,
             &position,
+            &perps,
+            1u128,
+            Some(liquidator),
+        );
+    }
+
+    fn liquidate_pending_open_position_v3_impl(
+        env: &Env,
+        liquidator: Address,
+        position_id: u64,
+        mut position: Position,
+    ) {
+        let execution = get_pending_perps_open_execution_or_panic(env, position_id);
+        let pending = get_pending_perps_open_position_or_panic(env, position_id);
+        if pending.owner != position.owner {
+            panic!("not owner");
+        }
+        if env.ledger().timestamp() <= pending.expires_at {
+            panic!("pending open active");
+        }
+        let vaults = get_position_vaults(env, position_id, &position);
+        if vaults.collateral_vault != pending.margin_vault
+            || vaults.debt_vault != pending.debt_vault
+            || vaults.position_vault != pending.position_vault
+        {
+            panic!("pending vault mismatch");
+        }
+        let (activated_position, perps) = Self::activate_open_position_v3_from_execution(
+            env,
+            position_id,
+            &mut position,
+            &pending,
+            &vaults,
+            &execution,
+            false,
+        );
+        let risk =
+            Self::perps_risk_values(env, position_id, &activated_position, &perps, true, true);
+        if risk.equity > risk.maintenance_required {
+            panic!("not liquidatable");
+        }
+        Self::close_perps_position(
+            env,
+            &activated_position.owner,
+            position_id,
+            &activated_position,
             &perps,
             1u128,
             Some(liquidator),
