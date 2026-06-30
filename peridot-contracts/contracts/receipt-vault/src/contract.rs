@@ -2659,7 +2659,8 @@ impl ReceiptVault {
     }
 
     /// Permissionless migration/keepalive path for user borrow state.
-    /// Seeds canonical principal mirrors from existing snapshots and bumps TTL.
+    /// Existing mirrors are canonical true principal; snapshots may include
+    /// capitalized interest, so this path must not create a missing mirror.
     pub fn migrate_borrow_state_batch(env: Env, users: Vec<Address>) {
         let _ = ensure_initialized(&env);
         let persistent = env.storage().persistent();
@@ -2671,11 +2672,10 @@ impl ReceiptVault {
                 let principal_key = DataKey::BorrowPrincipal(user.clone());
                 // Existing mirrors are canonical true principal; a debt snapshot may include
                 // capitalized interest, so permissionless migration must never increase it.
-                let principal = persistent
-                    .get::<_, u128>(&principal_key)
-                    .map(|existing| existing.min(snapshot.principal))
-                    .unwrap_or(snapshot.principal);
-                persistent.set(&principal_key, &principal);
+                if let Some(existing) = persistent.get::<_, u128>(&principal_key) {
+                    let principal = existing.min(snapshot.principal);
+                    persistent.set(&principal_key, &principal);
+                }
             }
             bump_user_borrow_state_ttl(&env, &user);
         }
@@ -2697,11 +2697,10 @@ impl ReceiptVault {
                 let principal_key = DataKey::MarginBorrowPrincipal(position_id);
                 // Existing mirrors are canonical true principal; a debt snapshot may include
                 // capitalized interest, so permissionless migration must never increase it.
-                let principal = persistent
-                    .get::<_, u128>(&principal_key)
-                    .map(|existing| existing.min(snapshot.principal))
-                    .unwrap_or(snapshot.principal);
-                persistent.set(&principal_key, &principal);
+                if let Some(existing) = persistent.get::<_, u128>(&principal_key) {
+                    let principal = existing.min(snapshot.principal);
+                    persistent.set(&principal_key, &principal);
+                }
             }
             bump_margin_borrow_state_ttl(&env, position_id);
         }

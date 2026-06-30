@@ -307,6 +307,17 @@ pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {
     (num, den)
 }
 
+pub fn refresh_price_usd(env: &Env, asset: &Address) -> (u128, u128) {
+    let peridottroller = get_peridottroller(env);
+    let (num, den) = peridottroller
+        .cache_price(asset)
+        .expect("price unavailable");
+    if num == 0 || den == 0 {
+        panic!("invalid price");
+    }
+    (num, den)
+}
+
 pub fn get_price_usd_cache_first(env: &Env, asset: &Address) -> (u128, u128) {
     let peridottroller = get_peridottroller(env);
     let (num, den) = peridottroller

@@ -390,11 +390,14 @@ enum MockVaultKey {
 impl MockPeridottroller {
     pub fn set_price(env: Env, asset: Address, price: u128, _scale: u128) {
         env.storage().persistent().set(
-            &OracleKey::Price(asset),
+            &OracleKey::Price(asset.clone()),
             &OraclePrice {
                 price: price as i128,
             },
         );
+        env.storage()
+            .persistent()
+            .set(&MockPeridottrollerKey::LivePrice(asset), &price);
     }
 
     pub fn set_live_price(env: Env, asset: Address, price: u128) {
@@ -1871,6 +1874,40 @@ fn test_begin_finalize_open_ptokens_v2_split_flow() {
         pending.borrow_amount
     );
     assert_eq!(controller.get_health_factor(&position_id), 2_000_000u128);
+}
+
+#[test]
+#[should_panic(expected = "insufficient collateral")]
+fn test_finalize_open_ptokens_v2_refreshes_pending_health_prices() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.begin_open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+    let pending = controller.get_pending_open(&position_id).unwrap();
+    xlm_vault.deposit(&user, &pending.borrow_amount);
+
+    // Cached XLM remains at 1.0 from begin_open, but the live oracle refresh
+    // now prices position collateral near zero. Finalization must fail closed
+    // instead of opening against the stale cached price.
+    peridottroller.set_live_price(&xlm_id, &1u128);
+    controller.finalize_open_ptokens_v2(&user, &position_id, &pending.borrow_amount);
 }
 
 #[test]

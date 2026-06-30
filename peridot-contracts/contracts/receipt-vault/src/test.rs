@@ -3044,6 +3044,47 @@ fn test_migrate_borrow_state_batch_does_not_overwrite_borrow_principal() {
 }
 
 #[test]
+fn test_migrate_borrow_state_batch_does_not_seed_missing_borrow_principal() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&user, &5_000i128);
+    token_admin_client.mint(&lender, &5_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&lender, &2_000u128);
+    vault.deposit(&user, &1_000u128);
+    vault.borrow(&user, &100u128);
+
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BorrowPrincipal(user.clone()));
+    });
+
+    let mut users = Vec::new(&env);
+    users.push_back(user.clone());
+    vault.migrate_borrow_state_batch(&users);
+
+    env.as_contract(&vault_id, || {
+        let mirror: Option<u128> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BorrowPrincipal(user.clone()));
+        assert_eq!(mirror, None);
+    });
+}
+
+#[test]
 #[should_panic(expected = "borrow cap exceeded")]
 fn test_margin_borrow_cap_not_released_by_capitalized_interest_repay() {
     let env = Env::default();
@@ -3088,6 +3129,52 @@ fn test_margin_borrow_cap_not_released_by_capitalized_interest_repay() {
     vault.repay_for_margin(&position_id, &user, &100u128);
 
     vault.borrow_for_margin(&position_id, &user, &1u128);
+}
+
+#[test]
+fn test_migrate_margin_state_batch_does_not_seed_missing_borrow_principal() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+
+    token_admin_client.mint(&lender, &5_000i128);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&lender, &2_000u128);
+
+    let margin_ctrl_id = env.register(MockMarginPositionController, ());
+    let margin_ctrl = MockMarginPositionControllerClient::new(&env, &margin_ctrl_id);
+    vault.set_margin_controller(&admin, &Some(margin_ctrl_id.clone()));
+
+    let position_id = 101u64;
+    margin_ctrl.set_position(&position_id, &user, &vault_id);
+    vault.init_margin_borrow_state(&position_id);
+    vault.borrow_for_margin(&position_id, &user, &100u128);
+
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::MarginBorrowPrincipal(position_id));
+    });
+
+    let mut position_ids = Vec::new(&env);
+    position_ids.push_back(position_id);
+    vault.migrate_margin_state_batch(&position_ids);
+
+    env.as_contract(&vault_id, || {
+        let mirror: Option<u128> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginBorrowPrincipal(position_id));
+        assert_eq!(mirror, None);
+    });
 }
 
 #[test]

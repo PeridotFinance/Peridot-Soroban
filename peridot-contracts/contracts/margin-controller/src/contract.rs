@@ -2738,7 +2738,7 @@ impl MarginController {
         collateral_ptokens: u128,
         debt_amount: u128,
     ) {
-        let debt_price = get_price_usd_cache_first(env, debt_asset);
+        let debt_price = refresh_price_usd(env, debt_asset);
         if debt_price.0 == 0 || debt_price.1 == 0 {
             panic!("invalid debt price");
         }
@@ -2750,36 +2750,32 @@ impl MarginController {
             get_position_initial_lock(env, position_id)
         {
             if initial_market == *position_vault {
-                Self::discounted_ptoken_value_usd_with_update(
+                Self::discounted_ptoken_value_usd_refreshed(
                     env,
                     position_vault,
                     collateral_ptokens.saturating_add(initial_ptokens),
                     false,
-                    false,
                 )
             } else {
-                Self::discounted_ptoken_value_usd_with_update(
+                Self::discounted_ptoken_value_usd_refreshed(
                     env,
                     position_vault,
                     collateral_ptokens,
                     false,
-                    false,
                 )
-                .checked_add(Self::discounted_ptoken_value_usd_with_update(
+                .checked_add(Self::discounted_ptoken_value_usd_refreshed(
                     env,
                     &initial_market,
                     initial_ptokens,
-                    false,
                     false,
                 ))
                 .expect("valuation overflow")
             }
         } else {
-            Self::discounted_ptoken_value_usd_with_update(
+            Self::discounted_ptoken_value_usd_refreshed(
                 env,
                 position_vault,
                 collateral_ptokens,
-                false,
                 false,
             )
         };
@@ -2790,6 +2786,37 @@ impl MarginController {
         if combined_collateral_value < min_open_collateral_value {
             panic!("insufficient collateral");
         }
+    }
+
+    fn discounted_ptoken_value_usd_refreshed(
+        env: &Env,
+        vault: &Address,
+        ptokens: u128,
+        update_interest: bool,
+    ) -> u128 {
+        if ptokens == 0 {
+            return 0;
+        }
+        let vault_client = ReceiptVaultClient::new(env, vault);
+        let asset = vault_client.get_underlying_token();
+        let price = refresh_price_usd(env, &asset);
+        if price.0 == 0 || price.1 == 0 {
+            panic!("invalid collateral price");
+        }
+        let cf = get_peridottroller(env).get_market_cf(vault).min(SCALE_1E6);
+        if update_interest {
+            vault_client.update_interest();
+        }
+        let exchange_rate = vault_client.get_exchange_rate();
+        if exchange_rate == 0 {
+            panic!("invalid exchange rate");
+        }
+        let underlying = ptokens
+            .checked_mul(exchange_rate)
+            .expect("valuation overflow")
+            / SCALE_1E6;
+        let raw_value = underlying.checked_mul(price.0).expect("valuation overflow") / price.1;
+        raw_value.checked_mul(cf).expect("valuation overflow") / SCALE_1E6
     }
 
     fn finalize_pending_open_collateral(
