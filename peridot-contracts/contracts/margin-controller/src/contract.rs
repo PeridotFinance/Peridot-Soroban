@@ -951,6 +951,11 @@ impl MarginController {
         Self::activate_open_position_v3_impl(&env, user, position_id);
     }
 
+    pub fn force_activate_open_position_v3(env: Env, position_id: u64) {
+        bump_core_ttl(&env);
+        Self::force_activate_open_position_v3_impl(&env, position_id);
+    }
+
     pub fn cancel_pending_open_v3(env: Env, user: Address, position_id: u64) {
         bump_core_ttl(&env);
         user.require_auth();

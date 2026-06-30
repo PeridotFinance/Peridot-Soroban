@@ -1320,7 +1320,7 @@ fn setup_perps_pool(
     (pool, binding_id, pool_tokens)
 }
 
-fn open_perps_long_10x(
+fn begin_and_swap_perps_long_10x(
     env: &Env,
     controller: &MarginControllerClient,
     user: &Address,
@@ -1347,6 +1347,27 @@ fn open_perps_long_10x(
         &(margin_ptokens.saturating_mul(10)),
     );
     controller.swap_open_position_v3(user, &position_id);
+    (position_id, pool, pool_id, pool_tokens)
+}
+
+fn open_perps_long_10x(
+    env: &Env,
+    controller: &MarginControllerClient,
+    user: &Address,
+    usdt_id: &Address,
+    xlm_id: &Address,
+    usdt_vault_id: &Address,
+    margin_ptokens: u128,
+) -> (u64, Address, BytesN<32>, Vec<Address>) {
+    let (position_id, pool, pool_id, pool_tokens) = begin_and_swap_perps_long_10x(
+        env,
+        controller,
+        user,
+        usdt_id,
+        xlm_id,
+        usdt_vault_id,
+        margin_ptokens,
+    );
     controller.activate_open_position_v3(user, &position_id);
     (position_id, pool, pool_id, pool_tokens)
 }
@@ -1465,6 +1486,155 @@ fn test_open_position_v3_split_records_swap_before_activation() {
         xlm_vault.get_ptoken_balance(&controller_id),
         position.collateral_ptokens
     );
+}
+
+#[test]
+fn test_execute_open_position_v3_finishes_already_swapped_pending() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let (position_id, _pool, _pool_id, _pool_tokens) = begin_and_swap_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    controller.execute_open_position_v3(&user, &position_id);
+
+    let position = controller.get_position(&position_id).unwrap();
+    assert_eq!(position.status, PositionStatus::Open);
+    assert!(controller
+        .get_pending_perps_open_execution(&position_id)
+        .is_none());
+}
+
+#[test]
+fn test_activate_open_position_v3_allows_swapped_pending_after_expiry() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let (position_id, _pool, _pool_id, _pool_tokens) = begin_and_swap_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    let pending = controller.get_pending_perps_open(&position_id).unwrap();
+    env.ledger()
+        .with_mut(|l| l.timestamp = pending.expires_at.saturating_add(1));
+
+    controller.activate_open_position_v3(&user, &position_id);
+
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Open
+    );
+    assert!(controller.get_pending_perps_open(&position_id).is_none());
+}
+
+#[test]
+fn test_force_activate_open_position_v3_recovers_abandoned_swapped_pending() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let (position_id, _pool, _pool_id, _pool_tokens) = begin_and_swap_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    let pending = controller.get_pending_perps_open(&position_id).unwrap();
+    env.ledger()
+        .with_mut(|l| l.timestamp = pending.expires_at.saturating_add(1));
+
+    controller.force_activate_open_position_v3(&position_id);
+
+    let position = controller.get_position(&position_id).unwrap();
+    assert_eq!(position.status, PositionStatus::Open);
+    assert!(controller
+        .get_pending_perps_open_execution(&position_id)
+        .is_none());
+}
+
+#[test]
+fn test_force_activate_open_position_v3_opens_liquidatable_after_price_move() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let (position_id, _pool, _pool_id, _pool_tokens) = begin_and_swap_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &800_000u128,
+        &1_000_000u128,
+    );
+
+    controller.force_activate_open_position_v3(&position_id);
+
+    let position = controller.get_position(&position_id).unwrap();
+    assert_eq!(position.status, PositionStatus::Open);
+    assert_eq!(controller.get_health_factor(&position_id), 0u128);
 }
 
 #[test]

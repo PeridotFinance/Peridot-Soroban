@@ -178,12 +178,15 @@ impl MarginController {
     }
 
     pub(crate) fn execute_open_position_v3_impl(env: &Env, user: Address, position_id: u64) {
-        Self::swap_open_position_v3_impl(env, user.clone(), position_id);
+        if get_pending_perps_open_execution(env, position_id).is_none() {
+            Self::swap_open_position_v3_impl(env, user.clone(), position_id);
+        }
         Self::activate_open_position_v3_impl(env, user, position_id);
     }
 
     pub(crate) fn swap_open_position_v3_impl(env: &Env, user: Address, position_id: u64) {
-        let (position, pending, vaults) = Self::load_pending_perps_open(env, &user, position_id);
+        let (position, pending, vaults) =
+            Self::load_pending_perps_open(env, &user, position_id, true);
         if get_pending_perps_open_execution(env, position_id).is_some() {
             panic!("open already swapped");
         }
@@ -275,9 +278,42 @@ impl MarginController {
     }
 
     pub(crate) fn activate_open_position_v3_impl(env: &Env, user: Address, position_id: u64) {
-        let (mut position, pending, vaults) =
-            Self::load_pending_perps_open(env, &user, position_id);
         let execution = get_pending_perps_open_execution_or_panic(env, position_id);
+        let (mut position, pending, vaults) =
+            Self::load_pending_perps_open(env, &user, position_id, false);
+        Self::activate_open_position_v3_from_execution(
+            env,
+            position_id,
+            &mut position,
+            &pending,
+            &vaults,
+            &execution,
+        );
+    }
+
+    pub(crate) fn force_activate_open_position_v3_impl(env: &Env, position_id: u64) {
+        let execution = get_pending_perps_open_execution_or_panic(env, position_id);
+        let user = get_position_or_panic(env, position_id).owner;
+        let (mut position, pending, vaults) =
+            Self::load_pending_perps_open(env, &user, position_id, false);
+        Self::activate_open_position_v3_from_execution(
+            env,
+            position_id,
+            &mut position,
+            &pending,
+            &vaults,
+            &execution,
+        );
+    }
+
+    fn activate_open_position_v3_from_execution(
+        env: &Env,
+        position_id: u64,
+        position: &mut Position,
+        pending: &PendingPerpsOpenPosition,
+        vaults: &PositionVaults,
+        execution: &PendingPerpsOpenExecution,
+    ) {
         if execution.margin_received == 0 || execution.position_amount == 0 {
             panic!("pending execution missing");
         }
@@ -331,12 +367,8 @@ impl MarginController {
         position.status = PositionStatus::Open;
         env.storage()
             .persistent()
-            .set(&DataKey::Position(position_id), &position);
+            .set(&DataKey::Position(position_id), position);
         set_perps_position_data(env, position_id, &perps);
-        let risk = Self::perps_risk_values(env, position_id, &position, &perps, false, true);
-        if risk.equity <= risk.maintenance_required {
-            panic!("insufficient margin");
-        }
         clear_pending_perps_open_position(env, position_id);
         clear_pending_perps_open_execution(env, position_id);
         bump_position_ttl(env, position_id);
@@ -346,6 +378,7 @@ impl MarginController {
         env: &Env,
         user: &Address,
         position_id: u64,
+        enforce_expiry: bool,
     ) -> (Position, PendingPerpsOpenPosition, PositionVaults) {
         let position = get_position_or_panic(env, position_id);
         if position.owner != *user {
@@ -361,7 +394,7 @@ impl MarginController {
         if pending.owner != *user {
             panic!("not owner");
         }
-        if env.ledger().timestamp() > pending.expires_at {
+        if enforce_expiry && env.ledger().timestamp() > pending.expires_at {
             panic!("pending open expired");
         }
         let vaults = get_position_vaults(env, position_id, &position);
