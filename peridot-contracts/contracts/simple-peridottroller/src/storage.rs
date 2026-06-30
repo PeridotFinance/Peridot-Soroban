@@ -165,6 +165,31 @@ pub fn bump_core_ttl(env: &Env) {
     // bump_core_ttl doesn't add 8 footprint entries to every operation.
 }
 
+pub fn bump_supported_markets_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::SupportedMarkets) {
+        persistent.extend_ttl(&DataKey::SupportedMarkets, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_close_factor_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::CloseFactorScaled) {
+        persistent.extend_ttl(&DataKey::CloseFactorScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_oracle_max_age_multiplier_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::OracleMaxAgeMultiplier) {
+        persistent.extend_ttl(
+            &DataKey::OracleMaxAgeMultiplier,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+}
+
 /// Extend TTL for all eight pause persistent keys.
 pub fn bump_pause_maps_ttl(env: &Env) {
     let persistent = env.storage().persistent();

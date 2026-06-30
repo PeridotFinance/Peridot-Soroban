@@ -358,7 +358,7 @@ impl MarginController {
         set_perps_position_data(env, position_id, &perps);
 
         if enforce_open_health {
-            let risk = Self::perps_risk_values(env, position_id, position, &perps, false, true);
+            let risk = Self::perps_risk_values(env, position_id, position, &perps, true, true);
             if risk.equity <= risk.maintenance_required {
                 panic!("insufficient margin");
             }

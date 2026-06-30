@@ -254,6 +254,7 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(env));
+        storage::bump_supported_markets_ttl(env);
         if !markets.get(market.clone()).unwrap_or(false) {
             panic!("market not supported");
         }
@@ -874,7 +875,6 @@ impl SimplePeridottroller {
     }
 
     pub fn get_market_cf(env: Env, market: Address) -> u128 {
-        bump_core_ttl(&env);
         storage::bump_market_cf_ttl(&env, &market);
         // Safe default: unconfigured markets contribute no collateral until admin sets CF.
         env.storage()
@@ -1441,7 +1441,6 @@ impl SimplePeridottroller {
         .publish(&env);
     }
     pub fn is_borrow_paused(env: Env, market: Address) -> bool {
-        bump_core_ttl(&env);
         Self::is_pause_active(
             &env,
             DataKey::PauseBorrow,
@@ -1468,7 +1467,6 @@ impl SimplePeridottroller {
         .publish(&env);
     }
     pub fn is_redeem_paused(env: Env, market: Address) -> bool {
-        bump_core_ttl(&env);
         Self::is_pause_active(
             &env,
             DataKey::PauseRedeem,
@@ -1624,7 +1622,6 @@ impl SimplePeridottroller {
         .publish(&env);
     }
     pub fn is_liquidation_paused(env: Env, market: Address) -> bool {
-        bump_core_ttl(&env);
         Self::is_pause_active(
             &env,
             DataKey::PauseLiquidation,
@@ -1634,7 +1631,6 @@ impl SimplePeridottroller {
     }
 
     pub fn is_deposit_paused(env: Env, market: Address) -> bool {
-        bump_core_ttl(&env);
         Self::is_pause_active(
             &env,
             DataKey::PauseDeposit,
@@ -1797,7 +1793,6 @@ impl SimplePeridottroller {
     }
 
     pub fn get_user_markets(env: Env, user: Address) -> Vec<Address> {
-        bump_core_ttl(&env);
         storage::bump_user_markets_ttl(&env, &user);
         env.storage()
             .persistent()
@@ -2152,7 +2147,6 @@ impl SimplePeridottroller {
 
     // Sum borrows in USD across markets excluding a specific market
     pub fn get_borrows_excl(env: Env, user: Address, exclude_market: Address) -> u128 {
-        bump_core_ttl(&env);
         use soroban_sdk::{IntoVal, InvokeError};
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
@@ -2229,7 +2223,6 @@ impl SimplePeridottroller {
 
     // Sum collateral in USD across markets excluding a specific market
     pub fn get_collateral_excl_usd(env: Env, user: Address, exclude_market: Address) -> u128 {
-        bump_core_ttl(&env);
         let (collateral_usd, _borrows, indeterminate, _collateral_indeterminate) =
             Self::sum_positions_usd(env, user, Some(exclude_market));
         if indeterminate {
@@ -2267,7 +2260,6 @@ impl SimplePeridottroller {
         borrow_amount: u128,
         underlying: Address,
     ) -> (u128, u128) {
-        bump_core_ttl(&env);
         let markets = Self::get_user_markets(env.clone(), user.clone());
         if !markets.contains(market.clone()) {
             panic!("market not entered");
@@ -2304,7 +2296,6 @@ impl SimplePeridottroller {
         underlying: Address,
         hint: MarketLiquidityHint,
     ) -> (u128, u128) {
-        bump_core_ttl(&env);
         // This path may refresh cross-market state; restrict it to the calling market.
         market.require_auth();
         Self::require_market_supported(&env, &market);
@@ -2882,13 +2873,13 @@ impl SimplePeridottroller {
         repay_amount: u128,
         liquidator: Address,
     ) {
-        bump_core_ttl(&env);
         liquidator.require_auth();
         let supported: Map<Address, bool> = env
             .storage()
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+        storage::bump_supported_markets_ttl(&env);
         if !supported.get(repay_market.clone()).unwrap_or(false) {
             panic!("market not supported");
         }
@@ -2912,6 +2903,7 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::CloseFactorScaled)
             .unwrap_or(500_000u128);
+        storage::bump_close_factor_ttl(&env);
         let debt: u128 = env.invoke_contract(
             &repay_market,
             &Symbol::new(&env, "get_user_borrow_balance"),
@@ -3049,9 +3041,9 @@ impl SimplePeridottroller {
     // attackers from supplying malicious hint values that could inflate reward distributions.
     // Without hints (None), values are fetched on-chain which is safe but more expensive.
     pub fn accrue_user_market(env: Env, user: Address, market: Address, hint: Option<AccrualHint>) {
-        bump_core_ttl(&env);
-
         // Reward accrual is disabled until a reward token is configured.
+        // Keep this before broad TTL bumps so no-op accrual calls used by vault
+        // borrow paths do not add unrelated controller keys to the footprint.
         if env
             .storage()
             .persistent()
@@ -3060,6 +3052,8 @@ impl SimplePeridottroller {
         {
             return;
         }
+
+        bump_core_ttl(&env);
 
         // Always restrict accrual calls to configured markets to avoid arbitrary external calls.
         let supported: Map<Address, bool> = env
@@ -3115,6 +3109,7 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+        storage::bump_supported_markets_ttl(&env);
 
         use soroban_sdk::{IntoVal, InvokeError};
 
@@ -3390,7 +3385,6 @@ impl SimplePeridottroller {
 
     // Price quotation via cached oracle data or fallback (no on-chain oracle call).
     pub fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)> {
-        bump_core_ttl(&env);
         storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()
@@ -3532,7 +3526,6 @@ impl SimplePeridottroller {
     // Non-panicking version of require_price for FIND-039 fix
     // Returns None instead of panicking when price unavailable
     fn try_require_price(env: &Env, token: &Address) -> Option<(u128, u128)> {
-        bump_core_ttl(env);
         storage::bump_price_cache_ttl(env, token);
         if let Some(cached) = env
             .storage()
@@ -3576,7 +3569,6 @@ impl SimplePeridottroller {
     }
 
     fn require_price(env: Env, token: Address) -> (u128, u128) {
-        bump_core_ttl(&env);
         storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()
@@ -3629,6 +3621,7 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::OracleMaxAgeMultiplier)
             .unwrap_or(2u64);
+        storage::bump_oracle_max_age_multiplier_ttl(env);
         let res = cached_resolution as u64;
         let grace = res.saturating_mul(k);
         cached_timestamp + grace >= now

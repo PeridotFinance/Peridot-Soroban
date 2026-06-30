@@ -1623,6 +1623,55 @@ fn test_activate_open_position_v3_rejects_under_maintenance_after_price_move() {
 }
 
 #[test]
+fn test_activate_open_position_v3_accrues_interest_before_health_check() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    let (position_id, _pool, _pool_id, _pool_tokens) = begin_and_swap_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    assert_eq!(
+        usdt_vault.get_margin_borrow_balance(&position_id),
+        4_500u128
+    );
+    usdt_vault.set_borrow_rate(&10_000_000u128);
+    env.ledger()
+        .with_mut(|l| l.timestamp = l.timestamp.saturating_add(365 * 24 * 60 * 60));
+
+    assert!(controller
+        .try_activate_open_position_v3(&user, &position_id)
+        .is_err());
+
+    let position = controller.get_position(&position_id).unwrap();
+    assert_eq!(position.status, PositionStatus::PendingOpen);
+    assert!(controller
+        .get_pending_perps_open_execution(&position_id)
+        .is_some());
+
+    usdt_vault.update_interest();
+    assert!(usdt_vault.get_margin_borrow_balance(&position_id) > 4_500u128);
+}
+
+#[test]
 fn test_repay_position_v3_reduces_debt_and_improves_health() {
     let (
         env,
@@ -1790,6 +1839,100 @@ fn test_owner_close_position_v3_reverts_when_collateral_cannot_repay_debt() {
         4_500u128
     );
     assert!(controller.get_position(&position_id).is_some());
+}
+
+#[test]
+fn test_perps_v3_stress_repeated_open_close_liquidate_and_pending_recovery() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+
+    let mut position_ids: Vec<u64> = Vec::new(&env);
+    for _ in 0..8 {
+        let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+            &env,
+            &controller,
+            &user,
+            &usdt_id,
+            &xlm_id,
+            &usdt_vault_id,
+            500u128,
+        );
+        assert_eq!(
+            controller.get_position(&position_id).unwrap().status,
+            PositionStatus::Open
+        );
+        assert_eq!(
+            usdt_vault.get_margin_borrow_balance(&position_id),
+            4_500u128
+        );
+        position_ids.push_back(position_id);
+    }
+
+    for i in 0..4u32 {
+        let position_id = position_ids.get(i).unwrap();
+        controller.repay_margin_position_v3(&user, &position_id, &100u128);
+        assert_eq!(
+            usdt_vault.get_margin_borrow_balance(&position_id),
+            4_400u128
+        );
+        controller.close_position_v3(&user, &position_id, &4_750u128);
+        assert!(controller.get_position(&position_id).is_none());
+        assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
+    }
+
+    peridottroller.set_price(&xlm_id, &940_000u128, &1_000_000u128);
+    for i in 4u32..position_ids.len() {
+        let position_id = position_ids.get(i).unwrap();
+        let liquidator = Address::generate(&env);
+        controller.liquidate_position_v3(&liquidator, &position_id);
+        assert!(controller.get_position(&position_id).is_none());
+        assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
+    }
+
+    peridottroller.set_price(&xlm_id, &1_000_000u128, &1_000_000u128);
+    let (pending_id, _pool, _pool_id, _pool_tokens) = begin_and_swap_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    peridottroller.set_price(&xlm_id, &800_000u128, &1_000_000u128);
+    assert!(controller
+        .try_activate_open_position_v3(&user, &pending_id)
+        .is_err());
+    let active_pending_liquidator = Address::generate(&env);
+    assert!(controller
+        .try_liquidate_position_v3(&active_pending_liquidator, &pending_id)
+        .is_err());
+
+    let pending = controller.get_pending_perps_open(&pending_id).unwrap();
+    env.ledger()
+        .with_mut(|l| l.timestamp = pending.expires_at.saturating_add(1));
+    let liquidator = Address::generate(&env);
+    controller.liquidate_position_v3(&liquidator, &pending_id);
+    assert!(controller.get_position(&pending_id).is_none());
+    assert!(controller.get_pending_perps_open(&pending_id).is_none());
+    assert!(controller
+        .get_pending_perps_open_execution(&pending_id)
+        .is_none());
+    assert_eq!(usdt_vault.get_margin_borrow_balance(&pending_id), 0u128);
+    assert_eq!(controller.get_user_positions(&user).len(), 0u32);
 }
 
 /// Functional correctness of open_position_no_swap_v2 with real ReceiptVault +
