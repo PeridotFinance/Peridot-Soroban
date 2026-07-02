@@ -2093,10 +2093,15 @@ impl MarginController {
         Self::begin_liquidation_v3_impl(&env, liquidator, position_id);
     }
 
-    pub fn swap_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
+    pub fn swap_liquidation_v3(
+        env: Env,
+        liquidator: Address,
+        position_id: u64,
+        amount_with_slippage: u128,
+    ) {
         bump_core_ttl(&env);
         liquidator.require_auth();
-        Self::swap_liquidation_v3_impl(&env, liquidator, position_id);
+        Self::swap_liquidation_v3_impl(&env, liquidator, position_id, amount_with_slippage);
     }
 
     pub fn finish_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
@@ -2313,6 +2318,10 @@ impl MarginController {
             stage: PendingLiquidationStage::Repaid,
             owner: position.owner,
             liquidator,
+            expires_at: env
+                .ledger()
+                .timestamp()
+                .saturating_add(PENDING_LIQUIDATION_TTL_SECS),
             debt_amount,
             repay_amount,
             received_debt_asset: 0u128,

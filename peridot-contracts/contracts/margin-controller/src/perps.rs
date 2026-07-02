@@ -557,6 +557,10 @@ impl MarginController {
             stage: PendingLiquidationStage::Started,
             owner: position.owner,
             liquidator,
+            expires_at: env
+                .ledger()
+                .timestamp()
+                .saturating_add(PENDING_LIQUIDATION_TTL_SECS),
             debt_amount,
             repay_amount: 0u128,
             received_debt_asset: 0u128,
@@ -571,16 +575,24 @@ impl MarginController {
         set_pending_liquidation(env, position_id, &pending);
     }
 
-    pub(crate) fn swap_liquidation_v3_impl(env: &Env, liquidator: Address, position_id: u64) {
+    pub(crate) fn swap_liquidation_v3_impl(
+        env: &Env,
+        liquidator: Address,
+        position_id: u64,
+        amount_with_slippage: u128,
+    ) {
         let mut pending = get_pending_liquidation_or_panic(env, position_id);
         if pending.kind != PendingLiquidationKind::PerpsV3
             || pending.stage != PendingLiquidationStage::Started
         {
             panic!("bad liquidation stage");
         }
-        if pending.liquidator != liquidator {
+        let now = env.ledger().timestamp();
+        if pending.liquidator != liquidator && now <= pending.expires_at {
             panic!("not liquidator");
         }
+        pending.liquidator = liquidator.clone();
+        pending.expires_at = now.saturating_add(PENDING_LIQUIDATION_TTL_SECS);
         let mut position = get_position_or_panic(env, position_id);
         if position.status != PositionStatus::Liquidated {
             panic!("not liquidating");
@@ -608,6 +620,18 @@ impl MarginController {
         let received_debt_asset = if position.collateral_asset == position.debt_asset {
             collateral_underlying
         } else {
+            if amount_with_slippage == 0 {
+                panic!("bad slippage");
+            }
+            let oracle_min = Self::oracle_min_out(
+                env,
+                &position.collateral_asset,
+                &position.debt_asset,
+                collateral_underlying,
+            );
+            if amount_with_slippage < oracle_min {
+                panic!("slippage too high");
+            }
             Self::direct_pool_swap_as_controller(
                 env,
                 &perps.pool_tokens,
@@ -615,7 +639,7 @@ impl MarginController {
                 &position.collateral_asset,
                 &position.debt_asset,
                 collateral_underlying,
-                1u128,
+                amount_with_slippage,
             )
         };
         if received_debt_asset == 0 {
@@ -638,7 +662,7 @@ impl MarginController {
         {
             panic!("bad liquidation stage");
         }
-        if pending.liquidator != liquidator {
+        if pending.liquidator != liquidator && env.ledger().timestamp() <= pending.expires_at {
             panic!("not liquidator");
         }
         let position = get_position_or_panic(env, position_id);

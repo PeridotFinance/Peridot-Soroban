@@ -443,6 +443,7 @@ pub fn set_pending_liquidation(env: &Env, position_id: u64, pending: &PendingLiq
         .persistent()
         .set(&DataKey::PendingLiquidation(position_id), pending);
     bump_position_ttl(env, position_id);
+    bump_pending_liquidation_ttl(env, position_id);
 }
 
 pub fn get_pending_liquidation(env: &Env, position_id: u64) -> Option<PendingLiquidation> {
@@ -452,6 +453,7 @@ pub fn get_pending_liquidation(env: &Env, position_id: u64) -> Option<PendingLiq
         .get(&DataKey::PendingLiquidation(position_id));
     if pending.is_some() {
         bump_position_ttl(env, position_id);
+        bump_pending_liquidation_ttl(env, position_id);
     }
     pending
 }
@@ -882,6 +884,10 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     if persistent.has(&pending_perps_execution_key) {
         persistent.extend_ttl(&pending_perps_execution_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    let pending_liquidation_key = DataKey::PendingLiquidation(position_id);
+    if persistent.has(&pending_liquidation_key) {
+        persistent.extend_ttl(&pending_liquidation_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     let perps_position_key = DataKey::PerpsPositionData(position_id);
     if persistent.has(&perps_position_key) {
         persistent.extend_ttl(&perps_position_key, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -893,6 +899,14 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     let pending_supplied_amount_key = DataKey::PendingOpenSuppliedAmount(position_id);
     if persistent.has(&pending_supplied_amount_key) {
         persistent.extend_ttl(&pending_supplied_amount_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_pending_liquidation_ttl(env: &Env, position_id: u64) {
+    let key = DataKey::PendingLiquidation(position_id);
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

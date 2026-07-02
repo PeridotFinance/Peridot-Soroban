@@ -19,3 +19,4 @@ pub const BPS_SCALE: u128 = 10_000u128;
 pub const MAX_BASIS_FEE_BPS: u128 = 500u128; // 5% max per open/close
 pub const MARGIN_FEE_PRECISION: u128 = 1_000_000_000_000_000_000u128; // 1e18
 pub const PENDING_OPEN_TTL_SECS: u64 = 30 * 60;
+pub const PENDING_LIQUIDATION_TTL_SECS: u64 = 5 * 60;
