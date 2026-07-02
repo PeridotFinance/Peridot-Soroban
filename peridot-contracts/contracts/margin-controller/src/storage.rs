@@ -129,6 +129,7 @@ pub enum DataKey {
     PendingPerpsOpenPosition(u64),
     PendingPerpsOpenExecution(u64),
     PerpsPositionData(u64),
+    PendingLiquidation(u64),
 }
 
 #[contracttype]
@@ -235,6 +236,40 @@ pub struct PerpsPositionData {
     pub pool_tokens: Vec<Address>,
     pub pool_id: BytesN<32>,
     pub pool: Address,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PendingLiquidationKind {
+    MarginV2,
+    PerpsV3,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PendingLiquidationStage {
+    Started,
+    Repaid,
+    CollateralConverted,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingLiquidation {
+    pub kind: PendingLiquidationKind,
+    pub stage: PendingLiquidationStage,
+    pub owner: Address,
+    pub liquidator: Address,
+    pub debt_amount: u128,
+    pub repay_amount: u128,
+    pub received_debt_asset: u128,
+    pub position_seize_ptokens: u128,
+    pub position_fee_ptokens: u128,
+    pub initial_market: Option<Address>,
+    pub initial_seize_ptokens: u128,
+    pub initial_fee_ptokens: u128,
+    pub reserve_recipient: Option<Address>,
+    pub liquidation_incentive_scaled: u128,
 }
 
 pub fn require_admin(env: &Env, admin: &Address) {

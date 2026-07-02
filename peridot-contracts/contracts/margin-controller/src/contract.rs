@@ -975,6 +975,11 @@ impl MarginController {
         get_perps_position_data(&env, position_id)
     }
 
+    pub fn get_pending_liquidation(env: Env, position_id: u64) -> Option<PendingLiquidation> {
+        bump_core_ttl(&env);
+        get_pending_liquidation(&env, position_id)
+    }
+
     /// Budget-friendly V2 open flow, step 2 for routed swaps.
     ///
     /// The margin debt is created and swapped in this call. If the swap,
@@ -2082,6 +2087,383 @@ impl MarginController {
         Self::liquidate_position_v3_impl(&env, liquidator, position_id);
     }
 
+    pub fn begin_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        liquidator.require_auth();
+        Self::begin_liquidation_v3_impl(&env, liquidator, position_id);
+    }
+
+    pub fn swap_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        liquidator.require_auth();
+        Self::swap_liquidation_v3_impl(&env, liquidator, position_id);
+    }
+
+    pub fn finish_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        liquidator.require_auth();
+        Self::finish_liquidation_v3_impl(&env, liquidator, position_id);
+    }
+
+    pub fn begin_liquidation_v2(env: Env, liquidator: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        liquidator.require_auth();
+        Self::begin_liquidation_v2_impl(&env, liquidator, position_id);
+    }
+
+    pub fn finish_liquidation_v2(env: Env, liquidator: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        liquidator.require_auth();
+        Self::finish_liquidation_v2_impl(&env, liquidator, position_id);
+    }
+
+    fn begin_liquidation_v2_impl(env: &Env, liquidator: Address, position_id: u64) {
+        if get_pending_liquidation(env, position_id).is_some() {
+            panic!("liquidation pending");
+        }
+        let mut position = get_position_or_panic(env, position_id);
+        if position.status != PositionStatus::Open && position.status != PositionStatus::PendingOpen
+        {
+            panic!("not open");
+        }
+        if get_position_mode(env, position_id) != PositionMode::MarginV2 {
+            panic!("not v2 position");
+        }
+        if liquidator == position.owner {
+            panic!("self liquidation");
+        }
+        let vaults = get_position_vaults(env, position_id, &position);
+        Self::assert_liquidation_allowed(env, &vaults.debt_vault, &vaults.position_vault);
+        let debt_vault = ReceiptVaultClient::new(env, &vaults.debt_vault);
+        debt_vault.update_interest();
+        let debt_amount = debt_vault.get_margin_borrow_balance(&position_id);
+        if debt_amount == 0 {
+            panic!("zero debt");
+        }
+
+        let debt_price = get_price_usd(env, &position.debt_asset);
+        if debt_price.0 == 0 || debt_price.1 == 0 {
+            panic!("invalid debt price");
+        }
+        let initial_lock = get_position_initial_lock(env, position_id);
+        if let Some((initial_market, _)) = &initial_lock {
+            Self::assert_liquidation_allowed(env, &vaults.debt_vault, initial_market);
+        }
+        let pos_ctx = Self::vault_val_ctx_with_update(
+            env,
+            &vaults.position_vault,
+            vaults.position_vault != vaults.debt_vault,
+            true,
+        );
+        let init_ctx = initial_lock.as_ref().map(|(market, _)| {
+            Self::vault_val_ctx_with_update(
+                env,
+                market,
+                *market != vaults.debt_vault && *market != vaults.position_vault,
+                true,
+            )
+        });
+        let peridottroller = get_peridottroller(env);
+        let close_factor_scaled = peridottroller.get_close_factor_scaled();
+        if close_factor_scaled == 0 || close_factor_scaled > SCALE_1E6 {
+            panic!("invalid close factor");
+        }
+        let liquidation_incentive_scaled = peridottroller.get_liquidation_incentive_scaled();
+        if liquidation_incentive_scaled < SCALE_1E6 {
+            panic!("invalid liquidation incentive");
+        }
+        let liquidation_fee_scaled = peridottroller.get_liquidation_fee_scaled();
+        if liquidation_fee_scaled > SCALE_1E6 {
+            panic!("invalid liquidation fee");
+        }
+        let reserve_recipient = if liquidation_fee_scaled > 0 {
+            Some(
+                peridottroller
+                    .get_reserve_recipient()
+                    .expect("reserve recipient missing"),
+            )
+        } else {
+            None
+        };
+
+        let mut collateral_value =
+            Self::ctx_discounted_value(&pos_ctx, position.collateral_ptokens);
+        if let (Some((_, initial_ptokens)), Some(ctx)) = (&initial_lock, &init_ctx) {
+            collateral_value =
+                collateral_value.saturating_add(Self::ctx_discounted_value(ctx, *initial_ptokens));
+        }
+        let debt_value =
+            debt_amount.checked_mul(debt_price.0).expect("liq overflow") / debt_price.1;
+        if collateral_value >= debt_value {
+            panic!("not liquidatable");
+        }
+        if position.status == PositionStatus::PendingOpen {
+            if let Some(mut pending) = get_pending_open_position(env, position_id) {
+                if pending.open_fee_ptokens > 0 {
+                    collect_margin_fee(env, &pending.collateral_vault, pending.open_fee_ptokens);
+                    pending.open_fee_ptokens = 0;
+                    set_pending_open_position(env, position_id, &pending);
+                }
+            }
+        }
+
+        let mut raw_collateral_value = Self::ctx_raw_value(&pos_ctx, position.collateral_ptokens);
+        if let (Some((_, initial_ptokens)), Some(ctx)) = (&initial_lock, &init_ctx) {
+            raw_collateral_value =
+                raw_collateral_value.saturating_add(Self::ctx_raw_value(ctx, *initial_ptokens));
+        }
+        let has_collateral_ptokens = position.collateral_ptokens > 0
+            || initial_lock
+                .as_ref()
+                .map(|(_, ptokens)| *ptokens > 0)
+                .unwrap_or(false);
+        if !has_collateral_ptokens {
+            panic!("no collateral");
+        }
+        let mut close_factor_repay = debt_amount
+            .checked_mul(close_factor_scaled)
+            .expect("liq overflow")
+            / SCALE_1E6;
+        if close_factor_repay == 0 {
+            if debt_amount <= 1 {
+                close_factor_repay = 1;
+            } else {
+                panic!("repay too small");
+            }
+        }
+        let max_repay_by_close_factor = close_factor_repay.min(debt_amount);
+        let max_repay_value_by_collateral = raw_collateral_value
+            .checked_mul(SCALE_1E6)
+            .expect("liq overflow")
+            / liquidation_incentive_scaled;
+        let mut max_repay_by_collateral = max_repay_value_by_collateral
+            .checked_mul(debt_price.1)
+            .expect("liq overflow")
+            / debt_price.0;
+        if max_repay_by_collateral == 0 {
+            max_repay_by_collateral = 1;
+        }
+        let repay_amount = max_repay_by_close_factor
+            .min(max_repay_by_collateral)
+            .min(debt_amount);
+
+        debt_vault.repay_for_margin(&position_id, &liquidator, &repay_amount);
+        let remaining_debt = debt_vault.get_margin_borrow_balance(&position_id);
+        if remaining_debt >= debt_amount {
+            panic!("repay failed");
+        }
+
+        let repaid_value = Self::ceil_div(
+            repay_amount
+                .checked_mul(debt_price.0)
+                .expect("liq overflow"),
+            debt_price.1,
+        );
+        if repaid_value == 0 {
+            panic!("repay too small");
+        }
+        let mut remaining_seize_value = repaid_value
+            .checked_mul(liquidation_incentive_scaled)
+            .expect("liq overflow")
+            / SCALE_1E6;
+        let position_seize_ptokens = Self::ctx_ptokens_for_raw_value_ceil(
+            &pos_ctx,
+            position.collateral_ptokens,
+            remaining_seize_value,
+        );
+        let mut total_seized_ptokens = 0u128;
+        let position_fee_ptokens = if position_seize_ptokens > 0 {
+            total_seized_ptokens = total_seized_ptokens.saturating_add(position_seize_ptokens);
+            let seized_value = Self::ctx_raw_value(&pos_ctx, position_seize_ptokens);
+            remaining_seize_value = remaining_seize_value.saturating_sub(seized_value);
+            position_seize_ptokens
+                .checked_mul(liquidation_fee_scaled)
+                .expect("liq overflow")
+                / SCALE_1E6
+        } else {
+            0u128
+        };
+
+        let mut initial_market = None::<Address>;
+        let mut initial_seize_ptokens = 0u128;
+        let mut initial_fee_ptokens = 0u128;
+        if let (Some((market, initial_ptokens)), Some(ctx)) = (&initial_lock, &init_ctx) {
+            initial_market = Some(market.clone());
+            initial_seize_ptokens =
+                Self::ctx_ptokens_for_raw_value_ceil(ctx, *initial_ptokens, remaining_seize_value);
+            if initial_seize_ptokens > 0 {
+                total_seized_ptokens = total_seized_ptokens.saturating_add(initial_seize_ptokens);
+                initial_fee_ptokens = initial_seize_ptokens
+                    .checked_mul(liquidation_fee_scaled)
+                    .expect("liq overflow")
+                    / SCALE_1E6;
+            }
+        }
+        if total_seized_ptokens == 0 {
+            panic!("seize too small");
+        }
+
+        position.status = PositionStatus::Liquidated;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(position_id), &position);
+        bump_position_ttl(env, position_id);
+        let pending = PendingLiquidation {
+            kind: PendingLiquidationKind::MarginV2,
+            stage: PendingLiquidationStage::Repaid,
+            owner: position.owner,
+            liquidator,
+            debt_amount,
+            repay_amount,
+            received_debt_asset: 0u128,
+            position_seize_ptokens,
+            position_fee_ptokens,
+            initial_market,
+            initial_seize_ptokens,
+            initial_fee_ptokens,
+            reserve_recipient,
+            liquidation_incentive_scaled,
+        };
+        set_pending_liquidation(env, position_id, &pending);
+    }
+
+    fn finish_liquidation_v2_impl(env: &Env, liquidator: Address, position_id: u64) {
+        let pending = get_pending_liquidation_or_panic(env, position_id);
+        if pending.kind != PendingLiquidationKind::MarginV2
+            || pending.stage != PendingLiquidationStage::Repaid
+        {
+            panic!("bad liquidation stage");
+        }
+        if pending.liquidator != liquidator {
+            panic!("not liquidator");
+        }
+        let mut position = get_position_or_panic(env, position_id);
+        if position.status != PositionStatus::Liquidated {
+            panic!("not liquidating");
+        }
+        if get_position_mode(env, position_id) != PositionMode::MarginV2 {
+            panic!("not v2 position");
+        }
+        if position.owner != pending.owner {
+            panic!("pending owner mismatch");
+        }
+        let vaults = get_position_vaults(env, position_id, &position);
+        if position.collateral_ptokens < pending.position_seize_ptokens {
+            panic!("pending collateral mismatch");
+        }
+
+        let reserve_recipient = pending.reserve_recipient.clone();
+        if pending.position_fee_ptokens > 0 {
+            let recipient = reserve_recipient
+                .as_ref()
+                .expect("reserve recipient missing")
+                .clone();
+            Self::transfer_controller_ptokens(
+                env,
+                &vaults.position_vault,
+                &recipient,
+                pending.position_fee_ptokens,
+            );
+        }
+        let position_liquidator_ptokens = pending
+            .position_seize_ptokens
+            .saturating_sub(pending.position_fee_ptokens);
+        Self::transfer_controller_ptokens(
+            env,
+            &vaults.position_vault,
+            &liquidator,
+            position_liquidator_ptokens,
+        );
+        position.collateral_ptokens = position
+            .collateral_ptokens
+            .saturating_sub(pending.position_seize_ptokens);
+
+        let mut initial_remaining = None::<(Address, u128)>;
+        if let Some(initial_market) = pending.initial_market.clone() {
+            let (stored_initial_market, initial_ptokens) =
+                get_position_initial_lock(env, position_id).expect("initial lock missing");
+            if stored_initial_market != initial_market
+                || initial_ptokens < pending.initial_seize_ptokens
+            {
+                panic!("pending initial mismatch");
+            }
+            if pending.initial_fee_ptokens > 0 {
+                let recipient = reserve_recipient
+                    .as_ref()
+                    .expect("reserve recipient missing")
+                    .clone();
+                Self::transfer_controller_ptokens(
+                    env,
+                    &initial_market,
+                    &recipient,
+                    pending.initial_fee_ptokens,
+                );
+            }
+            let initial_liquidator_ptokens = pending
+                .initial_seize_ptokens
+                .saturating_sub(pending.initial_fee_ptokens);
+            Self::transfer_controller_ptokens(
+                env,
+                &initial_market,
+                &liquidator,
+                initial_liquidator_ptokens,
+            );
+            initial_remaining = Some((
+                initial_market,
+                initial_ptokens.saturating_sub(pending.initial_seize_ptokens),
+            ));
+        }
+
+        let debt_vault = ReceiptVaultClient::new(env, &vaults.debt_vault);
+        let remaining_debt = debt_vault.get_margin_borrow_balance(&position_id);
+        if let Some((initial_market, remaining)) = initial_remaining.clone() {
+            if remaining_debt == 0 && remaining > 0 {
+                Self::credit_margin_ptokens(env, &position.owner, &initial_market, remaining);
+                clear_position_initial_lock(env, position_id);
+            } else if remaining_debt > 0 && remaining > 0 {
+                set_position_initial_lock(env, position_id, &initial_market, remaining);
+            } else {
+                clear_position_initial_lock(env, position_id);
+            }
+        }
+
+        let has_initial_collateral = get_position_initial_lock(env, position_id)
+            .map(|(_, ptokens)| ptokens > 0)
+            .unwrap_or(false);
+        if remaining_debt > 0 {
+            if position.collateral_ptokens == 0 && !has_initial_collateral {
+                Self::authorize_controller_subcall(
+                    env,
+                    &vaults.debt_vault,
+                    "absorb_margin_bad_debt",
+                    (position_id,).into_val(env),
+                );
+                debt_vault.absorb_margin_bad_debt(&position_id);
+                clear_position_storage(env, position_id);
+                remove_user_position(env, &position.owner, position_id);
+                return;
+            }
+            position.status = PositionStatus::Open;
+            env.storage()
+                .persistent()
+                .set(&DataKey::Position(position_id), &position);
+            bump_position_ttl(env, position_id);
+            clear_pending_liquidation(env, position_id);
+            return;
+        }
+
+        if position.collateral_ptokens > 0 {
+            Self::credit_margin_ptokens(
+                env,
+                &position.owner,
+                &vaults.position_vault,
+                position.collateral_ptokens,
+            );
+        }
+        clear_position_storage(env, position_id);
+        remove_user_position(env, &position.owner, position_id);
+    }
+
     pub fn liquidate_position_v2(env: Env, liquidator: Address, position_id: u64) {
         bump_core_ttl(&env);
         liquidator.require_auth();
@@ -2659,6 +3041,54 @@ impl MarginController {
             b = r;
         }
         a
+    }
+
+    pub(crate) fn transfer_controller_ptokens(
+        env: &Env,
+        vault: &Address,
+        recipient: &Address,
+        ptokens: u128,
+    ) {
+        if ptokens == 0 {
+            return;
+        }
+        let controller = env.current_contract_address();
+        let amount_i128: i128 = ptokens.try_into().expect("amount too large");
+        Self::begin_margin_withdraw_if_supported(env, vault, &controller, recipient, ptokens);
+        let transfer_args: Vec<Val> =
+            (controller.clone(), recipient.clone(), amount_i128).into_val(env);
+        Self::authorize_controller_subcall(env, vault, "transfer", transfer_args);
+        ReceiptVaultClient::new(env, vault).transfer(&controller, recipient, &amount_i128);
+    }
+
+    pub(crate) fn credit_margin_ptokens(env: &Env, user: &Address, vault: &Address, ptokens: u128) {
+        if ptokens == 0 {
+            return;
+        }
+        accrue_user_fee(env, user, vault);
+        let free = get_margin_balance_ptokens(env, user, vault);
+        set_margin_balance_ptokens(env, user, vault, free.saturating_add(ptokens));
+        update_total_margin_ptokens(env, vault, ptokens, true);
+    }
+
+    pub(crate) fn transfer_controller_underlying(
+        env: &Env,
+        token: &Address,
+        recipient: &Address,
+        amount: u128,
+    ) {
+        if amount == 0 {
+            return;
+        }
+        let controller = env.current_contract_address();
+        let amount_i128: i128 = amount.try_into().expect("amount too large");
+        Self::authorize_controller_subcall(
+            env,
+            token,
+            "transfer",
+            (controller.clone(), recipient.clone(), amount_i128).into_val(env),
+        );
+        token::TokenClient::new(env, token).transfer(&controller, recipient, &amount_i128);
     }
 
     /// Fetch a vault's pricing inputs once (underlying asset, oracle price,

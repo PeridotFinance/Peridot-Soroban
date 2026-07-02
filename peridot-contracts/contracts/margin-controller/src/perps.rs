@@ -522,6 +522,169 @@ impl MarginController {
         );
     }
 
+    pub(crate) fn begin_liquidation_v3_impl(env: &Env, liquidator: Address, position_id: u64) {
+        if get_pending_liquidation(env, position_id).is_some() {
+            panic!("liquidation pending");
+        }
+        let mut position = get_position_or_panic(env, position_id);
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        if liquidator == position.owner {
+            panic!("self liquidation");
+        }
+        if position.status != PositionStatus::Open {
+            panic!("not open");
+        }
+        let perps = get_perps_position_data_or_panic(env, position_id);
+        let risk = Self::perps_risk_values(env, position_id, &position, &perps, true, true);
+        if risk.equity > risk.maintenance_required {
+            panic!("not liquidatable");
+        }
+        let vaults = get_position_vaults(env, position_id, &position);
+        let debt_amount = ReceiptVaultClient::new(env, &vaults.debt_vault)
+            .get_margin_borrow_balance(&position_id);
+        if debt_amount == 0 {
+            panic!("zero debt");
+        }
+        position.status = PositionStatus::Liquidated;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(position_id), &position);
+        bump_position_ttl(env, position_id);
+        let pending = PendingLiquidation {
+            kind: PendingLiquidationKind::PerpsV3,
+            stage: PendingLiquidationStage::Started,
+            owner: position.owner,
+            liquidator,
+            debt_amount,
+            repay_amount: 0u128,
+            received_debt_asset: 0u128,
+            position_seize_ptokens: 0u128,
+            position_fee_ptokens: 0u128,
+            initial_market: None,
+            initial_seize_ptokens: 0u128,
+            initial_fee_ptokens: 0u128,
+            reserve_recipient: None,
+            liquidation_incentive_scaled: perps.liquidation_incentive_scaled,
+        };
+        set_pending_liquidation(env, position_id, &pending);
+    }
+
+    pub(crate) fn swap_liquidation_v3_impl(env: &Env, liquidator: Address, position_id: u64) {
+        let mut pending = get_pending_liquidation_or_panic(env, position_id);
+        if pending.kind != PendingLiquidationKind::PerpsV3
+            || pending.stage != PendingLiquidationStage::Started
+        {
+            panic!("bad liquidation stage");
+        }
+        if pending.liquidator != liquidator {
+            panic!("not liquidator");
+        }
+        let mut position = get_position_or_panic(env, position_id);
+        if position.status != PositionStatus::Liquidated {
+            panic!("not liquidating");
+        }
+        if position.owner != pending.owner {
+            panic!("pending owner mismatch");
+        }
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let perps = get_perps_position_data_or_panic(env, position_id);
+        let vaults = get_position_vaults(env, position_id, &position);
+        if position.collateral_ptokens == 0 {
+            panic!("no collateral");
+        }
+        let collateral_underlying = Self::withdraw_position_underlying(
+            env,
+            &vaults.position_vault,
+            &position.collateral_asset,
+            position.collateral_ptokens,
+        );
+        if collateral_underlying == 0 {
+            panic!("no collateral");
+        }
+        let received_debt_asset = if position.collateral_asset == position.debt_asset {
+            collateral_underlying
+        } else {
+            Self::direct_pool_swap_as_controller(
+                env,
+                &perps.pool_tokens,
+                &perps.pool,
+                &position.collateral_asset,
+                &position.debt_asset,
+                collateral_underlying,
+                1u128,
+            )
+        };
+        if received_debt_asset == 0 {
+            panic!("swap output too small");
+        }
+        position.collateral_ptokens = 0u128;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(position_id), &position);
+        bump_position_ttl(env, position_id);
+        pending.stage = PendingLiquidationStage::CollateralConverted;
+        pending.received_debt_asset = received_debt_asset;
+        set_pending_liquidation(env, position_id, &pending);
+    }
+
+    pub(crate) fn finish_liquidation_v3_impl(env: &Env, liquidator: Address, position_id: u64) {
+        let pending = get_pending_liquidation_or_panic(env, position_id);
+        if pending.kind != PendingLiquidationKind::PerpsV3
+            || pending.stage != PendingLiquidationStage::CollateralConverted
+        {
+            panic!("bad liquidation stage");
+        }
+        if pending.liquidator != liquidator {
+            panic!("not liquidator");
+        }
+        let position = get_position_or_panic(env, position_id);
+        if position.status != PositionStatus::Liquidated {
+            panic!("not liquidating");
+        }
+        if position.owner != pending.owner {
+            panic!("pending owner mismatch");
+        }
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let vaults = get_position_vaults(env, position_id, &position);
+        let debt_vault_client = ReceiptVaultClient::new(env, &vaults.debt_vault);
+        let debt_before = debt_vault_client.get_margin_borrow_balance(&position_id);
+        let repay_amount = pending.received_debt_asset.min(debt_before);
+        let repaid =
+            Self::repay_margin_from_controller(env, &vaults.debt_vault, position_id, repay_amount);
+        let remaining_debt = debt_vault_client.get_margin_borrow_balance(&position_id);
+        if remaining_debt > 0 {
+            Self::authorize_controller_subcall(
+                env,
+                &vaults.debt_vault,
+                "absorb_margin_bad_debt",
+                (position_id,).into_val(env),
+            );
+            debt_vault_client.absorb_margin_bad_debt(&position_id);
+        }
+
+        let mut surplus = pending.received_debt_asset.saturating_sub(repaid);
+        let incentive = surplus.min(
+            pending
+                .debt_amount
+                .checked_mul(pending.liquidation_incentive_scaled)
+                .expect("liq overflow")
+                / SCALE_1E6,
+        );
+        if incentive > 0 {
+            Self::transfer_controller_underlying(env, &position.debt_asset, &liquidator, incentive);
+            surplus = surplus.saturating_sub(incentive);
+        }
+        Self::credit_margin_underlying(env, &position.owner, &vaults.debt_vault, surplus);
+        clear_position_storage(env, position_id);
+        remove_user_position(env, &position.owner, position_id);
+    }
+
     fn liquidate_pending_open_position_v3_impl(
         env: &Env,
         liquidator: Address,
@@ -791,21 +954,30 @@ impl MarginController {
         debt_vault: &Address,
         position_id: u64,
         amount: u128,
-    ) {
+    ) -> u128 {
         if amount == 0 {
-            return;
+            return 0u128;
         }
         let controller = env.current_contract_address();
         let debt_vault_client = ReceiptVaultClient::new(env, debt_vault);
+        let underlying = debt_vault_client.get_underlying_token();
+        let token_client = token::TokenClient::new(env, &underlying);
+        let before = token_client.balance(&controller);
         Self::authorize_controller_margin_repay(
             env,
             debt_vault,
-            &debt_vault_client.get_underlying_token(),
+            &underlying,
             &controller,
             position_id,
             amount,
         );
         debt_vault_client.repay_for_margin(&position_id, &controller, &amount);
+        let after = token_client.balance(&controller);
+        if before <= after {
+            0u128
+        } else {
+            (before - after) as u128
+        }
     }
 
     fn credit_margin_underlying(env: &Env, user: &Address, vault: &Address, amount: u128) {

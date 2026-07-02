@@ -1801,6 +1801,64 @@ fn test_liquidate_position_v3_uses_maintenance_margin_not_lending_cf() {
 }
 
 #[test]
+fn test_split_liquidate_position_v3_completes_across_stages() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    peridottroller.set_price(&xlm_id, &940_000u128, &1_000_000u128);
+    let liquidator = Address::generate(&env);
+
+    controller.begin_liquidation_v3(&liquidator, &position_id);
+    let pending = controller.get_pending_liquidation(&position_id).unwrap();
+    assert_eq!(pending.kind, PendingLiquidationKind::PerpsV3);
+    assert_eq!(pending.stage, PendingLiquidationStage::Started);
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Liquidated
+    );
+
+    controller.swap_liquidation_v3(&liquidator, &position_id);
+    let pending = controller.get_pending_liquidation(&position_id).unwrap();
+    assert_eq!(pending.stage, PendingLiquidationStage::CollateralConverted);
+    assert!(pending.received_debt_asset > 0u128);
+    assert_eq!(
+        controller
+            .get_position(&position_id)
+            .unwrap()
+            .collateral_ptokens,
+        0u128
+    );
+
+    controller.finish_liquidation_v3(&liquidator, &position_id);
+    assert!(controller.get_pending_liquidation(&position_id).is_none());
+    assert!(controller.get_position(&position_id).is_none());
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
+    assert!(MockTokenClient::new(&env, &usdt_id).balance(&liquidator) > 0i128);
+}
+
+#[test]
 fn test_owner_close_position_v3_reverts_when_collateral_cannot_repay_debt() {
     let (
         env,
@@ -2904,6 +2962,58 @@ fn test_liquidate_position_v2_partial_close_factor_keeps_position_open() {
     peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
     peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
     controller.liquidate_position_v2(&liquidator, &position_id);
+    let pos = controller.get_position(&position_id).unwrap();
+    assert_eq!(pos.status, PositionStatus::Open);
+    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 50u128);
+    assert_eq!(pos.collateral_ptokens, 0u128);
+}
+
+#[test]
+fn test_split_liquidate_position_v2_partial_close_factor_keeps_position_open() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let liquidator = Address::generate(&env);
+
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &swaps_chain_open,
+        &100u128,
+    );
+
+    peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
+    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
+    controller.begin_liquidation_v2(&liquidator, &position_id);
+
+    let pending = controller.get_pending_liquidation(&position_id).unwrap();
+    assert_eq!(pending.kind, PendingLiquidationKind::MarginV2);
+    assert_eq!(pending.stage, PendingLiquidationStage::Repaid);
+    assert_eq!(pending.liquidator, liquidator);
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Liquidated
+    );
+
+    controller.finish_liquidation_v2(&liquidator, &position_id);
+    assert!(controller.get_pending_liquidation(&position_id).is_none());
     let pos = controller.get_position(&position_id).unwrap();
     assert_eq!(pos.status, PositionStatus::Open);
     assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 50u128);

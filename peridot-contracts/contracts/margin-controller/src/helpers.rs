@@ -297,6 +297,7 @@ pub fn clear_position_storage(env: &Env, position_id: u64) {
     clear_pending_perps_open_position(env, position_id);
     clear_pending_perps_open_execution(env, position_id);
     clear_perps_position_data(env, position_id);
+    clear_pending_liquidation(env, position_id);
     clear_position_initial_lock(env, position_id);
     clear_position_vaults(env, position_id);
     clear_position_mode(env, position_id);
@@ -435,6 +436,34 @@ pub fn clear_perps_position_data(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
         .remove(&DataKey::PerpsPositionData(position_id));
+}
+
+pub fn set_pending_liquidation(env: &Env, position_id: u64, pending: &PendingLiquidation) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::PendingLiquidation(position_id), pending);
+    bump_position_ttl(env, position_id);
+}
+
+pub fn get_pending_liquidation(env: &Env, position_id: u64) -> Option<PendingLiquidation> {
+    let pending = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PendingLiquidation(position_id));
+    if pending.is_some() {
+        bump_position_ttl(env, position_id);
+    }
+    pending
+}
+
+pub fn get_pending_liquidation_or_panic(env: &Env, position_id: u64) -> PendingLiquidation {
+    get_pending_liquidation(env, position_id).expect("pending liquidation missing")
+}
+
+pub fn clear_pending_liquidation(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PendingLiquidation(position_id));
 }
 
 pub fn set_perps_pair_config(
