@@ -2318,10 +2318,6 @@ impl MarginController {
             stage: PendingLiquidationStage::Repaid,
             owner: position.owner,
             liquidator,
-            expires_at: env
-                .ledger()
-                .timestamp()
-                .saturating_add(PENDING_LIQUIDATION_TTL_SECS),
             debt_amount,
             repay_amount,
             received_debt_asset: 0u128,

@@ -4,6 +4,101 @@ Fresh no-rewards deployment from this branch. `$P` is intentionally not wired as
 controller reward token. SwapAdapter + MarginController were freshly redeployed after
 the routed split activation budget fix, avoiding the 24h upgrade timelock.
 
+## Complete temp V3 dry run — 2026-07-03
+
+Fresh isolated Peridot stack from the current branch. Existing XLM/mock-USDT token
+contracts and the existing Aquarius pool were reused so the pool liquidity stayed
+available; the frontend-wired v2 addresses below were not rewired or deleted.
+
+- Temp SimplePeridottroller: `CDCOPWJD72UHXZALBLPNA76JXCEGAWB3SDNSLRIPA56OX2ZXFBPX5KBO`
+- Temp XLM Vault: `CCUMSVGRN7NWQTDCEHYXPDWO75DRH2PHSVFTFN7QPJIGTFRZYLCT3LOI`
+- Temp USDT Vault: `CCLZMPNKGD5HNOLVDXWKX7BLTPMRXCDDCYXKN6CVLRCKBY6OUN6LR4RH`
+- Temp SwapAdapter: `CCINS3WFPARPXWSO4H26NZLX5OWQ7PKSJPZDFX4GEKHUZHTQ23BEF3DX`
+- Temp MarginController: `CCEKZJHMB6XX3QSPFYIWDICBW3LZWHIZ4UEBBS74KJMOUIP6BR7Q225S`
+- Temp JumpRateModel: `CDXLBWC4OWDOQNGEBKSM4YN4DCYIDGOFTOVC26BTTPWAQVJTNZKEJCAE`
+- Unused mock-USDT deployed by the base deploy script: `CCX2JXXYZTFAETPKNR5QTVSYZNLQK44S2SS5IVXU2YRNDFFXUEHQGHQV`
+- Existing mock-USDT used for the dry run: `CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY`
+- Existing XLM SAC used for the dry run: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
+- Existing Reflector Oracle: `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63`
+- Existing Aquarius pool: `CCMNSENXDBNJSY72BDIPH5CCXLLHBKZ4LXTRKDLKZN4UI2NJFQLWTLD6`
+- Existing Aquarius pool id: `9ac7a9cde23ac2ada11105eeaa42e43c2ea8332ca0aa8f41f58d7160274d718e`
+
+Dry-run result:
+- Local preflight: `cargo test -p margin-controller` passed (`85` tests); current
+  optimized Wasms were rebuilt with `INIT_ADMIN=dev`.
+- Temp peridottroller oracle was wired to Reflector; XLM -> `XLM`, mock-USDT -> `USDT`.
+- Fresh USDT vault was seeded with `500,000,000` mock-USDT units of borrow liquidity.
+- Alice deposited `20,000,000` mock-USDT units into the temp USDT vault and moved
+  `1,000,000` USDT pTokens into the temp margin controller.
+- 10x V3 long passed:
+  `begin_open_position_v3` -> position `1`, `borrow_amount=8,999,997`;
+  `swap_open_position_v3` swapped `9,999,997` USDT units into `57,573,601` XLM units;
+  `activate_open_position_v3` minted `57,573,601` XLM pTokens and opened the position.
+- Open readback: `status=Open`, `collateral_ptokens=57,573,601`, USDT margin debt
+  `8,999,997`, health factor `4,571,217`, pending-open state `null`.
+- Healthy `begin_liquidation_v3` by Bob failed as expected.
+- Liquidation test used only the temp peridottroller: XLM was temporarily moved to
+  fallback `[9,000,000,000,000, 100,000,000,000,000]`; after the test, XLM was restored
+  to Reflector `XLM` and fallback was cleared.
+- Forced liquidation passed:
+  `begin_liquidation_v3` -> low `swap_liquidation_v3(..., amount_with_slippage=1)`
+  failed as expected -> `swap_liquidation_v3(..., amount_with_slippage=9,000,000)`
+  returned `9,941,145` USDT units -> `finish_liquidation_v3` repaid `8,999,997`,
+  paid Bob `89,999`, and credited Alice `851,149` USDT pTokens surplus.
+- Alice moved the `851,149` surplus pTokens back to spot and withdrew them from the
+  temp USDT vault for `851,149` mock-USDT units.
+- Standard lending path also passed: Alice entered the temp USDT market, borrowed
+  `500,000` mock-USDT units, repaid `500,000`, and both user borrow balance and
+  total borrowed returned to `0`.
+- Final readback: `get_position(1)=null`, `get_pending_liquidation(1)=null`, position
+  debt `0`, temp USDT vault total borrowed `0`, Alice temp USDT margin balance `0`,
+  XLM price restored to live Reflector `[20,237,461,238,634, 100,000,000,000,000]`.
+
+## Live V3 split-liquidation smoke — 2026-07-02
+
+Fresh MarginController/SwapAdapter from the current branch plus fresh current-version
+receipt vaults, using the existing mock-USDT/XLM token contracts and existing Aquarius
+pool. The old frontend v2 vaults were restored to their previous margin-controller
+pointer after this smoke.
+
+- New SwapAdapter: `CALI2BBAF2PH74QRXOQ2LV6ZP5PU6DQWQHE3SRONDIFFOIZNW4I22S7C`
+- New MarginController: `CA5QDPU2C5QIA4NVNSBDBEGBOL6ET6ETVWJVP4KVO3F45NRXMOOU6OMI`
+- Fresh XLM Vault: `CAWSZ65ADUYCT557CHHN4A2MFQIKL3PRATGIRW4UM2J3VE5ZL3DIN7OD`
+- Fresh USDT Vault: `CAGPHU6OE23PKSMSQLJ2IWDRMATAHD5HFBBX3S43UUJ4WP2IOH6KQC5A`
+- Existing SimplePeridottroller: `CDMXPWG55776NECXQMWNBXMEQXZUAWA2AJBCQS7SU7SA64XHMO3KB3O6`
+- Existing mock-USDT token: `CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY`
+- Existing XLM SAC: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
+- Existing Aquarius pool: `CCMNSENXDBNJSY72BDIPH5CCXLLHBKZ4LXTRKDLKZN4UI2NJFQLWTLD6`
+- Existing Aquarius pool id: `9ac7a9cde23ac2ada11105eeaa42e43c2ea8332ca0aa8f41f58d7160274d718e`
+
+Live test result:
+- Alice opened a 10x Perps V3 long with `1,000,000` USDT pTokens margin.
+- `begin_open_position_v3` returned position `2`.
+- `swap_open_position_v3` borrowed `8,999,993` USDT units and swapped total input
+  `9,999,993` USDT units into `57,581,611` XLM units.
+- `activate_open_position_v3` deposited the XLM into the fresh XLM vault and opened
+  the position. Readback: `status=Open`, `collateral_ptokens=57,581,611`,
+  `debt=8,999,993`, health factor `4,321,008`.
+- Healthy `begin_liquidation_v3` by Bob failed as expected.
+- For liquidation testing only, XLM was temporarily mapped to fallback price
+  `[9,000,000,000,000, 100,000,000,000,000]`; the XLM mapping was restored to
+  Reflector `XLM` and the fallback was cleared after the test.
+- With the temporary price, Bob ran the staged liquidation:
+  `begin_liquidation_v3` -> `swap_liquidation_v3(..., amount_with_slippage=9,000,000)`
+  -> `finish_liquidation_v3`.
+- Low `swap_liquidation_v3(..., amount_with_slippage=1)` failed as expected under
+  the oracle min-out guard.
+- Liquidation swap output was `9,941,142` USDT units; finish repaid `8,999,993`,
+  paid Bob `89,999` USDT units, and credited Alice `851,150` USDT pTokens surplus.
+- Final readback: `get_position(2)=null`, `get_pending_liquidation(2)=null`, fresh
+  USDT vault margin debt for position `2` is `0`, fresh USDT vault total borrowed is
+  `0`, XLM oracle price restored to `[19,920,400,829,378, 100,000,000,000,000]`.
+- Old frontend v2 vault pointers restored:
+  - old XLM vault `CB32OVY4AADCHQT3DLKJYW5QVTWY5MOX7BBNZFT3SDHZ5HPSDDEA2THJ`
+    -> `CAP4ULN6PZVPU3GDFBHW4HZGSIZ2CN4YFD7CT4R5OZ3K7A6FS6LEQQO3`
+  - old USDT vault `CCEW6NSPCV7XUEQV75ZMII5HK5DGXK5JP2QOTGLV4UFLDBPEKRGO4Y4B`
+    -> `CAP4ULN6PZVPU3GDFBHW4HZGSIZ2CN4YFD7CT4R5OZ3K7A6FS6LEQQO3`
+
 - Admin (dev): `GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ`
 - Alice: `GCOAFEN2VLTOAZR3RVSJ2QGLY4TCVMSFGVNWVI3YMQ6NLJJCCTAJT5TZ`
 - Bob: `GBFSIHBLGGDU26EV6MZK64R5UEZU3WLRKM7VRVVCQTHBTI72HLPVUCRW`

@@ -260,7 +260,6 @@ pub struct PendingLiquidation {
     pub stage: PendingLiquidationStage,
     pub owner: Address,
     pub liquidator: Address,
-    pub expires_at: u64,
     pub debt_amount: u128,
     pub repay_amount: u128,
     pub received_debt_asset: u128,

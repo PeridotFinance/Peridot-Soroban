@@ -1825,6 +1825,8 @@ fn test_split_liquidate_position_v3_completes_across_stages() {
     let pending = controller.get_pending_liquidation(&position_id).unwrap();
     assert_eq!(pending.kind, PendingLiquidationKind::PerpsV3);
     assert_eq!(pending.stage, PendingLiquidationStage::Started);
+    let expires_at = pending.repay_amount.min(u64::MAX as u128) as u64;
+    assert!(expires_at > env.ledger().timestamp());
     let pending_ttl = env.as_contract(&controller_id, || {
         env.storage()
             .persistent()
@@ -1899,13 +1901,16 @@ fn test_split_liquidate_position_v3_can_be_taken_over_after_timeout() {
     let takeover_liquidator = Address::generate(&env);
 
     controller.begin_liquidation_v3(&first_liquidator, &position_id);
-    let pending = controller.get_pending_liquidation(&position_id).unwrap();
+    let expires_at = controller
+        .get_pending_liquidation(&position_id)
+        .unwrap()
+        .repay_amount
+        .min(u64::MAX as u128) as u64;
     assert!(controller
         .try_swap_liquidation_v3(&takeover_liquidator, &position_id, &1u128)
         .is_err());
 
-    env.ledger()
-        .set_timestamp(pending.expires_at.saturating_add(1));
+    env.ledger().set_timestamp(expires_at.saturating_add(1));
     let position = controller.get_position(&position_id).unwrap();
     let position_rate =
         receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id).get_exchange_rate();
@@ -1922,6 +1927,69 @@ fn test_split_liquidate_position_v3_can_be_taken_over_after_timeout() {
         MockTokenClient::new(&env, &usdt_id).balance(&first_liquidator),
         0i128
     );
+}
+
+#[test]
+fn test_split_liquidate_position_v3_missing_expiry_key_is_upgrade_compatible() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        _usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &_usdt_vault_id,
+        500u128,
+    );
+
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    peridottroller.set_price(&xlm_id, &940_000u128, &1_000_000u128);
+    let first_liquidator = Address::generate(&env);
+    let takeover_liquidator = Address::generate(&env);
+    controller.begin_liquidation_v3(&first_liquidator, &position_id);
+
+    env.as_contract(&controller_id, || {
+        let mut pending = env
+            .storage()
+            .persistent()
+            .get::<_, PendingLiquidation>(&DataKey::PendingLiquidation(position_id))
+            .unwrap();
+        pending.repay_amount = 0u128;
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingLiquidation(position_id), &pending);
+    });
+
+    let pending = controller.get_pending_liquidation(&position_id).unwrap();
+    assert_eq!(pending.liquidator, first_liquidator);
+    let expires_at = pending.repay_amount.min(u64::MAX as u128) as u64;
+    assert_eq!(expires_at, 0u64);
+
+    let position = controller.get_position(&position_id).unwrap();
+    let position_rate =
+        receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id).get_exchange_rate();
+    let liquidation_min_out = position.collateral_ptokens.saturating_mul(position_rate) / SCALE_1E6;
+    controller.swap_liquidation_v3(&takeover_liquidator, &position_id, &liquidation_min_out);
+    let pending = controller.get_pending_liquidation(&position_id).unwrap();
+    assert_eq!(pending.liquidator, takeover_liquidator);
+    let expires_at = controller
+        .get_pending_liquidation(&position_id)
+        .unwrap()
+        .repay_amount
+        .min(u64::MAX as u128) as u64;
+    assert!(expires_at > env.ledger().timestamp());
 }
 
 #[test]

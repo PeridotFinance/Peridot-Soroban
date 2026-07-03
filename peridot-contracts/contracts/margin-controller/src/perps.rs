@@ -557,12 +557,13 @@ impl MarginController {
             stage: PendingLiquidationStage::Started,
             owner: position.owner,
             liquidator,
-            expires_at: env
+            debt_amount,
+            // For PerpsV3 staged liquidation this legacy field stores the
+            // takeover deadline. V2 uses it as the actual repaid amount.
+            repay_amount: env
                 .ledger()
                 .timestamp()
-                .saturating_add(PENDING_LIQUIDATION_TTL_SECS),
-            debt_amount,
-            repay_amount: 0u128,
+                .saturating_add(PENDING_LIQUIDATION_TTL_SECS) as u128,
             received_debt_asset: 0u128,
             position_seize_ptokens: 0u128,
             position_fee_ptokens: 0u128,
@@ -588,11 +589,12 @@ impl MarginController {
             panic!("bad liquidation stage");
         }
         let now = env.ledger().timestamp();
-        if pending.liquidator != liquidator && now <= pending.expires_at {
+        let expires_at = pending.repay_amount.min(u64::MAX as u128) as u64;
+        if pending.liquidator != liquidator && now <= expires_at {
             panic!("not liquidator");
         }
         pending.liquidator = liquidator.clone();
-        pending.expires_at = now.saturating_add(PENDING_LIQUIDATION_TTL_SECS);
+        pending.repay_amount = now.saturating_add(PENDING_LIQUIDATION_TTL_SECS) as u128;
         let mut position = get_position_or_panic(env, position_id);
         if position.status != PositionStatus::Liquidated {
             panic!("not liquidating");
@@ -662,7 +664,8 @@ impl MarginController {
         {
             panic!("bad liquidation stage");
         }
-        if pending.liquidator != liquidator && env.ledger().timestamp() <= pending.expires_at {
+        let expires_at = pending.repay_amount.min(u64::MAX as u128) as u64;
+        if pending.liquidator != liquidator && env.ledger().timestamp() <= expires_at {
             panic!("not liquidator");
         }
         let position = get_position_or_panic(env, position_id);
