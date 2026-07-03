@@ -2876,6 +2876,7 @@ impl MarginController {
 
     pub fn get_position(env: Env, position_id: u64) -> Option<Position> {
         bump_core_ttl(&env);
+        bump_position_ttl(&env, position_id);
         env.storage()
             .persistent()
             .get(&DataKey::Position(position_id))

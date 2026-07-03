@@ -1871,6 +1871,63 @@ fn test_split_liquidate_position_v3_completes_across_stages() {
 }
 
 #[test]
+fn test_get_position_bumps_pending_liquidation_ttl() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xlm_vid) =
+        setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    peridottroller.set_price(&xlm_id, &940_000u128, &1_000_000u128);
+    let liquidator = Address::generate(&env);
+    controller.begin_liquidation_v3(&liquidator, &position_id);
+
+    let position_key = DataKey::Position(position_id);
+    let pending_key = DataKey::PendingLiquidation(position_id);
+    let initial_pending_ttl = env.as_contract(&controller_id, || {
+        env.storage().persistent().get_ttl(&pending_key)
+    });
+    env.ledger()
+        .set_sequence_number(initial_pending_ttl.saturating_sub(10_000));
+
+    let pending_ttl_before = env.as_contract(&controller_id, || {
+        env.storage().persistent().get_ttl(&pending_key)
+    });
+    assert!(
+        pending_ttl_before < TTL_THRESHOLD,
+        "test setup expected pending liquidation TTL below bump threshold, got {pending_ttl_before}"
+    );
+
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Liquidated
+    );
+
+    env.as_contract(&controller_id, || {
+        let position_ttl_after = env.storage().persistent().get_ttl(&position_key);
+        let pending_ttl_after = env.storage().persistent().get_ttl(&pending_key);
+        assert!(
+            position_ttl_after > TTL_THRESHOLD,
+            "expected bumped position TTL, got {position_ttl_after}"
+        );
+        assert!(
+            pending_ttl_after > TTL_THRESHOLD,
+            "expected bumped pending liquidation TTL, got {pending_ttl_after}"
+        );
+    });
+}
+
+#[test]
 fn test_split_liquidate_position_v3_can_be_taken_over_after_timeout() {
     let (
         env,

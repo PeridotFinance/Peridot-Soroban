@@ -896,6 +896,10 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     if persistent.has(&pending_supplied_amount_key) {
         persistent.extend_ttl(&pending_supplied_amount_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    let pending_liquidation_key = DataKey::PendingLiquidation(position_id);
+    if persistent.has(&pending_liquidation_key) {
+        persistent.extend_ttl(&pending_liquidation_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }
 
 pub fn bump_pending_liquidation_ttl(env: &Env, position_id: u64) {
