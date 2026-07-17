@@ -39,7 +39,14 @@ pub fn push_user_position(env: &Env, user: &Address, id: u64) {
 }
 
 pub fn remove_user_position(env: &Env, user: &Address, id: u64) {
-    let positions = compact_user_positions(env, user);
+    // Closing one position must not pull every other position's storage into the
+    // transaction footprint. Stale IDs are filtered by read paths and by the
+    // bounded compaction performed before adding a new position.
+    let positions: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::UserPositions(user.clone()))
+        .unwrap_or(Vec::new(env));
     let mut out = Vec::new(env);
     for p in positions.iter() {
         if p != id {
@@ -202,11 +209,14 @@ pub fn set_position_mode(env: &Env, position_id: u64, mode: PositionMode) {
 }
 
 pub fn get_position_mode(env: &Env, position_id: u64) -> PositionMode {
-    let mode: Option<PositionMode> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PositionMode(position_id));
-    bump_position_ttl(env, position_id);
+    let key = DataKey::PositionMode(position_id);
+    let mode: Option<PositionMode> = env.storage().persistent().get(&key);
+    if mode.is_some() {
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    bump_position_record_ttl(env, position_id);
     mode.unwrap_or(PositionMode::Legacy)
 }
 
@@ -218,18 +228,23 @@ pub fn get_position_mode_no_bump(env: &Env, position_id: u64) -> PositionMode {
 }
 
 pub fn get_position_vaults(env: &Env, position_id: u64, position: &Position) -> PositionVaults {
-    let collateral_vault: Option<Address> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PositionCollateralVault(position_id));
-    let debt_vault: Option<Address> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PositionDebtVault(position_id));
-    let position_vault: Option<Address> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PositionPositionVault(position_id));
+    let collateral_vault_key = DataKey::PositionCollateralVault(position_id);
+    let debt_vault_key = DataKey::PositionDebtVault(position_id);
+    let position_vault_key = DataKey::PositionPositionVault(position_id);
+    let collateral_vault: Option<Address> = env.storage().persistent().get(&collateral_vault_key);
+    let debt_vault: Option<Address> = env.storage().persistent().get(&debt_vault_key);
+    let position_vault: Option<Address> = env.storage().persistent().get(&position_vault_key);
+
+    let persistent = env.storage().persistent();
+    if collateral_vault.is_some() {
+        persistent.extend_ttl(&collateral_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if debt_vault.is_some() {
+        persistent.extend_ttl(&debt_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if position_vault.is_some() {
+        persistent.extend_ttl(&position_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 
     // Backward compatibility for pre-snapshot positions created before FIND-064.
     let resolved = PositionVaults {
@@ -239,7 +254,7 @@ pub fn get_position_vaults(env: &Env, position_id: u64, position: &Position) -> 
         position_vault: position_vault
             .unwrap_or_else(|| get_market(env, &position.collateral_asset)),
     };
-    bump_position_ttl(env, position_id);
+    bump_position_record_ttl(env, position_id);
     resolved
 }
 
@@ -310,6 +325,22 @@ pub fn get_position_or_panic(env: &Env, position_id: u64) -> Position {
         .persistent()
         .get(&DataKey::Position(position_id))
         .expect("position missing")
+}
+
+pub fn get_position_record_or_panic(env: &Env, position_id: u64) -> Position {
+    bump_position_record_ttl(env, position_id);
+    env.storage()
+        .persistent()
+        .get(&DataKey::Position(position_id))
+        .expect("position missing")
+}
+
+pub fn bump_position_record_ttl(env: &Env, position_id: u64) {
+    let key = DataKey::Position(position_id);
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }
 
 pub fn set_pending_open_position(env: &Env, position_id: u64, pending: &PendingOpenPosition) {
@@ -410,6 +441,44 @@ pub fn clear_pending_perps_open_execution(env: &Env, position_id: u64) {
         .remove(&DataKey::PendingPerpsOpenExecution(position_id));
 }
 
+pub fn set_pending_perps_close(env: &Env, position_id: u64, pending: &PendingPerpsClose) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::PendingPerpsClose(position_id), pending);
+    bump_position_record_ttl(env, position_id);
+    bump_pending_perps_close_ttl(env, position_id);
+}
+
+pub fn get_pending_perps_close(env: &Env, position_id: u64) -> Option<PendingPerpsClose> {
+    let pending = env
+        .storage()
+        .persistent()
+        .get(&DataKey::PendingPerpsClose(position_id));
+    if pending.is_some() {
+        bump_position_record_ttl(env, position_id);
+        bump_pending_perps_close_ttl(env, position_id);
+    }
+    pending
+}
+
+pub fn get_pending_perps_close_or_panic(env: &Env, position_id: u64) -> PendingPerpsClose {
+    get_pending_perps_close(env, position_id).expect("pending perps close missing")
+}
+
+pub fn clear_pending_perps_close(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PendingPerpsClose(position_id));
+}
+
+pub fn bump_pending_perps_close_ttl(env: &Env, position_id: u64) {
+    let key = DataKey::PendingPerpsClose(position_id);
+    let persistent = env.storage().persistent();
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn set_perps_position_data(env: &Env, position_id: u64, data: &PerpsPositionData) {
     env.storage()
         .persistent()
@@ -418,12 +487,13 @@ pub fn set_perps_position_data(env: &Env, position_id: u64, data: &PerpsPosition
 }
 
 pub fn get_perps_position_data(env: &Env, position_id: u64) -> Option<PerpsPositionData> {
-    let data = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PerpsPositionData(position_id));
+    let key = DataKey::PerpsPositionData(position_id);
+    let data = env.storage().persistent().get(&key);
     if data.is_some() {
-        bump_position_ttl(env, position_id);
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        bump_position_record_ttl(env, position_id);
     }
     data
 }

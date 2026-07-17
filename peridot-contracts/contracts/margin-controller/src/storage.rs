@@ -130,6 +130,7 @@ pub enum DataKey {
     PendingPerpsOpenExecution(u64),
     PerpsPositionData(u64),
     PendingLiquidation(u64),
+    PendingPerpsClose(u64),
 }
 
 #[contracttype]
@@ -146,6 +147,7 @@ pub enum PositionStatus {
     Closed,
     Liquidated,
     PendingOpen,
+    Closing,
 }
 
 #[contracttype]
@@ -221,6 +223,17 @@ pub struct PendingPerpsOpenPosition {
 pub struct PendingPerpsOpenExecution {
     pub margin_received: u128,
     pub position_amount: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingPerpsClose {
+    pub owner: Address,
+    pub collateral_underlying: u128,
+    pub debt_amount: u128,
+    pub received_debt_asset: u128,
+    pub expires_at: u64,
+    pub prepared_ledger: u32,
 }
 
 #[contracttype]

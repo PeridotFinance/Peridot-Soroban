@@ -367,7 +367,7 @@ impl MarginController {
         let activated = position.clone();
         clear_pending_perps_open_position(env, position_id);
         clear_pending_perps_open_execution(env, position_id);
-        bump_position_ttl(env, position_id);
+        bump_position_record_ttl(env, position_id);
         (activated, perps)
     }
 
@@ -446,7 +446,7 @@ impl MarginController {
         if position.owner != user {
             panic!("not owner");
         }
-        if position.status != PositionStatus::Open {
+        if position.status != PositionStatus::Open && position.status != PositionStatus::Closing {
             panic!("not open");
         }
         if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
@@ -469,7 +469,10 @@ impl MarginController {
         if amount_with_slippage == 0 {
             panic!("bad slippage");
         }
-        let position = get_position_or_panic(env, position_id);
+        if get_pending_perps_close(env, position_id).is_some() {
+            panic!("close pending");
+        }
+        let position = get_position_record_or_panic(env, position_id);
         if position.owner != user {
             panic!("not owner");
         }
@@ -489,6 +492,260 @@ impl MarginController {
             amount_with_slippage,
             None,
         );
+    }
+
+    pub(crate) fn begin_close_position_v3_impl(env: &Env, user: Address, position_id: u64) {
+        if get_pending_perps_close(env, position_id).is_some() {
+            panic!("close pending");
+        }
+        let position = get_position_record_or_panic(env, position_id);
+        if position.owner != user {
+            panic!("not owner");
+        }
+        if position.status != PositionStatus::Open {
+            panic!("not open");
+        }
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let perps = get_perps_position_data_or_panic(env, position_id);
+        let risk = Self::perps_risk_values(env, position_id, &position, &perps, true, true);
+        if risk.equity <= risk.maintenance_required {
+            panic!("position liquidatable");
+        }
+
+        set_pending_perps_close(
+            env,
+            position_id,
+            &PendingPerpsClose {
+                owner: user,
+                collateral_underlying: 0u128,
+                debt_amount: 0u128,
+                received_debt_asset: 0u128,
+                expires_at: env
+                    .ledger()
+                    .timestamp()
+                    .saturating_add(PENDING_CLOSE_TTL_SECS),
+                prepared_ledger: env.ledger().sequence(),
+            },
+        );
+        bump_position_record_ttl(env, position_id);
+    }
+
+    pub(crate) fn withdraw_close_position_v3_impl(env: &Env, user: Address, position_id: u64) {
+        let mut position = get_position_record_or_panic(env, position_id);
+        if position.owner != user {
+            panic!("not owner");
+        }
+        if position.status != PositionStatus::Open {
+            panic!("not open");
+        }
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let mut pending = get_pending_perps_close_or_panic(env, position_id);
+        if pending.owner != user {
+            panic!("close owner mismatch");
+        }
+        if pending.collateral_underlying > 0 || pending.received_debt_asset > 0 {
+            panic!("close already withdrawn");
+        }
+        if env.ledger().timestamp() > pending.expires_at
+            || env.ledger().sequence()
+                > pending
+                    .prepared_ledger
+                    .saturating_add(MAX_PENDING_CLOSE_PREPARE_LEDGERS)
+        {
+            panic!("close preparation expired");
+        }
+        let vaults = get_position_vaults(env, position_id, &position);
+        let collateral_underlying = Self::withdraw_position_underlying(
+            env,
+            &vaults.position_vault,
+            &position.collateral_asset,
+            position.collateral_ptokens,
+        );
+        if collateral_underlying == 0 {
+            panic!("no collateral");
+        }
+
+        position.status = PositionStatus::Closing;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(position_id), &position);
+        pending.collateral_underlying = collateral_underlying;
+        pending.expires_at = env
+            .ledger()
+            .timestamp()
+            .saturating_add(PENDING_CLOSE_TTL_SECS);
+        set_pending_perps_close(env, position_id, &pending);
+        bump_position_record_ttl(env, position_id);
+    }
+
+    pub(crate) fn swap_close_position_v3_impl(
+        env: &Env,
+        user: Address,
+        position_id: u64,
+        amount_with_slippage: u128,
+    ) {
+        if amount_with_slippage == 0 {
+            panic!("bad slippage");
+        }
+        let position = get_position_record_or_panic(env, position_id);
+        if position.owner != user {
+            panic!("not owner");
+        }
+        if position.status != PositionStatus::Closing {
+            panic!("not closing");
+        }
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let mut pending = get_pending_perps_close_or_panic(env, position_id);
+        if pending.owner != user {
+            panic!("close owner mismatch");
+        }
+        if pending.received_debt_asset > 0 {
+            panic!("close already swapped");
+        }
+        if env.ledger().timestamp() > pending.expires_at {
+            panic!("pending close expired");
+        }
+        let perps = get_perps_position_data_or_panic(env, position_id);
+        let vaults = get_position_vaults(env, position_id, &position);
+        let debt_vault_client = ReceiptVaultClient::new(env, &vaults.debt_vault);
+        debt_vault_client.update_interest();
+        let debt_amount = debt_vault_client.get_margin_borrow_balance(&position_id);
+        if debt_amount == 0 {
+            panic!("zero debt");
+        }
+        let oracle_min = Self::oracle_min_out(
+            env,
+            &position.collateral_asset,
+            &position.debt_asset,
+            pending.collateral_underlying,
+        );
+        if amount_with_slippage < oracle_min {
+            panic!("slippage too high");
+        }
+        let received_debt_asset = if position.collateral_asset == position.debt_asset {
+            pending.collateral_underlying
+        } else {
+            Self::direct_pool_swap_as_controller(
+                env,
+                &perps.pool_tokens,
+                &perps.pool,
+                &position.collateral_asset,
+                &position.debt_asset,
+                pending.collateral_underlying,
+                amount_with_slippage,
+            )
+        };
+        if received_debt_asset < debt_amount {
+            panic!("debt remains");
+        }
+
+        pending.debt_amount = debt_amount;
+        pending.received_debt_asset = received_debt_asset;
+        set_pending_perps_close(env, position_id, &pending);
+    }
+
+    pub(crate) fn finish_close_position_v3_impl(env: &Env, position_id: u64) {
+        let position = get_position_record_or_panic(env, position_id);
+        if position.status != PositionStatus::Closing {
+            panic!("not closing");
+        }
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let pending = get_pending_perps_close_or_panic(env, position_id);
+        if pending.owner != position.owner {
+            panic!("close owner mismatch");
+        }
+        if pending.received_debt_asset == 0 {
+            panic!("close not swapped");
+        }
+        let vaults = get_position_vaults(env, position_id, &position);
+        let debt_vault_client = ReceiptVaultClient::new(env, &vaults.debt_vault);
+        debt_vault_client.update_interest();
+        let debt_amount = debt_vault_client.get_margin_borrow_balance(&position_id);
+        let repay_amount = pending.received_debt_asset.min(debt_amount);
+        if repay_amount > 0 {
+            Self::repay_margin_from_controller(env, &vaults.debt_vault, position_id, repay_amount);
+        }
+        if debt_vault_client.get_margin_borrow_balance(&position_id) > 0 {
+            panic!("debt remains");
+        }
+        let surplus = pending.received_debt_asset.saturating_sub(repay_amount);
+        Self::credit_margin_underlying(env, &position.owner, &vaults.debt_vault, surplus);
+        clear_pending_perps_close(env, position_id);
+        clear_position_storage(env, position_id);
+        remove_user_position(env, &position.owner, position_id);
+    }
+
+    pub(crate) fn cancel_close_position_v3_impl(env: &Env, user: Address, position_id: u64) {
+        let position = get_position_record_or_panic(env, position_id);
+        if position.owner != user {
+            panic!("not owner");
+        }
+        Self::restore_pending_close_position(env, position_id, position);
+    }
+
+    pub(crate) fn expire_close_position_v3_impl(env: &Env, position_id: u64) {
+        let position = get_position_record_or_panic(env, position_id);
+        let pending = get_pending_perps_close_or_panic(env, position_id);
+        if env.ledger().timestamp() <= pending.expires_at {
+            panic!("pending close active");
+        }
+        Self::restore_pending_close_position(env, position_id, position);
+    }
+
+    fn restore_pending_close_position(env: &Env, position_id: u64, mut position: Position) {
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let pending = get_pending_perps_close_or_panic(env, position_id);
+        if pending.owner != position.owner {
+            panic!("close owner mismatch");
+        }
+        if pending.received_debt_asset > 0 {
+            panic!("close already swapped");
+        }
+        if pending.collateral_underlying == 0 {
+            if position.status != PositionStatus::Open {
+                panic!("bad close state");
+            }
+            clear_pending_perps_close(env, position_id);
+            bump_position_record_ttl(env, position_id);
+            return;
+        }
+        if position.status != PositionStatus::Closing {
+            panic!("not closing");
+        }
+        let vaults = get_position_vaults(env, position_id, &position);
+        let controller = env.current_contract_address();
+        let vault_client = ReceiptVaultClient::new(env, &vaults.position_vault);
+        let p_before = vault_client.get_ptoken_balance(&controller);
+        Self::authorize_controller_vault_deposit(
+            env,
+            &vaults.position_vault,
+            &position.collateral_asset,
+            &controller,
+            pending.collateral_underlying,
+        );
+        vault_client.deposit(&controller, &pending.collateral_underlying);
+        let p_after = vault_client.get_ptoken_balance(&controller);
+        let restored_ptokens = p_after.saturating_sub(p_before);
+        if restored_ptokens == 0 {
+            panic!("close restore failed");
+        }
+        position.collateral_ptokens = restored_ptokens;
+        position.status = PositionStatus::Open;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(position_id), &position);
+        clear_pending_perps_close(env, position_id);
+        bump_position_record_ttl(env, position_id);
     }
 
     pub(crate) fn liquidate_position_v3_impl(env: &Env, liquidator: Address, position_id: u64) {
@@ -511,6 +768,9 @@ impl MarginController {
         if risk.equity > risk.maintenance_required {
             panic!("not liquidatable");
         }
+        // A prepared close has not moved funds yet, so liquidation may safely
+        // supersede it. Withdrawn closes use Closing status and cannot reach here.
+        clear_pending_perps_close(env, position_id);
         Self::close_perps_position(
             env,
             &position.owner,
@@ -547,6 +807,7 @@ impl MarginController {
         if debt_amount == 0 {
             panic!("zero debt");
         }
+        clear_pending_perps_close(env, position_id);
         position.status = PositionStatus::Liquidated;
         env.storage()
             .persistent()

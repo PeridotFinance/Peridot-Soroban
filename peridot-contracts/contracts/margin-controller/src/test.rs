@@ -3878,6 +3878,347 @@ fn test_get_user_positions_filters_missing_entries() {
 }
 
 #[test]
+fn test_close_position_v3_budget_does_not_scale_with_unrelated_positions() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    env.as_contract(&controller_id, || {
+        let template: Position = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Position(position_id))
+            .unwrap();
+        let perps: PerpsPositionData = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PerpsPositionData(position_id))
+            .unwrap();
+        let collateral_vault: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PositionCollateralVault(position_id))
+            .unwrap();
+        let debt_vault: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PositionDebtVault(position_id))
+            .unwrap();
+        let position_vault: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PositionPositionVault(position_id))
+            .unwrap();
+        let mut positions: Vec<u64> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserPositions(user.clone()))
+            .unwrap();
+
+        for offset in 1..MAX_USER_POSITIONS {
+            let id = position_id.saturating_add(offset as u64);
+            positions.push_back(id);
+            env.storage()
+                .persistent()
+                .set(&DataKey::Position(id), &template);
+            env.storage()
+                .persistent()
+                .set(&DataKey::PositionMode(id), &PositionMode::PerpsV3);
+            env.storage()
+                .persistent()
+                .set(&DataKey::PositionCollateralVault(id), &collateral_vault);
+            env.storage()
+                .persistent()
+                .set(&DataKey::PositionDebtVault(id), &debt_vault);
+            env.storage()
+                .persistent()
+                .set(&DataKey::PositionPositionVault(id), &position_vault);
+            env.storage()
+                .persistent()
+                .set(&DataKey::PerpsPositionData(id), &perps);
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserPositions(user.clone()), &positions);
+    });
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.begin_close_position_v3(&user, &position_id);
+    assert_budget_under(&env, 10_000_000, 2_000_000);
+    assert_last_invocation_resources_under(&env, 100, 30, 16_000_000);
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Open
+    );
+    assert_eq!(
+        controller
+            .get_pending_perps_close(&position_id)
+            .unwrap()
+            .collateral_underlying,
+        0u128
+    );
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.withdraw_close_position_v3(&user, &position_id);
+    assert_budget_under(&env, 10_000_000, 2_000_000);
+    assert_last_invocation_resources_under(&env, 90, 30, 16_000_000);
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Closing
+    );
+    assert!(controller.get_pending_perps_close(&position_id).is_some());
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.swap_close_position_v3(&user, &position_id, &4_750u128);
+    assert_budget_under(&env, 10_000_000, 2_000_000);
+    assert_last_invocation_resources_under(&env, 90, 25, 16_000_000);
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.finish_close_position_v3(&position_id);
+    assert_budget_under(&env, 15_000_000, 3_000_000);
+    assert_last_invocation_resources_under(&env, 90, 40, 20_000_000);
+
+    let remaining = controller.get_user_positions(&user);
+    assert_eq!(remaining.len(), MAX_USER_POSITIONS - 1);
+    assert!(!remaining.contains(position_id));
+}
+
+#[test]
+fn test_cancel_close_position_v3_restores_open_position() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    let original_ptokens = controller
+        .get_position(&position_id)
+        .unwrap()
+        .collateral_ptokens;
+
+    controller.begin_close_position_v3(&user, &position_id);
+    controller.withdraw_close_position_v3(&user, &position_id);
+    controller.cancel_close_position_v3(&user, &position_id);
+
+    let restored = controller.get_position(&position_id).unwrap();
+    assert_eq!(restored.status, PositionStatus::Open);
+    assert_eq!(restored.collateral_ptokens, original_ptokens);
+    assert!(controller.get_pending_perps_close(&position_id).is_none());
+}
+
+#[test]
+fn test_expire_close_position_v3_restores_abandoned_preswap_close() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    controller.begin_close_position_v3(&user, &position_id);
+    controller.withdraw_close_position_v3(&user, &position_id);
+    let pending = controller.get_pending_perps_close(&position_id).unwrap();
+    env.ledger()
+        .with_mut(|ledger| ledger.timestamp = pending.expires_at.saturating_add(1));
+    controller.expire_close_position_v3(&position_id);
+
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Open
+    );
+    assert!(controller.get_pending_perps_close(&position_id).is_none());
+}
+
+#[test]
+fn test_underwater_split_close_can_be_cancelled_after_swap_reverts() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    controller.begin_close_position_v3(&user, &position_id);
+    controller.withdraw_close_position_v3(&user, &position_id);
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &800_000u128,
+        &1_000_000u128,
+    );
+    MockAquariusPoolClient::new(&env, &pool).set_payout_bps(&800_000u128);
+    assert!(controller
+        .try_swap_close_position_v3(&user, &position_id, &3_800u128)
+        .is_err());
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Closing
+    );
+    assert_eq!(
+        controller
+            .get_pending_perps_close(&position_id)
+            .unwrap()
+            .received_debt_asset,
+        0u128
+    );
+
+    controller.cancel_close_position_v3(&user, &position_id);
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Open
+    );
+}
+
+#[test]
+fn test_begin_close_position_v3_rejects_liquidatable_position() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &800_000u128,
+        &1_000_000u128,
+    );
+
+    assert!(controller
+        .try_begin_close_position_v3(&user, &position_id)
+        .is_err());
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Open
+    );
+    assert!(controller.get_pending_perps_close(&position_id).is_none());
+}
+
+#[test]
+fn test_liquidation_supersedes_unfunded_close_preparation() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    controller.begin_close_position_v3(&user, &position_id);
+    assert!(controller.get_pending_perps_close(&position_id).is_some());
+
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &800_000u128,
+        &1_000_000u128,
+    );
+    let liquidator = Address::generate(&env);
+    controller.begin_liquidation_v3(&liquidator, &position_id);
+
+    assert!(controller.get_pending_perps_close(&position_id).is_none());
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Liquidated
+    );
+}
+
+#[test]
 fn test_deposit_and_withdraw_collateral() {
     let (env, controller_id, usdt_id, _xlm_id, user, _, usdt_vault_id, _) = setup_min_with_vaults();
     let controller = MarginControllerClient::new(&env, &controller_id);

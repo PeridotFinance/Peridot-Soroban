@@ -970,6 +970,11 @@ impl MarginController {
         get_pending_perps_open_execution(&env, position_id)
     }
 
+    pub fn get_pending_perps_close(env: Env, position_id: u64) -> Option<PendingPerpsClose> {
+        bump_core_ttl(&env);
+        get_pending_perps_close(&env, position_id)
+    }
+
     pub fn get_perps_position(env: Env, position_id: u64) -> Option<PerpsPositionData> {
         bump_core_ttl(&env);
         get_perps_position_data(&env, position_id)
@@ -1783,6 +1788,45 @@ impl MarginController {
         bump_core_ttl(&env);
         user.require_auth();
         Self::close_position_v3_impl(&env, user, position_id, amount_with_slippage);
+    }
+
+    pub fn begin_close_position_v3(env: Env, user: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        Self::begin_close_position_v3_impl(&env, user, position_id);
+    }
+
+    pub fn withdraw_close_position_v3(env: Env, user: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        Self::withdraw_close_position_v3_impl(&env, user, position_id);
+    }
+
+    pub fn swap_close_position_v3(
+        env: Env,
+        user: Address,
+        position_id: u64,
+        amount_with_slippage: u128,
+    ) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        Self::swap_close_position_v3_impl(&env, user, position_id, amount_with_slippage);
+    }
+
+    pub fn finish_close_position_v3(env: Env, position_id: u64) {
+        bump_core_ttl(&env);
+        Self::finish_close_position_v3_impl(&env, position_id);
+    }
+
+    pub fn cancel_close_position_v3(env: Env, user: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        Self::cancel_close_position_v3_impl(&env, user, position_id);
+    }
+
+    pub fn expire_close_position_v3(env: Env, position_id: u64) {
+        bump_core_ttl(&env);
+        Self::expire_close_position_v3_impl(&env, position_id);
     }
 
     /// Legacy margin V1 is intentionally disabled. Use `open_position_no_swap_v2`.
@@ -2877,9 +2921,18 @@ impl MarginController {
     pub fn get_position(env: Env, position_id: u64) -> Option<Position> {
         bump_core_ttl(&env);
         bump_position_ttl(&env, position_id);
-        env.storage()
+        let position: Option<Position> = env
+            .storage()
             .persistent()
-            .get(&DataKey::Position(position_id))
+            .get(&DataKey::Position(position_id));
+        if position
+            .as_ref()
+            .map(|value| value.status == PositionStatus::Closing)
+            .unwrap_or(false)
+        {
+            bump_pending_perps_close_ttl(&env, position_id);
+        }
+        position
     }
 
     /// ReceiptVault defense-in-depth callback.
