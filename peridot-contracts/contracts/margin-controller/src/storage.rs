@@ -253,6 +253,15 @@ pub struct PerpsPositionData {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PerpsLiquidationQuote {
+    pub collateral_underlying: u128,
+    pub debt_amount: u128,
+    pub oracle_min_out: u128,
+    pub pool_estimated_out: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PendingLiquidationKind {
     MarginV2,
     PerpsV3,

@@ -975,6 +975,11 @@ impl MarginController {
         get_pending_perps_close(&env, position_id)
     }
 
+    pub fn preview_liquidation_v3(env: Env, position_id: u64) -> PerpsLiquidationQuote {
+        bump_core_ttl(&env);
+        Self::preview_liquidation_v3_impl(&env, position_id)
+    }
+
     pub fn get_perps_position(env: Env, position_id: u64) -> Option<PerpsPositionData> {
         bump_core_ttl(&env);
         get_perps_position_data(&env, position_id)
@@ -2957,6 +2962,14 @@ impl MarginController {
     pub fn get_user_positions(env: Env, user: Address) -> Vec<u64> {
         bump_core_ttl(&env);
         read_user_positions(&env, &user)
+    }
+
+    pub fn get_position_counter(env: Env) -> u64 {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::PositionCounter)
+            .expect("position counter missing")
     }
 
     pub fn get_health_factor(env: Env, position_id: u64) -> u128 {

@@ -1,6 +1,7 @@
 use soroban_sdk::{Address, BytesN, Env, Vec};
 
 use crate::constants::*;
+use crate::events::{PositionCreated, PositionRemoved};
 use crate::storage::*;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -36,6 +37,18 @@ pub fn push_user_position(env: &Env, user: &Address, id: u64) {
         .persistent()
         .set(&DataKey::UserPositions(user.clone()), &positions);
     bump_user_positions_ttl(env, user);
+    let position: Position = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Position(id))
+        .expect("position missing");
+    PositionCreated {
+        owner: user.clone(),
+        position_id: id,
+        mode: get_position_mode_no_bump(env, id),
+        status: position.status,
+    }
+    .publish(env);
 }
 
 pub fn remove_user_position(env: &Env, user: &Address, id: u64) {
@@ -57,6 +70,12 @@ pub fn remove_user_position(env: &Env, user: &Address, id: u64) {
         .persistent()
         .set(&DataKey::UserPositions(user.clone()), &out);
     bump_user_positions_ttl(env, user);
+    PositionRemoved {
+        owner: user.clone(),
+        position_id: id,
+        removed_at: env.ledger().timestamp(),
+    }
+    .publish(env);
 }
 
 pub fn compact_user_positions(env: &Env, user: &Address) -> Vec<u64> {
@@ -512,7 +531,7 @@ pub fn set_pending_liquidation(env: &Env, position_id: u64, pending: &PendingLiq
     env.storage()
         .persistent()
         .set(&DataKey::PendingLiquidation(position_id), pending);
-    bump_position_ttl(env, position_id);
+    bump_position_record_ttl(env, position_id);
     bump_pending_liquidation_ttl(env, position_id);
 }
 
@@ -522,7 +541,7 @@ pub fn get_pending_liquidation(env: &Env, position_id: u64) -> Option<PendingLiq
         .persistent()
         .get(&DataKey::PendingLiquidation(position_id));
     if pending.is_some() {
-        bump_position_ttl(env, position_id);
+        bump_position_record_ttl(env, position_id);
         bump_pending_liquidation_ttl(env, position_id);
     }
     pending

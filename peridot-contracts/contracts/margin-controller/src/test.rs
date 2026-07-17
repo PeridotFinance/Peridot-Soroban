@@ -2,8 +2,10 @@ use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::ReceiptVault;
 use simple_peridottroller::SimplePeridottroller;
+use soroban_sdk::events::Event as _;
 use soroban_sdk::testutils::storage::Persistent as _;
 use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::Events as _;
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{
     contract, contractimpl, contracttype, Address, BytesN, Env, IntoVal, Symbol, Vec,
@@ -1821,7 +1823,26 @@ fn test_split_liquidate_position_v3_completes_across_stages() {
     peridottroller.set_price(&xlm_id, &940_000u128, &1_000_000u128);
     let liquidator = Address::generate(&env);
 
+    env.cost_estimate().budget().reset_unlimited();
     controller.begin_liquidation_v3(&liquidator, &position_id);
+    assert_last_invocation_resources_under(&env, 100, 35, 20_000_000);
+    let expected_started = LiquidationStarted {
+        position_id,
+        liquidator: liquidator.clone(),
+        owner: user.clone(),
+        debt_amount: 4_500u128,
+        takeover_after: env
+            .ledger()
+            .timestamp()
+            .saturating_add(PENDING_LIQUIDATION_TTL_SECS),
+    };
+    assert_eq!(
+        env.events()
+            .all()
+            .filter_by_contract(&controller_id)
+            .events(),
+        &[expected_started.to_xdr(&env, &controller_id)]
+    );
     let pending = controller.get_pending_liquidation(&position_id).unwrap();
     assert_eq!(pending.kind, PendingLiquidationKind::PerpsV3);
     assert_eq!(pending.stage, PendingLiquidationStage::Started);
@@ -1845,12 +1866,36 @@ fn test_split_liquidate_position_v3_completes_across_stages() {
     let position_rate =
         receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id).get_exchange_rate();
     let liquidation_min_out = position.collateral_ptokens.saturating_mul(position_rate) / SCALE_1E6;
+    let quote = controller.preview_liquidation_v3(&position_id);
+    assert_eq!(quote.collateral_underlying, 5_000u128);
+    assert_eq!(quote.debt_amount, 4_500u128);
+    assert_eq!(quote.oracle_min_out, 4_465u128);
+    assert_eq!(quote.pool_estimated_out, 5_000u128);
     MockAquariusPoolClient::new(&env, &pool).set_payout_bps(&800_000u128);
     assert!(controller
         .try_swap_liquidation_v3(&liquidator, &position_id, &liquidation_min_out)
         .is_err());
     MockAquariusPoolClient::new(&env, &pool).set_payout_bps(&1_000_000u128);
+    env.cost_estimate().budget().reset_unlimited();
     controller.swap_liquidation_v3(&liquidator, &position_id, &liquidation_min_out);
+    assert_last_invocation_resources_under(&env, 100, 35, 20_000_000);
+    let expected_swapped = LiquidationSwapped {
+        position_id,
+        liquidator: liquidator.clone(),
+        collateral_underlying: 5_000u128,
+        received_debt_asset: 5_000u128,
+        takeover_after: env
+            .ledger()
+            .timestamp()
+            .saturating_add(PENDING_LIQUIDATION_TTL_SECS),
+    };
+    assert_eq!(
+        env.events()
+            .all()
+            .filter_by_contract(&controller_id)
+            .events(),
+        &[expected_swapped.to_xdr(&env, &controller_id)]
+    );
     let pending = controller.get_pending_liquidation(&position_id).unwrap();
     assert_eq!(pending.stage, PendingLiquidationStage::CollateralConverted);
     assert!(pending.received_debt_asset > 0u128);
@@ -1862,12 +1907,99 @@ fn test_split_liquidate_position_v3_completes_across_stages() {
         0u128
     );
 
+    env.cost_estimate().budget().reset_unlimited();
     controller.finish_liquidation_v3(&liquidator, &position_id);
+    assert_last_invocation_resources_under(&env, 100, 45, 25_000_000);
+    let expected_finished = LiquidationFinished {
+        position_id,
+        liquidator: liquidator.clone(),
+        owner: user.clone(),
+        repaid: 4_500u128,
+        bad_debt: 0u128,
+        incentive: 45u128,
+    };
+    let expected_removed = PositionRemoved {
+        owner: user.clone(),
+        position_id,
+        removed_at: env.ledger().timestamp(),
+    };
+    assert_eq!(
+        env.events()
+            .all()
+            .filter_by_contract(&controller_id)
+            .events(),
+        &[
+            expected_finished.to_xdr(&env, &controller_id),
+            expected_removed.to_xdr(&env, &controller_id),
+        ]
+    );
     assert!(controller.get_pending_liquidation(&position_id).is_none());
     assert!(controller.get_position(&position_id).is_none());
     let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
     assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
     assert!(MockTokenClient::new(&env, &usdt_id).balance(&liquidator) > 0i128);
+}
+
+#[test]
+fn test_position_lifecycle_events_and_counter_support_indexer_bootstrap() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    usdt_vault.deposit(&user, &500u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &500u128);
+    let (pool, pool_id, pool_tokens) = setup_perps_pool(&env, &usdt_id, &xlm_id);
+
+    let position_id = controller.begin_open_position_v3(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &500u128,
+        &10u128,
+        &PositionSide::Long,
+        &pool_tokens,
+        &pool_id,
+        &pool,
+        &5_000u128,
+    );
+    let expected_created = PositionCreated {
+        owner: user.clone(),
+        position_id,
+        mode: PositionMode::PerpsV3,
+        status: PositionStatus::PendingOpen,
+    };
+    assert_eq!(
+        env.events()
+            .all()
+            .filter_by_contract(&controller_id)
+            .events(),
+        &[expected_created.to_xdr(&env, &controller_id)]
+    );
+    assert_eq!(controller.get_position_counter(), position_id);
+
+    controller.cancel_pending_open_v3(&user, &position_id);
+    let expected_removed = PositionRemoved {
+        owner: user,
+        position_id,
+        removed_at: env.ledger().timestamp(),
+    };
+    assert_eq!(
+        env.events()
+            .all()
+            .filter_by_contract(&controller_id)
+            .events(),
+        &[expected_removed.to_xdr(&env, &controller_id)]
+    );
 }
 
 #[test]

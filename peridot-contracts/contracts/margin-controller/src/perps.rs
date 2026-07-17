@@ -3,6 +3,7 @@ use soroban_sdk::{token, Address, BytesN, Env, IntoVal, Symbol, Val, Vec};
 
 use crate::constants::*;
 use crate::contract::MarginController;
+use crate::events::{LiquidationFinished, LiquidationStarted, LiquidationSwapped};
 use crate::helpers::*;
 use crate::storage::*;
 
@@ -786,7 +787,7 @@ impl MarginController {
         if get_pending_liquidation(env, position_id).is_some() {
             panic!("liquidation pending");
         }
-        let mut position = get_position_or_panic(env, position_id);
+        let mut position = get_position_record_or_panic(env, position_id);
         if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
             panic!("not v3 position");
         }
@@ -812,7 +813,7 @@ impl MarginController {
         env.storage()
             .persistent()
             .set(&DataKey::Position(position_id), &position);
-        bump_position_ttl(env, position_id);
+        bump_position_record_ttl(env, position_id);
         let pending = PendingLiquidation {
             kind: PendingLiquidationKind::PerpsV3,
             stage: PendingLiquidationStage::Started,
@@ -835,6 +836,14 @@ impl MarginController {
             liquidation_incentive_scaled: perps.liquidation_incentive_scaled,
         };
         set_pending_liquidation(env, position_id, &pending);
+        LiquidationStarted {
+            position_id,
+            liquidator: pending.liquidator.clone(),
+            owner: pending.owner.clone(),
+            debt_amount,
+            takeover_after: pending.repay_amount.min(u64::MAX as u128) as u64,
+        }
+        .publish(env);
     }
 
     pub(crate) fn swap_liquidation_v3_impl(
@@ -856,7 +865,7 @@ impl MarginController {
         }
         pending.liquidator = liquidator.clone();
         pending.repay_amount = now.saturating_add(PENDING_LIQUIDATION_TTL_SECS) as u128;
-        let mut position = get_position_or_panic(env, position_id);
+        let mut position = get_position_record_or_panic(env, position_id);
         if position.status != PositionStatus::Liquidated {
             panic!("not liquidating");
         }
@@ -912,10 +921,18 @@ impl MarginController {
         env.storage()
             .persistent()
             .set(&DataKey::Position(position_id), &position);
-        bump_position_ttl(env, position_id);
+        bump_position_record_ttl(env, position_id);
         pending.stage = PendingLiquidationStage::CollateralConverted;
         pending.received_debt_asset = received_debt_asset;
         set_pending_liquidation(env, position_id, &pending);
+        LiquidationSwapped {
+            position_id,
+            liquidator: pending.liquidator.clone(),
+            collateral_underlying,
+            received_debt_asset,
+            takeover_after: pending.repay_amount.min(u64::MAX as u128) as u64,
+        }
+        .publish(env);
     }
 
     pub(crate) fn finish_liquidation_v3_impl(env: &Env, liquidator: Address, position_id: u64) {
@@ -929,7 +946,7 @@ impl MarginController {
         if pending.liquidator != liquidator && env.ledger().timestamp() <= expires_at {
             panic!("not liquidator");
         }
-        let position = get_position_or_panic(env, position_id);
+        let position = get_position_record_or_panic(env, position_id);
         if position.status != PositionStatus::Liquidated {
             panic!("not liquidating");
         }
@@ -969,6 +986,15 @@ impl MarginController {
             surplus = surplus.saturating_sub(incentive);
         }
         Self::credit_margin_underlying(env, &position.owner, &vaults.debt_vault, surplus);
+        LiquidationFinished {
+            position_id,
+            liquidator: liquidator.clone(),
+            owner: position.owner.clone(),
+            repaid,
+            bad_debt: remaining_debt,
+            incentive,
+        }
+        .publish(env);
         clear_position_storage(env, position_id);
         remove_user_position(env, &position.owner, position_id);
     }
@@ -1030,6 +1056,63 @@ impl MarginController {
             return u128::MAX;
         }
         risk.equity.checked_mul(SCALE_1E6).expect("health overflow") / risk.maintenance_required
+    }
+
+    pub(crate) fn preview_liquidation_v3_impl(
+        env: &Env,
+        position_id: u64,
+    ) -> PerpsLiquidationQuote {
+        let position = get_position_record_or_panic(env, position_id);
+        if position.status != PositionStatus::Open && position.status != PositionStatus::Liquidated
+        {
+            panic!("not liquidatable state");
+        }
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let perps = get_perps_position_data_or_panic(env, position_id);
+        let vaults = get_position_vaults(env, position_id, &position);
+        let position_vault = ReceiptVaultClient::new(env, &vaults.position_vault);
+        let exchange_rate = position_vault.get_exchange_rate();
+        if exchange_rate == 0 {
+            panic!("invalid exchange rate");
+        }
+        let collateral_underlying = position
+            .collateral_ptokens
+            .checked_mul(exchange_rate)
+            .expect("valuation overflow")
+            / SCALE_1E6;
+        if collateral_underlying == 0 {
+            panic!("no collateral");
+        }
+        let debt_amount = ReceiptVaultClient::new(env, &vaults.debt_vault)
+            .get_margin_borrow_balance(&position_id);
+        let oracle_min_out = Self::oracle_min_out(
+            env,
+            &position.collateral_asset,
+            &position.debt_asset,
+            collateral_underlying,
+        );
+        let pool_estimated_out = if position.collateral_asset == position.debt_asset {
+            collateral_underlying
+        } else {
+            let (in_idx, out_idx) = Self::direct_pool_indices(
+                &perps.pool_tokens,
+                &position.collateral_asset,
+                &position.debt_asset,
+            );
+            AquariusPoolClient::new(env, &perps.pool).estimate_swap(
+                &in_idx,
+                &out_idx,
+                &collateral_underlying,
+            )
+        };
+        PerpsLiquidationQuote {
+            collateral_underlying,
+            debt_amount,
+            oracle_min_out,
+            pool_estimated_out,
+        }
     }
 
     fn validate_perps_config(config: &PerpsPairConfig) {
