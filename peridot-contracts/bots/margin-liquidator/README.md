@@ -79,6 +79,8 @@ sudo journalctl -u peridot-margin-liquidator -f
 - A standby keeper should use a different funded key; it can take over after
   the on-chain timeout.
 - Use a private authenticated RPC provider for mainnet.
+- Keep `HORIZON_URL` configured as an account-sequence fallback. Contract reads,
+  simulations, events, and submissions still use `RPC_URL`.
 - Store the secret in a server secret manager, never in Git or a Docker image.
 - Alert on `position processing failed`, `pool quote ... below oracle floor`,
   low keeper XLM, and repeated transaction timeouts.

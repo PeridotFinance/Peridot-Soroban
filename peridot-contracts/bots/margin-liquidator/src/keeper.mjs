@@ -45,7 +45,7 @@ export class MarginLiquidationKeeper {
 
   async initialize() {
     if (this.state.initialized) return;
-    const latest = await this.client.server.getLatestLedger();
+    const latest = await this.client.latestLedger();
     let counter = this.config.bootstrapMaxPositionId;
     if (counter === null) {
       try {
@@ -58,13 +58,18 @@ export class MarginLiquidationKeeper {
     }
 
     const active = new Set();
+    const failed = [];
     for (let id = 1n; id <= counter; id += 1n) {
       try {
         const position = await this.client.read("get_position", [scU64(id)]);
         if (position !== null && position !== undefined) active.add(id.toString());
       } catch (error) {
+        failed.push(id.toString());
         this.logger.warn("position bootstrap read failed", { positionId: id.toString(), error: error.message });
       }
+    }
+    if (failed.length > 0) {
+      throw new Error(`position bootstrap incomplete; failed IDs: ${failed.join(",")}`);
     }
     this.state.activePositionIds = [...active];
     this.state.lastEventLedger = this.config.eventStartLedger
@@ -80,7 +85,7 @@ export class MarginLiquidationKeeper {
   }
 
   async syncEvents() {
-    const latest = await this.client.server.getLatestLedger();
+    const latest = await this.client.latestLedger();
     const startLedger = this.state.lastEventLedger + 1;
     if (startLedger > latest.sequence) return;
     const symbol = (name) => nativeToScVal(name, { type: "symbol" }).toXDR("base64");
@@ -101,7 +106,7 @@ export class MarginLiquidationKeeper {
     let processedThrough = latest.sequence;
 
     for (;;) {
-      const response = await this.client.server.getEvents(request);
+      const response = await this.client.getEvents(request);
       active = applyLifecycleEvents(active, response.events);
       processedThrough = Math.max(processedThrough, response.latestLedger);
       if (response.events.length < EVENT_PAGE_LIMIT) break;

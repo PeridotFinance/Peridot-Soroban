@@ -49,23 +49,21 @@ test("syncEvents paginates without skipping a full RPC page", async () => {
   }));
   const calls = [];
   const client = {
-    server: {
-      async getLatestLedger() {
-        return { sequence: 105 };
-      },
-      async getEvents(request) {
-        calls.push(request);
-        if (calls.length === 1) {
-          return { events: firstPage, cursor: "page-1", latestLedger: 105 };
-        }
-        return {
-          events: [
-            { ledger: 106, topic: [symbol("position_removed"), symbol("owner"), u64(1)] },
-          ],
-          cursor: "page-2",
-          latestLedger: 106,
-        };
-      },
+    async latestLedger() {
+      return { sequence: 105 };
+    },
+    async getEvents(request) {
+      calls.push(request);
+      if (calls.length === 1) {
+        return { events: firstPage, cursor: "page-1", latestLedger: 105 };
+      }
+      return {
+        events: [
+          { ledger: 106, topic: [symbol("position_removed"), symbol("owner"), u64(1)] },
+        ],
+        cursor: "page-2",
+        latestLedger: 106,
+      };
     },
   };
   const state = { initialized: true, activePositionIds: [], lastEventLedger: 100 };
@@ -88,6 +86,34 @@ test("syncEvents paginates without skipping a full RPC page", async () => {
   assert.equal(state.activePositionIds.length, 99);
   assert.equal(state.lastEventLedger, 106);
   assert.equal(saves, 1);
+});
+
+test("initialize does not persist a partial position index", async () => {
+  const client = {
+    async latestLedger() {
+      return { sequence: 105 };
+    },
+    async read(method) {
+      assert.equal(method, "get_position");
+      throw new Error("temporary RPC failure");
+    },
+  };
+  const state = { initialized: false, activePositionIds: [], lastEventLedger: null };
+  let saves = 0;
+  const keeper = new MarginLiquidationKeeper(
+    { bootstrapMaxPositionId: 1n, eventStartLedger: null },
+    client,
+    state,
+    async () => {
+      saves += 1;
+    },
+    { info() {}, warn() {}, error() {} },
+  );
+
+  await assert.rejects(() => keeper.initialize(), /bootstrap incomplete/);
+  assert.equal(state.initialized, false);
+  assert.deepEqual(state.activePositionIds, []);
+  assert.equal(saves, 0);
 });
 
 test("keeper executes the complete split liquidation state machine", async () => {

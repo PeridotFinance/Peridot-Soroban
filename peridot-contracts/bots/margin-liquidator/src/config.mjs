@@ -35,12 +35,14 @@ export function loadConfig() {
 
   return {
     rpcUrl: process.env.RPC_URL ?? "https://soroban-testnet.stellar.org",
+    horizonUrl: process.env.HORIZON_URL ?? "https://horizon-testnet.stellar.org",
     networkPassphrase: process.env.NETWORK_PASSPHRASE ?? Networks.TESTNET,
     controllerId: process.env.MARGIN_CONTROLLER_ID ?? DEFAULT_TESTNET_CONTROLLER,
     keypair,
     publicKey,
     dryRun,
     runOnce: boolean("RUN_ONCE", false),
+    rpcTimeoutMs: integer("RPC_TIMEOUT_MS", 15_000, { min: 1_000, max: 120_000 }),
     pollIntervalMs: integer("POLL_INTERVAL_MS", 5_000, { min: 1_000 }),
     confirmationTimeoutMs: integer("CONFIRMATION_TIMEOUT_MS", 60_000, { min: 5_000 }),
     slippageBps: integer("LIQUIDATION_SLIPPAGE_BPS", 100, { min: 0, max: 5_000 }),

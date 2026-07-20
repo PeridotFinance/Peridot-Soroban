@@ -1,6 +1,7 @@
 import {
   BASE_FEE,
   Contract,
+  Horizon,
   TransactionBuilder,
   nativeToScVal,
   rpc,
@@ -19,14 +20,56 @@ function stringify(value) {
 
 export class StellarClient {
   constructor(config, logger = console) {
-    this.server = new rpc.Server(config.rpcUrl, { allowHttp: config.rpcUrl.startsWith("http://") });
+    this.server = new rpc.Server(config.rpcUrl, {
+      allowHttp: config.rpcUrl.startsWith("http://"),
+      timeout: config.rpcTimeoutMs,
+    });
+    this.horizon = new Horizon.Server(config.horizonUrl, {
+      allowHttp: config.horizonUrl.startsWith("http://"),
+      appName: "peridot-margin-liquidator",
+    });
     this.contract = new Contract(config.controllerId);
     this.config = config;
     this.logger = logger;
   }
 
+  async retryRead(label, operation) {
+    let delayMs = 500;
+    for (let attempt = 1; attempt <= 4; attempt += 1) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === 4) throw error;
+        this.logger.warn(`${label} failed; retrying`, { attempt, error: error.message });
+        await sleep(delayMs);
+        delayMs *= 2;
+      }
+    }
+    throw new Error(`${label} retry loop exhausted`);
+  }
+
+  latestLedger() {
+    return this.retryRead("getLatestLedger", () => this.server.getLatestLedger());
+  }
+
+  getEvents(request) {
+    return this.retryRead("getEvents", () => this.server.getEvents(request));
+  }
+
   async buildTransaction(method, args) {
-    const account = await this.server.getAccount(this.config.publicKey);
+    let account;
+    try {
+      account = await this.retryRead("getAccount", () =>
+        this.server.getAccount(this.config.publicKey),
+      );
+    } catch (error) {
+      this.logger.warn("RPC account read failed; using Horizon fallback", {
+        error: error.message,
+      });
+      account = await this.retryRead("Horizon loadAccount", () =>
+        this.horizon.loadAccount(this.config.publicKey),
+      );
+    }
     return new TransactionBuilder(account, {
       fee: BASE_FEE,
       networkPassphrase: this.config.networkPassphrase,
@@ -38,7 +81,9 @@ export class StellarClient {
 
   async read(method, args = []) {
     const transaction = await this.buildTransaction(method, args);
-    const simulation = await this.server.simulateTransaction(transaction);
+    const simulation = await this.retryRead(`${method} simulation`, () =>
+      this.server.simulateTransaction(transaction),
+    );
     if (rpc.Api.isSimulationError(simulation)) {
       throw new Error(`${method} simulation failed: ${simulation.error}`);
     }
@@ -60,7 +105,9 @@ export class StellarClient {
       return { dryRun: true, method };
     }
 
-    const prepared = await this.server.prepareTransaction(transaction);
+    const prepared = await this.retryRead(`${method} preparation`, () =>
+      this.server.prepareTransaction(transaction),
+    );
     prepared.sign(this.config.keypair);
     const submitted = await this.server.sendTransaction(prepared);
     if (submitted.status === "ERROR" || submitted.status === "TRY_AGAIN_LATER") {
