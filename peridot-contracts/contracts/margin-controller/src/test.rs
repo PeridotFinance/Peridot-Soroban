@@ -1217,6 +1217,58 @@ fn setup() -> (
     )
 }
 
+#[test]
+fn test_admin_transfer_requires_pending_admin_acceptance() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let admin = controller.get_admin();
+    let new_admin = Address::generate(&env);
+
+    controller.set_admin(&admin, &new_admin);
+    assert_eq!(controller.get_admin(), admin);
+
+    controller.accept_admin();
+    assert_eq!(controller.get_admin(), new_admin.clone());
+    controller.set_params(&new_admin, &4u128);
+}
+
+#[test]
+#[should_panic(expected = "not admin")]
+fn test_previous_admin_loses_access_after_transfer() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let admin = controller.get_admin();
+    let new_admin = Address::generate(&env);
+
+    controller.set_admin(&admin, &new_admin);
+    controller.accept_admin();
+    controller.set_params(&admin, &4u128);
+}
+
+#[test]
+#[should_panic(expected = "not admin")]
+fn test_admin_transfer_rejects_non_admin_proposer() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let non_admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+
+    controller.set_admin(&non_admin, &new_admin);
+}
+
+#[test]
+#[should_panic]
+fn test_accept_admin_requires_pending_admin_auth() {
+    let (env, controller_id, _, _, _, _, _, _) = setup();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let admin = controller.get_admin();
+    let new_admin = Address::generate(&env);
+
+    controller.set_admin(&admin, &new_admin);
+    env.set_auths(&[]);
+    controller.accept_admin();
+}
+
 #[allow(dead_code)]
 fn setup_without_pre_enter_market() -> (
     Env,

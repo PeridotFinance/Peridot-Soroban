@@ -2,6 +2,24 @@ use soroban_sdk::{contractevent, Address};
 
 use crate::storage::{PositionMode, PositionStatus};
 
+#[contractevent(topics = ["admin_transfer_proposed"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdminTransferProposed {
+    #[topic]
+    pub current_admin: Address,
+    #[topic]
+    pub pending_admin: Address,
+}
+
+#[contractevent(topics = ["admin_transferred"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdminTransferred {
+    #[topic]
+    pub previous_admin: Address,
+    #[topic]
+    pub new_admin: Address,
+}
+
 #[contractevent(topics = ["position_created"])]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PositionCreated {

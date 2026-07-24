@@ -6,6 +6,7 @@ use soroban_sdk::{
 };
 
 use crate::constants::*;
+use crate::events::{AdminTransferProposed, AdminTransferred};
 use crate::helpers::*;
 use crate::storage::*;
 
@@ -63,6 +64,55 @@ impl MarginController {
             .set(&DataKey::PositionCounter, &0u64);
         env.storage().persistent().set(&DataKey::Initialized, &true);
         bump_core_ttl(&env);
+    }
+
+    pub fn get_admin(env: Env) -> Address {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    }
+
+    pub fn set_admin(env: Env, admin: Address, new_admin: Address) {
+        bump_core_ttl(&env);
+        require_admin(&env, &admin);
+        if admin == new_admin {
+            panic!("admin unchanged");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingAdmin, &new_admin);
+        bump_pending_admin_ttl(&env);
+        AdminTransferProposed {
+            current_admin: admin,
+            pending_admin: new_admin,
+        }
+        .publish(&env);
+    }
+
+    pub fn accept_admin(env: Env) {
+        bump_core_ttl(&env);
+        bump_pending_admin_ttl(&env);
+        let new_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingAdmin)
+            .expect("pending admin not set");
+        new_admin.require_auth();
+        let previous_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.storage().persistent().remove(&DataKey::PendingAdmin);
+        bump_core_ttl(&env);
+        AdminTransferred {
+            previous_admin,
+            new_admin,
+        }
+        .publish(&env);
     }
 
     pub fn set_market(env: Env, admin: Address, asset: Address, vault: Address) {

@@ -152,6 +152,60 @@ fn setup() -> (Env, Address, Address, Address, Address) {
 }
 
 #[test]
+fn test_admin_transfer_requires_pending_admin_acceptance() {
+    let (env, adapter_id, _, _, _) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let admin = default_admin(&env);
+    let new_admin = Address::generate(&env);
+    let new_router = Address::generate(&env);
+
+    adapter.set_admin(&admin, &new_admin);
+    assert_eq!(adapter.get_admin(), admin);
+
+    adapter.accept_admin();
+    assert_eq!(adapter.get_admin(), new_admin.clone());
+    adapter.set_router(&new_admin, &new_router);
+}
+
+#[test]
+#[should_panic(expected = "not admin")]
+fn test_admin_transfer_rejects_non_admin_proposer() {
+    let (env, adapter_id, _, _, _) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let non_admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+
+    adapter.set_admin(&non_admin, &new_admin);
+}
+
+#[test]
+#[should_panic(expected = "not admin")]
+fn test_previous_admin_loses_access_after_transfer() {
+    let (env, adapter_id, _, _, _) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let admin = default_admin(&env);
+    let new_admin = Address::generate(&env);
+    let new_router = Address::generate(&env);
+
+    adapter.set_admin(&admin, &new_admin);
+    adapter.accept_admin();
+    adapter.set_router(&admin, &new_router);
+}
+
+#[test]
+#[should_panic]
+fn test_accept_admin_requires_pending_admin_auth() {
+    let (env, adapter_id, _, _, _) = setup();
+    let adapter = SwapAdapterClient::new(&env, &adapter_id);
+    let admin = default_admin(&env);
+    let new_admin = Address::generate(&env);
+
+    adapter.set_admin(&admin, &new_admin);
+    env.set_auths(&[]);
+    adapter.accept_admin();
+}
+
+#[test]
 fn test_initialize() {
     let (env, adapter_id, token_a_id, token_b_id, user) = setup();
     let adapter = SwapAdapterClient::new(&env, &adapter_id);

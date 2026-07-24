@@ -1,5 +1,7 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, String, Vec};
+use soroban_sdk::{
+    contract, contractevent, contractimpl, contracttype, Address, BytesN, Env, String, Vec,
+};
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 pub const MAX_DEADLINE_SECONDS: u64 = 86_400; // 24h
@@ -58,6 +60,7 @@ pub trait AquariusPool {
 #[contracttype]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     Router,
     AllowedPool(Address),
     Initialized,
@@ -70,6 +73,20 @@ pub enum DataKey {
 
 #[contract]
 pub struct SwapAdapter;
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdminTransferProposed {
+    pub current_admin: Address,
+    pub pending_admin: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdminTransferred {
+    pub previous_admin: Address,
+    pub new_admin: Address,
+}
 
 #[contractimpl]
 impl SwapAdapter {
@@ -95,6 +112,54 @@ impl SwapAdapter {
         env.storage().persistent().set(&DataKey::Router, &router);
         env.storage().instance().set(&DataKey::Initialized, &true);
         bump_critical_ttl(&env);
+    }
+
+    pub fn get_admin(env: Env) -> Address {
+        bump_critical_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    }
+
+    pub fn set_admin(env: Env, admin: Address, new_admin: Address) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        if admin == new_admin {
+            panic!("admin unchanged");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingAdmin, &new_admin);
+        bump_pending_admin_ttl(&env);
+        AdminTransferProposed {
+            current_admin: admin,
+            pending_admin: new_admin,
+        }
+        .publish(&env);
+    }
+
+    pub fn accept_admin(env: Env) {
+        bump_critical_ttl(&env);
+        bump_pending_admin_ttl(&env);
+        let new_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingAdmin)
+            .expect("pending admin not set");
+        new_admin.require_auth();
+        let previous_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.storage().persistent().remove(&DataKey::PendingAdmin);
+        AdminTransferred {
+            previous_admin,
+            new_admin,
+        }
+        .publish(&env);
     }
 
     pub fn set_router(env: Env, admin: Address, router: Address) {
@@ -434,6 +499,13 @@ fn bump_pending_upgrade_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::PendingUpgradeEta) {
         persistent.extend_ttl(&DataKey::PendingUpgradeEta, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_pending_admin_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingAdmin) {
+        persistent.extend_ttl(&DataKey::PendingAdmin, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

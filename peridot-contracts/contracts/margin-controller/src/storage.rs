@@ -91,6 +91,7 @@ pub trait SwapAdapterContract {
 #[contracttype]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     Peridottroller,
     SwapAdapter,
     MaxLeverage,
