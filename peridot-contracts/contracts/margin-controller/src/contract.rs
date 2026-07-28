@@ -1828,6 +1828,22 @@ impl MarginController {
         remove_user_position(&env, &user, position_id);
     }
 
+    /// Allocate free margin pTokens in the position asset to an open V3 position.
+    ///
+    /// Deposit and move the position asset into margin custody first with
+    /// `deposit_collateral` and `transfer_spot_to_margin`. This accounting-only
+    /// step avoids an oracle read, swap, or token transfer.
+    pub fn add_position_collateral_v3(
+        env: Env,
+        user: Address,
+        position_id: u64,
+        position_ptokens: u128,
+    ) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        Self::add_position_collateral_v3_impl(&env, user, position_id, position_ptokens);
+    }
+
     pub fn repay_margin_position_v3(env: Env, user: Address, position_id: u64, amount: u128) {
         bump_core_ttl(&env);
         user.require_auth();

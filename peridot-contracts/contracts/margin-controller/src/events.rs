@@ -41,6 +41,17 @@ pub struct PositionRemoved {
     pub removed_at: u64,
 }
 
+#[contractevent(topics = ["position_collateral_added"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PositionCollateralAdded {
+    #[topic]
+    pub owner: Address,
+    #[topic]
+    pub position_id: u64,
+    pub ptoken_amount: u128,
+    pub collateral_ptokens: u128,
+}
+
 #[contractevent(topics = ["liquidation_started"])]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LiquidationStarted {

@@ -1760,6 +1760,219 @@ fn test_repay_position_v3_reduces_debt_and_improves_health() {
 }
 
 #[test]
+fn test_add_position_collateral_v3_allocates_free_margin_and_improves_health() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
+    MockTokenClient::new(&env, &xlm_id).mint(&user, &200i128);
+    xlm_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &xlm_id, &200u128);
+
+    let health_before = controller.get_health_factor(&position_id);
+    let controller_ptokens_before = xlm_vault.get_ptoken_balance(&controller_id);
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&user, &xlm_id),
+        200u128
+    );
+
+    env.as_contract(&controller_id, || {
+        let key = DataKey::UserPositions(user.clone());
+        let mut positions: Vec<u64> = env.storage().persistent().get(&key).unwrap();
+        for offset in 1..MAX_USER_POSITIONS {
+            positions.push_back(position_id.saturating_add(offset as u64));
+        }
+        env.storage().persistent().set(&key, &positions);
+    });
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.add_position_collateral_v3(&user, &position_id, &75u128);
+    assert_budget_under(&env, 4_000_000, 800_000);
+    assert_last_invocation_resources_under(&env, 50, 20, 10_000_000);
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.add_position_collateral_v3(&user, &position_id, &125u128);
+    assert_budget_under(&env, 4_000_000, 800_000);
+    assert_last_invocation_resources_under(&env, 50, 20, 10_000_000);
+    let expected_event = PositionCollateralAdded {
+        owner: user.clone(),
+        position_id,
+        ptoken_amount: 125u128,
+        collateral_ptokens: 5_200u128,
+    };
+    assert_eq!(
+        env.events()
+            .all()
+            .filter_by_contract(&controller_id)
+            .events(),
+        &[expected_event.to_xdr(&env, &controller_id)]
+    );
+
+    let position = controller.get_position(&position_id).unwrap();
+    assert_eq!(position.collateral_ptokens, 5_200u128);
+    assert_eq!(controller.get_margin_balance_ptokens(&user, &xlm_id), 0u128);
+    assert_eq!(
+        xlm_vault.get_ptoken_balance(&controller_id),
+        controller_ptokens_before
+    );
+    assert!(controller.get_health_factor(&position_id) > health_before);
+}
+
+#[test]
+fn test_add_position_collateral_v3_rejects_invalid_requests() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    assert!(controller
+        .try_add_position_collateral_v3(&user, &position_id, &0u128)
+        .is_err());
+    assert!(controller
+        .try_add_position_collateral_v3(&user, &position_id, &1u128)
+        .is_err());
+    assert!(controller
+        .try_add_position_collateral_v3(&Address::generate(&env), &position_id, &1u128)
+        .is_err());
+
+    let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
+    MockTokenClient::new(&env, &xlm_id).mint(&user, &100i128);
+    xlm_vault.deposit(&user, &100u128);
+    controller.transfer_spot_to_margin(&user, &xlm_id, &100u128);
+    controller.begin_close_position_v3(&user, &position_id);
+    assert!(controller
+        .try_add_position_collateral_v3(&user, &position_id, &100u128)
+        .is_err());
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&user, &xlm_id),
+        100u128
+    );
+    assert_eq!(
+        controller
+            .get_position(&position_id)
+            .unwrap()
+            .collateral_ptokens,
+        5_000u128
+    );
+}
+
+#[test]
+fn test_added_position_collateral_is_preserved_by_close_recovery() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
+    MockTokenClient::new(&env, &xlm_id).mint(&user, &100i128);
+    xlm_vault.deposit(&user, &100u128);
+    controller.transfer_spot_to_margin(&user, &xlm_id, &100u128);
+    controller.add_position_collateral_v3(&user, &position_id, &100u128);
+
+    controller.begin_close_position_v3(&user, &position_id);
+    controller.withdraw_close_position_v3(&user, &position_id);
+    assert_eq!(
+        controller
+            .get_pending_perps_close(&position_id)
+            .unwrap()
+            .collateral_underlying,
+        5_100u128
+    );
+
+    controller.cancel_close_position_v3(&user, &position_id);
+    let restored = controller.get_position(&position_id).unwrap();
+    assert_eq!(restored.status, PositionStatus::Open);
+    assert_eq!(restored.collateral_ptokens, 5_100u128);
+}
+
+#[test]
+fn test_added_position_collateral_is_included_in_liquidation_quote() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
+    MockTokenClient::new(&env, &xlm_id).mint(&user, &100i128);
+    xlm_vault.deposit(&user, &100u128);
+    controller.transfer_spot_to_margin(&user, &xlm_id, &100u128);
+    controller.add_position_collateral_v3(&user, &position_id, &100u128);
+
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &900_000u128,
+        &1_000_000u128,
+    );
+    controller.begin_liquidation_v3(&Address::generate(&env), &position_id);
+    let quote = controller.preview_liquidation_v3(&position_id);
+    assert_eq!(quote.collateral_underlying, 5_100u128);
+    assert_eq!(quote.debt_amount, 4_500u128);
+}
+
+#[test]
 fn test_open_position_v3_short_borrows_base_and_custodies_quote_collateral() {
     let (
         env,

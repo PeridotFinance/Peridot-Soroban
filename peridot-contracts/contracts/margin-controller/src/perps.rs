@@ -3,7 +3,9 @@ use soroban_sdk::{token, Address, BytesN, Env, IntoVal, Symbol, Val, Vec};
 
 use crate::constants::*;
 use crate::contract::MarginController;
-use crate::events::{LiquidationFinished, LiquidationStarted, LiquidationSwapped};
+use crate::events::{
+    LiquidationFinished, LiquidationStarted, LiquidationSwapped, PositionCollateralAdded,
+};
 use crate::helpers::*;
 use crate::storage::*;
 
@@ -459,6 +461,62 @@ impl MarginController {
             &user,
             &amount,
         );
+    }
+
+    pub(crate) fn add_position_collateral_v3_impl(
+        env: &Env,
+        user: Address,
+        position_id: u64,
+        position_ptokens: u128,
+    ) {
+        if position_ptokens == 0 {
+            panic!("bad ptokens");
+        }
+        let mut position = get_position_or_panic(env, position_id);
+        if position.owner != user {
+            panic!("not owner");
+        }
+        if position.status != PositionStatus::Open {
+            panic!("not open");
+        }
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        let _ = get_perps_position_data_or_panic(env, position_id);
+        if get_pending_perps_close(env, position_id).is_some() {
+            panic!("close pending");
+        }
+
+        let vaults = get_position_vaults(env, position_id, &position);
+        accrue_user_fee(env, &user, &vaults.position_vault);
+        let free_margin = get_margin_balance_ptokens(env, &user, &vaults.position_vault);
+        if free_margin < position_ptokens {
+            panic!("insufficient margin balance");
+        }
+        let collateral_ptokens = position
+            .collateral_ptokens
+            .checked_add(position_ptokens)
+            .expect("position collateral overflow");
+
+        set_margin_balance_ptokens(
+            env,
+            &user,
+            &vaults.position_vault,
+            free_margin - position_ptokens,
+        );
+        update_total_margin_ptokens(env, &vaults.position_vault, position_ptokens, false);
+        position.collateral_ptokens = collateral_ptokens;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Position(position_id), &position);
+        bump_position_ttl(env, position_id);
+        PositionCollateralAdded {
+            owner: user,
+            position_id,
+            ptoken_amount: position_ptokens,
+            collateral_ptokens,
+        }
+        .publish(env);
     }
 
     pub(crate) fn close_position_v3_impl(
