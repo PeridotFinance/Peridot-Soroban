@@ -724,7 +724,16 @@ impl MarginController {
         if debt_amount == 0 {
             panic!("zero debt");
         }
-        if amount_with_slippage < debt_amount {
+        let debt_buffer = Self::ceil_div(
+            debt_amount
+                .checked_mul(CLOSE_DEBT_BUFFER_BPS)
+                .expect("close debt buffer overflow"),
+            BPS_SCALE,
+        );
+        let buffered_debt = debt_amount
+            .checked_add(debt_buffer)
+            .expect("close debt buffer overflow");
+        if amount_with_slippage < buffered_debt {
             panic!("debt floor too low");
         }
         let oracle_min = Self::oracle_min_out(
@@ -749,7 +758,7 @@ impl MarginController {
                 amount_with_slippage,
             )
         };
-        if received_debt_asset < debt_amount {
+        if received_debt_asset < buffered_debt {
             panic!("debt remains");
         }
 
@@ -790,12 +799,23 @@ impl MarginController {
             panic!("debt remains");
         }
         let surplus = pending.received_debt_asset.saturating_sub(repay_amount);
-        Self::credit_margin_underlying(env, &position.owner, &vaults.debt_vault, surplus);
+        if position.side == PositionSide::Short {
+            Self::transfer_controller_underlying(
+                env,
+                &position.debt_asset,
+                &position.owner,
+                surplus,
+            );
+        } else {
+            Self::credit_margin_underlying(env, &position.owner, &vaults.debt_vault, surplus);
+        }
+        // Keep the split close below the ledger-footprint ceiling by returning
+        // unswapped Short collateral directly instead of re-depositing it.
         let collateral_remainder = get_pending_perps_close_remainder(env, position_id);
-        Self::credit_margin_underlying(
+        Self::transfer_controller_underlying(
             env,
+            &position.collateral_asset,
             &position.owner,
-            &vaults.position_vault,
             collateral_remainder,
         );
         clear_pending_perps_close(env, position_id);

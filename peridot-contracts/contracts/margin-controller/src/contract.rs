@@ -3557,7 +3557,7 @@ impl MarginController {
             / denominator
     }
 
-    fn ceil_div(numerator: u128, denominator: u128) -> u128 {
+    pub(crate) fn ceil_div(numerator: u128, denominator: u128) -> u128 {
         if denominator == 0 {
             panic!("division by zero");
         }

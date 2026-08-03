@@ -2058,7 +2058,7 @@ fn test_open_position_v3_short_borrows_base_and_custodies_quote_collateral() {
 }
 
 #[test]
-fn test_split_short_close_preserves_unspent_quote_margin() {
+fn test_split_short_close_returns_unspent_quote_to_wallet() {
     let (
         env,
         controller_id,
@@ -2093,12 +2093,12 @@ fn test_split_short_close_preserves_unspent_quote_margin() {
     );
 
     env.cost_estimate().budget().reset_unlimited();
-    controller.swap_close_short_position_v3(&user, &position_id, &5_000u128, &5_000u128);
+    controller.swap_close_short_position_v3(&user, &position_id, &5_005u128, &5_005u128);
     assert_budget_under(&env, 10_000_000, 2_000_000);
     assert_last_invocation_resources_under(&env, 98, 35, 20_000_000);
     assert_eq!(
         MockAquariusPoolClient::new(&env, &pool).get_last_swap_amount_in(),
-        5_000u128
+        5_005u128
     );
     let (remainder, remainder_ttl) = env.as_contract(&controller_id, || {
         let key = DataKey::PendingPerpsCloseRemainder(position_id);
@@ -2107,9 +2107,11 @@ fn test_split_short_close_preserves_unspent_quote_margin() {
             env.storage().persistent().get_ttl(&key),
         )
     });
-    assert_eq!(remainder, 500u128);
+    assert_eq!(remainder, 495u128);
     assert!(remainder_ttl > TTL_THRESHOLD);
 
+    let usdt_before_finish = MockTokenClient::new(&env, &usdt_id).balance(&user);
+    let xlm_before_finish = MockTokenClient::new(&env, &xlm_id).balance(&user);
     env.cost_estimate().budget().reset_unlimited();
     controller.finish_close_position_v3(&position_id);
     assert_budget_under(&env, 15_000_000, 3_000_000);
@@ -2119,15 +2121,73 @@ fn test_split_short_close_preserves_unspent_quote_margin() {
     assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
     assert_eq!(
         controller.get_margin_balance_ptokens(&user, &usdt_id),
-        500u128
+        0u128
     );
     assert_eq!(controller.get_margin_balance_ptokens(&user, &xlm_id), 0u128);
+    assert_eq!(
+        MockTokenClient::new(&env, &usdt_id).balance(&user),
+        usdt_before_finish + 495i128
+    );
+    assert_eq!(
+        MockTokenClient::new(&env, &xlm_id).balance(&user),
+        xlm_before_finish + 5i128
+    );
     assert!(controller.get_position(&position_id).is_none());
     assert!(env.as_contract(&controller_id, || env
         .storage()
         .persistent()
         .get::<_, u128>(&DataKey::PendingPerpsCloseRemainder(position_id))
         .is_none()));
+}
+
+#[test]
+fn test_split_short_close_buffer_covers_delayed_max_rate_interest() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_short_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
+    xlm_vault.set_borrow_rate(&10_000_000u128);
+
+    controller.begin_close_position_v3(&user, &position_id);
+    controller.withdraw_close_position_v3(&user, &position_id);
+    controller.swap_close_short_position_v3(&user, &position_id, &5_005u128, &5_005u128);
+
+    let usdt_before_finish = MockTokenClient::new(&env, &usdt_id).balance(&user);
+    let xlm_before_finish = MockTokenClient::new(&env, &xlm_id).balance(&user);
+    env.ledger()
+        .with_mut(|ledger| ledger.timestamp = ledger.timestamp.saturating_add(30 * 60));
+    controller.finish_close_position_v3(&position_id);
+
+    assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
+    assert!(controller.get_position(&position_id).is_none());
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&user, &usdt_id),
+        0u128
+    );
+    assert_eq!(
+        MockTokenClient::new(&env, &usdt_id).balance(&user),
+        usdt_before_finish + 495i128
+    );
+    assert!(MockTokenClient::new(&env, &xlm_id).balance(&user) > xlm_before_finish);
 }
 
 #[test]
@@ -2167,15 +2227,15 @@ fn test_short_close_rejects_full_swap_and_unsafe_partial_quotes() {
         .try_swap_close_short_position_v3(&user, &position_id, &5_501u128, &5_000u128)
         .is_err());
     assert!(controller
-        .try_swap_close_short_position_v3(&user, &position_id, &5_000u128, &4_999u128)
+        .try_swap_close_short_position_v3(&user, &position_id, &5_000u128, &5_000u128)
         .is_err());
 
     MockAquariusPoolClient::new(&env, &pool).set_payout_bps(&800_000u128);
     assert!(controller
-        .try_swap_close_short_position_v3(&user, &position_id, &5_000u128, &5_000u128)
+        .try_swap_close_short_position_v3(&user, &position_id, &5_005u128, &5_005u128)
         .is_err());
     MockAquariusPoolClient::new(&env, &pool).set_payout_bps(&1_000_000u128);
-    controller.swap_close_short_position_v3(&user, &position_id, &5_000u128, &5_000u128);
+    controller.swap_close_short_position_v3(&user, &position_id, &5_005u128, &5_005u128);
     controller.finish_close_position_v3(&position_id);
     assert!(controller.get_position(&position_id).is_none());
 }

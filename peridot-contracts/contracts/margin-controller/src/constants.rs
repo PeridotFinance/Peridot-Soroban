@@ -22,3 +22,6 @@ pub const PENDING_OPEN_TTL_SECS: u64 = 30 * 60;
 pub const PENDING_LIQUIDATION_TTL_SECS: u64 = 5 * 60;
 pub const PENDING_CLOSE_TTL_SECS: u64 = 5 * 60;
 pub const MAX_PENDING_CLOSE_PREPARE_LEDGERS: u32 = 2;
+// Covers more than 30 minutes of accrual at ReceiptVault's 1000% yearly-rate cap.
+// Any unused Short-close output is returned to the user's debt-asset wallet.
+pub const CLOSE_DEBT_BUFFER_BPS: u128 = 10u128; // 0.10%
