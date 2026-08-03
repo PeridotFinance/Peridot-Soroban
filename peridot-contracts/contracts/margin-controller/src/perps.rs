@@ -542,6 +542,9 @@ impl MarginController {
             panic!("not v3 position");
         }
         let perps = get_perps_position_data_or_panic(env, position_id);
+        if perps.side == PositionSide::Short {
+            panic!("use split short close");
+        }
         Self::close_perps_position(
             env,
             &user,
@@ -647,6 +650,38 @@ impl MarginController {
         position_id: u64,
         amount_with_slippage: u128,
     ) {
+        Self::swap_close_position_v3_with_input_impl(
+            env,
+            user,
+            position_id,
+            None,
+            amount_with_slippage,
+        );
+    }
+
+    pub(crate) fn swap_close_short_position_v3_impl(
+        env: &Env,
+        user: Address,
+        position_id: u64,
+        swap_amount_in: u128,
+        min_debt_out: u128,
+    ) {
+        Self::swap_close_position_v3_with_input_impl(
+            env,
+            user,
+            position_id,
+            Some(swap_amount_in),
+            min_debt_out,
+        );
+    }
+
+    fn swap_close_position_v3_with_input_impl(
+        env: &Env,
+        user: Address,
+        position_id: u64,
+        short_swap_amount_in: Option<u128>,
+        amount_with_slippage: u128,
+    ) {
         if amount_with_slippage == 0 {
             panic!("bad slippage");
         }
@@ -671,6 +706,17 @@ impl MarginController {
             panic!("pending close expired");
         }
         let perps = get_perps_position_data_or_panic(env, position_id);
+        let swap_amount_in = match (perps.side.clone(), short_swap_amount_in) {
+            (PositionSide::Long, None) => pending.collateral_underlying,
+            (PositionSide::Long, Some(_)) => panic!("not short position"),
+            (PositionSide::Short, None) => panic!("use short close"),
+            (PositionSide::Short, Some(amount)) => {
+                if amount == 0 || amount > pending.collateral_underlying {
+                    panic!("bad swap amount");
+                }
+                amount
+            }
+        };
         let vaults = get_position_vaults(env, position_id, &position);
         let debt_vault_client = ReceiptVaultClient::new(env, &vaults.debt_vault);
         debt_vault_client.update_interest();
@@ -678,17 +724,20 @@ impl MarginController {
         if debt_amount == 0 {
             panic!("zero debt");
         }
+        if amount_with_slippage < debt_amount {
+            panic!("debt floor too low");
+        }
         let oracle_min = Self::oracle_min_out(
             env,
             &position.collateral_asset,
             &position.debt_asset,
-            pending.collateral_underlying,
+            swap_amount_in,
         );
         if amount_with_slippage < oracle_min {
             panic!("slippage too high");
         }
         let received_debt_asset = if position.collateral_asset == position.debt_asset {
-            pending.collateral_underlying
+            swap_amount_in
         } else {
             Self::direct_pool_swap_as_controller(
                 env,
@@ -696,7 +745,7 @@ impl MarginController {
                 &perps.pool,
                 &position.collateral_asset,
                 &position.debt_asset,
-                pending.collateral_underlying,
+                swap_amount_in,
                 amount_with_slippage,
             )
         };
@@ -706,6 +755,11 @@ impl MarginController {
 
         pending.debt_amount = debt_amount;
         pending.received_debt_asset = received_debt_asset;
+        set_pending_perps_close_remainder(
+            env,
+            position_id,
+            pending.collateral_underlying.saturating_sub(swap_amount_in),
+        );
         set_pending_perps_close(env, position_id, &pending);
     }
 
@@ -737,6 +791,13 @@ impl MarginController {
         }
         let surplus = pending.received_debt_asset.saturating_sub(repay_amount);
         Self::credit_margin_underlying(env, &position.owner, &vaults.debt_vault, surplus);
+        let collateral_remainder = get_pending_perps_close_remainder(env, position_id);
+        Self::credit_margin_underlying(
+            env,
+            &position.owner,
+            &vaults.position_vault,
+            collateral_remainder,
+        );
         clear_pending_perps_close(env, position_id);
         clear_position_storage(env, position_id);
         remove_user_position(env, &position.owner, position_id);

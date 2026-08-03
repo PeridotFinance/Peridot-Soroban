@@ -468,6 +468,28 @@ pub fn set_pending_perps_close(env: &Env, position_id: u64, pending: &PendingPer
     bump_pending_perps_close_ttl(env, position_id);
 }
 
+pub fn set_pending_perps_close_remainder(env: &Env, position_id: u64, amount: u128) {
+    let key = DataKey::PendingPerpsCloseRemainder(position_id);
+    if amount == 0 {
+        env.storage().persistent().remove(&key);
+        return;
+    }
+    env.storage().persistent().set(&key, &amount);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+pub fn get_pending_perps_close_remainder(env: &Env, position_id: u64) -> u128 {
+    let key = DataKey::PendingPerpsCloseRemainder(position_id);
+    let persistent = env.storage().persistent();
+    let amount = persistent.get(&key).unwrap_or(0u128);
+    if amount > 0 {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    amount
+}
+
 pub fn get_pending_perps_close(env: &Env, position_id: u64) -> Option<PendingPerpsClose> {
     let pending = env
         .storage()
@@ -488,13 +510,20 @@ pub fn clear_pending_perps_close(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
         .remove(&DataKey::PendingPerpsClose(position_id));
+    env.storage()
+        .persistent()
+        .remove(&DataKey::PendingPerpsCloseRemainder(position_id));
 }
 
 pub fn bump_pending_perps_close_ttl(env: &Env, position_id: u64) {
-    let key = DataKey::PendingPerpsClose(position_id);
     let persistent = env.storage().persistent();
-    if persistent.has(&key) {
-        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    let pending_key = DataKey::PendingPerpsClose(position_id);
+    if persistent.has(&pending_key) {
+        persistent.extend_ttl(&pending_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let remainder_key = DataKey::PendingPerpsCloseRemainder(position_id);
+    if persistent.has(&remainder_key) {
+        persistent.extend_ttl(&remainder_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

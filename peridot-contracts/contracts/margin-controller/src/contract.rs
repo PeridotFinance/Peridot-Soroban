@@ -1879,13 +1879,39 @@ impl MarginController {
         position_id: u64,
         amount_with_slippage: u128,
     ) {
-        bump_core_ttl(&env);
+        // `begin` and `withdraw` already renewed core state. Avoid loading the
+        // full core TTL set again inside this footprint-sensitive close stage.
         user.require_auth();
         Self::swap_close_position_v3_impl(&env, user, position_id, amount_with_slippage);
     }
 
+    /// Close a Short without converting the user's entire quote-asset margin.
+    ///
+    /// `swap_amount_in` is the pool-quoted amount of position collateral needed
+    /// to buy back the debt asset. `min_debt_out` must cover the current debt;
+    /// any unspent position collateral is returned to free margin on settlement.
+    pub fn swap_close_short_position_v3(
+        env: Env,
+        user: Address,
+        position_id: u64,
+        swap_amount_in: u128,
+        min_debt_out: u128,
+    ) {
+        // This can only follow a live pending close created by the core-bumping
+        // begin/withdraw stages, so another global TTL walk is redundant.
+        user.require_auth();
+        Self::swap_close_short_position_v3_impl(
+            &env,
+            user,
+            position_id,
+            swap_amount_in,
+            min_debt_out,
+        );
+    }
+
     pub fn finish_close_position_v3(env: Env, position_id: u64) {
-        bump_core_ttl(&env);
+        // The short-lived pending close anchors this staged operation. Skipping
+        // the global TTL walk keeps repayment plus margin credit under 100 keys.
         Self::finish_close_position_v3_impl(&env, position_id);
     }
 

@@ -132,6 +132,8 @@ pub enum DataKey {
     PerpsPositionData(u64),
     PendingLiquidation(u64),
     PendingPerpsClose(u64),
+    // Storage-key variants are append-only. Reordering changes on-chain key encoding.
+    PendingPerpsCloseRemainder(u64),
 }
 
 #[contracttype]
