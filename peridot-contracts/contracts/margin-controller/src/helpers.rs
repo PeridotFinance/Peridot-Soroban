@@ -28,9 +28,15 @@ pub fn next_position_id(env: &Env) -> u64 {
 }
 
 pub fn push_user_position(env: &Env, user: &Address, id: u64) {
-    let mut positions = compact_user_positions(env, user);
+    // Position removal keeps this list current during normal operation. Avoid
+    // loading and TTL-bumping every sibling position on each new open.
+    let mut positions: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::UserPositions(user.clone()))
+        .unwrap_or(Vec::new(env));
     if positions.len() >= MAX_USER_POSITIONS {
-        panic!("too many positions");
+        panic!("compact positions first");
     }
     positions.push_back(id);
     env.storage()
@@ -53,8 +59,8 @@ pub fn push_user_position(env: &Env, user: &Address, id: u64) {
 
 pub fn remove_user_position(env: &Env, user: &Address, id: u64) {
     // Closing one position must not pull every other position's storage into the
-    // transaction footprint. Stale IDs are filtered by read paths and by the
-    // bounded compaction performed before adding a new position.
+    // transaction footprint. Stale IDs are filtered by read paths and can be
+    // removed explicitly through the bounded compaction entrypoint.
     let positions: Vec<u64> = env
         .storage()
         .persistent()
@@ -89,7 +95,6 @@ pub fn compact_user_positions(env: &Env, user: &Address) -> Vec<u64> {
     for id in positions.iter() {
         let key = DataKey::Position(id);
         if env.storage().persistent().has(&key) {
-            bump_position_ttl(env, id);
             out.push_back(id);
         } else {
             changed = true;
@@ -102,6 +107,63 @@ pub fn compact_user_positions(env: &Env, user: &Address) -> Vec<u64> {
     }
     bump_user_positions_ttl(env, user);
     out
+}
+
+pub fn compact_user_positions_bounded(env: &Env, user: &Address, limit: u32) -> u32 {
+    if limit == 0 || limit > MAX_POSITION_COMPACTION_BATCH {
+        panic!("bad compaction limit");
+    }
+    let key = DataKey::UserPositions(user.clone());
+    let cursor_key = DataKey::UserPositionsCompactionCursor(user.clone());
+    let persistent = env.storage().persistent();
+    let positions: Vec<u64> = persistent.get(&key).unwrap_or(Vec::new(env));
+    let len = positions.len();
+    if len == 0 {
+        persistent.remove(&cursor_key);
+        return 0;
+    }
+
+    let mut cursor: u32 = persistent.get(&cursor_key).unwrap_or(0u32) % len;
+    let scan = limit.min(len);
+    let mut stale = Vec::new(env);
+    for offset in 0..scan {
+        let idx = cursor.saturating_add(offset) % len;
+        let id = positions.get(idx).unwrap();
+        if !persistent.has(&DataKey::Position(id)) {
+            stale.push_back(id);
+        }
+    }
+
+    let mut out = Vec::new(env);
+    for id in positions.iter() {
+        let mut remove = false;
+        for stale_id in stale.iter() {
+            if stale_id == id {
+                remove = true;
+                break;
+            }
+        }
+        if !remove {
+            out.push_back(id);
+        }
+    }
+    if !stale.is_empty() {
+        persistent.set(&key, &out);
+    }
+
+    if out.is_empty() {
+        persistent.remove(&cursor_key);
+    } else {
+        cursor = if !stale.is_empty() {
+            cursor.min(out.len().saturating_sub(1))
+        } else {
+            cursor.saturating_add(scan) % out.len()
+        };
+        persistent.set(&cursor_key, &cursor);
+        persistent.extend_ttl(&cursor_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    bump_user_positions_ttl(env, user);
+    out.len()
 }
 
 pub fn read_user_positions(env: &Env, user: &Address) -> Vec<u64> {
@@ -581,9 +643,53 @@ pub fn get_pending_liquidation_or_panic(env: &Env, position_id: u64) -> PendingL
 }
 
 pub fn clear_pending_liquidation(env: &Env, position_id: u64) {
+    let persistent = env.storage().persistent();
+    let pending_key = DataKey::PendingLiquidation(position_id);
+    let had_pending = persistent.has(&pending_key);
+    persistent.remove(&pending_key);
+    if had_pending {
+        persistent.remove(&DataKey::PendingLiquidationTakeoverAfter(position_id));
+        persistent.remove(&DataKey::PendingLiqCollateralUnderlying(position_id));
+    }
+}
+
+pub fn set_pending_liquidation_takeover_after(env: &Env, position_id: u64, deadline: u64) {
+    let key = DataKey::PendingLiquidationTakeoverAfter(position_id);
+    env.storage().persistent().set(&key, &deadline);
     env.storage()
         .persistent()
-        .remove(&DataKey::PendingLiquidation(position_id));
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+pub fn get_pending_liquidation_takeover_after(env: &Env, position_id: u64) -> Option<u64> {
+    let key = DataKey::PendingLiquidationTakeoverAfter(position_id);
+    let persistent = env.storage().persistent();
+    let deadline = persistent.get(&key);
+    if deadline.is_some() {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    deadline
+}
+
+pub fn set_pending_liquidation_collateral_underlying(env: &Env, position_id: u64, amount: u128) {
+    let key = DataKey::PendingLiqCollateralUnderlying(position_id);
+    let persistent = env.storage().persistent();
+    if amount == 0 {
+        persistent.remove(&key);
+    } else {
+        persistent.set(&key, &amount);
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn get_pending_liquidation_collateral_underlying(env: &Env, position_id: u64) -> u128 {
+    let key = DataKey::PendingLiqCollateralUnderlying(position_id);
+    let persistent = env.storage().persistent();
+    let amount = persistent.get(&key).unwrap_or(0u128);
+    if amount > 0 {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    amount
 }
 
 pub fn set_perps_pair_config(
@@ -628,6 +734,53 @@ pub fn get_perps_pair_config_or_default(
         maintenance_margin_scaled: DEFAULT_PERPS_MAINTENANCE_MARGIN_SCALED,
         liquidation_incentive_scaled: DEFAULT_PERPS_LIQUIDATION_INCENTIVE_SCALED,
     })
+}
+
+pub fn set_perps_pair_execution_config(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+    config: &PerpsPairExecutionConfig,
+) {
+    let key =
+        DataKey::PerpsPairExecutionConfig(margin_asset.clone(), base_asset.clone(), side.clone());
+    env.storage().persistent().set(&key, config);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+pub fn get_perps_pair_execution_config(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+) -> Option<PerpsPairExecutionConfig> {
+    let key =
+        DataKey::PerpsPairExecutionConfig(margin_asset.clone(), base_asset.clone(), side.clone());
+    let persistent = env.storage().persistent();
+    let config = persistent.get(&key);
+    if config.is_some() {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    config
+}
+
+pub fn get_perps_pair_execution_config_or_default(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+) -> PerpsPairExecutionConfig {
+    get_perps_pair_execution_config(env, margin_asset, base_asset, side).unwrap_or(
+        PerpsPairExecutionConfig {
+            max_open_deviation_scaled: DEFAULT_OPEN_POOL_ORACLE_DEVIATION_SCALED,
+            open_slippage_scaled: DEFAULT_OPEN_POOL_SLIPPAGE_SCALED,
+            close_slippage_scaled: DEFAULT_CLOSE_POOL_SLIPPAGE_SCALED,
+            liquidation_slippage_scaled: DEFAULT_LIQUIDATION_POOL_SLIPPAGE_SCALED,
+        },
+    )
 }
 
 pub fn clear_pending_open_position(env: &Env, position_id: u64) {
@@ -1023,15 +1176,23 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     }
     let pending_liquidation_key = DataKey::PendingLiquidation(position_id);
     if persistent.has(&pending_liquidation_key) {
-        persistent.extend_ttl(&pending_liquidation_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        bump_pending_liquidation_ttl(env, position_id);
     }
 }
 
 pub fn bump_pending_liquidation_ttl(env: &Env, position_id: u64) {
-    let key = DataKey::PendingLiquidation(position_id);
     let persistent = env.storage().persistent();
-    if persistent.has(&key) {
-        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    let pending_key = DataKey::PendingLiquidation(position_id);
+    if persistent.has(&pending_key) {
+        persistent.extend_ttl(&pending_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let takeover_key = DataKey::PendingLiquidationTakeoverAfter(position_id);
+    if persistent.has(&takeover_key) {
+        persistent.extend_ttl(&takeover_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let collateral_key = DataKey::PendingLiqCollateralUnderlying(position_id);
+    if persistent.has(&collateral_key) {
+        persistent.extend_ttl(&collateral_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

@@ -52,6 +52,27 @@ pub struct PositionCollateralAdded {
     pub collateral_ptokens: u128,
 }
 
+#[contractevent(topics = ["position_released"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PositionReleased {
+    #[topic]
+    pub owner: Address,
+    #[topic]
+    pub position_id: u64,
+}
+
+#[contractevent(topics = ["close_residual"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CloseResidual {
+    #[topic]
+    pub position_id: u64,
+    #[topic]
+    pub owner: Address,
+    pub repaid: u128,
+    pub remaining_debt: u128,
+    pub takeover_after: u64,
+}
+
 #[contractevent(topics = ["liquidation_started"])]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LiquidationStarted {

@@ -134,6 +134,10 @@ pub enum DataKey {
     PendingPerpsClose(u64),
     // Storage-key variants are append-only. Reordering changes on-chain key encoding.
     PendingPerpsCloseRemainder(u64),
+    PerpsPairExecutionConfig(Address, Address, PositionSide),
+    PendingLiquidationTakeoverAfter(u64),
+    PendingLiqCollateralUnderlying(u64),
+    UserPositionsCompactionCursor(Address),
 }
 
 #[contracttype]
@@ -198,6 +202,15 @@ pub struct PerpsPairConfig {
     pub max_leverage: u128,
     pub maintenance_margin_scaled: u128,
     pub liquidation_incentive_scaled: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PerpsPairExecutionConfig {
+    pub max_open_deviation_scaled: u128,
+    pub open_slippage_scaled: u128,
+    pub close_slippage_scaled: u128,
+    pub liquidation_slippage_scaled: u128,
 }
 
 #[contracttype]
@@ -360,11 +373,16 @@ pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {
             .get(&DataKey::Peridottroller)
             .expect("peridottroller not set")
     };
-    let _ = env.try_invoke_contract::<Option<(u128, u128)>, InvokeError>(
+    let refreshed = env.try_invoke_contract::<Option<(u128, u128)>, InvokeError>(
         &peridottroller_addr,
         &Symbol::new(env, "cache_price"),
         (asset.clone(),).into_val(env),
     );
+    if let Ok(Ok(Some((num, den)))) = refreshed {
+        if num > 0 && den > 0 {
+            return (num, den);
+        }
+    }
     let peridottroller = PeridottrollerClient::new(env, &peridottroller_addr);
     let (num, den) = peridottroller
         .get_price_usd(asset)

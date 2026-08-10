@@ -236,6 +236,52 @@ impl MarginController {
         crate::helpers::get_perps_pair_config(&env, &margin_asset, &base_asset, &side)
     }
 
+    pub fn set_perps_pair_execution_config(
+        env: Env,
+        admin: Address,
+        margin_asset: Address,
+        base_asset: Address,
+        side: PositionSide,
+        config: PerpsPairExecutionConfig,
+    ) {
+        bump_core_ttl(&env);
+        require_admin(&env, &admin);
+        if margin_asset == base_asset {
+            panic!("assets must differ");
+        }
+        if config.max_open_deviation_scaled > MAX_POOL_EXECUTION_DEVIATION_SCALED
+            || config.open_slippage_scaled > MAX_POOL_EXECUTION_DEVIATION_SCALED
+            || config.close_slippage_scaled > MAX_POOL_EXECUTION_DEVIATION_SCALED
+            || config.liquidation_slippage_scaled > MAX_POOL_EXECUTION_DEVIATION_SCALED
+        {
+            panic!("invalid execution config");
+        }
+        let _ = get_market(&env, &margin_asset);
+        let _ = get_market(&env, &base_asset);
+        crate::helpers::set_perps_pair_execution_config(
+            &env,
+            &margin_asset,
+            &base_asset,
+            &side,
+            &config,
+        );
+    }
+
+    pub fn get_perps_pair_execution_config(
+        env: Env,
+        margin_asset: Address,
+        base_asset: Address,
+        side: PositionSide,
+    ) -> PerpsPairExecutionConfig {
+        bump_core_ttl(&env);
+        crate::helpers::get_perps_pair_execution_config_or_default(
+            &env,
+            &margin_asset,
+            &base_asset,
+            &side,
+        )
+    }
+
     pub fn set_max_slippage_scaled(env: Env, admin: Address, max_slippage_scaled: u128) {
         bump_core_ttl(&env);
         require_admin(&env, &admin);
@@ -1007,6 +1053,16 @@ impl MarginController {
         Self::cancel_pending_open_v3_impl(&env, user, position_id);
     }
 
+    pub fn expire_pending_open_v3(env: Env, position_id: u64) {
+        bump_core_ttl(&env);
+        Self::expire_pending_open_v3_impl(&env, position_id);
+    }
+
+    pub fn resolve_pending_open_v3(env: Env, position_id: u64) {
+        bump_core_ttl(&env);
+        Self::resolve_pending_open_v3_impl(&env, position_id);
+    }
+
     pub fn get_pending_perps_open(env: Env, position_id: u64) -> Option<PendingPerpsOpenPosition> {
         bump_core_ttl(&env);
         get_pending_perps_open_position(&env, position_id)
@@ -1038,6 +1094,11 @@ impl MarginController {
     pub fn get_pending_liquidation(env: Env, position_id: u64) -> Option<PendingLiquidation> {
         bump_core_ttl(&env);
         get_pending_liquidation(&env, position_id)
+    }
+
+    pub fn get_liquidation_takeover_after(env: Env, position_id: u64) -> Option<u64> {
+        bump_core_ttl(&env);
+        crate::helpers::get_pending_liquidation_takeover_after(&env, position_id)
     }
 
     /// Budget-friendly V2 open flow, step 2 for routed swaps.
@@ -1329,6 +1390,10 @@ impl MarginController {
         let debt_vault_client = ReceiptVaultClient::new(&env, &vaults.debt_vault);
         debt_vault_client.init_margin_borrow_state(&position_id);
         debt_vault_client.borrow_for_margin(&position_id, &user, &debt_amount);
+        let actual_debt = debt_vault_client.get_margin_borrow_balance(&position_id);
+        if actual_debt == 0 {
+            panic!("zero debt");
+        }
         Self::finalize_pending_open_collateral(
             &env,
             &mut position,
@@ -1337,7 +1402,7 @@ impl MarginController {
             &vaults,
             position_ptokens,
             position_amount,
-            debt_amount,
+            actual_debt,
         );
     }
 
@@ -1850,6 +1915,12 @@ impl MarginController {
         Self::repay_margin_position_v3_impl(&env, user, position_id, amount);
     }
 
+    pub fn release_debt_free_position_v3(env: Env, user: Address, position_id: u64) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        Self::release_debt_free_position_v3_impl(&env, user, position_id);
+    }
+
     pub fn close_position_v3(
         env: Env,
         user: Address,
@@ -1865,6 +1936,14 @@ impl MarginController {
         bump_core_ttl(&env);
         user.require_auth();
         Self::begin_close_position_v3_impl(&env, user, position_id);
+    }
+
+    pub fn prepare_close_position_v3(env: Env, user: Address, position_id: u64) {
+        // The close preparation touches and renews its position/vault state
+        // directly. Avoid the global TTL walk so begin+withdraw fits one tx.
+        user.require_auth();
+        Self::begin_close_position_v3_impl(&env, user.clone(), position_id);
+        Self::withdraw_close_position_v3_impl(&env, user, position_id);
     }
 
     pub fn withdraw_close_position_v3(env: Env, user: Address, position_id: u64) {
@@ -1993,6 +2072,44 @@ impl MarginController {
     ) {
         bump_core_ttl(&env);
         user.require_auth();
+        Self::close_position_v2_impl(
+            env,
+            user,
+            position_id,
+            swaps_chain,
+            amount_with_slippage,
+            0u128,
+        );
+    }
+
+    pub fn close_position_v2_with_top_up(
+        env: Env,
+        user: Address,
+        position_id: u64,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        amount_with_slippage: u128,
+        max_wallet_top_up: u128,
+    ) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        Self::close_position_v2_impl(
+            env,
+            user,
+            position_id,
+            swaps_chain,
+            amount_with_slippage,
+            max_wallet_top_up,
+        );
+    }
+
+    fn close_position_v2_impl(
+        env: Env,
+        user: Address,
+        position_id: u64,
+        swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+        amount_with_slippage: u128,
+        max_wallet_top_up: u128,
+    ) {
         if amount_with_slippage == 0 {
             panic!("bad slippage");
         }
@@ -2099,17 +2216,23 @@ impl MarginController {
                 panic!("slippage too high");
             }
         }
-        let settlement_amount = received.max(debt_amount);
+        let wallet_top_up = debt_amount.saturating_sub(received);
+        if wallet_top_up > max_wallet_top_up {
+            panic!("wallet top up exceeds cap");
+        }
+        let settlement_amount = received
+            .checked_add(wallet_top_up)
+            .expect("settlement overflow");
         let settlement_i128: i128 = settlement_amount.try_into().expect("amount too large");
         debt_token.transfer(&user, &controller, &settlement_i128);
 
-        let repay_for_margin_args: Vec<Val> =
-            (position_id, controller.clone(), debt_amount).into_val(&env);
-        Self::authorize_controller_subcall(
+        Self::authorize_controller_margin_repay(
             &env,
             &vaults.debt_vault,
-            "repay_for_margin",
-            repay_for_margin_args,
+            &debt_underlying,
+            &controller,
+            position_id,
+            debt_amount,
         );
         debt_vault_client.repay_for_margin(&position_id, &controller, &debt_amount);
         if debt_vault_client.get_margin_borrow_balance(&position_id) != 0 {
@@ -2471,6 +2594,13 @@ impl MarginController {
             liquidation_incentive_scaled,
         };
         set_pending_liquidation(env, position_id, &pending);
+        set_pending_liquidation_takeover_after(
+            env,
+            position_id,
+            env.ledger()
+                .timestamp()
+                .saturating_add(PENDING_LIQUIDATION_TTL_SECS),
+        );
     }
 
     fn finish_liquidation_v2_impl(env: &Env, liquidator: Address, position_id: u64) {
@@ -2480,9 +2610,14 @@ impl MarginController {
         {
             panic!("bad liquidation stage");
         }
-        if pending.liquidator != liquidator {
+        let takeover_after =
+            get_pending_liquidation_takeover_after(env, position_id).unwrap_or(u64::MAX);
+        if pending.liquidator != liquidator && env.ledger().timestamp() <= takeover_after {
             panic!("not liquidator");
         }
+        // The original liquidator funded the repayment in the begin stage.
+        // A timeout caller may complete delivery but cannot redirect the seize.
+        let liquidation_recipient = pending.liquidator.clone();
         let mut position = get_position_or_panic(env, position_id);
         if position.status != PositionStatus::Liquidated {
             panic!("not liquidating");
@@ -2517,7 +2652,7 @@ impl MarginController {
         Self::transfer_controller_ptokens(
             env,
             &vaults.position_vault,
-            &liquidator,
+            &liquidation_recipient,
             position_liquidator_ptokens,
         );
         position.collateral_ptokens = position
@@ -2551,7 +2686,7 @@ impl MarginController {
             Self::transfer_controller_ptokens(
                 env,
                 &initial_market,
-                &liquidator,
+                &liquidation_recipient,
                 initial_liquidator_ptokens,
             );
             initial_remaining = Some((
@@ -3056,6 +3191,11 @@ impl MarginController {
         read_user_positions(&env, &user)
     }
 
+    pub fn compact_user_positions(env: Env, user: Address, limit: u32) -> u32 {
+        bump_core_ttl(&env);
+        compact_user_positions_bounded(&env, &user, limit)
+    }
+
     pub fn get_position_counter(env: Env) -> u64 {
         bump_core_ttl(&env);
         env.storage()
@@ -3149,14 +3289,35 @@ impl MarginController {
         out_price: (u128, u128),
         amount_in: u128,
     ) -> u128 {
+        Self::oracle_out_from_prices(
+            in_price,
+            out_price,
+            amount_in,
+            SCALE_1E6.saturating_sub(get_max_slippage_scaled(env)),
+        )
+    }
+
+    pub(crate) fn oracle_expected_out_from_prices(
+        in_price: (u128, u128),
+        out_price: (u128, u128),
+        amount_in: u128,
+    ) -> u128 {
+        Self::oracle_out_from_prices(in_price, out_price, amount_in, SCALE_1E6)
+    }
+
+    fn oracle_out_from_prices(
+        in_price: (u128, u128),
+        out_price: (u128, u128),
+        amount_in: u128,
+        output_factor_scaled: u128,
+    ) -> u128 {
         if in_price.0 == 0 || in_price.1 == 0 || out_price.0 == 0 || out_price.1 == 0 {
             panic!("invalid price");
         }
-        let max_slippage_scaled = get_max_slippage_scaled(env);
         let mut n_amount = amount_in;
         let mut n_in_price = in_price.0;
         let mut n_out_scale = out_price.1;
-        let mut n_slippage = SCALE_1E6.saturating_sub(max_slippage_scaled);
+        let mut n_slippage = output_factor_scaled;
         let mut d_in_scale = in_price.1;
         let mut d_out_price = out_price.0;
         let mut d_scale = SCALE_1E6;
