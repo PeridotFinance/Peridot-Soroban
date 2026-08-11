@@ -4376,16 +4376,25 @@ fn test_update_interest_does_not_advance_time_when_rounds_to_zero() {
 }
 
 #[test]
-fn test_update_interest_same_ledger_marks_timestamp_writable() {
+fn test_update_interest_same_ledger_prepares_full_accrual_footprint() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
 
     let admin = Address::generate(&env);
-    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &10_000i128);
     let vault_id = env.register(ReceiptVault, ());
     let vault = ReceiptVaultClient::new(&env, &vault_id);
-    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.initialize(&token_address, &0u128, &1_000_000u128, &admin);
     vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    let model_id = env.register(MockRateModel, ());
+    let model = MockRateModelClient::new(&env, &model_id);
+    model.initialize(&0u128, &1_000_000u128);
+    vault.set_interest_model(&model_id);
+    vault.deposit(&user, &10_000u128);
+    vault.borrow(&user, &1_000u128);
 
     let last_before: u64 = env.as_contract(&vault_id, || {
         env.storage()
@@ -4393,13 +4402,9 @@ fn test_update_interest_same_ledger_marks_timestamp_writable() {
             .get(&DataKey::LastUpdateTime)
             .expect("last update missing")
     });
-    env.cost_estimate().budget().reset_unlimited();
+    let borrowed_before = vault.get_total_borrowed();
     vault.update_interest();
-    let resources = env.cost_estimate().resources();
-    assert!(
-        resources.write_entries > 0,
-        "same-ledger accrual must prepare a writable timestamp footprint: {resources:?}"
-    );
+    let same_ledger_resources = env.cost_estimate().resources();
     let last_after: u64 = env.as_contract(&vault_id, || {
         env.storage()
             .persistent()
@@ -4407,6 +4412,28 @@ fn test_update_interest_same_ledger_marks_timestamp_writable() {
             .expect("last update missing")
     });
     assert_eq!(last_after, last_before);
+    assert_eq!(vault.get_total_borrowed(), borrowed_before);
+
+    env.ledger()
+        .set_timestamp(last_before.saturating_add(365 * 24 * 60 * 60));
+    vault.update_interest();
+    let accrued_resources = env.cost_estimate().resources();
+    assert!(vault.get_total_borrowed() > borrowed_before);
+
+    let same_ledger_entries = same_ledger_resources
+        .disk_read_entries
+        .saturating_add(same_ledger_resources.memory_read_entries);
+    let accrued_entries = accrued_resources
+        .disk_read_entries
+        .saturating_add(accrued_resources.memory_read_entries);
+    assert!(
+        same_ledger_entries >= accrued_entries,
+        "same-ledger path omitted accrual reads: same={same_ledger_resources:?}, accrued={accrued_resources:?}"
+    );
+    assert!(
+        same_ledger_resources.write_entries >= accrued_resources.write_entries,
+        "same-ledger path omitted accrual writes: same={same_ledger_resources:?}, accrued={accrued_resources:?}"
+    );
 }
 
 #[test]

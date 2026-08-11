@@ -48,6 +48,26 @@ fn assert_last_invocation_resources_under(
 #[contract]
 struct MockOracle;
 
+#[contract]
+struct MockRateModel;
+
+#[contractimpl]
+impl MockRateModel {
+    pub fn get_supply_rate(
+        _env: Env,
+        _cash: u128,
+        _borrows: u128,
+        _reserves: u128,
+        _reserve_factor: u128,
+    ) -> u128 {
+        0u128
+    }
+
+    pub fn get_borrow_rate(_env: Env, _cash: u128, _borrows: u128, _reserves: u128) -> u128 {
+        100_000u128
+    }
+}
+
 #[contracttype]
 enum OracleKey {
     Decimals,
@@ -2414,13 +2434,19 @@ fn test_split_liquidate_position_v3_completes_across_stages() {
         500u128,
     );
 
+    // Production vaults use a dynamic rate model. Keep this budget assertion on
+    // that path so a same-ledger simulation includes the model and token reads
+    // needed if execution lands in the next ledger.
+    let rate_model_id = env.register(MockRateModel, ());
+    receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id).set_interest_model(&rate_model_id);
+
     let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
     peridottroller.set_price(&xlm_id, &940_000u128, &1_000_000u128);
     let liquidator = Address::generate(&env);
 
     env.cost_estimate().budget().reset_unlimited();
     controller.begin_liquidation_v3(&liquidator, &position_id);
-    assert_last_invocation_resources_under(&env, 100, 35, 20_000_000);
+    assert_last_invocation_resources_under(&env, 95, 35, 20_000_000);
     let expected_started = LiquidationStarted {
         position_id,
         liquidator: liquidator.clone(),
@@ -4960,11 +4986,16 @@ fn test_liquidation_supersedes_unfunded_close_preparation() {
     let liquidator = Address::generate(&env);
     controller.begin_liquidation_v3(&liquidator, &position_id);
 
-    assert!(controller.get_pending_perps_close(&position_id).is_none());
+    assert!(controller.get_pending_perps_close(&position_id).is_some());
     assert_eq!(
         controller.get_position(&position_id).unwrap().status,
         PositionStatus::Liquidated
     );
+    let quote = controller.preview_liquidation_v3(&position_id);
+    controller.swap_liquidation_v3(&liquidator, &position_id, &quote.pool_estimated_out);
+    controller.finish_liquidation_v3(&liquidator, &position_id);
+    assert!(controller.get_position(&position_id).is_none());
+    assert!(controller.get_pending_perps_close(&position_id).is_none());
 }
 
 #[test]
@@ -5566,6 +5597,73 @@ fn test_per_pair_execution_config_rejects_open_pool_oracle_divergence() {
 }
 
 #[test]
+fn test_per_pair_configs_lazy_migrate_to_instance_storage() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        _user,
+        _peridottroller_id,
+        _usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let side = PositionSide::Long;
+    let risk_key = DataKey::PerpsPairConfig(usdt_id.clone(), xlm_id.clone(), side.clone());
+    let execution_key =
+        DataKey::PerpsPairExecutionConfig(usdt_id.clone(), xlm_id.clone(), side.clone());
+    let risk = PerpsPairConfig {
+        max_leverage: 5u128,
+        maintenance_margin_scaled: 75_000u128,
+        liquidation_incentive_scaled: 20_000u128,
+    };
+    let execution = PerpsPairExecutionConfig {
+        max_open_deviation_scaled: 25_000u128,
+        open_slippage_scaled: 20_000u128,
+        close_slippage_scaled: 30_000u128,
+        liquidation_slippage_scaled: 40_000u128,
+    };
+
+    env.as_contract(&controller_id, || {
+        env.storage().persistent().set(&risk_key, &risk);
+        env.storage().persistent().set(&execution_key, &execution);
+    });
+
+    assert_eq!(
+        controller
+            .get_perps_pair_config(&usdt_id, &xlm_id, &side)
+            .unwrap(),
+        risk
+    );
+    assert_eq!(
+        controller.get_perps_pair_execution_config(&usdt_id, &xlm_id, &side),
+        execution
+    );
+
+    env.as_contract(&controller_id, || {
+        assert_eq!(env.storage().instance().get(&risk_key), Some(risk.clone()));
+        assert_eq!(
+            env.storage().instance().get(&execution_key),
+            Some(execution.clone())
+        );
+        env.storage().persistent().remove(&risk_key);
+        env.storage().persistent().remove(&execution_key);
+    });
+
+    assert_eq!(
+        controller
+            .get_perps_pair_config(&usdt_id, &xlm_id, &side)
+            .unwrap(),
+        risk
+    );
+    assert_eq!(
+        controller.get_perps_pair_execution_config(&usdt_id, &xlm_id, &side),
+        execution
+    );
+}
+
+#[test]
 fn test_v3_close_uses_pool_quote_when_pool_is_below_oracle() {
     let (
         env,
@@ -5972,6 +6070,54 @@ fn test_v2_liquidation_takeover_cannot_redirect_original_liquidator_seize() {
         .saturating_add(xlm_vault.get_ptoken_balance(&takeover));
     assert!(first_seized > 0u128);
     assert_eq!(takeover_seized, 0u128);
+}
+
+#[test]
+fn test_legacy_v2_liquidation_without_takeover_key_can_be_finished() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_short_min();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
+    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
+    usdt_vault.deposit(&user, &200u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
+    let position_id = controller.open_position_v2(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &100u128,
+        &2u128,
+        &PositionSide::Long,
+        &mock_swaps_chain(&env, &usdt_id, &xlm_id),
+        &100u128,
+    );
+    peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
+    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
+    let original_liquidator = Address::generate(&env);
+    let replacement_keeper = Address::generate(&env);
+    controller.begin_liquidation_v2(&original_liquidator, &position_id);
+    env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingLiquidationTakeoverAfter(position_id));
+    });
+
+    controller.finish_liquidation_v2(&replacement_keeper, &position_id);
+
+    let original_seized = usdt_vault
+        .get_ptoken_balance(&original_liquidator)
+        .saturating_add(xlm_vault.get_ptoken_balance(&original_liquidator));
+    let replacement_seized = usdt_vault
+        .get_ptoken_balance(&replacement_keeper)
+        .saturating_add(xlm_vault.get_ptoken_balance(&replacement_keeper));
+    assert!(original_seized > 0u128);
+    assert_eq!(replacement_seized, 0u128);
+    assert!(controller.get_pending_liquidation(&position_id).is_none());
+    assert_ne!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Liquidated
+    );
 }
 
 #[test]

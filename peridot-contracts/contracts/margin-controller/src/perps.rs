@@ -13,6 +13,7 @@ use crate::storage::*;
 pub(crate) struct PerpsRiskValues {
     pub(crate) equity: u128,
     pub(crate) maintenance_required: u128,
+    pub(crate) debt_amount: u128,
 }
 
 impl MarginController {
@@ -510,7 +511,7 @@ impl MarginController {
             free.saturating_add(pending.margin_ptokens),
         );
         update_total_margin_ptokens(env, &pending.margin_vault, pending.margin_ptokens, true);
-        clear_position_storage(env, position_id);
+        clear_perps_v3_position_storage(env, position_id);
         remove_user_position(env, &position.owner, position_id);
     }
 
@@ -1027,9 +1028,8 @@ impl MarginController {
         if risk.equity > risk.maintenance_required {
             panic!("not liquidatable");
         }
-        // A prepared close has not moved funds yet, so liquidation may safely
-        // supersede it. Withdrawn closes use Closing status and cannot reach here.
-        clear_pending_perps_close(env, position_id);
+        // Liquidated status blocks any prepared close from progressing. Its
+        // record is removed with the rest of the position during settlement.
         Self::close_perps_position(
             env,
             &position.owner,
@@ -1042,21 +1042,18 @@ impl MarginController {
     }
 
     pub(crate) fn begin_liquidation_v3_impl(env: &Env, liquidator: Address, position_id: u64) {
-        if get_pending_liquidation(env, position_id).is_some() {
-            panic!("liquidation pending");
-        }
         let mut position = get_position_record_or_panic(env, position_id);
-        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
-            panic!("not v3 position");
+        if position.status == PositionStatus::Liquidated {
+            panic!("liquidation pending");
         }
         if liquidator == position.owner {
             panic!("self liquidation");
         }
+        // PerpsPositionData is created only for V3 positions and is the
+        // canonical V3-specific state required by the risk calculation.
         let perps = get_perps_position_data_or_panic(env, position_id);
         let risk = Self::perps_risk_values(env, position_id, &position, &perps, true, true);
-        let vaults = get_position_vaults(env, position_id, &position);
-        let debt_amount = ReceiptVaultClient::new(env, &vaults.debt_vault)
-            .get_margin_borrow_balance(&position_id);
+        let debt_amount = risk.debt_amount;
         if debt_amount == 0 {
             panic!("zero debt");
         }
@@ -1066,7 +1063,8 @@ impl MarginController {
             if risk.equity > risk.maintenance_required {
                 panic!("not liquidatable");
             }
-            clear_pending_perps_close(env, position_id);
+            // Settlement cleanup removes any prepared close record. Avoid
+            // pulling it into this budget-critical stage.
             PendingLiquidationStage::Started
         } else if position.status == PositionStatus::Closing {
             let closing = get_pending_perps_close_or_panic(env, position_id);
@@ -1125,11 +1123,13 @@ impl MarginController {
             liquidation_incentive_scaled: perps.liquidation_incentive_scaled,
         };
         set_pending_liquidation(env, position_id, &pending);
-        set_pending_liquidation_collateral_underlying(
-            env,
-            position_id,
-            controller_collateral_underlying,
-        );
+        if controller_collateral_underlying > 0 {
+            set_pending_liquidation_collateral_underlying(
+                env,
+                position_id,
+                controller_collateral_underlying,
+            );
+        }
         set_pending_liquidation_takeover_after(env, position_id, takeover_after);
         LiquidationStarted {
             position_id,
@@ -1314,7 +1314,7 @@ impl MarginController {
             incentive,
         }
         .publish(env);
-        clear_position_storage(env, position_id);
+        clear_perps_v3_position_storage(env, position_id);
         remove_user_position(env, &position.owner, position_id);
     }
 
@@ -1604,6 +1604,7 @@ impl MarginController {
     fn raw_ptoken_value_usd_with_update(
         env: &Env,
         vault: &Address,
+        asset: &Address,
         ptokens: u128,
         update_interest: bool,
         refresh_price: bool,
@@ -1612,11 +1613,10 @@ impl MarginController {
             return 0;
         }
         let vault_client = ReceiptVaultClient::new(env, vault);
-        let asset = vault_client.get_underlying_token();
         let price = if refresh_price {
-            get_price_usd(env, &asset)
+            get_price_usd(env, asset)
         } else {
-            get_price_usd_cache_first(env, &asset)
+            get_price_usd_cache_first(env, asset)
         };
         if update_interest {
             vault_client.update_interest();
@@ -1640,8 +1640,9 @@ impl MarginController {
         update_interest: bool,
         refresh_price: bool,
     ) -> PerpsRiskValues {
-        let vaults = get_position_vaults(env, position_id, position);
-        let debt_vault = ReceiptVaultClient::new(env, &vaults.debt_vault);
+        let (debt_vault_address, position_vault) =
+            get_position_risk_vaults(env, position_id, position);
+        let debt_vault = ReceiptVaultClient::new(env, &debt_vault_address);
         if update_interest {
             debt_vault.update_interest();
         }
@@ -1654,7 +1655,8 @@ impl MarginController {
         let debt_value = Self::value_from_amount(debt_amount, debt_price);
         let collateral_value = Self::raw_ptoken_value_usd_with_update(
             env,
-            &vaults.position_vault,
+            &position_vault,
+            &position.collateral_asset,
             position.collateral_ptokens,
             false,
             refresh_price,
@@ -1670,6 +1672,7 @@ impl MarginController {
         PerpsRiskValues {
             equity: collateral_value.saturating_sub(debt_value),
             maintenance_required,
+            debt_amount,
         }
     }
 
@@ -1779,7 +1782,7 @@ impl MarginController {
             position_id,
         }
         .publish(env);
-        clear_position_storage(env, position_id);
+        clear_perps_v3_position_storage(env, position_id);
         remove_user_position(env, &position.owner, position_id);
     }
 
@@ -1827,7 +1830,7 @@ impl MarginController {
         }
         .publish(env);
         clear_pending_perps_close(env, position_id);
-        clear_position_storage(env, position_id);
+        clear_perps_v3_position_storage(env, position_id);
         remove_user_position(env, &position.owner, position_id);
     }
 
@@ -1946,7 +1949,7 @@ impl MarginController {
             }
         }
         Self::credit_margin_underlying(env, user, &vaults.debt_vault, surplus);
-        clear_position_storage(env, position_id);
+        clear_perps_v3_position_storage(env, position_id);
         remove_user_position(env, user, position_id);
     }
 

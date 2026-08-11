@@ -1578,7 +1578,7 @@ impl MarginController {
         Self::release_pending_open_supplied_collateral(&env, &user, position_id, &vaults);
         Self::release_pending_open_lock(&env, &user, position_id, pending.open_fee_ptokens);
 
-        clear_position_storage(&env, position_id);
+        clear_margin_v2_position_storage(&env, position_id);
         remove_user_position(&env, &user, position_id);
     }
 
@@ -1610,7 +1610,7 @@ impl MarginController {
             position_id,
             pending.open_fee_ptokens,
         );
-        clear_position_storage(&env, position_id);
+        clear_margin_v2_position_storage(&env, position_id);
         remove_user_position(&env, &position.owner, position_id);
     }
 
@@ -1823,7 +1823,7 @@ impl MarginController {
             );
         }
 
-        clear_position_storage(&env, position_id);
+        clear_margin_v2_position_storage(&env, position_id);
         remove_user_position(&env, &user, position_id);
     }
 
@@ -1889,7 +1889,7 @@ impl MarginController {
             }
         }
 
-        clear_position_storage(&env, position_id);
+        clear_margin_v2_position_storage(&env, position_id);
         remove_user_position(&env, &user, position_id);
     }
 
@@ -2070,7 +2070,9 @@ impl MarginController {
         swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
         amount_with_slippage: u128,
     ) {
-        bump_core_ttl(&env);
+        // This atomic legacy close already touches a large cross-contract
+        // footprint. Its required config keys are read below, and other entry
+        // points keep core TTLs alive.
         user.require_auth();
         Self::close_position_v2_impl(
             env,
@@ -2090,7 +2092,8 @@ impl MarginController {
         amount_with_slippage: u128,
         max_wallet_top_up: u128,
     ) {
-        bump_core_ttl(&env);
+        // See close_position_v2: avoid a redundant global TTL walk in this
+        // footprint-sensitive compatibility path.
         user.require_auth();
         Self::close_position_v2_impl(
             env,
@@ -2335,7 +2338,7 @@ impl MarginController {
             }
         }
 
-        clear_position_storage(&env, position_id);
+        clear_margin_v2_position_storage(&env, position_id);
         remove_user_position(&env, &user, position_id);
     }
 
@@ -2352,7 +2355,8 @@ impl MarginController {
     }
 
     pub fn begin_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
-        bump_core_ttl(&env);
+        // The live position and liquidation record anchor this staged flow.
+        // Avoid pulling unrelated global TTL keys into the health-check stage.
         liquidator.require_auth();
         Self::begin_liquidation_v3_impl(&env, liquidator, position_id);
     }
@@ -2363,13 +2367,14 @@ impl MarginController {
         position_id: u64,
         amount_with_slippage: u128,
     ) {
-        bump_core_ttl(&env);
+        // The pending liquidation was renewed by begin and is bumped below.
         liquidator.require_auth();
         Self::swap_liquidation_v3_impl(&env, liquidator, position_id, amount_with_slippage);
     }
 
     pub fn finish_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
-        bump_core_ttl(&env);
+        // Settlement is bounded by the pending liquidation TTL; a global TTL
+        // walk would needlessly push this cross-contract stage over 100 keys.
         liquidator.require_auth();
         Self::finish_liquidation_v3_impl(&env, liquidator, position_id);
     }
@@ -2610,8 +2615,12 @@ impl MarginController {
         {
             panic!("bad liquidation stage");
         }
+        // Pending V2 liquidations created by older Wasm versions have no
+        // takeover key. Treat those as already timed out: completion still
+        // sends the seize to the original liquidator, so a replacement keeper
+        // cannot redirect value.
         let takeover_after =
-            get_pending_liquidation_takeover_after(env, position_id).unwrap_or(u64::MAX);
+            get_pending_liquidation_takeover_after(env, position_id).unwrap_or(0u64);
         if pending.liquidator != liquidator && env.ledger().timestamp() <= takeover_after {
             panic!("not liquidator");
         }
@@ -3083,7 +3092,7 @@ impl MarginController {
                     absorb_args,
                 );
                 debt_vault.absorb_margin_bad_debt(&position_id);
-                clear_position_storage(&env, position_id);
+                clear_margin_v2_position_storage(&env, position_id);
                 remove_user_position(&env, &position.owner, position_id);
                 return;
             }
@@ -3110,7 +3119,7 @@ impl MarginController {
                 true,
             );
         }
-        clear_position_storage(&env, position_id);
+        clear_margin_v2_position_storage(&env, position_id);
         remove_user_position(&env, &position.owner, position_id);
     }
 

@@ -339,6 +339,31 @@ pub fn get_position_vaults(env: &Env, position_id: u64, position: &Position) -> 
     resolved
 }
 
+pub fn get_position_risk_vaults(
+    env: &Env,
+    position_id: u64,
+    position: &Position,
+) -> (Address, Address) {
+    let debt_vault_key = DataKey::PositionDebtVault(position_id);
+    let position_vault_key = DataKey::PositionPositionVault(position_id);
+    let persistent = env.storage().persistent();
+    let debt_vault: Option<Address> = persistent.get(&debt_vault_key);
+    let position_vault: Option<Address> = persistent.get(&position_vault_key);
+
+    if debt_vault.is_some() {
+        persistent.extend_ttl(&debt_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if position_vault.is_some() {
+        persistent.extend_ttl(&position_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    bump_position_record_ttl(env, position_id);
+
+    (
+        debt_vault.unwrap_or_else(|| get_market(env, &position.debt_asset)),
+        position_vault.unwrap_or_else(|| get_market(env, &position.collateral_asset)),
+    )
+}
+
 pub fn get_position_vaults_no_bump(
     env: &Env,
     position_id: u64,
@@ -393,6 +418,31 @@ pub fn clear_position_storage(env: &Env, position_id: u64) {
     clear_pending_perps_open_position(env, position_id);
     clear_pending_perps_open_execution(env, position_id);
     clear_perps_position_data(env, position_id);
+    clear_pending_liquidation(env, position_id);
+    clear_position_initial_lock(env, position_id);
+    clear_position_vaults(env, position_id);
+    clear_position_mode(env, position_id);
+}
+
+pub fn clear_perps_v3_position_storage(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::Position(position_id));
+    clear_pending_perps_open_position(env, position_id);
+    clear_pending_perps_open_execution(env, position_id);
+    clear_perps_position_data(env, position_id);
+    clear_pending_perps_close(env, position_id);
+    clear_pending_liquidation(env, position_id);
+    clear_position_vaults(env, position_id);
+    clear_position_mode(env, position_id);
+}
+
+pub fn clear_margin_v2_position_storage(env: &Env, position_id: u64) {
+    env.storage()
+        .persistent()
+        .remove(&DataKey::Position(position_id));
+    clear_pending_open_position(env, position_id);
+    clear_pending_open_supplied_collateral(env, position_id);
     clear_pending_liquidation(env, position_id);
     clear_position_initial_lock(env, position_id);
     clear_position_vaults(env, position_id);
@@ -699,11 +749,8 @@ pub fn set_perps_pair_config(
     side: &PositionSide,
     config: &PerpsPairConfig,
 ) {
-    env.storage().persistent().set(
-        &DataKey::PerpsPairConfig(margin_asset.clone(), base_asset.clone(), side.clone()),
-        config,
-    );
-    bump_perps_pair_config_ttl(env, margin_asset, base_asset, side);
+    let key = DataKey::PerpsPairConfig(margin_asset.clone(), base_asset.clone(), side.clone());
+    env.storage().instance().set(&key, config);
 }
 
 pub fn get_perps_pair_config(
@@ -712,15 +759,20 @@ pub fn get_perps_pair_config(
     base_asset: &Address,
     side: &PositionSide,
 ) -> Option<PerpsPairConfig> {
-    let config = env.storage().persistent().get(&DataKey::PerpsPairConfig(
-        margin_asset.clone(),
-        base_asset.clone(),
-        side.clone(),
-    ));
-    if config.is_some() {
-        bump_perps_pair_config_ttl(env, margin_asset, base_asset, side);
+    let key = DataKey::PerpsPairConfig(margin_asset.clone(), base_asset.clone(), side.clone());
+    if let Some(config) = env.storage().instance().get(&key) {
+        return Some(config);
     }
-    config
+
+    // Lazily migrate configs written by earlier Wasm versions. Instance
+    // storage ties protocol policy to the contract lifetime instead of an
+    // independently expiring persistent entry.
+    if let Some(config) = env.storage().persistent().get(&key) {
+        env.storage().instance().set(&key, &config);
+        bump_perps_pair_config_ttl(env, margin_asset, base_asset, side);
+        return Some(config);
+    }
+    None
 }
 
 pub fn get_perps_pair_config_or_default(
@@ -745,10 +797,7 @@ pub fn set_perps_pair_execution_config(
 ) {
     let key =
         DataKey::PerpsPairExecutionConfig(margin_asset.clone(), base_asset.clone(), side.clone());
-    env.storage().persistent().set(&key, config);
-    env.storage()
-        .persistent()
-        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    env.storage().instance().set(&key, config);
 }
 
 pub fn get_perps_pair_execution_config(
@@ -759,12 +808,19 @@ pub fn get_perps_pair_execution_config(
 ) -> Option<PerpsPairExecutionConfig> {
     let key =
         DataKey::PerpsPairExecutionConfig(margin_asset.clone(), base_asset.clone(), side.clone());
-    let persistent = env.storage().persistent();
-    let config = persistent.get(&key);
-    if config.is_some() {
-        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    if let Some(config) = env.storage().instance().get(&key) {
+        return Some(config);
     }
-    config
+
+    // Preserve configured policy across upgrades by migrating the legacy
+    // persistent value on first use.
+    let persistent = env.storage().persistent();
+    if let Some(config) = persistent.get(&key) {
+        env.storage().instance().set(&key, &config);
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        return Some(config);
+    }
+    None
 }
 
 pub fn get_perps_pair_execution_config_or_default(
@@ -1028,6 +1084,9 @@ pub fn collect_margin_fee(env: &Env, vault: &Address, fee_ptokens: u128) {
 }
 
 pub fn bump_core_ttl(env: &Env) {
+    env.storage()
+        .instance()
+        .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::Admin) {
         persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -1079,6 +1138,16 @@ pub fn bump_core_ttl(env: &Env) {
             TTL_THRESHOLD,
             TTL_EXTEND_TO,
         );
+    }
+}
+
+pub fn bump_peridottroller_ttl(env: &Env) {
+    env.storage()
+        .instance()
+        .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::Peridottroller) {
+        persistent.extend_ttl(&DataKey::Peridottroller, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 }
 

@@ -1,7 +1,7 @@
 use soroban_sdk::{contracttype, Address, BytesN, Env, IntoVal, InvokeError, Symbol, Vec};
 
 use crate::constants::*;
-use crate::helpers::{bump_core_ttl, bump_market_ttl};
+use crate::helpers::{bump_core_ttl, bump_market_ttl, bump_peridottroller_ttl};
 
 #[soroban_sdk::contractclient(name = "ReceiptVaultClient")]
 pub trait ReceiptVaultContract {
@@ -332,7 +332,7 @@ pub fn get_market(env: &Env, asset: &Address) -> Address {
 }
 
 pub fn get_peridottroller(env: &Env) -> PeridottrollerClient<'_> {
-    bump_core_ttl(env);
+    bump_peridottroller_ttl(env);
     let addr: Address = env
         .storage()
         .persistent()
@@ -367,7 +367,7 @@ pub fn get_max_slippage_scaled(env: &Env) -> u128 {
 
 pub fn get_price_usd(env: &Env, asset: &Address) -> (u128, u128) {
     let peridottroller_addr: Address = {
-        bump_core_ttl(env);
+        bump_peridottroller_ttl(env);
         env.storage()
             .persistent()
             .get(&DataKey::Peridottroller)

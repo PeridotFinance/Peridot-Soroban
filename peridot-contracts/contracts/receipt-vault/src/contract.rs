@@ -2181,69 +2181,16 @@ impl ReceiptVault {
             .get(&DataKey::LastUpdateTime)
             .expect("last update missing");
         let now = env.ledger().timestamp();
-        if now <= last_time {
-            // Keep this key in the read-write footprint even when simulation
-            // happens in the same ledger as the previous accrual. The prepared
-            // transaction can land in the next ledger, where this invocation
-            // may need to advance LastUpdateTime. Without the same-value write,
-            // Soroban prepares a read-only footprint and execution traps when
-            // the later ledger takes the write path.
-            env.storage()
-                .persistent()
-                .set(&DataKey::LastUpdateTime, &last_time);
-            return;
-        }
-        let elapsed = (now - last_time) as u128;
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("underlying not set");
+        // Simulation can happen in the same ledger as the previous accrual and
+        // execution in the next one. Always run the full read/call path so the
+        // prepared footprint covers the branch that execution may take.
+        let elapsed = now.saturating_sub(last_time) as u128;
         // Borrow interest accrual via global index (split to reserves, admin fees, and suppliers)
         let tb_prior: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::TotalBorrowed)
             .expect("total borrowed missing");
-
-        // Snapshot gross cash once so rate queries use raw liquidity inputs and
-        // reserves are subtracted only inside the rate model.
-        //
-        // For rate-model inputs, cap boosted cash only when the reported value is
-        // implausibly above an internal baseline (cached/accounting). This avoids
-        // trusting extreme external quotes while preserving legitimate yield growth.
-        // If baseline is unavailable while borrows are outstanding, fail-safe by
-        // ignoring boosted cash for this accrual tick.
-        let cached_before = Self::cached_boosted_underlying(&env);
-        let updated_at: u64 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::BoostedUnderlyingUpdatedAt)
-            .unwrap_or(0);
-        let cache_age = env.ledger().timestamp().saturating_sub(updated_at);
-        let boosted_reported = if cache_age > BOOSTED_CACHE_MAX_AGE_SECS {
-            // Cache is stale — use accounting-based estimate so rate inputs remain fresh
-            // even when no keeper has called refresh_boosted_underlying recently.
-            Self::estimate_boosted_underlying_from_accounting(&env)
-        } else {
-            cached_before
-        };
-        let boosted_accounting = Self::estimate_boosted_underlying_from_accounting(&env);
-        let boosted_baseline = cached_before.max(boosted_accounting);
-        let boosted_cap = if boosted_baseline == 0 {
-            if tb_prior > 0 {
-                0
-            } else {
-                boosted_reported
-            }
-        } else {
-            boosted_baseline.saturating_add(
-                (boosted_baseline.saturating_mul(BOOSTED_MODEL_CASH_TOLERANCE_BPS)) / BPS_SCALE,
-            )
-        };
-        let boosted_for_model = boosted_reported.min(boosted_cap);
-        let model_cash =
-            Self::current_live_cash(&env, &token_address).saturating_add(boosted_for_model);
 
         let current_reserves: u128 = env
             .storage()
@@ -2271,6 +2218,42 @@ impl ReceiptVault {
             .persistent()
             .get::<_, Address>(&DataKey::InterestModel)
         {
+            let token_address: Address = env
+                .storage()
+                .persistent()
+                .get(&DataKey::UnderlyingToken)
+                .expect("underlying not set");
+            // Dynamic rate queries use gross live cash. Cap boosted cash only
+            // when the external/accounting report is implausibly above its
+            // internal baseline.
+            let cached_before = Self::cached_boosted_underlying(&env);
+            let updated_at: u64 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::BoostedUnderlyingUpdatedAt)
+                .unwrap_or(0);
+            let cache_age = env.ledger().timestamp().saturating_sub(updated_at);
+            let boosted_reported = if cache_age > BOOSTED_CACHE_MAX_AGE_SECS {
+                Self::estimate_boosted_underlying_from_accounting(&env)
+            } else {
+                cached_before
+            };
+            let boosted_accounting = Self::estimate_boosted_underlying_from_accounting(&env);
+            let boosted_baseline = cached_before.max(boosted_accounting);
+            let boosted_cap = if boosted_baseline == 0 {
+                if tb_prior > 0 {
+                    0
+                } else {
+                    boosted_reported
+                }
+            } else {
+                boosted_baseline.saturating_add(
+                    (boosted_baseline.saturating_mul(BOOSTED_MODEL_CASH_TOLERANCE_BPS)) / BPS_SCALE,
+                )
+            };
+            let boosted_for_model = boosted_reported.min(boosted_cap);
+            let model_cash =
+                Self::current_live_cash(&env, &token_address).saturating_add(boosted_for_model);
             let borrows: u128 = tb_prior;
             match try_call_contract(
                 &env,
@@ -2297,8 +2280,11 @@ impl ReceiptVault {
             panic!("interest rate out of bounds");
         }
         if tb_prior > 0 && borrow_yearly_rate_scaled > 0 {
-            let borrow_interest_total =
-                checked_interest_product(&env, tb_prior, borrow_yearly_rate_scaled, elapsed);
+            let borrow_interest_total = if elapsed == 0 {
+                0u128
+            } else {
+                checked_interest_product(&env, tb_prior, borrow_yearly_rate_scaled, elapsed)
+            };
             interest_accumulated_event = borrow_interest_total;
             if borrow_interest_total > 0 {
                 advance_last_update = true;
@@ -2380,11 +2366,10 @@ impl ReceiptVault {
 
         // Move time forward only when accrual inputs cannot produce future interest
         // (no debt or zero rate) or this update accrued a non-zero amount.
-        if advance_last_update {
-            env.storage()
-                .persistent()
-                .set(&DataKey::LastUpdateTime, &now);
-        }
+        let next_last_update = if advance_last_update { now } else { last_time };
+        env.storage()
+            .persistent()
+            .set(&DataKey::LastUpdateTime, &next_last_update);
     }
 
     /// Admin-only recovery for missing core state after TTL expiry.
