@@ -1656,6 +1656,40 @@ fn test_execute_open_position_v3_finishes_already_swapped_pending() {
 }
 
 #[test]
+#[should_panic(expected = "open swap required")]
+fn test_execute_open_position_v3_requires_completed_swap() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    usdt_vault.deposit(&user, &500u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &500u128);
+    let (pool, pool_id, pool_tokens) = setup_perps_pool(&env, &usdt_id, &xlm_id);
+    let position_id = controller.begin_open_position_v3(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &500u128,
+        &5u128,
+        &PositionSide::Long,
+        &pool_tokens,
+        &pool_id,
+        &pool,
+        &2_500u128,
+    );
+    controller.execute_open_position_v3(&user, &position_id);
+}
+
+#[test]
 fn test_activate_open_position_v3_allows_swapped_pending_after_expiry() {
     let (
         env,
@@ -5956,6 +5990,47 @@ fn test_prepare_close_position_v3_fuses_begin_and_withdraw_under_budget() {
     env.cost_estimate().budget().reset_unlimited();
     let controller = MarginControllerClient::new(&env, &controller_id);
     let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    env.cost_estimate().budget().reset_unlimited();
+    controller.prepare_close_position_v3(&user, &position_id);
+    assert_last_invocation_resources_under(&env, 100, 45, 25_000_000);
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Closing
+    );
+    assert!(
+        controller
+            .get_pending_perps_close(&position_id)
+            .unwrap()
+            .collateral_underlying
+            > 0u128
+    );
+}
+
+#[test]
+fn test_prepare_close_short_position_v3_fuses_begin_and_withdraw_under_budget() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_short_10x(
         &env,
         &controller,
         &user,

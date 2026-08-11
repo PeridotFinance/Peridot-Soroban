@@ -27,8 +27,6 @@ pub const MARGIN_FEE_PRECISION: u128 = 1_000_000_000_000_000_000u128; // 1e18
 pub const PENDING_OPEN_TTL_SECS: u64 = 30 * 60;
 pub const PENDING_LIQUIDATION_TTL_SECS: u64 = 5 * 60;
 pub const PENDING_CLOSE_TTL_SECS: u64 = 5 * 60;
-// Leave enough time for simulation and a wallet signature without making the
-// prepared close a long-lived liquidation blocker.
 // Covers more than 30 minutes of accrual at ReceiptVault's 1000% yearly-rate cap.
 // Any unused Short-close output is returned to the user's debt-asset wallet.
 pub const CLOSE_DEBT_BUFFER_BPS: u128 = 10u128; // 0.10%

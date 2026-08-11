@@ -199,7 +199,11 @@ impl MarginController {
 
     pub(crate) fn execute_open_position_v3_impl(env: &Env, user: Address, position_id: u64) {
         if get_pending_perps_open_execution(env, position_id).is_none() {
-            Self::swap_open_position_v3_impl(env, user.clone(), position_id);
+            // A full swap+activation touches more than Soroban's 100-entry
+            // transaction footprint with the production vault/oracle stack.
+            // Keep this legacy convenience entrypoint as an idempotent
+            // finalizer, but require the budget-safe swap stage first.
+            panic!("open swap required");
         }
         Self::activate_open_position_v3_impl(env, user, position_id);
     }

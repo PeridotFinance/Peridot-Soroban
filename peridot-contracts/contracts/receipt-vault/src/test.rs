@@ -4376,6 +4376,40 @@ fn test_update_interest_does_not_advance_time_when_rounds_to_zero() {
 }
 
 #[test]
+fn test_update_interest_same_ledger_marks_timestamp_writable() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let last_before: u64 = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::LastUpdateTime)
+            .expect("last update missing")
+    });
+    env.cost_estimate().budget().reset_unlimited();
+    vault.update_interest();
+    let resources = env.cost_estimate().resources();
+    assert!(
+        resources.write_entries > 0,
+        "same-ledger accrual must prepare a writable timestamp footprint: {resources:?}"
+    );
+    let last_after: u64 = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::LastUpdateTime)
+            .expect("last update missing")
+    });
+    assert_eq!(last_after, last_before);
+}
+
+#[test]
 #[should_panic]
 fn test_ptoken_transfer_and_approve_with_gating() {
     let env = Env::default();

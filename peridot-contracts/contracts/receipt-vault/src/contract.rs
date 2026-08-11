@@ -2182,6 +2182,15 @@ impl ReceiptVault {
             .expect("last update missing");
         let now = env.ledger().timestamp();
         if now <= last_time {
+            // Keep this key in the read-write footprint even when simulation
+            // happens in the same ledger as the previous accrual. The prepared
+            // transaction can land in the next ledger, where this invocation
+            // may need to advance LastUpdateTime. Without the same-value write,
+            // Soroban prepares a read-only footprint and execution traps when
+            // the later ledger takes the write path.
+            env.storage()
+                .persistent()
+                .set(&DataKey::LastUpdateTime, &last_time);
             return;
         }
         let elapsed = (now - last_time) as u128;
