@@ -1083,10 +1083,14 @@ pub fn collect_margin_fee(env: &Env, vault: &Address, fee_ptokens: u128) {
         .extend_ttl(&index_key, TTL_THRESHOLD, TTL_EXTEND_TO);
 }
 
-pub fn bump_core_ttl(env: &Env) {
+pub fn bump_instance_ttl(env: &Env) {
     env.storage()
         .instance()
         .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+pub fn bump_core_ttl(env: &Env) {
+    bump_instance_ttl(env);
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::Admin) {
         persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -1142,9 +1146,7 @@ pub fn bump_core_ttl(env: &Env) {
 }
 
 pub fn bump_peridottroller_ttl(env: &Env) {
-    env.storage()
-        .instance()
-        .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    bump_instance_ttl(env);
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::Peridottroller) {
         persistent.extend_ttl(&DataKey::Peridottroller, TTL_THRESHOLD, TTL_EXTEND_TO);

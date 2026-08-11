@@ -2070,9 +2070,7 @@ impl MarginController {
         swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
         amount_with_slippage: u128,
     ) {
-        // This atomic legacy close already touches a large cross-contract
-        // footprint. Its required config keys are read below, and other entry
-        // points keep core TTLs alive.
+        bump_instance_ttl(&env);
         user.require_auth();
         Self::close_position_v2_impl(
             env,
@@ -2092,8 +2090,7 @@ impl MarginController {
         amount_with_slippage: u128,
         max_wallet_top_up: u128,
     ) {
-        // See close_position_v2: avoid a redundant global TTL walk in this
-        // footprint-sensitive compatibility path.
+        bump_instance_ttl(&env);
         user.require_auth();
         Self::close_position_v2_impl(
             env,
@@ -2355,8 +2352,7 @@ impl MarginController {
     }
 
     pub fn begin_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
-        // The live position and liquidation record anchor this staged flow.
-        // Avoid pulling unrelated global TTL keys into the health-check stage.
+        bump_instance_ttl(&env);
         liquidator.require_auth();
         Self::begin_liquidation_v3_impl(&env, liquidator, position_id);
     }
@@ -2367,14 +2363,13 @@ impl MarginController {
         position_id: u64,
         amount_with_slippage: u128,
     ) {
-        // The pending liquidation was renewed by begin and is bumped below.
+        bump_instance_ttl(&env);
         liquidator.require_auth();
         Self::swap_liquidation_v3_impl(&env, liquidator, position_id, amount_with_slippage);
     }
 
     pub fn finish_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
-        // Settlement is bounded by the pending liquidation TTL; a global TTL
-        // walk would needlessly push this cross-contract stage over 100 keys.
+        bump_instance_ttl(&env);
         liquidator.require_auth();
         Self::finish_liquidation_v3_impl(&env, liquidator, position_id);
     }
