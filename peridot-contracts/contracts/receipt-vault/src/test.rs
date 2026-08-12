@@ -331,40 +331,9 @@ impl MockMarginLockController {
 #[contract]
 pub struct MockMarginPositionController;
 
-#[contracttype]
-#[derive(Clone)]
-enum MockMarginPositionKey {
-    Owner(u64),
-    DebtVault(u64),
-}
-
 #[contractimpl]
 impl MockMarginPositionController {
-    pub fn set_position(env: Env, position_id: u64, owner: Address, debt_vault: Address) {
-        env.storage()
-            .persistent()
-            .set(&MockMarginPositionKey::Owner(position_id), &owner);
-        env.storage()
-            .persistent()
-            .set(&MockMarginPositionKey::DebtVault(position_id), &debt_vault);
-    }
-
-    pub fn get_margin_position_owner(env: Env, position_id: u64, debt_vault: Address) -> Address {
-        let owner: Address = env
-            .storage()
-            .persistent()
-            .get(&MockMarginPositionKey::Owner(position_id))
-            .expect("position owner missing");
-        let configured_debt_vault: Address = env
-            .storage()
-            .persistent()
-            .get(&MockMarginPositionKey::DebtVault(position_id))
-            .expect("position vault missing");
-        if configured_debt_vault != debt_vault {
-            panic!("wrong debt vault");
-        }
-        owner
-    }
+    pub fn set_position(_env: Env, _position_id: u64, _owner: Address, _debt_vault: Address) {}
 
     pub fn locked_ptokens_in_market(_env: Env, _user: Address, _market: Address) -> u128 {
         0u128
@@ -1079,6 +1048,52 @@ fn test_permissionless_recover_borrow_snapshot_is_disabled() {
 }
 
 #[test]
+fn test_admin_recovers_missing_user_principal_without_rewriting_snapshot() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &2_000i128);
+    token_admin_client.mint(&lender, &2_000i128);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    vault.deposit(&lender, &1_000u128);
+    vault.deposit(&user, &500u128);
+    vault.borrow(&user, &100u128);
+
+    let snapshot_before: BorrowSnapshot = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BorrowPrincipal(user.clone()));
+        env.storage()
+            .persistent()
+            .get(&DataKey::BorrowSnapshots(user.clone()))
+            .expect("borrow snapshot missing")
+    });
+    assert!(vault.try_repay(&user, &10u128).is_err());
+    assert!(vault
+        .try_recover_user_borrow_principal(&admin, &user, &0u128)
+        .is_err());
+
+    vault.recover_user_borrow_principal(&admin, &user, &100u128);
+    let snapshot_after: BorrowSnapshot = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::BorrowSnapshots(user.clone()))
+            .expect("borrow snapshot missing")
+    });
+    assert_eq!(snapshot_after, snapshot_before);
+    vault.repay(&user, &10u128);
+    assert_eq!(vault.get_user_borrow_balance(&user), 90u128);
+}
+
+#[test]
 #[should_panic(expected = "borrow state missing")]
 fn test_get_user_borrow_balance_fails_closed_without_snapshot_or_flag() {
     let env = Env::default();
@@ -1464,7 +1479,7 @@ fn test_get_margin_borrow_balance_missing_state_panics() {
 
 /// borrow_for_margin requires the receiver to authorize the call. The earlier
 /// "receiver must be position owner" defense did a callback into the margin
-/// controller's `get_margin_position_owner` which triggered Soroban's re-entry
+/// controller which triggered Soroban's re-entry
 /// guard when the call-stack already contained the controller (the actual
 /// production path). The receiver.require_auth() check provides the same
 /// protection: only the user who signs the auth tree can pull funds, so a
@@ -1729,6 +1744,56 @@ fn test_recover_margin_borrow_snapshot_restores_missing_state() {
     });
     vault.recover_margin_borrow_snapshot(&admin, &position_id, &50u128, &index);
     assert_eq!(vault.get_margin_borrow_balance(&position_id), 50u128);
+}
+
+#[test]
+fn test_admin_recovers_missing_margin_principal_without_rewriting_snapshot() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&lender, &1_000i128);
+    token_admin_client.mint(&user, &1_000i128);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.deposit(&lender, &500u128);
+    let margin_ctrl_id = env.register(MockMarginPositionController, ());
+    vault.set_margin_controller(&admin, &Some(margin_ctrl_id));
+
+    let position_id = 18u64;
+    vault.init_margin_borrow_state(&position_id);
+    vault.borrow_for_margin(&position_id, &user, &50u128);
+    let snapshot_before: BorrowSnapshot = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::MarginBorrowPrincipal(position_id));
+        env.storage()
+            .persistent()
+            .get(&DataKey::MarginBorrowSnapshots(position_id))
+            .expect("margin borrow snapshot missing")
+    });
+    assert!(vault
+        .try_repay_for_margin(&position_id, &user, &10u128)
+        .is_err());
+    assert!(vault
+        .try_recover_margin_borrow_principal(&admin, &position_id, &0u128)
+        .is_err());
+
+    vault.recover_margin_borrow_principal(&admin, &position_id, &50u128);
+    let snapshot_after: BorrowSnapshot = env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::MarginBorrowSnapshots(position_id))
+            .expect("margin borrow snapshot missing")
+    });
+    assert_eq!(snapshot_after, snapshot_before);
+    vault.repay_for_margin(&position_id, &user, &10u128);
+    assert_eq!(vault.get_margin_borrow_balance(&position_id), 40u128);
 }
 
 #[test]
@@ -4433,6 +4498,42 @@ fn test_update_interest_same_ledger_prepares_full_accrual_footprint() {
     assert!(
         same_ledger_resources.write_entries >= accrued_resources.write_entries,
         "same-ledger path omitted accrual writes: same={same_ledger_resources:?}, accrued={accrued_resources:?}"
+    );
+}
+
+#[test]
+fn test_update_interest_zero_rate_prepares_positive_rate_writes() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &10_000i128);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_collateral_factor(&1_000_000u128);
+    let model_id = env.register(MockRateModel, ());
+    let model = MockRateModelClient::new(&env, &model_id);
+    model.initialize(&0u128, &0u128);
+    vault.set_interest_model(&model_id);
+    vault.deposit(&user, &10_000u128);
+    vault.borrow(&user, &1_000u128);
+
+    vault.update_interest();
+    let zero_rate_resources = env.cost_estimate().resources();
+
+    model.initialize(&0u128, &1_000_000u128);
+    env.ledger()
+        .set_timestamp(env.ledger().timestamp().saturating_add(365 * 24 * 60 * 60));
+    vault.update_interest();
+    let positive_rate_resources = env.cost_estimate().resources();
+
+    assert!(
+        zero_rate_resources.write_entries >= positive_rate_resources.write_entries,
+        "zero-rate preparation omitted accrual writes: zero={zero_rate_resources:?}, positive={positive_rate_resources:?}"
     );
 }
 

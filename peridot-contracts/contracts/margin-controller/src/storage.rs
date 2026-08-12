@@ -138,6 +138,7 @@ pub enum DataKey {
     PendingLiquidationTakeoverAfter(u64),
     PendingLiqCollateralUnderlying(u64),
     UserPositionsCompactionCursor(Address),
+    ConfiguredPerpsPairs,
 }
 
 #[contracttype]
@@ -160,6 +161,8 @@ pub enum PositionStatus {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PositionMode {
+    // Legacy discriminants are retained for storage compatibility. V1/V2
+    // entrypoints are intentionally absent from the current contract ABI.
     Legacy,
     MarginV2,
     PerpsV3,
@@ -182,6 +185,7 @@ pub struct Position {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PendingOpenPosition {
+    // Reserved legacy V2 schema. Do not remove or reorder persisted types/keys.
     pub owner: Address,
     pub collateral_asset: Address,
     pub debt_asset: Address,

@@ -192,7 +192,7 @@ fn test_vault_deposit_policy_accepts_self() {
 }
 
 #[test]
-fn test_margin_open_policy_rejects_other_user() {
+fn test_margin_v3_policy_accepts_self_and_rejects_other_user() {
     let env = Env::default();
     env.mock_all_auths();
     let factory = expected_factory(&env);
@@ -203,160 +203,49 @@ fn test_margin_open_policy_rejects_other_user() {
     let (contract_id, client) = register_account(&env, &factory);
     client.initialize(&owner, &signer, &peridottroller, &margin);
     let other = Address::generate(&env);
-    let swaps_chain = Vec::<(Vec<Address>, BytesN<32>, Address)>::new(&env);
     env.as_contract(&contract_id, || {
-        let ctx = ContractContext {
-            contract: margin,
-            fn_name: Symbol::new(&env, "open_position"),
-            args: (
-                other,
-                Address::generate(&env),
-                Address::generate(&env),
-                100u128,
-                2u128,
-                Symbol::new(&env, "Long"),
-                swaps_chain.clone(),
-                90u128,
-            )
-                .into_val(&env),
-        };
+        for fn_name in [
+            "deposit_collateral",
+            "withdraw_collateral",
+            "transfer_spot_to_margin",
+            "transfer_margin_to_spot",
+            "begin_open_position_v3",
+            "execute_open_position_v3",
+            "swap_open_position_v3",
+            "activate_open_position_v3",
+            "cancel_pending_open_v3",
+            "add_position_collateral_v3",
+            "repay_margin_position_v3",
+            "release_debt_free_position_v3",
+            "close_position_v3",
+            "begin_close_position_v3",
+            "prepare_close_position_v3",
+            "withdraw_close_position_v3",
+            "swap_close_position_v3",
+            "swap_close_short_position_v3",
+            "cancel_close_position_v3",
+            "liquidate_position_v3",
+            "begin_liquidation_v3",
+            "swap_liquidation_v3",
+            "finish_liquidation_v3",
+        ] {
+            let self_ctx = ContractContext {
+                contract: margin.clone(),
+                fn_name: Symbol::new(&env, fn_name),
+                args: (contract_id.clone(),).into_val(&env),
+            };
+            assert_eq!(enforce_contract_policy(&env, &self_ctx), Ok(()));
 
-        let res = enforce_contract_policy(&env, &ctx);
-        assert_eq!(res, Err(Error::Unauthorized));
-    });
-}
-
-#[test]
-fn test_margin_open_v2_policy_rejects_other_user() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let factory = expected_factory(&env);
-    let owner = Address::generate(&env);
-    let signer = BytesN::from_array(&env, &[1u8; 32]);
-    let peridottroller = Address::generate(&env);
-    let margin = Address::generate(&env);
-    let (contract_id, client) = register_account(&env, &factory);
-    client.initialize(&owner, &signer, &peridottroller, &margin);
-    let other = Address::generate(&env);
-    let swaps_chain = Vec::<(Vec<Address>, BytesN<32>, Address)>::new(&env);
-    env.as_contract(&contract_id, || {
-        let ctx = ContractContext {
-            contract: margin,
-            fn_name: Symbol::new(&env, "open_position_v2"),
-            args: (
-                other,
-                Address::generate(&env),
-                Address::generate(&env),
-                100u128,
-                2u128,
-                Symbol::new(&env, "Long"),
-                swaps_chain.clone(),
-                90u128,
-            )
-                .into_val(&env),
-        };
-
-        let res = enforce_contract_policy(&env, &ctx);
-        assert_eq!(res, Err(Error::Unauthorized));
-    });
-}
-
-#[test]
-fn test_margin_split_open_v2_policy_accepts_self_and_rejects_other_user() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let factory = expected_factory(&env);
-    let owner = Address::generate(&env);
-    let signer = BytesN::from_array(&env, &[1u8; 32]);
-    let peridottroller = Address::generate(&env);
-    let margin = Address::generate(&env);
-    let (contract_id, client) = register_account(&env, &factory);
-    client.initialize(&owner, &signer, &peridottroller, &margin);
-    let other = Address::generate(&env);
-    let swaps_chain = Vec::<(Vec<Address>, BytesN<32>, Address)>::new(&env);
-
-    env.as_contract(&contract_id, || {
-        let begin_self = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "begin_open_position_v2"),
-            args: (
-                contract_id.clone(),
-                Address::generate(&env),
-                Address::generate(&env),
-                100u128,
-                2u128,
-                Symbol::new(&env, "Long"),
-                swaps_chain.clone(),
-                90u128,
-            )
-                .into_val(&env),
-        };
-        assert_eq!(enforce_contract_policy(&env, &begin_self), Ok(()));
-
-        let begin_other = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "begin_open_position_v2"),
-            args: (
-                other,
-                Address::generate(&env),
-                Address::generate(&env),
-                100u128,
-                2u128,
-                Symbol::new(&env, "Long"),
-                swaps_chain.clone(),
-                90u128,
-            )
-                .into_val(&env),
-        };
-        assert_eq!(
-            enforce_contract_policy(&env, &begin_other),
-            Err(Error::Unauthorized)
-        );
-
-        let finalize_self = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "finalize_open_position_v2"),
-            args: (contract_id.clone(), 7u64, 100u128).into_val(&env),
-        };
-        assert_eq!(enforce_contract_policy(&env, &finalize_self), Ok(()));
-
-        let finalize_swap_self = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "finalize_open_swap_v2"),
-            args: (contract_id.clone(), 7u64, swaps_chain.clone(), 100u128).into_val(&env),
-        };
-        assert_eq!(enforce_contract_policy(&env, &finalize_swap_self), Ok(()));
-
-        let finalize_ptokens_self = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "finalize_open_ptokens_v2"),
-            args: (contract_id.clone(), 7u64, 100u128).into_val(&env),
-        };
-        assert_eq!(
-            enforce_contract_policy(&env, &finalize_ptokens_self),
-            Ok(())
-        );
-
-        let supply_ptokens_self = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "supply_open_ptokens_v2"),
-            args: (contract_id.clone(), 7u64, 100u128).into_val(&env),
-        };
-        assert_eq!(enforce_contract_policy(&env, &supply_ptokens_self), Ok(()));
-
-        let activate_self = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "activate_open_position_v2"),
-            args: (contract_id.clone(), 7u64).into_val(&env),
-        };
-        assert_eq!(enforce_contract_policy(&env, &activate_self), Ok(()));
-
-        let cancel_self = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "cancel_pending_open_v2"),
-            args: (contract_id.clone(), 7u64, 100u128).into_val(&env),
-        };
-        assert_eq!(enforce_contract_policy(&env, &cancel_self), Ok(()));
+            let other_ctx = ContractContext {
+                contract: margin.clone(),
+                fn_name: Symbol::new(&env, fn_name),
+                args: (other.clone(),).into_val(&env),
+            };
+            assert_eq!(
+                enforce_contract_policy(&env, &other_ctx),
+                Err(Error::Unauthorized)
+            );
+        }
     });
 }
 
@@ -387,62 +276,6 @@ fn test_margin_transfer_policy_accepts_self() {
             args: (contract_id.clone(), asset.clone(), 5u128).into_val(&env),
         };
         assert_eq!(enforce_contract_policy(&env, &margin_to_spot), Ok(()));
-    });
-}
-
-#[test]
-fn test_margin_no_swap_v2_policy_accepts_self_and_rejects_other_user() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let factory = expected_factory(&env);
-    let owner = Address::generate(&env);
-    let signer = BytesN::from_array(&env, &[1u8; 32]);
-    let peridottroller = Address::generate(&env);
-    let margin = Address::generate(&env);
-    let (contract_id, client) = register_account(&env, &factory);
-    client.initialize(&owner, &signer, &peridottroller, &margin);
-    let other = Address::generate(&env);
-
-    env.as_contract(&contract_id, || {
-        let open_self = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "open_position_no_swap_v2"),
-            args: (
-                contract_id.clone(),
-                Address::generate(&env),
-                Address::generate(&env),
-                100u128,
-                200u128,
-                3u128,
-            )
-                .into_val(&env),
-        };
-        assert_eq!(enforce_contract_policy(&env, &open_self), Ok(()));
-
-        let open_other = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "open_position_no_swap_v2"),
-            args: (
-                other,
-                Address::generate(&env),
-                Address::generate(&env),
-                100u128,
-                200u128,
-                3u128,
-            )
-                .into_val(&env),
-        };
-        assert_eq!(
-            enforce_contract_policy(&env, &open_other),
-            Err(Error::Unauthorized)
-        );
-
-        let close_self = ContractContext {
-            contract: margin.clone(),
-            fn_name: Symbol::new(&env, "close_position_no_swap_v2"),
-            args: (contract_id.clone(), 7u64).into_val(&env),
-        };
-        assert_eq!(enforce_contract_policy(&env, &close_self), Ok(()));
     });
 }
 
@@ -527,21 +360,13 @@ fn test_leveraged_margin_policy_budget() {
         env.cost_estimate().budget().reset_unlimited();
         let open_ctx = ContractContext {
             contract: margin.clone(),
-            fn_name: Symbol::new(&env, "open_position_no_swap_v2"),
-            args: (
-                contract_id.clone(),
-                Address::generate(&env),
-                Address::generate(&env),
-                100u128,
-                200u128,
-                3u128,
-            )
-                .into_val(&env),
+            fn_name: Symbol::new(&env, "begin_open_position_v3"),
+            args: (contract_id.clone(),).into_val(&env),
         };
         let close_ctx = ContractContext {
             contract: margin,
-            fn_name: Symbol::new(&env, "close_position_no_swap_v2"),
-            args: (contract_id.clone(), 7u64).into_val(&env),
+            fn_name: Symbol::new(&env, "prepare_close_position_v3"),
+            args: (contract_id.clone(),).into_val(&env),
         };
         let borrow_ctx = ContractContext {
             contract: allowed_vault.clone(),

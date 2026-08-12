@@ -59,7 +59,7 @@ test("syncEvents paginates without skipping a full RPC page", async () => {
       }
       return {
         events: [
-          { ledger: 106, topic: [symbol("position_removed"), symbol("owner"), u64(1)] },
+          { ledger: 104, topic: [symbol("position_removed"), symbol("owner"), u64(1)] },
         ],
         cursor: "page-2",
         latestLedger: 106,
@@ -81,11 +81,37 @@ test("syncEvents paginates without skipping a full RPC page", async () => {
 
   assert.equal(calls.length, 2);
   assert.equal(calls[0].startLedger, 101);
-  assert.equal(calls[0].endLedger, 105);
+  assert.equal(calls[0].endLedger, 106);
   assert.equal(calls[1].cursor, "page-1");
+  assert.equal(calls[1].endLedger, 106);
   assert.equal(state.activePositionIds.length, 99);
-  assert.equal(state.lastEventLedger, 106);
+  assert.equal(state.lastEventLedger, 105);
   assert.equal(saves, 1);
+});
+
+test("syncEvents waits when the events service may lag the ledger head", async () => {
+  let eventCalls = 0;
+  const client = {
+    async latestLedger() {
+      return { sequence: 105 };
+    },
+    async getEvents() {
+      eventCalls += 1;
+      throw new Error("must not query an unindexed ledger");
+    },
+  };
+  const state = { initialized: true, activePositionIds: [], lastEventLedger: 105 };
+  const keeper = new MarginLiquidationKeeper(
+    { controllerId: "C".repeat(56) },
+    client,
+    state,
+    async () => {},
+  );
+
+  await keeper.syncEvents();
+
+  assert.equal(eventCalls, 0);
+  assert.equal(state.lastEventLedger, 105);
 });
 
 test("initialize does not persist a partial position index", async () => {
@@ -132,6 +158,9 @@ test("keeper executes the complete split liquidation state machine", async () =>
           liquidator,
           repay_amount: BigInt(Math.floor(Date.now() / 1_000) + 300),
         };
+      }
+      if (method === "get_liquidation_takeover_after") {
+        return BigInt(Math.floor(Date.now() / 1_000) + 300);
       }
       if (method === "preview_liquidation_v3") {
         return { pool_estimated_out: 5_000n, oracle_min_out: 4_465n };

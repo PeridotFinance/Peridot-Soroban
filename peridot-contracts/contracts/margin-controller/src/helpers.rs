@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, BytesN, Env, Vec};
+use soroban_sdk::{Address, Env, Vec};
 
 use crate::constants::*;
 use crate::events::{PositionCreated, PositionRemoved};
@@ -84,31 +84,6 @@ pub fn remove_user_position(env: &Env, user: &Address, id: u64) {
     .publish(env);
 }
 
-pub fn compact_user_positions(env: &Env, user: &Address) -> Vec<u64> {
-    let positions: Vec<u64> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::UserPositions(user.clone()))
-        .unwrap_or(Vec::new(env));
-    let mut out = Vec::new(env);
-    let mut changed = false;
-    for id in positions.iter() {
-        let key = DataKey::Position(id);
-        if env.storage().persistent().has(&key) {
-            out.push_back(id);
-        } else {
-            changed = true;
-        }
-    }
-    if changed {
-        env.storage()
-            .persistent()
-            .set(&DataKey::UserPositions(user.clone()), &out);
-    }
-    bump_user_positions_ttl(env, user);
-    out
-}
-
 pub fn compact_user_positions_bounded(env: &Env, user: &Address, limit: u32) -> u32 {
     if limit == 0 || limit > MAX_POSITION_COMPACTION_BATCH {
         panic!("bad compaction limit");
@@ -181,87 +156,6 @@ pub fn read_user_positions(env: &Env, user: &Address) -> Vec<u64> {
     out
 }
 
-pub fn get_debt_shares_total(env: &Env, user: &Address, debt_asset: &Address) -> u128 {
-    let key = DataKey::DebtSharesTotal(user.clone(), debt_asset.clone());
-    if let Some(total) = env.storage().persistent().get::<_, u128>(&key) {
-        bump_debt_shares_ttl(env, user, debt_asset);
-        return total;
-    }
-    let recovered = recover_debt_shares_total_from_positions(env, user, debt_asset);
-    if recovered > 0 {
-        env.storage().persistent().set(&key, &recovered);
-        bump_debt_shares_ttl(env, user, debt_asset);
-    }
-    recovered
-}
-
-pub fn set_debt_shares_total(env: &Env, user: &Address, debt_asset: &Address, value: u128) {
-    env.storage().persistent().set(
-        &DataKey::DebtSharesTotal(user.clone(), debt_asset.clone()),
-        &value,
-    );
-    bump_debt_shares_ttl(env, user, debt_asset);
-}
-
-pub fn debt_for_shares(
-    env: &Env,
-    user: &Address,
-    debt_asset: &Address,
-    shares: u128,
-) -> (u128, u128, u128) {
-    let debt_vault = get_market(env, debt_asset);
-    debt_for_shares_in_vault(env, user, debt_asset, &debt_vault, shares)
-}
-
-pub fn debt_for_shares_in_vault(
-    env: &Env,
-    user: &Address,
-    debt_asset: &Address,
-    debt_vault: &Address,
-    shares: u128,
-) -> (u128, u128, u128) {
-    let total_shares = get_debt_shares_total(env, user, debt_asset);
-    if total_shares == 0 || shares == 0 {
-        return (0, total_shares, 0);
-    }
-    let total_debt = ReceiptVaultClient::new(env, debt_vault).get_user_borrow_balance(user);
-    let debt_amount = if shares >= total_shares {
-        total_debt
-    } else {
-        let numerator = shares
-            .checked_mul(total_debt)
-            .expect("debt calculation overflow");
-        // Round up so share burn repays enough underlying for the shares removed.
-        numerator
-            .checked_add(total_shares - 1)
-            .expect("debt calculation overflow")
-            / total_shares
-    };
-    (debt_amount, total_shares, total_debt)
-}
-
-fn recover_debt_shares_total_from_positions(
-    env: &Env,
-    user: &Address,
-    debt_asset: &Address,
-) -> u128 {
-    let mut total = 0u128;
-    let positions = compact_user_positions(env, user);
-    for id in positions.iter() {
-        let position: Option<Position> = env.storage().persistent().get(&DataKey::Position(id));
-        let Some(position) = position else {
-            continue;
-        };
-        if position.status == PositionStatus::Open
-            && position.debt_asset == *debt_asset
-            && position.debt_shares > 0
-        {
-            total = total.saturating_add(position.debt_shares);
-        }
-    }
-    total
-}
-
 pub fn set_position_vaults(
     env: &Env,
     position_id: u64,
@@ -291,14 +185,25 @@ pub fn set_position_mode(env: &Env, position_id: u64, mode: PositionMode) {
 
 pub fn get_position_mode(env: &Env, position_id: u64) -> PositionMode {
     let key = DataKey::PositionMode(position_id);
-    let mode: Option<PositionMode> = env.storage().persistent().get(&key);
-    if mode.is_some() {
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    let persistent = env.storage().persistent();
+    let mode: Option<PositionMode> = persistent.get(&key);
+    if let Some(mode) = mode {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        bump_position_record_ttl(env, position_id);
+        return mode;
     }
+
+    // PerpsPositionData is only created by V3. It is therefore sufficient to
+    // reconstruct a mode key that was independently archived or restored.
+    if persistent.has(&DataKey::PerpsPositionData(position_id)) {
+        persistent.set(&key, &PositionMode::PerpsV3);
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        bump_position_record_ttl(env, position_id);
+        return PositionMode::PerpsV3;
+    }
+
     bump_position_record_ttl(env, position_id);
-    mode.unwrap_or(PositionMode::Legacy)
+    PositionMode::Legacy
 }
 
 pub fn get_position_mode_no_bump(env: &Env, position_id: u64) -> PositionMode {
@@ -409,21 +314,6 @@ pub fn clear_position_mode(env: &Env, position_id: u64) {
         .remove(&DataKey::PositionMode(position_id));
 }
 
-pub fn clear_position_storage(env: &Env, position_id: u64) {
-    env.storage()
-        .persistent()
-        .remove(&DataKey::Position(position_id));
-    clear_pending_open_position(env, position_id);
-    clear_pending_open_supplied_collateral(env, position_id);
-    clear_pending_perps_open_position(env, position_id);
-    clear_pending_perps_open_execution(env, position_id);
-    clear_perps_position_data(env, position_id);
-    clear_pending_liquidation(env, position_id);
-    clear_position_initial_lock(env, position_id);
-    clear_position_vaults(env, position_id);
-    clear_position_mode(env, position_id);
-}
-
 pub fn clear_perps_v3_position_storage(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
@@ -433,18 +323,6 @@ pub fn clear_perps_v3_position_storage(env: &Env, position_id: u64) {
     clear_perps_position_data(env, position_id);
     clear_pending_perps_close(env, position_id);
     clear_pending_liquidation(env, position_id);
-    clear_position_vaults(env, position_id);
-    clear_position_mode(env, position_id);
-}
-
-pub fn clear_margin_v2_position_storage(env: &Env, position_id: u64) {
-    env.storage()
-        .persistent()
-        .remove(&DataKey::Position(position_id));
-    clear_pending_open_position(env, position_id);
-    clear_pending_open_supplied_collateral(env, position_id);
-    clear_pending_liquidation(env, position_id);
-    clear_position_initial_lock(env, position_id);
     clear_position_vaults(env, position_id);
     clear_position_mode(env, position_id);
 }
@@ -472,28 +350,6 @@ pub fn bump_position_record_ttl(env: &Env, position_id: u64) {
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
-}
-
-pub fn set_pending_open_position(env: &Env, position_id: u64, pending: &PendingOpenPosition) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::PendingOpenPosition(position_id), pending);
-    bump_position_ttl(env, position_id);
-}
-
-pub fn get_pending_open_position(env: &Env, position_id: u64) -> Option<PendingOpenPosition> {
-    let pending = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PendingOpenPosition(position_id));
-    if pending.is_some() {
-        bump_position_ttl(env, position_id);
-    }
-    pending
-}
-
-pub fn get_pending_open_position_or_panic(env: &Env, position_id: u64) -> PendingOpenPosition {
-    get_pending_open_position(env, position_id).expect("pending open missing")
 }
 
 pub fn set_pending_perps_open_position(
@@ -648,11 +504,14 @@ pub fn set_perps_position_data(env: &Env, position_id: u64, data: &PerpsPosition
 
 pub fn get_perps_position_data(env: &Env, position_id: u64) -> Option<PerpsPositionData> {
     let key = DataKey::PerpsPositionData(position_id);
-    let data = env.storage().persistent().get(&key);
+    let persistent = env.storage().persistent();
+    let data = persistent.get(&key);
     if data.is_some() {
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        let mode_key = DataKey::PositionMode(position_id);
+        if persistent.has(&mode_key) {
+            persistent.extend_ttl(&mode_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
         bump_position_record_ttl(env, position_id);
     }
     data
@@ -749,6 +608,7 @@ pub fn set_perps_pair_config(
     side: &PositionSide,
     config: &PerpsPairConfig,
 ) {
+    register_perps_pair(env, margin_asset, base_asset, side);
     let key = DataKey::PerpsPairConfig(margin_asset.clone(), base_asset.clone(), side.clone());
     env.storage().instance().set(&key, config);
 }
@@ -761,6 +621,7 @@ pub fn get_perps_pair_config(
 ) -> Option<PerpsPairConfig> {
     let key = DataKey::PerpsPairConfig(margin_asset.clone(), base_asset.clone(), side.clone());
     if let Some(config) = env.storage().instance().get(&key) {
+        register_perps_pair(env, margin_asset, base_asset, side);
         return Some(config);
     }
 
@@ -768,6 +629,7 @@ pub fn get_perps_pair_config(
     // storage ties protocol policy to the contract lifetime instead of an
     // independently expiring persistent entry.
     if let Some(config) = env.storage().persistent().get(&key) {
+        register_perps_pair(env, margin_asset, base_asset, side);
         env.storage().instance().set(&key, &config);
         bump_perps_pair_config_ttl(env, margin_asset, base_asset, side);
         return Some(config);
@@ -795,6 +657,7 @@ pub fn set_perps_pair_execution_config(
     side: &PositionSide,
     config: &PerpsPairExecutionConfig,
 ) {
+    register_perps_pair(env, margin_asset, base_asset, side);
     let key =
         DataKey::PerpsPairExecutionConfig(margin_asset.clone(), base_asset.clone(), side.clone());
     env.storage().instance().set(&key, config);
@@ -809,6 +672,7 @@ pub fn get_perps_pair_execution_config(
     let key =
         DataKey::PerpsPairExecutionConfig(margin_asset.clone(), base_asset.clone(), side.clone());
     if let Some(config) = env.storage().instance().get(&key) {
+        register_perps_pair(env, margin_asset, base_asset, side);
         return Some(config);
     }
 
@@ -816,11 +680,35 @@ pub fn get_perps_pair_execution_config(
     // persistent value on first use.
     let persistent = env.storage().persistent();
     if let Some(config) = persistent.get(&key) {
+        register_perps_pair(env, margin_asset, base_asset, side);
         env.storage().instance().set(&key, &config);
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
         return Some(config);
     }
     None
+}
+
+fn register_perps_pair(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+) {
+    let registry_key = DataKey::ConfiguredPerpsPairs;
+    let instance = env.storage().instance();
+    let mut pairs: Vec<(Address, Address, PositionSide)> =
+        instance.get(&registry_key).unwrap_or(Vec::new(env));
+    let pair = (margin_asset.clone(), base_asset.clone(), side.clone());
+    for configured in pairs.iter() {
+        if configured == pair {
+            return;
+        }
+    }
+    if pairs.len() >= MAX_PERPS_PAIR_CONFIGS {
+        panic!("too many perps pairs");
+    }
+    pairs.push_back(pair);
+    instance.set(&registry_key, &pairs);
 }
 
 pub fn get_perps_pair_execution_config_or_default(
@@ -837,110 +725,6 @@ pub fn get_perps_pair_execution_config_or_default(
             liquidation_slippage_scaled: DEFAULT_LIQUIDATION_POOL_SLIPPAGE_SCALED,
         },
     )
-}
-
-pub fn clear_pending_open_position(env: &Env, position_id: u64) {
-    env.storage()
-        .persistent()
-        .remove(&DataKey::PendingOpenPosition(position_id));
-}
-
-pub fn set_pending_open_supplied_collateral(
-    env: &Env,
-    position_id: u64,
-    ptokens: u128,
-    position_amount: u128,
-) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::PendingOpenSuppliedPtokens(position_id), &ptokens);
-    env.storage().persistent().set(
-        &DataKey::PendingOpenSuppliedAmount(position_id),
-        &position_amount,
-    );
-    bump_position_ttl(env, position_id);
-}
-
-pub fn get_pending_open_supplied_collateral(env: &Env, position_id: u64) -> Option<(u128, u128)> {
-    let ptokens: Option<u128> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PendingOpenSuppliedPtokens(position_id));
-    let Some(ptokens) = ptokens else {
-        return None;
-    };
-    let position_amount: u128 = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PendingOpenSuppliedAmount(position_id))
-        .unwrap_or(0u128);
-    bump_position_ttl(env, position_id);
-    Some((ptokens, position_amount))
-}
-
-pub fn get_pending_open_supplied_collateral_or_panic(env: &Env, position_id: u64) -> (u128, u128) {
-    get_pending_open_supplied_collateral(env, position_id).expect("pending collateral missing")
-}
-
-pub fn clear_pending_open_supplied_collateral(env: &Env, position_id: u64) {
-    env.storage()
-        .persistent()
-        .remove(&DataKey::PendingOpenSuppliedPtokens(position_id));
-    env.storage()
-        .persistent()
-        .remove(&DataKey::PendingOpenSuppliedAmount(position_id));
-}
-
-pub fn validate_swaps_chain(
-    env: &Env,
-    swap_adapter: &Address,
-    swaps_chain: &Vec<(Vec<Address>, BytesN<32>, Address)>,
-    expected_in: &Address,
-    expected_out: &Address,
-) {
-    if swaps_chain.len() == 0 || swaps_chain.len() > MAX_SWAP_PATH_LEN {
-        panic!("bad swaps");
-    }
-    let (first_path, _, _) = swaps_chain.get(0).unwrap();
-    if first_path.len() != 2 {
-        panic!("bad swaps");
-    }
-
-    let (last_path, _, _) = swaps_chain.get(swaps_chain.len() - 1).unwrap();
-    if last_path.len() != 2 {
-        panic!("bad swaps");
-    }
-
-    let adapter = SwapAdapterClient::new(env, swap_adapter);
-    let mut current = expected_in.clone();
-    for i in 0..swaps_chain.len() {
-        let (path, pool_id, pool) = swaps_chain.get(i).unwrap();
-        if path.len() != 2 {
-            panic!("bad swaps");
-        }
-        if pool_id.to_array() == [0u8; 32] {
-            panic!("bad swaps");
-        }
-        if !adapter.is_pool_binding_allowed(&pool_id, &pool) {
-            panic!("pool binding not allowed");
-        }
-        current = infer_two_token_hop_output(&path, &current);
-    }
-    if current != *expected_out {
-        panic!("bad swaps");
-    }
-}
-
-fn infer_two_token_hop_output(pool_tokens: &Vec<Address>, current_token: &Address) -> Address {
-    let token_0 = pool_tokens.get(0).unwrap();
-    let token_1 = pool_tokens.get(1).unwrap();
-    if token_0 == current_token.clone() {
-        token_1
-    } else if token_1 == current_token.clone() {
-        token_0
-    } else {
-        panic!("bad swaps");
-    }
 }
 
 fn bump_total_margin_ptokens_ttl(env: &Env, vault: &Address) {
@@ -1197,14 +981,6 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
-    let initial_market_key = DataKey::PositionInitialLockMarket(position_id);
-    if persistent.has(&initial_market_key) {
-        persistent.extend_ttl(&initial_market_key, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    let initial_ptokens_key = DataKey::PositionInitialLockPtokens(position_id);
-    if persistent.has(&initial_ptokens_key) {
-        persistent.extend_ttl(&initial_ptokens_key, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
     let collateral_vault_key = DataKey::PositionCollateralVault(position_id);
     if persistent.has(&collateral_vault_key) {
         persistent.extend_ttl(&collateral_vault_key, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -1221,10 +997,6 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     if persistent.has(&mode_key) {
         persistent.extend_ttl(&mode_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
-    let pending_key = DataKey::PendingOpenPosition(position_id);
-    if persistent.has(&pending_key) {
-        persistent.extend_ttl(&pending_key, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
     let pending_perps_key = DataKey::PendingPerpsOpenPosition(position_id);
     if persistent.has(&pending_perps_key) {
         persistent.extend_ttl(&pending_perps_key, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -1236,14 +1008,6 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     let perps_position_key = DataKey::PerpsPositionData(position_id);
     if persistent.has(&perps_position_key) {
         persistent.extend_ttl(&perps_position_key, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    let pending_supplied_ptokens_key = DataKey::PendingOpenSuppliedPtokens(position_id);
-    if persistent.has(&pending_supplied_ptokens_key) {
-        persistent.extend_ttl(&pending_supplied_ptokens_key, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    let pending_supplied_amount_key = DataKey::PendingOpenSuppliedAmount(position_id);
-    if persistent.has(&pending_supplied_amount_key) {
-        persistent.extend_ttl(&pending_supplied_amount_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     let pending_liquidation_key = DataKey::PendingLiquidation(position_id);
     if persistent.has(&pending_liquidation_key) {
@@ -1267,74 +1031,8 @@ pub fn bump_pending_liquidation_ttl(env: &Env, position_id: u64) {
     }
 }
 
-pub fn set_position_initial_lock(
-    env: &Env,
-    position_id: u64,
-    market: &Address,
-    ptoken_amount: u128,
-) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::PositionInitialLockMarket(position_id), market);
-    env.storage().persistent().set(
-        &DataKey::PositionInitialLockPtokens(position_id),
-        &ptoken_amount,
-    );
-    bump_position_ttl(env, position_id);
-}
-
-pub fn get_position_initial_lock(env: &Env, position_id: u64) -> Option<(Address, u128)> {
-    let market: Option<Address> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PositionInitialLockMarket(position_id));
-    let Some(market) = market else {
-        return None;
-    };
-    let ptoken_amount: u128 = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PositionInitialLockPtokens(position_id))
-        .unwrap_or(0u128);
-    bump_position_ttl(env, position_id);
-    Some((market, ptoken_amount))
-}
-
-pub fn get_position_initial_lock_no_bump(env: &Env, position_id: u64) -> Option<(Address, u128)> {
-    let market: Option<Address> = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PositionInitialLockMarket(position_id));
-    let Some(market) = market else {
-        return None;
-    };
-    let ptoken_amount: u128 = env
-        .storage()
-        .persistent()
-        .get(&DataKey::PositionInitialLockPtokens(position_id))
-        .unwrap_or(0u128);
-    Some((market, ptoken_amount))
-}
-
-pub fn clear_position_initial_lock(env: &Env, position_id: u64) {
-    env.storage()
-        .persistent()
-        .remove(&DataKey::PositionInitialLockMarket(position_id));
-    env.storage()
-        .persistent()
-        .remove(&DataKey::PositionInitialLockPtokens(position_id));
-}
-
 pub fn bump_user_positions_ttl(env: &Env, user: &Address) {
     let key = DataKey::UserPositions(user.clone());
-    let persistent = env.storage().persistent();
-    if persistent.has(&key) {
-        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-}
-
-pub fn bump_debt_shares_ttl(env: &Env, user: &Address, debt_asset: &Address) {
-    let key = DataKey::DebtSharesTotal(user.clone(), debt_asset.clone());
     let persistent = env.storage().persistent();
     if persistent.has(&key) {
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);

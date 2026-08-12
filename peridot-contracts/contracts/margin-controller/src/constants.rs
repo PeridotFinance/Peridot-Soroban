@@ -9,6 +9,10 @@ pub const DEFAULT_LIQUIDATION_POOL_SLIPPAGE_SCALED: u128 = 100_000u128; // 10%
 pub const MAX_POOL_EXECUTION_DEVIATION_SCALED: u128 = 500_000u128; // 50%
 pub const MAX_USER_POSITIONS: u32 = 64;
 pub const MAX_POSITION_COMPACTION_BATCH: u32 = 8;
+// Risk and execution policies share one bounded pair-side registry. At this
+// limit, all pair policy values remain comfortably below the 64 KiB instance
+// entry limit even when both policy types are configured for every pair.
+pub const MAX_PERPS_PAIR_CONFIGS: u32 = 32;
 pub const MAX_LEVERAGE_CAP: u128 = 10;
 pub const DEFAULT_MARGIN_LIQ_BONUS_SCALED: u128 = 1_080_000u128; // 8%
 pub const DEFAULT_MARGIN_CLOSE_FACTOR_SCALED: u128 = 500_000u128; // 50%

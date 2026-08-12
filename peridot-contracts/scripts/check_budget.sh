@@ -1,46 +1,45 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# Simulate current margin split-open calls and print testnet resource costs.
+# Simulate Perps V3 calls against a deployed MarginController and print costs.
+# Simulations do not mutate state, so select follow-up stages that match the
+# current on-chain state of POSITION_ID.
 #
 # Required:
-#   MARGIN_ID - margin controller contract id
+#   MARGIN_ID - margin controller contract ID
 #   USER      - user address or local identity
 #
-# Optional:
-#   IDENTITY              default: dev
-#   NETWORK               default: testnet
-#   SWAP_ID               when set, also simulates swap_chained
-#   COLLATERAL_ASSET      default: current mock USDT token
-#   BASE_ASSET            default: current native XLM SAC
-#   SIDE                  default: Short
-#   COLLATERAL_PTOKENS    default: 1000000
-#   LEVERAGE              default: 2
-#   AMOUNT_WITH_SLIPPAGE  default: 1000000
-#   SWAPS_CHAIN           default: current XLM -> mock-USDT Aquarius route
-#   TOKEN_IN              default: current native XLM SAC
-#   SWAP_AMOUNT           default: AMOUNT_WITH_SLIPPAGE
-#   POSITION_ID           when set, simulates pending-position follow-up calls
-#   POSITION_PTOKENS      when set with POSITION_ID, simulates supply_open_ptokens_v2
-#   ACTIVATE_POSITION     when set with POSITION_ID, simulates activate_open_position_v2
-#   LEGACY_POSITION_PTOKENS when set with POSITION_ID, simulates finalize_open_ptokens_v2
-#   POSITION_AMOUNT       when set with POSITION_ID, simulates legacy finalize_open_position_v2
-#   MAX_REPAY_AMOUNT      when set with POSITION_ID, simulates cancel_pending_open_v2
+# Optional common values:
+#   IDENTITY                 default: dev
+#   NETWORK                  default: testnet
+#   CHECK_BEGIN              default: true
+#   POSITION_ID              existing V3 position or pending position
+#   OPEN_STAGE               execute | swap | activate | cancel
+#   CLOSE_STAGE              prepare | begin | withdraw | swap | swap-short |
+#                            cancel | finish
+#   LIQUIDATION_STAGE        preview | atomic | begin | swap | finish
+#   LIQUIDATOR               default: USER
+#   ADD_POSITION_PTOKENS     simulate add_position_collateral_v3
+#   REPAY_AMOUNT             simulate repay_margin_position_v3
+#   RELEASE_DEBT_FREE        non-empty simulates release_debt_free_position_v3
+#
+# Begin-open defaults target the current testnet XLM/mock-USDT pool. Override
+# every address when checking a different deployment.
 
 IDENTITY=${IDENTITY:-dev}
 NETWORK=${NETWORK:-testnet}
+CHECK_BEGIN=${CHECK_BEGIN:-true}
 
-COLLATERAL_ASSET=${COLLATERAL_ASSET:-CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY}
+MARGIN_ASSET=${MARGIN_ASSET:-CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY}
 BASE_ASSET=${BASE_ASSET:-CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC}
-SIDE=${SIDE:-Short}
-COLLATERAL_PTOKENS=${COLLATERAL_PTOKENS:-1000000}
+SIDE=${SIDE:-Long}
+MARGIN_PTOKENS=${MARGIN_PTOKENS:-1000000}
 LEVERAGE=${LEVERAGE:-2}
-AMOUNT_WITH_SLIPPAGE=${AMOUNT_WITH_SLIPPAGE:-1000000}
-TOKEN_IN=${TOKEN_IN:-$BASE_ASSET}
-SWAP_AMOUNT=${SWAP_AMOUNT:-$AMOUNT_WITH_SLIPPAGE}
-
-DEFAULT_SWAPS_CHAIN='[[["CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC","CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY"],"9ac7a9cde23ac2ada11105eeaa42e43c2ea8332ca0aa8f41f58d7160274d718e","CCMNSENXDBNJSY72BDIPH5CCXLLHBKZ4LXTRKDLKZN4UI2NJFQLWTLD6"]]'
-SWAPS_CHAIN=${SWAPS_CHAIN:-$DEFAULT_SWAPS_CHAIN}
+POOL=${POOL:-CCMNSENXDBNJSY72BDIPH5CCXLLHBKZ4LXTRKDLKZN4UI2NJFQLWTLD6}
+POOL_ID=${POOL_ID:-9ac7a9cde23ac2ada11105eeaa42e43c2ea8332ca0aa8f41f58d7160274d718e}
+POOL_TOKENS=${POOL_TOKENS:-'["CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC","CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY"]'}
+AMOUNT_WITH_SLIPPAGE=${AMOUNT_WITH_SLIPPAGE:-1}
+LIQUIDATOR=${LIQUIDATOR:-${USER:-}}
 
 if [[ -z "${MARGIN_ID:-}" || -z "${USER:-}" ]]; then
   echo "Missing env vars: MARGIN_ID and USER are required." >&2
@@ -51,7 +50,7 @@ run_margin_sim() {
   local label="$1"
   shift
   echo "== $label =="
-  if ! stellar contract invoke \
+  if stellar contract invoke \
     --id "$MARGIN_ID" \
     --source-account "$IDENTITY" \
     --network "$NETWORK" \
@@ -60,89 +59,91 @@ run_margin_sim() {
     --no-cache \
     -- \
     "$@"; then
-    echo "RESULT: FAILED"
-  else
     echo "RESULT: OK"
+  else
+    echo "RESULT: FAILED"
   fi
   echo
 }
 
-run_swap_sim() {
-  local label="$1"
-  shift
-  echo "== $label =="
-  if ! stellar contract invoke \
-    --id "$SWAP_ID" \
-    --source-account "$IDENTITY" \
-    --network "$NETWORK" \
-    --cost \
-    --send no \
-    --no-cache \
-    -- \
-    "$@"; then
-    echo "RESULT: FAILED"
-  else
-    echo "RESULT: OK"
-  fi
-  echo
-}
-
-run_margin_sim "begin_open_position_v2" \
-  begin_open_position_v2 \
-  --user "$USER" \
-  --collateral_asset "$COLLATERAL_ASSET" \
-  --base_asset "$BASE_ASSET" \
-  --collateral_ptokens "$COLLATERAL_PTOKENS" \
-  --leverage "$LEVERAGE" \
-  --side "$SIDE" \
-  --swaps_chain "$SWAPS_CHAIN" \
-  --amount_with_slippage "$AMOUNT_WITH_SLIPPAGE"
-
-if [[ -n "${SWAP_ID:-}" ]]; then
-  run_swap_sim "swap_chained" \
-    swap_chained \
+if [[ "$CHECK_BEGIN" == "true" ]]; then
+  run_margin_sim "begin_open_position_v3" \
+    begin_open_position_v3 \
     --user "$USER" \
-    --swaps_chain "$SWAPS_CHAIN" \
-    --token_in "$TOKEN_IN" \
-    --amount "$SWAP_AMOUNT" \
+    --margin_asset "$MARGIN_ASSET" \
+    --base_asset "$BASE_ASSET" \
+    --margin_ptokens "$MARGIN_PTOKENS" \
+    --leverage "$LEVERAGE" \
+    --side "$SIDE" \
+    --pool_tokens "$POOL_TOKENS" \
+    --pool_id "$POOL_ID" \
+    --pool "$POOL" \
     --amount_with_slippage "$AMOUNT_WITH_SLIPPAGE"
 fi
 
-if [[ -n "${POSITION_ID:-}" ]]; then
-  if [[ -n "${POSITION_PTOKENS:-}" ]]; then
-    run_margin_sim "supply_open_ptokens_v2" \
-      supply_open_ptokens_v2 \
-      --user "$USER" \
-      --position_id "$POSITION_ID" \
-      --position_ptokens "$POSITION_PTOKENS"
-  fi
-
-  if [[ -n "${ACTIVATE_POSITION:-}" ]]; then
-    run_margin_sim "activate_open_position_v2" \
-      activate_open_position_v2 \
-      --user "$USER" \
-      --position_id "$POSITION_ID"
-  fi
-
-  if [[ -n "${LEGACY_POSITION_PTOKENS:-}" ]]; then
-    run_margin_sim "finalize_open_ptokens_v2" \
-      finalize_open_ptokens_v2 \
-      --user "$USER" \
-      --position_id "$POSITION_ID" \
-      --position_ptokens "$LEGACY_POSITION_PTOKENS"
-  elif [[ -n "${POSITION_AMOUNT:-}" ]]; then
-    run_margin_sim "finalize_open_position_v2" \
-      finalize_open_position_v2 \
-      --user "$USER" \
-      --position_id "$POSITION_ID" \
-      --position_amount "$POSITION_AMOUNT"
-  fi
-
-  if [[ -n "${MAX_REPAY_AMOUNT:-}" ]]; then
-    run_margin_sim "cancel_pending_open_v2" \
-      cancel_pending_open_v2 \
-      --user "$USER" \
-      --position_id "$POSITION_ID" \
-      --max_repay_amount "$MAX_REPAY_AMOUNT"
-  fi
+if [[ -z "${POSITION_ID:-}" ]]; then
+  exit 0
 fi
+
+case "${OPEN_STAGE:-}" in
+  "") ;;
+  execute) run_margin_sim "execute_open_position_v3" execute_open_position_v3 --user "$USER" --position_id "$POSITION_ID" ;;
+  swap) run_margin_sim "swap_open_position_v3" swap_open_position_v3 --user "$USER" --position_id "$POSITION_ID" ;;
+  activate) run_margin_sim "activate_open_position_v3" activate_open_position_v3 --user "$USER" --position_id "$POSITION_ID" ;;
+  cancel) run_margin_sim "cancel_pending_open_v3" cancel_pending_open_v3 --user "$USER" --position_id "$POSITION_ID" ;;
+  *) echo "Unknown OPEN_STAGE: $OPEN_STAGE" >&2; exit 2 ;;
+esac
+
+if [[ -n "${ADD_POSITION_PTOKENS:-}" ]]; then
+  run_margin_sim "add_position_collateral_v3" \
+    add_position_collateral_v3 \
+    --user "$USER" \
+    --position_id "$POSITION_ID" \
+    --position_ptokens "$ADD_POSITION_PTOKENS"
+fi
+
+if [[ -n "${REPAY_AMOUNT:-}" ]]; then
+  run_margin_sim "repay_margin_position_v3" \
+    repay_margin_position_v3 \
+    --user "$USER" \
+    --position_id "$POSITION_ID" \
+    --amount "$REPAY_AMOUNT"
+fi
+
+if [[ -n "${RELEASE_DEBT_FREE:-}" ]]; then
+  run_margin_sim "release_debt_free_position_v3" \
+    release_debt_free_position_v3 \
+    --user "$USER" \
+    --position_id "$POSITION_ID"
+fi
+
+case "${CLOSE_STAGE:-}" in
+  "") ;;
+  prepare) run_margin_sim "prepare_close_position_v3" prepare_close_position_v3 --user "$USER" --position_id "$POSITION_ID" ;;
+  begin) run_margin_sim "begin_close_position_v3" begin_close_position_v3 --user "$USER" --position_id "$POSITION_ID" ;;
+  withdraw) run_margin_sim "withdraw_close_position_v3" withdraw_close_position_v3 --user "$USER" --position_id "$POSITION_ID" ;;
+  swap) run_margin_sim "swap_close_position_v3" swap_close_position_v3 --user "$USER" --position_id "$POSITION_ID" --amount_with_slippage "$AMOUNT_WITH_SLIPPAGE" ;;
+  swap-short)
+    : "${SHORT_SWAP_AMOUNT_IN:?SHORT_SWAP_AMOUNT_IN is required for CLOSE_STAGE=swap-short}"
+    : "${MIN_DEBT_OUT:?MIN_DEBT_OUT is required for CLOSE_STAGE=swap-short}"
+    run_margin_sim "swap_close_short_position_v3" \
+      swap_close_short_position_v3 \
+      --user "$USER" \
+      --position_id "$POSITION_ID" \
+      --swap_amount_in "$SHORT_SWAP_AMOUNT_IN" \
+      --min_debt_out "$MIN_DEBT_OUT"
+    ;;
+  cancel) run_margin_sim "cancel_close_position_v3" cancel_close_position_v3 --user "$USER" --position_id "$POSITION_ID" ;;
+  finish) run_margin_sim "finish_close_position_v3" finish_close_position_v3 --position_id "$POSITION_ID" ;;
+  *) echo "Unknown CLOSE_STAGE: $CLOSE_STAGE" >&2; exit 2 ;;
+esac
+
+case "${LIQUIDATION_STAGE:-}" in
+  "") ;;
+  preview) run_margin_sim "preview_liquidation_v3" preview_liquidation_v3 --position_id "$POSITION_ID" ;;
+  atomic) run_margin_sim "liquidate_position_v3" liquidate_position_v3 --liquidator "$LIQUIDATOR" --position_id "$POSITION_ID" ;;
+  begin) run_margin_sim "begin_liquidation_v3" begin_liquidation_v3 --liquidator "$LIQUIDATOR" --position_id "$POSITION_ID" ;;
+  swap) run_margin_sim "swap_liquidation_v3" swap_liquidation_v3 --liquidator "$LIQUIDATOR" --position_id "$POSITION_ID" --amount_with_slippage "$AMOUNT_WITH_SLIPPAGE" ;;
+  finish) run_margin_sim "finish_liquidation_v3" finish_liquidation_v3 --liquidator "$LIQUIDATOR" --position_id "$POSITION_ID" ;;
+  *) echo "Unknown LIQUIDATION_STAGE: $LIQUIDATION_STAGE" >&2; exit 2 ;;
+esac

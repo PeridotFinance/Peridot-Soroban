@@ -368,24 +368,7 @@ fn enforce_contract_policy(env: &Env, ctx: &ContractContext) -> Result<(), Error
         if !is_protocol_recipient(env, &to) {
             return Err(Error::Unauthorized);
         }
-    } else if is_margin
-        && (fn_name == Symbol::new(env, "deposit_collateral")
-            || fn_name == Symbol::new(env, "withdraw_collateral")
-            || fn_name == Symbol::new(env, "transfer_spot_to_margin")
-            || fn_name == Symbol::new(env, "transfer_margin_to_spot")
-            || fn_name == Symbol::new(env, "open_position_v2")
-            || fn_name == Symbol::new(env, "begin_open_position_v2")
-            || fn_name == Symbol::new(env, "finalize_open_swap_v2")
-            || fn_name == Symbol::new(env, "finalize_open_position_v2")
-            || fn_name == Symbol::new(env, "finalize_open_ptokens_v2")
-            || fn_name == Symbol::new(env, "supply_open_ptokens_v2")
-            || fn_name == Symbol::new(env, "activate_open_position_v2")
-            || fn_name == Symbol::new(env, "cancel_pending_open_v2")
-            || fn_name == Symbol::new(env, "open_position_no_swap_v2")
-            || fn_name == Symbol::new(env, "close_position_v2")
-            || fn_name == Symbol::new(env, "close_position_no_swap_v2")
-            || fn_name == Symbol::new(env, "liquidate_position_v2"))
-    {
+    } else if is_margin && is_user_margin_function(env, &fn_name) {
         check_first_address_is_self(env, ctx, 0)?;
     } else if is_vault || is_margin {
         return Err(Error::Unauthorized);
@@ -408,27 +391,33 @@ fn is_sensitive_vault_function(env: &Env, fn_name: &Symbol) -> bool {
 }
 
 fn is_sensitive_margin_function(env: &Env, fn_name: &Symbol) -> bool {
+    is_user_margin_function(env, fn_name)
+}
+
+fn is_user_margin_function(env: &Env, fn_name: &Symbol) -> bool {
     *fn_name == Symbol::new(env, "deposit_collateral")
         || *fn_name == Symbol::new(env, "withdraw_collateral")
         || *fn_name == Symbol::new(env, "transfer_spot_to_margin")
         || *fn_name == Symbol::new(env, "transfer_margin_to_spot")
-        || *fn_name == Symbol::new(env, "open_position")
-        || *fn_name == Symbol::new(env, "open_position_v2")
-        || *fn_name == Symbol::new(env, "begin_open_position_v2")
-        || *fn_name == Symbol::new(env, "finalize_open_swap_v2")
-        || *fn_name == Symbol::new(env, "finalize_open_position_v2")
-        || *fn_name == Symbol::new(env, "finalize_open_ptokens_v2")
-        || *fn_name == Symbol::new(env, "supply_open_ptokens_v2")
-        || *fn_name == Symbol::new(env, "activate_open_position_v2")
-        || *fn_name == Symbol::new(env, "cancel_pending_open_v2")
-        || *fn_name == Symbol::new(env, "open_position_no_swap")
-        || *fn_name == Symbol::new(env, "open_position_no_swap_short")
-        || *fn_name == Symbol::new(env, "open_position_no_swap_v2")
-        || *fn_name == Symbol::new(env, "close_position")
-        || *fn_name == Symbol::new(env, "close_position_v2")
-        || *fn_name == Symbol::new(env, "close_position_no_swap_v2")
-        || *fn_name == Symbol::new(env, "liquidate_position")
-        || *fn_name == Symbol::new(env, "liquidate_position_v2")
+        || *fn_name == Symbol::new(env, "begin_open_position_v3")
+        || *fn_name == Symbol::new(env, "execute_open_position_v3")
+        || *fn_name == Symbol::new(env, "swap_open_position_v3")
+        || *fn_name == Symbol::new(env, "activate_open_position_v3")
+        || *fn_name == Symbol::new(env, "cancel_pending_open_v3")
+        || *fn_name == Symbol::new(env, "add_position_collateral_v3")
+        || *fn_name == Symbol::new(env, "repay_margin_position_v3")
+        || *fn_name == Symbol::new(env, "release_debt_free_position_v3")
+        || *fn_name == Symbol::new(env, "close_position_v3")
+        || *fn_name == Symbol::new(env, "begin_close_position_v3")
+        || *fn_name == Symbol::new(env, "prepare_close_position_v3")
+        || *fn_name == Symbol::new(env, "withdraw_close_position_v3")
+        || *fn_name == Symbol::new(env, "swap_close_position_v3")
+        || *fn_name == Symbol::new(env, "swap_close_short_position_v3")
+        || *fn_name == Symbol::new(env, "cancel_close_position_v3")
+        || *fn_name == Symbol::new(env, "liquidate_position_v3")
+        || *fn_name == Symbol::new(env, "begin_liquidation_v3")
+        || *fn_name == Symbol::new(env, "swap_liquidation_v3")
+        || *fn_name == Symbol::new(env, "finish_liquidation_v3")
 }
 
 fn is_token_auth_function(env: &Env, fn_name: &Symbol) -> bool {

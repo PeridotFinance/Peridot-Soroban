@@ -86,8 +86,12 @@ export class MarginLiquidationKeeper {
 
   async syncEvents() {
     const latest = await this.client.latestLedger();
+    // Stellar RPC treats endLedger as exclusive. Keep this snapshot bound on
+    // every cursor page and checkpoint only after the whole range is consumed.
+    const indexedThrough = latest.sequence;
+    const endLedger = indexedThrough + 1;
     const startLedger = this.state.lastEventLedger + 1;
-    if (startLedger > latest.sequence) return;
+    if (startLedger > indexedThrough) return;
     const symbol = (name) => nativeToScVal(name, { type: "symbol" }).toXDR("base64");
     const filters = [
       {
@@ -98,24 +102,24 @@ export class MarginLiquidationKeeper {
     ];
     let request = {
       startLedger,
-      endLedger: latest.sequence,
+      endLedger,
       filters,
       limit: EVENT_PAGE_LIMIT,
     };
     let active = new Set(this.state.activePositionIds.map(String));
-    let processedThrough = latest.sequence;
 
     for (;;) {
       const response = await this.client.getEvents(request);
-      active = applyLifecycleEvents(active, response.events);
-      processedThrough = Math.max(processedThrough, response.latestLedger);
+      const boundedEvents = response.events.filter((event) => event.ledger <= indexedThrough);
+      active = applyLifecycleEvents(active, boundedEvents);
+      if (boundedEvents.length !== response.events.length) break;
       if (response.events.length < EVENT_PAGE_LIMIT) break;
       if (!response.cursor) throw new Error("event page is full but RPC returned no cursor");
-      request = { cursor: response.cursor, filters, limit: EVENT_PAGE_LIMIT };
+      request = { cursor: response.cursor, endLedger, filters, limit: EVENT_PAGE_LIMIT };
     }
 
     this.state.activePositionIds = [...active];
-    this.state.lastEventLedger = processedThrough;
+    this.state.lastEventLedger = indexedThrough;
     await this.save();
   }
 
@@ -190,7 +194,8 @@ export class MarginLiquidationKeeper {
       });
       return;
     }
-    if (!this.canTakeOver(pending)) return;
+    const takeoverAfter = await this.client.read("get_liquidation_takeover_after", [idArg]);
+    if (!this.canTakeOver(pending, takeoverAfter)) return;
 
     if (enumTag(pending.stage) === "Started") {
       const quote = await this.client.read("preview_liquidation_v3", [idArg]);
@@ -203,7 +208,11 @@ export class MarginLiquidationKeeper {
       if (this.config.dryRun) return;
       pending = await this.client.read("get_pending_liquidation", [idArg]);
     }
-    if (pending && enumTag(pending.stage) === "CollateralConverted" && this.canTakeOver(pending)) {
+    if (
+      pending &&
+      enumTag(pending.stage) === "CollateralConverted" &&
+      this.canTakeOver(pending, takeoverAfter)
+    ) {
       await this.client.submit("finish_liquidation_v3", [
         scAddress(this.config.publicKey),
         idArg,
@@ -211,10 +220,10 @@ export class MarginLiquidationKeeper {
     }
   }
 
-  canTakeOver(pending) {
+  canTakeOver(pending, takeoverAfter) {
     if (String(pending.liquidator) === this.config.publicKey) return true;
-    const takeoverAfter = BigInt(pending.repay_amount);
-    return BigInt(Math.floor(Date.now() / 1_000)) > takeoverAfter;
+    if (takeoverAfter === null || takeoverAfter === undefined) return false;
+    return BigInt(Math.floor(Date.now() / 1_000)) > BigInt(takeoverAfter);
   }
 
   async recoverExpiredPendingOpen(positionId) {

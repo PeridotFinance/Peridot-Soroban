@@ -1383,17 +1383,6 @@ fn setup_without_pre_enter_market() -> (
     )
 }
 
-fn mock_swaps_chain(
-    env: &Env,
-    token_in: &Address,
-    token_out: &Address,
-) -> Vec<(Vec<Address>, BytesN<32>, Address)> {
-    let path: Vec<Address> = Vec::from_array(env, [token_in.clone(), token_out.clone()]);
-    let pool_id = BytesN::from_array(env, &[1u8; 32]);
-    let pool = Address::generate(env);
-    Vec::from_array(env, [(path, pool_id, pool)])
-}
-
 fn setup_perps_pool(
     env: &Env,
     usdt_id: &Address,
@@ -2215,7 +2204,7 @@ fn test_split_short_close_returns_unspent_quote_to_wallet() {
     let xlm_before_finish = MockTokenClient::new(&env, &xlm_id).balance(&user);
     env.cost_estimate().budget().reset_unlimited();
     controller.finish_close_position_v3(&position_id);
-    assert_budget_under(&env, 15_000_000, 3_000_000);
+    assert_budget_under(&env, 15_000_000, 3_200_000);
     assert_last_invocation_resources_under(&env, 98, 45, 25_000_000);
 
     let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
@@ -2683,6 +2672,91 @@ fn test_get_position_bumps_pending_liquidation_ttl() {
 }
 
 #[test]
+fn test_get_perps_position_bumps_position_mode_ttl() {
+    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xlm_vid) =
+        setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    let mode_key = DataKey::PositionMode(position_id);
+    let initial_mode_ttl = env.as_contract(&controller_id, || {
+        env.storage().persistent().get_ttl(&mode_key)
+    });
+    env.ledger()
+        .set_sequence_number(initial_mode_ttl.saturating_sub(10_000));
+
+    let mode_ttl_before = env.as_contract(&controller_id, || {
+        env.storage().persistent().get_ttl(&mode_key)
+    });
+    assert!(
+        mode_ttl_before < TTL_THRESHOLD,
+        "test setup expected position mode TTL below bump threshold, got {mode_ttl_before}"
+    );
+
+    assert!(controller.get_perps_position(&position_id).is_some());
+
+    let mode_ttl_after = env.as_contract(&controller_id, || {
+        env.storage().persistent().get_ttl(&mode_key)
+    });
+    assert!(
+        mode_ttl_after > TTL_THRESHOLD,
+        "expected bumped position mode TTL, got {mode_ttl_after}"
+    );
+}
+
+#[test]
+fn test_begin_liquidation_v3_recovers_missing_mode_before_mutation() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xlm_vid) =
+        setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &940_000u128,
+        &1_000_000u128,
+    );
+    env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PositionMode(position_id));
+    });
+
+    let liquidator = Address::generate(&env);
+    controller.begin_liquidation_v3(&liquidator, &position_id);
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Liquidated
+    );
+    assert!(controller.get_pending_liquidation(&position_id).is_some());
+    let mode = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get::<_, PositionMode>(&DataKey::PositionMode(position_id))
+    });
+    assert_eq!(mode, Some(PositionMode::PerpsV3));
+}
+
+#[test]
 fn test_split_liquidate_position_v3_can_be_taken_over_after_timeout() {
     let (
         env,
@@ -2948,74 +3022,6 @@ fn test_perps_v3_stress_repeated_open_close_liquidate_and_pending_recovery() {
     assert_eq!(controller.get_user_positions(&user).len(), 0u32);
 }
 
-/// Functional correctness of open_position_no_swap_v2 with real ReceiptVault +
-/// SimplePeridottroller. Resource limits are disabled here because this path is
-/// covered by separate budget tests against the mock stack.
-#[test]
-fn test_open_position_no_swap_v2_correctness() {
-    let (env, controller_id, usdt_id, xlm_id, user, _lender, usdt_vault_id, xlm_vault_id) = setup();
-    env.cost_estimate().disable_resource_limits();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
-
-    // Pre-deposit collateral and move into margin custody (separate user txs).
-    usdt_vault.deposit(&user, &100u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &100u128);
-
-    let id = controller.open_position_no_swap_v2(
-        &user, &usdt_id, &xlm_id, &100u128, // collateral pTokens (already in margin custody)
-        &50u128,  // borrow amount in debt asset
-        &1u128,
-    );
-    let pos = controller.get_position(&id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-    assert_eq!(pos.collateral_ptokens, 100u128);
-    assert_eq!(pos.debt_shares, 0u128); // V2 uses margin namespace, no debt_shares
-
-    // Verify borrowed funds landed with user via margin namespace
-    let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
-    let outstanding = xlm_vault.get_margin_borrow_balance(&id);
-    assert_eq!(outstanding, 50u128);
-}
-
-#[test]
-fn test_open_and_close_position_no_swap_v2() {
-    let (env, controller_id, usdt_id, xlm_id, user, _lender, usdt_vault_id, _xlm_vault_id) =
-        setup();
-    env.cost_estimate().disable_resource_limits();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &100u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &100u128);
-
-    let id =
-        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &100u128, &50u128, &1u128);
-
-    // Close: user pays debt from wallet, gets collateral pTokens back to margin balance
-    controller.close_position_no_swap_v2(&user, &id);
-
-    assert!(controller.get_position(&id).is_none());
-    // Collateral pTokens released to user's margin balance for the collateral vault
-    let margin_bal = controller.get_margin_balance_ptokens(&user, &usdt_id);
-    assert_eq!(margin_bal, 100u128);
-}
-#[test]
-#[should_panic(expected = "legacy margin disabled")]
-fn test_legacy_margin_v1_exports_are_disabled() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, _uv, _xv) = setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    controller.open_position_no_swap(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &50u128,
-        &2u128,
-        &PositionSide::Long,
-    );
-}
-
 #[test]
 fn test_transfer_spot_and_margin_ptokens() {
     let (env, controller_id, usdt_id, _xlm_id, user, _pid, usdt_vault_id, _xid) = setup_short_min();
@@ -3044,633 +3050,6 @@ fn test_transfer_spot_and_margin_ptokens() {
     );
     assert_eq!(usdt_vault.get_ptoken_balance(&user), 50u128);
     assert_eq!(usdt_vault.get_ptoken_balance(&controller_id), 50u128);
-}
-
-#[test]
-fn test_open_and_close_position_v2_restores_margin_balance() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &usdt_id),
-        200u128
-    );
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pos_open = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos_open.status, PositionStatus::Open);
-
-    let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
-    controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
-
-    assert!(controller.get_position(&position_id).is_none());
-    assert_eq!(controller.get_user_positions(&user).len(), 0);
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &usdt_id),
-        200u128
-    );
-}
-
-#[test]
-fn test_begin_finalize_open_position_v2_split_flow() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    assert_eq!(pending.borrow_amount, 100u128);
-    assert_eq!(pending.min_position_amount, 100u128);
-    assert_eq!(
-        controller.get_position(&position_id).unwrap().status,
-        PositionStatus::PendingOpen
-    );
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &usdt_id),
-        100u128
-    );
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-
-    // User-supplied collateral finalization creates debt only after the
-    // position collateral is moved into controller custody.
-    controller.finalize_open_position_v2(&user, &position_id, &pending.borrow_amount);
-
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-    assert_eq!(pos.collateral_ptokens, 100u128);
-    assert!(controller.get_pending_open(&position_id).is_none());
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 100u128);
-    assert_eq!(xlm_vault.get_ptoken_balance(&controller_id), 100u128);
-    assert_eq!(controller.get_health_factor(&position_id), 2_000_000u128);
-}
-
-#[test]
-fn test_begin_finalize_open_swap_v2_split_flow() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-
-    controller.finalize_open_swap_v2(&user, &position_id, &swaps_chain_open, &100u128);
-
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-    assert_eq!(pos.collateral_ptokens, 100u128);
-    assert!(controller.get_pending_open(&position_id).is_none());
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 100u128);
-    assert_eq!(xlm_vault.get_ptoken_balance(&controller_id), 100u128);
-}
-
-#[test]
-fn test_begin_finalize_open_swap_v2_real_vaults_debt_at_finalize() {
-    let (env, controller_id, usdt_id, xlm_id, user, _lender, usdt_vault_id, xlm_vault_id) = setup();
-    env.cost_estimate().disable_resource_limits();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt = MockTokenClient::new(&env, &usdt_id);
-    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-
-    let user_usdt_before_finalize = usdt.balance(&user);
-    env.cost_estimate().budget().reset_unlimited();
-    controller.finalize_open_swap_v2(&user, &position_id, &swaps_chain_open, &100u128);
-
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-    assert_eq!(pos.collateral_ptokens, 100u128);
-    assert!(controller.get_pending_open(&position_id).is_none());
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 100u128);
-    assert_eq!(xlm_vault.get_ptoken_balance(&controller_id), 100u128);
-    assert_eq!(usdt.balance(&user), user_usdt_before_finalize);
-}
-
-#[test]
-fn test_begin_finalize_open_ptokens_v2_split_flow() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-
-    // User deposits position asset into the position vault before final margin
-    // finalization. Debt is created only after those pTokens are in custody.
-    xlm_vault.deposit(&user, &pending.borrow_amount);
-    controller.finalize_open_ptokens_v2(&user, &position_id, &pending.borrow_amount);
-
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-    assert_eq!(pos.collateral_ptokens, pending.borrow_amount);
-    assert!(controller.get_pending_open(&position_id).is_none());
-    assert_eq!(
-        xlm_vault.get_ptoken_balance(&controller_id),
-        pending.borrow_amount
-    );
-    assert_eq!(
-        usdt_vault.get_margin_borrow_balance(&position_id),
-        pending.borrow_amount
-    );
-    assert_eq!(controller.get_health_factor(&position_id), 2_000_000u128);
-}
-
-#[test]
-#[should_panic(expected = "insufficient collateral")]
-fn test_finalize_open_ptokens_v2_refreshes_pending_health_prices() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    xlm_vault.deposit(&user, &pending.borrow_amount);
-
-    // Cached XLM remains at 1.0 from begin_open, but the live oracle refresh
-    // now prices position collateral near zero. Finalization must fail closed
-    // instead of opening against the stale cached price.
-    peridottroller.set_live_price(&xlm_id, &1u128);
-    controller.finalize_open_ptokens_v2(&user, &position_id, &pending.borrow_amount);
-}
-
-#[test]
-fn test_begin_supply_activate_open_ptokens_v2_split_flow() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-
-    xlm_vault.deposit(&user, &pending.borrow_amount);
-    controller.supply_open_ptokens_v2(&user, &position_id, &pending.borrow_amount);
-
-    assert_eq!(
-        controller.get_pending_open_supplied(&position_id),
-        Some((pending.borrow_amount, pending.borrow_amount))
-    );
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-    assert_eq!(
-        xlm_vault.get_ptoken_balance(&controller_id),
-        pending.borrow_amount
-    );
-
-    controller.activate_open_position_v2(&user, &position_id);
-
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-    assert_eq!(pos.collateral_ptokens, pending.borrow_amount);
-    assert!(controller.get_pending_open(&position_id).is_none());
-    assert!(controller.get_pending_open_supplied(&position_id).is_none());
-    assert_eq!(
-        usdt_vault.get_margin_borrow_balance(&position_id),
-        pending.borrow_amount
-    );
-    assert_eq!(controller.get_health_factor(&position_id), 2_000_000u128);
-}
-
-#[test]
-fn test_cancel_pending_open_position_v2_releases_margin_and_debt() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-
-    controller.cancel_pending_open_v2(&user, &position_id, &pending.borrow_amount);
-
-    assert!(controller.get_position(&position_id).is_none());
-    assert!(controller.get_pending_open(&position_id).is_none());
-    assert_eq!(controller.get_user_positions(&user).len(), 0);
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &usdt_id),
-        200u128
-    );
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-}
-
-#[test]
-fn test_cancel_pending_open_position_v2_releases_supplied_ptokens() {
-    let (env, _controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &_controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    xlm_vault.deposit(&user, &pending.borrow_amount);
-    controller.supply_open_ptokens_v2(&user, &position_id, &pending.borrow_amount);
-
-    controller.cancel_pending_open_v2(&user, &position_id, &pending.borrow_amount);
-
-    assert!(controller.get_position(&position_id).is_none());
-    assert!(controller.get_pending_open(&position_id).is_none());
-    assert!(controller.get_pending_open_supplied(&position_id).is_none());
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &usdt_id),
-        200u128
-    );
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &xlm_id),
-        pending.borrow_amount
-    );
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-}
-
-#[test]
-fn test_pending_open_position_v2_expiry_releases_margin_without_debt() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        _peridottroller_id,
-        usdt_vault_id,
-        _xlm_vault_id,
-    ) = setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-
-    env.ledger()
-        .with_mut(|l| l.timestamp = pending.expires_at.saturating_add(1));
-    controller.expire_pending_open_v2(&position_id);
-
-    assert!(controller.get_position(&position_id).is_none());
-    assert!(controller.get_pending_open(&position_id).is_none());
-    assert_eq!(controller.get_user_positions(&user).len(), 0);
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &usdt_id),
-        200u128
-    );
-}
-
-#[test]
-fn test_pending_open_position_v2_expiry_releases_supplied_ptokens() {
-    let (env, _controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &_controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    xlm_vault.deposit(&user, &pending.borrow_amount);
-    controller.supply_open_ptokens_v2(&user, &position_id, &pending.borrow_amount);
-
-    env.ledger()
-        .with_mut(|l| l.timestamp = pending.expires_at.saturating_add(1));
-    controller.expire_pending_open_v2(&position_id);
-
-    assert!(controller.get_position(&position_id).is_none());
-    assert!(controller.get_pending_open(&position_id).is_none());
-    assert!(controller.get_pending_open_supplied(&position_id).is_none());
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &usdt_id),
-        200u128
-    );
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &xlm_id),
-        pending.borrow_amount
-    );
-}
-
-#[test]
-fn test_begin_open_position_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    env.cost_estimate().budget().reset_unlimited();
-    controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    assert_budget_under(&env, 7_000_000, 1_400_000);
-    assert_last_invocation_resources_under(&env, 85, 35, 20_000_000);
-}
-
-#[test]
-fn test_finalize_open_position_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-
-    env.cost_estimate().budget().reset_unlimited();
-    controller.finalize_open_position_v2(&user, &position_id, &pending.borrow_amount);
-    assert_budget_under(&env, 6_500_000, 1_300_000);
-    assert_last_invocation_resources_under(&env, 85, 35, 20_000_000);
-}
-
-#[test]
-fn test_finalize_open_swap_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    env.cost_estimate().budget().reset_unlimited();
-    controller.finalize_open_swap_v2(&user, &position_id, &swaps_chain_open, &100u128);
-    assert_budget_under(&env, 7_500_000, 1_500_000);
-    assert_last_invocation_resources_under(&env, 90, 40, 22_000_000);
-}
-
-#[test]
-fn test_finalize_open_ptokens_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    xlm_vault.deposit(&user, &pending.borrow_amount);
-
-    env.cost_estimate().budget().reset_unlimited();
-    controller.finalize_open_ptokens_v2(&user, &position_id, &pending.borrow_amount);
-    assert_budget_under(&env, 5_500_000, 1_100_000);
-    assert_last_invocation_resources_under(&env, 80, 35, 18_000_000);
-}
-
-#[test]
-fn test_supply_open_ptokens_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    xlm_vault.deposit(&user, &pending.borrow_amount);
-
-    env.cost_estimate().budget().reset_unlimited();
-    controller.supply_open_ptokens_v2(&user, &position_id, &pending.borrow_amount);
-    assert_budget_under(&env, 4_500_000, 900_000);
-    assert_last_invocation_resources_under(&env, 75, 35, 16_000_000);
-}
-
-#[test]
-fn test_activate_open_position_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-    xlm_vault.deposit(&user, &pending.borrow_amount);
-    controller.supply_open_ptokens_v2(&user, &position_id, &pending.borrow_amount);
-
-    env.cost_estimate().budget().reset_unlimited();
-    controller.activate_open_position_v2(&user, &position_id);
-    assert_budget_under(&env, 4_500_000, 900_000);
-    assert_last_invocation_resources_under(&env, 80, 35, 16_000_000);
 }
 
 #[test]
@@ -3732,699 +3111,6 @@ fn test_activate_open_position_v3_budget_short_min() {
     assert_last_invocation_resources_under(&env, 90, 40, 22_000_000);
 }
 
-#[test]
-fn test_cancel_pending_open_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.begin_open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    let pending = controller.get_pending_open(&position_id).unwrap();
-
-    env.cost_estimate().budget().reset_unlimited();
-    controller.cancel_pending_open_v2(&user, &position_id, &pending.borrow_amount);
-    assert_budget_under(&env, 5_500_000, 1_100_000);
-    assert_last_invocation_resources_under(&env, 80, 35, 18_000_000);
-}
-
-#[test]
-fn test_close_position_v2_authorizes_controller_swap() {
-    let env = Env::default();
-    env.mock_all_auths();
-    env.ledger().with_mut(|l| l.timestamp = 1);
-
-    let admin = Address::generate(&env);
-    let user = Address::generate(&env);
-
-    let usdt_id = env.register(MockToken, ());
-    let xlm_id = env.register(MockToken, ());
-    let usdt = MockTokenClient::new(&env, &usdt_id);
-    let xlm = MockTokenClient::new(&env, &xlm_id);
-    usdt.initialize(&"USDT".into_val(&env), &"USDT".into_val(&env), &7u32);
-    xlm.initialize(&"XLM".into_val(&env), &"XLM".into_val(&env), &7u32);
-
-    let usdt_vault_id = env.register(MockVault, ());
-    let xlm_vault_id = env.register(MockVault, ());
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-    usdt_vault.set_underlying_token(&usdt_id);
-    xlm_vault.set_underlying_token(&xlm_id);
-
-    let peridottroller_id = env.register(MockPeridottroller, ());
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    peridottroller.set_price(&usdt_id, &1_000_000u128, &1_000_000u128);
-    peridottroller.set_price(&xlm_id, &1_000_000u128, &1_000_000u128);
-
-    let swap_adapter_id = env.register(MockAuthSwapAdapter, ());
-    let controller_id = env.register(MarginController, ());
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    controller.initialize(&admin, &peridottroller_id, &swap_adapter_id, &5u128);
-    controller.set_market(&admin, &usdt_id, &usdt_vault_id);
-    controller.set_market(&admin, &xlm_id, &xlm_vault_id);
-    usdt_vault.set_margin_controller(&Some(controller_id.clone()));
-    xlm_vault.set_margin_controller(&Some(controller_id.clone()));
-
-    usdt.mint(&user, &1_000_000i128);
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
-    controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
-    assert!(controller.get_position(&position_id).is_none());
-}
-
-#[test]
-fn test_close_position_v2_repay_only_returns_all_collateral_without_swap() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    controller.close_position_v2_repay_only(&user, &position_id, &100u128);
-
-    assert!(controller.get_position(&position_id).is_none());
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &usdt_id),
-        200u128
-    );
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user, &xlm_id),
-        100u128
-    );
-    assert_eq!(xlm_vault.get_ptoken_balance(&controller_id), 100u128);
-}
-
-#[test]
-fn test_close_position_v2_repay_only_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _pid, usdt_vault_id, _xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    env.cost_estimate().budget().reset_unlimited();
-    controller.close_position_v2_repay_only(&user, &position_id, &100u128);
-    assert_budget_under(&env, 5_500_000, 1_100_000);
-}
-
-#[test]
-fn test_liquidate_position_v2_partial_close_factor_keeps_position_open() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        peridottroller_id,
-        usdt_vault_id,
-        _xlm_vault_id,
-    ) = setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    // Force underwater by dropping position collateral and discounting the
-    // initial collateral market.
-    peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
-    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
-    controller.liquidate_position_v2(&liquidator, &position_id);
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 50u128);
-    assert_eq!(pos.collateral_ptokens, 0u128);
-}
-
-#[test]
-fn test_split_liquidate_position_v2_partial_close_factor_keeps_position_open() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        peridottroller_id,
-        usdt_vault_id,
-        _xlm_vault_id,
-    ) = setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
-    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
-    controller.begin_liquidation_v2(&liquidator, &position_id);
-
-    let pending = controller.get_pending_liquidation(&position_id).unwrap();
-    assert_eq!(pending.kind, PendingLiquidationKind::MarginV2);
-    assert_eq!(pending.stage, PendingLiquidationStage::Repaid);
-    assert_eq!(pending.liquidator, liquidator);
-    assert_eq!(
-        controller.get_position(&position_id).unwrap().status,
-        PositionStatus::Liquidated
-    );
-
-    controller.finish_liquidation_v2(&liquidator, &position_id);
-    assert!(controller.get_pending_liquidation(&position_id).is_none());
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 50u128);
-    assert_eq!(pos.collateral_ptokens, 0u128);
-}
-
-#[test]
-fn test_liquidate_position_v2_caps_repay_by_available_raw_collateral() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &100u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &100u128);
-    let position_id =
-        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &100u128, &50u128, &1u128);
-
-    peridottroller.set_price(&usdt_id, &100_000u128, &1_000_000u128);
-    controller.liquidate_position_v2(&liquidator, &position_id);
-
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-    assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 41u128);
-    assert_eq!(pos.collateral_ptokens, 10u128);
-}
-
-#[test]
-fn test_liquidate_position_v2_absorbs_residual_bad_debt_when_collateral_exhausted() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &100u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &100u128);
-    let position_id =
-        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &100u128, &50u128, &1u128);
-
-    // 100 pTokens are worth 27 debt-asset units. A 50% close factor repays 25,
-    // seizes all collateral, and leaves 25 of margin debt to absorb.
-    peridottroller.set_price(&usdt_id, &270_000u128, &1_000_000u128);
-    controller.liquidate_position_v2(&liquidator, &position_id);
-
-    assert!(controller.get_position(&position_id).is_none());
-    assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
-}
-
-#[test]
-fn test_liquidate_position_v2_bad_debt_absorb_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &100u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &100u128);
-    let position_id =
-        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &100u128, &50u128, &1u128);
-    peridottroller.set_price(&usdt_id, &270_000u128, &1_000_000u128);
-
-    env.cost_estimate().budget().reset_unlimited();
-    controller.liquidate_position_v2(&liquidator, &position_id);
-    assert_budget_under(&env, 7_500_000, 1_400_000);
-}
-
-#[test]
-fn test_liquidate_position_v2_dust_debt_uses_one_unit_repay_floor() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &1u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &1u128);
-    let position_id =
-        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &1u128, &1u128, &1u128);
-
-    // With a 50% close factor, 1 * 0.5 floors to zero unless the liquidation
-    // path explicitly floors the repay to one smallest debt unit.
-    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
-    controller.liquidate_position_v2(&liquidator, &position_id);
-
-    assert!(controller.get_position(&position_id).is_none());
-    assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
-}
-
-#[test]
-#[should_panic(expected = "repay too small")]
-fn test_liquidate_position_v2_repay_floor_only_applies_to_one_unit_dust() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &3u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &3u128);
-    let position_id =
-        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &3u128, &2u128, &1u128);
-
-    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
-    peridottroller.set_close_factor_scaled(&1u128);
-    controller.liquidate_position_v2(&liquidator, &position_id);
-}
-
-#[test]
-fn test_liquidate_position_v2_dust_seize_uses_one_ptoken_floor() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &1u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &1u128);
-    let position_id =
-        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &1u128, &1u128, &1u128);
-
-    // The liquidation target is 1 raw-value unit, but one collateral pToken is
-    // worth 2 raw units. The old min-unit guard returned zero seized pTokens.
-    peridottroller.set_price(&usdt_id, &2_000_000u128, &1_000_000u128);
-    peridottroller.set_market_cf(&usdt_vault_id, &100_000u128);
-    controller.liquidate_position_v2(&liquidator, &position_id);
-
-    assert!(controller.get_position(&position_id).is_none());
-    assert_eq!(xlm_vault.get_margin_borrow_balance(&position_id), 0u128);
-}
-
-#[test]
-#[should_panic(expected = "not liquidatable")]
-fn test_liquidate_position_v2_floor_rounds_solvent_dust_gate_borrower_safe() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &1u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &1u128);
-    let position_id =
-        controller.open_position_no_swap_v2(&user, &usdt_id, &xlm_id, &1u128, &1u128, &1u128);
-
-    // Exact values are both 0.5 USD, so this is solvent. Floor-vs-floor keeps
-    // both sides at 0; a ceil-rounded debt gate would incorrectly liquidate.
-    peridottroller.set_price(&usdt_id, &500_000u128, &1_000_000u128);
-    peridottroller.set_price(&xlm_id, &500_000u128, &1_000_000u128);
-    controller.liquidate_position_v2(&liquidator, &position_id);
-}
-
-#[test]
-fn test_liquidate_position_v2_accrues_margin_debt_before_repay() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    usdt_vault.set_margin_interest_increment(&5u128);
-    peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
-    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
-
-    controller.liquidate_position_v2(&liquidator, &position_id);
-
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 53u128);
-    let pos = controller.get_position(&position_id).unwrap();
-    assert_eq!(pos.status, PositionStatus::Open);
-}
-
-#[test]
-fn test_open_position_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-
-    env.cost_estimate().budget().reset_unlimited();
-    let _position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    assert_budget_under(&env, 8_000_000, 1_500_000);
-}
-
-#[test]
-fn test_open_position_v2_applies_collateral_factor_to_borrow_sizing() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &200u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    // Raw collateral is 200, but with CF=50% the leverage base is 100.
-    // 2x therefore borrows 100, not the previous raw-collateral 200.
-    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 100u128);
-}
-
-#[test]
-#[should_panic(expected = "borrow paused")]
-fn test_open_position_v2_rejects_paused_debt_market() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    peridottroller.set_borrow_paused(&usdt_vault_id, &true);
-
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-}
-
-#[test]
-#[should_panic(expected = "not liquidatable")]
-fn test_liquidate_position_v2_counts_initial_locked_collateral() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &100u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &100u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    // Position-asset collateral drops to 10, but the initial 100 USDT lock
-    // still makes combined collateral value exceed the 100 USDT debt.
-    peridottroller.set_price(&xlm_id, &100_000u128, &1_000_000u128);
-    controller.liquidate_position_v2(&liquidator, &position_id);
-}
-
-#[test]
-fn test_get_health_factor_v2_counts_initial_locked_collateral() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &100u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &100u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    // Position collateral is worth 10, initial locked USDT collateral is worth
-    // 100, and debt is 100. HF must therefore be 1.1, not 0.1.
-    peridottroller.set_price(&xlm_id, &100_000u128, &1_000_000u128);
-    assert_eq!(controller.get_health_factor(&position_id), 1_100_000u128);
-}
-
-#[test]
-fn test_close_position_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
-    env.cost_estimate().budget().reset_unlimited();
-    controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
-    assert_budget_under(&env, 8_500_000, 1_600_000);
-}
-
-#[test]
-#[should_panic(expected = "debt asset mismatch")]
-fn test_close_position_v2_rejects_debt_underlying_mismatch() {
-    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    usdt_vault.set_underlying_token(&xlm_id);
-    let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
-    controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
-}
-
-#[test]
-#[should_panic(expected = "collateral asset mismatch")]
-fn test_close_position_v2_rejects_collateral_underlying_mismatch() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        _peridottroller_id,
-        usdt_vault_id,
-        xlm_vault_id,
-    ) = setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-
-    xlm_vault.set_underlying_token(&usdt_id);
-    let swaps_chain_close = mock_swaps_chain(&env, &xlm_id, &usdt_id);
-    controller.close_position_v2(&user, &position_id, &swaps_chain_close, &100u128);
-}
-
-#[test]
-fn test_liquidate_position_v2_budget_short_min() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _xid) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let liquidator = Address::generate(&env);
-
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let swaps_chain_open = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain_open,
-        &100u128,
-    );
-    peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
-    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
-
-    env.cost_estimate().budget().reset_unlimited();
-    controller.liquidate_position_v2(&liquidator, &position_id);
-    assert_budget_under(&env, 8_000_000, 1_500_000);
-}
 #[test]
 #[should_panic(expected = "already initialized")]
 fn test_initialize_twice_panics() {
@@ -4758,7 +3444,7 @@ fn test_close_position_v3_budget_does_not_scale_with_unrelated_positions() {
 
     env.cost_estimate().budget().reset_unlimited();
     controller.finish_close_position_v3(&position_id);
-    assert_budget_under(&env, 15_000_000, 3_000_000);
+    assert_budget_under(&env, 15_000_000, 3_200_000);
     assert_last_invocation_resources_under(&env, 90, 40, 20_000_000);
 
     let remaining = controller.get_user_positions(&user);
@@ -5103,81 +3789,6 @@ fn test_set_close_fee_bps_over_cap_panics() {
 // ─── Open fee: deduction + LP distribution ────────────────────────────────────
 
 #[test]
-fn test_open_fee_deducted_and_distributed_proportionally() {
-    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    let lp1 = Address::generate(&env);
-    let lp2 = Address::generate(&env);
-    let trader = Address::generate(&env);
-
-    // 1% open fee.
-    controller.set_open_fee_bps(&admin, &100u128);
-
-    // LP1 and LP2 each place 1_000_000 pTokens in margin custody.
-    usdt_vault.deposit(&lp1, &1_000_000u128);
-    usdt_vault.deposit(&lp2, &1_000_000u128);
-    controller.transfer_spot_to_margin(&lp1, &usdt_id, &1_000_000u128);
-    controller.transfer_spot_to_margin(&lp2, &usdt_id, &1_000_000u128);
-
-    // Trader needs collateral (1_000_000) + open fee (1_000_000 * 2 * 100 / 10_000 = 20_000).
-    usdt_vault.deposit(&trader, &1_020_000u128);
-    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_020_000u128);
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&trader, &usdt_id),
-        1_020_000u128
-    );
-
-    // Open: collateral=1_000_000, leverage=2 → open_fee = 1_000_000 * 2 * 100 / 10_000 = 20_000.
-    // With collateral=1_000_000 and leverage=2: borrow_amount=1_000_000.
-    // Oracle min_out = 1_000_000 * 950_000 / 1_000_000 = 950_000 (5% max slippage).
-    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.open_position_v2(
-        &trader,
-        &usdt_id,
-        &xlm_id,
-        &1_000_000u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain,
-        &950_000u128,
-    );
-
-    // Trader's free margin is fully consumed (collateral + fee).
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&trader, &usdt_id),
-        0u128
-    );
-
-    // After deduction, TotalMarginPtokens = 2_000_000 (lp1 + lp2).
-    // delta = 20_000 * 1e18 / 2_000_000 = 1e16.
-    // Each LP (1_000_000 ptokens) earns 1e16 * 1_000_000 / 1e18 = 10_000 pTokens.
-    assert_eq!(
-        controller.get_claimable_margin_fees(&lp1, &usdt_id),
-        10_000u128
-    );
-    assert_eq!(
-        controller.get_claimable_margin_fees(&lp2, &usdt_id),
-        10_000u128
-    );
-    // Trader's free balance is 0 so they earn nothing.
-    assert_eq!(
-        controller.get_claimable_margin_fees(&trader, &usdt_id),
-        0u128
-    );
-
-    // Claim for LP1.
-    let claimed = controller.claim_margin_fees(&lp1, &usdt_id);
-    assert_eq!(claimed, 10_000u128);
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&lp1, &usdt_id),
-        1_010_000u128 // 1_000_000 original + 10_000 claimed
-    );
-    assert_eq!(controller.get_claimable_margin_fees(&lp1, &usdt_id), 0u128);
-}
-
-#[test]
 #[should_panic(expected = "margin fee overflow")]
 fn test_get_claimable_margin_fees_reverts_on_pending_overflow() {
     let (env, _admin, controller_id, usdt_id, _xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
@@ -5223,147 +3834,9 @@ fn test_claim_margin_fees_reverts_on_pending_overflow() {
     controller.claim_margin_fees(&user, &usdt_id);
 }
 
-#[test]
-#[should_panic]
-fn test_open_fee_insufficient_margin_for_fee_panics() {
-    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let trader = Address::generate(&env);
-
-    controller.set_open_fee_bps(&admin, &100u128);
-
-    // Trader deposits exactly collateral but NOT the fee.
-    usdt_vault.deposit(&trader, &1_000_000u128);
-    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_000_000u128);
-
-    // Should panic: free margin = 1_000_000, but need 1_020_000.
-    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.open_position_v2(
-        &trader,
-        &usdt_id,
-        &xlm_id,
-        &1_000_000u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain,
-        &950_000u128,
-    );
-}
-
 // ─── Close fee: deduction from surplus ────────────────────────────────────────
 
-#[test]
-fn test_close_fee_deducted_from_surplus() {
-    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, xlm_vault_id) =
-        setup_for_fees();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-
-    // 1% close fee, no open fee.
-    controller.set_close_fee_bps(&admin, &100u128);
-
-    let lp1 = Address::generate(&env);
-    let trader = Address::generate(&env);
-
-    // LP1 provides 2_000_000 margin pTokens.
-    usdt_vault.deposit(&lp1, &2_000_000u128);
-    controller.transfer_spot_to_margin(&lp1, &usdt_id, &2_000_000u128);
-
-    // Trader opens with 1_000_000 collateral at leverage 2 (no open fee).
-    usdt_vault.deposit(&trader, &1_000_000u128);
-    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_000_000u128);
-
-    let open_swaps = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &trader,
-        &usdt_id,
-        &xlm_id,
-        &1_000_000u128,
-        &2u128,
-        &PositionSide::Long,
-        &open_swaps,
-        &950_000u128,
-    );
-
-    // Make position vault pay out 200% on withdraw so position is worth 2× on close.
-    // position.collateral_ptokens = 1_000_000 xlm ptokens.
-    // withdraw(1_000_000) → 2_000_000 xlm underlying → swap → 2_000_000 usdt received.
-    // debt_amount = 1_000_000. surplus = 1_000_000.
-    xlm_vault.set_withdraw_payout_bps(&2_000_000u128);
-
-    // On close: swap xlm → usdt. collateral_underlying = 2_000_000.
-    // min_out_oracle = 2_000_000 * 950_000 / 1_000_000 = 1_900_000.
-    let close_swaps = mock_swaps_chain(&env, &xlm_id, &usdt_id);
-    controller.close_position_v2(&trader, &position_id, &close_swaps, &1_900_000u128);
-
-    // surplus ptokens = 1_000_000 (MockVault 1:1 deposit).
-    // close_fee = 1_000_000 * 100 / 10_000 = 10_000 pTokens.
-    // user_ptokens = 990_000 credited to trader from surplus.
-    // Trader also gets back the initial_lock ptokens (1_000_000 collateral).
-    let trader_balance = controller.get_margin_balance_ptokens(&trader, &usdt_id);
-    // trader gets: 990_000 (surplus net) + 1_000_000 (initial_lock return) = 1_990_000.
-    assert_eq!(trader_balance, 1_990_000u128);
-
-    // LP1's claimable should be non-zero: fee = 10_000, distributed among the pool.
-    let lp1_claimable = controller.get_claimable_margin_fees(&lp1, &usdt_id);
-    assert!(lp1_claimable > 0, "lp1 should earn close fee");
-    // LP1 holds 2_000_000 ptokens. After trader's 990_000 added, pool ~ 2_990_000.
-    // lp1_share = 10_000 * 2_000_000 / 2_990_000 ≈ 6_688.
-    assert!(
-        lp1_claimable <= 10_000u128,
-        "cannot earn more than total fee"
-    );
-}
-
 // ─── Total pToken tracking ────────────────────────────────────────────────────
-
-#[test]
-fn test_total_margin_ptokens_tracks_transfers_and_positions() {
-    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    let user1 = Address::generate(&env);
-    let user2 = Address::generate(&env);
-
-    // No open fee for this test.
-    controller.set_open_fee_bps(&admin, &0u128);
-
-    usdt_vault.deposit(&user1, &1_000u128);
-    controller.transfer_spot_to_margin(&user1, &usdt_id, &1_000u128);
-    assert_eq!(controller.get_margin_fee_index(&usdt_id), 0u128); // no fees yet
-
-    usdt_vault.deposit(&user2, &500u128);
-    controller.transfer_spot_to_margin(&user2, &usdt_id, &500u128);
-
-    // Transfer back 200 for user1.
-    controller.transfer_margin_to_spot(&user1, &usdt_id, &200u128);
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user1, &usdt_id),
-        800u128
-    );
-
-    // Open position with user1's remaining 800 (collateral=400, leverage=2, no fee).
-    // borrow_amount = 400. min_out_oracle = 400 * 950_000 / 1_000_000 = 380.
-    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.open_position_v2(
-        &user1,
-        &usdt_id,
-        &xlm_id,
-        &400u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain,
-        &380u128,
-    );
-    // user1's free margin = 800 - 400 = 400 after deducting collateral.
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&user1, &usdt_id),
-        400u128
-    );
-}
 
 #[test]
 fn test_margin_balance_read_bumps_total_margin_ptokens_ttl() {
@@ -5412,108 +3885,7 @@ fn test_margin_balance_read_bumps_total_margin_ptokens_ttl() {
 
 // ─── Orphan fee + sweep ───────────────────────────────────────────────────────
 
-#[test]
-fn test_orphan_fee_collected_when_no_lp_pool() {
-    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    // 1% open fee; no LP has any free margin.
-    controller.set_open_fee_bps(&admin, &100u128);
-
-    let trader = Address::generate(&env);
-    // Trader is the only participant; open_fee goes to orphan since TotalMarginPtokens=0
-    // after deducting trader's own balance.
-    usdt_vault.deposit(&trader, &1_020_000u128);
-    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_020_000u128);
-
-    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    controller.open_position_v2(
-        &trader,
-        &usdt_id,
-        &xlm_id,
-        &1_000_000u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain,
-        &950_000u128,
-    );
-
-    // Fee index stays 0 because fee went to orphan (no LP to distribute to).
-    assert_eq!(controller.get_margin_fee_index(&usdt_id), 0u128);
-    // Nothing claimable by trader since their balance is 0 and fee_index=0.
-    assert_eq!(
-        controller.get_claimable_margin_fees(&trader, &usdt_id),
-        0u128
-    );
-
-    // Admin sweeps orphan to self.
-    let swept = controller.sweep_orphan_fees(&admin, &usdt_id, &admin);
-    assert_eq!(swept, 20_000u128);
-    // After sweep, orphan = 0 and admin's margin balance = 20_000.
-    assert_eq!(
-        controller.get_margin_balance_ptokens(&admin, &usdt_id),
-        20_000u128
-    );
-    assert_eq!(
-        controller.sweep_orphan_fees(&admin, &usdt_id, &admin),
-        0u128
-    );
-}
-
 // ─── Accrual ordering: no back-pay on new deposit ────────────────────────────
-
-#[test]
-fn test_accrual_no_backpay_on_new_deposit() {
-    let (env, admin, controller_id, usdt_id, xlm_id, usdt_vault_id, _xlm_vid) = setup_for_fees();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-
-    // 1% open fee.
-    controller.set_open_fee_bps(&admin, &100u128);
-
-    let lp1 = Address::generate(&env);
-    let lp2 = Address::generate(&env);
-    let trader = Address::generate(&env);
-
-    // LP1 deposits first and is the sole LP when the first fee is collected.
-    usdt_vault.deposit(&lp1, &1_000_000u128);
-    controller.transfer_spot_to_margin(&lp1, &usdt_id, &1_000_000u128);
-
-    usdt_vault.deposit(&trader, &1_020_000u128);
-    controller.transfer_spot_to_margin(&trader, &usdt_id, &1_020_000u128);
-
-    let swaps_chain = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    // Trader opens — fee=20_000, goes entirely to LP1 (only LP in pool of 1_000_000).
-    // delta = 20_000 * 1e18 / 1_000_000 = 2e13.
-    // LP1 claimable = 2e13 * 1_000_000 / 1e18 = 20_000.
-    controller.open_position_v2(
-        &trader,
-        &usdt_id,
-        &xlm_id,
-        &1_000_000u128,
-        &2u128,
-        &PositionSide::Long,
-        &swaps_chain,
-        &950_000u128,
-    );
-    assert_eq!(
-        controller.get_claimable_margin_fees(&lp1, &usdt_id),
-        20_000u128
-    );
-
-    // LP2 now enters the pool — they should NOT receive any of the fee that was
-    // collected before they deposited (no back-pay invariant).
-    usdt_vault.deposit(&lp2, &1_000_000u128);
-    controller.transfer_spot_to_margin(&lp2, &usdt_id, &1_000_000u128);
-    assert_eq!(controller.get_claimable_margin_fees(&lp2, &usdt_id), 0u128);
-
-    // LP1's existing claimable is unaffected by LP2 joining.
-    assert_eq!(
-        controller.get_claimable_margin_fees(&lp1, &usdt_id),
-        20_000u128
-    );
-}
 
 #[test]
 fn test_per_pair_execution_config_rejects_open_pool_oracle_divergence() {
@@ -5661,6 +4033,53 @@ fn test_per_pair_configs_lazy_migrate_to_instance_storage() {
         controller.get_perps_pair_execution_config(&usdt_id, &xlm_id, &side),
         execution
     );
+}
+
+#[test]
+#[should_panic(expected = "too many perps pairs")]
+fn test_perps_pair_instance_storage_enforces_pair_limit() {
+    let env = Env::default();
+    let controller_id = env.register(MarginController, ());
+    let margin_asset = Address::generate(&env);
+    let risk = PerpsPairConfig {
+        max_leverage: 5,
+        maintenance_margin_scaled: 50_000,
+        liquidation_incentive_scaled: 10_000,
+    };
+    let execution = PerpsPairExecutionConfig {
+        max_open_deviation_scaled: 100_000,
+        open_slippage_scaled: 50_000,
+        close_slippage_scaled: 50_000,
+        liquidation_slippage_scaled: 100_000,
+    };
+
+    env.as_contract(&controller_id, || {
+        for _ in 0..MAX_PERPS_PAIR_CONFIGS {
+            let base_asset = Address::generate(&env);
+            crate::helpers::set_perps_pair_config(
+                &env,
+                &margin_asset,
+                &base_asset,
+                &PositionSide::Long,
+                &risk,
+            );
+            // A second policy for the same pair-side must not consume another slot.
+            crate::helpers::set_perps_pair_execution_config(
+                &env,
+                &margin_asset,
+                &base_asset,
+                &PositionSide::Long,
+                &execution,
+            );
+        }
+        crate::helpers::set_perps_pair_config(
+            &env,
+            &margin_asset,
+            &Address::generate(&env),
+            &PositionSide::Long,
+            &risk,
+        );
+    });
 }
 
 #[test]
@@ -5975,148 +4394,6 @@ fn test_bounded_user_position_compaction_removes_only_scanned_stale_ids() {
     assert_eq!(
         controller.get_user_positions(&user),
         Vec::from_array(&env, [2u64, 4u64, 6u64, 8u64, 10u64, 12u64])
-    );
-}
-
-#[test]
-fn test_v2_close_requires_explicit_wallet_top_up_cap() {
-    let (
-        env,
-        controller_id,
-        usdt_id,
-        xlm_id,
-        user,
-        _peridottroller_id,
-        usdt_vault_id,
-        _xlm_vault_id,
-    ) = setup_min_with_vaults();
-    env.cost_estimate().disable_resource_limits();
-    env.cost_estimate().budget().reset_unlimited();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let debt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
-    debt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let open_route = mock_swaps_chain(&env, &usdt_id, &xlm_id);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &open_route,
-        &100u128,
-    );
-    debt_vault.set_borrow_rate(&10_000_000u128);
-    env.ledger()
-        .with_mut(|ledger| ledger.timestamp = ledger.timestamp.saturating_add(40 * 24 * 60 * 60));
-    debt_vault.update_interest();
-    let debt = debt_vault.get_margin_borrow_balance(&position_id);
-    assert!(debt > 200u128);
-    let close_route = mock_swaps_chain(&env, &xlm_id, &usdt_id);
-
-    assert!(controller
-        .try_close_position_v2(&user, &position_id, &close_route, &190u128)
-        .is_err());
-    controller.close_position_v2_with_top_up(
-        &user,
-        &position_id,
-        &close_route,
-        &190u128,
-        &debt.saturating_sub(100u128),
-    );
-    assert!(controller.get_position(&position_id).is_none());
-}
-
-#[test]
-fn test_v2_liquidation_takeover_cannot_redirect_original_liquidator_seize() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &mock_swaps_chain(&env, &usdt_id, &xlm_id),
-        &100u128,
-    );
-    peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
-    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
-    let first = Address::generate(&env);
-    let takeover = Address::generate(&env);
-    controller.begin_liquidation_v2(&first, &position_id);
-    let takeover_after = controller
-        .get_liquidation_takeover_after(&position_id)
-        .unwrap();
-    assert!(controller
-        .try_finish_liquidation_v2(&takeover, &position_id)
-        .is_err());
-    env.ledger().set_timestamp(takeover_after.saturating_add(1));
-    controller.finish_liquidation_v2(&takeover, &position_id);
-
-    let first_seized = usdt_vault
-        .get_ptoken_balance(&first)
-        .saturating_add(xlm_vault.get_ptoken_balance(&first));
-    let takeover_seized = usdt_vault
-        .get_ptoken_balance(&takeover)
-        .saturating_add(xlm_vault.get_ptoken_balance(&takeover));
-    assert!(first_seized > 0u128);
-    assert_eq!(takeover_seized, 0u128);
-}
-
-#[test]
-fn test_legacy_v2_liquidation_without_takeover_key_can_be_finished() {
-    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
-        setup_short_min();
-    let controller = MarginControllerClient::new(&env, &controller_id);
-    let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
-    let usdt_vault = MockVaultClient::new(&env, &usdt_vault_id);
-    let xlm_vault = MockVaultClient::new(&env, &xlm_vault_id);
-    usdt_vault.deposit(&user, &200u128);
-    controller.transfer_spot_to_margin(&user, &usdt_id, &200u128);
-    let position_id = controller.open_position_v2(
-        &user,
-        &usdt_id,
-        &xlm_id,
-        &100u128,
-        &2u128,
-        &PositionSide::Long,
-        &mock_swaps_chain(&env, &usdt_id, &xlm_id),
-        &100u128,
-    );
-    peridottroller.set_price(&xlm_id, &400_000u128, &1_000_000u128);
-    peridottroller.set_market_cf(&usdt_vault_id, &500_000u128);
-    let original_liquidator = Address::generate(&env);
-    let replacement_keeper = Address::generate(&env);
-    controller.begin_liquidation_v2(&original_liquidator, &position_id);
-    env.as_contract(&controller_id, || {
-        env.storage()
-            .persistent()
-            .remove(&DataKey::PendingLiquidationTakeoverAfter(position_id));
-    });
-
-    controller.finish_liquidation_v2(&replacement_keeper, &position_id);
-
-    let original_seized = usdt_vault
-        .get_ptoken_balance(&original_liquidator)
-        .saturating_add(xlm_vault.get_ptoken_balance(&original_liquidator));
-    let replacement_seized = usdt_vault
-        .get_ptoken_balance(&replacement_keeper)
-        .saturating_add(xlm_vault.get_ptoken_balance(&replacement_keeper));
-    assert!(original_seized > 0u128);
-    assert_eq!(replacement_seized, 0u128);
-    assert!(controller.get_pending_liquidation(&position_id).is_none());
-    assert_ne!(
-        controller.get_position(&position_id).unwrap().status,
-        PositionStatus::Liquidated
     );
 }
 

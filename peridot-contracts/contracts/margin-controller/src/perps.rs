@@ -1043,14 +1043,15 @@ impl MarginController {
 
     pub(crate) fn begin_liquidation_v3_impl(env: &Env, liquidator: Address, position_id: u64) {
         let mut position = get_position_record_or_panic(env, position_id);
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
         if position.status == PositionStatus::Liquidated {
             panic!("liquidation pending");
         }
         if liquidator == position.owner {
             panic!("self liquidation");
         }
-        // PerpsPositionData is created only for V3 positions and is the
-        // canonical V3-specific state required by the risk calculation.
         let perps = get_perps_position_data_or_panic(env, position_id);
         let risk = Self::perps_risk_values(env, position_id, &position, &perps, true, true);
         let debt_amount = risk.debt_amount;

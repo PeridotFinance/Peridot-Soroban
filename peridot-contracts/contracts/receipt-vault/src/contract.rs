@@ -2279,8 +2279,8 @@ impl ReceiptVault {
         if borrow_yearly_rate_scaled > MAX_YEARLY_RATE_SCALED {
             panic!("interest rate out of bounds");
         }
-        if tb_prior > 0 && borrow_yearly_rate_scaled > 0 {
-            let borrow_interest_total = if elapsed == 0 {
+        if tb_prior > 0 {
+            let borrow_interest_total = if elapsed == 0 || borrow_yearly_rate_scaled == 0 {
                 0u128
             } else {
                 checked_interest_product(&env, tb_prior, borrow_yearly_rate_scaled, elapsed)
@@ -2724,6 +2724,64 @@ impl ReceiptVault {
         persistent.set(&DataKey::DebtStateMigratedAt, &env.ledger().timestamp());
         bump_debt_state_marker_ttl(&env);
         bump_core_ttl(&env);
+    }
+
+    /// Admin-only migration for a legacy borrower whose debt snapshot exists
+    /// but whose true-principal mirror was never written. The principal must be
+    /// reconstructed from trusted historical accounting; snapshot principal is
+    /// not a safe default because it may include capitalized interest.
+    pub fn recover_user_borrow_principal(env: Env, admin: Address, user: Address, principal: u128) {
+        let _ = ensure_initialized(&env);
+        let persistent = env.storage().persistent();
+        let stored_admin: Address = persistent.get(&DataKey::Admin).expect("admin not set");
+        if stored_admin != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+
+        let principal_key = DataKey::BorrowPrincipal(user.clone());
+        if persistent.has(&principal_key) {
+            panic!("borrow principal already set");
+        }
+        let snapshot: BorrowSnapshot = persistent
+            .get(&DataKey::BorrowSnapshots(user.clone()))
+            .expect("borrow snapshot missing");
+        if principal == 0 || snapshot.interest_index == 0 || principal > snapshot.principal {
+            panic!("invalid borrow principal");
+        }
+        persistent.set(&principal_key, &principal);
+        persistent.set(&DataKey::HasBorrowed(user.clone()), &true);
+        bump_user_borrow_state_ttl(&env, &user);
+    }
+
+    /// Admin-only mirror recovery for legacy margin-position debt.
+    pub fn recover_margin_borrow_principal(
+        env: Env,
+        admin: Address,
+        position_id: u64,
+        principal: u128,
+    ) {
+        let _ = ensure_initialized(&env);
+        let persistent = env.storage().persistent();
+        let stored_admin: Address = persistent.get(&DataKey::Admin).expect("admin not set");
+        if stored_admin != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+
+        let principal_key = DataKey::MarginBorrowPrincipal(position_id);
+        if persistent.has(&principal_key) {
+            panic!("margin borrow principal already set");
+        }
+        let snapshot: BorrowSnapshot = persistent
+            .get(&DataKey::MarginBorrowSnapshots(position_id))
+            .expect("margin borrow snapshot missing");
+        if principal == 0 || snapshot.interest_index == 0 || principal > snapshot.principal {
+            panic!("invalid margin borrow principal");
+        }
+        persistent.set(&principal_key, &principal);
+        persistent.set(&DataKey::MarginHasBorrowed(position_id), &true);
+        bump_margin_borrow_state_ttl(&env, position_id);
     }
 
     /// Admin recovery path for a missing/expired margin-position borrow snapshot.
@@ -3171,8 +3229,7 @@ impl ReceiptVault {
         let margin_controller = Self::require_margin_controller_auth(&env);
         // receiver.require_auth() is the real authorization gate: the user must
         // have signed an auth entry for this exact (position_id, receiver, amount)
-        // call. The previous owner cross-check (callback to
-        // controller.get_margin_position_owner) was redundant defensive coding
+        // call. The previous owner cross-check callback was redundant defensive coding
         // and triggered Soroban's re-entry guard when called from within an
         // open_position flow on the controller.
         if receiver != margin_controller {
@@ -3430,7 +3487,7 @@ impl ReceiptVault {
         let _margin_controller = Self::require_margin_controller_auth(&env);
         // payer.require_auth() (later in this fn) is the real authorization gate.
         // The previous owner cross-check (callback to controller) triggered
-        // Soroban's re-entry guard when called from within close_position_v2.
+        // Soroban's re-entry guard when called from a controller settlement.
         Self::ensure_margin_position_borrow_flag(&env, position_id);
         let debt_before_accrual = Self::get_margin_borrow_balance(env.clone(), position_id);
         let planned_repay = if amount > debt_before_accrual {
