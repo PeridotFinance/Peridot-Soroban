@@ -5,7 +5,7 @@ use crate::constants::*;
 use crate::contract::MarginController;
 use crate::events::{
     CloseResidual, LiquidationFinished, LiquidationStarted, LiquidationSwapped,
-    PositionCollateralAdded, PositionReleased,
+    PositionCollateralAdded, PositionPoolReplaced, PositionReleased,
 };
 use crate::helpers::*;
 use crate::storage::*;
@@ -210,11 +210,23 @@ impl MarginController {
     }
 
     pub(crate) fn swap_open_position_v3_impl(env: &Env, user: Address, position_id: u64) {
-        let (position, pending, vaults) =
+        let (_position, pending, vaults) =
             Self::load_pending_perps_open(env, &user, position_id, true);
         if get_pending_perps_open_execution(env, position_id).is_some() {
             panic!("open already swapped");
         }
+        let (token_in, token_out) = match pending.side.clone() {
+            PositionSide::Long => (pending.margin_asset.clone(), pending.base_asset.clone()),
+            PositionSide::Short => (pending.base_asset.clone(), pending.margin_asset.clone()),
+        };
+        Self::validate_direct_pool(
+            env,
+            &pending.pool_tokens,
+            &pending.pool_id,
+            &pending.pool,
+            &token_in,
+            &token_out,
+        );
 
         let controller = env.current_contract_address();
         let margin_token = token::TokenClient::new(env, &pending.margin_asset);
@@ -253,17 +265,11 @@ impl MarginController {
         );
         debt_vault_client.borrow_for_margin_to_controller(&position_id, &pending.borrow_amount);
 
-        let position_token = token::TokenClient::new(env, &position.collateral_asset);
-        let position_bal_before = position_token.balance(&controller);
         let trade_amount = match pending.side.clone() {
             PositionSide::Long => margin_received.saturating_add(pending.borrow_amount),
             PositionSide::Short => pending.borrow_amount,
         };
-        let (token_in, token_out) = match pending.side.clone() {
-            PositionSide::Long => (pending.margin_asset.clone(), pending.base_asset.clone()),
-            PositionSide::Short => (pending.base_asset.clone(), pending.margin_asset.clone()),
-        };
-        let reported_received = Self::direct_pool_swap_as_controller(
+        let received_from_swap = Self::direct_pool_swap_as_controller(
             env,
             &pending.pool_tokens,
             &pending.pool,
@@ -272,15 +278,6 @@ impl MarginController {
             trade_amount,
             pending.min_position_amount,
         );
-        if reported_received < pending.min_position_amount {
-            panic!("slippage too high");
-        }
-        let position_bal_after = position_token.balance(&controller);
-        let received_from_swap = if position_bal_after <= position_bal_before {
-            0u128
-        } else {
-            (position_bal_after - position_bal_before) as u128
-        };
         if received_from_swap < pending.min_position_amount {
             panic!("slippage too high");
         }
@@ -633,6 +630,52 @@ impl MarginController {
         }
     }
 
+    pub(crate) fn replace_position_pool_v3_impl(
+        env: &Env,
+        position_id: u64,
+        pool_tokens: Vec<Address>,
+        pool_id: BytesN<32>,
+        pool: Address,
+    ) {
+        let position = get_position_record_or_panic(env, position_id);
+        if get_position_mode(env, position_id) != PositionMode::PerpsV3 {
+            panic!("not v3 position");
+        }
+        if position.status != PositionStatus::Open
+            && position.status != PositionStatus::Closing
+            && position.status != PositionStatus::Liquidated
+        {
+            panic!("position route not replaceable");
+        }
+
+        let adapter = SwapAdapterClient::new(env, &get_swap_adapter(env));
+        let mut perps = get_perps_position_data_or_panic(env, position_id);
+        if adapter.is_pool_binding_allowed(&perps.pool_id, &perps.pool) {
+            panic!("pool still allowed");
+        }
+        Self::validate_direct_pool(
+            env,
+            &pool_tokens,
+            &pool_id,
+            &pool,
+            &position.collateral_asset,
+            &position.debt_asset,
+        );
+
+        let previous_pool = perps.pool.clone();
+        perps.pool_tokens = pool_tokens;
+        perps.pool_id = pool_id.clone();
+        perps.pool = pool.clone();
+        set_perps_position_data(env, position_id, &perps);
+        PositionPoolReplaced {
+            position_id,
+            previous_pool,
+            new_pool: pool,
+            new_pool_id: pool_id,
+        }
+        .publish(env);
+    }
+
     pub(crate) fn close_position_v3_impl(
         env: &Env,
         user: Address,
@@ -813,6 +856,16 @@ impl MarginController {
             panic!("pending close expired");
         }
         let perps = get_perps_position_data_or_panic(env, position_id);
+        if position.collateral_asset != position.debt_asset {
+            Self::validate_direct_pool(
+                env,
+                &perps.pool_tokens,
+                &perps.pool_id,
+                &perps.pool,
+                &position.collateral_asset,
+                &position.debt_asset,
+            );
+        }
         let swap_amount_in = match (perps.side.clone(), short_swap_amount_in) {
             (PositionSide::Long, None) => pending.collateral_underlying,
             (PositionSide::Long, Some(_)) => panic!("not short position"),
@@ -1174,6 +1227,16 @@ impl MarginController {
             panic!("not v3 position");
         }
         let perps = get_perps_position_data_or_panic(env, position_id);
+        if position.collateral_asset != position.debt_asset {
+            Self::validate_direct_pool(
+                env,
+                &perps.pool_tokens,
+                &perps.pool_id,
+                &perps.pool,
+                &position.collateral_asset,
+                &position.debt_asset,
+            );
+        }
         let vaults = get_position_vaults(env, position_id, &position);
         let held_underlying = get_pending_liquidation_collateral_underlying(env, position_id);
         let collateral_underlying = if held_underlying > 0 {
@@ -1479,9 +1542,7 @@ impl MarginController {
         }
         let _ = Self::direct_pool_indices(pool_tokens, expected_in, expected_out);
         let adapter = SwapAdapterClient::new(env, &get_swap_adapter(env));
-        if !adapter.is_pool_allowed(pool) {
-            panic!("pool not allowed");
-        }
+        // SwapAdapter's binding read also checks the pool-level kill switch.
         if !adapter.is_pool_binding_allowed(pool_id, pool) {
             panic!("pool binding not allowed");
         }
@@ -1520,6 +1581,8 @@ impl MarginController {
         }
         let (in_idx, out_idx) = Self::direct_pool_indices(pool_tokens, token_in, token_out);
         let controller = env.current_contract_address();
+        let output_token = token::TokenClient::new(env, token_out);
+        let output_before = output_token.balance(&controller);
         Self::authorize_controller_pool_swap(
             env,
             pool,
@@ -1530,13 +1593,23 @@ impl MarginController {
             amount_in,
             amount_out_min,
         );
-        AquariusPoolClient::new(env, pool).swap(
+        let _reported = AquariusPoolClient::new(env, pool).swap(
             &controller,
             &in_idx,
             &out_idx,
             &amount_in,
             &amount_out_min,
-        )
+        );
+        let output_after = output_token.balance(&controller);
+        let received = if output_after <= output_before {
+            0u128
+        } else {
+            (output_after - output_before) as u128
+        };
+        if received < amount_out_min {
+            panic!("slippage too high");
+        }
+        received
     }
 
     fn estimate_direct_pool_swap(
@@ -1854,6 +1927,16 @@ impl MarginController {
             }
             Self::release_open_position_ptokens(env, position_id, position, &vaults);
             return;
+        }
+        if position.collateral_asset != position.debt_asset {
+            Self::validate_direct_pool(
+                env,
+                &perps.pool_tokens,
+                &perps.pool_id,
+                &perps.pool,
+                &position.collateral_asset,
+                &position.debt_asset,
+            );
         }
         let collateral_underlying = Self::withdraw_position_underlying(
             env,

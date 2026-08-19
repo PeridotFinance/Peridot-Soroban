@@ -1,4 +1,4 @@
-use soroban_sdk::{contractevent, Address};
+use soroban_sdk::{contractevent, Address, BytesN};
 
 use crate::storage::{PositionMode, PositionStatus};
 
@@ -59,6 +59,17 @@ pub struct PositionReleased {
     pub owner: Address,
     #[topic]
     pub position_id: u64,
+}
+
+#[contractevent(topics = ["position_pool_replaced"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PositionPoolReplaced {
+    #[topic]
+    pub position_id: u64,
+    #[topic]
+    pub previous_pool: Address,
+    pub new_pool: Address,
+    pub new_pool_id: BytesN<32>,
 }
 
 #[contractevent(topics = ["close_residual"])]

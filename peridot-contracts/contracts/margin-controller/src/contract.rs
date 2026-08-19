@@ -645,6 +645,23 @@ impl MarginController {
         get_perps_position_data(&env, position_id)
     }
 
+    /// Replaces a disabled stored pool route for an existing V3 position.
+    ///
+    /// This recovery path is intentionally unavailable while the old route is
+    /// still enabled. Normal route changes must happen through a new position.
+    pub fn replace_position_pool_v3(
+        env: Env,
+        admin: Address,
+        position_id: u64,
+        pool_tokens: Vec<Address>,
+        pool_id: BytesN<32>,
+        pool: Address,
+    ) {
+        bump_core_ttl(&env);
+        require_admin(&env, &admin);
+        Self::replace_position_pool_v3_impl(&env, position_id, pool_tokens, pool_id, pool);
+    }
+
     pub fn get_pending_liquidation(env: Env, position_id: u64) -> Option<PendingLiquidation> {
         bump_core_ttl(&env);
         get_pending_liquidation(&env, position_id)

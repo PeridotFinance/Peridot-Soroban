@@ -181,6 +181,7 @@ struct MockAquariusPool;
 #[contracttype]
 enum MockSwapAdapterKey {
     LastAmountIn,
+    PoolAllowed(Address),
 }
 
 #[contracttype]
@@ -189,16 +190,26 @@ enum MockAquariusPoolKey {
     LastUser,
     QuoteBps,
     PayoutBps,
+    ReportedBps,
 }
 
 #[contractimpl]
 impl MockSwapAdapter {
-    pub fn is_pool_allowed(_env: Env, _pool: Address) -> bool {
-        true
+    pub fn is_pool_allowed(env: Env, pool: Address) -> bool {
+        env.storage()
+            .persistent()
+            .get(&MockSwapAdapterKey::PoolAllowed(pool))
+            .unwrap_or(true)
     }
 
-    pub fn is_pool_binding_allowed(_env: Env, _pool_id: BytesN<32>, _pool: Address) -> bool {
-        true
+    pub fn is_pool_binding_allowed(env: Env, _pool_id: BytesN<32>, pool: Address) -> bool {
+        Self::is_pool_allowed(env, pool)
+    }
+
+    pub fn set_pool_allowed(env: Env, pool: Address, allowed: bool) {
+        env.storage()
+            .persistent()
+            .set(&MockSwapAdapterKey::PoolAllowed(pool), &allowed);
     }
 
     pub fn swap_chained(
@@ -364,7 +375,12 @@ impl MockAquariusPool {
             token_in_client.transfer(&user, &env.current_contract_address(), &amount_i128);
         }
         MockTokenClient::new(&env, &token_out).mint(&user, &amount_out_i128);
-        amount_out
+        let reported_bps: u128 = env
+            .storage()
+            .persistent()
+            .get(&MockAquariusPoolKey::ReportedBps)
+            .unwrap_or(payout_bps);
+        amount_in.saturating_mul(reported_bps) / 1_000_000u128
     }
 
     pub fn set_tokens(env: Env, token_0: Address, token_1: Address) {
@@ -399,6 +415,12 @@ impl MockAquariusPool {
         env.storage()
             .persistent()
             .set(&MockAquariusPoolKey::QuoteBps, &quote_bps);
+    }
+
+    pub fn set_reported_bps(env: Env, reported_bps: u128) {
+        env.storage()
+            .persistent()
+            .set(&MockAquariusPoolKey::ReportedBps, &reported_bps);
     }
 }
 
@@ -1393,6 +1415,15 @@ fn setup_perps_pool(
     let binding_id = BytesN::from_array(env, &[9u8; 32]);
     let pool_tokens = Vec::from_array(env, [usdt_id.clone(), xlm_id.clone()]);
     (pool, binding_id, pool_tokens)
+}
+
+fn controller_swap_adapter(env: &Env, controller_id: &Address) -> Address {
+    env.as_contract(controller_id, || {
+        env.storage()
+            .persistent()
+            .get(&DataKey::SwapAdapter)
+            .expect("swap adapter missing")
+    })
 }
 
 fn begin_and_swap_perps_long_10x(
@@ -4127,6 +4158,94 @@ fn test_v3_close_uses_pool_quote_when_pool_is_below_oracle() {
 }
 
 #[test]
+fn test_v3_open_rechecks_pool_kill_switch_before_borrowing() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, usdt_vault_id, _) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    usdt_vault.deposit(&user, &500u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &500u128);
+    let (pool, pool_id, pool_tokens) = setup_perps_pool(&env, &usdt_id, &xlm_id);
+
+    let position_id = controller.begin_open_position_v3(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &500u128,
+        &3u128,
+        &PositionSide::Long,
+        &pool_tokens,
+        &pool_id,
+        &pool,
+        &1_500u128,
+    );
+    let adapter = MockSwapAdapterClient::new(&env, &controller_swap_adapter(&env, &controller_id));
+    adapter.set_pool_allowed(&pool, &false);
+
+    assert!(controller
+        .try_swap_open_position_v3(&user, &position_id)
+        .is_err());
+    assert_eq!(usdt_vault.get_margin_borrow_balance(&position_id), 0u128);
+    controller.cancel_pending_open_v3(&user, &position_id);
+    assert!(controller.get_position(&position_id).is_none());
+}
+
+#[test]
+fn test_admin_can_replace_disabled_position_pool_and_close() {
+    let (env, controller_id, usdt_id, xlm_id, user, _, usdt_vault_id, _) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, old_pool, _, _) = open_perps_long_with_leverage(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+        3u128,
+    );
+    let (new_pool, new_pool_id, new_pool_tokens) = setup_perps_pool(&env, &usdt_id, &xlm_id);
+    let admin = controller.get_admin();
+
+    assert!(controller
+        .try_replace_position_pool_v3(
+            &admin,
+            &position_id,
+            &new_pool_tokens,
+            &new_pool_id,
+            &new_pool,
+        )
+        .is_err());
+
+    let adapter = MockSwapAdapterClient::new(&env, &controller_swap_adapter(&env, &controller_id));
+    adapter.set_pool_allowed(&old_pool, &false);
+    assert!(controller
+        .try_close_position_v3(&user, &position_id, &1_425u128)
+        .is_err());
+    assert_eq!(
+        controller.get_position(&position_id).unwrap().status,
+        PositionStatus::Open
+    );
+
+    controller.replace_position_pool_v3(
+        &admin,
+        &position_id,
+        &new_pool_tokens,
+        &new_pool_id,
+        &new_pool,
+    );
+    assert_eq!(
+        controller.get_perps_position(&position_id).unwrap().pool,
+        new_pool
+    );
+    controller.close_position_v3(&user, &position_id, &1_425u128);
+    assert!(controller.get_position(&position_id).is_none());
+}
+
+#[test]
 fn test_v3_liquidation_uses_pool_quote_and_absorbs_only_real_shortfall() {
     let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, _) =
         setup_min_with_vaults();
@@ -4150,9 +4269,31 @@ fn test_v3_liquidation_uses_pool_quote_and_absorbs_only_real_shortfall() {
     let pool_client = MockAquariusPoolClient::new(&env, &pool);
     pool_client.set_quote_bps(&800_000u128);
     pool_client.set_payout_bps(&800_000u128);
+    // A pool return value is advisory. Settlement must use the 4,000 tokens
+    // actually received rather than this deliberately inflated report.
+    pool_client.set_reported_bps(&1_600_000u128);
     let liquidator = Address::generate(&env);
 
     controller.begin_liquidation_v3(&liquidator, &position_id);
+    let adapter = MockSwapAdapterClient::new(&env, &controller_swap_adapter(&env, &controller_id));
+    adapter.set_pool_allowed(&pool, &false);
+    assert!(controller
+        .try_swap_liquidation_v3(&liquidator, &position_id, &3_600u128)
+        .is_err());
+
+    let (replacement_pool, replacement_pool_id, replacement_pool_tokens) =
+        setup_perps_pool(&env, &usdt_id, &xlm_id);
+    let replacement_pool_client = MockAquariusPoolClient::new(&env, &replacement_pool);
+    replacement_pool_client.set_quote_bps(&800_000u128);
+    replacement_pool_client.set_payout_bps(&800_000u128);
+    replacement_pool_client.set_reported_bps(&1_600_000u128);
+    controller.replace_position_pool_v3(
+        &controller.get_admin(),
+        &position_id,
+        &replacement_pool_tokens,
+        &replacement_pool_id,
+        &replacement_pool,
+    );
     // 5,000 collateral quotes to 4,000; the 10% liquidation floor is 3,600.
     controller.swap_liquidation_v3(&liquidator, &position_id, &3_600u128);
     controller.finish_liquidation_v3(&liquidator, &position_id);
