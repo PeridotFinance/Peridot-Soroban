@@ -29,7 +29,12 @@ CONTROLLER=${CONTROLLER:-CCVUFGXKFVPAHWMMDDL6HXKUN2B2G73Z27VRM3WXZBBSQEUTNLI6YPE
 JRM=${JRM:-CCI5LBBNYOASPQ62GIRY54PDEYWWURJB75HNRAFOU4LTOU3XBC73IB5I}
 AQUA=${AQUA:-CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK}
 # Aquarius pool used to sell harvested AQUA for the underlying.
-AQUA_ROUTE=${AQUA_ROUTE:-}
+# AQUA/USDC constant-product 0.3%. Chosen on-chain over the two alternatives:
+# the concentrated 0.3% pool holds ~$90k and the 1% pool is dead ($119). This
+# one holds ~$520k with ~88M AQUA of daily volume, so a weekly harvest moves it
+# negligibly. Reward swaps have no oracle cross-check (AQUA has no Reflector
+# feed), which is exactly why route depth matters.
+AQUA_ROUTE=${AQUA_ROUTE:-CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O}
 
 # ── Risk parameters ─────────────────────────────────────────────────────────
 # Realised APR scales with pool_tvl / (pool_tvl + deployed). The USDC/EURC pool
