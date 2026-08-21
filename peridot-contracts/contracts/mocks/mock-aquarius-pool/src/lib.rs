@@ -224,7 +224,11 @@ impl MockAquariusPool {
         desired_amounts: Vec<u128>,
         min_liquidity: u128,
     ) -> (Vec<u128>, u128) {
-        sender.require_auth();
+        // Deliberately no `sender.require_auth()`. The deployed Aquarius pool
+        // does not authorize the position call itself — it relies on the token
+        // transfers below carrying the sender's authorization. An earlier
+        // version of this mock required auth here, which made the vault's
+        // auth tree look correct in tests while failing on-chain.
         let (actual, liq) = Self::quote_deposit(&env, &desired_amounts);
         if liq < min_liquidity {
             panic!("OutMinNotSatisfied");
@@ -361,7 +365,8 @@ impl MockAquariusPool {
         in_amount: u128,
         out_min: u128,
     ) -> u128 {
-        user.require_auth();
+        // No `user.require_auth()` — matches the deployed pool; the inner
+        // token transfer is what carries authorization.
         let out = Self::estimate_swap(env.clone(), in_idx, out_idx, in_amount);
         if out < out_min {
             panic!("OutMinNotSatisfied");

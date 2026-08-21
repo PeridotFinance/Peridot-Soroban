@@ -38,6 +38,15 @@ pub struct Params {
     /// 100-entry cap. The ratio being cached is between two pegged assets, so
     /// it moves slowly; `refresh_nav_root()` forces an update out of band.
     pub nav_root_max_age: u64,
+    /// Maximum tolerated gap between the pool's own swap quote and the
+    /// oracle-implied fair rate, in basis points. `0` disables the check.
+    ///
+    /// The per-swap slippage floor is derived from `estimate_swap`, so it only
+    /// guards against movement between quote and execution — it cannot tell
+    /// that the pool itself is mispriced. Entering a dislocated pool realises
+    /// that gap immediately: on testnet a ~7% pool/oracle divergence cost
+    /// 4.65% of a deposit. This is the guard for that.
+    pub max_pool_divergence_bps: u32,
     pub paused: bool,
 }
 

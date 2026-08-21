@@ -94,5 +94,12 @@ on the router, which is authoritative.
 
 ### Peridot Aquarius LP Vaults
 
-- Aquarius USDC/EURC LP Vault: _not yet deployed_
-- Aquarius USDC/EURC LP Market: _not yet deployed_
+- Aquarius USDC/EURC LP Vault (mainnet): _not yet deployed_
+- Aquarius USDC/EURC LP Market (mainnet): _not yet deployed_
+
+Testnet verification (auth trees + NAV against the **deployed** Aquarius pool):
+- Vault: `CAWT7EOOXPARTDUTO5HEMHLBOISWBJKUYNRHV6TIW6ALKXBQCNGVU3DV`
+- Pool used: `CA6DAGOMK5D7GKBNWVCIEAYSTPJXLQUFWFKSZOMNEM6BVOTUBDCTIT5I` (USDT/XLM concentrated, 0.3%)
+- Reflector testnet publishes `Other(Symbol)` assets, so both tokens need
+  `set_oracle_symbol` (`"XLM"`, `"USDT"`) — the `Stellar(Address)` form returns
+  no price there.

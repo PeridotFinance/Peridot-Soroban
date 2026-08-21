@@ -616,6 +616,38 @@ fn withdrawal_survives_a_pool_that_refuses_to_release_liquidity() {
     assert_eq!(f.vault.balance(&market), 0);
 }
 
+/// A pool priced far from the oracle must be refused, not silently entered.
+/// The per-swap slippage floor cannot catch this: it is derived from the
+/// pool's own quote, so a mispriced pool quotes its own bad price confidently.
+#[test]
+fn deposit_is_refused_when_the_pool_price_diverges_from_the_oracle() {
+    let f = setup();
+    // Pool seeded at ~1.167 EURC per USDC, matching the oracle.
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let user = Address::generate(&f.env);
+    f.usdc.mint(&user, &1_000_0000000i128);
+    // Sanity: at parity the deposit goes through.
+    f.vault.deposit_underlying(&user, &500_0000000i128, &0i128);
+
+    // Halve the oracle's EURC price: fair value now says the deposit's swap
+    // should buy roughly twice as much EURC as the pool is offering, so the
+    // pool is overpricing EURC and entering it would realise that loss.
+    f.oracle.set_price(&f.eurc_id, &(PRICE_EURC / 2));
+    f.vault.refresh_nav_root();
+
+    assert!(
+        f.vault
+            .try_deposit_underlying(&user, &500_0000000i128, &0i128)
+            .is_err(),
+        "deposit should be refused while the pool is dislocated"
+    );
+
+    // Widening the tolerance lets it through again — the guard is a policy,
+    // not a hard stop.
+    f.vault.set_max_pool_divergence_bps(&f.admin, &9_000u32);
+    f.vault.deposit_underlying(&user, &500_0000000i128, &0i128);
+}
+
 #[test]
 #[should_panic(expected = "slippage above cap")]
 fn slippage_cannot_be_set_above_the_hard_ceiling() {

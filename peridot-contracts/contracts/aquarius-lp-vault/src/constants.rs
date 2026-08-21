@@ -1,3 +1,6 @@
+/// Basis-point denominator.
+pub const BPS_DENOM: u32 = 10_000u32;
+
 /// Working scale for the NAV square root. `isqrt` of a 1e18-scaled ratio
 /// yields a 1e9-scaled root, which is the divisor used to bring it back down.
 pub const NAV_RATIO_SCALE: u128 = 1_000_000_000_000_000_000u128; // 1e18
@@ -29,6 +32,9 @@ pub const DEFAULT_HARVEST_COOLDOWN_SECS: u64 = 3_600u64;
 
 /// Default lifetime of a cached NAV root before the oracle is re-read.
 pub const DEFAULT_NAV_ROOT_MAX_AGE_SECS: u64 = 300u64;
+
+/// Default tolerance between the pool's swap quote and the oracle fair rate.
+pub const DEFAULT_MAX_POOL_DIVERGENCE_BPS: u32 = 200u32; // 2%
 
 /// Oracle staleness multiplier: a price older than `k * resolution` is
 /// rejected. Mirrors the peridottroller default.

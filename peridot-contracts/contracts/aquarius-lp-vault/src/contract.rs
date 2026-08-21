@@ -341,6 +341,45 @@ impl AquariusLpVault {
     // Pool interaction
     // ─────────────────────────────────────────────────────────────────────
 
+    /// Rejects a swap whose pool quote is materially worse than the
+    /// oracle-implied fair rate.
+    ///
+    /// `apply_slippage_floor` is derived from the pool's own `estimate_swap`,
+    /// so it only catches movement between quote and execution — it cannot
+    /// tell that the pool is mispriced to begin with. Without this check a
+    /// deposit into a dislocated pool silently realises the gap: measured on
+    /// testnet, a ~7% pool/oracle divergence cost 4.65% of the deposit.
+    ///
+    /// `nav_root` is `sqrt(R) * 1e9` where `R` is the raw-unit price of the
+    /// underlying in the paired token, so one raw underlying buys `1/R` raw
+    /// other and vice versa.
+    fn require_quote_near_oracle(env: &Env, in_idx: u32, in_amount: u128, quoted_out: u128) {
+        let max_div = params(env).max_pool_divergence_bps;
+        if max_div == 0 {
+            return;
+        }
+        let root = Self::nav_root(env);
+        if root == 0 {
+            // No usable oracle reading: fall through to the slippage floor
+            // rather than blocking the vault entirely.
+            return;
+        }
+        let r_scaled = root.checked_mul(root).expect("nav root overflow"); // R * 1e18
+        let fair_out = if in_idx == Self::underlying_index(env) {
+            // underlying -> other: out = in / R
+            mul_div(in_amount, NAV_RATIO_SCALE, r_scaled)
+        } else {
+            // other -> underlying: out = in * R
+            mul_div(in_amount, r_scaled, NAV_RATIO_SCALE)
+        };
+        if fair_out == 0 {
+            return;
+        }
+        if quoted_out < apply_slippage_floor(fair_out, max_div) {
+            panic!("pool price diverged from oracle");
+        }
+    }
+
     /// Swaps `in_amount` of token `in_idx` for the other token, guarded by the
     /// configured slippage floor. Returns the amount received.
     ///
@@ -356,24 +395,34 @@ impl AquariusLpVault {
         let out_token = Self::token(env, out_idx);
 
         let estimated = pool_client.estimate_swap(&in_idx, &out_idx, &in_amount);
+        Self::require_quote_near_oracle(env, in_idx, in_amount, estimated);
         let out_min = apply_slippage_floor(estimated, Self::slippage_bps(env));
 
         let me = env.current_contract_address();
         let transfer_args: Vec<Val> = (me.clone(), pool.clone(), to_i128(in_amount)).into_val(env);
-        let swap_args: Vec<Val> = (me.clone(), in_idx, out_idx, in_amount, out_min).into_val(env);
-        let mut subs = Vec::new(env);
-        subs.push_back(auth_entry(
+        // The Aquarius pool does not call `user.require_auth()` — it relies on
+        // the token transfer's own auth. So the transfer entry must sit at the
+        // ROOT of the authorization list: nested under a pool-call entry it is
+        // unreachable, because that parent context is never matched and the
+        // transfer then fails with Auth(InvalidAction). This is the same shape
+        // `receipt-vault` uses for the DeFindex vault (contract.rs:311-327),
+        // and it was confirmed on testnet against the deployed pool.
+        let mut auths = Vec::new(env);
+        auths.push_back(auth_entry(
             env,
             &in_token,
             "transfer",
             transfer_args,
             Vec::new(env),
         ));
-        let mut auths = Vec::new(env);
-        auths.push_back(auth_entry(env, &pool, "swap", swap_args, subs));
-        env.authorize_as_current_contract(auths);
 
+        // Read balances *before* authorizing. `authorize_as_current_contract`
+        // only covers the next contract call, so an intervening call — even a
+        // read-only `balance` — discards the authorization and the pool's
+        // nested `transfer` then fails with Auth(InvalidAction). Verified on
+        // testnet against the real Aquarius pool.
         let before = Self::balance_of_token(env, &out_token);
+        env.authorize_as_current_contract(auths);
         pool_client.swap(&me, &in_idx, &out_idx, &in_amount, &out_min);
         Self::balance_of_token(env, &out_token).saturating_sub(before)
     }
@@ -446,7 +495,14 @@ impl AquariusLpVault {
         let min_liquidity = apply_slippage_floor(est_liquidity, Self::slippage_bps(env));
 
         let me = env.current_contract_address();
-        let mut subs = Vec::new(env);
+        // The Aquarius pool does not call `user.require_auth()` — it relies on
+        // the token transfer's own auth. So the transfer entry must sit at the
+        // ROOT of the authorization list: nested under a pool-call entry it is
+        // unreachable, because that parent context is never matched and the
+        // transfer then fails with Auth(InvalidAction). This is the same shape
+        // `receipt-vault` uses for the DeFindex vault (contract.rs:311-327),
+        // and it was confirmed on testnet against the deployed pool.
+        let mut auths = Vec::new(env);
         for i in 0..actual.len() {
             let amt = actual.get(i).unwrap_or(0);
             if amt == 0 {
@@ -454,24 +510,8 @@ impl AquariusLpVault {
             }
             let tok = Self::token(env, i);
             let args: Vec<Val> = (me.clone(), pool.clone(), to_i128(amt)).into_val(env);
-            subs.push_back(auth_entry(env, &tok, "transfer", args, Vec::new(env)));
+            auths.push_back(auth_entry(env, &tok, "transfer", args, Vec::new(env)));
         }
-        let deposit_args: Vec<Val> = (
-            me.clone(),
-            tick_lower,
-            tick_upper,
-            actual.clone(),
-            min_liquidity,
-        )
-            .into_val(env);
-        let mut auths = Vec::new(env);
-        auths.push_back(auth_entry(
-            env,
-            &pool,
-            "deposit_position",
-            deposit_args,
-            subs,
-        ));
         env.authorize_as_current_contract(auths);
 
         let (_spent, minted) =
@@ -536,10 +576,15 @@ impl AquariusLpVault {
             args,
             Vec::new(env),
         ));
-        env.authorize_as_current_contract(auths);
 
+        // Read balances *before* authorizing. `authorize_as_current_contract`
+        // only covers the next contract call, so an intervening call — even a
+        // read-only `balance` — discards the authorization and the pool's
+        // nested `transfer` then fails with Auth(InvalidAction). Verified on
+        // testnet against the real Aquarius pool.
         let under_before = Self::balance_of_token(env, &underlying);
         let other_before = Self::balance_of_token(env, &other);
+        env.authorize_as_current_contract(auths);
 
         let result: Result<Vec<u128>, CallError> = try_call(
             env,
@@ -880,20 +925,22 @@ impl AquariusLpVault {
         let me = env.current_contract_address();
         let transfer_args: Vec<Val> =
             (me.clone(), route_pool.clone(), to_i128(amount)).into_val(env);
-        let swap_args: Vec<Val> = (me.clone(), in_idx, out_idx, amount, out_min).into_val(env);
-        let mut subs = Vec::new(env);
-        subs.push_back(auth_entry(
+        let mut auths = Vec::new(env);
+        auths.push_back(auth_entry(
             env,
             reward_token,
             "transfer",
             transfer_args,
             Vec::new(env),
         ));
-        let mut auths = Vec::new(env);
-        auths.push_back(auth_entry(env, &route_pool, "swap", swap_args, subs));
-        env.authorize_as_current_contract(auths);
 
+        // Read balances *before* authorizing. `authorize_as_current_contract`
+        // only covers the next contract call, so an intervening call — even a
+        // read-only `balance` — discards the authorization and the pool's
+        // nested `transfer` then fails with Auth(InvalidAction). Verified on
+        // testnet against the real Aquarius pool.
         let before = Self::balance_of_token(env, &underlying);
+        env.authorize_as_current_contract(auths);
         let res: Result<u128, CallError> = try_call(
             env,
             &route_pool,
@@ -1115,6 +1162,7 @@ impl AquariusLpVault {
                 harvest_cooldown: DEFAULT_HARVEST_COOLDOWN_SECS,
                 oracle_max_age_mult: DEFAULT_ORACLE_MAX_AGE_MULT,
                 nav_root_max_age: DEFAULT_NAV_ROOT_MAX_AGE_SECS,
+                max_pool_divergence_bps: DEFAULT_MAX_POOL_DIVERGENCE_BPS,
                 paused: false,
             },
         );
@@ -1313,6 +1361,23 @@ impl AquariusLpVault {
     pub fn refresh_nav_root(env: Env) -> u128 {
         bump_critical_ttl(&env);
         Self::refresh_nav_root_inner(&env)
+    }
+
+    pub fn set_max_pool_divergence_bps(env: Env, admin_addr: Address, bps: u32) {
+        Self::require_admin(&env, &admin_addr);
+        if bps >= BPS_DENOM {
+            panic!("divergence must be below 100%");
+        }
+        let mut p = params(&env);
+        let old = p.max_pool_divergence_bps;
+        p.max_pool_divergence_bps = bps;
+        set_params(&env, &p);
+        ConfigChanged {
+            what: Symbol::new(&env, "max_divergence"),
+            old_value: old as u128,
+            new_value: bps as u128,
+        }
+        .publish(&env);
     }
 
     pub fn set_nav_root_max_age(env: Env, admin_addr: Address, seconds: u64) {

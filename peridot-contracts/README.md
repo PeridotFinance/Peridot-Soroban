@@ -180,6 +180,13 @@ Shape:
   incentives and accrued swap fees, sells them for underlying through a
   configured route pool, and redeploys.
 
+Two guards protect the entry swap:
+- `set_slippage_bps` — movement between the pool's quote and execution.
+- `set_max_pool_divergence_bps` — the pool being *mispriced against the oracle*
+  to begin with, which the slippage floor cannot see because it is derived from
+  the pool's own quote. Verified on testnet: a ~7% pool/oracle gap cost 4.65%
+  of a deposit before this existed.
+
 Capacity is the binding constraint. Realised APR scales with
 `pool_tvl / (pool_tvl + deployed)`, so `set_max_deploy` is a yield control as
 much as a risk control — an uncapped vault on a thin pool dilutes itself to
@@ -205,6 +212,21 @@ exist purely to fit inside it, and both are pinned by tests:
 
 Measured: market deposit 90 entries / 5.0M instructions, market withdraw
 79 entries / 6.0M instructions.
+
+### Authorization shape
+
+The Aquarius pool does **not** call `user.require_auth()` on `swap` or
+`deposit_position` — it relies on the token transfers carrying the caller's
+authorization. So the transfer entries passed to `authorize_as_current_contract`
+must sit at the **root** of the authorization list; nested under a pool-call
+entry they are unreachable and the transfer fails with `Auth(InvalidAction)`.
+This matches the shape `receipt-vault` already uses for DeFindex
+(contract.rs:311-327). `withdraw_position` and the claim entrypoints *do*
+authorize the pool call itself.
+
+This was only found by running against the deployed pool on testnet — a mock
+that required auth where the real pool does not made the wrong tree look
+correct. `mock-aquarius-pool` now mirrors the real behaviour.
 
 ## Oracle Behavior
 

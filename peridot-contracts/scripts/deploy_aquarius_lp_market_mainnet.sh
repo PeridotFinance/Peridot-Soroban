@@ -38,6 +38,9 @@ AQUA_ROUTE=${AQUA_ROUTE:-}
 # pool TVL.
 MAX_DEPLOY=${MAX_DEPLOY:-500000000000}   # 50,000 USDC (7 decimals)
 SLIPPAGE_BPS=${SLIPPAGE_BPS:-100}        # 1%
+# Refuses the entry swap when the pool is mispriced against the oracle. The
+# slippage guard cannot catch this — it is derived from the pool's own quote.
+MAX_DIVERGENCE_BPS=${MAX_DIVERGENCE_BPS:-200}  # 2%
 IDLE_BUFFER_BPS=${IDLE_BUFFER_BPS:-3000} # keep 30% of market deposits liquid
 HARVEST_COOLDOWN=${HARVEST_COOLDOWN:-3600}
 
@@ -69,6 +72,7 @@ invoke "$VAULT_ID" initialize \
 invoke "$VAULT_ID" set_max_deploy --admin_addr "$ADMIN" --max_deploy "$MAX_DEPLOY"
 invoke "$VAULT_ID" set_slippage_bps --admin_addr "$ADMIN" --bps "$SLIPPAGE_BPS"
 invoke "$VAULT_ID" set_harvest_cooldown --admin_addr "$ADMIN" --seconds "$HARVEST_COOLDOWN"
+invoke "$VAULT_ID" set_max_pool_divergence_bps --admin_addr "$ADMIN" --bps "$MAX_DIVERGENCE_BPS"
 if [[ -n "$AQUA_ROUTE" ]]; then
   invoke "$VAULT_ID" set_reward_route \
     --admin_addr "$ADMIN" --reward_token "$AQUA" --route "$AQUA_ROUTE"
