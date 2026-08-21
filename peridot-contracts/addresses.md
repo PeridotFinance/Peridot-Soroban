@@ -97,9 +97,23 @@ on the router, which is authoritative.
 - Aquarius USDC/EURC LP Vault (mainnet): _not yet deployed_
 - Aquarius USDC/EURC LP Market (mainnet): _not yet deployed_
 
-Testnet verification (auth trees + NAV against the **deployed** Aquarius pool):
-- Vault: `CAWT7EOOXPARTDUTO5HEMHLBOISWBJKUYNRHV6TIW6ALKXBQCNGVU3DV`
+Testnet verification against the **deployed** Aquarius pool:
+- Aquarius LP Vault: `CCG5OPVXIE55TVNIM3766IRKOTJPI6XWEO4WSVWCAFJDLRRP55G7AN4H`
+- Boosted market (ReceiptVault): `CCJJJCKVZHSDIGMPXSZNADX5VPTOX4OUMJMUOPIAAX5R6ZQSQZICYHIM`
 - Pool used: `CA6DAGOMK5D7GKBNWVCIEAYSTPJXLQUFWFKSZOMNEM6BVOTUBDCTIT5I` (USDT/XLM concentrated, 0.3%)
+
+Exercised on-chain: vault deposit / withdraw / harvest / full exit, and the
+full market path — a 300 XLM market deposit left exactly the 30% idle buffer
+and deployed the rest into the LP position, and a market withdraw drained that
+buffer *and* pulled from the position in one transaction. This is the path that
+had to fit Soroban's 100-entry cap.
+
+Setup notes:
 - Reflector testnet publishes `Other(Symbol)` assets, so both tokens need
   `set_oracle_symbol` (`"XLM"`, `"USDT"`) — the `Stellar(Address)` form returns
   no price there.
+- The testnet pool sits ~7% off the oracle, so `max_pool_divergence_bps` has to
+  be widened (1500) for testnet. The 2% mainnet default correctly refuses it.
+- The CLI encodes `Option<Symbol>` as JSON: `--symbol '"XLM"'`, `--symbol null`.
+- Use `--network mainnet-public` for mainnet reads; the `mainnet` alias has no
+  RPC URL configured.
