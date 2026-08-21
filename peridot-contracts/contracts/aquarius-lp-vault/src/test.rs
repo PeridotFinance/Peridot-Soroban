@@ -535,10 +535,8 @@ fn a_full_exit_leaves_nothing_behind() {
 
     let mut min_out: Vec<i128> = Vec::new(&f.env);
     min_out.push_back(0i128);
-    f.vault
-        .withdraw(&f.vault.balance(&a), &min_out, &a);
-    f.vault
-        .withdraw(&f.vault.balance(&b), &min_out, &b);
+    f.vault.withdraw(&f.vault.balance(&a), &min_out, &a);
+    f.vault.withdraw(&f.vault.balance(&b), &min_out, &b);
 
     assert_eq!(f.vault.total_supply(), 0, "all shares should be burned");
     assert_eq!(
@@ -547,6 +545,37 @@ fn a_full_exit_leaves_nothing_behind() {
         "no underlying may be stranded behind a zero share supply"
     );
     assert_eq!(f.vault.get_position_liquidity(), 0);
+}
+
+/// Swapping the oracle must not leave the previous feed's valuation live.
+/// The cache window is long enough to borrow against a price the replacement
+/// oracle would reject.
+#[test]
+fn changing_the_oracle_invalidates_the_cached_ratio() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let user = Address::generate(&f.env);
+    f.usdc.mint(&user, &1_000_0000000i128);
+    f.vault
+        .deposit_underlying(&user, &1_000_0000000i128, &0i128);
+
+    let nav_before = f.vault.get_total_underlying();
+    assert!(nav_before > 0);
+
+    // A replacement oracle that prices the pair very differently.
+    let new_oracle = f.env.register(MockOracle, ());
+    let new_client = MockOracleClient::new(&f.env, &new_oracle);
+    new_client.set_price(&f.usdc_id, &PRICE_USDC);
+    new_client.set_price(&f.eurc_id, &(PRICE_EURC * 4));
+    f.vault.set_oracle(&f.admin, &new_oracle);
+
+    // Must reflect the new feed immediately, not serve the old cached ratio
+    // for the remainder of the cache window.
+    assert_ne!(
+        f.vault.get_total_underlying(),
+        nav_before,
+        "stale ratio from the previous oracle survived the swap"
+    );
 }
 
 #[test]

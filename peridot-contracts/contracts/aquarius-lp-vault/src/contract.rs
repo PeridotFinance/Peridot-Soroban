@@ -978,10 +978,9 @@ impl AquariusLpVault {
         if *reward_token == underlying {
             return amount;
         }
-        let route: Option<Address> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::RewardRoute(reward_token.clone()));
+        let route_key = DataKey::RewardRoute(reward_token.clone());
+        bump_mapping_ttl(env, &route_key);
+        let route: Option<Address> = env.storage().persistent().get(&route_key);
         let Some(route_pool) = route else {
             HarvestSkipped {
                 reward_token: reward_token.clone(),
@@ -1417,6 +1416,14 @@ impl AquariusLpVault {
         let mut cfg = config(&env);
         cfg.oracle = oracle;
         set_config(&env, &cfg);
+        // Drop the cached ratio: it was derived from the *previous* oracle, and
+        // leaving it valid would let the vault keep quoting the old feed's
+        // valuation for the whole cache window — long enough to borrow against
+        // a price the replacement oracle would reject.
+        let mut st = state(&env);
+        st.last_nav_root = 0;
+        st.last_nav_root_at = 0;
+        set_state(&env, &st);
     }
 
     pub fn set_oracle_max_age_mult(env: Env, admin_addr: Address, k: u64) {
@@ -1438,16 +1445,24 @@ impl AquariusLpVault {
         symbol: Option<Symbol>,
     ) {
         Self::require_admin(&env, &admin_addr);
+        let key = DataKey::OracleSymbol(token);
         match symbol {
-            Some(sym) => env
-                .storage()
-                .persistent()
-                .set(&DataKey::OracleSymbol(token), &sym),
-            None => env
-                .storage()
-                .persistent()
-                .remove(&DataKey::OracleSymbol(token)),
+            Some(sym) => {
+                env.storage().persistent().set(&key, &sym);
+                bump_mapping_ttl(&env, &key);
+            }
+            None => env.storage().persistent().remove(&key),
         }
+    }
+
+    /// Permissionless TTL renewal for the configured mappings.
+    ///
+    /// Both are persistent keys that user traffic may not touch often enough to
+    /// keep alive on its own, and an archived symbol override stops the vault
+    /// pricing at all — which blocks supplier exits, not just deposits.
+    pub fn bump_config_mapping_ttl(env: Env, token: Address) {
+        bump_mapping_ttl(&env, &DataKey::OracleSymbol(token.clone()));
+        bump_mapping_ttl(&env, &DataKey::RewardRoute(token));
     }
 
     /// Registers the Aquarius pool used to sell a reward token for underlying.
@@ -1458,15 +1473,13 @@ impl AquariusLpVault {
         route: Option<Address>,
     ) {
         Self::require_admin(&env, &admin_addr);
+        let key = DataKey::RewardRoute(reward_token);
         match route {
-            Some(pool) => env
-                .storage()
-                .persistent()
-                .set(&DataKey::RewardRoute(reward_token), &pool),
-            None => env
-                .storage()
-                .persistent()
-                .remove(&DataKey::RewardRoute(reward_token)),
+            Some(pool) => {
+                env.storage().persistent().set(&key, &pool);
+                bump_mapping_ttl(&env, &key);
+            }
+            None => env.storage().persistent().remove(&key),
         }
     }
 

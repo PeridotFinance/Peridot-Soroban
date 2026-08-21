@@ -190,8 +190,27 @@ pub fn set_shares(env: &Env, owner: &Address, amount: u128) {
     }
 }
 
+/// Renews a configured-mapping key. Uses the same low threshold as share
+/// renewal so it only writes when the entry is genuinely near expiry —
+/// a high threshold re-bumps on every read, and the rent charge is what
+/// pushed the market's withdraw path over its resource limits.
+pub fn bump_mapping_ttl(env: &Env, key: &DataKey) {
+    if env.storage().persistent().has(key) {
+        env.storage()
+            .persistent()
+            .extend_ttl(key, SHARE_TTL_THRESHOLD, SHARE_TTL_EXTEND_TO);
+    }
+}
+
+/// Reads a token's Reflector symbol override, renewing it on the way past.
+///
+/// This mapping is on the critical path: without it `nav_root` cannot price
+/// the pair, and a fault there blocks both deposits *and* withdrawals. It is
+/// also mandatory wherever the feed publishes `Other(Symbol)` assets rather
+/// than `Stellar(Address)` — which is the case on testnet for both tokens —
+/// so letting it archive would strand the market.
 pub fn oracle_symbol(env: &Env, token: &Address) -> Option<Symbol> {
-    env.storage()
-        .persistent()
-        .get(&DataKey::OracleSymbol(token.clone()))
+    let key = DataKey::OracleSymbol(token.clone());
+    bump_mapping_ttl(env, &key);
+    env.storage().persistent().get(&key)
 }
