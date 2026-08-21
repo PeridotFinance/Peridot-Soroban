@@ -215,7 +215,16 @@ Measured: market deposit 90 entries / 5.0M instructions, market withdraw
 
 ### Known limitations
 
-Two findings from review are accepted rather than fixed, both bounded:
+Three findings from review are accepted rather than fixed:
+
+- **A stale boosted valuation can outlive its bound in the market above.** This
+  vault refuses to price past `nav_root_max_stale`, but `receipt-vault` catches
+  that revert and falls back to `max(cached, estimated)` with no further
+  freshness cutoff (`receipt-vault/src/contract.rs:125-146`). So an oracle
+  outage plus an adverse price move can leave collateral overstated. This is
+  **pre-existing behaviour of the audited market contract** — it applies
+  identically to the existing DeFindex vaults — and fixing it means changing
+  audited code, so it is escalated rather than patched here.
 
 - **Unclaimed swap fees are not in NAV.** `position_value` excludes fees the
   pool still owes the position, so a deposit landing just before a `harvest`

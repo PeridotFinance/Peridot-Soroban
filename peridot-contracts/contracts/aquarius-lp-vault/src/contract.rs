@@ -869,7 +869,13 @@ impl AquariusLpVault {
             panic!("no shares outstanding");
         }
 
-        let owed = mul_div(shares, Self::total_underlying(&env), supply);
+        // Value the same asset set deposits do. `redeem_for` sells the vault's
+        // *entire* paired balance including residue, so pricing the exit
+        // against a residue-excluding NAV would hand a partial exiter less
+        // than their pro-rata claim and leave the difference to whoever stays.
+        // Costs no extra ledger entry on any path that actually redeems —
+        // `redeem_for` already has the paired token in footprint.
+        let owed = mul_div(shares, Self::total_underlying_full(&env), supply);
         let underlying = Self::underlying(&env);
 
         let redeemed_ok = Self::raise_underlying(&env, owed);
@@ -1420,10 +1426,15 @@ impl AquariusLpVault {
         // leaving it valid would let the vault keep quoting the old feed's
         // valuation for the whole cache window — long enough to borrow against
         // a price the replacement oracle would reject.
-        let mut st = state(&env);
+        Self::invalidate_nav_cache(&env);
+    }
+
+    /// Forces the next valuation to re-read the oracle.
+    fn invalidate_nav_cache(env: &Env) {
+        let mut st = state(env);
         st.last_nav_root = 0;
         st.last_nav_root_at = 0;
-        set_state(&env, &st);
+        set_state(env, &st);
     }
 
     pub fn set_oracle_max_age_mult(env: Env, admin_addr: Address, k: u64) {
@@ -1453,6 +1464,10 @@ impl AquariusLpVault {
             }
             None => env.storage().persistent().remove(&key),
         }
+        // Changing which asset the feed is queried for changes the price, so
+        // the cached ratio is just as invalid as it is after `set_oracle` —
+        // it was derived from the previous encoding. Same reasoning, same fix.
+        Self::invalidate_nav_cache(&env);
     }
 
     /// Permissionless TTL renewal for the configured mappings.
@@ -1616,6 +1631,12 @@ impl AquariusLpVault {
 
     pub fn is_paused(env: Env) -> bool {
         params(&env).paused
+    }
+
+    /// Timestamp of the last successful oracle read. `0` means the cache has
+    /// been invalidated and the next valuation must re-read the feed.
+    pub fn get_last_nav_root_at(env: Env) -> u64 {
+        state(&env).last_nav_root_at
     }
 
     pub fn get_last_harvest(env: Env) -> u64 {

@@ -2,7 +2,7 @@
 
 use soroban_sdk::{
     contract, contractimpl, contracttype, testutils::Address as _, testutils::Ledger as _, Address,
-    Env, String, Vec,
+    Env, String, Symbol, Vec,
 };
 
 use mock_token::{MockToken, MockTokenClient};
@@ -21,6 +21,11 @@ const ADMIN_G: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ"
 #[contracttype]
 enum OracleKey {
     Price(Address),
+    /// Reflector testnet publishes most assets as `Other(Symbol)` rather than
+    /// `Stellar(Address)`, and the vault's `set_oracle_symbol` exists for
+    /// exactly that. The mock has to serve both or it cannot exercise the
+    /// symbol-override path at all.
+    SymbolPrice(Symbol),
     Fail,
     Stale,
 }
@@ -34,6 +39,12 @@ impl MockOracle {
         env.storage()
             .persistent()
             .set(&OracleKey::Price(token), &price);
+    }
+
+    pub fn set_symbol_price(env: Env, symbol: Symbol, price: i128) {
+        env.storage()
+            .persistent()
+            .set(&OracleKey::SymbolPrice(symbol), &price);
     }
 
     pub fn set_fail(env: Env, fail: bool) {
@@ -54,15 +65,18 @@ impl MockOracle {
         {
             panic!("oracle down");
         }
-        let addr = match asset {
-            Asset::Stellar(a) => a,
-            Asset::Other(_) => return None,
+        let price: i128 = match asset {
+            Asset::Stellar(a) => env
+                .storage()
+                .persistent()
+                .get(&OracleKey::Price(a))
+                .unwrap_or(0),
+            Asset::Other(sym) => env
+                .storage()
+                .persistent()
+                .get(&OracleKey::SymbolPrice(sym))
+                .unwrap_or(0),
         };
-        let price: i128 = env
-            .storage()
-            .persistent()
-            .get(&OracleKey::Price(addr))
-            .unwrap_or(0);
         if price == 0 {
             return None;
         }
@@ -156,6 +170,9 @@ fn setup() -> Fixture {
     oracle.set_price(&usdc_id, &PRICE_USDC);
     oracle.set_price(&eurc_id, &PRICE_EURC);
     oracle.set_price(&aqua_id, &PRICE_AQUA);
+    // Same prices under their symbol encodings, mirroring Reflector testnet.
+    oracle.set_symbol_price(&Symbol::new(&env, "USDC"), &PRICE_USDC);
+    oracle.set_symbol_price(&Symbol::new(&env, "EURC"), &PRICE_EURC);
 
     let vault_id = env.register(AquariusLpVault, ());
     let vault = AquariusLpVaultClient::new(&env, &vault_id);
@@ -575,6 +592,74 @@ fn changing_the_oracle_invalidates_the_cached_ratio() {
         f.vault.get_total_underlying(),
         nav_before,
         "stale ratio from the previous oracle survived the swap"
+    );
+}
+
+/// Correcting a token's Reflector encoding changes which price is fetched, so
+/// the cached ratio is as invalid as it is after swapping the oracle itself.
+#[test]
+fn changing_an_oracle_symbol_invalidates_the_cached_ratio() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let user = Address::generate(&f.env);
+    f.usdc.mint(&user, &1_000_0000000i128);
+    f.vault
+        .deposit_underlying(&user, &1_000_0000000i128, &0i128);
+
+    assert!(
+        f.vault.get_last_nav_root_at() > 0,
+        "fixture should start with a cached ratio"
+    );
+
+    // Correcting the encoding must drop the cache immediately, without
+    // waiting for a keeper or the cache window to lapse.
+    f.vault
+        .set_oracle_symbol(&f.admin, &f.eurc_id, &Some(Symbol::new(&f.env, "EURC")));
+    assert_eq!(
+        f.vault.get_last_nav_root_at(),
+        0,
+        "cached ratio survived an oracle-symbol change"
+    );
+
+    // Clearing the override drops it too.
+    f.vault.refresh_nav_root();
+    assert!(f.vault.get_last_nav_root_at() > 0);
+    f.vault.set_oracle_symbol(&f.admin, &f.eurc_id, &None);
+    assert_eq!(f.vault.get_last_nav_root_at(), 0);
+}
+
+/// A partial exit must be valued against the same assets a deposit is, or the
+/// exiting holder forfeits their share of idle paired-token residue to
+/// whoever stays.
+#[test]
+fn a_partial_exit_is_valued_against_the_same_assets_as_a_deposit() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let a = Address::generate(&f.env);
+    f.usdc.mint(&a, &2_000_0000000i128);
+    f.vault.deposit_underlying(&a, &2_000_0000000i128, &0i128);
+
+    // Donate paired-token residue directly, as a deposit swap would leave.
+    f.eurc.mint(&f.vault_id, &50_0000000i128);
+    let residue_value = f.vault.get_other_idle_value() as u128;
+    assert!(residue_value > 0, "fixture should have paired residue");
+
+    let shares = f.vault.balance(&a);
+    let full_nav = f.vault.get_total_underlying() as u128 + residue_value;
+
+    let mut min_out: Vec<i128> = Vec::new(&f.env);
+    min_out.push_back(0i128);
+    let out = f.vault.withdraw(&(shares / 2), &min_out, &a);
+    let received = out.get(0).unwrap() as u128;
+
+    // Half the shares must be worth about half of the *full* asset value,
+    // not half of a NAV that pretends the residue is not there.
+    let half_full = full_nav / 2;
+    assert!(
+        received * 100 > half_full * 90,
+        "partial exit shortchanged: got {} against a fair {}",
+        received,
+        half_full
     );
 }
 
