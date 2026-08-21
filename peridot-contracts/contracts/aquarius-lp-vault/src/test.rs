@@ -518,6 +518,37 @@ fn yield_accrues_to_existing_holders_before_a_new_deposit() {
     assert!(value_a > value_b, "the earlier holder should have earned");
 }
 
+/// The last holder out must take everything with them. Anything retained
+/// would sit behind a zero share supply and be captured by whoever deposits
+/// next.
+#[test]
+fn a_full_exit_leaves_nothing_behind() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+
+    let a = Address::generate(&f.env);
+    let b = Address::generate(&f.env);
+    f.usdc.mint(&a, &1_000_0000000i128);
+    f.usdc.mint(&b, &1_000_0000000i128);
+    f.vault.deposit_underlying(&a, &1_000_0000000i128, &0i128);
+    f.vault.deposit_underlying(&b, &1_000_0000000i128, &0i128);
+
+    let mut min_out: Vec<i128> = Vec::new(&f.env);
+    min_out.push_back(0i128);
+    f.vault
+        .withdraw(&f.vault.balance(&a), &min_out, &a);
+    f.vault
+        .withdraw(&f.vault.balance(&b), &min_out, &b);
+
+    assert_eq!(f.vault.total_supply(), 0, "all shares should be burned");
+    assert_eq!(
+        f.vault.get_idle(),
+        0,
+        "no underlying may be stranded behind a zero share supply"
+    );
+    assert_eq!(f.vault.get_position_liquidity(), 0);
+}
+
 #[test]
 fn shares_are_transferable() {
     let f = setup();

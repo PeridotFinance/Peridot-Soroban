@@ -877,8 +877,17 @@ impl AquariusLpVault {
         // Pay what was actually realised, never more. Over-redemption stays as
         // idle and accrues to the remaining holders rather than being paid out
         // to whoever happened to exit during a price dislocation.
+        //
+        // Unless this is the last holder leaving: there is nobody left to
+        // accrue to, so anything held back would sit unowned until the next
+        // depositor captured it. Observed on testnet — a full exit stranded
+        // 10.3 XLM behind a zero share supply.
         let available = Self::balance_of_token(&env, &underlying);
-        let payout = owed.min(available);
+        let payout = if shares == supply {
+            available
+        } else {
+            owed.min(available)
+        };
 
         let min_out = to_u128(min_amounts_out.get(0).unwrap_or(0));
         if payout < min_out {
