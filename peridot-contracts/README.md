@@ -158,6 +158,54 @@ stellar contract invoke --id "$VAULT" --source-account dev --network testnet -- 
   set_boosted_vault --admin "$ADMIN" --boosted_vault "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"
 ```
 
+## Boosted Markets (Aquarius LP)
+
+`contracts/aquarius-lp-vault` is a second implementation of the same
+boosted-vault interface, backed by an Aquarius concentrated-liquidity position
+instead of a DeFindex strategy. It implements the DeFindex ABI verbatim, so it
+attaches through the unmodified `set_boosted_vault` entrypoint and needs no
+change to ReceiptVault or the peridottroller.
+
+Shape:
+- Holds one **full-range** position (`deposit_position` / `withdraw_position`),
+  so it is always in range and never needs a rebalance keeper.
+- Accepts and settles in a **single** asset. Deposits are split (half swapped
+  into the paired token) on the way in and recombined on the way out, so the
+  market only ever sees its own underlying.
+- Reports NAV as `2 * L * sqrt(other_price / underlying_price)` using
+  **Reflector prices, never pool spot**. A full-range position satisfies
+  `amount0 = L/sqrt(P)` and `amount1 = L*sqrt(P)`, so this closed form is exact,
+  and it means swinging the pool price cannot move the market's exchange rate.
+- `harvest()` is permissionless: claims AQUA emissions, third-party gauge
+  incentives and accrued swap fees, sells them for underlying through a
+  configured route pool, and redeploys.
+
+Capacity is the binding constraint. Realised APR scales with
+`pool_tvl / (pool_tvl + deployed)`, so `set_max_deploy` is a yield control as
+much as a risk control — an uncapped vault on a thin pool dilutes itself to
+near-zero yield.
+
+Deploy a market with `scripts/deploy_aquarius_lp_market_mainnet.sh`.
+
+Keepers to schedule:
+- `refresh_nav_root()` — keeps the cached price ratio fresh so user
+  transactions do not pay the oracle's footprint cost.
+- `harvest(caller)` — compounds rewards (rate-limited).
+- `refresh_boosted_underlying()` on the market — existing DeFindex keeper.
+
+### Transaction footprint
+
+The end-to-end path spans ReceiptVault -> vault -> Aquarius pool -> three token
+contracts -> the oracle, against Soroban's 100-entry cap. Two design choices
+exist purely to fit inside it, and both are pinned by tests:
+- Vault config, params and global accounting live in **single instance storage
+  entries**. A key-per-field layout put the market deposit at 113 entries.
+- The NAV price ratio is **cached** (`nav_root_max_age`, default 300s) so the
+  withdraw path does not read Reflector inline.
+
+Measured: market deposit 90 entries / 5.0M instructions, market withdraw
+79 entries / 6.0M instructions.
+
 ## Oracle Behavior
 
 - Prices are fetched from the Reflector oracle and normalized by `10^decimals` returned by `decimals()`.

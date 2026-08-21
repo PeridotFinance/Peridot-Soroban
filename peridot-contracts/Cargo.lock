@@ -24,6 +24,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "aquarius-lp-vault"
+version = "0.1.0"
+dependencies = [
+ "mock-aquarius-pool",
+ "mock-token",
+ "receipt-vault",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "arbitrary"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -852,6 +862,13 @@ name = "memchr"
 version = "2.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
+
+[[package]]
+name = "mock-aquarius-pool"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
 
 [[package]]
 name = "mock-lending-vault"

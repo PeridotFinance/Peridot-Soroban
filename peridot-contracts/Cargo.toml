@@ -6,11 +6,13 @@ members = [
   "contracts/jump-rate-model",
   "contracts/peridot-token",
   "contracts/swap-adapter",
+  "contracts/aquarius-lp-vault",
   "contracts/margin-controller",
   "contracts/smart-account-basic",
   "contracts/smart-account-factory",
   "contracts/mocks/mock-token",
   "contracts/mocks/mock-lending-vault",
+  "contracts/mocks/mock-aquarius-pool",
   "contracts/mocks/flash-loan-receiver",
 ]
 

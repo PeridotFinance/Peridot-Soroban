@@ -9,6 +9,7 @@ Network passphrase: `Test SDF Network ; September 2015`
 ### Accounts
 
 - Admin/dev: `GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ`
+- Testnet LP provider (`peridot-testnet-lp`): `GBCSJA3NTK34D7NHBDHDQZE7G7BCBZLBFJN72YNS4G3K7ACF3NC4NEY4`
 - Alice: `GCOAFEN2VLTOAZR3RVSJ2QGLY4TCVMSFGVNWVI3YMQ6NLJJCCTAJT5TZ`
 - Bob: `GBFSIHBLGGDU26EV6MZK64R5UEZU3WLRKM7VRVVCQTHBTI72HLPVUCRW`
 
@@ -75,3 +76,23 @@ Network passphrase: `Public Global Stellar Network ; September 2015`
 - Peridot XLM DeFindex Vault: `CCB2AR5X3KP4WQKE7HNSUSDS7SHFMC2WPVSZ2ZXJ6DHXOKHFFKOZE6GK`
 - Peridot USDC DeFindex Vault: `CAB4JOLSCNELJVDQKZLVGHKWJCLXFDBZZMITJAFL4GBGTHIKWO47PYFH`
 - Peridot EURC DeFindex Vault: `CBP2R5KYAWJCOCVDTSNTEVL3O6JBTWOOH7SZOX7DX5DLGVZCAMLBDZM3`
+
+### Aquarius Pools (verified on-chain, mainnet)
+
+The backend API's `/pools/` listing is incomplete — it omits several live pools,
+including both concentrated ones below. Discover pools with `get_pools(tokens)`
+on the router, which is authoritative.
+
+- AQUA asset: `CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK`
+- USDC/EURC concentrated, fee 0.3% (**boosted-market target**): `CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA`
+- USDC/EURC volatile, fee 0.3%: `CB37QM6EHVBDDNK7MAVQESV7WPLKV6G36TR7MHAOYWPZXLPQUWSDOK4E`
+- XLM/yXLM concentrated, fee 0.1%: `CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F`
+- XLM/yXLM stable, fee 0.1% (has a fungible LP token `CAFEXSVT...`): `CCFGZJTHQZGDZP5PK6WMLKHKJ72ACSVMJGCI2NFR7Q6EAVSKWLJB3ZH3`
+- xSolvBTC/SolvBTC stable, fee 0.1% (largest pool on Aquarius): `CCNXGPE4AQCSNEBZO3XJDKKDI3CRLYMVS6UWBBTVDLALLWMJEXBORQ2A`
+  - XLM gauge: `CD66D66S2WICMARF3QGDATXNMINN46LSLNUUCVWRYYIWACGGZITHNWG2`
+  - Note: a same-pair constant-product pool `CDTDURXP62KOZNS7VUZGY4Q37JGJRKC4CMCT6RUNQVZDEBJQZOQAMFOY` exists but is empty (0 reserves). Do not wire to it.
+
+### Peridot Aquarius LP Vaults
+
+- Aquarius USDC/EURC LP Vault: _not yet deployed_
+- Aquarius USDC/EURC LP Market: _not yet deployed_
