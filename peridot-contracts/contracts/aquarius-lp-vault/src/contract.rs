@@ -276,8 +276,17 @@ impl AquariusLpVault {
         }
         // Oracle unavailable: fall back to the last good root rather than
         // reporting a zero NAV, which would wipe out the backing market's
-        // exchange rate.
-        state(env).last_nav_root
+        // exchange rate. The fallback is bounded — past `nav_root_max_stale`
+        // the value is too old to price borrowing or minting against, so we
+        // stop serving it. `receipt-vault` wraps this read in `try_call` and
+        // degrades to its own cached value, which is the intended behaviour.
+        let st = state(env);
+        let age = env.ledger().timestamp().saturating_sub(st.last_nav_root_at);
+        let max_stale = params(env).nav_root_max_stale;
+        if max_stale != 0 && age > max_stale {
+            panic!("nav root too stale");
+        }
+        st.last_nav_root
     }
 
     /// Value of the full-range position, denominated in the underlying token.
@@ -304,11 +313,48 @@ impl AquariusLpVault {
             .expect("nav overflow")
     }
 
-    /// Total underlying backing all outstanding shares: idle balance plus the
-    /// oracle-priced value of the LP position.
+    /// Value of an idle paired-token balance, expressed in the underlying.
+    ///
+    /// `nav_root` is `sqrt(R) * 1e9` where one raw underlying buys `1/R` raw
+    /// other, so one raw other is worth `R` raw underlying.
+    fn other_idle_value(env: &Env) -> u128 {
+        let other_balance = Self::balance_of_token(env, &Self::other_token(env));
+        if other_balance == 0 {
+            return 0;
+        }
+        let root = Self::nav_root(env);
+        if root == 0 {
+            return 0;
+        }
+        let r_scaled = root.checked_mul(root).expect("nav root overflow");
+        mul_div(other_balance, r_scaled, NAV_RATIO_SCALE)
+    }
+
+    /// Total underlying backing all outstanding shares: idle underlying plus
+    /// the LP position.
+    ///
+    /// Deliberately excludes any idle paired-token balance. That leg is
+    /// normally dust left over from a deposit swap, and reading its balance
+    /// drags the paired token contract into the footprint of every caller —
+    /// including the backing market's withdraw path, which pushed that
+    /// transaction over its resource limits. Omitting it *understates* NAV,
+    /// which is the safe direction: holders are never credited value the vault
+    /// does not hold.
     fn total_underlying(env: &Env) -> u128 {
         let idle = Self::balance_of_token(env, &Self::underlying(env));
         idle.saturating_add(Self::position_value(env))
+    }
+
+    /// NAV including the idle paired-token balance.
+    ///
+    /// Used only for the before/after snapshots that price a deposit. The
+    /// residue has to be counted there: `deploy_idle` folds the vault's whole
+    /// paired balance into liquidity, so pricing a new depositor against a NAV
+    /// that ignored it would mint them shares for residue belonging to the
+    /// existing holders. On that path the balance read is free — `deploy_idle`
+    /// already has the paired token in its footprint.
+    fn total_underlying_full(env: &Env) -> u128 {
+        Self::total_underlying(env).saturating_add(Self::other_idle_value(env))
     }
 
     fn total_shares(env: &Env) -> u128 {
@@ -522,22 +568,57 @@ impl AquariusLpVault {
         minted
     }
 
+    /// Raises `needed` underlying, cheapest source first.
+    ///
+    /// Idle paired token is sold before touching the LP position: it is part of
+    /// NAV (so shares have a claim on it) but cannot be paid out directly, and
+    /// selling it is cheaper than burning liquidity. Doing this also clears the
+    /// residue a deposit swap leaves behind.
+    /// Returns `false` if the LP redemption leg failed outright, so the caller
+    /// can tell "the pool is down" apart from "exiting simply costs fees".
+    fn raise_underlying(env: &Env, needed: u128) -> bool {
+        let underlying = Self::underlying(env);
+        if Self::balance_of_token(env, &underlying) >= needed {
+            return true;
+        }
+        let have = Self::balance_of_token(env, &underlying);
+        // `redeem_for` sells the vault's entire paired balance in one swap, so
+        // idle residue is folded in there rather than swapped separately —
+        // a second swap on the exit path costs both fees and the transaction
+        // budget the backing market needs.
+        if Self::position_liquidity(env) > 0 {
+            return Self::redeem_for(env, needed.saturating_sub(have));
+        }
+        // No position left: the paired balance is all there is to sell.
+        if Self::other_idle_value(env) >= MIN_DEPLOY_AMOUNT {
+            let other_balance = Self::balance_of_token(env, &Self::other_token(env));
+            Self::swap_exact_in(
+                env,
+                Self::other_index(env),
+                Self::underlying_index(env),
+                other_balance,
+            );
+            return true;
+        }
+        false
+    }
+
     /// Burns enough liquidity to raise `needed` underlying into idle balance.
     ///
     /// Mirrors `receipt-vault::ensure_liquid_cash`: best-effort, never panics
     /// on a pool failure, because a hard revert here would freeze every
     /// withdrawal in the market above.
-    fn redeem_for(env: &Env, needed: u128) {
+    fn redeem_for(env: &Env, needed: u128) -> bool {
         if needed == 0 {
-            return;
+            return true;
         }
         let liq = Self::position_liquidity(env);
         if liq == 0 {
-            return;
+            return false;
         }
         let position_value = Self::position_value(env);
         if position_value == 0 {
-            return;
+            return false;
         }
 
         // Round up so a rounding shortfall does not leave the caller one unit
@@ -598,7 +679,7 @@ impl AquariusLpVault {
             }
             Err(ref e) => {
                 emit_call_failure(env, &pool, e, false);
-                return;
+                return false;
             }
         }
 
@@ -606,13 +687,16 @@ impl AquariusLpVault {
         let other_got = Self::balance_of_token(env, &other).saturating_sub(other_before);
 
         // Convert the paired leg back to underlying so the caller only ever
-        // sees the single asset the market accounts in.
-        if other_got > 0 {
+        // sees the single asset the market accounts in. Sells the *entire*
+        // balance, not just what this redemption produced, so residue left by
+        // earlier deposit swaps is cleared in the same swap.
+        let other_total = Self::balance_of_token(env, &other);
+        if other_total > 0 {
             Self::swap_exact_in(
                 env,
                 Self::other_index(env),
                 Self::underlying_index(env),
-                other_got,
+                other_total,
             );
         }
 
@@ -621,7 +705,9 @@ impl AquariusLpVault {
                 liquidity_burned: burn,
             }
             .publish(env);
+            return false;
         }
+        true
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -635,8 +721,22 @@ impl AquariusLpVault {
     // ─────────────────────────────────────────────────────────────────────
 
     /// Share balance. Read by `receipt-vault` through a SEP-41 `TokenClient`.
+    ///
+    /// Renews the holder's TTL on the way past. `Shares(owner)` is persistent
+    /// state that is otherwise only bumped on write, so a market that holds a
+    /// position without depositing or withdrawing for the entry lifetime would
+    /// see its balance archived to zero while `total_shares` still counted it —
+    /// and could then never redeem. `receipt-vault` reads this on every
+    /// boosted-value refresh, so renewing here keeps live claims alive.
     pub fn balance(env: Env, id: Address) -> i128 {
+        bump_share_ttl(&env, &id);
         to_i128(Self::shares_held(&env, &id))
+    }
+
+    /// Permissionless TTL renewal for a share holder, for keepers that do not
+    /// want to pay for a full `balance` read path.
+    pub fn bump_shares_ttl(env: Env, owner: Address) {
+        bump_share_ttl(&env, &owner);
     }
 
     /// Total share supply.
@@ -705,7 +805,7 @@ impl AquariusLpVault {
         // depositor pays their own entry cost (the swap fee on converting half
         // the deposit into the paired token) instead of socialising it onto
         // the holders who were already here.
-        let nav_before = Self::total_underlying(&env);
+        let nav_before = Self::total_underlying_full(&env);
         let supply = Self::total_shares(&env);
 
         let underlying = Self::underlying(&env);
@@ -717,7 +817,7 @@ impl AquariusLpVault {
 
         let minted_liquidity = if invest { Self::deploy_idle(&env) } else { 0 };
 
-        let value_added = Self::total_underlying(&env).saturating_sub(nav_before);
+        let value_added = Self::total_underlying_full(&env).saturating_sub(nav_before);
         if value_added == 0 {
             panic!("deposit added no value");
         }
@@ -772,10 +872,7 @@ impl AquariusLpVault {
         let owed = mul_div(shares, Self::total_underlying(&env), supply);
         let underlying = Self::underlying(&env);
 
-        let idle = Self::balance_of_token(&env, &underlying);
-        if idle < owed {
-            Self::redeem_for(&env, owed - idle);
-        }
+        let redeemed_ok = Self::raise_underlying(&env, owed);
 
         // Pay what was actually realised, never more. Over-redemption stays as
         // idle and accrues to the remaining holders rather than being paid out
@@ -788,8 +885,18 @@ impl AquariusLpVault {
             panic!("withdraw below minimum");
         }
 
+        // A shortfall because exiting costs swap fees is the exiting holder's
+        // own cost — burn their full stake, exactly as a depositor pays their
+        // own entry cost. A shortfall because the pool refused to release
+        // liquidity is different: burning there would destroy an unredeemed
+        // claim permanently, so refuse and let them retry once it recovers.
+        if !redeemed_ok && payout < owed {
+            panic!("could not raise underlying; shares preserved");
+        }
+        let shares_to_burn = shares;
+
         let liquidity_before = Self::position_liquidity(&env);
-        Self::burn_shares(&env, &from, shares);
+        Self::burn_shares(&env, &from, shares_to_burn);
         if payout > 0 {
             token::TokenClient::new(&env, &underlying).transfer(
                 &env.current_contract_address(),
@@ -800,7 +907,7 @@ impl AquariusLpVault {
 
         Withdrawn {
             to: from,
-            shares_burned: shares,
+            shares_burned: shares_to_burn,
             liquidity_burned: liquidity_before.saturating_sub(Self::position_liquidity(&env)),
             underlying_out: payout,
         }
@@ -1163,6 +1270,7 @@ impl AquariusLpVault {
                 oracle_max_age_mult: DEFAULT_ORACLE_MAX_AGE_MULT,
                 nav_root_max_age: DEFAULT_NAV_ROOT_MAX_AGE_SECS,
                 max_pool_divergence_bps: DEFAULT_MAX_POOL_DIVERGENCE_BPS,
+                nav_root_max_stale: DEFAULT_NAV_ROOT_MAX_STALE_SECS,
                 paused: false,
             },
         );
@@ -1380,6 +1488,20 @@ impl AquariusLpVault {
         .publish(&env);
     }
 
+    pub fn set_nav_root_max_stale(env: Env, admin_addr: Address, seconds: u64) {
+        Self::require_admin(&env, &admin_addr);
+        let mut p = params(&env);
+        let old = p.nav_root_max_stale;
+        p.nav_root_max_stale = seconds;
+        set_params(&env, &p);
+        ConfigChanged {
+            what: Symbol::new(&env, "nav_max_stale"),
+            old_value: old as u128,
+            new_value: seconds as u128,
+        }
+        .publish(&env);
+    }
+
     pub fn set_nav_root_max_age(env: Env, admin_addr: Address, seconds: u64) {
         Self::require_admin(&env, &admin_addr);
         let mut p = params(&env);
@@ -1451,6 +1573,11 @@ impl AquariusLpVault {
 
     pub fn get_position_liquidity(env: Env) -> u128 {
         Self::position_liquidity(&env)
+    }
+
+    /// Idle paired-token balance, valued in the underlying at the oracle rate.
+    pub fn get_other_idle_value(env: Env) -> i128 {
+        to_i128(Self::other_idle_value(&env))
     }
 
     pub fn get_idle(env: Env) -> i128 {

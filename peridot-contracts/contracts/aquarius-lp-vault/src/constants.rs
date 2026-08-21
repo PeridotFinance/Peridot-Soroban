@@ -36,6 +36,10 @@ pub const DEFAULT_NAV_ROOT_MAX_AGE_SECS: u64 = 300u64;
 /// Default tolerance between the pool's swap quote and the oracle fair rate.
 pub const DEFAULT_MAX_POOL_DIVERGENCE_BPS: u32 = 200u32; // 2%
 
+/// Hard ceiling on the stale-oracle NAV fallback (1 hour), matching
+/// `receipt-vault`'s own `BOOSTED_CACHE_MAX_AGE_SECS`.
+pub const DEFAULT_NAV_ROOT_MAX_STALE_SECS: u64 = 3_600u64;
+
 /// Oracle staleness multiplier: a price older than `k * resolution` is
 /// rejected. Mirrors the peridottroller default.
 pub const DEFAULT_ORACLE_MAX_AGE_MULT: u64 = 2u64;

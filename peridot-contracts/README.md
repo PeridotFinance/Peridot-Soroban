@@ -213,6 +213,25 @@ exist purely to fit inside it, and both are pinned by tests:
 Measured: market deposit 90 entries / 5.0M instructions, market withdraw
 79 entries / 6.0M instructions.
 
+### Known limitations
+
+Two findings from review are accepted rather than fixed, both bounded:
+
+- **Unclaimed swap fees are not in NAV.** `position_value` excludes fees the
+  pool still owes the position, so a deposit landing just before a `harvest`
+  is priced against a slightly understated NAV and captures a share of fees
+  that accrued before it. Including them needs a `get_all_position_fees` call
+  on the deposit path, which already sits at 89 of the 100-entry transaction
+  cap through the backing market — there is no room. The exposure is bounded by
+  fees accrued since the last harvest, and `harvest()` is permissionless and
+  rate-limited to once an hour by default; run it on a keeper to keep the
+  window small.
+- **Reward swaps have no oracle cross-check.** `swap_reward` sells AQUA and
+  gauge tokens through a configured route pool using only that pool's own
+  quote, because reward tokens generally have no Reflector feed to compare
+  against. It is bounded by the reward balance and gated by the harvest
+  cooldown, but a large harvest is sandwichable. Prefer deep route pools.
+
 ### Authorization shape
 
 The Aquarius pool does **not** call `user.require_auth()` on `swap` or

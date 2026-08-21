@@ -47,6 +47,10 @@ pub struct Params {
     /// that gap immediately: on testnet a ~7% pool/oracle divergence cost
     /// 4.65% of a deposit. This is the guard for that.
     pub max_pool_divergence_bps: u32,
+    /// Hard ceiling on how old the cached NAV root may be when the oracle is
+    /// unreachable. Past this the vault refuses to price rather than serving an
+    /// arbitrarily obsolete ratio. `0` disables the bound.
+    pub nav_root_max_stale: u64,
     pub paused: bool,
 }
 
@@ -83,7 +87,11 @@ const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
 const DAY_IN_LEDGERS: u32 = 17_280;
 const SHARE_TTL_EXTEND_TO: u32 = 5_000_000;
-const SHARE_TTL_THRESHOLD: u32 = SHARE_TTL_EXTEND_TO - DAY_IN_LEDGERS;
+/// Renew only when the entry is genuinely close to expiring (~58 days left).
+/// A threshold near `SHARE_TTL_EXTEND_TO` would re-bump on essentially every
+/// read, and the resulting rent charge pushed the market's withdraw path over
+/// its per-transaction resource limits.
+const SHARE_TTL_THRESHOLD: u32 = 1_000_000;
 
 /// One `extend_ttl` covers Config, Params, State and Admin together.
 pub fn bump_critical_ttl(env: &Env) {

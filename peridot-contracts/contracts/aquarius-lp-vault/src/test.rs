@@ -606,13 +606,25 @@ fn withdrawal_survives_a_pool_that_refuses_to_release_liquidity() {
 
     f.pool.set_fail_withdraw(&true);
 
-    // Must not panic: a hard revert here would freeze every withdrawal in the
-    // market this vault backs.
+    // Nothing can be raised, so the call must NOT quietly burn the holder's
+    // claim — the shares have to survive so they can retry once the pool
+    // recovers. (An earlier version paid zero and burned everything.)
     let mut min_out: Vec<i128> = Vec::new(&f.env);
     min_out.push_back(0i128);
+    assert!(
+        f.vault.try_withdraw(&shares, &min_out, &market).is_err(),
+        "withdraw should refuse rather than burn shares for nothing"
+    );
+    assert_eq!(
+        f.vault.balance(&market),
+        shares,
+        "holder's claim must be preserved through a pool outage"
+    );
+
+    // Once the pool recovers the same shares redeem normally.
+    f.pool.set_fail_withdraw(&false);
     let out = f.vault.withdraw(&shares, &min_out, &market);
-    // Nothing could be raised, so nothing is paid, but the call completes.
-    assert_eq!(out.len(), 1);
+    assert!(out.get(0).unwrap() > 0);
     assert_eq!(f.vault.balance(&market), 0);
 }
 
