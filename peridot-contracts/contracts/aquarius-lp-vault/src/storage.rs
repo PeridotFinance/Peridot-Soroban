@@ -85,7 +85,6 @@ pub enum DataKey {
 
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
-const DAY_IN_LEDGERS: u32 = 17_280;
 const SHARE_TTL_EXTEND_TO: u32 = 5_000_000;
 /// Renew only when the entry is genuinely close to expiring (~58 days left).
 /// A threshold near `SHARE_TTL_EXTEND_TO` would re-bump on essentially every
