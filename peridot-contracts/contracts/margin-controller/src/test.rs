@@ -2221,6 +2221,13 @@ fn test_split_short_close_returns_unspent_quote_to_wallet() {
         5_500u128
     );
 
+    let pool_client = MockAquariusPoolClient::new(&env, &pool);
+    pool_client.set_quote_bps(&600_000u128);
+    assert!(controller
+        .try_swap_close_short_position_v3(&user, &position_id, &5_005u128, &5_005u128)
+        .is_err());
+    pool_client.set_quote_bps(&1_000_000u128);
+
     env.cost_estimate().budget().reset_unlimited();
     controller.swap_close_short_position_v3(&user, &position_id, &5_005u128, &5_005u128);
     assert_budget_under(&env, 10_000_000, 2_000_000);
@@ -2522,11 +2529,17 @@ fn test_split_liquidate_position_v3_completes_across_stages() {
     assert_eq!(quote.debt_amount, 4_500u128);
     assert_eq!(quote.oracle_min_out, 4_465u128);
     assert_eq!(quote.pool_estimated_out, 5_000u128);
-    MockAquariusPoolClient::new(&env, &pool).set_payout_bps(&800_000u128);
+    let pool_client = MockAquariusPoolClient::new(&env, &pool);
+    pool_client.set_quote_bps(&600_000u128);
     assert!(controller
         .try_swap_liquidation_v3(&liquidator, &position_id, &liquidation_min_out)
         .is_err());
-    MockAquariusPoolClient::new(&env, &pool).set_payout_bps(&1_000_000u128);
+    pool_client.set_quote_bps(&1_000_000u128);
+    pool_client.set_payout_bps(&800_000u128);
+    assert!(controller
+        .try_swap_liquidation_v3(&liquidator, &position_id, &liquidation_min_out)
+        .is_err());
+    pool_client.set_payout_bps(&1_000_000u128);
     env.cost_estimate().budget().reset_unlimited();
     controller.swap_liquidation_v3(&liquidator, &position_id, &liquidation_min_out);
     assert_last_invocation_resources_under(&env, 100, 35, 20_000_000);
@@ -3944,9 +3957,18 @@ fn test_per_pair_execution_config_rejects_open_pool_oracle_divergence() {
     let admin = controller.get_admin();
     let defaults =
         controller.get_perps_pair_execution_config(&usdt_id, &xlm_id, &PositionSide::Long);
+    let exit_defaults =
+        controller.get_perps_pair_exit_config(&usdt_id, &xlm_id, &PositionSide::Long);
     assert_eq!(
         defaults.max_open_deviation_scaled,
         DEFAULT_OPEN_POOL_ORACLE_DEVIATION_SCALED
+    );
+    assert_eq!(
+        exit_defaults,
+        PerpsPairExitExecutionConfig {
+            max_close_deviation_scaled: DEFAULT_CLOSE_POOL_ORACLE_DEVIATION_SCALED,
+            max_liq_deviation_scaled: DEFAULT_LIQUIDATION_POOL_ORACLE_DEVIATION_SCALED,
+        }
     );
 
     receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id).deposit(&user, &500u128);
@@ -3989,6 +4011,35 @@ fn test_per_pair_execution_config_rejects_open_pool_oracle_divergence() {
         controller.get_perps_pair_execution_config(&usdt_id, &xlm_id, &PositionSide::Long);
     assert_eq!(configured.max_open_deviation_scaled, 250_000u128);
     assert_eq!(configured.open_slippage_scaled, 50_000u128);
+    controller.set_perps_pair_exit_config(
+        &admin,
+        &usdt_id,
+        &xlm_id,
+        &PositionSide::Long,
+        &PerpsPairExitExecutionConfig {
+            max_close_deviation_scaled: 200_000u128,
+            max_liq_deviation_scaled: 275_000u128,
+        },
+    );
+    assert_eq!(
+        controller.get_perps_pair_exit_config(&usdt_id, &xlm_id, &PositionSide::Long),
+        PerpsPairExitExecutionConfig {
+            max_close_deviation_scaled: 200_000u128,
+            max_liq_deviation_scaled: 275_000u128,
+        }
+    );
+    assert!(controller
+        .try_set_perps_pair_exit_config(
+            &admin,
+            &usdt_id,
+            &xlm_id,
+            &PositionSide::Long,
+            &PerpsPairExitExecutionConfig {
+                max_close_deviation_scaled: MAX_POOL_EXECUTION_DEVIATION_SCALED + 1,
+                max_liq_deviation_scaled: 275_000u128,
+            },
+        )
+        .is_err());
 
     let position_id = controller.begin_open_position_v3(
         &user,
@@ -4118,6 +4169,54 @@ fn test_perps_pair_instance_storage_enforces_pair_limit() {
             &PositionSide::Long,
             &risk,
         );
+    });
+}
+
+#[test]
+fn test_legacy_perps_pair_migration_is_not_limited_by_new_pair_registry() {
+    let env = Env::default();
+    let controller_id = env.register(MarginController, ());
+    let margin_asset = Address::generate(&env);
+    let risk = PerpsPairConfig {
+        max_leverage: 5,
+        maintenance_margin_scaled: 50_000,
+        liquidation_incentive_scaled: 10_000,
+    };
+    let mut base_assets = Vec::new(&env);
+
+    env.as_contract(&controller_id, || {
+        for _ in 0..=MAX_PERPS_PAIR_CONFIGS {
+            let base_asset = Address::generate(&env);
+            env.storage().persistent().set(
+                &DataKey::PerpsPairConfig(
+                    margin_asset.clone(),
+                    base_asset.clone(),
+                    PositionSide::Long,
+                ),
+                &risk,
+            );
+            base_assets.push_back(base_asset);
+        }
+    });
+
+    env.as_contract(&controller_id, || {
+        for base_asset in base_assets.iter() {
+            assert_eq!(
+                crate::helpers::get_perps_pair_config(
+                    &env,
+                    &margin_asset,
+                    &base_asset,
+                    &PositionSide::Long,
+                ),
+                Some(risk.clone())
+            );
+        }
+        let registered: Vec<(Address, Address, PositionSide)> = env
+            .storage()
+            .instance()
+            .get(&DataKey::ConfiguredPerpsPairs)
+            .unwrap_or(Vec::new(&env));
+        assert_eq!(registered.len(), 0);
     });
 }
 
@@ -4723,6 +4822,14 @@ fn test_exact_live_wasm_upgrade_preserves_v3_positions_and_pending_recovery() {
             .saturating_add(UPGRADE_TIMELOCK_SECS + 1),
     );
     controller.upgrade_wasm(&admin, &new_hash);
+
+    assert_eq!(
+        controller.get_perps_pair_exit_config(&usdt_id, &xlm_id, &PositionSide::Long),
+        PerpsPairExitExecutionConfig {
+            max_close_deviation_scaled: DEFAULT_CLOSE_POOL_ORACLE_DEVIATION_SCALED,
+            max_liq_deviation_scaled: DEFAULT_LIQUIDATION_POOL_ORACLE_DEVIATION_SCALED,
+        }
+    );
 
     // Existing activated records and their debt survive deserialization.
     assert_eq!(

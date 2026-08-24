@@ -903,6 +903,12 @@ impl MarginController {
             &perps.base_asset,
             &perps.side,
         );
+        let exit_config = get_perps_pair_exit_config_or_default(
+            env,
+            &perps.margin_asset,
+            &perps.base_asset,
+            &perps.side,
+        );
         let pool_min = if position.collateral_asset == position.debt_asset {
             swap_amount_in
         } else {
@@ -913,6 +919,14 @@ impl MarginController {
                 &position.collateral_asset,
                 &position.debt_asset,
                 swap_amount_in,
+            );
+            Self::assert_pool_quote_above_oracle_floor(
+                env,
+                quote,
+                &position.collateral_asset,
+                &position.debt_asset,
+                swap_amount_in,
+                exit_config.max_close_deviation_scaled,
             );
             Self::pool_quote_min_out(quote, execution_config.close_slippage_scaled)
         };
@@ -1267,6 +1281,12 @@ impl MarginController {
                 &perps.base_asset,
                 &perps.side,
             );
+            let exit_config = get_perps_pair_exit_config_or_default(
+                env,
+                &perps.margin_asset,
+                &perps.base_asset,
+                &perps.side,
+            );
             let quote = Self::estimate_direct_pool_swap(
                 env,
                 &perps.pool_tokens,
@@ -1274,6 +1294,14 @@ impl MarginController {
                 &position.collateral_asset,
                 &position.debt_asset,
                 collateral_underlying,
+            );
+            Self::assert_pool_quote_above_oracle_floor(
+                env,
+                quote,
+                &position.collateral_asset,
+                &position.debt_asset,
+                collateral_underlying,
+                exit_config.max_liq_deviation_scaled,
             );
             let pool_min =
                 Self::pool_quote_min_out(quote, execution_config.liquidation_slippage_scaled);
@@ -1675,6 +1703,34 @@ impl MarginController {
         }
     }
 
+    fn assert_pool_quote_above_oracle_floor(
+        env: &Env,
+        pool_quote: u128,
+        token_in: &Address,
+        token_out: &Address,
+        amount_in: u128,
+        max_deviation_scaled: u128,
+    ) {
+        let oracle_expected = Self::oracle_expected_out_from_prices(
+            get_price_usd(env, token_in),
+            get_price_usd(env, token_out),
+            amount_in,
+        );
+        if pool_quote == 0
+            || oracle_expected == 0
+            || max_deviation_scaled > MAX_POOL_EXECUTION_DEVIATION_SCALED
+        {
+            panic!("invalid execution price");
+        }
+        let lower = oracle_expected
+            .checked_mul(SCALE_1E6.saturating_sub(max_deviation_scaled))
+            .expect("execution price overflow")
+            / SCALE_1E6;
+        if pool_quote < lower {
+            panic!("pool oracle divergence");
+        }
+    }
+
     fn raw_ptoken_value_usd_with_update(
         env: &Env,
         vault: &Address,
@@ -1953,6 +2009,12 @@ impl MarginController {
             &perps.base_asset,
             &perps.side,
         );
+        let exit_config = get_perps_pair_exit_config_or_default(
+            env,
+            &perps.margin_asset,
+            &perps.base_asset,
+            &perps.side,
+        );
         let pool_min = if position.collateral_asset == position.debt_asset {
             collateral_underlying
         } else {
@@ -1963,6 +2025,18 @@ impl MarginController {
                 &position.collateral_asset,
                 &position.debt_asset,
                 collateral_underlying,
+            );
+            Self::assert_pool_quote_above_oracle_floor(
+                env,
+                quote,
+                &position.collateral_asset,
+                &position.debt_asset,
+                collateral_underlying,
+                if liquidator.is_some() {
+                    exit_config.max_liq_deviation_scaled
+                } else {
+                    exit_config.max_close_deviation_scaled
+                },
             );
             let slippage = if liquidator.is_some() {
                 execution_config.liquidation_slippage_scaled

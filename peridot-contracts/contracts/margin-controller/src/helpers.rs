@@ -621,7 +621,6 @@ pub fn get_perps_pair_config(
 ) -> Option<PerpsPairConfig> {
     let key = DataKey::PerpsPairConfig(margin_asset.clone(), base_asset.clone(), side.clone());
     if let Some(config) = env.storage().instance().get(&key) {
-        register_perps_pair(env, margin_asset, base_asset, side);
         return Some(config);
     }
 
@@ -629,7 +628,6 @@ pub fn get_perps_pair_config(
     // storage ties protocol policy to the contract lifetime instead of an
     // independently expiring persistent entry.
     if let Some(config) = env.storage().persistent().get(&key) {
-        register_perps_pair(env, margin_asset, base_asset, side);
         env.storage().instance().set(&key, &config);
         bump_perps_pair_config_ttl(env, margin_asset, base_asset, side);
         return Some(config);
@@ -672,7 +670,6 @@ pub fn get_perps_pair_execution_config(
     let key =
         DataKey::PerpsPairExecutionConfig(margin_asset.clone(), base_asset.clone(), side.clone());
     if let Some(config) = env.storage().instance().get(&key) {
-        register_perps_pair(env, margin_asset, base_asset, side);
         return Some(config);
     }
 
@@ -680,7 +677,6 @@ pub fn get_perps_pair_execution_config(
     // persistent value on first use.
     let persistent = env.storage().persistent();
     if let Some(config) = persistent.get(&key) {
-        register_perps_pair(env, margin_asset, base_asset, side);
         env.storage().instance().set(&key, &config);
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
         return Some(config);
@@ -725,6 +721,42 @@ pub fn get_perps_pair_execution_config_or_default(
             liquidation_slippage_scaled: DEFAULT_LIQUIDATION_POOL_SLIPPAGE_SCALED,
         },
     )
+}
+
+pub fn set_perps_pair_exit_config(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+    config: &PerpsPairExitExecutionConfig,
+) {
+    register_perps_pair(env, margin_asset, base_asset, side);
+    let key = DataKey::PerpsPairExitExecutionConfig(
+        margin_asset.clone(),
+        base_asset.clone(),
+        side.clone(),
+    );
+    env.storage().instance().set(&key, config);
+}
+
+pub fn get_perps_pair_exit_config_or_default(
+    env: &Env,
+    margin_asset: &Address,
+    base_asset: &Address,
+    side: &PositionSide,
+) -> PerpsPairExitExecutionConfig {
+    let key = DataKey::PerpsPairExitExecutionConfig(
+        margin_asset.clone(),
+        base_asset.clone(),
+        side.clone(),
+    );
+    if let Some(config) = env.storage().instance().get(&key) {
+        return config;
+    }
+    PerpsPairExitExecutionConfig {
+        max_close_deviation_scaled: DEFAULT_CLOSE_POOL_ORACLE_DEVIATION_SCALED,
+        max_liq_deviation_scaled: DEFAULT_LIQUIDATION_POOL_ORACLE_DEVIATION_SCALED,
+    }
 }
 
 fn bump_total_margin_ptokens_ttl(env: &Env, vault: &Address) {

@@ -271,6 +271,50 @@ impl MarginController {
         )
     }
 
+    pub fn set_perps_pair_exit_config(
+        env: Env,
+        admin: Address,
+        margin_asset: Address,
+        base_asset: Address,
+        side: PositionSide,
+        config: PerpsPairExitExecutionConfig,
+    ) {
+        bump_core_ttl(&env);
+        require_admin(&env, &admin);
+        if margin_asset == base_asset {
+            panic!("assets must differ");
+        }
+        if config.max_close_deviation_scaled > MAX_POOL_EXECUTION_DEVIATION_SCALED
+            || config.max_liq_deviation_scaled > MAX_POOL_EXECUTION_DEVIATION_SCALED
+        {
+            panic!("invalid exit execution config");
+        }
+        let _ = get_market(&env, &margin_asset);
+        let _ = get_market(&env, &base_asset);
+        crate::helpers::set_perps_pair_exit_config(
+            &env,
+            &margin_asset,
+            &base_asset,
+            &side,
+            &config,
+        );
+    }
+
+    pub fn get_perps_pair_exit_config(
+        env: Env,
+        margin_asset: Address,
+        base_asset: Address,
+        side: PositionSide,
+    ) -> PerpsPairExitExecutionConfig {
+        bump_core_ttl(&env);
+        crate::helpers::get_perps_pair_exit_config_or_default(
+            &env,
+            &margin_asset,
+            &base_asset,
+            &side,
+        )
+    }
+
     pub fn set_max_slippage_scaled(env: Env, admin: Address, max_slippage_scaled: u128) {
         bump_core_ttl(&env);
         require_admin(&env, &admin);

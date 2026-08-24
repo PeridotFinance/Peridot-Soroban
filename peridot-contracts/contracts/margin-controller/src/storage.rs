@@ -139,6 +139,7 @@ pub enum DataKey {
     PendingLiqCollateralUnderlying(u64),
     UserPositionsCompactionCursor(Address),
     ConfiguredPerpsPairs,
+    PerpsPairExitExecutionConfig(Address, Address, PositionSide),
 }
 
 #[contracttype]
@@ -215,6 +216,13 @@ pub struct PerpsPairExecutionConfig {
     pub open_slippage_scaled: u128,
     pub close_slippage_scaled: u128,
     pub liquidation_slippage_scaled: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PerpsPairExitExecutionConfig {
+    pub max_close_deviation_scaled: u128,
+    pub max_liq_deviation_scaled: u128,
 }
 
 #[contracttype]
