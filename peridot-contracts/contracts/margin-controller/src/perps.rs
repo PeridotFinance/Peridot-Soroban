@@ -1125,6 +1125,7 @@ impl MarginController {
         if debt_amount == 0 {
             panic!("zero debt");
         }
+        let mut liquidation_incentive_scaled = perps.liquidation_incentive_scaled;
         let mut converted_debt_asset = 0u128;
         let mut controller_collateral_underlying = 0u128;
         let liquidation_stage = if position.status == PositionStatus::Open {
@@ -1139,11 +1140,18 @@ impl MarginController {
             if closing.owner != position.owner {
                 panic!("close owner mismatch");
             }
-            // Timeout makes close completion permissionless; it does not make
-            // a healthy position liquidatable or entitle a caller to an
-            // incentive from proceeds already held by the controller.
-            if risk.equity > risk.maintenance_required {
+            let stalled = env.ledger().timestamp() > closing.expires_at;
+            let residual_recovery =
+                closing.debt_amount > 0 && closing.received_debt_asset < debt_amount && stalled;
+            // Timeout makes normal close completion permissionless. A healthy
+            // close can enter this recovery path only when current debt has
+            // actually outrun held debt-asset proceeds, and that recovery pays
+            // no liquidation incentive.
+            if risk.equity > risk.maintenance_required && !residual_recovery {
                 panic!("not liquidatable");
+            }
+            if residual_recovery {
+                liquidation_incentive_scaled = 0u128;
             }
             if closing.debt_amount > 0 {
                 converted_debt_asset = closing.received_debt_asset;
@@ -1187,7 +1195,7 @@ impl MarginController {
             initial_seize_ptokens: 0u128,
             initial_fee_ptokens: 0u128,
             reserve_recipient: None,
-            liquidation_incentive_scaled: perps.liquidation_incentive_scaled,
+            liquidation_incentive_scaled,
         };
         set_pending_liquidation(env, position_id, &pending);
         if controller_collateral_underlying > 0 {
@@ -1487,11 +1495,20 @@ impl MarginController {
         if exchange_rate == 0 {
             panic!("invalid exchange rate");
         }
-        let collateral_underlying = position
-            .collateral_ptokens
-            .checked_mul(exchange_rate)
-            .expect("valuation overflow")
-            / SCALE_1E6;
+        let held_underlying = if position.status == PositionStatus::Liquidated {
+            get_pending_liquidation_collateral_underlying(env, position_id)
+        } else {
+            0u128
+        };
+        let collateral_underlying = if held_underlying > 0 {
+            held_underlying
+        } else {
+            position
+                .collateral_ptokens
+                .checked_mul(exchange_rate)
+                .expect("valuation overflow")
+                / SCALE_1E6
+        };
         if collateral_underlying == 0 {
             panic!("no collateral");
         }
