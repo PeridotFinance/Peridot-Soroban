@@ -3633,6 +3633,48 @@ fn test_expire_close_position_v3_restores_abandoned_preswap_close() {
 }
 
 #[test]
+fn test_expired_swapped_healthy_close_finishes_without_liquidation_incentive() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        _xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    controller.prepare_close_position_v3(&user, &position_id);
+    controller.swap_close_position_v3(&user, &position_id, &4_750u128);
+    let pending = controller.get_pending_perps_close(&position_id).unwrap();
+    assert!(pending.received_debt_asset > 0);
+    env.ledger()
+        .set_timestamp(pending.expires_at.saturating_add(1));
+
+    let liquidator = Address::generate(&env);
+    assert!(controller
+        .try_begin_liquidation_v3(&liquidator, &position_id)
+        .is_err());
+
+    controller.finish_close_position_v3(&position_id);
+    assert!(controller.get_position(&position_id).is_none());
+    assert!(controller.get_pending_liquidation(&position_id).is_none());
+}
+
+#[test]
 fn test_underwater_split_close_can_be_cancelled_after_swap_reverts() {
     let (
         env,

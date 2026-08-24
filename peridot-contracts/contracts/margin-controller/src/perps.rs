@@ -1139,12 +1139,11 @@ impl MarginController {
             if closing.owner != position.owner {
                 panic!("close owner mismatch");
             }
-            let stalled = env.ledger().timestamp() > closing.expires_at;
-            // A healthy close that has not swapped can be restored through the
-            // permissionless expiry path. Only a post-swap residual may use the
-            // timeout recovery path without being below maintenance.
-            if risk.equity > risk.maintenance_required && (!stalled || closing.debt_amount == 0) {
-                panic!("close still active");
+            // Timeout makes close completion permissionless; it does not make
+            // a healthy position liquidatable or entitle a caller to an
+            // incentive from proceeds already held by the controller.
+            if risk.equity > risk.maintenance_required {
+                panic!("not liquidatable");
             }
             if closing.debt_amount > 0 {
                 converted_debt_asset = closing.received_debt_asset;
