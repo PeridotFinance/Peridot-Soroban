@@ -1105,6 +1105,70 @@ mod boosted_market {
         );
     }
 
+    /// What actually happens on a borrow: the market pays out of idle cash if
+    /// it can, and otherwise **unwinds the LP position** — burning liquidity,
+    /// taking back both legs, and swapping the paired leg into the underlying.
+    /// A borrower never touches the paired asset; they only ever see the
+    /// market's own underlying.
+    #[test]
+    fn borrowing_beyond_idle_cash_unwinds_the_lp_position() {
+        let m = setup_market();
+        m.market.enable_static_rates(&m.f.admin);
+        m.market.set_collateral_factor(&1_000_000u128);
+
+        let lender = Address::generate(&m.f.env);
+        let borrower = Address::generate(&m.f.env);
+        m.f.usdc.mint(&lender, &10_000_0000000i128);
+        m.f.usdc.mint(&borrower, &10_000_0000000i128);
+        m.market.deposit(&lender, &10_000_0000000u128);
+        m.market.deposit(&borrower, &10_000_0000000u128);
+
+        let liq_before = m.f.vault.get_position_liquidity();
+        assert!(liq_before > 0, "deposits should have reached the pool");
+        let idle_before = m.f.usdc.balance(&m.market.address) as u128;
+
+        // Borrow more than the market is holding as idle cash, forcing a pull
+        // from the LP position.
+        let amount = idle_before + 2_000_0000000u128;
+        let before = m.f.usdc.balance(&borrower);
+        m.market.borrow(&borrower, &amount);
+        let received = (m.f.usdc.balance(&borrower) - before) as u128;
+
+        assert_eq!(received, amount, "borrower must receive the full amount");
+        assert!(
+            m.f.vault.get_position_liquidity() < liq_before,
+            "the LP position should have been unwound to fund the borrow"
+        );
+        // The borrower is paid in underlying only — never the paired asset.
+        assert_eq!(m.f.eurc.balance(&borrower), 0);
+    }
+
+    /// The borrow path is heavier than deposit or withdraw and has its own
+    /// footprint budget. Pinned separately because it is the path a lending
+    /// market actually exists for.
+    #[test]
+    fn borrow_through_the_lp_position_fits_in_a_transaction() {
+        let m = setup_market();
+        m.market.enable_static_rates(&m.f.admin);
+        m.market.set_collateral_factor(&1_000_000u128);
+
+        let user = Address::generate(&m.f.env);
+        m.f.usdc.mint(&user, &20_000_0000000i128);
+        m.market.deposit(&user, &20_000_0000000u128);
+
+        let idle = m.f.usdc.balance(&m.market.address) as u128;
+        m.market.borrow(&user, &(idle + 2_000_0000000u128));
+
+        let r = m.f.env.cost_estimate().resources();
+        let entries = r.memory_read_entries + r.write_entries;
+        assert!(
+            entries < 100,
+            "market borrow needs {} ledger entries, over the cap",
+            entries
+        );
+        assert!(r.instructions < 100_000_000, "market borrow CPU too high");
+    }
+
     #[test]
     fn market_exchange_rate_reflects_harvested_yield() {
         let m = setup_market();
