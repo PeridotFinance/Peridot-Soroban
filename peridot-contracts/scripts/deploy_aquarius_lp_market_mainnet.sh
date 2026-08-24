@@ -41,7 +41,15 @@ AQUA_ROUTE=${AQUA_ROUTE:-CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4
 # held ~$151k when this was written, so an uncapped vault would dilute its own
 # yield to nothing. Default cap is deliberately small; raise it only alongside
 # pool TVL.
-MAX_DEPLOY=${MAX_DEPLOY:-500000000000}   # 50,000 USDC (7 decimals)
+# Two separate ceilings, both agreed at $100k for the initial launch:
+#  - SUPPLY_CAP  caps what the MARKET will accept from suppliers at all.
+#  - MAX_DEPLOY  caps what the VAULT pushes into the Aquarius pool. Anything
+#    above it stays as idle cash in the vault and earns nothing, so this is the
+#    yield knob; realised APR scales with pool_tvl / (pool_tvl + deployed).
+# At $100k against the pool's ~$151k, the vault would own ~40% of it — see the
+# capacity note in contracts/aquarius-lp-vault/CLAUDE.md before raising these.
+SUPPLY_CAP=${SUPPLY_CAP:-1000000000000}  # 100,000 USDC (7 decimals)
+MAX_DEPLOY=${MAX_DEPLOY:-1000000000000}  # 100,000 USDC (7 decimals)
 SLIPPAGE_BPS=${SLIPPAGE_BPS:-100}        # 1%
 # Refuses the entry swap when the pool is mispriced against the oracle. The
 # slippage guard cannot catch this — it is derived from the pool's own quote.
@@ -100,6 +108,7 @@ invoke "$MARKET_ID" initialize \
 invoke "$MARKET_ID" set_interest_model --model "$JRM"
 invoke "$MARKET_ID" set_peridottroller --peridottroller "$CONTROLLER"
 invoke "$MARKET_ID" set_idle_cash_buffer_bps --admin "$ADMIN" --idle_cash_buffer_bps "$IDLE_BUFFER_BPS"
+invoke "$MARKET_ID" set_supply_cap --cap "$SUPPLY_CAP"
 invoke "$MARKET_ID" set_boosted_vault --admin "$ADMIN" --boosted_vault "$VAULT_ID"
 
 cat <<SUMMARY
@@ -111,7 +120,8 @@ cat <<SUMMARY
   Market          $MARKET_ID
   Pool            $POOL
   Underlying      $UNDERLYING (index $UNDERLYING_INDEX)
-  Max deploy      $MAX_DEPLOY
+  Supply cap      $SUPPLY_CAP (market accepts no more than this)
+  Max deploy      $MAX_DEPLOY (vault pushes no more than this into the pool)
   Idle buffer     ${IDLE_BUFFER_BPS} bps
 
   Still to do:

@@ -55,6 +55,7 @@ MarginController (leveraged trading, optional)
 ### Supporting Contracts
 
 - **`margin-controller`** / **`swap-adapter`**: Optional leveraged margin trading via Aquarius DEX. Legacy Margin V1 exports are disabled; new work must target Margin V2 entrypoints only.
+- **`aquarius-lp-vault`**: Boosted vault backed by an Aquarius concentrated-liquidity position, as an alternative to a DeFindex vault. Implements the same boosted-vault ABI, so it attaches through the unmodified `set_boosted_vault`. **See `contracts/aquarius-lp-vault/CLAUDE.md` for the full handoff** — design decisions, the Aquarius auth-tree gotcha, transaction-footprint limits, and open review findings.
 - **`mocks/mock-token`**, **`mocks/mock-lending-vault`**: Test-only mocks.
 
 ### Key Patterns
