@@ -4,8 +4,8 @@ set -euo pipefail
 # Rebalance the current testnet Aquarius XLM/mock-USDT pool toward the oracle price.
 #
 # Default behavior is DRY_RUN=true. Set DRY_RUN=false to submit swaps.
-# The default direction is XLM_TO_USDT because adding XLM/removing USDT increases
-# the USDT -> XLM output needed by Long margin opens.
+# AUTO mode compares the pool quote with the oracle band and chooses the corrective
+# direction. It handles both underpayment and overpayment of XLM.
 #
 # Common usage:
 #   bash scripts/rebalance_aquarius_pool_testnet.sh
@@ -23,6 +23,8 @@ set -euo pipefail
 #   FEE_SAMPLE_AMOUNT         amount used to infer pool fee from estimate_swap, default: 50000000
 #   SEARCH_BUFFER_SCALED      target buffer for model error in 1e6 scale, default: 5000 (0.5%)
 #   REBALANCE_SLIPPAGE_SCALED min-out tolerance for the rebalance swap, default: 50000 (5%)
+#   XLM_BALANCE_BUFFER        XLM retained by the signer for reserves/fees, default: 1000000000 (100 XLM)
+#   TOKEN_BALANCE_BUFFER      input-token dust retained for non-XLM swaps, default: 10000000 (1 token)
 #   MAX_STEPS                 max submitted rebalance swaps when DRY_RUN=false, default: 3
 #   REBALANCE_DIRECTION       AUTO, XLM_TO_USDT, or USDT_TO_XLM, default: AUTO
 
@@ -30,7 +32,7 @@ IDENTITY=${IDENTITY:-dev}
 NETWORK=${NETWORK:-testnet}
 
 PERIDOTTROLLER=${PERIDOTTROLLER:-CDMXPWG55776NECXQMWNBXMEQXZUAWA2AJBCQS7SU7SA64XHMO3KB3O6}
-SWAP_ID=${SWAP_ID:-CDEQ6H4TST4DSFBUSZV6VMRSSBVOZAOYWKOGGVGZJKGXFZECBQVRS557}
+SWAP_ID=${SWAP_ID:-CBSTR53W52JHCRXW4I4QAL7FJJIT2D7MVFTNC3VJRNOPTIKCCZKDTKDL}
 
 XLM_TOKEN=${XLM_TOKEN:-CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC}
 USDT_TOKEN=${USDT_TOKEN:-CDPXNHHVSLX3HFAHV7XOISM23MZH36WSXTO45RNDOBIDFZBGTSOVD4OY}
@@ -44,6 +46,8 @@ REBALANCE_AMOUNT=${REBALANCE_AMOUNT:-500000000}
 FEE_SAMPLE_AMOUNT=${FEE_SAMPLE_AMOUNT:-50000000}
 SEARCH_BUFFER_SCALED=${SEARCH_BUFFER_SCALED:-5000}
 REBALANCE_SLIPPAGE_SCALED=${REBALANCE_SLIPPAGE_SCALED:-50000}
+XLM_BALANCE_BUFFER=${XLM_BALANCE_BUFFER:-1000000000}
+TOKEN_BALANCE_BUFFER=${TOKEN_BALANCE_BUFFER:-10000000}
 MAX_STEPS=${MAX_STEPS:-3}
 DRY_RUN=${DRY_RUN:-true}
 REBALANCE_DIRECTION=${REBALANCE_DIRECTION:-AUTO}
@@ -89,6 +93,20 @@ raise SystemExit(0 if int(sys.argv[1]) >= int(sys.argv[2]) else 1)
 PY
 }
 
+min_int() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+print(min(int(sys.argv[1]), int(sys.argv[2])))
+PY
+}
+
+subtract_floor_zero() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+print(max(0, int(sys.argv[1]) - int(sys.argv[2])))
+PY
+}
+
 calc_oracle_min_xlm_out() {
   python3 - "$PROBE_USDT_IN" "$1" "$2" "$3" "$4" "$MAX_SLIPPAGE_SCALED" <<'PY'
 import sys
@@ -104,6 +122,31 @@ precision = 1_000_000
 numerator = usdt_in * usdt_price_num * xlm_price_den * (precision - slippage_scaled)
 denominator = usdt_price_den * xlm_price_num * precision
 print((numerator + denominator - 1) // denominator)
+PY
+}
+
+calc_oracle_expected_xlm_out() {
+  python3 - "$PROBE_USDT_IN" "$1" "$2" "$3" "$4" <<'PY'
+import sys
+
+usdt_in = int(sys.argv[1])
+usdt_price_num = int(sys.argv[2])
+usdt_price_den = int(sys.argv[3])
+xlm_price_num = int(sys.argv[4])
+xlm_price_den = int(sys.argv[5])
+
+numerator = usdt_in * usdt_price_num * xlm_price_den
+denominator = usdt_price_den * xlm_price_num
+print((numerator + denominator - 1) // denominator)
+PY
+}
+
+calc_oracle_max_xlm_out() {
+  python3 - "$1" "$MAX_SLIPPAGE_SCALED" <<'PY'
+import sys
+expected = int(sys.argv[1])
+slippage_scaled = int(sys.argv[2])
+print((expected * (1_000_000 + slippage_scaled)) // 1_000_000)
 PY
 }
 
@@ -163,7 +206,10 @@ elif direction == "USDT_TO_XLM":
 else:
     raise SystemExit(f"unsupported direction {direction}")
 
-search_target = ceil_div(target_probe_out * (PRECISION + buffer_scaled), PRECISION)
+if direction == "XLM_TO_USDT":
+    search_target = ceil_div(target_probe_out * (PRECISION + buffer_scaled), PRECISION)
+else:
+    search_target = (target_probe_out * (PRECISION - buffer_scaled)) // PRECISION
 
 def post_probe_out(rebalance_amount):
     if direction == "XLM_TO_USDT":
@@ -176,15 +222,26 @@ def post_probe_out(rebalance_amount):
         xlm_after = max(1, reserve_xlm - xlm_out)
     return cp_out(probe_usdt, usdt_after, xlm_after, probe_fee)
 
-if post_probe_out(max_amount) < search_target:
-    print(f"ERR {post_probe_out(max_amount)} {search_target} {probe_fee} {rebalance_fee}")
+max_post_out = post_probe_out(max_amount)
+target_unreachable = (
+    max_post_out < search_target
+    if direction == "XLM_TO_USDT"
+    else max_post_out > search_target
+)
+if target_unreachable:
+    print(f"ERR {max_post_out} {search_target} {probe_fee} {rebalance_fee}")
     raise SystemExit(0)
 
 lo = 0
 hi = max_amount
 while lo + 1 < hi:
     mid = (lo + hi) // 2
-    if post_probe_out(mid) >= search_target:
+    reached = (
+        post_probe_out(mid) >= search_target
+        if direction == "XLM_TO_USDT"
+        else post_probe_out(mid) <= search_target
+    )
+    if reached:
         hi = mid
     else:
         lo = mid
@@ -301,28 +358,22 @@ read -r xlm_price_num xlm_price_den < <(get_price_pair "$XLM_TOKEN")
 read -r usdt_price_num usdt_price_den < <(get_price_pair "$USDT_TOKEN")
 
 target_xlm_out=$(calc_oracle_min_xlm_out "$usdt_price_num" "$usdt_price_den" "$xlm_price_num" "$xlm_price_den")
-
-choose_direction() {
-  case "$REBALANCE_DIRECTION" in
-    AUTO)
-      echo "XLM_TO_USDT"
-      ;;
-    XLM_TO_USDT|USDT_TO_XLM)
-      echo "$REBALANCE_DIRECTION"
-      ;;
-    *)
-      echo "Unsupported REBALANCE_DIRECTION=$REBALANCE_DIRECTION. Use AUTO, XLM_TO_USDT, or USDT_TO_XLM." >&2
-      exit 1
-      ;;
-  esac
-}
+expected_xlm_out=$(calc_oracle_expected_xlm_out "$usdt_price_num" "$usdt_price_den" "$xlm_price_num" "$xlm_price_den")
+max_xlm_out=$(calc_oracle_max_xlm_out "$expected_xlm_out")
 
 prepare_rebalance() {
-  local direction="$1"
+  local requested_direction="$1"
+  local direction
+  local required_direction
+  local direction_target
   local pool_xlm_balance
   local pool_usdt_balance
   local current_xlm_out
   local fee_sample_estimate
+  local input_balance
+  local balance_buffer
+  local available_rebalance_amount
+  local search_max_amount
   local recommendation
   local recommendation_status
   local model_post_out
@@ -334,27 +385,70 @@ prepare_rebalance() {
 
   echo "Pool: $AQUARIUS_POOL"
   echo "Route: USDT -> XLM probe amount $PROBE_USDT_IN"
-  echo "Oracle minimum XLM out with slippage: $target_xlm_out"
+  echo "Oracle expected XLM out: $expected_xlm_out"
+  echo "Accepted target band: $target_xlm_out .. $max_xlm_out"
   echo "Current pool XLM out: $current_xlm_out"
 
-  if int_ge "$current_xlm_out" "$target_xlm_out"; then
+  if int_ge "$current_xlm_out" "$target_xlm_out" && int_ge "$max_xlm_out" "$current_xlm_out"; then
     echo "No rebalance needed for this probe size."
     exit 0
   fi
 
+  if int_ge "$target_xlm_out" "$current_xlm_out"; then
+    required_direction="XLM_TO_USDT"
+    direction_target="$target_xlm_out"
+  else
+    required_direction="USDT_TO_XLM"
+    direction_target="$max_xlm_out"
+  fi
+
+  case "$requested_direction" in
+    AUTO)
+      direction="$required_direction"
+      ;;
+    XLM_TO_USDT|USDT_TO_XLM)
+      direction="$requested_direction"
+      if [[ "$direction" != "$required_direction" ]]; then
+        echo "REBALANCE_DIRECTION=$direction would move the pool farther outside the oracle band; required direction is $required_direction." >&2
+        exit 1
+      fi
+      ;;
+    *)
+      echo "Unsupported REBALANCE_DIRECTION=$requested_direction. Use AUTO, XLM_TO_USDT, or USDT_TO_XLM." >&2
+      exit 1
+      ;;
+  esac
+  rebalance_direction="$direction"
+
   case "$direction" in
     XLM_TO_USDT)
       rebalance_token_in="$XLM_TOKEN"
+      balance_buffer="$XLM_BALANCE_BUFFER"
       fee_sample_estimate=$(estimate_pool_swap 0 1 "$FEE_SAMPLE_AMOUNT")
       ;;
     USDT_TO_XLM)
       rebalance_token_in="$USDT_TOKEN"
+      balance_buffer="$TOKEN_BALANCE_BUFFER"
       fee_sample_estimate=$(estimate_pool_swap 1 0 "$FEE_SAMPLE_AMOUNT")
       ;;
   esac
 
+  input_balance=$(token_balance "$rebalance_token_in" "$USER_ADDRESS")
+  available_rebalance_amount=$(subtract_floor_zero "$input_balance" "$balance_buffer")
+  search_max_amount=$(min_int "$REBALANCE_AMOUNT" "$available_rebalance_amount")
+  echo "Signer input-token balance: $input_balance"
+  echo "Maximum funded rebalance amount: $search_max_amount"
+  if [[ "$search_max_amount" == "0" ]]; then
+    echo "Signer has no spendable input-token balance after the safety buffer." >&2
+    exit 1
+  fi
+
   if [[ "$AUTO_AMOUNT" == "false" || "$AUTO_AMOUNT" == "0" || "$AUTO_AMOUNT" == "no" ]]; then
     rebalance_amount="$REBALANCE_AMOUNT"
+    if int_ge "$rebalance_amount" "$((available_rebalance_amount + 1))"; then
+      echo "REBALANCE_AMOUNT=$rebalance_amount exceeds the funded maximum $available_rebalance_amount." >&2
+      exit 1
+    fi
     model_post_out="n/a"
     model_target="n/a"
     probe_fee="n/a"
@@ -367,16 +461,16 @@ prepare_rebalance() {
       "$pool_usdt_balance" \
       "$PROBE_USDT_IN" \
       "$current_xlm_out" \
-      "$target_xlm_out" \
+      "$direction_target" \
       "$FEE_SAMPLE_AMOUNT" \
       "$fee_sample_estimate" \
       "$direction" \
-      "$REBALANCE_AMOUNT" \
+      "$search_max_amount" \
       "$SEARCH_BUFFER_SCALED")
 
     read -r recommendation_status rebalance_amount model_post_out model_target probe_fee rebalance_fee <<<"$recommendation"
     if [[ "$recommendation_status" != "OK" ]]; then
-      echo "Auto-search cannot reach target within REBALANCE_AMOUNT=$REBALANCE_AMOUNT." >&2
+      echo "Auto-search cannot reach target within funded maximum $search_max_amount." >&2
       echo "Model post-probe XLM out at max: $rebalance_amount" >&2
       echo "Buffered model target: $model_post_out" >&2
       echo "Increase REBALANCE_AMOUNT or reduce SEARCH_BUFFER_SCALED." >&2
@@ -405,7 +499,7 @@ prepare_rebalance() {
   echo "Rebalance min output: $rebalance_min_out"
 }
 
-rebalance_direction=$(choose_direction)
+rebalance_direction="$REBALANCE_DIRECTION"
 prepare_rebalance "$rebalance_direction"
 
 if [[ "$DRY_RUN" != "false" && "$DRY_RUN" != "0" && "$DRY_RUN" != "no" ]]; then
@@ -426,13 +520,13 @@ for ((step = 1; step <= MAX_STEPS; step++)); do
   current_xlm_out=$(estimate_pool_swap 1 0 "$PROBE_USDT_IN")
   echo "Post-swap pool XLM out: $current_xlm_out"
 
-  if int_ge "$current_xlm_out" "$target_xlm_out"; then
+  if int_ge "$current_xlm_out" "$target_xlm_out" && int_ge "$max_xlm_out" "$current_xlm_out"; then
     echo "Rebalance target reached."
     exit 0
   fi
 
-  prepare_rebalance "$rebalance_direction"
+  prepare_rebalance "$REBALANCE_DIRECTION"
 done
 
-echo "Max steps reached. Re-run with a larger REBALANCE_AMOUNT or MAX_STEPS if the route is still below target." >&2
+echo "Max steps reached. Re-run with a larger REBALANCE_AMOUNT or MAX_STEPS if the route is still outside the oracle band." >&2
 exit 1

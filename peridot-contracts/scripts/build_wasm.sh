@@ -16,6 +16,8 @@ if [[ -n "$INIT_ADMIN_VALUE" ]]; then
     PERIDOT_TOKEN_INIT_ADMIN \
     SWAP_ADAPTER_INIT_ADMIN \
     AQUARIUS_LP_VAULT_INIT_ADMIN \
+  PRICE_ROUTER_INIT_ADMIN \
+    PRICE_ROUTER_INIT_ADMIN \
     MARGIN_CONTROLLER_INIT_ADMIN \
     SMART_ACCOUNT_FACTORY_INIT_ADMIN
   do
@@ -34,6 +36,7 @@ for var in \
   PERIDOT_TOKEN_INIT_ADMIN \
   SWAP_ADAPTER_INIT_ADMIN \
   AQUARIUS_LP_VAULT_INIT_ADMIN \
+  PRICE_ROUTER_INIT_ADMIN \
   MARGIN_CONTROLLER_INIT_ADMIN \
   SMART_ACCOUNT_FACTORY_INIT_ADMIN
 do
@@ -48,7 +51,7 @@ if (( ${#missing_init_admin_vars[@]} > 0 )); then
   exit 1
 fi
 
-for crate in receipt-vault simple-peridottroller jump-rate-model peridot-token mock-token mock-lending-vault swap-adapter aquarius-lp-vault margin-controller smart-account-basic smart-account-factory; do
+for crate in receipt-vault simple-peridottroller jump-rate-model peridot-token mock-token mock-lending-vault swap-adapter aquarius-lp-vault price-router margin-controller smart-account-basic smart-account-factory; do
   echo "→ $crate"
   stellar contract build --package "$crate"
   case "$crate" in
@@ -60,6 +63,7 @@ for crate in receipt-vault simple-peridottroller jump-rate-model peridot-token m
     mock-lending-vault) wasm_name=mock_lending_vault ;;
     swap-adapter) wasm_name=swap_adapter ;;
     aquarius-lp-vault) wasm_name=aquarius_lp_vault ;;
+    price-router) wasm_name=price_router ;;
     margin-controller) wasm_name=margin_controller ;;
     smart-account-basic) wasm_name=smart_account_basic ;;
     smart-account-factory) wasm_name=smart_account_factory ;;
