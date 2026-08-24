@@ -3732,6 +3732,54 @@ fn test_expired_close_residual_has_permissionless_zero_incentive_recovery() {
 }
 
 #[test]
+fn test_undermaintenance_expired_close_residual_keeps_liquidation_incentive() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_short_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    let configured_incentive = controller
+        .get_perps_position(&position_id)
+        .unwrap()
+        .liquidation_incentive_scaled;
+    let debt_vault = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id);
+    debt_vault.set_borrow_rate(&10_000_000u128);
+
+    controller.prepare_close_position_v3(&user, &position_id);
+    controller.swap_close_short_position_v3(&user, &position_id, &5_005u128, &5_005u128);
+    let pending = controller.get_pending_perps_close(&position_id).unwrap();
+    env.ledger()
+        .set_timestamp(pending.expires_at.saturating_add(2 * 60 * 60));
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_price(
+        &xlm_id,
+        &2_000_000u128,
+        &1_000_000u128,
+    );
+    debt_vault.update_interest();
+    assert!(debt_vault.get_margin_borrow_balance(&position_id) > pending.received_debt_asset);
+    assert!(controller.get_health_factor(&position_id) <= SCALE_1E6);
+
+    let liquidator = Address::generate(&env);
+    controller.begin_liquidation_v3(&liquidator, &position_id);
+    assert_eq!(
+        controller
+            .get_pending_liquidation(&position_id)
+            .unwrap()
+            .liquidation_incentive_scaled,
+        configured_incentive
+    );
+}
+
+#[test]
 fn test_underwater_split_close_can_be_cancelled_after_swap_reverts() {
     let (
         env,

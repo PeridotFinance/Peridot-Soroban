@@ -1143,14 +1143,15 @@ impl MarginController {
             let stalled = env.ledger().timestamp() > closing.expires_at;
             let residual_recovery =
                 closing.debt_amount > 0 && closing.received_debt_asset < debt_amount && stalled;
+            let healthy = risk.equity > risk.maintenance_required;
             // Timeout makes normal close completion permissionless. A healthy
             // close can enter this recovery path only when current debt has
             // actually outrun held debt-asset proceeds, and that recovery pays
             // no liquidation incentive.
-            if risk.equity > risk.maintenance_required && !residual_recovery {
+            if healthy && !residual_recovery {
                 panic!("not liquidatable");
             }
-            if residual_recovery {
+            if healthy && residual_recovery {
                 liquidation_incentive_scaled = 0u128;
             }
             if closing.debt_amount > 0 {
