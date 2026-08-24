@@ -426,33 +426,56 @@ impl AquariusLpVault {
         }
     }
 
-    /// Swaps `in_amount` of token `in_idx` for the other token, guarded by the
-    /// configured slippage floor. Returns the amount received.
+    /// Swaps `in_amount` of token `in_idx` for the other token.
     ///
-    /// Aquarius guarantees exactly `in_amount` is consumed, so authorizing a
-    /// transfer of precisely that amount is always correct.
-    fn swap_exact_in(env: &Env, in_idx: u32, out_idx: u32, in_amount: u128) -> u128 {
+    /// Returns the amount received, or `0` if the pool refused. Never panics on
+    /// a pool-side failure: Aquarius can pause swaps (error 206) and a revert
+    /// here would propagate into the backing market's deposit or withdrawal.
+    ///
+    /// `enforce_divergence` splits entry from exit deliberately:
+    /// - **Entering** a mispriced pool is optional, so refuse it. That is the
+    ///   whole point of `max_pool_divergence_bps`.
+    /// - **Exiting** is not optional. Blocking a withdrawal because the pool is
+    ///   dislocated would freeze supplier exits in the market above, which is a
+    ///   worse failure than realising a bad rate on the paired leg.
+    fn swap_exact_in(
+        env: &Env,
+        in_idx: u32,
+        out_idx: u32,
+        in_amount: u128,
+        enforce_divergence: bool,
+    ) -> u128 {
         if in_amount == 0 {
             return 0;
         }
         let pool = Self::pool(env);
-        let pool_client = ConcentratedPoolClient::new(env, &pool);
         let in_token = Self::token(env, in_idx);
         let out_token = Self::token(env, out_idx);
 
-        let estimated = pool_client.estimate_swap(&in_idx, &out_idx, &in_amount);
-        Self::require_quote_near_oracle(env, in_idx, in_amount, estimated);
+        let estimated: u128 =
+            match try_call(env, &pool, "estimate_swap", (in_idx, out_idx, in_amount)) {
+                Ok(v) => v,
+                Err(ref e) => {
+                    emit_call_failure(env, &pool, e, true);
+                    return 0;
+                }
+            };
+        if estimated == 0 {
+            return 0;
+        }
+        if enforce_divergence {
+            Self::require_quote_near_oracle(env, in_idx, in_amount, estimated);
+        }
         let out_min = apply_slippage_floor(estimated, Self::slippage_bps(env));
 
         let me = env.current_contract_address();
         let transfer_args: Vec<Val> = (me.clone(), pool.clone(), to_i128(in_amount)).into_val(env);
-        // The Aquarius pool does not call `user.require_auth()` — it relies on
-        // the token transfer's own auth. So the transfer entry must sit at the
-        // ROOT of the authorization list: nested under a pool-call entry it is
-        // unreachable, because that parent context is never matched and the
-        // transfer then fails with Auth(InvalidAction). This is the same shape
-        // `receipt-vault` uses for the DeFindex vault (contract.rs:311-327),
-        // and it was confirmed on testnet against the deployed pool.
+
+        // The Aquarius pool does not call `user.require_auth()` on `swap` — it
+        // relies on the token transfer's own auth. So the transfer entry must
+        // sit at the ROOT of the authorization list; nested under a pool-call
+        // entry it is unreachable and the transfer fails with
+        // Auth(InvalidAction). Verified on testnet against the deployed pool.
         let mut auths = Vec::new(env);
         auths.push_back(auth_entry(
             env,
@@ -462,14 +485,20 @@ impl AquariusLpVault {
             Vec::new(env),
         ));
 
-        // Read balances *before* authorizing. `authorize_as_current_contract`
-        // only covers the next contract call, so an intervening call — even a
-        // read-only `balance` — discards the authorization and the pool's
-        // nested `transfer` then fails with Auth(InvalidAction). Verified on
-        // testnet against the real Aquarius pool.
+        // Balance first: `authorize_as_current_contract` only covers the next
+        // contract call, so an intervening read discards the authorization.
         let before = Self::balance_of_token(env, &out_token);
         env.authorize_as_current_contract(auths);
-        pool_client.swap(&me, &in_idx, &out_idx, &in_amount, &out_min);
+        let res: Result<u128, CallError> = try_call(
+            env,
+            &pool,
+            "swap",
+            (me, in_idx, out_idx, in_amount, out_min),
+        );
+        if let Err(ref e) = res {
+            emit_call_failure(env, &pool, e, true);
+            return 0;
+        }
         Self::balance_of_token(env, &out_token).saturating_sub(before)
     }
 
@@ -502,6 +531,17 @@ impl AquariusLpVault {
             return 0;
         }
 
+        // Ask Aquarius whether it will accept a deposit *before* swapping half
+        // the balance into the paired token. Without this the swap still runs,
+        // the deposit then fails on the pause, and the vault is left holding
+        // half its cash in the wrong asset having paid a swap fee for nothing.
+        let pool_addr = Self::pool(env);
+        let deposits_killed: bool =
+            try_call(env, &pool_addr, "get_is_killed_deposit", ()).unwrap_or(false);
+        if deposits_killed {
+            return 0;
+        }
+
         let u_idx = Self::underlying_index(env);
         let o_idx = 1 - u_idx;
 
@@ -509,7 +549,7 @@ impl AquariusLpVault {
         if half == 0 {
             return 0;
         }
-        Self::swap_exact_in(env, u_idx, o_idx, half);
+        Self::swap_exact_in(env, u_idx, o_idx, half, true);
 
         let amount_u = Self::balance_of_token(env, &underlying).min(deployable - half);
         let amount_o = Self::balance_of_token(env, &Self::other_token(env));
@@ -518,7 +558,6 @@ impl AquariusLpVault {
         }
 
         let pool = Self::pool(env);
-        let pool_client = ConcentratedPoolClient::new(env, &pool);
         let (tick_lower, tick_upper) = Self::ticks(env);
 
         let mut desired: Vec<u128> = Vec::new(env);
@@ -533,8 +572,26 @@ impl AquariusLpVault {
         // Ask the pool what it would actually take, then authorize exactly
         // that. Price cannot move between the estimate and the call because
         // both happen inside this transaction.
-        let (actual, est_liquidity) =
-            pool_client.estimate_deposit_position(&tick_lower, &tick_upper, &desired);
+        // Aquarius can pause deposits and swaps at will (errors 205/206) — those
+        // are their kill switches on their contract, and nothing on our side
+        // can prevent that. What we *can* do is refuse to propagate it: a
+        // paused pool must leave the cash sitting idle here, not revert the
+        // user's deposit into the market above. `receipt-vault` invokes our
+        // `deposit` directly (contract.rs:330), so a panic here would take the
+        // whole market deposit down with it.
+        let quote: Result<(Vec<u128>, u128), CallError> = try_call(
+            env,
+            &pool,
+            "estimate_deposit_position",
+            (tick_lower, tick_upper, desired.clone()),
+        );
+        let (actual, est_liquidity) = match quote {
+            Ok(v) => v,
+            Err(ref e) => {
+                emit_call_failure(env, &pool, e, true);
+                return 0;
+            }
+        };
         if est_liquidity == 0 {
             return 0;
         }
@@ -560,8 +617,27 @@ impl AquariusLpVault {
         }
         env.authorize_as_current_contract(auths);
 
-        let (_spent, minted) =
-            pool_client.deposit_position(&me, &tick_lower, &tick_upper, &actual, &min_liquidity);
+        let deposited: Result<(Vec<u128>, u128), CallError> = try_call(
+            env,
+            &pool,
+            "deposit_position",
+            (
+                me.clone(),
+                tick_lower,
+                tick_upper,
+                actual.clone(),
+                min_liquidity,
+            ),
+        );
+        let (_spent, minted) = match deposited {
+            Ok(v) => v,
+            Err(ref e) => {
+                // Deposits paused, or the pool rejected us. Leave the cash idle;
+                // the next `deploy()` or deposit will retry once it reopens.
+                emit_call_failure(env, &pool, e, true);
+                return 0;
+            }
+        };
         if minted > 0 {
             Self::set_position_liquidity(env, Self::position_liquidity(env).saturating_add(minted));
         }
@@ -597,6 +673,7 @@ impl AquariusLpVault {
                 Self::other_index(env),
                 Self::underlying_index(env),
                 other_balance,
+                false,
             );
             return true;
         }
@@ -697,6 +774,7 @@ impl AquariusLpVault {
                 Self::other_index(env),
                 Self::underlying_index(env),
                 other_total,
+                false,
             );
         }
 
@@ -1179,6 +1257,7 @@ impl AquariusLpVault {
                 Self::other_index(&env),
                 Self::underlying_index(&env),
                 other_balance,
+                false,
             );
         }
         Self::deploy_idle(&env);

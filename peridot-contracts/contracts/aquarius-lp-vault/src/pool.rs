@@ -103,5 +103,12 @@ pub trait ConcentratedPool {
     fn pool_type(env: Env) -> Symbol;
     fn get_user_position_snapshot(env: Env, user: Address) -> UserPositionSnapshot;
     fn get_all_position_fees(env: Env, owner: Address) -> Vec<u128>;
+
+    // ── Aquarius kill switches (errors 205 / 206) ─────────────────────────
+    // The pool admin can pause deposits and swaps. `withdraw_position`
+    // deliberately has none — Aquarius guarantees principal is always
+    // recoverable — so there is no corresponding read for it.
+    fn get_is_killed_deposit(env: Env) -> bool;
+    fn get_is_killed_swap(env: Env) -> bool;
     fn claim_all_position_fees(env: Env, owner: Address) -> Vec<u128>;
 }

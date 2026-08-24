@@ -663,6 +663,72 @@ fn a_partial_exit_is_valued_against_the_same_assets_as_a_deposit() {
     );
 }
 
+/// Aquarius can pause its own pool at any time (errors 205/206) and nothing on
+/// our side can prevent that. What must not happen is that pause propagating
+/// into the market above: `receipt-vault` invokes our `deposit` directly, so a
+/// revert here would stop users depositing into the Peridot market entirely.
+#[test]
+fn a_paused_pool_does_not_block_market_deposits() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+
+    // Aquarius pauses deposits.
+    f.pool.set_kill_deposit(&true);
+
+    let user = Address::generate(&f.env);
+    f.usdc.mint(&user, &1_000_0000000i128);
+
+    // Must still succeed — the cash simply stays idle instead of reaching the pool.
+    let shares = f
+        .vault
+        .deposit_underlying(&user, &1_000_0000000i128, &0i128);
+    assert!(shares > 0, "a paused pool must not block deposits");
+    assert_eq!(
+        f.vault.get_position_liquidity(),
+        0,
+        "nothing should have reached the paused pool"
+    );
+    assert_eq!(
+        f.vault.get_idle() as u128,
+        1_000_0000000u128,
+        "the full deposit should be sitting idle"
+    );
+
+    // And it deploys once Aquarius reopens.
+    f.pool.set_kill_deposit(&false);
+    f.vault.deploy();
+    assert!(
+        f.vault.get_position_liquidity() > 0,
+        "should deploy after unpause"
+    );
+}
+
+/// Principal must remain recoverable while swaps are paused. Aquarius
+/// guarantees `withdraw_position` has no kill switch, so the LP legs always
+/// come back; only converting the paired leg can be blocked.
+#[test]
+fn a_paused_swap_still_lets_principal_out() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let user = Address::generate(&f.env);
+    f.usdc.mint(&user, &1_000_0000000i128);
+    let shares = f
+        .vault
+        .deposit_underlying(&user, &1_000_0000000i128, &0i128);
+
+    f.pool.set_kill_swap(&true);
+
+    let mut min_out: Vec<i128> = Vec::new(&f.env);
+    min_out.push_back(0i128);
+    // Must not panic. The underlying leg of the position comes back; the paired
+    // leg cannot be converted and stays for a later harvest.
+    let out = f.vault.withdraw(&shares, &min_out, &user);
+    assert!(
+        out.get(0).unwrap() > 0,
+        "the underlying leg should still be recoverable with swaps paused"
+    );
+}
+
 #[test]
 fn shares_are_transferable() {
     let f = setup();

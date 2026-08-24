@@ -51,6 +51,8 @@ enum Key {
     GaugeToken,
     PendingGauge(Address),
     FailWithdraw,
+    KillDeposit,
+    KillSwap,
 }
 
 fn isqrt(n: u128) -> u128 {
@@ -119,6 +121,16 @@ impl MockAquariusPool {
         env.storage().persistent().set(&Key::FailWithdraw, &fail);
     }
 
+    /// Aquarius's own kill switches (errors 205 / 206). Deposits and swaps can
+    /// be paused by the pool admin; `withdraw_position` deliberately has none.
+    pub fn set_kill_deposit(env: Env, killed: bool) {
+        env.storage().persistent().set(&Key::KillDeposit, &killed);
+    }
+
+    pub fn set_kill_swap(env: Env, killed: bool) {
+        env.storage().persistent().set(&Key::KillSwap, &killed);
+    }
+
     /// Simulates trading profit accruing to the pool without minting shares.
     pub fn donate(env: Env, from: Address, amount0: u128, amount1: u128) {
         let t0 = addr(&env, Key::Token0);
@@ -145,6 +157,20 @@ impl MockAquariusPool {
         v.push_back(addr(&env, Key::Token0));
         v.push_back(addr(&env, Key::Token1));
         v
+    }
+
+    pub fn get_is_killed_deposit(env: Env) -> bool {
+        env.storage()
+            .persistent()
+            .get(&Key::KillDeposit)
+            .unwrap_or(false)
+    }
+
+    pub fn get_is_killed_swap(env: Env) -> bool {
+        env.storage()
+            .persistent()
+            .get(&Key::KillSwap)
+            .unwrap_or(false)
     }
 
     pub fn get_tick_spacing(env: Env) -> i32 {
@@ -229,6 +255,14 @@ impl MockAquariusPool {
         // transfers below carrying the sender's authorization. An earlier
         // version of this mock required auth here, which made the vault's
         // auth tree look correct in tests while failing on-chain.
+        if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&Key::KillDeposit)
+            .unwrap_or(false)
+        {
+            panic!("DepositKilled");
+        }
         let (actual, liq) = Self::quote_deposit(&env, &desired_amounts);
         if liq < min_liquidity {
             panic!("OutMinNotSatisfied");
@@ -367,6 +401,14 @@ impl MockAquariusPool {
     ) -> u128 {
         // No `user.require_auth()` — matches the deployed pool; the inner
         // token transfer is what carries authorization.
+        if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&Key::KillSwap)
+            .unwrap_or(false)
+        {
+            panic!("SwapKilled");
+        }
         let out = Self::estimate_swap(env.clone(), in_idx, out_idx, in_amount);
         if out < out_min {
             panic!("OutMinNotSatisfied");
