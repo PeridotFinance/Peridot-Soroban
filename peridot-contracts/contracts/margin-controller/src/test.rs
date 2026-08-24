@@ -1,3 +1,5 @@
+extern crate std;
+
 use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::ReceiptVault;
@@ -8,7 +10,7 @@ use soroban_sdk::testutils::Address as _;
 use soroban_sdk::testutils::Events as _;
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{
-    contract, contractimpl, contracttype, Address, BytesN, Env, IntoVal, Symbol, Vec,
+    contract, contractimpl, contracttype, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
 
 fn assert_budget_under(env: &Env, max_cpu: u64, max_mem: u64) {
@@ -43,6 +45,12 @@ fn assert_last_invocation_resources_under(
         "instructions {} exceed {max_instructions}: {resources:?}",
         resources.instructions
     );
+}
+
+fn required_wasm_from_env(variable: &str) -> std::vec::Vec<u8> {
+    let path = std::env::var(variable)
+        .unwrap_or_else(|_| panic!("{variable} must point to a contract WASM"));
+    std::fs::read(&path).unwrap_or_else(|error| panic!("failed to read {variable}={path}: {error}"))
 }
 
 #[contract]
@@ -4618,4 +4626,156 @@ fn test_prepare_close_short_position_v3_fuses_begin_and_withdraw_under_budget() 
             .collateral_underlying
             > 0u128
     );
+}
+
+#[test]
+#[ignore = "requires MARGIN_LIVE_WASM and MARGIN_NEW_WASM"]
+fn test_exact_live_wasm_upgrade_preserves_v3_positions_and_pending_recovery() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+
+    // Replace only the executable. The initialized storage and dependency
+    // addresses remain at the same contract ID, matching an on-chain upgrade.
+    let live_wasm = required_wasm_from_env("MARGIN_LIVE_WASM");
+    env.register_at(&controller_id, live_wasm.as_slice(), ());
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let admin = controller.get_admin();
+
+    let (long_id, _, _, _) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+    let (short_id, _, _, _) = open_perps_short_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id);
+    usdt_vault.deposit(&user, &500u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &500u128);
+    let (pool, pool_id, pool_tokens) = setup_perps_pool(&env, &usdt_id, &xlm_id);
+    let unexecuted_pending_id = controller.begin_open_position_v3(
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &500u128,
+        &10u128,
+        &PositionSide::Long,
+        &pool_tokens,
+        &pool_id,
+        &pool,
+        &5_000u128,
+    );
+
+    let (executed_pending_id, _, _, _) = begin_and_swap_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    assert_eq!(
+        controller.get_position(&long_id).unwrap().status,
+        PositionStatus::Open
+    );
+    assert_eq!(
+        controller.get_position(&short_id).unwrap().status,
+        PositionStatus::Open
+    );
+    assert!(controller
+        .get_pending_perps_open_execution(&unexecuted_pending_id)
+        .is_none());
+    assert!(controller
+        .get_pending_perps_open_execution(&executed_pending_id)
+        .is_some());
+
+    let new_wasm = required_wasm_from_env("MARGIN_NEW_WASM");
+    let new_hash = env
+        .deployer()
+        .upload_contract_wasm(Bytes::from_slice(&env, &new_wasm));
+    controller.propose_upgrade_wasm(&admin, &new_hash);
+    env.ledger().set_timestamp(
+        env.ledger()
+            .timestamp()
+            .saturating_add(UPGRADE_TIMELOCK_SECS + 1),
+    );
+    controller.upgrade_wasm(&admin, &new_hash);
+
+    // Existing activated records and their debt survive deserialization.
+    assert_eq!(
+        controller.get_position(&long_id).unwrap().status,
+        PositionStatus::Open
+    );
+    assert_eq!(
+        controller.get_position(&short_id).unwrap().status,
+        PositionStatus::Open
+    );
+    assert!(controller.get_perps_position(&long_id).is_some());
+    assert!(controller.get_perps_position(&short_id).is_some());
+    assert!(usdt_vault.get_margin_borrow_balance(&long_id) > 0u128);
+    assert!(
+        receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id)
+            .get_margin_borrow_balance(&short_id)
+            > 0u128
+    );
+
+    // Both pending forms present on the live controller remain recoverable.
+    controller.expire_pending_open_v3(&unexecuted_pending_id);
+    assert!(controller.get_position(&unexecuted_pending_id).is_none());
+    controller.resolve_pending_open_v3(&executed_pending_id);
+    assert_eq!(
+        controller
+            .get_position(&executed_pending_id)
+            .unwrap()
+            .status,
+        PositionStatus::Open
+    );
+
+    // Positions opened by the old WASM use the new bounded close paths.
+    controller.prepare_close_position_v3(&user, &long_id);
+    let long_collateral = controller
+        .get_pending_perps_close(&long_id)
+        .unwrap()
+        .collateral_underlying;
+    controller.swap_close_position_v3(&user, &long_id, &long_collateral);
+    controller.finish_close_position_v3(&long_id);
+    assert!(controller.get_position(&long_id).is_none());
+
+    controller.prepare_close_position_v3(&user, &short_id);
+    let short_debt = receipt_vault::ReceiptVaultClient::new(&env, &xlm_vault_id)
+        .get_margin_borrow_balance(&short_id);
+    let buffered_short_debt = short_debt.saturating_add(
+        (short_debt.saturating_mul(CLOSE_DEBT_BUFFER_BPS) + BPS_SCALE - 1) / BPS_SCALE,
+    );
+    controller.swap_close_short_position_v3(
+        &user,
+        &short_id,
+        &buffered_short_debt,
+        &buffered_short_debt,
+    );
+    controller.finish_close_position_v3(&short_id);
+    assert!(controller.get_position(&short_id).is_none());
 }
