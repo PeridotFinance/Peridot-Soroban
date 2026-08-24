@@ -884,13 +884,6 @@ impl MarginController {
             .storage()
             .persistent()
             .get(&DataKey::Position(position_id));
-        if position
-            .as_ref()
-            .map(|value| value.status == PositionStatus::Closing)
-            .unwrap_or(false)
-        {
-            bump_pending_perps_close_ttl(&env, position_id);
-        }
         position
     }
 

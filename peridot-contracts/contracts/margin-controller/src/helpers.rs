@@ -624,11 +624,10 @@ pub fn get_perps_pair_config(
         return Some(config);
     }
 
-    // Lazily migrate configs written by earlier Wasm versions. Instance
-    // storage ties protocol policy to the contract lifetime instead of an
-    // independently expiring persistent entry.
+    // Legacy Wasm versions stored this policy persistently without a pair
+    // count bound. Keep legacy values there so reads cannot grow the single
+    // contract-instance entry past Soroban's size limit.
     if let Some(config) = env.storage().persistent().get(&key) {
-        env.storage().instance().set(&key, &config);
         bump_perps_pair_config_ttl(env, margin_asset, base_asset, side);
         return Some(config);
     }
@@ -673,11 +672,10 @@ pub fn get_perps_pair_execution_config(
         return Some(config);
     }
 
-    // Preserve configured policy across upgrades by migrating the legacy
-    // persistent value on first use.
+    // Preserve legacy policy without copying an unbounded set of records into
+    // the single contract-instance entry.
     let persistent = env.storage().persistent();
     if let Some(config) = persistent.get(&key) {
-        env.storage().instance().set(&key, &config);
         persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
         return Some(config);
     }
@@ -1045,6 +1043,7 @@ pub fn bump_position_ttl(env: &Env, position_id: u64) {
     if persistent.has(&pending_liquidation_key) {
         bump_pending_liquidation_ttl(env, position_id);
     }
+    bump_pending_perps_close_ttl(env, position_id);
 }
 
 pub fn bump_pending_liquidation_ttl(env: &Env, position_id: u64) {

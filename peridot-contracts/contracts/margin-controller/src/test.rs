@@ -2724,6 +2724,52 @@ fn test_get_position_bumps_pending_liquidation_ttl() {
 }
 
 #[test]
+fn test_position_keepalive_bumps_pending_close_state_ttl() {
+    let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xlm_vid) =
+        setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_long_10x(
+        &env,
+        &controller,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        500u128,
+    );
+
+    controller.prepare_close_position_v3(&user, &position_id);
+    env.as_contract(&controller_id, || {
+        crate::helpers::set_pending_perps_close_remainder(&env, position_id, 1u128);
+    });
+
+    let pending_key = DataKey::PendingPerpsClose(position_id);
+    let remainder_key = DataKey::PendingPerpsCloseRemainder(position_id);
+    let initial_ttl = env.as_contract(&controller_id, || {
+        env.storage()
+            .persistent()
+            .get_ttl(&pending_key)
+            .min(env.storage().persistent().get_ttl(&remainder_key))
+    });
+    env.ledger()
+        .set_sequence_number(initial_ttl.saturating_sub(10_000));
+
+    env.as_contract(&controller_id, || {
+        assert!(env.storage().persistent().get_ttl(&pending_key) < TTL_THRESHOLD);
+        assert!(env.storage().persistent().get_ttl(&remainder_key) < TTL_THRESHOLD);
+    });
+
+    let _ = controller.get_health_factor(&position_id);
+
+    env.as_contract(&controller_id, || {
+        assert!(env.storage().persistent().get_ttl(&pending_key) > TTL_THRESHOLD);
+        assert!(env.storage().persistent().get_ttl(&remainder_key) > TTL_THRESHOLD);
+    });
+}
+
+#[test]
 fn test_get_perps_position_bumps_position_mode_ttl() {
     let (env, controller_id, usdt_id, xlm_id, user, _peridottroller_id, usdt_vault_id, _xlm_vid) =
         setup_min_with_vaults();
@@ -4059,7 +4105,7 @@ fn test_per_pair_execution_config_rejects_open_pool_oracle_divergence() {
 }
 
 #[test]
-fn test_per_pair_configs_lazy_migrate_to_instance_storage() {
+fn test_legacy_per_pair_configs_remain_in_persistent_storage() {
     let (
         env,
         controller_id,
@@ -4104,25 +4150,26 @@ fn test_per_pair_configs_lazy_migrate_to_instance_storage() {
     );
 
     env.as_contract(&controller_id, || {
-        assert_eq!(env.storage().instance().get(&risk_key), Some(risk.clone()));
         assert_eq!(
-            env.storage().instance().get(&execution_key),
-            Some(execution.clone())
+            env.storage()
+                .instance()
+                .get::<_, PerpsPairConfig>(&risk_key),
+            None
         );
-        env.storage().persistent().remove(&risk_key);
-        env.storage().persistent().remove(&execution_key);
+        assert_eq!(
+            env.storage()
+                .instance()
+                .get::<_, PerpsPairExecutionConfig>(&execution_key),
+            None
+        );
+        assert_eq!(env.storage().persistent().get(&risk_key), Some(risk));
+        assert_eq!(
+            env.storage().persistent().get(&execution_key),
+            Some(execution)
+        );
+        assert!(env.storage().persistent().get_ttl(&risk_key) > TTL_THRESHOLD);
+        assert!(env.storage().persistent().get_ttl(&execution_key) > TTL_THRESHOLD);
     });
-
-    assert_eq!(
-        controller
-            .get_perps_pair_config(&usdt_id, &xlm_id, &side)
-            .unwrap(),
-        risk
-    );
-    assert_eq!(
-        controller.get_perps_pair_execution_config(&usdt_id, &xlm_id, &side),
-        execution
-    );
 }
 
 #[test]
@@ -4201,6 +4248,11 @@ fn test_legacy_perps_pair_migration_is_not_limited_by_new_pair_registry() {
 
     env.as_contract(&controller_id, || {
         for base_asset in base_assets.iter() {
+            let key = DataKey::PerpsPairConfig(
+                margin_asset.clone(),
+                base_asset.clone(),
+                PositionSide::Long,
+            );
             assert_eq!(
                 crate::helpers::get_perps_pair_config(
                     &env,
@@ -4210,6 +4262,11 @@ fn test_legacy_perps_pair_migration_is_not_limited_by_new_pair_registry() {
                 ),
                 Some(risk.clone())
             );
+            assert!(env
+                .storage()
+                .instance()
+                .get::<_, PerpsPairConfig>(&key)
+                .is_none());
         }
         let registered: Vec<(Address, Address, PositionSide)> = env
             .storage()
