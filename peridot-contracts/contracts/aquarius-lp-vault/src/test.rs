@@ -469,6 +469,33 @@ fn nav_falls_back_to_last_good_root_when_the_oracle_fails() {
     assert_eq!(f.vault.get_total_underlying(), nav_before);
 }
 
+#[test]
+fn nav_quotes_fail_soft_after_the_stale_bound() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let shares = deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    assert!(f.vault.get_total_underlying() > 0);
+
+    // Move beyond both the 5-minute cache window and the configured stale
+    // bound, then make the live source unreachable. Quote paths must return a
+    // conservative zero instead of propagating a panic into ReceiptVault.
+    f.vault.set_nav_root_max_stale(&f.admin, &301u64);
+    f.oracle.set_fail(&true);
+    f.env.ledger().set_timestamp(1_700_000_302);
+
+    assert_eq!(f.vault.refresh_nav_root(), 0);
+    let idle = f.usdc.balance(&f.vault_id);
+    assert_eq!(f.vault.get_total_underlying(), idle);
+    assert!(
+        f.vault
+            .get_asset_amounts_per_shares(&shares)
+            .get(0)
+            .unwrap()
+            <= idle,
+        "stale LP value leaked into the fail-soft quote"
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DeFindex-compatible surface
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1298,6 +1325,43 @@ mod boosted_market {
             "withdraw returned too much: {}",
             back
         );
+    }
+
+    #[test]
+    fn market_withdraw_survives_an_oracle_outage_past_the_stale_bound() {
+        let m = setup_market();
+        let user = Address::generate(&m.f.env);
+        let amount = 10_000_0000000i128;
+        m.f.usdc.mint(&user, &amount);
+        m.market.deposit(&user, &(amount as u128));
+        m.market.refresh_boosted_underlying();
+
+        let ptokens = m.market.balance(&user) as u128;
+        m.f.vault.set_nav_root_max_stale(&m.f.admin, &301u64);
+        m.f.oracle.set_fail(&true);
+        m.f.env.ledger().set_timestamp(1_700_000_302);
+
+        // The strategy quote is now deliberately zero. ReceiptVault sizes the
+        // unwind from its cache and supplies the non-zero cash floor that
+        // authorizes use of the last ratio for this exit only.
+        assert!(
+            m.f.vault
+                .get_asset_amounts_per_shares(&m.f.vault.balance(&m.market.address))
+                .get(0)
+                .unwrap()
+                <= m.f.usdc.balance(&m.f.vault_id)
+        );
+        m.market.withdraw(&user, &(ptokens / 2));
+        let resources = m.f.env.cost_estimate().resources();
+        assert!(
+            resources.memory_read_entries + resources.write_entries < 100,
+            "stale-oracle market withdraw exceeded the entry cap"
+        );
+        assert!(
+            resources.instructions < 100_000_000,
+            "stale-oracle market withdraw exceeded the CPU cap"
+        );
+        assert!(m.f.usdc.balance(&user) > amount * 48 / 100);
     }
 
     /// What actually happens on a borrow: the market pays out of idle cash if

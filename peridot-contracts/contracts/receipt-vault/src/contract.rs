@@ -380,17 +380,38 @@ impl ReceiptVault {
             return;
         }
         let total_shares = total_shares_i as u128;
-        let total_amounts: Vec<i128> = call_contract_or_panic(
+        let quote = try_call_contract::<Vec<i128>, _>(
             env,
             &boosted,
             "get_asset_amounts_per_shares",
             (total_shares_i,),
         );
-        let total_underlying_i = total_amounts.get(0).unwrap_or(0);
-        if total_underlying_i <= 0 {
+        let mut total_amounts = match quote {
+            Ok(amounts) => amounts,
+            Err(ref err) => {
+                emit_external_call_failure(env, &boosted, err, true);
+                let mut fallback: Vec<i128> = Vec::new(env);
+                fallback.push_back(0i128);
+                fallback
+            }
+        };
+        if total_amounts.len() == 0 {
+            total_amounts.push_back(0i128);
+        }
+        let quoted_underlying_i = total_amounts.get(0).unwrap_or(0);
+        let total_underlying = if quoted_underlying_i > 0 {
+            quoted_underlying_i as u128
+        } else {
+            // A boosted strategy may deliberately fail soft when its live NAV
+            // source is unavailable. Size the redemption from the last known
+            // value/accounting estimate instead of turning that read outage
+            // into a market-wide withdrawal panic.
+            Self::cached_boosted_underlying(env)
+                .max(Self::estimate_boosted_underlying_from_accounting(env))
+        };
+        if total_underlying == 0 {
             return;
         }
-        let total_underlying = total_underlying_i as u128;
 
         // Add a tiny buffer for share rounding so downstream payout paths are
         // less brittle to 1-unit quote/withdraw drift in boosted vault math.
@@ -408,13 +429,18 @@ impl ReceiptVault {
         }
 
         // Build min_amounts_out with the same number of elements as the boosted vault's
-        // asset list (one per managed asset). We set all minimums to 0 and rely on the
-        // post-check in the caller instead of an in-vault slippage guard. This avoids
-        // failures caused by performance-fee deductions or strategy rounding that can
-        // reduce the returned amount by more than the previous 1-unit tolerance.
+        // asset list (one per managed asset). The underlying leg carries the
+        // cash requirement as a non-zero floor. That lets a fail-soft boosted
+        // strategy use a cached exit ratio during an oracle outage without
+        // trusting the pool's quote unconditionally; the whole transaction
+        // reverts if the strategy cannot return the requested cash.
         let mut min_amounts_out: Vec<i128> = Vec::new(env);
-        for _ in 0..total_amounts.len() {
-            min_amounts_out.push_back(0i128);
+        for idx in 0..total_amounts.len() {
+            if idx == 0 {
+                min_amounts_out.push_back(to_i128(needed_cash));
+            } else {
+                min_amounts_out.push_back(0i128);
+            }
         }
         let args: Vec<Val> = (
             to_i128(shares_to_withdraw),

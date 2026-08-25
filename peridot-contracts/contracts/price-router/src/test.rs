@@ -464,6 +464,21 @@ fn initialize_is_not_repeatable() {
 }
 
 #[test]
+fn zero_resolution_is_refused_at_initialization_and_update() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::from_string(&String::from_str(&env, ADMIN_G));
+    let upstream = Address::generate(&env);
+    let router_id = env.register(PriceRouter, ());
+    let router = PriceRouterClient::new(&env, &router_id);
+
+    assert!(router.try_initialize(&admin, &upstream, &0u32).is_err());
+    router.initialize(&admin, &upstream, &300u32);
+    assert!(router.try_set_resolution(&admin, &0u32).is_err());
+    assert_eq!(router.resolution(), 300u32);
+}
+
+#[test]
 fn observed_ratio_is_exposed_for_monitoring() {
     let f = setup();
     f.pool.set_ratio_bps(&9_800u32);

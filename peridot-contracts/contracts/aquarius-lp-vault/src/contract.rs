@@ -246,6 +246,17 @@ impl AquariusLpVault {
         {
             return cached.last_nav_root;
         }
+        // Once the hard stale bound is crossed, public quote/user paths fail
+        // soft without even touching the oracle. Besides being conservative,
+        // this keeps a dead Reflector out of the ReceiptVault withdrawal
+        // footprint. `refresh_nav_root` calls the inner function directly, so
+        // a keeper can still recover the cache as soon as the feed returns.
+        if cached.last_nav_root > 0
+            && prm.nav_root_max_stale != 0
+            && now.saturating_sub(cached.last_nav_root_at) > prm.nav_root_max_stale
+        {
+            return 0;
+        }
         Self::refresh_nav_root_inner(env)
     }
 
@@ -281,16 +292,36 @@ impl AquariusLpVault {
         // Oracle unavailable: fall back to the last good root rather than
         // reporting a zero NAV, which would wipe out the backing market's
         // exchange rate. The fallback is bounded — past `nav_root_max_stale`
-        // the value is too old to price borrowing or minting against, so we
-        // stop serving it. `receipt-vault` wraps this read in `try_call` and
-        // degrades to its own cached value, which is the intended behaviour.
+        // the value is too old to price borrowing or minting against, so
+        // public quote paths return zero and let `receipt-vault` degrade to
+        // its own cached/accounting value. Never panic here: this function is
+        // reachable from supplier quote and withdrawal paths.
         let st = state(env);
         let age = env.ledger().timestamp().saturating_sub(st.last_nav_root_at);
         let max_stale = params(env).nav_root_max_stale;
         if max_stale != 0 && age > max_stale {
-            panic!("nav root too stale");
+            return 0;
         }
         st.last_nav_root
+    }
+
+    fn position_value_at_root(env: &Env, root: u128) -> u128 {
+        let liq = Self::position_liquidity(env);
+        if liq == 0 || root == 0 {
+            return 0;
+        }
+        mul_div(liq, root, NAV_ROOT_SCALE)
+            .checked_mul(2)
+            .expect("nav overflow")
+    }
+
+    fn other_idle_value_at_root(env: &Env, root: u128) -> u128 {
+        let other_balance = Self::balance_of_token(env, &Self::other_token(env));
+        if other_balance == 0 || root == 0 {
+            return 0;
+        }
+        let r_scaled = root.checked_mul(root).expect("nav root overflow");
+        mul_div(other_balance, r_scaled, NAV_RATIO_SCALE)
     }
 
     /// Value of the full-range position, denominated in the underlying token.
@@ -304,17 +335,8 @@ impl AquariusLpVault {
     /// Erring low is the safe direction for a lending market; `harvest()`
     /// folds the fees back into the position where they do get counted.
     fn position_value(env: &Env) -> u128 {
-        let liq = Self::position_liquidity(env);
-        if liq == 0 {
-            return 0;
-        }
         let root = Self::nav_root(env);
-        if root == 0 {
-            panic!("nav unavailable");
-        }
-        mul_div(liq, root, NAV_ROOT_SCALE)
-            .checked_mul(2)
-            .expect("nav overflow")
+        Self::position_value_at_root(env, root)
     }
 
     /// Value of an idle paired-token balance, expressed in the underlying.
@@ -322,16 +344,8 @@ impl AquariusLpVault {
     /// `nav_root` is `sqrt(R) * 1e9` where one raw underlying buys `1/R` raw
     /// other, so one raw other is worth `R` raw underlying.
     fn other_idle_value(env: &Env) -> u128 {
-        let other_balance = Self::balance_of_token(env, &Self::other_token(env));
-        if other_balance == 0 {
-            return 0;
-        }
         let root = Self::nav_root(env);
-        if root == 0 {
-            return 0;
-        }
-        let r_scaled = root.checked_mul(root).expect("nav root overflow");
-        mul_div(other_balance, r_scaled, NAV_RATIO_SCALE)
+        Self::other_idle_value_at_root(env, root)
     }
 
     /// Total underlying backing all outstanding shares: idle underlying plus
@@ -359,6 +373,31 @@ impl AquariusLpVault {
     /// already has the paired token in its footprint.
     fn total_underlying_full(env: &Env) -> u128 {
         Self::total_underlying(env).saturating_add(Self::other_idle_value(env))
+    }
+
+    /// Exit-only valuation. Once the public NAV has exceeded its stale bound,
+    /// a caller must supply a non-zero underlying floor before the last known
+    /// ratio can be used to size an unwind. The pool quote is still checked
+    /// against that ratio and the final payout must meet the caller's floor.
+    fn exit_nav_root(env: &Env, min_underlying_out: u128) -> u128 {
+        let current = Self::nav_root(env);
+        if current > 0 {
+            return current;
+        }
+        if min_underlying_out == 0 {
+            panic!("stale nav exit requires minimum");
+        }
+        let cached = state(env).last_nav_root;
+        if cached == 0 {
+            panic!("no cached nav for exit");
+        }
+        cached
+    }
+
+    fn total_underlying_full_at_root(env: &Env, root: u128) -> u128 {
+        Self::balance_of_token(env, &Self::underlying(env))
+            .saturating_add(Self::position_value_at_root(env, root))
+            .saturating_add(Self::other_idle_value_at_root(env, root))
     }
 
     /// Conservative liquidation value exposed to the backing ReceiptVault.
@@ -432,12 +471,23 @@ impl AquariusLpVault {
     /// `nav_root` is `sqrt(R) * 1e9` where `R` is the raw-unit price of the
     /// underlying in the paired token, so one raw underlying buys `1/R` raw
     /// other and vice versa.
-    fn require_quote_near_oracle(env: &Env, in_idx: u32, in_amount: u128, quoted_out: u128) {
+    fn require_quote_near_oracle(
+        env: &Env,
+        in_idx: u32,
+        in_amount: u128,
+        quoted_out: u128,
+        exit_root: Option<u128>,
+    ) {
         let max_div = params(env).max_pool_divergence_bps;
         if max_div == 0 {
             return;
         }
-        let root = Self::nav_root(env);
+        let current_root = Self::nav_root(env);
+        let root = if current_root > 0 {
+            current_root
+        } else {
+            exit_root.unwrap_or(0)
+        };
         if root == 0 {
             panic!("nav unavailable for swap");
         }
@@ -475,6 +525,7 @@ impl AquariusLpVault {
         out_idx: u32,
         in_amount: u128,
         enforce_divergence: bool,
+        exit_root: Option<u128>,
     ) -> u128 {
         if in_amount == 0 {
             return 0;
@@ -495,7 +546,7 @@ impl AquariusLpVault {
             return 0;
         }
         if enforce_divergence {
-            Self::require_quote_near_oracle(env, in_idx, in_amount, estimated);
+            Self::require_quote_near_oracle(env, in_idx, in_amount, estimated, exit_root);
         }
         let out_min = apply_slippage_floor(estimated, Self::slippage_bps(env));
 
@@ -580,7 +631,7 @@ impl AquariusLpVault {
         if half == 0 {
             return 0;
         }
-        Self::swap_exact_in(env, u_idx, o_idx, half, true);
+        Self::swap_exact_in(env, u_idx, o_idx, half, true, None);
 
         let amount_u = Self::balance_of_token(env, &underlying).min(deployable - half);
         let amount_o = Self::balance_of_token(env, &Self::other_token(env));
@@ -696,7 +747,7 @@ impl AquariusLpVault {
     /// residue a deposit swap leaves behind.
     /// Returns `false` if the LP redemption leg failed outright, so the caller
     /// can tell "the pool is down" apart from "exiting simply costs fees".
-    fn raise_underlying(env: &Env, needed: u128) -> bool {
+    fn raise_underlying(env: &Env, needed: u128, exit_root: u128) -> bool {
         let underlying = Self::underlying(env);
         if Self::balance_of_token(env, &underlying) >= needed {
             return true;
@@ -707,10 +758,10 @@ impl AquariusLpVault {
         // a second swap on the exit path costs both fees and the transaction
         // budget the backing market needs.
         if Self::position_liquidity(env) > 0 {
-            return Self::redeem_for(env, needed.saturating_sub(have));
+            return Self::redeem_for(env, needed.saturating_sub(have), exit_root);
         }
         // No position left: the paired balance is all there is to sell.
-        if Self::other_idle_value(env) >= MIN_DEPLOY_AMOUNT {
+        if Self::other_idle_value_at_root(env, exit_root) >= MIN_DEPLOY_AMOUNT {
             let other_balance = Self::balance_of_token(env, &Self::other_token(env));
             Self::swap_exact_in(
                 env,
@@ -718,6 +769,7 @@ impl AquariusLpVault {
                 Self::underlying_index(env),
                 other_balance,
                 true,
+                Some(exit_root),
             );
             return true;
         }
@@ -729,7 +781,7 @@ impl AquariusLpVault {
     /// Mirrors `receipt-vault::ensure_liquid_cash`: best-effort, never panics
     /// on a pool failure, because a hard revert here would freeze every
     /// withdrawal in the market above.
-    fn redeem_for(env: &Env, needed: u128) -> bool {
+    fn redeem_for(env: &Env, needed: u128, exit_root: u128) -> bool {
         if needed == 0 {
             return true;
         }
@@ -737,7 +789,7 @@ impl AquariusLpVault {
         if liq == 0 {
             return false;
         }
-        let position_value = Self::position_value(env);
+        let position_value = Self::position_value_at_root(env, exit_root);
         if position_value == 0 {
             return false;
         }
@@ -819,6 +871,7 @@ impl AquariusLpVault {
                 Self::underlying_index(env),
                 other_total,
                 true,
+                Some(exit_root),
             );
         }
 
@@ -889,6 +942,14 @@ impl AquariusLpVault {
         let shares = to_u128(vault_shares);
         let supply = Self::total_shares(&env);
         if shares == 0 || supply == 0 {
+            out.push_back(0i128);
+            return out;
+        }
+        // Do not let a few idle raw units masquerade as the full strategy
+        // value when the LP position itself cannot be priced. ReceiptVault
+        // interprets any positive quote as authoritative and would otherwise
+        // replace its useful cache with dust during an oracle outage.
+        if Self::position_liquidity(&env) > 0 && Self::nav_root(&env) == 0 {
             out.push_back(0i128);
             return out;
         }
@@ -1000,16 +1061,23 @@ impl AquariusLpVault {
             panic!("no shares outstanding");
         }
 
+        let min_out = to_u128(min_amounts_out.get(0).unwrap_or(0));
+        let exit_root = Self::exit_nav_root(&env, min_out);
+
         // Value the same asset set deposits do. `redeem_for` sells the vault's
         // *entire* paired balance including residue, so pricing the exit
         // against a residue-excluding NAV would hand a partial exiter less
         // than their pro-rata claim and leave the difference to whoever stays.
         // Costs no extra ledger entry on any path that actually redeems —
         // `redeem_for` already has the paired token in footprint.
-        let owed = mul_div(shares, Self::total_underlying_full(&env), supply);
+        let owed = mul_div(
+            shares,
+            Self::total_underlying_full_at_root(&env, exit_root),
+            supply,
+        );
         let underlying = Self::underlying(&env);
 
-        let redeemed_ok = Self::raise_underlying(&env, owed);
+        let redeemed_ok = Self::raise_underlying(&env, owed, exit_root);
 
         // Pay what was actually realised, never more. Over-redemption stays as
         // idle and accrues to the remaining holders rather than being paid out
@@ -1026,7 +1094,6 @@ impl AquariusLpVault {
             owed.min(available)
         };
 
-        let min_out = to_u128(min_amounts_out.get(0).unwrap_or(0));
         if payout < min_out {
             panic!("withdraw below minimum");
         }
@@ -1345,6 +1412,7 @@ impl AquariusLpVault {
                 Self::underlying_index(&env),
                 other_balance,
                 false,
+                None,
             );
         }
         Self::deploy_idle(&env);

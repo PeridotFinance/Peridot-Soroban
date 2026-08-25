@@ -78,6 +78,11 @@ MarginController (leveraged trading, optional)
   borrowing paused, the executable-quote deployment gates, and runtime pool-divergence
   guards. PriceRouter remains the preferred depeg-aware follow-up before collateral or
   borrowing is enabled.
+- Past the strategy NAV stale bound, public boosted quotes fail soft. ReceiptVault
+  redeems from its cached/accounting estimate with a nonzero cash minimum; only that
+  protected exit may use the last NAV ratio, and the Aquarius quote must still satisfy
+  the configured divergence guard. This preserves supplier exits during an oracle outage
+  without making the stale value eligible for fresh deposits or unguarded swaps.
 - Before mainnet: complete final review and Almanax scan, build with the production admin
   guard, and repeat live read-only pool/oracle/route preflights. These exact pools are not
   available on Testnet, so launch empty with conservative caps and verify configuration

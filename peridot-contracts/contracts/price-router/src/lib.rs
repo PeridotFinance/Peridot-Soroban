@@ -549,6 +549,9 @@ impl PriceRouter {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
         }
+        if resolution == 0 {
+            panic!("resolution must be positive");
+        }
         let expected = Address::from_string(&String::from_str(&env, expected_admin_config()));
         if admin != expected {
             panic!("unexpected admin");
@@ -632,6 +635,9 @@ impl PriceRouter {
 
     pub fn set_resolution(env: Env, caller: Address, resolution: u32) {
         Self::require_admin(&env, &caller);
+        if resolution == 0 {
+            panic!("resolution must be positive");
+        }
         env.storage()
             .instance()
             .set(&DataKey::Resolution, &resolution);

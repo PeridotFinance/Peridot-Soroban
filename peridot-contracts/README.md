@@ -264,6 +264,10 @@ exist purely to fit inside it, and both are pinned by tests:
   entries**. A key-per-field layout put the market deposit at 113 entries.
 - The NAV price ratio is **cached** (`nav_root_max_age`, default 300s) so the
   withdraw path does not read Reflector inline.
+- Past `nav_root_max_stale`, public strategy quotes fail soft to zero. A
+  ReceiptVault redemption then sizes from its cached/accounting value and
+  supplies a nonzero underlying floor; only that protected exit may use the
+  strategy's last ratio, and it still enforces the pool-divergence guard.
 
 Measured: market deposit 90 entries / 5.0M instructions, market withdraw
 79 entries / 6.0M instructions.
@@ -292,13 +296,15 @@ currently deployed controller.
 Three findings from review are accepted rather than fixed:
 
 - **A stale boosted valuation can outlive its bound in the market above.** This
-  vault refuses to price past `nav_root_max_stale`, but `receipt-vault` catches
-  that revert and falls back to `max(cached, estimated)` with no further
-  freshness cutoff (`receipt-vault/src/contract.rs:125-146`). So an oracle
-  outage plus an adverse price move can leave collateral overstated. This is
-  **pre-existing behaviour of the audited market contract** — it applies
-  identically to the existing DeFindex vaults — and fixing it means changing
-  audited code, so it is escalated rather than patched here.
+  vault returns a fail-soft zero past `nav_root_max_stale`, while
+  `receipt-vault` falls back to `max(cached, estimated)` with no further
+  freshness cutoff. Supplier exits remain available when the Aquarius pool is
+  still within the last ratio's divergence bound: ReceiptVault passes the cash
+  requirement as a nonzero minimum and the vault uses its cached ratio only for
+  that protected unwind. The market's cached value can nevertheless overstate
+  collateral after an oracle outage plus an adverse price move. Keep these
+  markets at CF=0 with borrowing paused until cache freshness is enforced for
+  collateral and borrowing decisions.
 
 - **Unclaimed swap fees are not in NAV.** `position_value` excludes fees the
   pool still owes the position, so a deposit landing just before a `harvest`
@@ -309,11 +315,11 @@ Three findings from review are accepted rather than fixed:
   fees accrued since the last harvest, and `harvest()` is permissionless and
   rate-limited to once an hour by default; run it on a keeper to keep the
   window small.
-- **Reward swaps have no oracle cross-check.** `swap_reward` sells the primary
-  reward and gauge tokens through a configured route pool using only that pool's own
-  quote, because reward tokens generally have no Reflector feed to compare
-  against. It is bounded by the reward balance and gated by the harvest
-  cooldown, but a large harvest is sandwichable. Prefer deep route pools.
+- **Reward swaps have no live oracle cross-check.** Reward tokens generally
+  have no Reflector feed, so every route instead requires an independent
+  governance minimum raw exchange rate. A missing or breached floor leaves the
+  reward idle. Review the floor against external market data and prefer deep
+  route pools; do not update it mechanically from the route quote it guards.
 
 ### Authorization shape
 
