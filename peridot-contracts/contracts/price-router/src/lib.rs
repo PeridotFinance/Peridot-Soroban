@@ -7,9 +7,9 @@
 //!
 //! It exists for two reasons:
 //!
-//! 1. **Coverage.** Reflector does not price every asset. yXLM, for example, is
-//!    absent from both the external and Stellar-native feeds despite trading at
-//!    parity with ~0.005% spread and ~20k XLM of depth on the classic SDEX.
+//! 1. **Coverage.** Reflector does not price every asset. yXLM and PYUSD, for
+//!    example, are absent from the external feed. Both can instead be bounded
+//!    against a supported reference asset with an executable pool quote.
 //!
 //! 2. **Containment — the more important one.** Reflector's Stellar-native feed
 //!    derives from on-chain DEX venues, so for a thinly traded asset "Reflector
@@ -150,6 +150,9 @@ pub enum DataKey {
     /// Maps a Reflector `Other(Symbol)` encoding onto a contract address, so
     /// symbol-keyed feeds and address-keyed config agree.
     SymbolFor(Symbol),
+    /// Reverse lookup used when a pegged asset's reference price is published
+    /// by Reflector as `Other(Symbol)` rather than `Stellar(Address)`.
+    SymbolOf(Address),
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -311,6 +314,20 @@ impl PriceRouter {
         }
     }
 
+    /// Selects the encoding the upstream oracle actually uses for an asset.
+    /// Reflector's external feed publishes assets such as XLM and USDC as
+    /// `Other(Symbol)`, while router configuration is address-keyed. Keeping
+    /// the reverse mapping lets pegged assets such as yXLM and PYUSD reference
+    /// those feeds without weakening the address-based source registry.
+    fn upstream_asset(env: &Env, asset: &Address) -> Asset {
+        let key = DataKey::SymbolOf(asset.clone());
+        Self::bump_mapping(env, &key);
+        match env.storage().persistent().get::<_, Symbol>(&key) {
+            Some(symbol) => Asset::Other(symbol),
+            None => Asset::Stellar(asset.clone()),
+        }
+    }
+
     fn source_of(env: &Env, asset: &Address) -> PriceSource {
         let key = DataKey::Source(asset.clone());
         Self::bump_mapping(env, &key);
@@ -380,7 +397,10 @@ impl PriceRouter {
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
         let addr = Self::asset_address(&env, &asset)?;
         match Self::source_of(&env, &addr) {
-            PriceSource::Upstream => Self::upstream_price(&env, &asset),
+            PriceSource::Upstream => {
+                let upstream_asset = Self::upstream_asset(&env, &addr);
+                Self::upstream_price(&env, &upstream_asset)
+            }
             PriceSource::Pushed => Self::pushed_price(&env, &addr),
             PriceSource::Pegged(cfg) => Self::pegged_price(&env, &addr, &cfg),
         }
@@ -411,7 +431,8 @@ impl PriceRouter {
     /// oracle all get capped at the peg. Over-valuation is what produces bad
     /// debt, so it is made impossible rather than merely unlikely.
     fn pegged_price(env: &Env, asset: &Address, cfg: &PegConfig) -> Option<PriceData> {
-        let peg = Self::upstream_price(env, &Asset::Stellar(cfg.peg_to.clone()))?;
+        let peg_asset = Self::upstream_asset(env, &cfg.peg_to);
+        let peg = Self::upstream_price(env, &peg_asset)?;
         if peg.price <= 0 {
             return None;
         }
@@ -564,11 +585,33 @@ impl PriceRouter {
     /// Maps a Reflector `Other(Symbol)` encoding onto a contract address.
     pub fn set_symbol_asset(env: Env, caller: Address, symbol: Symbol, asset: Option<Address>) {
         Self::require_admin(&env, &caller);
-        let key = DataKey::SymbolFor(symbol);
+        let key = DataKey::SymbolFor(symbol.clone());
+        let previous: Option<Address> = env.storage().persistent().get(&key);
+        if let Some(previous_asset) = previous {
+            let reverse_key = DataKey::SymbolOf(previous_asset);
+            let reverse: Option<Symbol> = env.storage().persistent().get(&reverse_key);
+            if reverse == Some(symbol.clone()) {
+                env.storage().persistent().remove(&reverse_key);
+            }
+        }
         match asset {
             Some(a) => {
+                let reverse_key = DataKey::SymbolOf(a.clone());
+                let old_symbol: Option<Symbol> = env.storage().persistent().get(&reverse_key);
+                if let Some(old_symbol) = old_symbol {
+                    if old_symbol != symbol {
+                        let old_forward_key = DataKey::SymbolFor(old_symbol);
+                        let old_forward: Option<Address> =
+                            env.storage().persistent().get(&old_forward_key);
+                        if old_forward == Some(a.clone()) {
+                            env.storage().persistent().remove(&old_forward_key);
+                        }
+                    }
+                }
                 env.storage().persistent().set(&key, &a);
                 Self::bump_mapping(&env, &key);
+                env.storage().persistent().set(&reverse_key, &symbol);
+                Self::bump_mapping(&env, &reverse_key);
             }
             None => env.storage().persistent().remove(&key),
         }

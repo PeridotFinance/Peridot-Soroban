@@ -27,9 +27,11 @@ dependencies = [
 name = "aquarius-lp-vault"
 version = "0.1.0"
 dependencies = [
+ "jump-rate-model",
  "mock-aquarius-pool",
  "mock-token",
  "receipt-vault",
+ "simple-peridottroller",
  "soroban-sdk",
 ]
 

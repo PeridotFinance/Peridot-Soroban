@@ -208,6 +208,23 @@ fn symbol_assets_resolve_through_the_mapping() {
     assert_eq!(p.price, PRICE_XLM);
 }
 
+#[test]
+fn a_pegged_asset_can_reference_a_symbol_keyed_upstream_price() {
+    let f = setup();
+    // Mainnet Reflector publishes XLM as `Other("XLM")`, not by the native
+    // asset's SAC address. Reproduce that exact source shape.
+    f.up.set_price(&f.xlm, &0i128);
+    let xlm_symbol = Symbol::new(&f.env, "XLM");
+    f.up.set_symbol_price(&xlm_symbol, &PRICE_XLM);
+    f.router
+        .set_symbol_asset(&f.admin, &xlm_symbol, &Some(f.xlm.clone()));
+
+    let xlm = f.router.lastprice(&Asset::Stellar(f.xlm.clone())).unwrap();
+    assert_eq!(xlm.price, PRICE_XLM);
+    let p = f.router.lastprice(&Asset::Stellar(f.yxlm.clone())).unwrap();
+    assert_eq!(p.price, PRICE_XLM);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The peg clamp — the property the whole contract exists for
 // ─────────────────────────────────────────────────────────────────────────────

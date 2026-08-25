@@ -81,6 +81,10 @@ pub enum DataKey {
     Shares(Address),
     RewardRoute(Address),
     OracleSymbol(Address),
+    // Keep new variants at the end and outside Config so upgrading an existing
+    // testnet deployment does not invalidate its serialized Config value.
+    ReceiptVault,
+    PrimaryRewardToken,
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -135,6 +139,38 @@ pub fn config(env: &Env) -> Config {
 
 pub fn set_config(env: &Env, cfg: &Config) {
     env.storage().instance().set(&DataKey::Config, cfg);
+}
+
+/// The only ReceiptVault allowed to add capital. `None` blocks deposits,
+/// making the deployment fail closed until the two contracts are bound.
+pub fn bound_receipt_vault(env: &Env) -> Option<Address> {
+    env.storage().instance().get(&DataKey::ReceiptVault)
+}
+
+pub fn set_bound_receipt_vault(env: &Env, receipt_vault: &Address) {
+    env.storage()
+        .instance()
+        .set(&DataKey::ReceiptVault, receipt_vault);
+}
+
+/// Primary token paid by Aquarius `claim()`. Gauge rewards are discovered
+/// dynamically, but the primary claim ABI returns only an amount, so its token
+/// address must be explicit and admin-rotatable.
+pub fn primary_reward_token(env: &Env) -> Option<Address> {
+    env.storage().instance().get(&DataKey::PrimaryRewardToken)
+}
+
+pub fn set_primary_reward(env: &Env, reward_token: &Option<Address>) {
+    match reward_token {
+        Some(token) => env
+            .storage()
+            .instance()
+            .set(&DataKey::PrimaryRewardToken, token),
+        None => env
+            .storage()
+            .instance()
+            .remove(&DataKey::PrimaryRewardToken),
+    }
 }
 
 pub fn params(env: &Env) -> Params {

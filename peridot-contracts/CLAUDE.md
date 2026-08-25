@@ -55,8 +55,34 @@ MarginController (leveraged trading, optional)
 ### Supporting Contracts
 
 - **`margin-controller`** / **`swap-adapter`**: Optional leveraged margin trading via Aquarius DEX. Legacy Margin V1 exports are disabled; new work must target Margin V2 entrypoints only.
-- **`aquarius-lp-vault`**: Boosted vault backed by an Aquarius concentrated-liquidity position, as an alternative to a DeFindex vault. Implements the same boosted-vault ABI, so it attaches through the unmodified `set_boosted_vault`. **See `contracts/aquarius-lp-vault/CLAUDE.md` for the full handoff** — design decisions, the Aquarius auth-tree gotcha, transaction-footprint limits, and open review findings.
+- **`aquarius-lp-vault`**: ReceiptVault-gated boosted vault backed by an Aquarius concentrated-liquidity position, as an alternative to a DeFindex vault. Implements the same boosted-vault ABI, so it attaches through the unmodified `set_boosted_vault`; the strategy must then be bound back to that market with `set_receipt_vault`. **See `contracts/aquarius-lp-vault/CLAUDE.md` for the full handoff** — design decisions, reward compounding, the Aquarius auth-tree gotcha, transaction-footprint limits, and open review findings.
 - **`mocks/mock-token`**, **`mocks/mock-lending-vault`**: Test-only mocks.
+
+### Aquarius LP Rollout Invariants
+
+- Users enter only through ReceiptVault; AquariusLpVault is permanently bound to one
+  matching market and rejects direct deposits.
+- XLM/yXLM uses an XLM-settled strategy. PYUSD and USDC use separate settlement
+  strategies and ReceiptVaults that share the same concentrated PYUSD/USDC pool.
+- `harvest()` converts the configurable primary reward (AQUA at launch) and gauge
+  rewards into each market's underlying, then redeploys. Reward token and route are
+  independently admin-configurable.
+- Use an isolated LP-market Peridottroller, CF=0, and borrow paused. Deployment scripts
+  require the controller address explicitly. Reuse the appropriate existing JRM while
+  the markets remain supply-only.
+- The temporary supply-only rollout points the isolated controller and all strategies
+  directly at Reflector. Oracle symbol aliases map XLM and yXLM to `Other("XLM")`, and
+  PYUSD and USDC to `Other("USDC")`. This assumes both pairs remain at par; keep CF=0,
+  borrowing paused, the executable-quote deployment gates, and runtime pool-divergence
+  guards. PriceRouter remains the preferred depeg-aware follow-up before collateral or
+  borrowing is enabled.
+- Before mainnet: complete final review and Almanax scan, build with the production admin
+  guard, and repeat live read-only pool/oracle/route preflights. These exact pools are not
+  available on Testnet, so launch empty with conservative caps and verify configuration
+  before accepting supplier capital. Do not enable borrowing until cross-market
+  transaction-footprint and boosted-valuation staleness findings are redesigned.
+- Full implementation, operational details, verified addresses, tests, and remaining
+  gates are in `contracts/aquarius-lp-vault/CLAUDE.md` and `Agents.md`.
 
 ### Key Patterns
 

@@ -6,6 +6,7 @@ use soroban_sdk::{
 };
 
 use mock_token::{MockToken, MockTokenClient};
+use receipt_vault::{ReceiptVault, ReceiptVaultClient};
 
 use crate::math::{isqrt, mul_div, mul_div_ceil};
 use crate::oracle::{Asset, PriceData};
@@ -100,6 +101,10 @@ impl MockOracle {
     pub fn resolution(_env: Env) -> u32 {
         300
     }
+
+    pub fn decimals(_env: Env) -> u32 {
+        14
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,6 +116,7 @@ struct Fixture {
     admin: Address,
     vault: AquariusLpVaultClient<'static>,
     vault_id: Address,
+    receipt_market_id: Address,
     pool: mock_aquarius_pool::MockAquariusPoolClient<'static>,
     pool_id: Address,
     usdc: MockTokenClient<'static>,
@@ -138,7 +144,7 @@ fn deploy_token(env: &Env, symbol: &str) -> (Address, MockTokenClient<'static>) 
     (id, client)
 }
 
-fn setup() -> Fixture {
+fn setup_with_binding(bind_receipt_market: bool) -> Fixture {
     let env = Env::default();
     // The vault authorizes its own nested pool calls via
     // `authorize_as_current_contract`, which is non-root auth.
@@ -163,7 +169,10 @@ fn setup() -> Fixture {
     let pool_id = env.register(mock_aquarius_pool::MockAquariusPool, ());
     let pool = mock_aquarius_pool::MockAquariusPoolClient::new(&env, &pool_id);
     pool.initialize(&token0, &token1, &60i32, &30u32);
-    pool.set_reward_tokens(&aqua_id, &aqua_id);
+    // The primary AQUA claim is deliberately distinct from the optional gauge
+    // token. That keeps harvest tests honest: AQUA must be discovered from the
+    // configured primary reward, not accidentally through `gauges_claim()`.
+    pool.set_reward_tokens(&aqua_id, &eurc_id);
 
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
@@ -178,11 +187,21 @@ fn setup() -> Fixture {
     let vault = AquariusLpVaultClient::new(&env, &vault_id);
     vault.initialize(&admin, &pool_id, &underlying_index, &oracle_id);
 
+    let receipt_market_id = env.register(ReceiptVault, ());
+    let receipt_market = ReceiptVaultClient::new(&env, &receipt_market_id);
+    receipt_market.initialize(&usdc_id, &0u128, &0u128, &admin);
+    receipt_market.set_boosted_vault(&admin, &vault_id);
+    if bind_receipt_market {
+        vault.set_receipt_vault(&admin, &receipt_market_id);
+    }
+    vault.set_primary_reward_token(&admin, &Some(aqua_id.clone()));
+
     Fixture {
         env,
         admin,
         vault,
         vault_id,
+        receipt_market_id,
         pool,
         pool_id,
         usdc,
@@ -193,6 +212,24 @@ fn setup() -> Fixture {
         aqua_id,
         oracle,
     }
+}
+
+fn setup() -> Fixture {
+    setup_with_binding(true)
+}
+
+/// Adds capital through the sole bound ReceiptVault identity, then transfers
+/// the resulting pAQLP shares when a standalone accounting test needs a
+/// distinct holder. Production users never receive these internal shares.
+fn deposit_for(f: &Fixture, holder: &Address, amount: i128) -> i128 {
+    f.usdc.mint(&f.receipt_market_id, &amount);
+    let shares = f
+        .vault
+        .deposit_underlying(&f.receipt_market_id, &amount, &0i128);
+    if *holder != f.receipt_market_id {
+        f.vault.transfer(&f.receipt_market_id, holder, &shares);
+    }
+    shares
 }
 
 /// Seeds the pool with a balanced book so swaps and deposits have depth.
@@ -255,6 +292,52 @@ fn initialize_derives_full_range_from_tick_spacing() {
     assert_eq!(f.vault.get_pool(), f.pool_id);
     assert_eq!(f.vault.get_underlying(), f.usdc_id);
     assert_eq!(f.vault.get_admin(), f.admin);
+    assert_eq!(
+        f.vault.get_receipt_vault(),
+        Some(f.receipt_market_id.clone())
+    );
+    assert_eq!(f.vault.get_primary_reward_token(), Some(f.aqua_id.clone()));
+}
+
+#[test]
+fn unbound_vault_rejects_deposits() {
+    let f = setup_with_binding(false);
+    f.usdc.mint(&f.receipt_market_id, &1_000_0000000i128);
+    assert!(f
+        .vault
+        .try_deposit_underlying(&f.receipt_market_id, &1_000_0000000i128, &0i128)
+        .is_err());
+}
+
+#[test]
+fn direct_user_cannot_bypass_the_receipt_vault() {
+    let f = setup();
+    let user = Address::generate(&f.env);
+    f.usdc.mint(&user, &1_000_0000000i128);
+    assert!(f
+        .vault
+        .try_deposit_underlying(&user, &1_000_0000000i128, &0i128)
+        .is_err());
+}
+
+#[test]
+fn receipt_vault_binding_is_one_time() {
+    let f = setup_with_binding(false);
+    f.vault.set_receipt_vault(&f.admin, &f.receipt_market_id);
+    assert!(f
+        .vault
+        .try_set_receipt_vault(&f.admin, &f.receipt_market_id)
+        .is_err());
+}
+
+#[test]
+fn primary_reward_token_can_be_rotated() {
+    let f = setup();
+    f.vault
+        .set_primary_reward_token(&f.admin, &Some(f.eurc_id.clone()));
+    assert_eq!(f.vault.get_primary_reward_token(), Some(f.eurc_id.clone()));
+    f.vault.set_primary_reward_token(&f.admin, &None);
+    assert_eq!(f.vault.get_primary_reward_token(), None);
 }
 
 #[test]
@@ -284,10 +367,8 @@ fn nav_matches_the_full_range_closed_form() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
-    let depositor = Address::generate(&f.env);
     let amount = 2_000_0000000i128; // 2000 USDC
-    f.usdc.mint(&depositor, &amount);
-    f.vault.deposit_underlying(&depositor, &amount, &0i128);
+    deposit_for(&f, &f.receipt_market_id, amount);
 
     let liq = f.vault.get_position_liquidity();
     assert!(liq > 0, "expected liquidity to be minted");
@@ -319,10 +400,7 @@ fn nav_is_immune_to_spot_price_manipulation() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
-    let depositor = Address::generate(&f.env);
-    f.usdc.mint(&depositor, &2_000_0000000i128);
-    f.vault
-        .deposit_underlying(&depositor, &2_000_0000000i128, &0i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
 
     let nav_before = f.vault.get_total_underlying();
     let liq_before = f.vault.get_position_liquidity();
@@ -350,10 +428,7 @@ fn nav_is_immune_to_spot_price_manipulation() {
 fn nav_falls_back_to_last_good_root_when_the_oracle_fails() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
-    let depositor = Address::generate(&f.env);
-    f.usdc.mint(&depositor, &2_000_0000000i128);
-    f.vault
-        .deposit_underlying(&depositor, &2_000_0000000i128, &0i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
 
     let nav_before = f.vault.get_total_underlying();
     f.oracle.set_fail(&true);
@@ -380,11 +455,7 @@ fn get_asset_amounts_per_shares_is_single_asset() {
     assert_eq!(empty.len(), 1);
     assert_eq!(empty.get(0).unwrap(), 0i128);
 
-    let depositor = Address::generate(&f.env);
-    f.usdc.mint(&depositor, &1_000_0000000i128);
-    let shares = f
-        .vault
-        .deposit_underlying(&depositor, &1_000_0000000i128, &0i128);
+    let shares = deposit_for(&f, &f.receipt_market_id, 1_000_0000000i128);
 
     let amounts = f.vault.get_asset_amounts_per_shares(&shares);
     assert_eq!(amounts.len(), 1);
@@ -396,7 +467,7 @@ fn deposit_then_withdraw_returns_underlying_only() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
-    let market = Address::generate(&f.env);
+    let market = f.receipt_market_id.clone();
     let amount = 5_000_0000000i128;
     f.usdc.mint(&market, &amount);
 
@@ -434,7 +505,7 @@ fn deposit_then_withdraw_returns_underlying_only() {
 fn deposit_rejects_amounts_below_the_stated_minimum() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
-    let market = Address::generate(&f.env);
+    let market = f.receipt_market_id.clone();
     f.usdc.mint(&market, &1_000_0000000i128);
 
     let mut desired: Vec<i128> = Vec::new(&f.env);
@@ -453,10 +524,7 @@ fn withdraw_requires_authorisation_from_the_share_holder() {
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
     let market = Address::generate(&f.env);
-    f.usdc.mint(&market, &1_000_0000000i128);
-    let shares = f
-        .vault
-        .deposit_underlying(&market, &1_000_0000000i128, &0i128);
+    let shares = deposit_for(&f, &market, 1_000_0000000i128);
 
     // With auths mocked the call succeeds; the assertion here is that the
     // authorisation was actually demanded of `market`.
@@ -481,11 +549,8 @@ fn second_depositor_is_not_diluted_by_the_first() {
 
     let a = Address::generate(&f.env);
     let b = Address::generate(&f.env);
-    f.usdc.mint(&a, &1_000_0000000i128);
-    f.usdc.mint(&b, &1_000_0000000i128);
-
-    let shares_a = f.vault.deposit_underlying(&a, &1_000_0000000i128, &0i128);
-    let shares_b = f.vault.deposit_underlying(&b, &1_000_0000000i128, &0i128);
+    let shares_a = deposit_for(&f, &a, 1_000_0000000i128);
+    let shares_b = deposit_for(&f, &b, 1_000_0000000i128);
 
     // Equal deposits into an otherwise unchanged vault must mint near-equal
     // shares. Each depositor pays their own entry swap cost, so neither
@@ -506,15 +571,13 @@ fn yield_accrues_to_existing_holders_before_a_new_deposit() {
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
     let a = Address::generate(&f.env);
-    f.usdc.mint(&a, &1_000_0000000i128);
-    let shares_a = f.vault.deposit_underlying(&a, &1_000_0000000i128, &0i128);
+    let shares_a = deposit_for(&f, &a, 1_000_0000000i128);
 
     // Simulate fees accruing to the vault's idle balance.
     f.usdc.mint(&f.vault_id, &100_0000000i128);
 
     let b = Address::generate(&f.env);
-    f.usdc.mint(&b, &1_000_0000000i128);
-    let shares_b = f.vault.deposit_underlying(&b, &1_000_0000000i128, &0i128);
+    let shares_b = deposit_for(&f, &b, 1_000_0000000i128);
 
     assert!(
         shares_b < shares_a,
@@ -545,10 +608,8 @@ fn a_full_exit_leaves_nothing_behind() {
 
     let a = Address::generate(&f.env);
     let b = Address::generate(&f.env);
-    f.usdc.mint(&a, &1_000_0000000i128);
-    f.usdc.mint(&b, &1_000_0000000i128);
-    f.vault.deposit_underlying(&a, &1_000_0000000i128, &0i128);
-    f.vault.deposit_underlying(&b, &1_000_0000000i128, &0i128);
+    deposit_for(&f, &a, 1_000_0000000i128);
+    deposit_for(&f, &b, 1_000_0000000i128);
 
     let mut min_out: Vec<i128> = Vec::new(&f.env);
     min_out.push_back(0i128);
@@ -572,9 +633,7 @@ fn changing_the_oracle_invalidates_the_cached_ratio() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     let user = Address::generate(&f.env);
-    f.usdc.mint(&user, &1_000_0000000i128);
-    f.vault
-        .deposit_underlying(&user, &1_000_0000000i128, &0i128);
+    deposit_for(&f, &user, 1_000_0000000i128);
 
     let nav_before = f.vault.get_total_underlying();
     assert!(nav_before > 0);
@@ -602,9 +661,7 @@ fn changing_an_oracle_symbol_invalidates_the_cached_ratio() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     let user = Address::generate(&f.env);
-    f.usdc.mint(&user, &1_000_0000000i128);
-    f.vault
-        .deposit_underlying(&user, &1_000_0000000i128, &0i128);
+    deposit_for(&f, &user, 1_000_0000000i128);
 
     assert!(
         f.vault.get_last_nav_root_at() > 0,
@@ -636,8 +693,7 @@ fn a_partial_exit_is_valued_against_the_same_assets_as_a_deposit() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     let a = Address::generate(&f.env);
-    f.usdc.mint(&a, &2_000_0000000i128);
-    f.vault.deposit_underlying(&a, &2_000_0000000i128, &0i128);
+    deposit_for(&f, &a, 2_000_0000000i128);
 
     // Donate paired-token residue directly, as a deposit swap would leave.
     f.eurc.mint(&f.vault_id, &50_0000000i128);
@@ -675,13 +731,8 @@ fn a_paused_pool_does_not_block_market_deposits() {
     // Aquarius pauses deposits.
     f.pool.set_kill_deposit(&true);
 
-    let user = Address::generate(&f.env);
-    f.usdc.mint(&user, &1_000_0000000i128);
-
     // Must still succeed — the cash simply stays idle instead of reaching the pool.
-    let shares = f
-        .vault
-        .deposit_underlying(&user, &1_000_0000000i128, &0i128);
+    let shares = deposit_for(&f, &f.receipt_market_id, 1_000_0000000i128);
     assert!(shares > 0, "a paused pool must not block deposits");
     assert_eq!(
         f.vault.get_position_liquidity(),
@@ -711,10 +762,7 @@ fn a_paused_swap_still_lets_principal_out() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     let user = Address::generate(&f.env);
-    f.usdc.mint(&user, &1_000_0000000i128);
-    let shares = f
-        .vault
-        .deposit_underlying(&user, &1_000_0000000i128, &0i128);
+    let shares = deposit_for(&f, &user, 1_000_0000000i128);
 
     f.pool.set_kill_swap(&true);
 
@@ -735,8 +783,7 @@ fn shares_are_transferable() {
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     let a = Address::generate(&f.env);
     let b = Address::generate(&f.env);
-    f.usdc.mint(&a, &1_000_0000000i128);
-    let shares = f.vault.deposit_underlying(&a, &1_000_0000000i128, &0i128);
+    let shares = deposit_for(&f, &a, 1_000_0000000i128);
 
     let supply_before = f.vault.total_supply();
     f.vault.transfer(&a, &b, &shares);
@@ -757,10 +804,7 @@ fn max_deploy_caps_what_reaches_the_pool() {
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     f.vault.set_max_deploy(&f.admin, &500_0000000u128);
 
-    let market = Address::generate(&f.env);
-    f.usdc.mint(&market, &5_000_0000000i128);
-    f.vault
-        .deposit_underlying(&market, &5_000_0000000i128, &0i128);
+    deposit_for(&f, &f.receipt_market_id, 5_000_0000000i128);
 
     let idle = f.vault.get_idle() as u128;
     let nav = f.vault.get_total_underlying() as u128;
@@ -778,7 +822,7 @@ fn pausing_blocks_deposits_but_never_withdrawals() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
-    let market = Address::generate(&f.env);
+    let market = f.receipt_market_id.clone();
     f.usdc.mint(&market, &2_000_0000000i128);
     let shares = f
         .vault
@@ -809,11 +853,8 @@ fn withdrawal_survives_a_pool_that_refuses_to_release_liquidity() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
-    let market = Address::generate(&f.env);
-    f.usdc.mint(&market, &1_000_0000000i128);
-    let shares = f
-        .vault
-        .deposit_underlying(&market, &1_000_0000000i128, &0i128);
+    let market = f.receipt_market_id.clone();
+    let shares = deposit_for(&f, &market, 1_000_0000000i128);
 
     f.pool.set_fail_withdraw(&true);
 
@@ -847,10 +888,10 @@ fn deposit_is_refused_when_the_pool_price_diverges_from_the_oracle() {
     let f = setup();
     // Pool seeded at ~1.167 EURC per USDC, matching the oracle.
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
-    let user = Address::generate(&f.env);
-    f.usdc.mint(&user, &1_000_0000000i128);
+    f.usdc.mint(&f.receipt_market_id, &1_500_0000000i128);
     // Sanity: at parity the deposit goes through.
-    f.vault.deposit_underlying(&user, &500_0000000i128, &0i128);
+    f.vault
+        .deposit_underlying(&f.receipt_market_id, &500_0000000i128, &0i128);
 
     // Halve the oracle's EURC price: fair value now says the deposit's swap
     // should buy roughly twice as much EURC as the pool is offering, so the
@@ -860,7 +901,7 @@ fn deposit_is_refused_when_the_pool_price_diverges_from_the_oracle() {
 
     assert!(
         f.vault
-            .try_deposit_underlying(&user, &500_0000000i128, &0i128)
+            .try_deposit_underlying(&f.receipt_market_id, &500_0000000i128, &0i128)
             .is_err(),
         "deposit should be refused while the pool is dislocated"
     );
@@ -868,7 +909,8 @@ fn deposit_is_refused_when_the_pool_price_diverges_from_the_oracle() {
     // Widening the tolerance lets it through again — the guard is a policy,
     // not a hard stop.
     f.vault.set_max_pool_divergence_bps(&f.admin, &9_000u32);
-    f.vault.deposit_underlying(&user, &500_0000000i128, &0i128);
+    f.vault
+        .deposit_underlying(&f.receipt_market_id, &500_0000000i128, &0i128);
 }
 
 #[test]
@@ -895,10 +937,7 @@ fn harvest_sells_rewards_into_underlying_and_redeploys() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
-    let market = Address::generate(&f.env);
-    f.usdc.mint(&market, &1_000_0000000i128);
-    f.vault
-        .deposit_underlying(&market, &1_000_0000000i128, &0i128);
+    deposit_for(&f, &f.receipt_market_id, 1_000_0000000i128);
 
     // A separate AQUA/USDC pool is the route the vault sells rewards through.
     let (t0, t1) = if f.aqua_id < f.usdc_id {
@@ -974,10 +1013,7 @@ fn harvest_skips_a_reward_with_no_route_instead_of_reverting() {
 fn sync_liquidity_reconciles_against_the_pool() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
-    let market = Address::generate(&f.env);
-    f.usdc.mint(&market, &1_000_0000000i128);
-    f.vault
-        .deposit_underlying(&market, &1_000_0000000i128, &0i128);
+    deposit_for(&f, &f.receipt_market_id, 1_000_0000000i128);
 
     let tracked = f.vault.get_position_liquidity();
     assert_eq!(f.vault.sync_liquidity(), tracked);
@@ -1003,7 +1039,8 @@ fn sweep_reward_refuses_to_sell_the_pair_tokens() {
 
 mod boosted_market {
     use super::*;
-    use receipt_vault::{ReceiptVault, ReceiptVaultClient};
+    use jump_rate_model::{JumpRateModel, JumpRateModelClient};
+    use simple_peridottroller::{SimplePeridottroller, SimplePeridottrollerClient};
 
     struct Market {
         f: Fixture,
@@ -1014,10 +1051,7 @@ mod boosted_market {
         let f = setup();
         seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
-        let market_id = f.env.register(ReceiptVault, ());
-        let market = ReceiptVaultClient::new(&f.env, &market_id);
-        market.initialize(&f.usdc_id, &0u128, &0u128, &f.admin);
-        market.set_boosted_vault(&f.admin, &f.vault_id);
+        let market = ReceiptVaultClient::new(&f.env, &f.receipt_market_id);
         Market { f, market }
     }
 
@@ -1143,6 +1177,26 @@ mod boosted_market {
         assert_eq!(m.f.eurc.balance(&borrower), 0);
     }
 
+    /// The boosted-vault socket must quote liquidation value, not gross NAV.
+    /// Near parity, withdrawing the gross-NAV share count used to realize a
+    /// few basis points less after the exit swap and make this borrow fail with
+    /// `borrow liquidity shortfall` despite ample LP assets.
+    #[test]
+    fn small_borrow_accounts_for_lp_exit_costs() {
+        let m = setup_market();
+        m.market.enable_static_rates(&m.f.admin);
+        m.market.set_collateral_factor(&1_000_000u128);
+
+        let user = Address::generate(&m.f.env);
+        m.f.usdc.mint(&user, &3_000_0000000i128);
+        m.market.deposit(&user, &3_000_0000000u128);
+
+        let before = m.f.usdc.balance(&user);
+        m.market.borrow(&user, &200_0000000u128);
+        assert_eq!(m.f.usdc.balance(&user) - before, 200_0000000i128);
+        assert_eq!(m.f.eurc.balance(&user), 0);
+    }
+
     /// The borrow path is heavier than deposit or withdraw and has its own
     /// footprint budget. Pinned separately because it is the path a lending
     /// market actually exists for.
@@ -1167,6 +1221,70 @@ mod boosted_market {
             entries
         );
         assert!(r.instructions < 100_000_000, "market borrow CPU too high");
+    }
+
+    /// Pin the largest currently executable controller-wired shape: the user
+    /// borrows against collateral in this market only. Cross-market positions
+    /// add enough footprint to exceed Soroban's transaction limit; see the
+    /// measurements in this contract's CLAUDE.md.
+    #[test]
+    fn controller_wired_single_market_borrow_fits_in_a_transaction() {
+        let m = setup_market();
+        m.f.env.cost_estimate().disable_resource_limits();
+
+        let model_id = m.f.env.register(JumpRateModel, ());
+        let model = JumpRateModelClient::new(&m.f.env, &model_id);
+        model.initialize(
+            &10_000u128,
+            &180_000u128,
+            &4_000_000u128,
+            &800_000u128,
+            &m.f.admin,
+        );
+
+        let controller_id = m.f.env.register(SimplePeridottroller, ());
+        let controller = SimplePeridottrollerClient::new(&m.f.env, &controller_id);
+        controller.initialize(&m.f.admin);
+        controller.set_oracle(&m.f.oracle.address);
+        controller.add_market(&m.market.address);
+        controller.set_market_cf(&m.market.address, &700_000u128);
+
+        m.market.set_interest_model(&model_id);
+        m.market.set_peridottroller(&controller_id);
+
+        let borrower = Address::generate(&m.f.env);
+        m.f.usdc.mint(&borrower, &20_000_0000000i128);
+
+        controller.enter_market(&borrower, &m.market.address);
+        m.market.deposit(&borrower, &20_000_0000000u128);
+
+        let idle = m.f.usdc.balance(&m.market.address) as u128;
+        let amount = idle.saturating_add(2_000_0000000u128);
+        m.f.env.cost_estimate().budget().reset_unlimited();
+        m.market.borrow(&borrower, &amount);
+
+        let r = m.f.env.cost_estimate().resources();
+        let entries = r.memory_read_entries + r.write_entries;
+        assert!(
+            entries < 100,
+            "controller-wired single-market borrow needs {} ledger entries, over the cap: {:?}",
+            entries,
+            r
+        );
+        assert!(
+            r.write_entries <= 50,
+            "controller-wired single-market borrow needs too many writes: {:?}",
+            r
+        );
+        assert!(
+            r.instructions < 100_000_000,
+            "controller-wired single-market borrow CPU too high"
+        );
+        assert_eq!(
+            m.f.eurc.balance(&borrower),
+            0,
+            "borrower must only receive market underlying"
+        );
     }
 
     #[test]
@@ -1227,11 +1345,8 @@ mod boosted_market {
 fn standalone_paths_stay_well_inside_the_entry_budget() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
-    let market = Address::generate(&f.env);
-    f.usdc.mint(&market, &10_000_0000000i128);
-    let shares = f
-        .vault
-        .deposit_underlying(&market, &10_000_0000000i128, &0i128);
+    let market = f.receipt_market_id.clone();
+    let shares = deposit_for(&f, &market, 10_000_0000000i128);
 
     let r = f.env.cost_estimate().resources();
     let deposit_entries = r.memory_read_entries + r.write_entries;

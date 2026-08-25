@@ -92,3 +92,15 @@ pub struct ConfigChanged {
 pub struct PausedSet {
     pub paused: bool,
 }
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReceiptVaultBound {
+    pub receipt_vault: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PrimaryRewardTokenSet {
+    pub reward_token: Option<Address>,
+}

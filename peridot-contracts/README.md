@@ -172,13 +172,26 @@ Shape:
 - Accepts and settles in a **single** asset. Deposits are split (half swapped
   into the paired token) on the way in and recombined on the way out, so the
   market only ever sees its own underlying.
+- Accepts capital **only from its permanently bound ReceiptVault**. An
+  unbound strategy fails closed, and `set_receipt_vault` verifies the market
+  already points back to the strategy and uses the same underlying. Users
+  deposit the market asset and receive pTokens; they cannot bypass its supply
+  cap by minting internal LP-vault shares directly. The selected concentrated
+  pools expose range positions rather than fungible LP tokens, so there is no
+  LP-token deposit path to support; the ReceiptVault is the sole entry.
 - Reports NAV as `2 * L * sqrt(other_price / underlying_price)` using
   **Reflector prices, never pool spot**. A full-range position satisfies
   `amount0 = L/sqrt(P)` and `amount1 = L*sqrt(P)`, so this closed form is exact,
   and it means swinging the pool price cannot move the market's exchange rate.
-- `harvest()` is permissionless: claims AQUA emissions, third-party gauge
-  incentives and accrued swap fees, sells them for underlying through a
-  configured route pool, and redeploys.
+- `harvest()` is permissionless: claims the admin-configured primary reward
+  token (AQUA at launch), third-party gauge incentives and accrued swap fees,
+  sells them for underlying through per-token route pools, and redeploys.
+  `set_primary_reward_token` and `set_reward_route` let governance rotate the
+  reward asset and conversion venue independently if Aquarius changes either.
+- The ReceiptVault-facing share quote is a conservative liquidation value. It
+  discounts gross oracle NAV by the configured pool-divergence and execution-
+  slippage bounds so a redemption does not come back a few basis points short
+  solely because the paired leg had to be swapped.
 
 Two guards protect the entry swap:
 - `set_slippage_bps` — movement between the pool's quote and execution.
@@ -192,13 +205,46 @@ Capacity is the binding constraint. Realised APR scales with
 much as a risk control — an uncapped vault on a thin pool dilutes itself to
 near-zero yield.
 
-Deploy a market with `scripts/deploy_aquarius_lp_market_mainnet.sh`.
+The two requested launch markets both use concentrated pools and settle in the
+first named asset:
+
+- `scripts/deploy_aquarius_xlm_yxlm_mainnet.sh` — XLM deposits into the
+  XLM/yXLM concentrated pool.
+- `scripts/deploy_aquarius_pyusd_usdc_mainnet.sh` — separate PYUSD and USDC
+  ReceiptVault markets backed by separate settlement vaults that share the
+  same PYUSD/USDC concentrated pool. The two contracts are
+  necessary because a strategy has one underlying, one share price and one
+  ReceiptVault binding. AQUA is converted to PYUSD for one and USDC for the
+  other.
+
+For the temporary supply-only rollout, `deploy_aquarius_lp_controller_mainnet.sh`
+creates an isolated controller that points directly at Reflector. Symbol aliases
+price XLM and yXLM from `Other("XLM")`, and PYUSD and USDC from
+`Other("USDC")`. The strategy scripts install the same aliases. This is a
+deliberate parity assumption, not a depeg-aware oracle: collateral factors must
+remain 0 and borrowing must remain paused. The scripts still reject a bad live
+pool quote before deployment, and the strategies block new LP entry when their
+runtime pool-divergence bound is exceeded. Use PriceRouter's peg clamp before
+these markets ever become collateral or borrowable.
+
+Both scripts hard-fail unless the target reports `pool_type = concentrated`
+with the exact expected token order. They create new supply-only markets,
+leave collateral factors at 0, and pause borrowing. The generic
+`scripts/deploy_aquarius_lp_market_mainnet.sh` remains the USDC/EURC deployment
+path.
 
 Keepers to schedule:
 - `refresh_nav_root()` — keeps the cached price ratio fresh so user
   transactions do not pay the oracle's footprint cost.
 - `harvest(caller)` — compounds rewards (rate-limited).
 - `refresh_boosted_underlying()` on the market — existing DeFindex keeper.
+
+All three are driven by `scripts/run_aquarius_vault_keeper.sh`. For example:
+
+```bash
+VAULT_ID=C... MARKET_ID=C... IDENTITY=keeper NETWORK=mainnet-public \
+  bash scripts/run_aquarius_vault_keeper.sh
+```
 
 ### Transaction footprint
 
@@ -212,6 +258,25 @@ exist purely to fit inside it, and both are pinned by tests:
 
 Measured: market deposit 90 entries / 5.0M instructions, market withdraw
 79 entries / 6.0M instructions.
+
+A controller-wired borrow only fits when the borrower is collateralized in
+the boosted market itself. Cross-market shapes exceed the 100-entry limit:
+one additional collateral market measures 130 entries with an atomic unwind
+(106 even when liquidity is pre-funded), and two additional markets measure
+167 entries (143 pre-funded). Until the controller/market footprint is
+redesigned, launch a new Aquarius-backed market as supply-only: collateral
+factor 0 and borrowing paused. This still delivers LP fees and AQUA emissions
+to XLM, PYUSD and USDC suppliers without exposing an unexecutable borrow path.
+
+For rollout, use a separate LP-market Peridottroller from the existing
+DeFindex markets. The LP group has different execution and oracle failure
+modes, and separating it prevents cross-group collateral positions that do not
+fit Soroban's transaction footprint. The supply-only markets can reuse the
+existing asset-appropriate JRM; while borrowing is paused the model is not an
+active risk surface. Give the LP group its own JRM only when borrowing is later
+enabled or its utilization curve needs to differ. Deployment scripts therefore
+require `CONTROLLER` to be supplied explicitly instead of silently choosing the
+currently deployed controller.
 
 ### Known limitations
 
@@ -230,13 +295,13 @@ Three findings from review are accepted rather than fixed:
   pool still owes the position, so a deposit landing just before a `harvest`
   is priced against a slightly understated NAV and captures a share of fees
   that accrued before it. Including them needs a `get_all_position_fees` call
-  on the deposit path, which already sits at 89 of the 100-entry transaction
+  on the deposit path, which already sits at 90 of the 100-entry transaction
   cap through the backing market — there is no room. The exposure is bounded by
   fees accrued since the last harvest, and `harvest()` is permissionless and
   rate-limited to once an hour by default; run it on a keeper to keep the
   window small.
-- **Reward swaps have no oracle cross-check.** `swap_reward` sells AQUA and
-  gauge tokens through a configured route pool using only that pool's own
+- **Reward swaps have no oracle cross-check.** `swap_reward` sells the primary
+  reward and gauge tokens through a configured route pool using only that pool's own
   quote, because reward tokens generally have no Reflector feed to compare
   against. It is bounded by the reward balance and gated by the harvest
   cooldown, but a large harvest is sandwichable. Prefer deep route pools.

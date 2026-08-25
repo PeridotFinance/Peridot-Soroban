@@ -17,3 +17,5 @@ soroban-sdk = { workspace = true, features = ["testutils"] }
 mock-token = { path = "../mocks/mock-token" }
 mock-aquarius-pool = { path = "../mocks/mock-aquarius-pool" }
 receipt-vault = { path = "../receipt-vault", features = ["test-default-admin"] }
+simple-peridottroller = { path = "../simple-peridottroller", features = ["test-default-admin"] }
+jump-rate-model = { path = "../jump-rate-model", features = ["test-default-admin"] }

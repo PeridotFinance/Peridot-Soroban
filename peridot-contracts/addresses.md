@@ -85,10 +85,15 @@ on the router, which is authoritative.
 
 - AQUA asset: `CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK`
 - AQUA/USDC route pool for harvest (deepest of three, ~$520k): `CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O`
+- PYUSD issuer: `GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5`
+- PYUSD asset contract: `CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2`
+- AQUA/PYUSD route pool for harvest: `CADFWSBBD6VMCL45DEPZ37X3JNXOZXIWEVJJTHMQH3UEB3JSQVJSPG2I`
 - USDC/EURC concentrated, fee 0.3% (**boosted-market target**): `CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA`
 - USDC/EURC volatile, fee 0.3%: `CB37QM6EHVBDDNK7MAVQESV7WPLKV6G36TR7MHAOYWPZXLPQUWSDOK4E`
-- XLM/yXLM concentrated, fee 0.1%: `CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F`
+- XLM/yXLM concentrated, fee 0.1% (**boosted-market target**): `CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F`
 - XLM/yXLM stable, fee 0.1% (has a fungible LP token `CAFEXSVT...`): `CCFGZJTHQZGDZP5PK6WMLKHKJ72ACSVMJGCI2NFR7Q6EAVSKWLJB3ZH3`
+- PYUSD/USDC concentrated, fee 0.1% (**boosted-market target**): `CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX`
+- PYUSD/USDC stable, fee 0.1% (**do not use for this vault**): `CDMH535JSD224YXPET3B4SJOLXTQQ24GRSCWACGYBKSH2DKFJYWI7SUW`
 - xSolvBTC/SolvBTC stable, fee 0.1% (largest pool on Aquarius): `CCNXGPE4AQCSNEBZO3XJDKKDI3CRLYMVS6UWBBTVDLALLWMJEXBORQ2A`
   - XLM gauge: `CD66D66S2WICMARF3QGDATXNMINN46LSLNUUCVWRYYIWACGGZITHNWG2`
   - Note: a same-pair constant-product pool `CDTDURXP62KOZNS7VUZGY4Q37JGJRKC4CMCT6RUNQVZDEBJQZOQAMFOY` exists but is empty (0 reserves). Do not wire to it.
@@ -97,6 +102,9 @@ on the router, which is authoritative.
 
 - Aquarius USDC/EURC LP Vault (mainnet): _not yet deployed_
 - Aquarius USDC/EURC LP Market (mainnet): _not yet deployed_
+- Aquarius XLM/yXLM LP Vault + XLM market (mainnet): _not yet deployed_
+- Aquarius PYUSD/USDC PYUSD-settled LP Vault + PYUSD market (mainnet): _not yet deployed_
+- Aquarius PYUSD/USDC USDC-settled LP Vault + USDC market (mainnet): _not yet deployed_
 
 Testnet verification against the **deployed** Aquarius pool:
 - Aquarius LP Vault: `CCG5OPVXIE55TVNIM3766IRKOTJPI6XWEO4WSVWCAFJDLRRP55G7AN4H`

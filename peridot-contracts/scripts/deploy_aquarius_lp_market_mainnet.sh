@@ -25,7 +25,7 @@ POOL=${POOL:-CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA}
 UNDERLYING_INDEX=${UNDERLYING_INDEX:-0}
 UNDERLYING=${UNDERLYING:-CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75}
 ORACLE=${ORACLE:-CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN}
-CONTROLLER=${CONTROLLER:-CCVUFGXKFVPAHWMMDDL6HXKUN2B2G73Z27VRM3WXZBBSQEUTNLI6YPEX}
+CONTROLLER=${CONTROLLER:?set CONTROLLER explicitly (prefer the isolated LP-market Peridottroller)}
 JRM=${JRM:-CCI5LBBNYOASPQ62GIRY54PDEYWWURJB75HNRAFOU4LTOU3XBC73IB5I}
 AQUA=${AQUA:-CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK}
 # Aquarius pool used to sell harvested AQUA for the underlying.
@@ -86,6 +86,7 @@ invoke "$VAULT_ID" set_max_deploy --admin_addr "$ADMIN" --max_deploy "$MAX_DEPLO
 invoke "$VAULT_ID" set_slippage_bps --admin_addr "$ADMIN" --bps "$SLIPPAGE_BPS"
 invoke "$VAULT_ID" set_harvest_cooldown --admin_addr "$ADMIN" --seconds "$HARVEST_COOLDOWN"
 invoke "$VAULT_ID" set_max_pool_divergence_bps --admin_addr "$ADMIN" --bps "$MAX_DIVERGENCE_BPS"
+invoke "$VAULT_ID" set_primary_reward_token --admin_addr "$ADMIN" --reward_token "$AQUA"
 if [[ -n "$AQUA_ROUTE" ]]; then
   invoke "$VAULT_ID" set_reward_route \
     --admin_addr "$ADMIN" --reward_token "$AQUA" --route "$AQUA_ROUTE"
@@ -106,10 +107,14 @@ invoke "$MARKET_ID" initialize \
   --admin "$ADMIN"
 
 invoke "$MARKET_ID" set_interest_model --model "$JRM"
-invoke "$MARKET_ID" set_peridottroller --peridottroller "$CONTROLLER"
 invoke "$MARKET_ID" set_idle_cash_buffer_bps --admin "$ADMIN" --idle_cash_buffer_bps "$IDLE_BUFFER_BPS"
 invoke "$MARKET_ID" set_supply_cap --cap "$SUPPLY_CAP"
+# Attach before setting the controller. Once a controller is wired,
+# set_boosted_vault calls its ownership registry, which rejects a market that
+# has not yet been listed. Listing and collateral policy remain an explicit
+# governance step below.
 invoke "$MARKET_ID" set_boosted_vault --admin "$ADMIN" --boosted_vault "$VAULT_ID"
+invoke "$VAULT_ID" set_receipt_vault --admin_addr "$ADMIN" --receipt_vault "$MARKET_ID"
 
 cat <<SUMMARY
 
@@ -125,8 +130,16 @@ cat <<SUMMARY
   Idle buffer     ${IDLE_BUFFER_BPS} bps
 
   Still to do:
-    1. Support the market in the peridottroller and set its collateral factor.
-    2. Set AQUA_ROUTE and re-run set_reward_route if it was skipped.
-    3. Schedule keepers for: refresh_nav_root, harvest, refresh_boosted_underlying.
+    1. Choose the market policy. For a supply-only launch, keep collateral
+       factor at 0 and pause borrowing. Otherwise complete the controller
+       footprint review documented in README.md's transaction-footprint section.
+    2. For the recommended supply-only policy, list, pause, and wire in this order:
+         stellar contract invoke --id $CONTROLLER --source-account $IDENTITY --network $NETWORK -- add_market --market $MARKET_ID
+         stellar contract invoke --id $CONTROLLER --source-account $IDENTITY --network $NETWORK -- set_pause_borrow --market $MARKET_ID --paused true
+         stellar contract invoke --id $MARKET_ID --source-account $IDENTITY --network $NETWORK -- set_peridottroller --peridottroller $CONTROLLER
+       A new market's collateral factor defaults to 0. Only set a non-zero CF
+       and unpause borrowing after the cross-market footprint is redesigned.
+    3. Set AQUA_ROUTE and re-run set_reward_route if it was skipped.
+    4. Run scripts/run_aquarius_vault_keeper.sh with VAULT_ID and MARKET_ID.
 ────────────────────────────────────────────────────────────────
 SUMMARY

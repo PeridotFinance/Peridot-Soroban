@@ -158,6 +158,10 @@ impl AquariusLpVault {
         params(env).slippage_bps
     }
 
+    fn receipt_vault(env: &Env) -> Address {
+        bound_receipt_vault(env).expect("receipt vault not bound")
+    }
+
     fn require_not_paused(env: &Env) {
         if params(env).paused {
             panic!("vault paused");
@@ -355,6 +359,35 @@ impl AquariusLpVault {
     /// already has the paired token in its footprint.
     fn total_underlying_full(env: &Env) -> u128 {
         Self::total_underlying(env).saturating_add(Self::other_idle_value(env))
+    }
+
+    /// Conservative liquidation value exposed to the backing ReceiptVault.
+    ///
+    /// `total_underlying` is an oracle-valued NAV. Redeeming an LP position,
+    /// however, settles the paired leg through the pool and can realize less
+    /// underlying when pool spot is away from the oracle or execution moves
+    /// after the quote. If the gross NAV were exposed here, ReceiptVault would
+    /// redeem too few shares and an otherwise solvent borrow/withdraw could
+    /// fail its live-cash post-check by the swap fee alone.
+    ///
+    /// At the configured divergence boundary the worse full-range exit factor
+    /// is `sqrt(1 - divergence)`. Apply that, then the configured execution
+    /// slippage, so the socket reports realizable rather than gross NAV. Exit
+    /// still remains available beyond the divergence bound; in a larger live
+    /// dislocation the market safely reverts on a cash shortfall instead of
+    /// paying against an overstated quote.
+    fn receipt_quote_value(env: &Env, gross: u128) -> u128 {
+        if gross == 0 {
+            return 0;
+        }
+        let prm = params(env);
+        let bps = BPS_DENOM as u128;
+        let divergence = (prm.max_pool_divergence_bps as u128).min(bps - 1);
+        let slippage = (prm.slippage_bps as u128).min(bps - 1);
+        let divergence_factor = isqrt((bps - divergence).saturating_mul(bps));
+        let execution_factor = bps - slippage;
+        let combined_factor = mul_div(divergence_factor, execution_factor, bps);
+        mul_div(gross, combined_factor, bps)
     }
 
     fn total_shares(env: &Env) -> u128 {
@@ -848,8 +881,9 @@ impl AquariusLpVault {
             out.push_back(0i128);
             return out;
         }
-        let nav = Self::total_underlying(&env);
-        out.push_back(to_i128(mul_div(shares, nav, supply)));
+        let gross_nav = Self::total_underlying(&env);
+        let gross_claim = mul_div(shares, gross_nav, supply);
+        out.push_back(to_i128(Self::receipt_quote_value(&env, gross_claim)));
         out
     }
 
@@ -868,6 +902,14 @@ impl AquariusLpVault {
     ) -> i128 {
         bump_critical_ttl(&env);
         Self::require_not_paused(&env);
+
+        // The ReceiptVault's supply cap is the product-level capacity limit.
+        // Letting arbitrary accounts mint pAQLP shares here would bypass that
+        // cap and dilute the yield of market suppliers, so capital may enter
+        // through the one bound market only.
+        if from != Self::receipt_vault(&env) {
+            panic!("only receipt vault may deposit");
+        }
 
         let amount = to_u128(amounts_desired.get(0).unwrap_or(0));
         if amount == 0 {
@@ -1011,10 +1053,11 @@ impl AquariusLpVault {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Direct user entrypoints
+    // Single-asset convenience entrypoints
     // ─────────────────────────────────────────────────────────────────────
 
-    /// Single-sided deposit for end users. The vault handles the split.
+    /// Single-sided deposit wrapper for the bound ReceiptVault. The vault
+    /// handles the split; direct user calls are rejected by `deposit`.
     pub fn deposit_underlying(env: Env, from: Address, amount: i128, min_shares: i128) -> i128 {
         from.require_auth();
         let mut desired: Vec<i128> = Vec::new(&env);
@@ -1153,8 +1196,9 @@ impl AquariusLpVault {
         Self::balance_of_token(env, &underlying).saturating_sub(before)
     }
 
-    /// Permissionless: claim AQUA emissions, third-party gauge incentives and
-    /// accrued swap fees, convert everything to underlying, and redeploy.
+    /// Permissionless: claim the configured primary reward, third-party gauge
+    /// incentives and accrued swap fees, convert everything to underlying,
+    /// and redeploy.
     ///
     /// Rate-limited because each call moves the share price; without a cooldown
     /// it could be used to grind rounding in the depositor's favour.
@@ -1194,7 +1238,7 @@ impl AquariusLpVault {
             emit_call_failure(&env, &pool, e, true);
         }
 
-        // 2. AQUA emissions.
+        // 2. Primary Aquarius emissions (AQUA at launch).
         let claim_args: Vec<Val> = (me.clone(),).into_val(&env);
         let mut auths = Vec::new(&env);
         auths.push_back(auth_entry(&env, &pool, "claim", claim_args, Vec::new(&env)));
@@ -1228,8 +1272,17 @@ impl AquariusLpVault {
         //    Balances are read directly so donations and partially-claimed
         //    rewards are swept too.
         let mut reward_tokens: Vec<Address> = Vec::new(&env);
+        // `claim()` returns only an amount, not the token address. Explicitly
+        // include the configured primary token so AQUA is compounded even on
+        // pools with no third-party gauges (both launch pools currently have
+        // an empty gauge map).
+        if let Some(primary) = primary_reward_token(&env) {
+            if primary != underlying && primary != other {
+                reward_tokens.push_back(primary);
+            }
+        }
         for (tok, _) in gauge_rewards.iter() {
-            if tok != underlying && tok != other {
+            if tok != underlying && tok != other && !reward_tokens.contains(tok.clone()) {
                 reward_tokens.push_back(tok);
             }
         }
@@ -1266,8 +1319,8 @@ impl AquariusLpVault {
         to_i128(gained)
     }
 
-    /// Sells any AQUA held by the vault. Kept separate from `harvest` so the
-    /// AQUA route can be exercised even when the pool's claim path is paused.
+    /// Sells any configured reward held by the vault. Kept separate from
+    /// `harvest` so a route can be exercised even when claiming is paused.
     pub fn sweep_reward(env: Env, caller: Address, reward_token: Address) -> i128 {
         caller.require_auth();
         bump_critical_ttl(&env);
@@ -1508,6 +1561,40 @@ impl AquariusLpVault {
         Self::invalidate_nav_cache(&env);
     }
 
+    /// Permanently binds the sole ReceiptVault allowed to deposit.
+    ///
+    /// The candidate must already point back at this Aquarius vault and must
+    /// settle in the same underlying token. This closes both the supply-cap
+    /// bypass and an admin typo that would otherwise strand the deployment.
+    pub fn set_receipt_vault(env: Env, admin_addr: Address, receipt_vault: Address) {
+        Self::require_admin(&env, &admin_addr);
+        let cfg = config(&env);
+        if bound_receipt_vault(&env).is_some() {
+            panic!("receipt vault already bound");
+        }
+        let attached: Option<Address> = try_call(&env, &receipt_vault, "get_boosted_vault", ())
+            .unwrap_or_else(|_| panic!("invalid receipt vault"));
+        if attached != Some(env.current_contract_address()) {
+            panic!("receipt vault does not point to this vault");
+        }
+        let market_underlying: Address = try_call(&env, &receipt_vault, "get_underlying_token", ())
+            .unwrap_or_else(|_| panic!("invalid receipt vault"));
+        let expected_underlying = Self::token_at(&cfg, cfg.underlying_index);
+        if market_underlying != expected_underlying {
+            panic!("receipt vault underlying mismatch");
+        }
+        set_bound_receipt_vault(&env, &receipt_vault);
+        ReceiptVaultBound { receipt_vault }.publish(&env);
+    }
+
+    /// Changes the token transferred by Aquarius' primary `claim()` path.
+    /// Reward conversion routes remain independently configurable per token.
+    pub fn set_primary_reward_token(env: Env, admin_addr: Address, reward_token: Option<Address>) {
+        Self::require_admin(&env, &admin_addr);
+        set_primary_reward(&env, &reward_token);
+        PrimaryRewardTokenSet { reward_token }.publish(&env);
+    }
+
     /// Forces the next valuation to re-read the oracle.
     fn invalidate_nav_cache(env: &Env) {
         let mut st = state(env);
@@ -1734,6 +1821,14 @@ impl AquariusLpVault {
         env.storage()
             .persistent()
             .get(&DataKey::RewardRoute(reward_token))
+    }
+
+    pub fn get_receipt_vault(env: Env) -> Option<Address> {
+        bound_receipt_vault(&env)
+    }
+
+    pub fn get_primary_reward_token(env: Env) -> Option<Address> {
+        primary_reward_token(&env)
     }
 
     // ─────────────────────────────────────────────────────────────────────
