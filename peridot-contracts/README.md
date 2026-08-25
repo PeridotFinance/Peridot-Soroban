@@ -245,7 +245,9 @@ floor at 95% of that live quote unless an explicit reviewed floor is supplied.
 Keepers to schedule:
 - `refresh_nav_root()` — keeps the cached price ratio fresh so user
   transactions do not pay the oracle's footprint cost.
-- `harvest(caller)` — compounds rewards (rate-limited).
+- `harvest(caller)` — compounds rewards. The cooldown starts only after the
+  call actually claims, converts, or deploys value, so an empty/failed
+  permissionless call cannot delay the keeper.
 - `refresh_boosted_underlying()` on the market — existing DeFindex keeper.
 
 All three are driven by `scripts/run_aquarius_vault_keeper.sh`. For example:
@@ -267,7 +269,9 @@ exist purely to fit inside it, and both are pinned by tests:
 - Past `nav_root_max_stale`, public strategy quotes fail soft to zero. A
   ReceiptVault redemption then sizes from its cached/accounting value and
   supplies a nonzero underlying floor; only that protected exit may use the
-  strategy's last ratio, and it still enforces the pool-divergence guard.
+  strategy's last ratio, and it still enforces the pool-divergence guard. When
+  the live quote is unavailable, share sizing uses the lower nonzero cached or
+  accounting estimate to avoid under-redemption from an inflated cache.
 
 Measured: market deposit 90 entries / 5.0M instructions, market withdraw
 79 entries / 6.0M instructions.

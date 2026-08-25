@@ -86,6 +86,16 @@ impl ReceiptVault {
             .saturating_sub(tracked_cash)
     }
 
+    fn conservative_boosted_underlying_for_redemption(env: &Env) -> u128 {
+        let cached = Self::cached_boosted_underlying(env);
+        let estimated = Self::estimate_boosted_underlying_from_accounting(env);
+        match (cached, estimated) {
+            (0, estimate) => estimate,
+            (cache, 0) => cache,
+            (cache, estimate) => cache.min(estimate),
+        }
+    }
+
     fn get_boosted_underlying(env: &Env) -> u128 {
         if let Some(boosted) = env
             .storage()
@@ -360,6 +370,9 @@ impl ReceiptVault {
         if needed_cash == 0 {
             return;
         }
+        if needed_cash > i128::MAX as u128 {
+            panic!("cash requirement exceeds token range");
+        }
         let Some(boosted) = env
             .storage()
             .persistent()
@@ -406,8 +419,7 @@ impl ReceiptVault {
             // source is unavailable. Size the redemption from the last known
             // value/accounting estimate instead of turning that read outage
             // into a market-wide withdrawal panic.
-            Self::cached_boosted_underlying(env)
-                .max(Self::estimate_boosted_underlying_from_accounting(env))
+            Self::conservative_boosted_underlying_for_redemption(env)
         };
         if total_underlying == 0 {
             return;

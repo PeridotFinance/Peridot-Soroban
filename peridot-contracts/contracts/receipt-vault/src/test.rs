@@ -485,8 +485,22 @@ impl MockBoostedVault {
         if owner_shares < shares {
             panic!("insufficient shares");
         }
-        let amounts = Self::get_asset_amounts_per_shares(env.clone(), shares);
-        let mut out = amounts.get(0).unwrap_or(0);
+        // Settle from actual backing rather than reusing the externally
+        // configurable quote. This lets tests model a stale/failed quote while
+        // the strategy's withdrawal path remains operational.
+        let token_address: Address = env
+            .storage()
+            .persistent()
+            .get(&BoostedKey::Underlying)
+            .expect("underlying not set");
+        let underlying_balance =
+            token::Client::new(&env, &token_address).balance(&env.current_contract_address());
+        let supply = Self::total_supply(env.clone());
+        let mut out = if underlying_balance > 0 && supply > 0 {
+            shares.saturating_mul(underlying_balance) / supply
+        } else {
+            0
+        };
         let haircut: i128 = env
             .storage()
             .persistent()
@@ -498,15 +512,9 @@ impl MockBoostedVault {
         if out < min_out {
             panic!("slippage");
         }
-        let token_address: Address = env
-            .storage()
-            .persistent()
-            .get(&BoostedKey::Underlying)
-            .expect("underlying not set");
         let token_client = token::Client::new(&env, &token_address);
         token_client.transfer(&env.current_contract_address(), &to, &out);
 
-        let supply = Self::total_supply(env.clone());
         env.storage()
             .persistent()
             .set(&BoostedKey::Share(to), &(owner_shares - shares));
@@ -4987,13 +4995,15 @@ fn test_direct_donation_does_not_inflate_exchange_rate() {
 // ── Boosted-vault redemption regression tests ─────────────────────────────────
 //
 // These tests cover the `redeem_from_boosted` fix:
-//   (a) min_amounts_out is now all-zeros (matched to asset count) instead of
-//       [needed_cash - 1], so performance-fee haircuts no longer trigger a
-//       DefIndex-side slippage panic.
+//   (a) min_amounts_out matches the asset count and carries the required cash
+//       on the underlying leg, so a stale-NAV exit cannot trust a pool quote
+//       without an end-to-end payout floor.
 //   (b) env.invoke_contract → try_call_contract so a boosted-vault failure
 //       surfaces as "withdraw liquidity shortfall" rather than an opaque panic.
 //   (c) The min_amounts_out vector length now matches the number of assets
 //       returned by get_asset_amounts_per_shares.
+//   (d) A failed/non-positive quote sizes from the lower non-zero accounting
+//       and cached values, avoiding under-redemption from an inflated cache.
 
 /// Vault that returns 2 assets from get_asset_amounts_per_shares and enforces
 /// the vector-length requirement on withdraw — models a DefIndex multi-strategy
@@ -5006,6 +5016,41 @@ enum TwoAssetKey {
     Underlying,
     TotalShares,
     Share(Address),
+}
+
+#[test]
+fn test_failed_boosted_quote_uses_conservative_redemption_value() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &20_000i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
+    vault.deposit(&user, &20_000u128);
+
+    // Poison only the cached quote, then make quote reads fail. Accounting
+    // still knows that 18,000 underlying was deployed. Using max(cache,
+    // accounting) would size too few shares and fail the required-cash floor;
+    // the lower non-zero value deliberately over-redeems into market cash.
+    boosted.set_quote_multiplier_bps(&2_000_000u128);
+    vault.refresh_boosted_underlying();
+    boosted.set_quote_multiplier_bps(&1_000_000u128);
+    boosted.set_fail_quote(&true);
+
+    vault.withdraw(&user, &5_000u128);
+    assert!(token_client.balance(&user) >= 5_000i128);
 }
 
 #[contractimpl]

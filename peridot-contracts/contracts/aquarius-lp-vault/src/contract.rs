@@ -1308,19 +1308,18 @@ impl AquariusLpVault {
         bump_critical_ttl(&env);
 
         let now = env.ledger().timestamp();
-        let mut st = state(&env);
+        let st = state(&env);
         let cooldown = params(&env).harvest_cooldown;
         if st.last_harvest != 0 && now < st.last_harvest.saturating_add(cooldown) {
             panic!("harvest on cooldown");
         }
-        st.last_harvest = now;
-        set_state(&env, &st);
 
         let pool = Self::pool(&env);
         let me = env.current_contract_address();
         let underlying = Self::underlying(&env);
         let other = Self::other_token(&env);
         let before_underlying = Self::balance_of_token(&env, &underlying);
+        let mut did_work = false;
 
         // 1. Swap fees accrued by the position, paid in the pair's own tokens.
         let fee_args: Vec<Val> = (me.clone(),).into_val(&env);
@@ -1333,10 +1332,15 @@ impl AquariusLpVault {
             Vec::new(&env),
         ));
         env.authorize_as_current_contract(auths);
-        if let Err(ref e) =
-            try_call::<Vec<u128>, _>(&env, &pool, "claim_all_position_fees", (me.clone(),))
-        {
-            emit_call_failure(&env, &pool, e, true);
+        match try_call::<Vec<u128>, _>(&env, &pool, "claim_all_position_fees", (me.clone(),)) {
+            Ok(amounts) => {
+                for amount in amounts.iter() {
+                    if amount > 0 {
+                        did_work = true;
+                    }
+                }
+            }
+            Err(ref e) => emit_call_failure(&env, &pool, e, true),
         }
 
         // 2. Primary Aquarius emissions (AQUA at launch).
@@ -1345,7 +1349,11 @@ impl AquariusLpVault {
         auths.push_back(auth_entry(&env, &pool, "claim", claim_args, Vec::new(&env)));
         env.authorize_as_current_contract(auths);
         match try_call::<u128, _>(&env, &pool, "claim", (me.clone(),)) {
-            Ok(_) => {}
+            Ok(amount) => {
+                if amount > 0 {
+                    did_work = true;
+                }
+            }
             Err(ref e) => emit_call_failure(&env, &pool, e, true),
         }
 
@@ -1368,6 +1376,11 @@ impl AquariusLpVault {
                     Map::new(&env)
                 }
             };
+        for (_, amount) in gauge_rewards.iter() {
+            if amount > 0 {
+                did_work = true;
+            }
+        }
 
         // 4. Sell every reward token that is not already part of the pair.
         //    Balances are read directly so donations and partially-claimed
@@ -1394,6 +1407,9 @@ impl AquariusLpVault {
                 continue;
             }
             let got = Self::swap_reward(&env, &tok, bal);
+            if got > 0 {
+                did_work = true;
+            }
             Harvested {
                 caller: caller.clone(),
                 reward_token: tok,
@@ -1406,7 +1422,7 @@ impl AquariusLpVault {
         // 5. Fold the paired-token leg back in, then redeploy everything.
         let other_balance = Self::balance_of_token(&env, &other);
         if other_balance > 0 {
-            Self::swap_exact_in(
+            let got = Self::swap_exact_in(
                 &env,
                 Self::other_index(&env),
                 Self::underlying_index(&env),
@@ -1414,8 +1430,22 @@ impl AquariusLpVault {
                 false,
                 None,
             );
+            if got > 0 {
+                did_work = true;
+            }
         }
-        Self::deploy_idle(&env);
+        if Self::deploy_idle(&env) > 0 {
+            did_work = true;
+        }
+
+        if did_work {
+            // Re-read after deployment: `deploy_idle` updates the same packed
+            // state entry with new position liquidity, so writing the snapshot
+            // taken at the start would clobber that accounting change.
+            let mut final_state = state(&env);
+            final_state.last_harvest = now;
+            set_state(&env, &final_state);
+        }
 
         let gained = Self::balance_of_token(&env, &underlying).saturating_sub(before_underlying);
         to_i128(gained)

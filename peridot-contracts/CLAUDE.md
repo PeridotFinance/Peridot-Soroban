@@ -68,7 +68,9 @@ MarginController (leveraged trading, optional)
   rewards into each market's underlying, then redeploys. Reward token and route are
   independently admin-configurable. Each reward also requires a governance-set,
   1e7-scaled minimum raw-underlying/raw-reward rate; a missing or breached floor leaves
-  the reward idle instead of trusting the route pool's own quote.
+  the reward idle instead of trusting the route pool's own quote. Empty or failed
+  permissionless harvests do not consume the cooldown; it starts only after value is
+  actually claimed, converted, or deployed.
 - Use an isolated LP-market Peridottroller, CF=0, and borrow paused. Deployment scripts
   require the controller address explicitly. Reuse the appropriate existing JRM while
   the markets remain supply-only.

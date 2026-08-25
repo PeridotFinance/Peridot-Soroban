@@ -1176,11 +1176,28 @@ fn harvest_is_rate_limited() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     let caller = Address::generate(&f.env);
+
+    // Give the call real work. Empty/failed harvests deliberately do not
+    // consume the global cooldown, so they cannot be used for griefing.
+    f.eurc.mint(&f.vault_id, &1_0000000i128);
     f.vault.harvest(&caller);
     assert!(f.vault.try_harvest(&caller).is_err());
 
     f.env.ledger().set_timestamp(1_700_000_000 + 3_601);
+    f.vault.refresh_nav_root();
     f.vault.harvest(&caller);
+}
+
+#[test]
+fn empty_harvest_does_not_start_the_cooldown() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let caller = Address::generate(&f.env);
+
+    assert_eq!(f.vault.harvest(&caller), 0);
+    assert_eq!(f.vault.get_last_harvest(), 0);
+    assert_eq!(f.vault.harvest(&caller), 0);
+    assert_eq!(f.vault.get_last_harvest(), 0);
 }
 
 #[test]
