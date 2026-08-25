@@ -348,6 +348,35 @@ fn initialize_is_not_repeatable() {
     f.vault.initialize(&f.admin, &f.pool_id, &0u32, &oracle_id);
 }
 
+#[test]
+fn initialize_rejects_token_decimals_that_overflow_nav_scaling() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::from_string(&String::from_str(&env, ADMIN_G));
+
+    let (token0, _) = deploy_token(&env, "SAFE");
+    let token1 = env.register(MockToken, ());
+    MockTokenClient::new(&env, &token1).initialize(
+        &String::from_str(&env, "UNSAFE"),
+        &String::from_str(&env, "UNSAFE"),
+        &39u32,
+    );
+
+    let pool_id = env.register(mock_aquarius_pool::MockAquariusPool, ());
+    mock_aquarius_pool::MockAquariusPoolClient::new(&env, &pool_id)
+        .initialize(&token0, &token1, &60i32, &30u32);
+    let oracle_id = env.register(MockOracle, ());
+    let vault_id = env.register(AquariusLpVault, ());
+    let vault = AquariusLpVaultClient::new(&env, &vault_id);
+
+    assert!(
+        vault
+            .try_initialize(&admin, &pool_id, &0u32, &oracle_id)
+            .is_err(),
+        "unsafe token decimals should be rejected during initialization"
+    );
+}
+
 fn env_oracle(f: &Fixture) -> Address {
     f.oracle.address.clone()
 }
@@ -911,6 +940,37 @@ fn deposit_is_refused_when_the_pool_price_diverges_from_the_oracle() {
     f.vault.set_max_pool_divergence_bps(&f.admin, &9_000u32);
     f.vault
         .deposit_underlying(&f.receipt_market_id, &500_0000000i128, &0i128);
+}
+
+/// The exit swap must not trust a manipulated pool's own quote. Reverting the
+/// transaction preserves the holder's shares and the LP position for a later
+/// retry instead of realizing the bad rate.
+#[test]
+fn withdrawal_is_refused_when_the_pool_price_diverges_from_the_oracle() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let user = Address::generate(&f.env);
+    let shares = deposit_for(&f, &user, 1_000_0000000i128);
+    let liquidity = f.vault.get_position_liquidity();
+
+    // Make the paired token four times as valuable according to the oracle.
+    // The unchanged pool then offers materially too little underlying for the
+    // paired leg released during withdrawal.
+    f.oracle.set_price(&f.eurc_id, &(PRICE_EURC * 4));
+    f.vault.refresh_nav_root();
+
+    let mut min_out: Vec<i128> = Vec::new(&f.env);
+    min_out.push_back(0i128);
+    assert!(
+        f.vault.try_withdraw(&shares, &min_out, &user).is_err(),
+        "withdrawal should reject a pool quote below the oracle floor"
+    );
+    assert_eq!(f.vault.balance(&user), shares, "shares were not preserved");
+    assert_eq!(
+        f.vault.get_position_liquidity(),
+        liquidity,
+        "LP position changed despite the reverted withdrawal"
+    );
 }
 
 #[test]

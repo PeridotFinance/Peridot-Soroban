@@ -372,10 +372,10 @@ impl AquariusLpVault {
     ///
     /// At the configured divergence boundary the worse full-range exit factor
     /// is `sqrt(1 - divergence)`. Apply that, then the configured execution
-    /// slippage, so the socket reports realizable rather than gross NAV. Exit
-    /// still remains available beyond the divergence bound; in a larger live
-    /// dislocation the market safely reverts on a cash shortfall instead of
-    /// paying against an overstated quote.
+    /// slippage, so the socket reports realizable rather than gross NAV. A
+    /// quote beyond the divergence bound is refused on both entry and exit;
+    /// the withdrawal reverts atomically and preserves the supplier's shares
+    /// rather than realizing a manipulated rate.
     fn receipt_quote_value(env: &Env, gross: u128) -> u128 {
         if gross == 0 {
             return 0;
@@ -439,9 +439,7 @@ impl AquariusLpVault {
         }
         let root = Self::nav_root(env);
         if root == 0 {
-            // No usable oracle reading: fall through to the slippage floor
-            // rather than blocking the vault entirely.
-            return;
+            panic!("nav unavailable for swap");
         }
         let r_scaled = root.checked_mul(root).expect("nav root overflow"); // R * 1e18
         let fair_out = if in_idx == Self::underlying_index(env) {
@@ -465,12 +463,12 @@ impl AquariusLpVault {
     /// a pool-side failure: Aquarius can pause swaps (error 206) and a revert
     /// here would propagate into the backing market's deposit or withdrawal.
     ///
-    /// `enforce_divergence` splits entry from exit deliberately:
-    /// - **Entering** a mispriced pool is optional, so refuse it. That is the
-    ///   whole point of `max_pool_divergence_bps`.
-    /// - **Exiting** is not optional. Blocking a withdrawal because the pool is
-    ///   dislocated would freeze supplier exits in the market above, which is a
-    ///   worse failure than realising a bad rate on the paired leg.
+    /// `enforce_divergence` is enabled for both position entry and the paired
+    /// leg of position exit. A dislocated exit therefore reverts atomically,
+    /// preserving the supplier's shares until the pool returns within bounds
+    /// or governance deliberately changes the bound. Reward conversions keep
+    /// it disabled because their token pair may not have this vault's oracle
+    /// mapping.
     fn swap_exact_in(
         env: &Env,
         in_idx: u32,
@@ -706,7 +704,7 @@ impl AquariusLpVault {
                 Self::other_index(env),
                 Self::underlying_index(env),
                 other_balance,
-                false,
+                true,
             );
             return true;
         }
@@ -807,7 +805,7 @@ impl AquariusLpVault {
                 Self::other_index(env),
                 Self::underlying_index(env),
                 other_total,
-                false,
+                true,
             );
         }
 
@@ -1389,6 +1387,9 @@ impl AquariusLpVault {
         let token1 = tokens.get(1).unwrap();
         let dec0 = token::TokenClient::new(&env, &token0).decimals();
         let dec1 = token::TokenClient::new(&env, &token1).decimals();
+        if dec0 > MAX_TOKEN_DECIMALS || dec1 > MAX_TOKEN_DECIMALS {
+            panic!("token decimals too large");
+        }
 
         let tick_spacing = pool_client.get_tick_spacing();
         let (tick_lower, tick_upper) = full_range_bounds(tick_spacing, MAX_TICK_ABS);

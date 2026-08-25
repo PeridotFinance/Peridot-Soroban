@@ -43,9 +43,10 @@ pub struct Params {
     ///
     /// The per-swap slippage floor is derived from `estimate_swap`, so it only
     /// guards against movement between quote and execution — it cannot tell
-    /// that the pool itself is mispriced. Entering a dislocated pool realises
-    /// that gap immediately: on testnet a ~7% pool/oracle divergence cost
-    /// 4.65% of a deposit. This is the guard for that.
+    /// that the pool itself is mispriced. Entering or exiting through a
+    /// dislocated pool can realize that gap immediately: on testnet a ~7%
+    /// pool/oracle divergence cost 4.65% of a deposit. This guards both
+    /// position entry and the paired-token leg of position exit.
     pub max_pool_divergence_bps: u32,
     /// Hard ceiling on how old the cached NAV root may be when the oracle is
     /// unreachable. Past this the vault refuses to price rather than serving an

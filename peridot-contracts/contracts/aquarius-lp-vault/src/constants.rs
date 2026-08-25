@@ -14,6 +14,11 @@ pub const MAX_TICK_ABS: i32 = 887_272;
 /// rata. Matching the pToken convention keeps share math readable.
 pub const SHARE_DECIMALS: u32 = 7;
 
+/// Largest token decimal count whose `10^decimals` scale fits in `u128`.
+/// Token metadata is immutable configuration for the vault, so reject an
+/// unsafe value at initialization instead of panicking later during NAV math.
+pub const MAX_TOKEN_DECIMALS: u32 = 38;
+
 /// Deposits below this many raw underlying units are refused: the swap +
 /// deposit round trip cannot mint non-zero liquidity for dust, and the
 /// receipt-vault keeps dust in idle cash rather than deploying it.

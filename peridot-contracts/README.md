@@ -193,12 +193,16 @@ Shape:
   slippage bounds so a redemption does not come back a few basis points short
   solely because the paired leg had to be swapped.
 
-Two guards protect the entry swap:
+Two guards protect the position entry and paired-token exit swaps:
 - `set_slippage_bps` — movement between the pool's quote and execution.
 - `set_max_pool_divergence_bps` — the pool being *mispriced against the oracle*
   to begin with, which the slippage floor cannot see because it is derived from
   the pool's own quote. Verified on testnet: a ~7% pool/oracle gap cost 4.65%
   of a deposit before this existed.
+
+If an exit quote breaches that oracle floor, the transaction reverts atomically
+and keeps the supplier's shares intact for a later retry. This deliberately
+prefers temporary withdrawal unavailability over realizing a manipulated rate.
 
 Capacity is the binding constraint. Realised APR scales with
 `pool_tvl / (pool_tvl + deployed)`, so `set_max_deploy` is a yield control as
