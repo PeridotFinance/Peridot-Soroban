@@ -21,6 +21,7 @@ pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIA
 const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
 const BPS_SCALE: u128 = 10_000u128;
 const BOOSTED_MODEL_CASH_TOLERANCE_BPS: u128 = 500u128; // 5%
+const BOOSTED_REDEMPTION_QUOTE_FLOOR_BPS: u128 = 9_000u128; // max 10% downward jump
 const DEBT_STATE_VERSION_V1: u32 = 1u32;
 
 #[contractimpl]
@@ -122,7 +123,18 @@ impl ReceiptVault {
                             let estimated = Self::estimate_boosted_underlying_from_accounting(env);
                             return cached.max(estimated);
                         }
-                        let boosted_underlying = amt_i as u128;
+                        let quoted = amt_i as u128;
+                        let baseline = Self::conservative_boosted_underlying_for_redemption(env);
+                        let quote_floor =
+                            baseline.saturating_mul(BOOSTED_REDEMPTION_QUOTE_FLOOR_BPS) / BPS_SCALE;
+                        let boosted_underlying = if baseline > 0 && quoted < quote_floor {
+                            // Do not let a dust-positive strategy quote collapse
+                            // the ReceiptVault exchange rate before the same
+                            // guard gets a chance to size the strategy unwind.
+                            baseline
+                        } else {
+                            quoted
+                        };
                         env.storage()
                             .persistent()
                             .set(&DataKey::BoostedUnderlyingCached, &boosted_underlying);
@@ -350,6 +362,9 @@ impl ReceiptVault {
         );
         let cash_after_boost = Self::current_live_cash(env, token_address);
         let moved = cash_before_boost.saturating_sub(cash_after_boost);
+        if moved > deploy_amount {
+            panic!("boosted vault exceeded deposit authorization");
+        }
         if moved > 0 {
             Self::sub_managed_cash(env, moved);
             let cached = Self::cached_boosted_underlying(env);
@@ -412,14 +427,28 @@ impl ReceiptVault {
             total_amounts.push_back(0i128);
         }
         let quoted_underlying_i = total_amounts.get(0).unwrap_or(0);
+        let fallback_underlying = Self::conservative_boosted_underlying_for_redemption(env);
         let total_underlying = if quoted_underlying_i > 0 {
-            quoted_underlying_i as u128
+            let quoted = quoted_underlying_i as u128;
+            // A dust-positive live quote can otherwise make this market unwind
+            // all strategy shares to satisfy a small cash request. Bound a
+            // sudden downward quote against the lower non-zero cached/accounting
+            // estimate. If the strategy really lost more than 10%, its own
+            // non-zero `min_amounts_out` will fail closed instead of socializing
+            // an oversized unwind across remaining suppliers.
+            let quote_floor =
+                fallback_underlying.saturating_mul(BOOSTED_REDEMPTION_QUOTE_FLOOR_BPS) / BPS_SCALE;
+            if fallback_underlying > 0 && quoted < quote_floor {
+                fallback_underlying
+            } else {
+                quoted
+            }
         } else {
             // A boosted strategy may deliberately fail soft when its live NAV
             // source is unavailable. Size the redemption from the last known
             // value/accounting estimate instead of turning that read outage
             // into a market-wide withdrawal panic.
-            Self::conservative_boosted_underlying_for_redemption(env)
+            fallback_underlying
         };
         if total_underlying == 0 {
             return;

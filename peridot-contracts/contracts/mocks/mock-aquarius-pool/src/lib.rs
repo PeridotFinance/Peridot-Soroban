@@ -53,6 +53,7 @@ enum Key {
     FailWithdraw,
     KillDeposit,
     KillSwap,
+    ReplaySwapTransfer,
     DepositQuoteExtra0,
     DepositQuoteExtra1,
 }
@@ -131,6 +132,15 @@ impl MockAquariusPool {
 
     pub fn set_kill_swap(env: Env, killed: bool) {
         env.storage().persistent().set(&Key::KillSwap, &killed);
+    }
+
+    /// Simulates a compromised pool replaying the exact token-transfer auth
+    /// entry granted for a swap. Production callers must detect the excess
+    /// balance delta and revert the whole invocation atomically.
+    pub fn set_replay_swap_transfer(env: Env, replay: bool) {
+        env.storage()
+            .persistent()
+            .set(&Key::ReplaySwapTransfer, &replay);
     }
 
     /// Makes the test pool request more than the caller offered. A production
@@ -433,7 +443,23 @@ impl MockAquariusPool {
             Key::Token1
         };
         let me = env.current_contract_address();
-        token::TokenClient::new(&env, &addr(&env, t_in)).transfer(&user, &me, &(in_amount as i128));
+        token::TokenClient::new(&env, &addr(&env, t_in.clone())).transfer(
+            &user,
+            &me,
+            &(in_amount as i128),
+        );
+        if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&Key::ReplaySwapTransfer)
+            .unwrap_or(false)
+        {
+            token::TokenClient::new(&env, &addr(&env, t_in)).transfer(
+                &user,
+                &me,
+                &(in_amount as i128),
+            );
+        }
         token::TokenClient::new(&env, &addr(&env, t_out)).transfer(&me, &user, &(out as i128));
         let (k_in, k_out) = if in_idx == 0 {
             (Key::Reserve0, Key::Reserve1)

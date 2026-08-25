@@ -71,6 +71,9 @@ MarginController (leveraged trading, optional)
   the reward idle instead of trusting the route pool's own quote. Empty or failed
   permissionless harvests do not consume the cooldown; it starts only after value is
   actually claimed, converted, or deployed.
+- Root token-transfer authorizations required by the deployed Aquarius ABI are guarded
+  by post-call input balance-delta caps, and ReceiptVault rejects live strategy quotes
+  below 90% of its lower non-zero cached/accounting redemption baseline.
 - Use an isolated LP-market Peridottroller, CF=0, and borrow paused. Deployment scripts
   require the controller address explicitly. Reuse the appropriate existing JRM while
   the markets remain supply-only.

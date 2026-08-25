@@ -196,6 +196,12 @@ Shape:
   discounts gross oracle NAV by the configured pool-divergence and execution-
   slippage bounds so a redemption does not come back a few basis points short
   solely because the paired leg had to be swapped.
+- ReceiptVault treats a live strategy quote below 90% of its lower non-zero
+  cached/accounting baseline as implausible. A dust-positive quote therefore
+  cannot force a full strategy unwind to fund a small withdrawal.
+- Aquarius swaps and position deposits enforce transaction-atomic input
+  balance-delta caps. If a pool replays an exact root token-transfer
+  authorization, the enclosing invocation reverts without asset loss.
 
 Two guards protect the position entry and paired-token exit swaps:
 - `set_slippage_bps` — movement between the pool's quote and execution.

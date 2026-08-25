@@ -897,6 +897,30 @@ fn deploy_rejects_a_pool_quote_above_the_offered_token_amounts() {
 }
 
 #[test]
+fn replayed_swap_transfer_reverts_without_losing_vault_assets() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+
+    let market = f.receipt_market_id.clone();
+    let amount = 1_000_0000000i128;
+    f.usdc.mint(&market, &amount);
+    let market_before = f.usdc.balance(&market);
+    let reserves_before = f.pool.get_reserves();
+    f.pool.set_replay_swap_transfer(&true);
+
+    assert!(
+        f.vault
+            .try_deposit_underlying(&market, &amount, &0i128)
+            .is_err(),
+        "a replayed root transfer must fail the enclosing invocation"
+    );
+    assert_eq!(f.usdc.balance(&market), market_before);
+    assert_eq!(f.usdc.balance(&f.vault_id), 0);
+    assert_eq!(f.pool.get_reserves(), reserves_before);
+    assert_eq!(f.vault.get_position_liquidity(), 0);
+}
+
+#[test]
 fn pausing_blocks_deposits_but_never_withdrawals() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);

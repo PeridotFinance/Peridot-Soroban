@@ -5004,6 +5004,8 @@ fn test_direct_donation_does_not_inflate_exchange_rate() {
 //       returned by get_asset_amounts_per_shares.
 //   (d) A failed/non-positive quote sizes from the lower non-zero accounting
 //       and cached values, avoiding under-redemption from an inflated cache.
+//   (e) A dust-positive quote more than 10% below that baseline is treated as
+//       implausible and cannot force an otherwise unnecessary full unwind.
 
 /// Vault that returns 2 assets from get_asset_amounts_per_shares and enforces
 /// the vector-length requirement on withdraw — models a DefIndex multi-strategy
@@ -5051,6 +5053,42 @@ fn test_failed_boosted_quote_uses_conservative_redemption_value() {
 
     vault.withdraw(&user, &5_000u128);
     assert!(token_client.balance(&user) >= 5_000i128);
+}
+
+#[test]
+fn test_dust_positive_boosted_quote_cannot_force_full_unwind() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &20_000i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
+    vault.deposit(&user, &20_000u128);
+    assert_eq!(boosted.balance(&vault_id), 18_000i128);
+
+    // Return a positive quote of roughly one unit for all 18,000 shares. The
+    // old sizing path interpreted that dust as authoritative and redeemed the
+    // market's entire strategy balance to fund a 5,000-unit withdrawal.
+    boosted.set_quote_multiplier_bps(&100u128);
+    vault.withdraw(&user, &5_000u128);
+
+    assert!(token_client.balance(&user) >= 5_000i128);
+    assert!(
+        boosted.balance(&vault_id) > 13_000i128,
+        "dust quote forced an oversized strategy unwind"
+    );
 }
 
 #[contractimpl]

@@ -526,6 +526,7 @@ impl AquariusLpVault {
         in_amount: u128,
         enforce_divergence: bool,
         exit_root: Option<u128>,
+        input_balance_before: Option<u128>,
     ) -> u128 {
         if in_amount == 0 {
             return 0;
@@ -569,7 +570,13 @@ impl AquariusLpVault {
 
         // Balance first: `authorize_as_current_contract` only covers the next
         // contract call, so an intervening read discards the authorization.
-        let before = Self::balance_of_token(env, &out_token);
+        // The deployed pool requires a root transfer entry. Since invoker auth
+        // entries are not consumable, also cap the transaction-atomic input
+        // balance delta whenever the vault has enough input for a replay to
+        // succeed. Full-balance swaps need no extra read: a repeated transfer
+        // necessarily fails inside the token contract and rolls the pool call
+        // back. Callers pass the balance they already read before entering.
+        let out_before = Self::balance_of_token(env, &out_token);
         env.authorize_as_current_contract(auths);
         let res: Result<u128, CallError> = try_call(
             env,
@@ -581,7 +588,15 @@ impl AquariusLpVault {
             emit_call_failure(env, &pool, e, true);
             return 0;
         }
-        Self::balance_of_token(env, &out_token).saturating_sub(before)
+        if let Some(in_before) = input_balance_before {
+            if in_before >= in_amount.saturating_mul(2) {
+                let in_after = Self::balance_of_token(env, &in_token);
+                if in_before.saturating_sub(in_after) > in_amount {
+                    panic!("pool exceeded swap authorization");
+                }
+            }
+        }
+        Self::balance_of_token(env, &out_token).saturating_sub(out_before)
     }
 
     /// Deploys idle underlying into the full-range position.
@@ -631,9 +646,10 @@ impl AquariusLpVault {
         if half == 0 {
             return 0;
         }
-        Self::swap_exact_in(env, u_idx, o_idx, half, true, None);
+        Self::swap_exact_in(env, u_idx, o_idx, half, true, None, Some(idle));
 
-        let amount_u = Self::balance_of_token(env, &underlying).min(deployable - half);
+        let underlying_balance = Self::balance_of_token(env, &underlying);
+        let amount_u = underlying_balance.min(deployable - half);
         let amount_o = Self::balance_of_token(env, &Self::other_token(env));
         if amount_u == 0 || amount_o == 0 {
             return 0;
@@ -710,6 +726,13 @@ impl AquariusLpVault {
             let args: Vec<Val> = (me.clone(), pool.clone(), to_i128(amt)).into_val(env);
             auths.push_back(auth_entry(env, &tok, "transfer", args, Vec::new(env)));
         }
+        let (balance0_before, balance1_before) = if u_idx == 0 {
+            (underlying_balance, amount_o)
+        } else {
+            (amount_o, underlying_balance)
+        };
+        let guard0 = balance0_before >= actual0.saturating_mul(2);
+        let guard1 = balance1_before >= actual1.saturating_mul(2);
         env.authorize_as_current_contract(auths);
 
         let deposited: Result<(Vec<u128>, u128), CallError> = try_call(
@@ -733,6 +756,20 @@ impl AquariusLpVault {
                 return 0;
             }
         };
+        if guard0 {
+            let spent0 =
+                balance0_before.saturating_sub(Self::balance_of_token(env, &Self::token(env, 0)));
+            if spent0 > actual0 {
+                panic!("pool exceeded deposit authorization");
+            }
+        }
+        if guard1 {
+            let spent1 =
+                balance1_before.saturating_sub(Self::balance_of_token(env, &Self::token(env, 1)));
+            if spent1 > actual1 {
+                panic!("pool exceeded deposit authorization");
+            }
+        }
         if minted > 0 {
             Self::set_position_liquidity(env, Self::position_liquidity(env).saturating_add(minted));
         }
@@ -770,6 +807,7 @@ impl AquariusLpVault {
                 other_balance,
                 true,
                 Some(exit_root),
+                None,
             );
             return true;
         }
@@ -872,6 +910,7 @@ impl AquariusLpVault {
                 other_total,
                 true,
                 Some(exit_root),
+                None,
             );
         }
 
@@ -1282,7 +1321,7 @@ impl AquariusLpVault {
         // read-only `balance` — discards the authorization and the pool's
         // nested `transfer` then fails with Auth(InvalidAction). Verified on
         // testnet against the real Aquarius pool.
-        let before = Self::balance_of_token(env, &underlying);
+        let underlying_before = Self::balance_of_token(env, &underlying);
         env.authorize_as_current_contract(auths);
         let res: Result<u128, CallError> = try_call(
             env,
@@ -1294,7 +1333,10 @@ impl AquariusLpVault {
             emit_call_failure(env, &route_pool, e, true);
             return 0;
         }
-        Self::balance_of_token(env, &underlying).saturating_sub(before)
+        // `amount` is the vault's complete reward-token balance. Replaying the
+        // exact transfer therefore fails inside SEP-41 and reverts the route
+        // invocation without another cross-contract balance read here.
+        Self::balance_of_token(env, &underlying).saturating_sub(underlying_before)
     }
 
     /// Permissionless: claim the configured primary reward, third-party gauge
@@ -1428,6 +1470,7 @@ impl AquariusLpVault {
                 Self::underlying_index(&env),
                 other_balance,
                 false,
+                None,
                 None,
             );
             if got > 0 {
