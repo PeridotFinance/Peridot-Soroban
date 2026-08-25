@@ -86,6 +86,7 @@ pub enum DataKey {
     // testnet deployment does not invalidate its serialized Config value.
     ReceiptVault,
     PrimaryRewardToken,
+    RewardMinRate(Address),
 }
 
 const TTL_THRESHOLD: u32 = 500_000;

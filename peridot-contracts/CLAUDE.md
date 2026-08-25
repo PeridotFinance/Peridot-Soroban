@@ -66,7 +66,9 @@ MarginController (leveraged trading, optional)
   strategies and ReceiptVaults that share the same concentrated PYUSD/USDC pool.
 - `harvest()` converts the configurable primary reward (AQUA at launch) and gauge
   rewards into each market's underlying, then redeploys. Reward token and route are
-  independently admin-configurable.
+  independently admin-configurable. Each reward also requires a governance-set,
+  1e7-scaled minimum raw-underlying/raw-reward rate; a missing or breached floor leaves
+  the reward idle instead of trusting the route pool's own quote.
 - Use an isolated LP-market Peridottroller, CF=0, and borrow paused. Deployment scripts
   require the controller address explicitly. Reuse the appropriate existing JRM while
   the markets remain supply-only.

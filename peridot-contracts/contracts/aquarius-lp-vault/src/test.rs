@@ -847,6 +847,29 @@ fn max_deploy_caps_what_reaches_the_pool() {
 }
 
 #[test]
+fn deploy_rejects_a_pool_quote_above_the_offered_token_amounts() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    f.vault.set_max_deploy(&f.admin, &100_0000000u128);
+
+    // Inflate only the underlying leg. Because max_deploy is much smaller
+    // than the deposit, the vault has enough idle underlying for a malicious
+    // pool to pull the excess unless the authorization is explicitly bounded.
+    if f.usdc_id < f.eurc_id {
+        f.pool.set_deposit_quote_extra(&100_0000000u128, &0u128);
+    } else {
+        f.pool.set_deposit_quote_extra(&0u128, &100_0000000u128);
+    }
+    deposit_for(&f, &f.receipt_market_id, 1_000_0000000i128);
+
+    assert_eq!(
+        f.vault.get_position_liquidity(),
+        0,
+        "vault accepted a deposit quote above its desired amounts"
+    );
+}
+
+#[test]
 fn pausing_blocks_deposits_but_never_withdrawals() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
@@ -1023,13 +1046,30 @@ fn harvest_sells_rewards_into_underlying_and_redeploys() {
     f.vault
         .set_reward_route(&f.admin, &f.aqua_id, &Some(route_id));
 
+    // A route alone is deliberately insufficient: permissionless callers may
+    // not sell until governance supplies an independent minimum rate.
+    let guarded_dust = 1_0000000i128;
+    f.aqua.mint(&f.vault_id, &guarded_dust);
+    let caller = Address::generate(&f.env);
+    assert_eq!(f.vault.sweep_reward(&caller, &f.aqua_id), 0);
+    assert_eq!(f.aqua.balance(&f.vault_id), guarded_dust);
+
+    let probe = 1_000_0000000u128;
+    let (in_idx, out_idx) = if f.aqua_id < f.usdc_id {
+        (0u32, 1u32)
+    } else {
+        (1u32, 0u32)
+    };
+    let quote = route.estimate_swap(&in_idx, &out_idx, &probe);
+    let min_rate = mul_div(quote, 9_500_000u128, probe);
+    f.vault.set_reward_min_rate(&f.admin, &f.aqua_id, &min_rate);
+
     // Pool owes the vault some AQUA.
     f.aqua.mint(&f.pool_id, &100_000_0000000i128);
     f.pool
         .credit_rewards(&f.vault_id, &100_000_0000000u128, &0u128);
 
     let nav_before = f.vault.get_total_underlying();
-    let caller = Address::generate(&f.env);
     f.vault.harvest(&caller);
 
     assert_eq!(
@@ -1040,6 +1080,67 @@ fn harvest_sells_rewards_into_underlying_and_redeploys() {
     assert!(
         f.vault.get_total_underlying() > nav_before,
         "harvest did not increase NAV"
+    );
+}
+
+#[test]
+fn harvest_keeps_rewards_when_the_route_quote_breaches_governance_floor() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 1_000_0000000i128);
+
+    let (t0, t1) = if f.aqua_id < f.usdc_id {
+        (f.aqua_id.clone(), f.usdc_id.clone())
+    } else {
+        (f.usdc_id.clone(), f.aqua_id.clone())
+    };
+    let route_id = f.env.register(mock_aquarius_pool::MockAquariusPool, ());
+    let route = mock_aquarius_pool::MockAquariusPoolClient::new(&f.env, &route_id);
+    route.initialize(&t0, &t1, &60i32, &30u32);
+    let lp = Address::generate(&f.env);
+    f.aqua.mint(&lp, &10_000_000_0000000i128);
+    f.usdc.mint(&lp, &3_740_0000000i128);
+    let (a0, a1) = if f.aqua_id < f.usdc_id {
+        (10_000_000_0000000u128, 3_740_0000000u128)
+    } else {
+        (3_740_0000000u128, 10_000_000_0000000u128)
+    };
+    let mut desired: Vec<u128> = Vec::new(&f.env);
+    desired.push_back(a0);
+    desired.push_back(a1);
+    route.deposit_position(&lp, &-887_220i32, &887_220i32, &desired, &0u128);
+    f.vault
+        .set_reward_route(&f.admin, &f.aqua_id, &Some(route_id.clone()));
+
+    let probe = 1_000_0000000u128;
+    let (in_idx, out_idx) = if f.aqua_id < f.usdc_id {
+        (0u32, 1u32)
+    } else {
+        (1u32, 0u32)
+    };
+    let fair_quote = route.estimate_swap(&in_idx, &out_idx, &probe);
+    let min_rate = mul_div(fair_quote, 9_500_000u128, probe);
+    f.vault.set_reward_min_rate(&f.admin, &f.aqua_id, &min_rate);
+
+    // Flood the route with AQUA so the permissionless caller sees a quote far
+    // below the governance-approved rate.
+    let attacker = Address::generate(&f.env);
+    f.aqua.mint(&attacker, &100_000_000_0000000i128);
+    if f.aqua_id < f.usdc_id {
+        route.donate(&attacker, &100_000_000_0000000u128, &0u128);
+    } else {
+        route.donate(&attacker, &0u128, &100_000_000_0000000u128);
+    }
+
+    let reward = 100_000_0000000u128;
+    f.aqua.mint(&f.pool_id, &(reward as i128));
+    f.pool.credit_rewards(&f.vault_id, &reward, &0u128);
+    f.vault.harvest(&Address::generate(&f.env));
+
+    assert_eq!(
+        f.aqua.balance(&f.vault_id),
+        reward as i128,
+        "harvest sold rewards below the governance floor"
     );
 }
 

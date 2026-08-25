@@ -47,6 +47,10 @@ AQUA=${AQUA:-CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK}
 # Reward conversion routes only; neither is the invested PYUSD/USDC pool.
 AQUA_PYUSD_ROUTE=${AQUA_PYUSD_ROUTE:-CADFWSBBD6VMCL45DEPZ37X3JNXOZXIWEVJJTHMQH3UEB3JSQVJSPG2I}
 AQUA_USDC_ROUTE=${AQUA_USDC_ROUTE:-CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O}
+REWARD_PROBE_AMOUNT=${REWARD_PROBE_AMOUNT:-10000000000} # 1,000 AQUA
+REWARD_RATE_FLOOR_BPS=${REWARD_RATE_FLOOR_BPS:-9500}    # 95% of live route quote
+PYUSD_AQUA_MIN_RATE_SCALED=${PYUSD_AQUA_MIN_RATE_SCALED:-}
+USDC_AQUA_MIN_RATE_SCALED=${USDC_AQUA_MIN_RATE_SCALED:-}
 
 # Keep the initial combined strategy capacity at 25,000 units instead of
 # silently doubling the old PYUSD-only 25,000-unit budget. Raise the two sides
@@ -66,13 +70,15 @@ if [[ "$PREFLIGHT_ONLY" != "true" && "$PREFLIGHT_ONLY" != "false" ]]; then
   echo "ERROR: PREFLIGHT_ONLY must be true or false." >&2
   exit 2
 fi
-case "$PEG_PROBE_AMOUNT:$MIN_PEG_RATIO_BPS" in
+case "$PEG_PROBE_AMOUNT:$MIN_PEG_RATIO_BPS:$REWARD_PROBE_AMOUNT:$REWARD_RATE_FLOOR_BPS" in
   *[!0-9:]*|:*|*:)
     echo "ERROR: PEG_PROBE_AMOUNT and MIN_PEG_RATIO_BPS must be positive integers." >&2
     exit 2
     ;;
 esac
-if (( PEG_PROBE_AMOUNT == 0 || MIN_PEG_RATIO_BPS == 0 || MIN_PEG_RATIO_BPS > 10000 )); then
+if (( PEG_PROBE_AMOUNT == 0 || MIN_PEG_RATIO_BPS == 0 || MIN_PEG_RATIO_BPS > 10000 || \
+      REWARD_PROBE_AMOUNT == 0 || REWARD_RATE_FLOOR_BPS == 0 || \
+      REWARD_RATE_FLOOR_BPS > 10000 )); then
   echo "ERROR: peg probe must be positive and peg floor must be within 1..10000 bps." >&2
   exit 2
 fi
@@ -87,16 +93,52 @@ view() {
     --id "$1" --source-account "$IDENTITY" --network "$NETWORK" --send no -- "${@:2}"
 }
 
-verify_route() {
+reward_min_rate() {
   local route=$1
   local settlement=$2
   local label=$3
+  local configured=$4
   local route_tokens
+  local in_idx
+  local out_idx
+  local quote
+  local quote_raw
+  local quoted_rate_scaled
   route_tokens=$(view "$route" get_tokens)
-  if [[ "$route_tokens" != *"$settlement"* || "$route_tokens" != *"$AQUA"* ]]; then
+  if [[ "$route_tokens" == "[\"$AQUA\",\"$settlement\"]" ]]; then
+    in_idx=0
+    out_idx=1
+  elif [[ "$route_tokens" == "[\"$settlement\",\"$AQUA\"]" ]]; then
+    in_idx=1
+    out_idx=0
+  else
     echo "ERROR: $label must contain AQUA and its settlement asset; got $route_tokens" >&2
     exit 1
   fi
+  quote=$(view "$route" estimate_swap \
+    --in_idx "$in_idx" --out_idx "$out_idx" --in_amount "$REWARD_PROBE_AMOUNT")
+  quote_raw=${quote//\"/}
+  case "$quote_raw" in
+    ''|*[!0-9]*)
+      echo "ERROR: invalid $label reward quote: $quote" >&2
+      exit 1
+      ;;
+  esac
+  quoted_rate_scaled=$(( quote_raw * 10000000 / REWARD_PROBE_AMOUNT ))
+  if [[ -z "$configured" ]]; then
+    configured=$(( quoted_rate_scaled * REWARD_RATE_FLOOR_BPS / 10000 ))
+  fi
+  case "$configured" in
+    ''|*[!0-9]*)
+      echo "ERROR: $label minimum rate must be a positive integer." >&2
+      exit 1
+      ;;
+  esac
+  if (( quote_raw == 0 || configured == 0 )); then
+    echo "ERROR: $label reward quote and configured rate floor must be non-zero." >&2
+    exit 1
+  fi
+  echo "$configured"
 }
 
 echo "==> Verifying concentrated PYUSD/USDC pool and both AQUA routes"
@@ -108,8 +150,10 @@ if [[ "$POOL_TYPE" != '"concentrated"' || "$POOL_TOKENS" != "$EXPECTED_POOL_TOKE
   echo "type=$POOL_TYPE tokens=$POOL_TOKENS" >&2
   exit 1
 fi
-verify_route "$AQUA_PYUSD_ROUTE" "$PYUSD" AQUA_PYUSD_ROUTE
-verify_route "$AQUA_USDC_ROUTE" "$USDC" AQUA_USDC_ROUTE
+PYUSD_AQUA_MIN_RATE_SCALED=$(reward_min_rate \
+  "$AQUA_PYUSD_ROUTE" "$PYUSD" AQUA_PYUSD_ROUTE "$PYUSD_AQUA_MIN_RATE_SCALED")
+USDC_AQUA_MIN_RATE_SCALED=$(reward_min_rate \
+  "$AQUA_USDC_ROUTE" "$USDC" AQUA_USDC_ROUTE "$USDC_AQUA_MIN_RATE_SCALED")
 
 USDC_PRICE=$(view "$UPSTREAM_ORACLE" lastprice --asset '{"Other":"USDC"}')
 if [[ "$USDC_PRICE" == "null" ]]; then
@@ -134,6 +178,8 @@ fi
 
 if [[ "$PREFLIGHT_ONLY" == "true" ]]; then
   echo "Preflight passed: concentrated pool, oracle, peg quote, and both AQUA routes are valid."
+  echo "AQUA/PYUSD minimum rate (1e7 scale): $PYUSD_AQUA_MIN_RATE_SCALED"
+  echo "AQUA/USDC minimum rate (1e7 scale): $USDC_AQUA_MIN_RATE_SCALED"
   exit 0
 fi
 
@@ -184,6 +230,9 @@ invoke "$PYUSD_VAULT_ID" set_primary_reward_token \
   --admin_addr "$ADMIN" --reward_token "$AQUA"
 invoke "$PYUSD_VAULT_ID" set_reward_route \
   --admin_addr "$ADMIN" --reward_token "$AQUA" --route "$AQUA_PYUSD_ROUTE"
+invoke "$PYUSD_VAULT_ID" set_reward_min_rate \
+  --admin_addr "$ADMIN" --reward_token "$AQUA" \
+  --min_rate_scaled "$PYUSD_AQUA_MIN_RATE_SCALED"
 PYUSD_NAV_ROOT=$(invoke "$PYUSD_VAULT_ID" refresh_nav_root)
 if [[ "${PYUSD_NAV_ROOT//\"/}" == "0" ]]; then
   echo "ERROR: PYUSD/USDC Reflector aliases produced a zero NAV root." >&2
@@ -212,6 +261,9 @@ invoke "$USDC_VAULT_ID" set_primary_reward_token \
   --admin_addr "$ADMIN" --reward_token "$AQUA"
 invoke "$USDC_VAULT_ID" set_reward_route \
   --admin_addr "$ADMIN" --reward_token "$AQUA" --route "$AQUA_USDC_ROUTE"
+invoke "$USDC_VAULT_ID" set_reward_min_rate \
+  --admin_addr "$ADMIN" --reward_token "$AQUA" \
+  --min_rate_scaled "$USDC_AQUA_MIN_RATE_SCALED"
 USDC_NAV_ROOT=$(invoke "$USDC_VAULT_ID" refresh_nav_root)
 if [[ "${USDC_NAV_ROOT//\"/}" == "0" ]]; then
   echo "ERROR: PYUSD/USDC Reflector aliases produced a zero NAV root." >&2
@@ -285,10 +337,12 @@ cat <<SUMMARY
   PYUSD Aquarius vault $PYUSD_VAULT_ID
   PYUSD ReceiptVault   $PYUSD_MARKET_ID
   PYUSD AQUA route     $AQUA_PYUSD_ROUTE
+  PYUSD AQUA floor     $PYUSD_AQUA_MIN_RATE_SCALED (1e7 raw PYUSD/raw AQUA)
 
   USDC Aquarius vault  $USDC_VAULT_ID
   USDC ReceiptVault    $USDC_MARKET_ID
   USDC AQUA route      $AQUA_USDC_ROUTE
+  USDC AQUA floor      $USDC_AQUA_MIN_RATE_SCALED (1e7 raw USDC/raw AQUA)
 
   Controller           $CONTROLLER
   Collateral factors   PYUSD=$PYUSD_CF USDC=$USDC_CF

@@ -19,6 +19,11 @@ pub const SHARE_DECIMALS: u32 = 7;
 /// unsafe value at initialization instead of panicking later during NAV math.
 pub const MAX_TOKEN_DECIMALS: u32 = 38;
 
+/// Scale for governance's minimum raw-underlying/raw-reward exchange rate.
+/// Seven decimals keeps deployment-script arithmetic within signed 64-bit
+/// bounds for the target routes while retaining sub-basis-point precision.
+pub const REWARD_RATE_SCALE: u128 = 10_000_000u128;
+
 /// Deposits below this many raw underlying units are refused: the swap +
 /// deposit round trip cannot mint non-zero liquidity for dust, and the
 /// receipt-vault keeps dust in idle cash rather than deploying it.

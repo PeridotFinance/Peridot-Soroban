@@ -186,8 +186,12 @@ Shape:
 - `harvest()` is permissionless: claims the admin-configured primary reward
   token (AQUA at launch), third-party gauge incentives and accrued swap fees,
   sells them for underlying through per-token route pools, and redeploys.
-  `set_primary_reward_token` and `set_reward_route` let governance rotate the
-  reward asset and conversion venue independently if Aquarius changes either.
+  `set_primary_reward_token`, `set_reward_route`, and `set_reward_min_rate` let
+  governance rotate the reward asset, conversion venue, and minimum acceptable
+  raw-underlying/raw-reward rate independently if Aquarius changes either.
+  A route without a non-zero 1e7-scaled minimum rate fails closed and leaves
+  the reward idle; permissionless callers cannot force a sale from a
+  temporarily manipulated route quote.
 - The ReceiptVault-facing share quote is a conservative liquidation value. It
   discounts gross oracle NAV by the configured pool-divergence and execution-
   slippage bounds so a redemption does not come back a few basis points short
@@ -235,7 +239,8 @@ Both scripts hard-fail unless the target reports `pool_type = concentrated`
 with the exact expected token order. They create new supply-only markets,
 leave collateral factors at 0, and pause borrowing. The generic
 `scripts/deploy_aquarius_lp_market_mainnet.sh` remains the USDC/EURC deployment
-path.
+path. Each script also probes its AQUA route and installs a governance reward
+floor at 95% of that live quote unless an explicit reviewed floor is supplied.
 
 Keepers to schedule:
 - `refresh_nav_root()` — keeps the cached price ratio fresh so user

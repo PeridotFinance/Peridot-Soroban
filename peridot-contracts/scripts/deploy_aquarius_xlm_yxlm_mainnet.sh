@@ -41,6 +41,9 @@ AQUA=${AQUA:-CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK}
 # Aquarius' documented XLM/AQUA pool. The vault only accepts a reward route
 # containing both the reward token and this market's underlying token.
 AQUA_ROUTE=${AQUA_ROUTE:-CCY2PXGMKNQHO7WNYXEWX76L2C5BH3JUW3RCATGUYKY7QQTRILBZIFWV}
+REWARD_PROBE_AMOUNT=${REWARD_PROBE_AMOUNT:-10000000000} # 1,000 AQUA
+REWARD_RATE_FLOOR_BPS=${REWARD_RATE_FLOOR_BPS:-9500}    # 95% of live route quote
+AQUA_MIN_RATE_SCALED=${AQUA_MIN_RATE_SCALED:-}
 
 SUPPLY_CAP=${SUPPLY_CAP:-1000000000000}  # 100,000 XLM
 MAX_DEPLOY=${MAX_DEPLOY:-1000000000000}  # 100,000 XLM
@@ -59,13 +62,15 @@ if [[ "$PREFLIGHT_ONLY" != "true" && "$PREFLIGHT_ONLY" != "false" ]]; then
   echo "ERROR: PREFLIGHT_ONLY must be true or false." >&2
   exit 2
 fi
-case "$PEG_PROBE_AMOUNT:$MIN_PEG_RATIO_BPS" in
+case "$PEG_PROBE_AMOUNT:$MIN_PEG_RATIO_BPS:$REWARD_PROBE_AMOUNT:$REWARD_RATE_FLOOR_BPS" in
   *[!0-9:]*|:*|*:)
     echo "ERROR: PEG_PROBE_AMOUNT and MIN_PEG_RATIO_BPS must be positive integers." >&2
     exit 2
     ;;
 esac
-if (( PEG_PROBE_AMOUNT == 0 || MIN_PEG_RATIO_BPS == 0 || MIN_PEG_RATIO_BPS > 10000 )); then
+if (( PEG_PROBE_AMOUNT == 0 || MIN_PEG_RATIO_BPS == 0 || MIN_PEG_RATIO_BPS > 10000 || \
+      REWARD_PROBE_AMOUNT == 0 || REWARD_RATE_FLOOR_BPS == 0 || \
+      REWARD_RATE_FLOOR_BPS > 10000 )); then
   echo "ERROR: peg probe must be positive and peg floor must be within 1..10000 bps." >&2
   exit 2
 fi
@@ -90,8 +95,38 @@ if [[ "$POOL_TYPE" != '"concentrated"' || "$POOL_TOKENS" != "$EXPECTED_POOL_TOKE
   exit 1
 fi
 ROUTE_TOKENS=$(view "$AQUA_ROUTE" get_tokens)
-if [[ "$ROUTE_TOKENS" != *"$XLM"* || "$ROUTE_TOKENS" != *"$AQUA"* ]]; then
+if [[ "$ROUTE_TOKENS" == "[\"$AQUA\",\"$XLM\"]" ]]; then
+  REWARD_IN_IDX=0
+  REWARD_OUT_IDX=1
+elif [[ "$ROUTE_TOKENS" == "[\"$XLM\",\"$AQUA\"]" ]]; then
+  REWARD_IN_IDX=1
+  REWARD_OUT_IDX=0
+else
   echo "ERROR: AQUA_ROUTE must contain AQUA and XLM; got $ROUTE_TOKENS" >&2
+  exit 1
+fi
+REWARD_QUOTE=$(view "$AQUA_ROUTE" estimate_swap \
+  --in_idx "$REWARD_IN_IDX" --out_idx "$REWARD_OUT_IDX" \
+  --in_amount "$REWARD_PROBE_AMOUNT")
+REWARD_QUOTE_RAW=${REWARD_QUOTE//\"/}
+case "$REWARD_QUOTE_RAW" in
+  ''|*[!0-9]*)
+    echo "ERROR: invalid AQUA/XLM reward quote: $REWARD_QUOTE" >&2
+    exit 1
+    ;;
+esac
+QUOTED_REWARD_RATE_SCALED=$(( REWARD_QUOTE_RAW * 10000000 / REWARD_PROBE_AMOUNT ))
+if [[ -z "$AQUA_MIN_RATE_SCALED" ]]; then
+  AQUA_MIN_RATE_SCALED=$(( QUOTED_REWARD_RATE_SCALED * REWARD_RATE_FLOOR_BPS / 10000 ))
+fi
+case "$AQUA_MIN_RATE_SCALED" in
+  ''|*[!0-9]*)
+    echo "ERROR: AQUA_MIN_RATE_SCALED must be a positive integer." >&2
+    exit 1
+    ;;
+esac
+if (( REWARD_QUOTE_RAW == 0 || AQUA_MIN_RATE_SCALED == 0 )); then
+  echo "ERROR: AQUA/XLM reward quote and configured rate floor must be non-zero." >&2
   exit 1
 fi
 
@@ -118,6 +153,7 @@ fi
 
 if [[ "$PREFLIGHT_ONLY" == "true" ]]; then
   echo "Preflight passed: concentrated XLM/yXLM pool, oracle, peg quote, and AQUA route are valid."
+  echo "AQUA/XLM minimum rate (1e7 scale): $AQUA_MIN_RATE_SCALED"
   exit 0
 fi
 
@@ -167,6 +203,9 @@ invoke "$VAULT_ID" set_primary_reward_token \
   --admin_addr "$ADMIN" --reward_token "$AQUA"
 invoke "$VAULT_ID" set_reward_route \
   --admin_addr "$ADMIN" --reward_token "$AQUA" --route "$AQUA_ROUTE"
+invoke "$VAULT_ID" set_reward_min_rate \
+  --admin_addr "$ADMIN" --reward_token "$AQUA" \
+  --min_rate_scaled "$AQUA_MIN_RATE_SCALED"
 NAV_ROOT=$(invoke "$VAULT_ID" refresh_nav_root)
 if [[ "${NAV_ROOT//\"/}" == "0" ]]; then
   echo "ERROR: direct Reflector aliases produced a zero NAV root." >&2
@@ -217,6 +256,7 @@ cat <<SUMMARY
   Aquarius vault $VAULT_ID
   XLM market      $MARKET_ID
   Pool            $POOL
+  AQUA rate floor $AQUA_MIN_RATE_SCALED (1e7 raw XLM/raw AQUA)
   Collateral CF   $CF
   Borrow paused   $BORROW_PAUSED
 

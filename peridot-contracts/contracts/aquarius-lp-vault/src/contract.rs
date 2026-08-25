@@ -623,6 +623,19 @@ impl AquariusLpVault {
                 return 0;
             }
         };
+        if actual.len() != 2 {
+            return 0;
+        }
+        let actual0 = actual.get(0).unwrap_or(0);
+        let actual1 = actual.get(1).unwrap_or(0);
+        let desired0 = desired.get(0).unwrap_or(0);
+        let desired1 = desired.get(1).unwrap_or(0);
+        // The authorization below is the maximum authority the untrusted pool
+        // receives. Never let its estimate enlarge that authority beyond the
+        // two amounts this vault deliberately offered.
+        if actual0 == 0 || actual1 == 0 || actual0 > desired0 || actual1 > desired1 {
+            return 0;
+        }
         if est_liquidity == 0 {
             return 0;
         }
@@ -1151,7 +1164,30 @@ impl AquariusLpVault {
                     return 0;
                 }
             };
-        let out_min = apply_slippage_floor(estimated, Self::slippage_bps(env));
+        let rate_key = DataKey::RewardMinRate(reward_token.clone());
+        bump_mapping_ttl(env, &rate_key);
+        let min_rate_scaled: u128 = env.storage().persistent().get(&rate_key).unwrap_or(0);
+        if min_rate_scaled == 0 {
+            HarvestSkipped {
+                reward_token: reward_token.clone(),
+                reward_amount: amount,
+                reason: Symbol::new(env, "no_guard"),
+            }
+            .publish(env);
+            return 0;
+        }
+        let configured_floor = mul_div(amount, min_rate_scaled, REWARD_RATE_SCALE);
+        if configured_floor == 0 || estimated < configured_floor {
+            HarvestSkipped {
+                reward_token: reward_token.clone(),
+                reward_amount: amount,
+                reason: Symbol::new(env, "price_guard"),
+            }
+            .publish(env);
+            return 0;
+        }
+        let out_min =
+            apply_slippage_floor(estimated, Self::slippage_bps(env)).max(configured_floor);
         if out_min == 0 {
             HarvestSkipped {
                 reward_token: reward_token.clone(),
@@ -1644,7 +1680,8 @@ impl AquariusLpVault {
     /// pricing at all — which blocks supplier exits, not just deposits.
     pub fn bump_config_mapping_ttl(env: Env, token: Address) {
         bump_mapping_ttl(&env, &DataKey::OracleSymbol(token.clone()));
-        bump_mapping_ttl(&env, &DataKey::RewardRoute(token));
+        bump_mapping_ttl(&env, &DataKey::RewardRoute(token.clone()));
+        bump_mapping_ttl(&env, &DataKey::RewardMinRate(token));
     }
 
     /// Registers the Aquarius pool used to sell a reward token for underlying.
@@ -1662,6 +1699,30 @@ impl AquariusLpVault {
                 bump_mapping_ttl(&env, &key);
             }
             None => env.storage().persistent().remove(&key),
+        }
+    }
+
+    /// Sets the minimum raw underlying returned per raw reward unit, scaled by
+    /// `REWARD_RATE_SCALE` (1e7). A zero value removes the guard and therefore
+    /// disables selling that reward until governance installs a new floor.
+    ///
+    /// The guard is intentionally independent of the route: changing a pool
+    /// must not silently weaken the fair-value floor. Keepers should alert and
+    /// leave rewards idle when a legitimate market move crosses the floor;
+    /// governance can then review and update it.
+    pub fn set_reward_min_rate(
+        env: Env,
+        admin_addr: Address,
+        reward_token: Address,
+        min_rate_scaled: u128,
+    ) {
+        Self::require_admin(&env, &admin_addr);
+        let key = DataKey::RewardMinRate(reward_token);
+        if min_rate_scaled == 0 {
+            env.storage().persistent().remove(&key);
+        } else {
+            env.storage().persistent().set(&key, &min_rate_scaled);
+            bump_mapping_ttl(&env, &key);
         }
     }
 
@@ -1822,6 +1883,13 @@ impl AquariusLpVault {
         env.storage()
             .persistent()
             .get(&DataKey::RewardRoute(reward_token))
+    }
+
+    pub fn get_reward_min_rate(env: Env, reward_token: Address) -> u128 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::RewardMinRate(reward_token))
+            .unwrap_or(0)
     }
 
     pub fn get_receipt_vault(env: Env) -> Option<Address> {

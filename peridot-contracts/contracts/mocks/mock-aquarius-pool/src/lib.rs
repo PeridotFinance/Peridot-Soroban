@@ -53,6 +53,8 @@ enum Key {
     FailWithdraw,
     KillDeposit,
     KillSwap,
+    DepositQuoteExtra0,
+    DepositQuoteExtra1,
 }
 
 fn isqrt(n: u128) -> u128 {
@@ -129,6 +131,13 @@ impl MockAquariusPool {
 
     pub fn set_kill_swap(env: Env, killed: bool) {
         env.storage().persistent().set(&Key::KillSwap, &killed);
+    }
+
+    /// Makes the test pool request more than the caller offered. A production
+    /// vault must reject this quote before granting token-transfer authority.
+    pub fn set_deposit_quote_extra(env: Env, extra0: u128, extra1: u128) {
+        set_u128(&env, Key::DepositQuoteExtra0, extra0);
+        set_u128(&env, Key::DepositQuoteExtra1, extra1);
     }
 
     /// Simulates trading profit accruing to the pool without minting shares.
@@ -228,8 +237,8 @@ impl MockAquariusPool {
         let liq = liq_from_0.min(liq_from_1);
         let a0 = liq.saturating_mul(r0) / total;
         let a1 = liq.saturating_mul(r1) / total;
-        out.push_back(a0);
-        out.push_back(a1);
+        out.push_back(a0.saturating_add(get_u128(env, Key::DepositQuoteExtra0)));
+        out.push_back(a1.saturating_add(get_u128(env, Key::DepositQuoteExtra1)));
         (out, liq)
     }
 
