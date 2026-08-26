@@ -72,8 +72,8 @@ MarginController (leveraged trading, optional)
   permissionless harvests do not consume the cooldown; it starts only after value is
   actually claimed, converted, or deployed.
 - Root token-transfer authorizations required by the deployed Aquarius ABI are guarded
-  by post-call input balance-delta caps, and ReceiptVault rejects live strategy quotes
-  below 90% of its lower non-zero cached/accounting redemption baseline.
+  by post-call input balance-delta caps. ReceiptVault always marks live NAV losses down;
+  only fixed-cash redemption sizing rejects quotes below 90% of independent accounting.
 - Use an isolated LP-market Peridottroller, CF=0, and borrow paused. Deployment scripts
   require the controller address explicitly. Reuse the appropriate existing JRM while
   the markets remain supply-only.
@@ -107,6 +107,11 @@ MarginController (leveraged trading, optional)
 - **Events**: Single-tuple topics: `(Symbol("event_name"),)`.
 - **Checked arithmetic**: Use `.checked_add()`, `.checked_mul()` etc. to prevent overflow. `overflow-checks = true` in release profile.
 - **Cross-contract safety (FIND-039)**: Use `try_invoke_contract()` instead of `invoke_contract()` for all external contract calls to prevent account lockout from TTL-expired or malicious markets. Apply conservative fallbacks: collateral failures → $0, debt failures → skip market, token/price failures → skip market. Critical for `sum_positions_usd`, `exit_market`, and liquidation flows.
+- **Core lending footprint**: ReceiptVault `get_account_snapshot()` must use its
+  narrow, key-specific TTL/read path. Calling the broad `ensure_initialized()`
+  from this controller hot loop makes the XLM/USDC/EURC three-market borrow
+  exceed Soroban's 100-entry footprint (132 entries versus 81 with the narrow
+  path). Keep `bump_ttl()` as the separate permissionless global keepalive.
 
 ### Storage
 

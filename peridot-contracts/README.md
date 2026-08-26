@@ -80,6 +80,7 @@ Mocks (for tests only) live under `contracts/mocks/`.
   - `get_exchange_rate()`
   - `get_user_balance(user)` / `get_ptoken_balance(user)`
   - `get_user_borrow_balance(user)`
+  - `bump_ttl()` (permissionless global/config keepalive; call from market keepers)
   - `get_total_deposited()` / `get_total_ptokens()` / `get_total_underlying()`
   - `get_total_borrowed()` / `get_total_reserves()` / `get_available_liquidity()`
 
@@ -128,6 +129,19 @@ Mocks (for tests only) live under `contracts/mocks/`.
 - Admin setters require `admin.require_auth()`.
 - User actions require `user.require_auth()`.
 - Liquidation requires `liquidator.require_auth()` in the peridottroller; vault hooks `repay_on_behalf` and `seize` are callable only when the vault is wired to a Peridottroller.
+
+## Core Lending Resource Budget
+
+`get_account_snapshot()` uses a narrow, key-specific TTL path because the
+Peridottroller calls it once for every other entered market during a borrow.
+The former broad keepalive loaded unrelated vault configuration on each call:
+a borrow with one debt market and two DeFindex-style collateral markets reached
+132 ledger entries and exceeded Soroban's 100-entry limit. The regression now
+measures 81 entries and enforces a 90-entry ceiling. This guarantees the current
+three-market XLM/USDC/EURC shape, not the theoretical eight-market maximum;
+supporting larger portfolios still requires controller-side position caching or
+bounded collateral selection. Market keepers must call `bump_ttl()` separately
+to maintain global keys omitted from the hot account-health path.
 
 ## Boosted Markets (DeFindex)
 
@@ -196,9 +210,10 @@ Shape:
   discounts gross oracle NAV by the configured pool-divergence and execution-
   slippage bounds so a redemption does not come back a few basis points short
   solely because the paired leg had to be swapped.
-- ReceiptVault treats a live strategy quote below 90% of its lower non-zero
-  cached/accounting baseline as implausible. A dust-positive quote therefore
-  cannot force a full strategy unwind to fund a small withdrawal.
+- ReceiptVault always marks its exchange rate to live strategy NAV, including
+  real losses. For fixed-cash redemptions only, a quote below 90% of independent
+  book accounting is not allowed to force a full strategy unwind; the
+  non-zero output floor makes a real loss fail closed instead.
 - Aquarius swaps and position deposits enforce transaction-atomic input
   balance-delta caps. If a pool replays an exact root token-transfer
   authorization, the enclosing invocation reverts without asset loss.
@@ -276,8 +291,8 @@ exist purely to fit inside it, and both are pinned by tests:
   ReceiptVault redemption then sizes from its cached/accounting value and
   supplies a nonzero underlying floor; only that protected exit may use the
   strategy's last ratio, and it still enforces the pool-divergence guard. When
-  the live quote is unavailable, share sizing uses the lower nonzero cached or
-  accounting estimate to avoid under-redemption from an inflated cache.
+  the live quote is unavailable, share sizing prefers independent book
+  accounting and uses cache only when that baseline is absent.
 
 Measured: market deposit 90 entries / 5.0M instructions, market withdraw
 79 entries / 6.0M instructions.

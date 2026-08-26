@@ -87,22 +87,23 @@ impl ReceiptVault {
             .saturating_sub(tracked_cash)
     }
 
-    fn conservative_boosted_underlying_for_redemption(env: &Env) -> u128 {
+    fn boosted_underlying_redemption_baseline(env: &Env) -> u128 {
         let cached = Self::cached_boosted_underlying(env);
         let estimated = Self::estimate_boosted_underlying_from_accounting(env);
-        match (cached, estimated) {
-            (0, estimate) => estimate,
-            (cache, 0) => cache,
-            (cache, estimate) => cache.min(estimate),
+        if estimated > 0 {
+            // Book accounting is independent of a manipulable live strategy
+            // quote. An inflated or dust-poisoned cache must not determine how
+            // many strategy shares a fixed cash request unwinds.
+            estimated
+        } else {
+            cached
         }
     }
 
     fn get_boosted_underlying(env: &Env) -> u128 {
-        if let Some(boosted) = env
-            .storage()
-            .persistent()
-            .get::<_, Address>(&DataKey::BoostedVault)
-        {
+        let boosted_key = DataKey::BoostedVault;
+        if let Some(boosted) = env.storage().persistent().get::<_, Address>(&boosted_key) {
+            bump_boosted_vault_ttl(env);
             let shares_i =
                 token::TokenClient::new(env, &boosted).balance(&env.current_contract_address());
             if shares_i > 0 {
@@ -123,18 +124,9 @@ impl ReceiptVault {
                             let estimated = Self::estimate_boosted_underlying_from_accounting(env);
                             return cached.max(estimated);
                         }
-                        let quoted = amt_i as u128;
-                        let baseline = Self::conservative_boosted_underlying_for_redemption(env);
-                        let quote_floor =
-                            baseline.saturating_mul(BOOSTED_REDEMPTION_QUOTE_FLOOR_BPS) / BPS_SCALE;
-                        let boosted_underlying = if baseline > 0 && quoted < quote_floor {
-                            // Do not let a dust-positive strategy quote collapse
-                            // the ReceiptVault exchange rate before the same
-                            // guard gets a chance to size the strategy unwind.
-                            baseline
-                        } else {
-                            quoted
-                        };
+                        // Live NAV always marks the market up or down. Never
+                        // replace a real loss with a higher accounting value.
+                        let boosted_underlying = amt_i as u128;
                         env.storage()
                             .persistent()
                             .set(&DataKey::BoostedUnderlyingCached, &boosted_underlying);
@@ -427,13 +419,14 @@ impl ReceiptVault {
             total_amounts.push_back(0i128);
         }
         let quoted_underlying_i = total_amounts.get(0).unwrap_or(0);
-        let fallback_underlying = Self::conservative_boosted_underlying_for_redemption(env);
+        let fallback_underlying = Self::boosted_underlying_redemption_baseline(env);
         let total_underlying = if quoted_underlying_i > 0 {
             let quoted = quoted_underlying_i as u128;
             // A dust-positive live quote can otherwise make this market unwind
             // all strategy shares to satisfy a small cash request. Bound a
-            // sudden downward quote against the lower non-zero cached/accounting
-            // estimate. If the strategy really lost more than 10%, its own
+            // sudden downward quote against independent book accounting (or
+            // cache only when no accounting baseline exists). If the strategy
+            // really lost more than 10%, its own
             // non-zero `min_amounts_out` will fail closed instead of socializing
             // an oversized unwind across remaining suppliers.
             let quote_floor =
@@ -1368,15 +1361,14 @@ impl ReceiptVault {
     /// Return (ptoken_balance, borrow_balance, exchange_rate, underlying_token) in one call.
     /// Peridottroller uses this in account-health loops to replace 4 cross-contract reads with 1.
     pub fn get_account_snapshot(env: Env, user: Address) -> (u128, u128, u128, Address) {
-        let _ = ensure_initialized(&env);
+        // Do not call the broad `ensure_initialized` here. This endpoint runs once
+        // per entered market inside controller health checks, and loading every
+        // unrelated vault config key makes otherwise-valid three-market borrows
+        // exceed Soroban's ledger-footprint limit.
+        let token = ensure_initialized_for_snapshot(&env);
         let pbal = ptoken_balance(&env, &user);
-        let debt = Self::get_user_borrow_balance(env.clone(), user);
-        let rate = Self::get_exchange_rate(env.clone());
-        let token: Address = env
-            .storage()
-            .persistent()
-            .get(&DataKey::UnderlyingToken)
-            .expect("underlying not set");
+        let debt = Self::get_user_borrow_balance_internal(&env, &user, Some(pbal));
+        let rate = Self::get_exchange_rate_internal(&env);
         (pbal, debt, rate, token)
     }
 
@@ -1749,6 +1741,11 @@ impl ReceiptVault {
     /// Get the exchange rate (pToken to underlying ratio) scaled by 1e6
     pub fn get_exchange_rate(env: Env) -> u128 {
         let _ = ensure_initialized(&env);
+        Self::get_exchange_rate_internal(&env)
+    }
+
+    fn get_exchange_rate_internal(env: &Env) -> u128 {
+        bump_account_snapshot_valuation_ttl(env);
         let total_ptokens = total_ptokens_supply(&env);
         if total_ptokens == 0 {
             let total_underlying = Self::get_total_underlying(env.clone());
@@ -1779,6 +1776,13 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::UnderlyingToken)
             .expect("Vault not initialized")
+    }
+
+    /// Permissionless keepalive for global vault configuration and interest state.
+    /// Account-health snapshots deliberately use a narrow TTL path to stay within
+    /// Soroban's transaction footprint, so operators should call this periodically.
+    pub fn bump_ttl(env: Env) {
+        let _ = ensure_initialized(&env);
     }
 
     /// Get collateral factor (scaled 1e6)
@@ -2648,9 +2652,17 @@ impl ReceiptVault {
     /// Get user's current borrow balance (principal adjusted by index)
     pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
         let _ = ensure_initialized(&env);
+        Self::get_user_borrow_balance_internal(&env, &user, None)
+    }
+
+    fn get_user_borrow_balance_internal(
+        env: &Env,
+        user: &Address,
+        ptoken_balance_hint: Option<u128>,
+    ) -> u128 {
         let persistent = env.storage().persistent();
         let has_borrowed: Option<bool> = persistent.get(&DataKey::HasBorrowed(user.clone()));
-        bump_user_borrow_live_ttl(&env, &user);
+        bump_user_borrow_live_ttl(env, user);
         let snap: Option<BorrowSnapshot> = persistent.get(&DataKey::BorrowSnapshots(user.clone()));
         let snapshot = if let Some(snapshot) = snap {
             snapshot
@@ -2662,13 +2674,13 @@ impl ReceiptVault {
                 let principal_key = DataKey::BorrowPrincipal(user.clone());
                 let principal_opt: Option<u128> = persistent.get(&principal_key);
                 if let Some(principal) = principal_opt {
-                    bump_borrow_principal_ttl(&env, &user);
+                    bump_borrow_principal_ttl(env, user);
                     if principal > 0 {
                         panic!("borrow state missing");
                     }
                 } else {
-                    let pbal = ptoken_balance(&env, &user);
-                    if pbal > 0 && Self::total_borrowed_for_state_repair(&env) > 0 {
+                    let pbal = ptoken_balance_hint.unwrap_or_else(|| ptoken_balance(env, user));
+                    if pbal > 0 && Self::total_borrowed_for_state_repair(env) > 0 {
                         panic!("borrow state missing");
                     }
                 }
@@ -2684,6 +2696,7 @@ impl ReceiptVault {
         let current_index: u128 = persistent
             .get(&DataKey::BorrowIndex)
             .expect("borrow index missing");
+        bump_borrow_index_ttl(env);
         // principal * current_index / user_index
         Self::checked_mul_div_u128(snapshot.principal, current_index, snapshot.interest_index)
     }

@@ -128,6 +128,56 @@ pub fn ensure_initialized(env: &Env) -> Address {
     token
 }
 
+/// Lightweight initialization check for controller account-health snapshots.
+///
+/// A full `ensure_initialized` intentionally maintains every core and interest
+/// storage key. Calling it once per entered market makes cross-market health
+/// checks include unrelated configuration in the transaction footprint. The
+/// snapshot path only needs the initialization marker and underlying address;
+/// the valuation and debt helpers maintain the keys they actually consume.
+pub fn ensure_initialized_for_snapshot(env: &Env) -> Address {
+    let persistent = env.storage().persistent();
+    let token_key = DataKey::UnderlyingToken;
+    let initialized_key = DataKey::Initialized;
+    let token: Address = persistent.get(&token_key).expect("Vault not initialized");
+    if !persistent.get::<_, bool>(&initialized_key).unwrap_or(false) {
+        panic!("Vault not initialized");
+    }
+    persistent.extend_ttl(&token_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    persistent.extend_ttl(&initialized_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    token
+}
+
+/// Maintain only the global valuation entries read by an account snapshot.
+pub fn bump_account_snapshot_valuation_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    for key in [
+        DataKey::ManagedCash,
+        DataKey::TotalBorrowed,
+        DataKey::TotalReserves,
+        DataKey::TotalAdminFees,
+    ] {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
+}
+
+pub fn bump_borrow_index_ttl(env: &Env) {
+    env.storage()
+        .persistent()
+        .extend_ttl(&DataKey::BorrowIndex, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+pub fn bump_boosted_vault_ttl(env: &Env) {
+    let key = DataKey::BoostedVault;
+    if env.storage().persistent().has(&key) {
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 pub fn bump_core_ttl(env: &Env) {
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::Admin) {

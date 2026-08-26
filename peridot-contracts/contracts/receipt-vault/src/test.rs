@@ -1208,8 +1208,9 @@ fn test_core_ttl_bumps_all_critical_config_keys() {
     vault_client.set_idle_cash_buffer_bps(&admin, &500u32);
     vault_client.set_boosted_vault(&admin, &boosted_vault);
 
-    // Any initialized read path should now bump all critical config keys.
-    let _ = vault_client.get_underlying_token();
+    // The explicit permissionless keepalive bumps all critical config keys even
+    // though cross-market account snapshots now maintain only valuation state.
+    vault_client.bump_ttl();
 
     env.as_contract(&vault_contract_id, || {
         fn assert_bumped(env: &Env, key: &DataKey, label: &str) {
@@ -2799,6 +2800,95 @@ fn test_borrow_budget_peridottroller_same_market() {
 
     vault.borrow(&user, &80u128);
     assert_budget_under(&env, 5_300_000, 950_000);
+}
+
+#[test]
+fn test_borrow_budget_with_two_cross_market_collateral_positions() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.ledger().with_mut(|l| l.timestamp = 100);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let lender = Address::generate(&env);
+    let (borrow_token, _borrow_token_client, borrow_token_admin) = create_test_token(&env, &admin);
+    let (collateral_a_token, _collateral_a_client, collateral_a_admin) =
+        create_test_token(&env, &admin);
+    let (collateral_b_token, _collateral_b_client, collateral_b_admin) =
+        create_test_token(&env, &admin);
+
+    let borrow_vault_id = env.register(ReceiptVault, ());
+    let collateral_a_vault_id = env.register(ReceiptVault, ());
+    let collateral_b_vault_id = env.register(ReceiptVault, ());
+    let borrow_vault = ReceiptVaultClient::new(&env, &borrow_vault_id);
+    let collateral_a_vault = ReceiptVaultClient::new(&env, &collateral_a_vault_id);
+    let collateral_b_vault = ReceiptVaultClient::new(&env, &collateral_b_vault_id);
+    for (vault, underlying) in [
+        (&borrow_vault, &borrow_token),
+        (&collateral_a_vault, &collateral_a_token),
+        (&collateral_b_vault, &collateral_b_token),
+    ] {
+        vault.initialize(underlying, &0u128, &0u128, &admin);
+        vault.enable_static_rates(&admin);
+    }
+
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.initialize(&7u32, &10_000_000i128);
+    let comp_id = env.register(SimplePeridottroller, ());
+    let comp = SimplePeridottrollerClient::new(&env, &comp_id);
+    comp.initialize(&admin);
+    comp.set_oracle(&oracle_id);
+    for (vault, underlying) in [
+        (&borrow_vault_id, &borrow_token),
+        (&collateral_a_vault_id, &collateral_a_token),
+        (&collateral_b_vault_id, &collateral_b_token),
+    ] {
+        comp.add_market(vault);
+        comp.set_market_cf(vault, &800_000u128);
+        comp.set_price_fallback(underlying, &Some((10_000_000u128, 10_000_000u128)));
+    }
+    borrow_vault.set_peridottroller(&comp_id);
+    collateral_a_vault.set_peridottroller(&comp_id);
+    collateral_b_vault.set_peridottroller(&comp_id);
+
+    // Match production's DeFindex-backed collateral shape: each collateral
+    // ReceiptVault owns a distinct boosted strategy queried during valuation.
+    let boosted_a_id = env.register(MockBoostedVault, ());
+    let boosted_a = MockBoostedVaultClient::new(&env, &boosted_a_id);
+    boosted_a.initialize(&collateral_a_token);
+    collateral_a_vault.set_boosted_vault(&admin, &boosted_a_id);
+    let boosted_b_id = env.register(MockBoostedVault, ());
+    let boosted_b = MockBoostedVaultClient::new(&env, &boosted_b_id);
+    boosted_b.initialize(&collateral_b_token);
+    collateral_b_vault.set_boosted_vault(&admin, &boosted_b_id);
+
+    borrow_token_admin.mint(&lender, &1_000i128);
+    borrow_vault.deposit(&lender, &1_000u128);
+    collateral_a_admin.mint(&user, &500i128);
+    collateral_b_admin.mint(&user, &500i128);
+    collateral_a_vault.deposit(&user, &500u128);
+    collateral_b_vault.deposit(&user, &500u128);
+    comp.enter_market(&user, &borrow_vault_id);
+    comp.enter_market(&user, &collateral_a_vault_id);
+    comp.enter_market(&user, &collateral_b_vault_id);
+
+    borrow_vault.borrow(&user, &500u128);
+
+    let resources = env.cost_estimate().resources();
+    let read_entries = resources
+        .disk_read_entries
+        .saturating_add(resources.memory_read_entries);
+    assert!(
+        read_entries <= 90,
+        "three-market borrow exceeds network read-entry limit: {resources:?}"
+    );
+    assert!(
+        resources.write_entries <= 20,
+        "three-market borrow write footprint regressed: {resources:?}"
+    );
+    assert_budget_under(&env, 10_000_000, 3_000_000);
+    assert_eq!(borrow_vault.get_user_borrow_balance(&user), 500u128);
 }
 
 #[test]
@@ -5002,8 +5092,8 @@ fn test_direct_donation_does_not_inflate_exchange_rate() {
 //       surfaces as "withdraw liquidity shortfall" rather than an opaque panic.
 //   (c) The min_amounts_out vector length now matches the number of assets
 //       returned by get_asset_amounts_per_shares.
-//   (d) A failed/non-positive quote sizes from the lower non-zero accounting
-//       and cached values, avoiding under-redemption from an inflated cache.
+//   (d) A failed/non-positive quote sizes from book accounting when available,
+//       avoiding under-redemption from an inflated or dust-poisoned cache.
 //   (e) A dust-positive quote more than 10% below that baseline is treated as
 //       implausible and cannot force an otherwise unnecessary full unwind.
 
@@ -5045,7 +5135,7 @@ fn test_failed_boosted_quote_uses_conservative_redemption_value() {
     // Poison only the cached quote, then make quote reads fail. Accounting
     // still knows that 18,000 underlying was deployed. Using max(cache,
     // accounting) would size too few shares and fail the required-cash floor;
-    // the lower non-zero value deliberately over-redeems into market cash.
+    // the independent accounting value deliberately over-redeems into market cash.
     boosted.set_quote_multiplier_bps(&2_000_000u128);
     vault.refresh_boosted_underlying();
     boosted.set_quote_multiplier_bps(&1_000_000u128);
@@ -5080,15 +5170,50 @@ fn test_dust_positive_boosted_quote_cannot_force_full_unwind() {
 
     // Return a positive quote of roughly one unit for all 18,000 shares. The
     // old sizing path interpreted that dust as authoritative and redeemed the
-    // market's entire strategy balance to fund a 5,000-unit withdrawal.
+    // market's entire strategy balance to prepare 5,000 units of live cash.
     boosted.set_quote_multiplier_bps(&100u128);
-    vault.withdraw(&user, &5_000u128);
+    vault.prepare_liquidity(&5_000u128);
 
-    assert!(token_client.balance(&user) >= 5_000i128);
+    assert!(token_client.balance(&vault_id) >= 5_000i128);
     assert!(
-        boosted.balance(&vault_id) > 13_000i128,
+        boosted.balance(&vault_id) > 14_000i128,
         "dust quote forced an oversized strategy unwind"
     );
+}
+
+#[test]
+fn test_real_boosted_loss_marks_down_nav_without_oversized_unwind() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &20_000i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
+    vault.deposit(&user, &20_000u128);
+
+    // Simulate a genuine 50% strategy loss. The live market NAV must mark down
+    // from 20,000 to 11,000 (2,000 idle + 9,000 strategy), never floor back to
+    // book value. A fixed 5,000 cash request then fails closed because the
+    // strategy cannot meet its non-zero output floor with the bounded shares,
+    // so the best-effort pre-fund call moves nothing and a downstream payout
+    // will fail its existing live-cash check.
+    token_admin_client.burn(&boosted_id, &9_000i128);
+    assert_eq!(vault.get_total_underlying(), 11_000u128);
+    vault.prepare_liquidity(&5_000u128);
+    assert_eq!(token_client.balance(&vault_id), 2_000i128);
+    assert_eq!(boosted.balance(&vault_id), 18_000i128);
 }
 
 #[contractimpl]
