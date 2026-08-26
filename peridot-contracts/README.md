@@ -192,7 +192,9 @@ Shape:
   deposit the market asset and receive pTokens; they cannot bypass its supply
   cap by minting internal LP-vault shares directly. The selected concentrated
   pools expose range positions rather than fungible LP tokens, so there is no
-  LP-token deposit path to support; the ReceiptVault is the sole entry.
+  LP-token deposit path to support; the ReceiptVault is the sole entry. Internal
+  LP-vault shares are non-transferable and only the bound ReceiptVault can gain
+  them; user-facing pTokens remain transferable.
 - Reports NAV as `2 * L * sqrt(other_price / underlying_price)` using
   **Reflector prices, never pool spot**. A full-range position satisfies
   `amount0 = L/sqrt(P)` and `amount1 = L*sqrt(P)`, so this closed form is exact,

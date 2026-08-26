@@ -278,14 +278,17 @@ fn a_hard_depeg_halts_pricing_instead_of_publishing_a_collapse() {
 }
 
 /// An unobservable peg is exactly when a depeg would hide, so the router must
-/// not assume parity. It claims no more than the configured floor.
+/// not publish even the configured floor without an executable observation.
 #[test]
-fn an_unreadable_pool_falls_back_to_the_floor_not_to_parity() {
+fn an_unreadable_pool_halts_pricing() {
     let f = setup();
     f.pool.set_broken(&true);
-    let p = f.router.lastprice(&Asset::Stellar(f.yxlm.clone())).unwrap();
-    assert_eq!(p.price, PRICE_XLM * 9_000 / 10_000);
-    assert!(p.price < PRICE_XLM, "must not assume parity when blind");
+    assert!(
+        f.router
+            .lastprice(&Asset::Stellar(f.yxlm.clone()))
+            .is_none(),
+        "an unavailable observation must fail closed"
+    );
 }
 
 #[test]

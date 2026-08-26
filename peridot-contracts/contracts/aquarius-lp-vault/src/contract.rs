@@ -1197,17 +1197,13 @@ impl AquariusLpVault {
         out.get(0).unwrap_or(0)
     }
 
-    /// Transfers vault shares. Makes the position portable without forcing a
-    /// round trip through the pool.
+    /// Strategy shares are deliberately non-transferable. Users hold the
+    /// bound ReceiptVault's pTokens instead; keeping this selector as a
+    /// fail-closed stub preserves ABI compatibility without allowing dust
+    /// holders to create unbounded persistent share entries.
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
-        from.require_auth();
-        bump_critical_ttl(&env);
-        let amount_u = to_u128(amount);
-        if amount_u == 0 {
-            return;
-        }
-        Self::burn_shares(&env, &from, amount_u);
-        Self::mint_shares(&env, &to, amount_u);
+        let _ = (env, from, to, amount);
+        panic!("strategy shares are non-transferable");
     }
 
     // ─────────────────────────────────────────────────────────────────────

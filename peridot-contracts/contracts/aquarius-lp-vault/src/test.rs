@@ -10,6 +10,7 @@ use receipt_vault::{ReceiptVault, ReceiptVaultClient};
 
 use crate::math::{isqrt, mul_div, mul_div_ceil};
 use crate::oracle::{Asset, PriceData};
+use crate::storage::DataKey;
 use crate::{AquariusLpVault, AquariusLpVaultClient};
 
 // The admin the contract pins at build time (test builds fall back to this).
@@ -218,16 +219,33 @@ fn setup() -> Fixture {
     setup_with_binding(true)
 }
 
-/// Adds capital through the sole bound ReceiptVault identity, then transfers
-/// the resulting pAQLP shares when a standalone accounting test needs a
-/// distinct holder. Production users never receive these internal shares.
+/// Adds capital through the sole bound ReceiptVault identity. Some standalone
+/// accounting tests need distinct holders to exercise pro-rata math that was
+/// supported by older builds, so the native-only fixture moves their entries
+/// directly. Production code cannot create or transfer those holders.
 fn deposit_for(f: &Fixture, holder: &Address, amount: i128) -> i128 {
     f.usdc.mint(&f.receipt_market_id, &amount);
     let shares = f
         .vault
         .deposit_underlying(&f.receipt_market_id, &amount, &0i128);
     if *holder != f.receipt_market_id {
-        f.vault.transfer(&f.receipt_market_id, holder, &shares);
+        f.env.as_contract(&f.vault_id, || {
+            let from_key = DataKey::Shares(f.receipt_market_id.clone());
+            let to_key = DataKey::Shares(holder.clone());
+            let from_balance: u128 = f.env.storage().persistent().get(&from_key).unwrap_or(0);
+            assert!(from_balance >= shares as u128);
+            let next_from = from_balance - shares as u128;
+            if next_from == 0 {
+                f.env.storage().persistent().remove(&from_key);
+            } else {
+                f.env.storage().persistent().set(&from_key, &next_from);
+            }
+            let to_balance: u128 = f.env.storage().persistent().get(&to_key).unwrap_or(0);
+            f.env
+                .storage()
+                .persistent()
+                .set(&to_key, &to_balance.saturating_add(shares as u128));
+        });
     }
     shares
 }
@@ -834,7 +852,7 @@ fn a_paused_swap_still_lets_principal_out() {
 }
 
 #[test]
-fn shares_are_transferable() {
+fn strategy_shares_are_non_transferable() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     let a = Address::generate(&f.env);
@@ -842,9 +860,9 @@ fn shares_are_transferable() {
     let shares = deposit_for(&f, &a, 1_000_0000000i128);
 
     let supply_before = f.vault.total_supply();
-    f.vault.transfer(&a, &b, &shares);
-    assert_eq!(f.vault.balance(&a), 0);
-    assert_eq!(f.vault.balance(&b), shares);
+    assert!(f.vault.try_transfer(&a, &b, &shares).is_err());
+    assert_eq!(f.vault.balance(&a), shares);
+    assert_eq!(f.vault.balance(&b), 0);
     assert_eq!(f.vault.total_supply(), supply_before);
 }
 

@@ -87,8 +87,9 @@ pub trait ObservationPool {
 pub struct PegConfig {
     /// The asset this one is a claim on. Its price is the ceiling.
     pub peg_to: Address,
-    /// Aquarius pool used to observe the ratio. Optional — with no pool the
-    /// price is the peg floor-checked only, which is weaker; prefer a pool.
+    /// Aquarius pool used to observe the ratio. The `Option` is retained for
+    /// storage compatibility, but `None` never produces a price: without an
+    /// executable observation the router cannot safely vouch for the peg.
     pub pool: Option<Address>,
     /// Index of *this* asset in the pool's sorted token vector.
     pub in_idx: u32,
@@ -438,14 +439,11 @@ impl PriceRouter {
         }
         let peg_price = to_u128(peg.price);
 
-        let ratio_bps = match Self::observed_ratio_bps(env, cfg) {
-            Some(r) => r,
-            // No observation available. Fall back to a price that can never be
-            // above the peg — but do not invent an *equal* one either, because
-            // an unobservable peg is exactly when a depeg would hide. The
-            // configured floor is the most we will claim without evidence.
-            None => cfg.min_ratio_bps,
-        };
+        // An unavailable pool quote is not evidence that the asset is still
+        // worth the configured floor. Fail closed so a pool outage cannot hide
+        // a depeg and leave the lending markets with an assumed collateral
+        // price.
+        let ratio_bps = Self::observed_ratio_bps(env, cfg)?;
 
         if (ratio_bps as u128) < cfg.min_ratio_bps as u128 {
             PegFloorBreached {

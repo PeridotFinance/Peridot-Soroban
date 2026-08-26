@@ -222,6 +222,19 @@ pub fn set_shares(env: &Env, owner: &Address, amount: u128) {
     if amount == 0 {
         env.storage().persistent().remove(&key);
     } else {
+        // Strategy shares are internal accounting for the one permanently
+        // bound ReceiptVault, not a user token. Refuse to create any other
+        // holder entry so an attacker cannot split dust across unbounded
+        // persistent keys. Existing non-ReceiptVault entries may only be
+        // reduced; this keeps legacy/test positions redeemable without
+        // permitting state growth.
+        let receipt_vault = bound_receipt_vault(env).expect("receipt vault not bound");
+        if owner != &receipt_vault {
+            let previous: u128 = env.storage().persistent().get(&key).unwrap_or(0);
+            if amount > previous {
+                panic!("only receipt vault may gain strategy shares");
+            }
+        }
         env.storage().persistent().set(&key, &amount);
         bump_share_ttl(env, owner);
     }

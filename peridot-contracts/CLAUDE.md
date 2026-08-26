@@ -61,7 +61,9 @@ MarginController (leveraged trading, optional)
 ### Aquarius LP Rollout Invariants
 
 - Users enter only through ReceiptVault; AquariusLpVault is permanently bound to one
-  matching market and rejects direct deposits.
+  matching market and rejects direct deposits. Its internal strategy shares are
+  non-transferable and may grow only for that bound ReceiptVault; users transfer the
+  ReceiptVault pTokens instead.
 - XLM/yXLM uses an XLM-settled strategy. PYUSD and USDC use separate settlement
   strategies and ReceiptVaults that share the same concentrated PYUSD/USDC pool.
 - `harvest()` converts the configurable primary reward (AQUA at launch) and gauge
@@ -82,7 +84,8 @@ MarginController (leveraged trading, optional)
   PYUSD and USDC to `Other("USDC")`. This assumes both pairs remain at par; keep CF=0,
   borrowing paused, the executable-quote deployment gates, and runtime pool-divergence
   guards. PriceRouter remains the preferred depeg-aware follow-up before collateral or
-  borrowing is enabled.
+  borrowing is enabled, and it returns no pegged-asset price whenever the executable
+  observation pool is unavailable rather than assuming even the configured floor.
 - Past the strategy NAV stale bound, public boosted quotes fail soft. ReceiptVault
   redeems from its cached/accounting estimate with a nonzero cash minimum; only that
   protected exit may use the last NAV ratio, and the Aquarius quote must still satisfy
