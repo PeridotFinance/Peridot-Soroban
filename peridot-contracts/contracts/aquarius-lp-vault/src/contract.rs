@@ -599,7 +599,11 @@ impl AquariusLpVault {
                 }
             }
         }
-        Self::balance_of_token(env, &out_token).saturating_sub(out_before)
+        let received = Self::balance_of_token(env, &out_token).saturating_sub(out_before);
+        if received < out_min {
+            panic!("pool swap output below minimum");
+        }
+        received
     }
 
     /// Deploys idle underlying into the full-range position.

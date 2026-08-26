@@ -229,6 +229,11 @@ invoke "$MARKET_ID" set_supply_cap --cap "$SUPPLY_CAP"
 # Attach before the controller so boosted-vault ownership can be bound when the
 # market is wired below.
 invoke "$MARKET_ID" set_boosted_vault --admin "$ADMIN" --boosted_vault "$VAULT_ID"
+BOOSTED_ASSET_COUNT=$(view "$MARKET_ID" get_boosted_asset_count)
+if [[ "$BOOSTED_ASSET_COUNT" != "1" ]]; then
+  echo "ERROR: ReceiptVault persisted boosted asset count $BOOSTED_ASSET_COUNT; expected 1." >&2
+  exit 1
+fi
 # Close the loop after ReceiptVault points at the strategy. Until this succeeds,
 # AquariusLpVault rejects every deposit, including calls from arbitrary users.
 invoke "$VAULT_ID" set_receipt_vault --admin_addr "$ADMIN" --receipt_vault "$MARKET_ID"

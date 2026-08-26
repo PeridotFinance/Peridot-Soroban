@@ -171,6 +171,11 @@ invoke "$MARKET_ID" set_supply_cap --cap "$SUPPLY_CAP"
 # has not yet been listed. Listing and collateral policy remain an explicit
 # governance step below.
 invoke "$MARKET_ID" set_boosted_vault --admin "$ADMIN" --boosted_vault "$VAULT_ID"
+BOOSTED_ASSET_COUNT=$(view "$MARKET_ID" get_boosted_asset_count)
+if [[ "$BOOSTED_ASSET_COUNT" != "1" ]]; then
+  echo "ERROR: ReceiptVault persisted boosted asset count $BOOSTED_ASSET_COUNT; expected 1." >&2
+  exit 1
+fi
 invoke "$VAULT_ID" set_receipt_vault --admin_addr "$ADMIN" --receipt_vault "$MARKET_ID"
 
 cat <<SUMMARY

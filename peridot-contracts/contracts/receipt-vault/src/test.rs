@@ -1169,8 +1169,9 @@ fn test_core_ttl_bumps_all_critical_config_keys() {
         &env,
         jrm::DEFAULT_INIT_ADMIN,
     ));
-    let boosted_vault = Address::generate(&env);
     let (token_address, _token_client, _token_admin_client) = create_test_token(&env, &admin);
+    let boosted_vault = env.register(MockBoostedVault, ());
+    MockBoostedVaultClient::new(&env, &boosted_vault).initialize(&token_address);
 
     let vault_contract_id = env.register(ReceiptVault, ());
     let vault_client = ReceiptVaultClient::new(&env, &vault_contract_id);
@@ -1238,6 +1239,7 @@ fn test_core_ttl_bumps_all_critical_config_keys() {
         assert_bumped(&env, &DataKey::RatesReady, "RatesReady");
         assert_bumped(&env, &DataKey::IdleCashBufferBps, "IdleCashBufferBps");
         assert_bumped(&env, &DataKey::BoostedVault, "BoostedVault");
+        assert_bumped(&env, &DataKey::BoostedAssetCount, "BoostedAssetCount");
         assert_bumped(&env, &DataKey::InitialExchangeRate, "InitialExchangeRate");
     });
 }
@@ -5111,6 +5113,7 @@ enum TwoAssetKey {
     Underlying,
     TotalShares,
     Share(Address),
+    FailQuote,
 }
 
 #[test]
@@ -5231,6 +5234,15 @@ impl TwoAssetBoostedVault {
         env.storage()
             .persistent()
             .set(&TwoAssetKey::TotalShares, &0i128);
+        env.storage()
+            .persistent()
+            .set(&TwoAssetKey::FailQuote, &false);
+    }
+
+    pub fn set_fail_quote(env: Env, fail: bool) {
+        env.storage()
+            .persistent()
+            .set(&TwoAssetKey::FailQuote, &fail);
     }
 
     pub fn balance(env: Env, owner: Address) -> i128 {
@@ -5250,6 +5262,14 @@ impl TwoAssetBoostedVault {
     /// Returns [primary_underlying, 0] — two elements, same as a vault that
     /// holds one real asset and one empty strategy slot.
     pub fn get_asset_amounts_per_shares(env: Env, shares: i128) -> Vec<i128> {
+        if env
+            .storage()
+            .persistent()
+            .get(&TwoAssetKey::FailQuote)
+            .unwrap_or(false)
+        {
+            panic!("quote failed");
+        }
         let mut out = Vec::new(&env);
         if shares <= 0 {
             out.push_back(0i128);
@@ -5312,16 +5332,26 @@ impl TwoAssetBoostedVault {
             min_amounts_out.len() == 2,
             "min_amounts_out length mismatch"
         );
-        let amounts = Self::get_asset_amounts_per_shares(env.clone(), shares);
-        let out = amounts.get(0).unwrap_or(0);
         let token: Address = env
             .storage()
             .persistent()
             .get(&TwoAssetKey::Underlying)
             .expect("not init");
+        let supply = Self::total_supply(env.clone());
+        let balance = token::Client::new(&env, &token).balance(&env.current_contract_address());
+        let out = if shares > 0 && supply > 0 && balance > 0 {
+            shares.saturating_mul(balance) / supply
+        } else {
+            0
+        };
+        if out < min_amounts_out.get(0).unwrap_or(0) {
+            panic!("minimum not met");
+        }
+        let mut amounts = Vec::new(&env);
+        amounts.push_back(out);
+        amounts.push_back(0i128);
         token::Client::new(&env, &token).transfer(&env.current_contract_address(), &to, &out);
         let owner_shares = Self::balance(env.clone(), to.clone());
-        let supply = Self::total_supply(env.clone());
         env.storage()
             .persistent()
             .set(&TwoAssetKey::Share(to), &(owner_shares - shares));
@@ -5445,7 +5475,7 @@ fn test_withdraw_gives_clear_error_when_boosted_haircut_causes_shortfall() {
 
 /// Boosted vault that returns 2 assets from get_asset_amounts_per_shares and
 /// enforces min_amounts_out.len()==2 on withdraw. Proves the vector-length fix
-/// works: the receipt vault builds a min_amounts_out with exactly 2 zeros so the
+/// works: the receipt vault builds a two-entry min_amounts_out vector so the
 /// length check inside the (mock) DefIndex vault passes.
 #[test]
 fn test_withdraw_succeeds_with_two_asset_boosted_vault() {
@@ -5474,6 +5504,47 @@ fn test_withdraw_succeeds_with_two_asset_boosted_vault() {
     // Withdraw 5000: pulls 3000 from the 2-asset boosted vault. The vault's
     // withdraw asserts min_amounts_out.len() == 2 — this would panic with the
     // old [needed-1] single-element vector but succeeds with the new [0,0].
+    vault.withdraw(&user, &5_000u128);
+    assert_eq!(token_client.balance(&user), 5_000i128);
+}
+
+#[test]
+fn test_two_asset_boosted_quote_outage_uses_persisted_asset_count() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &20_000i128);
+
+    let boosted_id = env.register(TwoAssetBoostedVault, ());
+    let boosted = TwoAssetBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+    assert_eq!(vault.get_boosted_asset_count(), Some(2u32));
+    // Model an in-place upgrade from an older ReceiptVault that did not have
+    // this append-only key, then exercise the admin migration path.
+    env.as_contract(&vault_id, || {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BoostedAssetCount);
+    });
+    assert_eq!(vault.get_boosted_asset_count(), None);
+    vault.set_boosted_asset_count(&admin, &boosted_id, &2u32);
+    assert_eq!(vault.get_boosted_asset_count(), Some(2u32));
+    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
+    vault.deposit(&user, &20_000u128);
+
+    // The public NAV quote is now unavailable, but withdraw itself still
+    // works. ReceiptVault must use the two-entry shape persisted at binding
+    // rather than guessing [needed_cash] and bricking the protected exit.
+    boosted.set_fail_quote(&true);
     vault.withdraw(&user, &5_000u128);
     assert_eq!(token_client.balance(&user), 5_000i128);
 }

@@ -42,6 +42,8 @@ Mocks (for tests only) live under `contracts/mocks/`.
   - `initialize(token, supply_yearly_rate_scaled, borrow_yearly_rate_scaled, admin)`
   - `set_boosted_vault(admin, defindex_vault)` (optional)
   - `get_boosted_vault()`
+  - `get_boosted_asset_count()` / `set_boosted_asset_count(admin, boosted_vault, count)`
+    (the setter is an upgrade migration/recovery path; use the strategy ABI's exact count)
   - `set_admin(new_admin)` / `get_admin()`
   - `set_interest_rate(admin, yearly_rate_scaled)`
   - `set_borrow_rate(admin, yearly_rate_scaled)`
@@ -223,7 +225,15 @@ Shape:
   while a genuine loss does not permanently block supplier withdrawals.
 - Aquarius swaps and position deposits enforce transaction-atomic input
   balance-delta caps. If a pool replays an exact root token-transfer
-  authorization, the enclosing invocation reverts without asset loss.
+  authorization, the enclosing invocation reverts without asset loss. Swap
+  settlement also checks the actual output-token balance delta against
+  `out_min`, so a pool cannot bypass slippage by ignoring its argument.
+- ReceiptVault records the boosted strategy's bounded output-vector length when
+  `set_boosted_vault` binds it and uses that persisted count during quote
+  outages. The Aquarius deployment scripts assert the expected single-asset
+  shape. After upgrading an older boosted market, verify
+  `get_boosted_asset_count`; if it is absent, call the admin recovery setter
+  with the reviewed strategy ABI count before unpausing withdrawals.
 
 Two guards protect the position entry and paired-token exit swaps:
 - `set_slippage_bps` — movement between the pool's quote and execution.

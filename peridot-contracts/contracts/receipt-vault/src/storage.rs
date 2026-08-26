@@ -51,7 +51,8 @@ pub enum DataKey {
     BorrowPrincipal(Address),        // u128 canonical principal per user
     MarginBorrowPrincipal(u64),      // u128 canonical principal per margin position
     MarginWithdrawBypassV2(Address), // scoped bypass for margin-controller-managed withdraw
-    TotalBadDebt, // u128 cumulative unreserved debt absorbed by margin controller
+    TotalBadDebt,      // u128 cumulative unreserved debt absorbed by margin controller
+    BoostedAssetCount, // u32 expected min_amounts_out length for boosted redemptions
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -170,11 +171,11 @@ pub fn bump_borrow_index_ttl(env: &Env) {
 }
 
 pub fn bump_boosted_vault_ttl(env: &Env) {
-    let key = DataKey::BoostedVault;
-    if env.storage().persistent().has(&key) {
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    let persistent = env.storage().persistent();
+    for key in [DataKey::BoostedVault, DataKey::BoostedAssetCount] {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
     }
 }
 

@@ -54,6 +54,7 @@ enum Key {
     KillDeposit,
     KillSwap,
     ReplaySwapTransfer,
+    SwapOutputBps,
     DepositQuoteExtra0,
     DepositQuoteExtra1,
 }
@@ -98,6 +99,7 @@ impl MockAquariusPool {
             .persistent()
             .set(&Key::TickSpacing, &tick_spacing);
         env.storage().persistent().set(&Key::FeeBps, &fee_bps);
+        set_u128(&env, Key::SwapOutputBps, 10_000);
         set_u128(&env, Key::Reserve0, 0);
         set_u128(&env, Key::Reserve1, 0);
         set_u128(&env, Key::TotalLiquidity, 0);
@@ -141,6 +143,13 @@ impl MockAquariusPool {
         env.storage()
             .persistent()
             .set(&Key::ReplaySwapTransfer, &replay);
+    }
+
+    /// Simulates a buggy or compromised pool that quotes normally but sends
+    /// only a fraction of the quoted output while ignoring `out_min`.
+    pub fn set_swap_output_bps(env: Env, output_bps: u32) {
+        assert!(output_bps <= 10_000, "invalid output bps");
+        set_u128(&env, Key::SwapOutputBps, output_bps as u128);
     }
 
     /// Makes the test pool request more than the caller offered. A production
@@ -428,10 +437,11 @@ impl MockAquariusPool {
         {
             panic!("SwapKilled");
         }
-        let out = Self::estimate_swap(env.clone(), in_idx, out_idx, in_amount);
-        if out < out_min {
+        let quoted_out = Self::estimate_swap(env.clone(), in_idx, out_idx, in_amount);
+        if quoted_out < out_min {
             panic!("OutMinNotSatisfied");
         }
+        let out = quoted_out.saturating_mul(get_u128(&env, Key::SwapOutputBps)) / 10_000;
         let t_in = if in_idx == 0 {
             Key::Token0
         } else {

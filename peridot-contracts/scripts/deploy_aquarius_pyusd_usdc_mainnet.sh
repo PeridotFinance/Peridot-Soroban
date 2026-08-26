@@ -284,6 +284,11 @@ invoke "$PYUSD_MARKET_ID" set_idle_cash_buffer_bps \
 invoke "$PYUSD_MARKET_ID" set_supply_cap --cap "$PYUSD_SUPPLY_CAP"
 invoke "$PYUSD_MARKET_ID" set_boosted_vault \
   --admin "$ADMIN" --boosted_vault "$PYUSD_VAULT_ID"
+PYUSD_BOOSTED_ASSET_COUNT=$(view "$PYUSD_MARKET_ID" get_boosted_asset_count)
+if [[ "$PYUSD_BOOSTED_ASSET_COUNT" != "1" ]]; then
+  echo "ERROR: PYUSD market persisted boosted asset count $PYUSD_BOOSTED_ASSET_COUNT; expected 1." >&2
+  exit 1
+fi
 invoke "$PYUSD_VAULT_ID" set_receipt_vault \
   --admin_addr "$ADMIN" --receipt_vault "$PYUSD_MARKET_ID"
 
@@ -301,6 +306,11 @@ invoke "$USDC_MARKET_ID" set_idle_cash_buffer_bps \
 invoke "$USDC_MARKET_ID" set_supply_cap --cap "$USDC_SUPPLY_CAP"
 invoke "$USDC_MARKET_ID" set_boosted_vault \
   --admin "$ADMIN" --boosted_vault "$USDC_VAULT_ID"
+USDC_BOOSTED_ASSET_COUNT=$(view "$USDC_MARKET_ID" get_boosted_asset_count)
+if [[ "$USDC_BOOSTED_ASSET_COUNT" != "1" ]]; then
+  echo "ERROR: USDC market persisted boosted asset count $USDC_BOOSTED_ASSET_COUNT; expected 1." >&2
+  exit 1
+fi
 invoke "$USDC_VAULT_ID" set_receipt_vault \
   --admin_addr "$ADMIN" --receipt_vault "$USDC_MARKET_ID"
 

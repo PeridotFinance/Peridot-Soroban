@@ -74,7 +74,13 @@ MarginController (leveraged trading, optional)
   permissionless harvests do not consume the cooldown; it starts only after value is
   actually claimed, converted, or deployed.
 - Root token-transfer authorizations required by the deployed Aquarius ABI are guarded
-  by post-call input balance-delta caps. ReceiptVault always marks live NAV losses down;
+  by post-call input balance-delta caps, and every swap also verifies that its actual
+  output-token balance increase meets the independently computed minimum. ReceiptVault
+  persists and bounds the boosted strategy's output-vector length at binding, so a
+  multi-asset strategy quote outage cannot change the authorized redemption shape.
+  Markets upgraded from an older ReceiptVault must verify `get_boosted_asset_count` and,
+  if absent, set the reviewed ABI count before unpausing. ReceiptVault always marks live
+  NAV losses down;
   fixed-cash redemption sizing first rejects quotes below 90% of independent accounting.
   If that exact, cash-bounded exit fails and the strategy supplied a lower positive live
   quote, ReceiptVault retries once with enough shares for the same nonzero cash minimum.

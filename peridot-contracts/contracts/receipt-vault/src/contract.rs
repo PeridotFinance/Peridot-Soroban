@@ -18,10 +18,12 @@ compile_error!("receipt-vault test-default-admin must not be enabled for Wasm bu
 pub struct ReceiptVault;
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+const DISABLED_BOOSTED_VAULT: &str = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
 const BPS_SCALE: u128 = 10_000u128;
 const BOOSTED_MODEL_CASH_TOLERANCE_BPS: u128 = 500u128; // 5%
 const BOOSTED_REDEMPTION_QUOTE_FLOOR_BPS: u128 = 9_000u128; // max 10% downward jump
+const MAX_BOOSTED_ASSETS: u32 = 16;
 const DEBT_STATE_VERSION_V1: u32 = 1u32;
 
 #[contractimpl]
@@ -100,6 +102,34 @@ impl ReceiptVault {
         }
     }
 
+    fn validate_boosted_asset_count(asset_count: u32) -> u32 {
+        if asset_count == 0 || asset_count > MAX_BOOSTED_ASSETS {
+            panic!("invalid boosted asset count");
+        }
+        asset_count
+    }
+
+    fn stored_boosted_asset_count(env: &Env) -> Option<u32> {
+        env.storage()
+            .persistent()
+            .get::<_, u32>(&DataKey::BoostedAssetCount)
+            .map(Self::validate_boosted_asset_count)
+    }
+
+    fn record_boosted_asset_count(env: &Env, asset_count: u32) -> u32 {
+        let asset_count = Self::validate_boosted_asset_count(asset_count);
+        if let Some(expected) = Self::stored_boosted_asset_count(env) {
+            if expected != asset_count {
+                panic!("boosted asset count changed");
+            }
+        } else {
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedAssetCount, &asset_count);
+        }
+        asset_count
+    }
+
     fn get_boosted_underlying(env: &Env) -> u128 {
         let boosted_key = DataKey::BoostedVault;
         if let Some(boosted) = env.storage().persistent().get::<_, Address>(&boosted_key) {
@@ -114,6 +144,9 @@ impl ReceiptVault {
                     (shares_i,),
                 ) {
                     Ok(amounts) => {
+                        if amounts.len() > 0 {
+                            Self::record_boosted_asset_count(env, amounts.len());
+                        }
                         let amt_i = amounts.get(0).unwrap_or(0);
                         if amt_i <= 0 {
                             let cached: u128 = env
@@ -498,19 +531,28 @@ impl ReceiptVault {
             return;
         }
         let total_shares = total_shares_i as u128;
+        let stored_asset_count = Self::stored_boosted_asset_count(env);
         let quote = try_call_contract::<Vec<i128>, _>(
             env,
             &boosted,
             "get_asset_amounts_per_shares",
             (total_shares_i,),
         );
-        let mut total_amounts = match quote {
-            Ok(amounts) => amounts,
+        let (mut total_amounts, asset_count) = match quote {
+            Ok(amounts) if amounts.len() > 0 => {
+                let count = Self::record_boosted_asset_count(env, amounts.len());
+                (amounts, count)
+            }
+            Ok(amounts) => (
+                amounts,
+                stored_asset_count.expect("boosted asset count missing"),
+            ),
             Err(ref err) => {
                 emit_external_call_failure(env, &boosted, err, true);
-                let mut fallback: Vec<i128> = Vec::new(env);
-                fallback.push_back(0i128);
-                fallback
+                (
+                    Vec::new(env),
+                    stored_asset_count.expect("boosted asset count missing"),
+                )
             }
         };
         if total_amounts.len() == 0 {
@@ -570,7 +612,7 @@ impl ReceiptVault {
             &boosted,
             token_address,
             shares_to_withdraw,
-            total_amounts.len(),
+            asset_count,
             needed_cash,
             retry_shares.is_some(),
         );
@@ -581,7 +623,7 @@ impl ReceiptVault {
                     &boosted,
                     token_address,
                     shares,
-                    total_amounts.len(),
+                    asset_count,
                     needed_cash,
                     false,
                 );
@@ -941,6 +983,22 @@ impl ReceiptVault {
         }
         admin.require_auth();
         let old_boosted: Option<Address> = env.storage().persistent().get(&DataKey::BoostedVault);
+        let disabled = Address::from_string(&String::from_str(&env, DISABLED_BOOSTED_VAULT));
+        let new_boosted = if boosted_vault == disabled {
+            None
+        } else {
+            Some(boosted_vault.clone())
+        };
+
+        // Discover and persist the ABI-required min_amounts_out length while
+        // the strategy is deliberately being bound. A later NAV/quote outage
+        // must not collapse a multi-asset strategy to a guessed one-element
+        // vector and brick protected redemptions.
+        let asset_count = new_boosted.as_ref().map(|vault| {
+            let amounts: Vec<i128> =
+                call_contract_or_panic(&env, vault, "get_asset_amounts_per_shares", (0i128,));
+            Self::validate_boosted_asset_count(amounts.len())
+        });
         if let Some(comp_addr) = env
             .storage()
             .persistent()
@@ -955,13 +1013,23 @@ impl ReceiptVault {
                 (
                     env.current_contract_address(),
                     old_boosted.clone(),
-                    Some(boosted_vault.clone()),
+                    new_boosted.clone(),
                 ),
             );
         }
-        env.storage()
-            .persistent()
-            .set(&DataKey::BoostedVault, &boosted_vault);
+        if let (Some(vault), Some(count)) = (new_boosted.clone(), asset_count) {
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedVault, &vault);
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedAssetCount, &count);
+        } else {
+            env.storage().persistent().remove(&DataKey::BoostedVault);
+            env.storage()
+                .persistent()
+                .remove(&DataKey::BoostedAssetCount);
+        }
         env.storage()
             .persistent()
             .remove(&DataKey::BoostedUnderlyingCached);
@@ -970,7 +1038,7 @@ impl ReceiptVault {
             .remove(&DataKey::BoostedUnderlyingUpdatedAt);
         BoostedVaultSet {
             old_vault: old_boosted,
-            new_vault: Some(boosted_vault),
+            new_vault: new_boosted,
         }
         .publish(&env);
     }
@@ -979,6 +1047,45 @@ impl ReceiptVault {
     pub fn get_boosted_vault(env: Env) -> Option<Address> {
         let _ = ensure_initialized(&env);
         env.storage().persistent().get(&DataKey::BoostedVault)
+    }
+
+    /// View the persisted boosted-vault output-vector length.
+    pub fn get_boosted_asset_count(env: Env) -> Option<u32> {
+        let _ = ensure_initialized(&env);
+        Self::stored_boosted_asset_count(&env)
+    }
+
+    /// Admin migration/recovery for markets bound before BoostedAssetCount
+    /// existed. The expected address prevents a stale operator command from
+    /// configuring a replacement strategy accidentally.
+    pub fn set_boosted_asset_count(
+        env: Env,
+        admin: Address,
+        boosted_vault: Address,
+        asset_count: u32,
+    ) {
+        let _ = ensure_initialized(&env);
+        let stored_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        if stored_admin != admin {
+            panic!("not admin");
+        }
+        admin.require_auth();
+        let stored_vault: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::BoostedVault)
+            .expect("boosted vault not set");
+        if stored_vault != boosted_vault {
+            panic!("boosted vault mismatch");
+        }
+        let asset_count = Self::validate_boosted_asset_count(asset_count);
+        env.storage()
+            .persistent()
+            .set(&DataKey::BoostedAssetCount, &asset_count);
     }
 
     /// Admin: set target idle cash buffer in basis points (0..=10_000).
@@ -1852,6 +1959,11 @@ impl ReceiptVault {
     /// Soroban's transaction footprint, so operators should call this periodically.
     pub fn bump_ttl(env: Env) {
         let _ = ensure_initialized(&env);
+        // BoostedAssetCount stays off the ordinary ensure_initialized hot path:
+        // one extra absent-key read is enough to push boundary lending calls
+        // past Soroban's 100-entry footprint limit. The explicit keeper path
+        // can afford to renew this boosted-only key deliberately.
+        bump_boosted_vault_ttl(&env);
     }
 
     /// Get collateral factor (scaled 1e6)
