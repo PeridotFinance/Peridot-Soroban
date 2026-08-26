@@ -8,7 +8,7 @@ use soroban_sdk::{
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::{ReceiptVault, ReceiptVaultClient};
 
-use crate::math::{isqrt, mul_div, mul_div_ceil};
+use crate::math::{isqrt, mul_div, mul_div_ceil, try_mul_div};
 use crate::oracle::{Asset, PriceData};
 use crate::storage::DataKey;
 use crate::{AquariusLpVault, AquariusLpVaultClient};
@@ -296,6 +296,11 @@ fn mul_div_avoids_intermediate_overflow() {
     assert_eq!(mul_div_ceil(10, 3, 4), 8);
     assert_eq!(mul_div_ceil(8, 2, 4), 4);
     assert_eq!(mul_div(0, 5, 3), 0);
+    assert_eq!(
+        try_mul_div(u128::MAX - 1, u128::MAX - 1, u128::MAX),
+        None,
+        "unrepresentable intermediate math must fail soft"
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -726,6 +731,19 @@ fn changing_the_oracle_invalidates_the_cached_ratio() {
         nav_before,
         "stale ratio from the previous oracle survived the swap"
     );
+}
+
+#[test]
+fn extreme_oracle_price_falls_back_to_the_last_good_root() {
+    let f = setup();
+    let cached = f.vault.refresh_nav_root();
+    assert!(cached > 0);
+
+    // A compromised feed can return any positive i128. Its ratio cannot be
+    // represented in the vault's u128 fixed-point scale, so it must behave as
+    // an unavailable observation rather than trapping supplier paths.
+    f.oracle.set_price(&f.eurc_id, &i128::MAX);
+    assert_eq!(f.vault.refresh_nav_root(), cached);
 }
 
 /// Correcting a token's Reflector encoding changes which price is fetched, so

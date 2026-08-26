@@ -86,6 +86,9 @@ MarginController (leveraged trading, optional)
   guards. PriceRouter remains the preferred depeg-aware follow-up before collateral or
   borrowing is enabled, and it returns no pegged-asset price whenever the executable
   observation pool is unavailable rather than assuming even the configured floor.
+  Extreme pool/oracle values that overflow fixed-point intermediates are treated the
+  same way: PriceRouter returns `None`, while AquariusLpVault retains only its bounded
+  last-good NAV root.
 - Past the strategy NAV stale bound, public boosted quotes fail soft. ReceiptVault
   redeems from its cached/accounting estimate with a nonzero cash minimum; only that
   protected exit may use the last NAV ratio, and the Aquarius quote must still satisfy

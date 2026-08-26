@@ -17,12 +17,12 @@ fn gcd_u128(mut a: u128, mut b: u128) -> u128 {
 ///
 /// Reduces both factors against the denominator before multiplying, which is
 /// the same trick `receipt-vault` uses for borrow-index math.
-fn mul_div_parts(a: u128, b: u128, denom: u128) -> (u128, bool) {
+fn try_mul_div_parts(a: u128, b: u128, denom: u128) -> Option<(u128, bool)> {
     if denom == 0 {
-        panic!("division by zero");
+        return None;
     }
     if a == 0 || b == 0 {
-        return (0, false);
+        return Some((0, false));
     }
     let mut left = a;
     let mut right = b;
@@ -35,23 +35,38 @@ fn mul_div_parts(a: u128, b: u128, denom: u128) -> (u128, bool) {
     right /= g2;
     d /= g2;
 
-    let num = left.checked_mul(right).expect("mul_div overflow");
-    (num / d, !num.is_multiple_of(d))
+    let num = left.checked_mul(right)?;
+    Some((num / d, !num.is_multiple_of(d)))
+}
+
+/// `floor(a * b / denom)`, or `None` if the result cannot be computed without
+/// overflowing `u128`. Oracle paths use this form so hostile external values
+/// degrade like a missing observation rather than trapping the transaction.
+pub fn try_mul_div(a: u128, b: u128, denom: u128) -> Option<u128> {
+    try_mul_div_parts(a, b, denom).map(|(q, _)| q)
 }
 
 /// `floor(a * b / denom)`.
 pub fn mul_div(a: u128, b: u128, denom: u128) -> u128 {
-    mul_div_parts(a, b, denom).0
+    if denom == 0 {
+        panic!("division by zero");
+    }
+    // Saturation keeps non-oracle accounting paths fail-safe without wrapping.
+    // Values this large cannot cross the contract's i128 token boundaries and
+    // will be rejected by the surrounding liquidity/minimum checks.
+    try_mul_div(a, b, denom).unwrap_or(u128::MAX)
 }
 
 /// `ceil(a * b / denom)`. Used where rounding against the vault is the safe
 /// direction (shares to burn, liquidity to redeem).
 pub fn mul_div_ceil(a: u128, b: u128, denom: u128) -> u128 {
-    let (q, rem) = mul_div_parts(a, b, denom);
-    if rem {
-        q.checked_add(1).expect("mul_div_ceil overflow")
-    } else {
-        q
+    if denom == 0 {
+        panic!("division by zero");
+    }
+    match try_mul_div_parts(a, b, denom) {
+        Some((q, true)) => q.saturating_add(1),
+        Some((q, false)) => q,
+        None => u128::MAX,
     }
 }
 

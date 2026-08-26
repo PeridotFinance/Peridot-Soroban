@@ -214,12 +214,12 @@ pub struct AdminTransferred {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn mul_div(a: u128, b: u128, denom: u128) -> u128 {
+fn try_mul_div(a: u128, b: u128, denom: u128) -> Option<u128> {
     if denom == 0 {
-        panic!("division by zero");
+        return None;
     }
     if a == 0 || b == 0 {
-        return 0;
+        return Some(0);
     }
     // Reduce against the denominator before multiplying so the intermediate
     // product cannot overflow.
@@ -240,7 +240,7 @@ fn mul_div(a: u128, b: u128, denom: u128) -> u128 {
     let g2 = gcd(right, d);
     right /= g2;
     d /= g2;
-    left.checked_mul(right).expect("mul_div overflow") / d
+    left.checked_mul(right).map(|num| num / d)
 }
 
 fn to_u128(v: i128) -> u128 {
@@ -251,11 +251,12 @@ fn to_u128(v: i128) -> u128 {
     }
 }
 
-fn to_i128(v: u128) -> i128 {
+fn try_to_i128(v: u128) -> Option<i128> {
     if v > i128::MAX as u128 {
-        panic!("price exceeds i128");
+        None
+    } else {
+        Some(v as i128)
     }
-    v as i128
 }
 
 #[contract]
@@ -378,7 +379,7 @@ impl PriceRouter {
         if out == 0 {
             return None;
         }
-        let bps = mul_div(out, BPS, cfg.probe_amount);
+        let bps = try_mul_div(out, BPS, cfg.probe_amount)?;
         if bps > u32::MAX as u128 {
             return Some(u32::MAX);
         }
@@ -468,8 +469,9 @@ impl PriceRouter {
             .publish(env);
         }
 
+        let price = try_to_i128(try_mul_div(peg_price, effective_bps, BPS)?)?;
         Some(PriceData {
-            price: to_i128(mul_div(peg_price, effective_bps, BPS)),
+            price,
             timestamp: peg.timestamp,
         })
     }
@@ -512,10 +514,10 @@ impl PriceRouter {
         if let Some(prev) = env.storage().persistent().get::<_, PushedPrice>(&key) {
             let prev_p = to_u128(prev.price);
             let new_p = to_u128(price);
-            let (lo, hi) = (
-                mul_div(prev_p, BPS - guard.max_step_bps.min(9_999) as u128, BPS),
-                mul_div(prev_p, BPS + guard.max_step_bps as u128, BPS),
-            );
+            let lo = try_mul_div(prev_p, BPS - guard.max_step_bps.min(9_999) as u128, BPS)
+                .unwrap_or_else(|| panic!("push guard math overflow"));
+            let hi = try_mul_div(prev_p, BPS + guard.max_step_bps as u128, BPS)
+                .unwrap_or_else(|| panic!("push guard math overflow"));
             if new_p < lo || new_p > hi {
                 panic!("price step exceeds guard");
             }

@@ -273,19 +273,22 @@ impl AquariusLpVault {
         if let (Some(pu), Some(po)) = (p_under, p_other) {
             if pu > 0 && po > 0 {
                 // ratio = (p_other / p_under) * 10^d_under / 10^d_other
-                let ratio = mul_div(po, NAV_RATIO_SCALE, pu);
-                let ratio = mul_div(
-                    ratio,
-                    pow10(Self::decimals_at(&cfg, u_idx)),
-                    pow10(Self::decimals_at(&cfg, o_idx)),
-                );
-                let root = isqrt(ratio);
-                if root > 0 {
-                    let mut st = state(env);
-                    st.last_nav_root = root;
-                    st.last_nav_root_at = env.ledger().timestamp();
-                    set_state(env, &st);
-                    return root;
+                let ratio = try_mul_div(po, NAV_RATIO_SCALE, pu).and_then(|ratio| {
+                    try_mul_div(
+                        ratio,
+                        pow10(Self::decimals_at(&cfg, u_idx)),
+                        pow10(Self::decimals_at(&cfg, o_idx)),
+                    )
+                });
+                if let Some(ratio) = ratio {
+                    let root = isqrt(ratio);
+                    if root > 0 {
+                        let mut st = state(env);
+                        st.last_nav_root = root;
+                        st.last_nav_root_at = env.ledger().timestamp();
+                        set_state(env, &st);
+                        return root;
+                    }
                 }
             }
         }

@@ -83,6 +83,7 @@ impl MockUpstream {
 enum PKey {
     RatioBps,
     Broken,
+    OverrideOut,
 }
 
 #[contract]
@@ -99,6 +100,13 @@ impl MockPool {
         env.storage().persistent().set(&PKey::Broken, &broken);
     }
 
+    pub fn set_override_out(env: Env, out: Option<u128>) {
+        match out {
+            Some(out) => env.storage().persistent().set(&PKey::OverrideOut, &out),
+            None => env.storage().persistent().remove(&PKey::OverrideOut),
+        }
+    }
+
     pub fn estimate_swap(env: Env, _in_idx: u32, _out_idx: u32, in_amount: u128) -> u128 {
         if env
             .storage()
@@ -107,6 +115,9 @@ impl MockPool {
             .unwrap_or(false)
         {
             panic!("pool unavailable");
+        }
+        if let Some(out) = env.storage().persistent().get(&PKey::OverrideOut) {
+            return out;
         }
         let bps: u32 = env
             .storage()
@@ -289,6 +300,39 @@ fn an_unreadable_pool_halts_pricing() {
             .is_none(),
         "an unavailable observation must fail closed"
     );
+}
+
+#[test]
+fn an_overflowing_pool_quote_halts_pricing() {
+    let f = setup();
+    f.router.set_source(
+        &f.admin,
+        &f.yxlm,
+        &PriceSource::Pegged(PegConfig {
+            peg_to: f.xlm.clone(),
+            pool: Some(f.pool.address.clone()),
+            in_idx: 1,
+            out_idx: 0,
+            probe_amount: 3,
+            min_ratio_bps: 9_000,
+        }),
+    );
+    f.pool.set_override_out(&Some(u128::MAX));
+    assert!(f
+        .router
+        .lastprice(&Asset::Stellar(f.yxlm.clone()))
+        .is_none());
+}
+
+#[test]
+fn extreme_upstream_price_halts_unrepresentable_clamp_math() {
+    let f = setup();
+    f.up.set_price(&f.xlm, &i128::MAX);
+    f.pool.set_ratio_bps(&9_999u32);
+    assert!(f
+        .router
+        .lastprice(&Asset::Stellar(f.yxlm.clone()))
+        .is_none());
 }
 
 #[test]

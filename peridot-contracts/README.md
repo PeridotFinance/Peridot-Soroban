@@ -199,6 +199,8 @@ Shape:
   **Reflector prices, never pool spot**. A full-range position satisfies
   `amount0 = L/sqrt(P)` and `amount1 = L*sqrt(P)`, so this closed form is exact,
   and it means swinging the pool price cannot move the market's exchange rate.
+  Unrepresentable oracle arithmetic fails soft into the bounded last-good NAV
+  path instead of trapping supplier quotes or withdrawals.
 - `harvest()` is permissionless: claims the admin-configured primary reward
   token (AQUA at launch), third-party gauge incentives and accrued swap fees,
   sells them for underlying through per-token route pools, and redeploys.
