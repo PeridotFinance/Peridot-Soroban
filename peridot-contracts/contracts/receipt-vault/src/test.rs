@@ -5096,6 +5096,9 @@ fn test_direct_donation_does_not_inflate_exchange_rate() {
 //       avoiding under-redemption from an inflated or dust-poisoned cache.
 //   (e) A dust-positive quote more than 10% below that baseline is treated as
 //       implausible and cannot force an otherwise unnecessary full unwind.
+//   (f) If the bounded first redemption proves a large loss is real by failing
+//       the cash minimum, one retry uses the lower live quote with that same
+//       non-zero minimum so withdrawals remain live without accepting less cash.
 
 /// Vault that returns 2 assets from get_asset_amounts_per_shares and enforces
 /// the vector-length requirement on withdraw — models a DefIndex multi-strategy
@@ -5182,7 +5185,7 @@ fn test_dust_positive_boosted_quote_cannot_force_full_unwind() {
 }
 
 #[test]
-fn test_real_boosted_loss_marks_down_nav_without_oversized_unwind() {
+fn test_real_boosted_loss_marks_down_nav_and_redeems_with_bounded_retry() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -5205,15 +5208,18 @@ fn test_real_boosted_loss_marks_down_nav_without_oversized_unwind() {
 
     // Simulate a genuine 50% strategy loss. The live market NAV must mark down
     // from 20,000 to 11,000 (2,000 idle + 9,000 strategy), never floor back to
-    // book value. A fixed 5,000 cash request then fails closed because the
-    // strategy cannot meet its non-zero output floor with the bounded shares,
-    // so the best-effort pre-fund call moves nothing and a downstream payout
-    // will fail its existing live-cash check.
+    // book value. The first fixed-cash redemption is still sized from the
+    // anti-grief floor and fails its non-zero minimum. A bounded retry then
+    // uses the positive live quote, redeems only the shares required for the
+    // same cash minimum, and lets the supplier complete a real withdrawal.
     token_admin_client.burn(&boosted_id, &9_000i128);
     assert_eq!(vault.get_total_underlying(), 11_000u128);
-    vault.prepare_liquidity(&5_000u128);
-    assert_eq!(token_client.balance(&vault_id), 2_000i128);
-    assert_eq!(boosted.balance(&vault_id), 18_000i128);
+    vault.withdraw(&user, &10_000u128);
+    assert_eq!(token_client.balance(&user), 5_500i128);
+    assert!(
+        boosted.balance(&vault_id) > 10_000i128,
+        "bounded retry unwound more shares than the cash request required"
+    );
 }
 
 #[contractimpl]

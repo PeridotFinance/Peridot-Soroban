@@ -372,6 +372,104 @@ impl ReceiptVault {
         moved
     }
 
+    fn boosted_shares_for_cash(
+        target_cash: u128,
+        total_shares: u128,
+        total_underlying: u128,
+        share_balance: u128,
+    ) -> u128 {
+        if total_underlying == 0 || share_balance == 0 {
+            return 0;
+        }
+        // Add a tiny buffer for share rounding so downstream payout paths are
+        // less brittle to 1-unit quote/withdraw drift in boosted vault math.
+        let numerator = target_cash.checked_mul(total_shares).unwrap_or(u128::MAX);
+        let mut shares_to_withdraw = numerator / total_underlying;
+        if numerator % total_underlying != 0 {
+            shares_to_withdraw = shares_to_withdraw.saturating_add(1);
+        }
+        if shares_to_withdraw == 0 {
+            shares_to_withdraw = 1;
+        }
+        if shares_to_withdraw > share_balance {
+            shares_to_withdraw = share_balance;
+        }
+        shares_to_withdraw
+    }
+
+    fn try_boosted_redemption(
+        env: &Env,
+        boosted: &Address,
+        token_address: &Address,
+        shares_to_withdraw: u128,
+        asset_count: u32,
+        needed_cash: u128,
+        recoverable_failure: bool,
+    ) -> (bool, u128) {
+        if shares_to_withdraw == 0 {
+            return (false, 0);
+        }
+        // Build min_amounts_out with the same number of elements as the boosted vault's
+        // asset list (one per managed asset). The underlying leg carries the
+        // cash requirement as a non-zero floor. That lets a fail-soft boosted
+        // strategy use a cached exit ratio during an oracle outage without
+        // trusting the pool's quote unconditionally; the whole transaction
+        // reverts if the strategy cannot return the requested cash.
+        let mut min_amounts_out: Vec<i128> = Vec::new(env);
+        for idx in 0..asset_count {
+            if idx == 0 {
+                min_amounts_out.push_back(to_i128(needed_cash));
+            } else {
+                min_amounts_out.push_back(0i128);
+            }
+        }
+        let args: Vec<Val> = (
+            to_i128(shares_to_withdraw),
+            min_amounts_out.clone(),
+            env.current_contract_address(),
+        )
+            .into_val(env);
+        let mut auths = Vec::new(env);
+        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+            context: ContractContext {
+                contract: boosted.clone(),
+                fn_name: Symbol::new(env, "withdraw"),
+                args,
+            },
+            sub_invocations: Vec::new(env),
+        }));
+        env.authorize_as_current_contract(auths);
+
+        let cash_before = Self::current_live_cash(env, token_address);
+        // Use try_call_contract so a boosted-vault failure surfaces as
+        // "withdraw liquidity shortfall" in the caller rather than an opaque panic.
+        let result: Result<Val, _> = try_call_contract(
+            env,
+            &boosted,
+            "withdraw",
+            (
+                to_i128(shares_to_withdraw),
+                min_amounts_out,
+                env.current_contract_address(),
+            ),
+        );
+        if let Err(ref e) = result {
+            emit_external_call_failure(env, boosted, e, recoverable_failure);
+        }
+        let cash_after = Self::current_live_cash(env, token_address);
+        let received = cash_after.saturating_sub(cash_before);
+        // Post-withdraw invariant: if shares were redeemed but nothing came back, the boosted
+        // vault either charged a 100% fee or malfunctioned. Emit an event so monitors can detect
+        // this without panicking (a panic here would DoS all withdrawals).
+        if received == 0 && shares_to_withdraw > 0 && result.is_ok() {
+            BoostedRedeemZeroReturn {
+                shares_redeemed: shares_to_withdraw,
+            }
+            .publish(env);
+        }
+        (result.is_ok(), received)
+    }
+
     /// Redeem from boosted vault to satisfy a live-cash requirement.
     fn redeem_from_boosted(env: &Env, token_address: &Address, needed_cash: u128) {
         if needed_cash == 0 {
@@ -420,18 +518,20 @@ impl ReceiptVault {
         }
         let quoted_underlying_i = total_amounts.get(0).unwrap_or(0);
         let fallback_underlying = Self::boosted_underlying_redemption_baseline(env);
+        let mut retry_underlying: Option<u128> = None;
         let total_underlying = if quoted_underlying_i > 0 {
             let quoted = quoted_underlying_i as u128;
             // A dust-positive live quote can otherwise make this market unwind
-            // all strategy shares to satisfy a small cash request. Bound a
-            // sudden downward quote against independent book accounting (or
-            // cache only when no accounting baseline exists). If the strategy
-            // really lost more than 10%, its own
-            // non-zero `min_amounts_out` will fail closed instead of socializing
-            // an oversized unwind across remaining suppliers.
+            // all strategy shares to satisfy a small cash request. Start from
+            // the independent book/cache baseline when the quote drops more
+            // than 10%. If that bounded redemption cannot meet the same
+            // non-zero output floor, retry once using the lower live quote.
+            // This distinguishes a real loss from a lying quote without ever
+            // accepting less cash than the caller requested.
             let quote_floor =
                 fallback_underlying.saturating_mul(BOOSTED_REDEMPTION_QUOTE_FLOOR_BPS) / BPS_SCALE;
             if fallback_underlying > 0 && quoted < quote_floor {
+                retry_underlying = Some(quoted);
                 fallback_underlying
             } else {
                 quoted
@@ -447,79 +547,48 @@ impl ReceiptVault {
             return;
         }
 
-        // Add a tiny buffer for share rounding so downstream payout paths are
-        // less brittle to 1-unit quote/withdraw drift in boosted vault math.
         let target_cash = needed_cash.saturating_add(1);
-        let numerator = target_cash.checked_mul(total_shares).unwrap_or(u128::MAX);
-        let mut shares_to_withdraw = numerator / total_underlying;
-        if numerator % total_underlying != 0 {
-            shares_to_withdraw = shares_to_withdraw.saturating_add(1);
-        }
-        if shares_to_withdraw == 0 {
-            shares_to_withdraw = 1;
-        }
-        if shares_to_withdraw > share_balance {
-            shares_to_withdraw = share_balance;
-        }
+        let shares_to_withdraw = Self::boosted_shares_for_cash(
+            target_cash,
+            total_shares,
+            total_underlying,
+            share_balance,
+        );
+        let retry_shares = retry_underlying
+            .map(|live_underlying| {
+                Self::boosted_shares_for_cash(
+                    target_cash,
+                    total_shares,
+                    live_underlying,
+                    share_balance,
+                )
+            })
+            .filter(|shares| *shares > shares_to_withdraw);
 
-        // Build min_amounts_out with the same number of elements as the boosted vault's
-        // asset list (one per managed asset). The underlying leg carries the
-        // cash requirement as a non-zero floor. That lets a fail-soft boosted
-        // strategy use a cached exit ratio during an oracle outage without
-        // trusting the pool's quote unconditionally; the whole transaction
-        // reverts if the strategy cannot return the requested cash.
-        let mut min_amounts_out: Vec<i128> = Vec::new(env);
-        for idx in 0..total_amounts.len() {
-            if idx == 0 {
-                min_amounts_out.push_back(to_i128(needed_cash));
-            } else {
-                min_amounts_out.push_back(0i128);
-            }
-        }
-        let args: Vec<Val> = (
-            to_i128(shares_to_withdraw),
-            min_amounts_out.clone(),
-            env.current_contract_address(),
-        )
-            .into_val(env);
-        let mut auths = Vec::new(env);
-        auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
-            context: ContractContext {
-                contract: boosted.clone(),
-                fn_name: Symbol::new(env, "withdraw"),
-                args,
-            },
-            sub_invocations: Vec::new(env),
-        }));
-        env.authorize_as_current_contract(auths);
-
-        let cash_before = Self::current_live_cash(env, token_address);
-        // Use try_call_contract so a boosted-vault failure surfaces as
-        // "withdraw liquidity shortfall" in the caller rather than an opaque panic.
-        let result: Result<Val, _> = try_call_contract(
+        let (succeeded, mut received) = Self::try_boosted_redemption(
             env,
             &boosted,
-            "withdraw",
-            (
-                to_i128(shares_to_withdraw),
-                min_amounts_out,
-                env.current_contract_address(),
-            ),
+            token_address,
+            shares_to_withdraw,
+            total_amounts.len(),
+            needed_cash,
+            retry_shares.is_some(),
         );
-        if let Err(ref e) = result {
-            emit_external_call_failure(env, &boosted, e, false);
-        }
-        let cash_after = Self::current_live_cash(env, token_address);
-        let received = cash_after.saturating_sub(cash_before);
-        // Post-withdraw invariant: if shares were redeemed but nothing came back, the boosted
-        // vault either charged a 100% fee or malfunctioned. Emit an event so monitors can detect
-        // this without panicking (a panic here would DoS all withdrawals).
-        if received == 0 && shares_to_withdraw > 0 && result.is_ok() {
-            BoostedRedeemZeroReturn {
-                shares_redeemed: shares_to_withdraw,
+        if !succeeded {
+            if let Some(shares) = retry_shares {
+                let (_, retry_received) = Self::try_boosted_redemption(
+                    env,
+                    &boosted,
+                    token_address,
+                    shares,
+                    total_amounts.len(),
+                    needed_cash,
+                    false,
+                );
+                received = retry_received;
             }
-            .publish(env);
         }
+
         if received > 0 {
             Self::add_managed_cash(env, received);
             let cached = Self::cached_boosted_underlying(env);

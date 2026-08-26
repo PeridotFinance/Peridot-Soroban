@@ -216,8 +216,11 @@ Shape:
   solely because the paired leg had to be swapped.
 - ReceiptVault always marks its exchange rate to live strategy NAV, including
   real losses. For fixed-cash redemptions only, a quote below 90% of independent
-  book accounting is not allowed to force a full strategy unwind; the
-  non-zero output floor makes a real loss fail closed instead.
+  book accounting cannot immediately force a full strategy unwind. ReceiptVault
+  first attempts the book-sized exit with a non-zero cash floor. Only if that
+  exact call fails does it retry once using the lower positive live quote, with
+  the same cash floor. A fake dust quote therefore cannot unwind healthy capital,
+  while a genuine loss does not permanently block supplier withdrawals.
 - Aquarius swaps and position deposits enforce transaction-atomic input
   balance-delta caps. If a pool replays an exact root token-transfer
   authorization, the enclosing invocation reverts without asset loss.
@@ -296,7 +299,10 @@ exist purely to fit inside it, and both are pinned by tests:
   supplies a nonzero underlying floor; only that protected exit may use the
   strategy's last ratio, and it still enforces the pool-divergence guard. When
   the live quote is unavailable, share sizing prefers independent book
-  accounting and uses cache only when that baseline is absent.
+  accounting and uses cache only when that baseline is absent. When a lower
+  positive live quote indicates a loss larger than the anti-grief bound, a
+  failed book-sized exit may be retried once at that quote, still subject to the
+  original nonzero cash floor.
 
 Measured: market deposit 90 entries / 5.0M instructions, market withdraw
 79 entries / 6.0M instructions.

@@ -75,7 +75,11 @@ MarginController (leveraged trading, optional)
   actually claimed, converted, or deployed.
 - Root token-transfer authorizations required by the deployed Aquarius ABI are guarded
   by post-call input balance-delta caps. ReceiptVault always marks live NAV losses down;
-  only fixed-cash redemption sizing rejects quotes below 90% of independent accounting.
+  fixed-cash redemption sizing first rejects quotes below 90% of independent accounting.
+  If that exact, cash-bounded exit fails and the strategy supplied a lower positive live
+  quote, ReceiptVault retries once with enough shares for the same nonzero cash minimum.
+  This keeps withdrawals live after a genuine large loss without letting a dust quote
+  force an otherwise healthy strategy into a full unwind.
 - Use an isolated LP-market Peridottroller, CF=0, and borrow paused. Deployment scripts
   require the controller address explicitly. Reuse the appropriate existing JRM while
   the markets remain supply-only.
