@@ -65,6 +65,7 @@ IDLE_BUFFER_BPS=${IDLE_BUFFER_BPS:-3000}           # 30%
 HARVEST_COOLDOWN=${HARVEST_COOLDOWN:-3600}
 PREFLIGHT_ONLY=${PREFLIGHT_ONLY:-false}
 CONFIRM_MAINNET=${CONFIRM_MAINNET:-}
+INCLUSION_FEE=${INCLUSION_FEE:-100000} # max 0.01 XLM per submitted transaction
 
 if [[ "$PREFLIGHT_ONLY" != "true" && "$PREFLIGHT_ONLY" != "false" ]]; then
   echo "ERROR: PREFLIGHT_ONLY must be true or false." >&2
@@ -85,6 +86,7 @@ fi
 
 invoke() {
   stellar contract invoke \
+    --no-cache --inclusion-fee "$INCLUSION_FEE" \
     --id "$1" --source-account "$IDENTITY" --network "$NETWORK" -- "${@:2}"
 }
 
@@ -206,6 +208,7 @@ INIT_ADMIN="$ADMIN" bash scripts/build_wasm.sh
 
 echo "==> Deploying PYUSD-settled AquariusLpVault (pool index 0)"
 PYUSD_VAULT_ID=$(stellar contract deploy \
+  --no-cache --inclusion-fee "$INCLUSION_FEE" \
   --wasm target/wasm32v1-none/release/aquarius_lp_vault.optimized.wasm \
   --source-account "$IDENTITY" --network "$NETWORK")
 echo "    PYUSD vault = $PYUSD_VAULT_ID"
@@ -223,9 +226,9 @@ invoke "$PYUSD_VAULT_ID" set_harvest_cooldown \
 invoke "$PYUSD_VAULT_ID" set_max_pool_divergence_bps \
   --admin_addr "$ADMIN" --bps "$MAX_DIVERGENCE_BPS"
 invoke "$PYUSD_VAULT_ID" set_primary_reward_token \
-  --admin_addr "$ADMIN" --reward_token "$AQUA"
+  --admin_addr "$ADMIN" --reward_token "\"$AQUA\""
 invoke "$PYUSD_VAULT_ID" set_reward_route \
-  --admin_addr "$ADMIN" --reward_token "$AQUA" --route "$AQUA_PYUSD_ROUTE"
+  --admin_addr "$ADMIN" --reward_token "$AQUA" --route "\"$AQUA_PYUSD_ROUTE\""
 invoke "$PYUSD_VAULT_ID" set_reward_min_rate \
   --admin_addr "$ADMIN" --reward_token "$AQUA" \
   --min_rate_scaled "$PYUSD_AQUA_MIN_RATE_SCALED"
@@ -237,6 +240,7 @@ fi
 
 echo "==> Deploying USDC-settled AquariusLpVault (pool index 1)"
 USDC_VAULT_ID=$(stellar contract deploy \
+  --no-cache --inclusion-fee "$INCLUSION_FEE" \
   --wasm target/wasm32v1-none/release/aquarius_lp_vault.optimized.wasm \
   --source-account "$IDENTITY" --network "$NETWORK")
 echo "    USDC vault = $USDC_VAULT_ID"
@@ -254,9 +258,9 @@ invoke "$USDC_VAULT_ID" set_harvest_cooldown \
 invoke "$USDC_VAULT_ID" set_max_pool_divergence_bps \
   --admin_addr "$ADMIN" --bps "$MAX_DIVERGENCE_BPS"
 invoke "$USDC_VAULT_ID" set_primary_reward_token \
-  --admin_addr "$ADMIN" --reward_token "$AQUA"
+  --admin_addr "$ADMIN" --reward_token "\"$AQUA\""
 invoke "$USDC_VAULT_ID" set_reward_route \
-  --admin_addr "$ADMIN" --reward_token "$AQUA" --route "$AQUA_USDC_ROUTE"
+  --admin_addr "$ADMIN" --reward_token "$AQUA" --route "\"$AQUA_USDC_ROUTE\""
 invoke "$USDC_VAULT_ID" set_reward_min_rate \
   --admin_addr "$ADMIN" --reward_token "$AQUA" \
   --min_rate_scaled "$USDC_AQUA_MIN_RATE_SCALED"
@@ -268,6 +272,7 @@ fi
 
 echo "==> Deploying and binding the PYUSD ReceiptVault"
 PYUSD_MARKET_ID=$(stellar contract deploy \
+  --no-cache --inclusion-fee "$INCLUSION_FEE" \
   --wasm target/wasm32v1-none/release/receipt_vault.optimized.wasm \
   --source-account "$IDENTITY" --network "$NETWORK")
 echo "    PYUSD market = $PYUSD_MARKET_ID"
@@ -290,6 +295,7 @@ invoke "$PYUSD_VAULT_ID" set_receipt_vault \
 
 echo "==> Deploying and binding the USDC ReceiptVault"
 USDC_MARKET_ID=$(stellar contract deploy \
+  --no-cache --inclusion-fee "$INCLUSION_FEE" \
   --wasm target/wasm32v1-none/release/receipt_vault.optimized.wasm \
   --source-account "$IDENTITY" --network "$NETWORK")
 echo "    USDC market = $USDC_MARKET_ID"
@@ -320,13 +326,15 @@ done
 
 PYUSD_CF=$(view "$CONTROLLER" get_market_cf --market "$PYUSD_MARKET_ID")
 USDC_CF=$(view "$CONTROLLER" get_market_cf --market "$USDC_MARKET_ID")
+PYUSD_CF_RAW=${PYUSD_CF//\"/}
+USDC_CF_RAW=${USDC_CF//\"/}
 PYUSD_BORROW_PAUSED=$(view "$CONTROLLER" is_borrow_paused --market "$PYUSD_MARKET_ID")
 USDC_BORROW_PAUSED=$(view "$CONTROLLER" is_borrow_paused --market "$USDC_MARKET_ID")
 PYUSD_BOUND_MARKET=$(view "$PYUSD_VAULT_ID" get_receipt_vault)
 USDC_BOUND_MARKET=$(view "$USDC_VAULT_ID" get_receipt_vault)
 CONTROLLER_PYUSD_PRICE=$(view "$CONTROLLER" get_price_usd --token "$PYUSD")
 CONTROLLER_USDC_PRICE=$(view "$CONTROLLER" get_price_usd --token "$USDC")
-if [[ "$PYUSD_CF" != "0" || "$USDC_CF" != "0" || \
+if [[ "$PYUSD_CF_RAW" != "0" || "$USDC_CF_RAW" != "0" || \
       "$PYUSD_BORROW_PAUSED" != "true" || "$USDC_BORROW_PAUSED" != "true" || \
       "$PYUSD_BOUND_MARKET" != "\"$PYUSD_MARKET_ID\"" || \
       "$USDC_BOUND_MARKET" != "\"$USDC_MARKET_ID\"" || \
@@ -356,7 +364,7 @@ cat <<SUMMARY
   USDC AQUA floor      $USDC_AQUA_MIN_RATE_SCALED (1e7 raw USDC/raw AQUA)
 
   Controller           $CONTROLLER
-  Collateral factors   PYUSD=$PYUSD_CF USDC=$USDC_CF
+  Collateral factors   PYUSD=$PYUSD_CF_RAW USDC=$USDC_CF_RAW
   Borrow paused        PYUSD=$PYUSD_BORROW_PAUSED USDC=$USDC_BORROW_PAUSED
 
   Start one keeper per settlement vault:

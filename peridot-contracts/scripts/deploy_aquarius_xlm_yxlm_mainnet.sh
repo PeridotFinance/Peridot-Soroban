@@ -53,6 +53,7 @@ IDLE_BUFFER_BPS=${IDLE_BUFFER_BPS:-3000} # 30%
 HARVEST_COOLDOWN=${HARVEST_COOLDOWN:-3600}
 PREFLIGHT_ONLY=${PREFLIGHT_ONLY:-false}
 CONFIRM_MAINNET=${CONFIRM_MAINNET:-}
+INCLUSION_FEE=${INCLUSION_FEE:-100000} # max 0.01 XLM per submitted transaction
 
 if [[ "$UNDERLYING_INDEX" != "0" ]]; then
   echo "ERROR: this dedicated XLM market requires UNDERLYING_INDEX=0." >&2
@@ -77,6 +78,7 @@ fi
 
 invoke() {
   stellar contract invoke \
+    --no-cache --inclusion-fee "$INCLUSION_FEE" \
     --id "$1" --source-account "$IDENTITY" --network "$NETWORK" -- "${@:2}"
 }
 
@@ -180,6 +182,7 @@ INIT_ADMIN="$ADMIN" bash scripts/build_wasm.sh
 
 echo "==> Deploying AquariusLpVault"
 VAULT_ID=$(stellar contract deploy \
+  --no-cache --inclusion-fee "$INCLUSION_FEE" \
   --wasm target/wasm32v1-none/release/aquarius_lp_vault.optimized.wasm \
   --source-account "$IDENTITY" --network "$NETWORK")
 echo "    vault = $VAULT_ID"
@@ -196,9 +199,9 @@ invoke "$VAULT_ID" set_harvest_cooldown --admin_addr "$ADMIN" --seconds "$HARVES
 invoke "$VAULT_ID" set_max_pool_divergence_bps \
   --admin_addr "$ADMIN" --bps "$MAX_DIVERGENCE_BPS"
 invoke "$VAULT_ID" set_primary_reward_token \
-  --admin_addr "$ADMIN" --reward_token "$AQUA"
+  --admin_addr "$ADMIN" --reward_token "\"$AQUA\""
 invoke "$VAULT_ID" set_reward_route \
-  --admin_addr "$ADMIN" --reward_token "$AQUA" --route "$AQUA_ROUTE"
+  --admin_addr "$ADMIN" --reward_token "$AQUA" --route "\"$AQUA_ROUTE\""
 invoke "$VAULT_ID" set_reward_min_rate \
   --admin_addr "$ADMIN" --reward_token "$AQUA" \
   --min_rate_scaled "$AQUA_MIN_RATE_SCALED"
@@ -210,6 +213,7 @@ fi
 
 echo "==> Deploying a new supply-only XLM ReceiptVault"
 MARKET_ID=$(stellar contract deploy \
+  --no-cache --inclusion-fee "$INCLUSION_FEE" \
   --wasm target/wasm32v1-none/release/receipt_vault.optimized.wasm \
   --source-account "$IDENTITY" --network "$NETWORK")
 echo "    market = $MARKET_ID"
@@ -242,9 +246,10 @@ invoke "$CONTROLLER" set_pause_borrow --market "$MARKET_ID" --paused true
 invoke "$MARKET_ID" set_peridottroller --peridottroller "$CONTROLLER"
 
 CF=$(view "$CONTROLLER" get_market_cf --market "$MARKET_ID")
+CF_RAW=${CF//\"/}
 BORROW_PAUSED=$(view "$CONTROLLER" is_borrow_paused --market "$MARKET_ID")
 CONTROLLER_XLM_PRICE=$(view "$CONTROLLER" get_price_usd --token "$XLM")
-if [[ "$CF" != "0" || "$BORROW_PAUSED" != "true" || \
+if [[ "$CF_RAW" != "0" || "$BORROW_PAUSED" != "true" || \
       "$CONTROLLER_XLM_PRICE" == "null" ]]; then
   echo "ERROR: supply-only/oracle verification failed: cf=$CF borrow_paused=$BORROW_PAUSED xlm_price=$CONTROLLER_XLM_PRICE" >&2
   exit 1
@@ -260,7 +265,7 @@ cat <<SUMMARY
   XLM market      $MARKET_ID
   Pool            $POOL
   AQUA rate floor $AQUA_MIN_RATE_SCALED (1e7 raw XLM/raw AQUA)
-  Collateral CF   $CF
+  Collateral CF   $CF_RAW
   Borrow paused   $BORROW_PAUSED
 
   Start the keeper:

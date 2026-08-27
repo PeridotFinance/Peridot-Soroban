@@ -21,6 +21,7 @@ NETWORK=${NETWORK:-mainnet-public}
 IDENTITY=${IDENTITY:?set IDENTITY to the deploying stellar CLI identity}
 ADMIN=${ADMIN:?set ADMIN to the pinned init-admin public key}
 CONFIRM_MAINNET=${CONFIRM_MAINNET:-}
+INCLUSION_FEE=${INCLUSION_FEE:-100000} # max 0.01 XLM per submitted transaction
 
 REFLECTOR=${REFLECTOR:-CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN}
 XLM=${XLM:-CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA}
@@ -30,6 +31,7 @@ USDC=${USDC:-CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75}
 
 invoke() {
   stellar contract invoke \
+    --no-cache --inclusion-fee "$INCLUSION_FEE" \
     --id "$1" --source-account "$IDENTITY" --network "$NETWORK" -- "${@:2}"
 }
 
@@ -63,6 +65,7 @@ INIT_ADMIN="$ADMIN" bash scripts/build_wasm.sh
 
 echo "==> Deploying isolated Aquarius LP Peridottroller"
 CONTROLLER_ID=$(stellar contract deploy \
+  --no-cache --inclusion-fee "$INCLUSION_FEE" \
   --wasm target/wasm32v1-none/release/simple_peridottroller.optimized.wasm \
   --source-account "$IDENTITY" --network "$NETWORK")
 echo "    controller = $CONTROLLER_ID"

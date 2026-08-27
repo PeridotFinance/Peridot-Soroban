@@ -13,6 +13,7 @@ ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT_DIR"
 
 NETWORK=${NETWORK:-mainnet-public}
+INCLUSION_FEE=${INCLUSION_FEE:-100000} # max 0.01 XLM per submitted transaction
 IDENTITY=${IDENTITY:?set IDENTITY to the deploying stellar CLI identity}
 ADMIN=${ADMIN:?set ADMIN to the pinned init-admin public key}
 
@@ -60,7 +61,7 @@ MAX_DIVERGENCE_BPS=${MAX_DIVERGENCE_BPS:-200}  # 2%
 IDLE_BUFFER_BPS=${IDLE_BUFFER_BPS:-3000} # keep 30% of market deposits liquid
 HARVEST_COOLDOWN=${HARVEST_COOLDOWN:-3600}
 
-invoke() { stellar contract invoke --id "$1" --source-account "$IDENTITY" --network "$NETWORK" -- "${@:2}"; }
+invoke() { stellar contract invoke --no-cache --inclusion-fee "$INCLUSION_FEE" --id "$1" --source-account "$IDENTITY" --network "$NETWORK" -- "${@:2}"; }
 view() { stellar contract invoke --id "$1" --source-account "$IDENTITY" --network "$NETWORK" --send no -- "${@:2}"; }
 
 case "$REWARD_PROBE_AMOUNT:$REWARD_RATE_FLOOR_BPS" in
@@ -128,6 +129,7 @@ fi
 
 echo "==> Deploying AquariusLpVault"
 VAULT_ID=$(stellar contract deploy \
+  --no-cache --inclusion-fee "$INCLUSION_FEE" \
   --wasm target/wasm32v1-none/release/aquarius_lp_vault.optimized.wasm \
   --source-account "$IDENTITY" --network "$NETWORK")
 echo "    vault = $VAULT_ID"
@@ -140,10 +142,11 @@ invoke "$VAULT_ID" set_max_deploy --admin_addr "$ADMIN" --max_deploy "$MAX_DEPLO
 invoke "$VAULT_ID" set_slippage_bps --admin_addr "$ADMIN" --bps "$SLIPPAGE_BPS"
 invoke "$VAULT_ID" set_harvest_cooldown --admin_addr "$ADMIN" --seconds "$HARVEST_COOLDOWN"
 invoke "$VAULT_ID" set_max_pool_divergence_bps --admin_addr "$ADMIN" --bps "$MAX_DIVERGENCE_BPS"
-invoke "$VAULT_ID" set_primary_reward_token --admin_addr "$ADMIN" --reward_token "$AQUA"
+invoke "$VAULT_ID" set_primary_reward_token \
+  --admin_addr "$ADMIN" --reward_token "\"$AQUA\""
 if [[ -n "$AQUA_ROUTE" ]]; then
   invoke "$VAULT_ID" set_reward_route \
-    --admin_addr "$ADMIN" --reward_token "$AQUA" --route "$AQUA_ROUTE"
+    --admin_addr "$ADMIN" --reward_token "$AQUA" --route "\"$AQUA_ROUTE\""
   invoke "$VAULT_ID" set_reward_min_rate \
     --admin_addr "$ADMIN" --reward_token "$AQUA" \
     --min_rate_scaled "$AQUA_MIN_RATE_SCALED"
@@ -153,6 +156,7 @@ fi
 
 echo "==> Deploying the market (ReceiptVault, audited wasm, unmodified)"
 MARKET_ID=$(stellar contract deploy \
+  --no-cache --inclusion-fee "$INCLUSION_FEE" \
   --wasm target/wasm32v1-none/release/receipt_vault.optimized.wasm \
   --source-account "$IDENTITY" --network "$NETWORK")
 echo "    market = $MARKET_ID"
