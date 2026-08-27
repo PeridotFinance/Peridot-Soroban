@@ -76,20 +76,16 @@ invoke "$CONTROLLER_ID" set_oracle_asset_symbol --token "$USDC" --symbol '"USDC"
 
 ACTUAL_ADMIN=$(view "$CONTROLLER_ID" get_admin)
 ACTUAL_ORACLE=$(view "$CONTROLLER_ID" get_oracle)
-XLM_CONTROLLER_PRICE=$(view "$CONTROLLER_ID" get_price_usd --token "$XLM")
-YXLM_CONTROLLER_PRICE=$(view "$CONTROLLER_ID" get_price_usd --token "$YXLM")
-PYUSD_CONTROLLER_PRICE=$(view "$CONTROLLER_ID" get_price_usd --token "$PYUSD")
-USDC_CONTROLLER_PRICE=$(view "$CONTROLLER_ID" get_price_usd --token "$USDC")
 
 if [[ "$ACTUAL_ADMIN" != "\"$ADMIN\"" || \
-      "$ACTUAL_ORACLE" != "\"$REFLECTOR\"" || \
-      "$XLM_CONTROLLER_PRICE" == "null" || "$YXLM_CONTROLLER_PRICE" == "null" || \
-      "$PYUSD_CONTROLLER_PRICE" == "null" || "$USDC_CONTROLLER_PRICE" == "null" || \
-      "$XLM_CONTROLLER_PRICE" != "$YXLM_CONTROLLER_PRICE" || \
-      "$PYUSD_CONTROLLER_PRICE" != "$USDC_CONTROLLER_PRICE" ]]; then
-  echo "ERROR: isolated controller oracle verification failed." >&2
+      "$ACTUAL_ORACLE" != "\"$REFLECTOR\"" ]]; then
+  echo "ERROR: isolated controller admin/oracle verification failed." >&2
   exit 1
 fi
+# `get_price_usd` intentionally returns None until a token is introduced by
+# `add_market`. Each market deployment therefore verifies its settlement-token
+# alias immediately after listing; checking the four aliases here would always
+# fail on a correctly empty controller.
 
 cat <<SUMMARY
 

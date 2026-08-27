@@ -195,13 +195,9 @@ if [[ "$ADMIN" != "$EXPECTED_ADMIN" ]]; then
 fi
 CONTROLLER_ADMIN=$(view "$CONTROLLER" get_admin)
 CONTROLLER_ORACLE=$(view "$CONTROLLER" get_oracle)
-CONTROLLER_PYUSD_PRICE=$(view "$CONTROLLER" get_price_usd --token "$PYUSD")
-CONTROLLER_USDC_PRICE=$(view "$CONTROLLER" get_price_usd --token "$USDC")
 if [[ "$CONTROLLER_ADMIN" != "\"$ADMIN\"" || \
-      "$CONTROLLER_ORACLE" != "\"$UPSTREAM_ORACLE\"" || \
-      "$CONTROLLER_PYUSD_PRICE" == "null" || \
-      "$CONTROLLER_PYUSD_PRICE" != "$CONTROLLER_USDC_PRICE" ]]; then
-  echo "ERROR: controller admin/oracle/PYUSD-USDC alias verification failed." >&2
+      "$CONTROLLER_ORACLE" != "\"$UPSTREAM_ORACLE\"" ]]; then
+  echo "ERROR: controller admin/oracle verification failed." >&2
   exit 1
 fi
 
@@ -328,11 +324,16 @@ PYUSD_BORROW_PAUSED=$(view "$CONTROLLER" is_borrow_paused --market "$PYUSD_MARKE
 USDC_BORROW_PAUSED=$(view "$CONTROLLER" is_borrow_paused --market "$USDC_MARKET_ID")
 PYUSD_BOUND_MARKET=$(view "$PYUSD_VAULT_ID" get_receipt_vault)
 USDC_BOUND_MARKET=$(view "$USDC_VAULT_ID" get_receipt_vault)
+CONTROLLER_PYUSD_PRICE=$(view "$CONTROLLER" get_price_usd --token "$PYUSD")
+CONTROLLER_USDC_PRICE=$(view "$CONTROLLER" get_price_usd --token "$USDC")
 if [[ "$PYUSD_CF" != "0" || "$USDC_CF" != "0" || \
       "$PYUSD_BORROW_PAUSED" != "true" || "$USDC_BORROW_PAUSED" != "true" || \
       "$PYUSD_BOUND_MARKET" != "\"$PYUSD_MARKET_ID\"" || \
-      "$USDC_BOUND_MARKET" != "\"$USDC_MARKET_ID\"" ]]; then
+      "$USDC_BOUND_MARKET" != "\"$USDC_MARKET_ID\"" || \
+      "$CONTROLLER_PYUSD_PRICE" == "null" || \
+      "$CONTROLLER_PYUSD_PRICE" != "$CONTROLLER_USDC_PRICE" ]]; then
   echo "ERROR: post-deployment supply-only or ReceiptVault binding check failed." >&2
+  echo "pyusd_price=$CONTROLLER_PYUSD_PRICE usdc_price=$CONTROLLER_USDC_PRICE" >&2
   exit 1
 fi
 

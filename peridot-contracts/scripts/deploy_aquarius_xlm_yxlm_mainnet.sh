@@ -169,13 +169,9 @@ if [[ "$ADMIN" != "$EXPECTED_ADMIN" ]]; then
 fi
 CONTROLLER_ADMIN=$(view "$CONTROLLER" get_admin)
 CONTROLLER_ORACLE=$(view "$CONTROLLER" get_oracle)
-CONTROLLER_XLM_PRICE=$(view "$CONTROLLER" get_price_usd --token "$XLM")
-CONTROLLER_YXLM_PRICE=$(view "$CONTROLLER" get_price_usd --token "$YXLM")
 if [[ "$CONTROLLER_ADMIN" != "\"$ADMIN\"" || \
-      "$CONTROLLER_ORACLE" != "\"$UPSTREAM_ORACLE\"" || \
-      "$CONTROLLER_XLM_PRICE" == "null" || \
-      "$CONTROLLER_XLM_PRICE" != "$CONTROLLER_YXLM_PRICE" ]]; then
-  echo "ERROR: controller admin/oracle/XLM-yXLM alias verification failed." >&2
+      "$CONTROLLER_ORACLE" != "\"$UPSTREAM_ORACLE\"" ]]; then
+  echo "ERROR: controller admin/oracle verification failed." >&2
   exit 1
 fi
 
@@ -247,8 +243,10 @@ invoke "$MARKET_ID" set_peridottroller --peridottroller "$CONTROLLER"
 
 CF=$(view "$CONTROLLER" get_market_cf --market "$MARKET_ID")
 BORROW_PAUSED=$(view "$CONTROLLER" is_borrow_paused --market "$MARKET_ID")
-if [[ "$CF" != "0" || "$BORROW_PAUSED" != "true" ]]; then
-  echo "ERROR: supply-only policy verification failed: cf=$CF borrow_paused=$BORROW_PAUSED" >&2
+CONTROLLER_XLM_PRICE=$(view "$CONTROLLER" get_price_usd --token "$XLM")
+if [[ "$CF" != "0" || "$BORROW_PAUSED" != "true" || \
+      "$CONTROLLER_XLM_PRICE" == "null" ]]; then
+  echo "ERROR: supply-only/oracle verification failed: cf=$CF borrow_paused=$BORROW_PAUSED xlm_price=$CONTROLLER_XLM_PRICE" >&2
   exit 1
 fi
 
