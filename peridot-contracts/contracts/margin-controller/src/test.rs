@@ -1521,6 +1521,59 @@ fn open_perps_long_with_leverage(
     (position_id, pool, pool_id, pool_tokens)
 }
 
+fn open_perps_with_leverage(
+    env: &Env,
+    controller: &MarginControllerClient,
+    user: &Address,
+    usdt_id: &Address,
+    xlm_id: &Address,
+    usdt_vault_id: &Address,
+    margin_ptokens: u128,
+    leverage: u128,
+    side: PositionSide,
+) -> (u64, Address, BytesN<32>, Vec<Address>) {
+    let usdt_vault = receipt_vault::ReceiptVaultClient::new(env, usdt_vault_id);
+    usdt_vault.deposit(user, &margin_ptokens);
+    controller.transfer_spot_to_margin(user, usdt_id, &margin_ptokens);
+
+    let (pool, pool_id, pool_tokens) = setup_perps_pool(env, usdt_id, xlm_id);
+    let min_position_amount = margin_ptokens
+        .checked_mul(leverage)
+        .expect("notional overflow");
+    let position_id = controller.begin_open_position_v3(
+        user,
+        usdt_id,
+        xlm_id,
+        &margin_ptokens,
+        &leverage,
+        &side,
+        &pool_tokens,
+        &pool_id,
+        &pool,
+        &min_position_amount,
+    );
+    controller.swap_open_position_v3(user, &position_id);
+    controller.activate_open_position_v3(user, &position_id);
+    (position_id, pool, pool_id, pool_tokens)
+}
+
+fn seed_perps_matrix_liquidity(
+    env: &Env,
+    user: &Address,
+    usdt_id: &Address,
+    xlm_id: &Address,
+    usdt_vault_id: &Address,
+    xlm_vault_id: &Address,
+) {
+    let lender = Address::generate(env);
+    let liquidity = 50_000_000_000u128;
+    MockTokenClient::new(env, usdt_id).mint(&lender, &(liquidity as i128));
+    MockTokenClient::new(env, xlm_id).mint(&lender, &(liquidity as i128));
+    receipt_vault::ReceiptVaultClient::new(env, usdt_vault_id).deposit(&lender, &liquidity);
+    receipt_vault::ReceiptVaultClient::new(env, xlm_vault_id).deposit(&lender, &liquidity);
+    MockTokenClient::new(env, usdt_id).mint(user, &50_000_000_000i128);
+}
+
 fn open_perps_short_10x(
     env: &Env,
     controller: &MarginControllerClient,
@@ -1550,6 +1603,199 @@ fn open_perps_short_10x(
     controller.swap_open_position_v3(user, &position_id);
     controller.activate_open_position_v3(user, &position_id);
     (position_id, pool, pool_id, pool_tokens)
+}
+
+#[test]
+fn test_perps_v3_2x_to_5x_long_short_amount_lifecycle_matrix() {
+    let (
+        env,
+        controller_id,
+        usdt_id,
+        xlm_id,
+        user,
+        _peridottroller_id,
+        usdt_vault_id,
+        xlm_vault_id,
+    ) = setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+    seed_perps_matrix_liquidity(
+        &env,
+        &user,
+        &usdt_id,
+        &xlm_id,
+        &usdt_vault_id,
+        &xlm_vault_id,
+    );
+
+    // Raw 7-decimal amounts: 0.1, 50, and 500 tokens.
+    for margin_amount in [1_000_000u128, 500_000_000u128, 5_000_000_000u128] {
+        for leverage in [2u128, 3u128, 4u128, 5u128] {
+            for side in [PositionSide::Long, PositionSide::Short] {
+                let (position_id, _pool, _pool_id, _pool_tokens) = open_perps_with_leverage(
+                    &env,
+                    &controller,
+                    &user,
+                    &usdt_id,
+                    &xlm_id,
+                    &usdt_vault_id,
+                    margin_amount,
+                    leverage,
+                    side.clone(),
+                );
+                let position = controller.get_position(&position_id).unwrap();
+                let perps = controller.get_perps_position(&position_id).unwrap();
+                assert_eq!(position.status, PositionStatus::Open);
+                assert_eq!(position.side, side);
+                assert_eq!(perps.margin_amount, margin_amount);
+                assert_eq!(perps.notional_value, margin_amount * leverage);
+                assert!(controller.get_health_factor(&position_id) > SCALE_1E6);
+
+                let (collateral_asset, collateral_vault_id, debt_asset, debt_vault_id) = match side
+                {
+                    PositionSide::Long => (
+                        xlm_id.clone(),
+                        xlm_vault_id.clone(),
+                        usdt_id.clone(),
+                        usdt_vault_id.clone(),
+                    ),
+                    PositionSide::Short => (
+                        usdt_id.clone(),
+                        usdt_vault_id.clone(),
+                        xlm_id.clone(),
+                        xlm_vault_id.clone(),
+                    ),
+                };
+                let expected_debt = match side {
+                    PositionSide::Long => margin_amount * (leverage - 1),
+                    PositionSide::Short => margin_amount * leverage,
+                };
+                let debt_vault = receipt_vault::ReceiptVaultClient::new(&env, &debt_vault_id);
+                assert_eq!(
+                    debt_vault.get_margin_borrow_balance(&position_id),
+                    expected_debt
+                );
+
+                let top_up = margin_amount / 10;
+                MockTokenClient::new(&env, &collateral_asset).mint(&user, &(top_up as i128));
+                receipt_vault::ReceiptVaultClient::new(&env, &collateral_vault_id)
+                    .deposit(&user, &top_up);
+                controller.transfer_spot_to_margin(&user, &collateral_asset, &top_up);
+                let health_before_top_up = controller.get_health_factor(&position_id);
+                let collateral_before = position.collateral_ptokens;
+                controller.add_position_collateral_v3(&user, &position_id, &top_up);
+                assert_eq!(
+                    controller
+                        .get_position(&position_id)
+                        .unwrap()
+                        .collateral_ptokens,
+                    collateral_before + top_up
+                );
+                assert!(controller.get_health_factor(&position_id) > health_before_top_up);
+
+                let partial_repay = expected_debt / 4;
+                MockTokenClient::new(&env, &debt_asset).mint(&user, &(partial_repay as i128));
+                let health_before_repay = controller.get_health_factor(&position_id);
+                controller.repay_margin_position_v3(&user, &position_id, &partial_repay);
+                let remaining_debt = expected_debt - partial_repay;
+                assert_eq!(
+                    debt_vault.get_margin_borrow_balance(&position_id),
+                    remaining_debt
+                );
+                assert!(controller.get_health_factor(&position_id) > health_before_repay);
+
+                env.cost_estimate().budget().reset_unlimited();
+                controller.prepare_close_position_v3(&user, &position_id);
+                assert_last_invocation_resources_under(&env, 100, 45, 25_000_000);
+                let pending = controller.get_pending_perps_close(&position_id).unwrap();
+                match side {
+                    PositionSide::Long => controller.swap_close_position_v3(
+                        &user,
+                        &position_id,
+                        &pending.collateral_underlying,
+                    ),
+                    PositionSide::Short => {
+                        let debt_buffer =
+                            (remaining_debt * CLOSE_DEBT_BUFFER_BPS + BPS_SCALE - 1) / BPS_SCALE;
+                        let buffered_debt = remaining_debt + debt_buffer;
+                        assert!(buffered_debt <= pending.collateral_underlying);
+                        controller.swap_close_short_position_v3(
+                            &user,
+                            &position_id,
+                            &buffered_debt,
+                            &buffered_debt,
+                        );
+                    }
+                }
+                controller.finish_close_position_v3(&position_id);
+                assert!(controller.get_position(&position_id).is_none());
+                assert_eq!(debt_vault.get_margin_borrow_balance(&position_id), 0u128);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_perps_v3_2x_to_5x_long_short_liquidation_matrix() {
+    for leverage in [2u128, 3u128, 4u128, 5u128] {
+        for side in [PositionSide::Long, PositionSide::Short] {
+            let (
+                env,
+                controller_id,
+                usdt_id,
+                xlm_id,
+                user,
+                peridottroller_id,
+                usdt_vault_id,
+                xlm_vault_id,
+            ) = setup_min_with_vaults();
+            env.cost_estimate().disable_resource_limits();
+            env.cost_estimate().budget().reset_unlimited();
+            let controller = MarginControllerClient::new(&env, &controller_id);
+            let peridottroller = MockPeridottrollerClient::new(&env, &peridottroller_id);
+            seed_perps_matrix_liquidity(
+                &env,
+                &user,
+                &usdt_id,
+                &xlm_id,
+                &usdt_vault_id,
+                &xlm_vault_id,
+            );
+            let (position_id, pool, _pool_id, _pool_tokens) = open_perps_with_leverage(
+                &env,
+                &controller,
+                &user,
+                &usdt_id,
+                &xlm_id,
+                &usdt_vault_id,
+                5_000_000_000u128,
+                leverage,
+                side.clone(),
+            );
+            let (adverse_price, payout_bps, debt_vault_id) = match side {
+                PositionSide::Long => (400_000u128, 400_000u128, usdt_vault_id.clone()),
+                PositionSide::Short => (2_000_000u128, 500_000u128, xlm_vault_id.clone()),
+            };
+            peridottroller.set_price(&xlm_id, &adverse_price, &1_000_000u128);
+            MockAquariusPoolClient::new(&env, &pool).set_quote_bps(&payout_bps);
+            MockAquariusPoolClient::new(&env, &pool).set_payout_bps(&payout_bps);
+            assert!(controller.get_health_factor(&position_id) <= SCALE_1E6);
+
+            let debt_vault = receipt_vault::ReceiptVaultClient::new(&env, &debt_vault_id);
+            let bad_debt_before = debt_vault.get_total_bad_debt();
+            let liquidator = Address::generate(&env);
+            controller.begin_liquidation_v3(&liquidator, &position_id);
+            let quote = controller.preview_liquidation_v3(&position_id);
+            assert!(quote.pool_estimated_out < quote.debt_amount);
+            controller.swap_liquidation_v3(&liquidator, &position_id, &quote.pool_estimated_out);
+            controller.finish_liquidation_v3(&liquidator, &position_id);
+
+            assert!(controller.get_position(&position_id).is_none());
+            assert_eq!(debt_vault.get_margin_borrow_balance(&position_id), 0u128);
+            assert!(debt_vault.get_total_bad_debt() > bad_debt_before);
+        }
+    }
 }
 
 #[test]
