@@ -107,11 +107,14 @@ MarginController (leveraged trading, optional)
   protected exit may use the last NAV ratio, and the Aquarius quote must still satisfy
   the configured divergence guard. This preserves supplier exits during an oracle outage
   without making the stale value eligible for fresh deposits or unguarded swaps.
-- Before mainnet: complete final review and Almanax scan, build with the production admin
-  guard, and repeat live read-only pool/oracle/route preflights. These exact pools are not
-  available on Testnet, so launch empty with conservative caps and verify configuration
-  before accepting supplier capital. Do not enable borrowing until cross-market
-  transaction-footprint and boosted-valuation staleness findings are redesigned.
+- The empty supply-only Mainnet rollout completed on 2026-08-27 after the clean Almanax
+  scan and live pool/oracle/route preflights. Isolated controller
+  `CCZKDMAP…ENGC` owns XLM market `CBRJTPI…ZECZ`, PYUSD market `CBNVNCP…MLMA`,
+  and USDC market `CBIOHQF…AZP7`; their strategies are `CB3WLG4…H6RW`,
+  `CANCOWO…5EKY`, and `CAQZ7XP…KGIN`. All three remain empty, CF=0, and
+  borrow-paused. Do not enable borrowing or collateral until cross-market footprint,
+  depeg-aware PriceRouter, and boosted-valuation staleness work is redesigned and
+  re-audited. See `Agents.md` for complete IDs, hashes, transactions, and next steps.
 - Full implementation, operational details, verified addresses, tests, and remaining
   gates are in `contracts/aquarius-lp-vault/CLAUDE.md` and `Agents.md`.
 
