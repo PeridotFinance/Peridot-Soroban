@@ -78,9 +78,10 @@ MarginController (leveraged trading, optional)
   output-token balance increase meets the independently computed minimum. ReceiptVault
   persists and bounds the boosted strategy's output-vector length at binding, so a
   multi-asset strategy quote outage cannot change the authorized redemption shape.
-  Markets upgraded from an older ReceiptVault must verify `get_boosted_asset_count` and,
-  if absent, set the reviewed ABI count before unpausing. ReceiptVault always marks live
-  NAV losses down;
+  If that append-only key is absent on an upgraded/archived market, a failed live quote
+  triggers a zero-share shape probe and persists the recovered count before redemption;
+  the admin setter remains the fallback when the strategy cannot answer even that probe.
+  ReceiptVault always marks live NAV losses down;
   fixed-cash redemption sizing first rejects quotes below 90% of independent accounting.
   If that exact, cash-bounded exit fails and the strategy supplied a lower positive live
   quote, ReceiptVault retries once with enough shares for the same nonzero cash minimum.
@@ -96,9 +97,11 @@ MarginController (leveraged trading, optional)
   guards. PriceRouter remains the preferred depeg-aware follow-up before collateral or
   borrowing is enabled, and it returns no pegged-asset price whenever the executable
   observation pool is unavailable rather than assuming even the configured floor.
-  Extreme pool/oracle values that overflow fixed-point intermediates are treated the
-  same way: PriceRouter returns `None`, while AquariusLpVault retains only its bounded
-  last-good NAV root.
+  Extreme pool/oracle values that exceed their final numeric range are treated the same
+  way: PriceRouter returns `None`, while AquariusLpVault retains only its bounded
+  last-good NAV root. AquariusLpVault uses exact Soroban `U256` products for mul-div
+  pricing and share accounting, so a representable result never becomes a saturation
+  sentinel merely because the intermediate product exceeds `u128`.
 - Past the strategy NAV stale bound, public boosted quotes fail soft. ReceiptVault
   redeems from its cached/accounting estimate with a nonzero cash minimum; only that
   protected exit may use the last NAV ratio, and the Aquarius quote must still satisfy

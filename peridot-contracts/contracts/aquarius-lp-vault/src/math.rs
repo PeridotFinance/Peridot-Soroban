@@ -1,72 +1,51 @@
-/// Integer helpers shared by the NAV and share-accounting paths.
-///
-/// Everything here is deliberately overflow-safe: the release profile enables
-/// `overflow-checks`, and a panic inside `get_asset_amounts_per_shares` would
-/// stall every market that reads this vault.
-fn gcd_u128(mut a: u128, mut b: u128) -> u128 {
-    while b != 0 {
-        let r = a % b;
-        a = b;
-        b = r;
-    }
-    a
-}
+use soroban_sdk::{Env, U256};
 
 /// Splits `a * b / denom` into `(quotient, has_remainder)` without
 /// overflowing the intermediate product.
 ///
-/// Reduces both factors against the denominator before multiplying, which is
-/// the same trick `receipt-vault` uses for borrow-index math.
-fn try_mul_div_parts(a: u128, b: u128, denom: u128) -> Option<(u128, bool)> {
+/// A 256-bit product is exact for two `u128` factors. Returning `None` means
+/// either division by zero or that the final quotient itself cannot fit in a
+/// `u128`; intermediate overflow is never represented by a sentinel value.
+fn try_mul_div_parts(env: &Env, a: u128, b: u128, denom: u128) -> Option<(u128, bool)> {
     if denom == 0 {
         return None;
     }
     if a == 0 || b == 0 {
         return Some((0, false));
     }
-    let mut left = a;
-    let mut right = b;
-    let mut d = denom;
 
-    let g1 = gcd_u128(left, d);
-    left /= g1;
-    d /= g1;
-    let g2 = gcd_u128(right, d);
-    right /= g2;
-    d /= g2;
-
-    let num = left.checked_mul(right)?;
-    Some((num / d, !num.is_multiple_of(d)))
+    let product = U256::from_u128(env, a).mul(&U256::from_u128(env, b));
+    let divisor = U256::from_u128(env, denom);
+    let quotient = product.div(&divisor).to_u128()?;
+    let has_remainder = product.rem_euclid(&divisor).to_u128()? != 0;
+    Some((quotient, has_remainder))
 }
 
-/// `floor(a * b / denom)`, or `None` if the result cannot be computed without
-/// overflowing `u128`. Oracle paths use this form so hostile external values
-/// degrade like a missing observation rather than trapping the transaction.
-pub fn try_mul_div(a: u128, b: u128, denom: u128) -> Option<u128> {
-    try_mul_div_parts(a, b, denom).map(|(q, _)| q)
+/// `floor(a * b / denom)`, or `None` if the denominator is zero or the exact
+/// quotient does not fit in `u128`. Oracle paths use this form so hostile
+/// external values degrade like a missing observation rather than trapping.
+pub fn try_mul_div(env: &Env, a: u128, b: u128, denom: u128) -> Option<u128> {
+    try_mul_div_parts(env, a, b, denom).map(|(q, _)| q)
 }
 
 /// `floor(a * b / denom)`.
-pub fn mul_div(a: u128, b: u128, denom: u128) -> u128 {
+pub fn mul_div(env: &Env, a: u128, b: u128, denom: u128) -> u128 {
     if denom == 0 {
         panic!("division by zero");
     }
-    // Saturation keeps non-oracle accounting paths fail-safe without wrapping.
-    // Values this large cannot cross the contract's i128 token boundaries and
-    // will be rejected by the surrounding liquidity/minimum checks.
-    try_mul_div(a, b, denom).unwrap_or(u128::MAX)
+    try_mul_div(env, a, b, denom).expect("mul-div result exceeds u128")
 }
 
 /// `ceil(a * b / denom)`. Used where rounding against the vault is the safe
 /// direction (shares to burn, liquidity to redeem).
-pub fn mul_div_ceil(a: u128, b: u128, denom: u128) -> u128 {
+pub fn mul_div_ceil(env: &Env, a: u128, b: u128, denom: u128) -> u128 {
     if denom == 0 {
         panic!("division by zero");
     }
-    match try_mul_div_parts(a, b, denom) {
-        Some((q, true)) => q.saturating_add(1),
+    match try_mul_div_parts(env, a, b, denom) {
+        Some((q, true)) => q.checked_add(1).expect("mul-div result exceeds u128"),
         Some((q, false)) => q,
-        None => u128::MAX,
+        None => panic!("mul-div result exceeds u128"),
     }
 }
 
@@ -95,12 +74,12 @@ pub fn isqrt(n: u128) -> u128 {
 }
 
 /// Applies a basis-point haircut: `amount * (10_000 - bps) / 10_000`.
-pub fn apply_slippage_floor(amount: u128, bps: u32) -> u128 {
+pub fn apply_slippage_floor(env: &Env, amount: u128, bps: u32) -> u128 {
     let bps = bps as u128;
     if bps >= 10_000 {
         return 0;
     }
-    mul_div(amount, 10_000u128 - bps, 10_000u128)
+    mul_div(env, amount, 10_000u128 - bps, 10_000u128)
 }
 
 /// Saturating `u128 -> i128` conversion for cross-contract boundaries.

@@ -130,6 +130,28 @@ impl ReceiptVault {
         asset_count
     }
 
+    /// Recovers the output-vector shape for a legacy or archived binding
+    /// without depending on a live NAV quote. DefIndex-compatible strategies,
+    /// including AquariusLpVault, return their asset-shaped zero vector before
+    /// performing price-sensitive work when asked to quote zero shares.
+    fn probe_boosted_asset_count(env: &Env, boosted: &Address) -> Option<u32> {
+        match try_call_contract::<Vec<i128>, _>(
+            env,
+            boosted,
+            "get_asset_amounts_per_shares",
+            (0i128,),
+        ) {
+            Ok(amounts) if amounts.len() > 0 => {
+                Some(Self::record_boosted_asset_count(env, amounts.len()))
+            }
+            Ok(_) => None,
+            Err(ref err) => {
+                emit_external_call_failure(env, boosted, err, true);
+                None
+            }
+        }
+    }
+
     fn get_boosted_underlying(env: &Env) -> u128 {
         let boosted_key = DataKey::BoostedVault;
         if let Some(boosted) = env.storage().persistent().get::<_, Address>(&boosted_key) {
@@ -518,6 +540,10 @@ impl ReceiptVault {
         else {
             return;
         };
+        // The count is part of the protected-exit schema. Renew it whenever a
+        // redemption touches the strategy rather than relying on a keeper to
+        // arrive before an otherwise healthy user withdrawal.
+        bump_boosted_vault_ttl(env);
 
         let share_balance_i =
             token::TokenClient::new(env, &boosted).balance(&env.current_contract_address());
@@ -538,22 +564,27 @@ impl ReceiptVault {
             "get_asset_amounts_per_shares",
             (total_shares_i,),
         );
-        let (mut total_amounts, asset_count) = match quote {
+        let (mut total_amounts, quoted_asset_count) = match quote {
             Ok(amounts) if amounts.len() > 0 => {
                 let count = Self::record_boosted_asset_count(env, amounts.len());
-                (amounts, count)
+                (amounts, Some(count))
             }
-            Ok(amounts) => (
-                amounts,
-                stored_asset_count.expect("boosted asset count missing"),
-            ),
+            Ok(amounts) => (amounts, None),
             Err(ref err) => {
                 emit_external_call_failure(env, &boosted, err, true);
-                (
-                    Vec::new(env),
-                    stored_asset_count.expect("boosted asset count missing"),
-                )
+                (Vec::new(env), None)
             }
+        };
+        let asset_count = quoted_asset_count
+            .or(stored_asset_count)
+            .or_else(|| Self::probe_boosted_asset_count(env, &boosted));
+        let Some(asset_count) = asset_count else {
+            // Never guess a one-entry vector: a multi-asset strategy would
+            // reject it and obscure the actual liquidity outage. Leave the
+            // state untouched so the caller reports its standard shortfall;
+            // the admin setter remains available if the strategy cannot even
+            // answer the zero-share shape probe.
+            return;
         };
         if total_amounts.len() == 0 {
             total_amounts.push_back(0i128);

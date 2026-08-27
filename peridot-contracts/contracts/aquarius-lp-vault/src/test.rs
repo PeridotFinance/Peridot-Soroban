@@ -289,17 +289,22 @@ fn isqrt_is_floor_of_the_true_root() {
 
 #[test]
 fn mul_div_avoids_intermediate_overflow() {
+    let env = Env::default();
     let huge = u128::MAX / 2;
     // Would overflow if computed as `a * b` first.
-    assert_eq!(mul_div(huge, 4, 4), huge);
-    assert_eq!(mul_div(10, 3, 4), 7);
-    assert_eq!(mul_div_ceil(10, 3, 4), 8);
-    assert_eq!(mul_div_ceil(8, 2, 4), 4);
-    assert_eq!(mul_div(0, 5, 3), 0);
+    assert_eq!(mul_div(&env, huge, 4, 4), huge);
+    assert_eq!(mul_div(&env, 10, 3, 4), 7);
+    assert_eq!(mul_div_ceil(&env, 10, 3, 4), 8);
+    assert_eq!(mul_div_ceil(&env, 8, 2, 4), 4);
+    assert_eq!(mul_div(&env, 0, 5, 3), 0);
     assert_eq!(
-        try_mul_div(u128::MAX - 1, u128::MAX - 1, u128::MAX),
-        None,
-        "unrepresentable intermediate math must fail soft"
+        try_mul_div(&env, u128::MAX - 1, u128::MAX - 1, u128::MAX),
+        Some(u128::MAX - 2),
+        "a representable quotient must not fail because its product exceeds u128"
+    );
+    assert_eq!(
+        mul_div_ceil(&env, u128::MAX - 1, u128::MAX - 1, u128::MAX),
+        u128::MAX - 1
     );
 }
 
@@ -427,11 +432,12 @@ fn nav_matches_the_full_range_closed_form() {
 
     // 2 * L * sqrt(1.167) with 1e9-scaled root arithmetic.
     let ratio = mul_div(
+        &f.env,
         PRICE_EURC as u128,
         1_000_000_000_000_000_000u128,
         PRICE_USDC as u128,
     );
-    let expected = mul_div(liq, isqrt(ratio), 1_000_000_000u128) * 2;
+    let expected = mul_div(&f.env, liq, isqrt(ratio), 1_000_000_000u128) * 2;
 
     let nav = f.vault.get_total_underlying() as u128;
     let idle = f.vault.get_idle() as u128;
@@ -1172,7 +1178,7 @@ fn harvest_sells_rewards_into_underlying_and_redeploys() {
         (1u32, 0u32)
     };
     let quote = route.estimate_swap(&in_idx, &out_idx, &probe);
-    let min_rate = mul_div(quote, 9_500_000u128, probe);
+    let min_rate = mul_div(&f.env, quote, 9_500_000u128, probe);
     f.vault.set_reward_min_rate(&f.admin, &f.aqua_id, &min_rate);
 
     // Pool owes the vault some AQUA.
@@ -1230,7 +1236,7 @@ fn harvest_keeps_rewards_when_the_route_quote_breaches_governance_floor() {
         (1u32, 0u32)
     };
     let fair_quote = route.estimate_swap(&in_idx, &out_idx, &probe);
-    let min_rate = mul_div(fair_quote, 9_500_000u128, probe);
+    let min_rate = mul_div(&f.env, fair_quote, 9_500_000u128, probe);
     f.vault.set_reward_min_rate(&f.admin, &f.aqua_id, &min_rate);
 
     // Flood the route with AQUA so the permissionless caller sees a quote far

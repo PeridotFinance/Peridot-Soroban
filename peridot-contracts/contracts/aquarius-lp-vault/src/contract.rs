@@ -273,8 +273,9 @@ impl AquariusLpVault {
         if let (Some(pu), Some(po)) = (p_under, p_other) {
             if pu > 0 && po > 0 {
                 // ratio = (p_other / p_under) * 10^d_under / 10^d_other
-                let ratio = try_mul_div(po, NAV_RATIO_SCALE, pu).and_then(|ratio| {
+                let ratio = try_mul_div(env, po, NAV_RATIO_SCALE, pu).and_then(|ratio| {
                     try_mul_div(
+                        env,
                         ratio,
                         pow10(Self::decimals_at(&cfg, u_idx)),
                         pow10(Self::decimals_at(&cfg, o_idx)),
@@ -313,7 +314,7 @@ impl AquariusLpVault {
         if liq == 0 || root == 0 {
             return 0;
         }
-        mul_div(liq, root, NAV_ROOT_SCALE)
+        mul_div(env, liq, root, NAV_ROOT_SCALE)
             .checked_mul(2)
             .expect("nav overflow")
     }
@@ -324,7 +325,7 @@ impl AquariusLpVault {
             return 0;
         }
         let r_scaled = root.checked_mul(root).expect("nav root overflow");
-        mul_div(other_balance, r_scaled, NAV_RATIO_SCALE)
+        mul_div(env, other_balance, r_scaled, NAV_RATIO_SCALE)
     }
 
     /// Value of the full-range position, denominated in the underlying token.
@@ -428,8 +429,8 @@ impl AquariusLpVault {
         let slippage = (prm.slippage_bps as u128).min(bps - 1);
         let divergence_factor = isqrt((bps - divergence).saturating_mul(bps));
         let execution_factor = bps - slippage;
-        let combined_factor = mul_div(divergence_factor, execution_factor, bps);
-        mul_div(gross, combined_factor, bps)
+        let combined_factor = mul_div(env, divergence_factor, execution_factor, bps);
+        mul_div(env, gross, combined_factor, bps)
     }
 
     fn total_shares(env: &Env) -> u128 {
@@ -497,15 +498,15 @@ impl AquariusLpVault {
         let r_scaled = root.checked_mul(root).expect("nav root overflow"); // R * 1e18
         let fair_out = if in_idx == Self::underlying_index(env) {
             // underlying -> other: out = in / R
-            mul_div(in_amount, NAV_RATIO_SCALE, r_scaled)
+            mul_div(env, in_amount, NAV_RATIO_SCALE, r_scaled)
         } else {
             // other -> underlying: out = in * R
-            mul_div(in_amount, r_scaled, NAV_RATIO_SCALE)
+            mul_div(env, in_amount, r_scaled, NAV_RATIO_SCALE)
         };
         if fair_out == 0 {
             return;
         }
-        if quoted_out < apply_slippage_floor(fair_out, max_div) {
+        if quoted_out < apply_slippage_floor(env, fair_out, max_div) {
             panic!("pool price diverged from oracle");
         }
     }
@@ -552,7 +553,7 @@ impl AquariusLpVault {
         if enforce_divergence {
             Self::require_quote_near_oracle(env, in_idx, in_amount, estimated, exit_root);
         }
-        let out_min = apply_slippage_floor(estimated, Self::slippage_bps(env));
+        let out_min = apply_slippage_floor(env, estimated, Self::slippage_bps(env));
 
         let me = env.current_contract_address();
         let transfer_args: Vec<Val> = (me.clone(), pool.clone(), to_i128(in_amount)).into_val(env);
@@ -713,7 +714,7 @@ impl AquariusLpVault {
         if est_liquidity == 0 {
             return 0;
         }
-        let min_liquidity = apply_slippage_floor(est_liquidity, Self::slippage_bps(env));
+        let min_liquidity = apply_slippage_floor(env, est_liquidity, Self::slippage_bps(env));
 
         let me = env.current_contract_address();
         // The Aquarius pool does not call `user.require_auth()` — it relies on
@@ -841,7 +842,7 @@ impl AquariusLpVault {
 
         // Round up so a rounding shortfall does not leave the caller one unit
         // short and force a second round trip.
-        let mut burn = mul_div_ceil(needed.min(position_value), liq, position_value);
+        let mut burn = mul_div_ceil(env, needed.min(position_value), liq, position_value);
         if burn == 0 {
             burn = 1;
         }
@@ -1000,7 +1001,7 @@ impl AquariusLpVault {
             return out;
         }
         let gross_nav = Self::total_underlying(&env);
-        let gross_claim = mul_div(shares, gross_nav, supply);
+        let gross_claim = mul_div(&env, shares, gross_nav, supply);
         out.push_back(to_i128(Self::receipt_quote_value(&env, gross_claim)));
         out
     }
@@ -1063,7 +1064,7 @@ impl AquariusLpVault {
         let shares = if supply == 0 || nav_before == 0 {
             value_added
         } else {
-            mul_div(value_added, supply, nav_before)
+            mul_div(&env, value_added, supply, nav_before)
         };
         if shares == 0 {
             panic!("deposit too small to mint shares");
@@ -1117,6 +1118,7 @@ impl AquariusLpVault {
         // Costs no extra ledger entry on any path that actually redeems —
         // `redeem_for` already has the paired token in footprint.
         let owed = mul_div(
+            &env,
             shares,
             Self::total_underlying_full_at_root(&env, exit_root),
             supply,
@@ -1285,7 +1287,7 @@ impl AquariusLpVault {
             .publish(env);
             return 0;
         }
-        let configured_floor = mul_div(amount, min_rate_scaled, REWARD_RATE_SCALE);
+        let configured_floor = mul_div(env, amount, min_rate_scaled, REWARD_RATE_SCALE);
         if configured_floor == 0 || estimated < configured_floor {
             HarvestSkipped {
                 reward_token: reward_token.clone(),
@@ -1296,7 +1298,7 @@ impl AquariusLpVault {
             return 0;
         }
         let out_min =
-            apply_slippage_floor(estimated, Self::slippage_bps(env)).max(configured_floor);
+            apply_slippage_floor(env, estimated, Self::slippage_bps(env)).max(configured_floor);
         if out_min == 0 {
             HarvestSkipped {
                 reward_token: reward_token.clone(),

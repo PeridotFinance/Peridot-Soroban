@@ -5262,11 +5262,12 @@ impl TwoAssetBoostedVault {
     /// Returns [primary_underlying, 0] — two elements, same as a vault that
     /// holds one real asset and one empty strategy slot.
     pub fn get_asset_amounts_per_shares(env: Env, shares: i128) -> Vec<i128> {
-        if env
-            .storage()
-            .persistent()
-            .get(&TwoAssetKey::FailQuote)
-            .unwrap_or(false)
+        if shares > 0
+            && env
+                .storage()
+                .persistent()
+                .get(&TwoAssetKey::FailQuote)
+                .unwrap_or(false)
         {
             panic!("quote failed");
         }
@@ -5509,7 +5510,7 @@ fn test_withdraw_succeeds_with_two_asset_boosted_vault() {
 }
 
 #[test]
-fn test_two_asset_boosted_quote_outage_uses_persisted_asset_count() {
+fn test_two_asset_boosted_quote_outage_recovers_missing_asset_count() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -5528,25 +5529,23 @@ fn test_two_asset_boosted_quote_outage_uses_persisted_asset_count() {
     vault.enable_static_rates(&admin);
     vault.set_boosted_vault(&admin, &boosted_id);
     assert_eq!(vault.get_boosted_asset_count(), Some(2u32));
+    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
+    vault.deposit(&user, &20_000u128);
+
     // Model an in-place upgrade from an older ReceiptVault that did not have
-    // this append-only key, then exercise the admin migration path.
+    // this append-only key (or an archived count), then make positive-share
+    // NAV quotes fail. A zero-share shape probe remains available and must
+    // recover the two-entry vector without waiting for an admin transaction.
     env.as_contract(&vault_id, || {
         env.storage()
             .persistent()
             .remove(&DataKey::BoostedAssetCount);
     });
     assert_eq!(vault.get_boosted_asset_count(), None);
-    vault.set_boosted_asset_count(&admin, &boosted_id, &2u32);
-    assert_eq!(vault.get_boosted_asset_count(), Some(2u32));
-    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
-    vault.deposit(&user, &20_000u128);
-
-    // The public NAV quote is now unavailable, but withdraw itself still
-    // works. ReceiptVault must use the two-entry shape persisted at binding
-    // rather than guessing [needed_cash] and bricking the protected exit.
     boosted.set_fail_quote(&true);
     vault.withdraw(&user, &5_000u128);
     assert_eq!(token_client.balance(&user), 5_000i128);
+    assert_eq!(vault.get_boosted_asset_count(), Some(2u32));
 }
 
 #[test]

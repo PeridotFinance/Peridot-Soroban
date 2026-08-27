@@ -231,9 +231,13 @@ Shape:
 - ReceiptVault records the boosted strategy's bounded output-vector length when
   `set_boosted_vault` binds it and uses that persisted count during quote
   outages. The Aquarius deployment scripts assert the expected single-asset
-  shape. After upgrading an older boosted market, verify
-  `get_boosted_asset_count`; if it is absent, call the admin recovery setter
-  with the reviewed strategy ABI count before unpausing withdrawals.
+  shape. If an older/archived market lacks the append-only count, ReceiptVault
+  recovers it from a zero-share strategy quote before a protected redemption.
+  After an upgrade, still verify `get_boosted_asset_count`; use the admin
+  recovery setter only if the strategy cannot answer that shape probe.
+- AquariusLpVault performs mul-div pricing and share calculations with exact
+  Soroban `U256` intermediates. It never substitutes `u128::MAX` for a
+  representable quotient when only the intermediate product exceeds `u128`.
 
 Two guards protect the position entry and paired-token exit swaps:
 - `set_slippage_bps` — movement between the pool's quote and execution.
