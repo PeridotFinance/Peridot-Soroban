@@ -122,6 +122,11 @@ MarginController (leveraged trading, optional)
   borrow-footprint fix staged under their 24-hour upgrade timelocks. All three target
   hash `5f35bc16…04e1` and mature on 2026-08-29 between 11:04:44 and 11:04:54 CEST.
   They still run the old code until the required pause/execute/verify/unpause sequence.
+  `scripts/execute_receipt_vault_borrow_fix_mainnet.sh` defaults to a read-only,
+  pinned-state preflight and gates mutation until 11:05:24 CEST, including a 30-second
+  safety margin. It is resumable only with explicit acknowledgement of an all-paused
+  prior attempt, leaves markets paused on incomplete verification, restores the exact
+  original policy only after all checks pass, and never submits the final borrow.
 - Full implementation, operational details, verified addresses, tests, and remaining
   gates are in `contracts/aquarius-lp-vault/CLAUDE.md` and `Agents.md`.
 
