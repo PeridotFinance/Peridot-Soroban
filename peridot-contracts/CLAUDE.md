@@ -107,14 +107,21 @@ MarginController (leveraged trading, optional)
   protected exit may use the last NAV ratio, and the Aquarius quote must still satisfy
   the configured divergence guard. This preserves supplier exits during an oracle outage
   without making the stale value eligible for fresh deposits or unguarded swaps.
-- The empty supply-only Mainnet rollout completed on 2026-08-27 after the clean Almanax
-  scan and live pool/oracle/route preflights. Isolated controller
+- The supply-only Mainnet rollout completed on 2026-08-27 after the clean Almanax
+  scan and live pool/oracle/route preflights. A live deposit/partial-withdrawal smoke
+  test passed for all three markets on 2026-08-28. Isolated controller
   `CCZKDMAP…ENGC` owns XLM market `CBRJTPI…ZECZ`, PYUSD market `CBNVNCP…MLMA`,
   and USDC market `CBIOHQF…AZP7`; their strategies are `CB3WLG4…H6RW`,
-  `CANCOWO…5EKY`, and `CAQZ7XP…KGIN`. All three remain empty, CF=0, and
-  borrow-paused. Do not enable borrowing or collateral until cross-market footprint,
-  depeg-aware PriceRouter, and boosted-valuation staleness work is redesigned and
-  re-audited. See `Agents.md` for complete IDs, hashes, transactions, and next steps.
+  `CANCOWO…5EKY`, and `CAQZ7XP…KGIN`. The deployer retains 24 XLM, 4.8 PYUSD,
+  and 4.8 USDC pTokens backed by live full-range positions. CF remains 0 and borrowing
+  remains paused. No continuous keeper has been started. Do not enable borrowing or
+  collateral until cross-market footprint, depeg-aware PriceRouter, and boosted-
+  valuation staleness work is redesigned and re-audited. See `Agents.md` for complete
+  IDs, hashes, transactions, and next steps.
+- The separate existing XLM/USDC/EURC markets have the clean-scanned ReceiptVault
+  borrow-footprint fix staged under their 24-hour upgrade timelocks. All three target
+  hash `5f35bc16…04e1` and mature on 2026-08-29 between 11:04:44 and 11:04:54 CEST.
+  They still run the old code until the required pause/execute/verify/unpause sequence.
 - Full implementation, operational details, verified addresses, tests, and remaining
   gates are in `contracts/aquarius-lp-vault/CLAUDE.md` and `Agents.md`.
 
