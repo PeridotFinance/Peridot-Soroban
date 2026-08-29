@@ -37,6 +37,11 @@ PREFLIGHT_ONLY=${PREFLIGHT_ONLY:-true}
 CONFIRM_MAINNET=${CONFIRM_MAINNET:-}
 RESUME_PAUSED=${RESUME_PAUSED:-NO}
 ETA_SAFETY_SECONDS=${ETA_SAFETY_SECONDS:-30}
+MAX_ACCRUAL_DRIFT_BPS=${MAX_ACCRUAL_DRIFT_BPS:-1}
+MAX_ACCRUAL_DRIFT_RAW=${MAX_ACCRUAL_DRIFT_RAW:-100}
+READ_RETRIES=${READ_RETRIES:-5}
+READ_RETRY_DELAY_SECONDS=${READ_RETRY_DELAY_SECONDS:-2}
+ALLOW_TARGET_HASH_FALLBACK=${ALLOW_TARGET_HASH_FALLBACK:-NO}
 BORROWER=${BORROWER:-GDYDTMY46RNAUIIUVG6RPD2D3I3ES4J2SSXGCKIQP2OET4Q5PV75LSPL}
 BORROW_AMOUNT=${BORROW_AMOUNT:-50000000000} # 5,000 EURC at Stellar's 1e7 scale
 
@@ -76,10 +81,21 @@ fail() {
 
 view() {
   local contract_id=$1
+  local attempt output
   shift
-  stellar contract invoke \
-    --no-cache --id "$contract_id" --source-account "$IDENTITY" \
-    --network "$NETWORK" --send no -- "$@"
+  for ((attempt = 1; attempt <= READ_RETRIES; attempt++)); do
+    if output=$(stellar contract invoke \
+      --no-cache --id "$contract_id" --source-account "$IDENTITY" \
+      --network "$NETWORK" --send no -- "$@"); then
+      printf '%s\n' "$output"
+      return 0
+    fi
+    if (( attempt < READ_RETRIES )); then
+      echo "Read failed; retrying in ${READ_RETRY_DELAY_SECONDS}s ($attempt/$READ_RETRIES)..." >&2
+      sleep "$READ_RETRY_DELAY_SECONDS"
+    fi
+  done
+  return 1
 }
 
 invoke() {
@@ -92,8 +108,40 @@ invoke() {
 }
 
 contract_hash() {
-  stellar contract info hash \
-    --no-cache --id "$1" --network "$NETWORK"
+  local contract_id=$1
+  local attempt output
+  for ((attempt = 1; attempt <= READ_RETRIES; attempt++)); do
+    if output=$(stellar contract info hash \
+      --no-cache --id "$contract_id" --network "$NETWORK"); then
+      printf '%s\n' "$output"
+      return 0
+    fi
+    if (( attempt < READ_RETRIES )); then
+      echo "WASM hash read failed; retrying in ${READ_RETRY_DELAY_SECONDS}s ($attempt/$READ_RETRIES)..." >&2
+      sleep "$READ_RETRY_DELAY_SECONDS"
+    fi
+  done
+  return 1
+}
+
+resolve_contract_hash() {
+  local label=$1
+  local contract_id=$2
+  local live_hash asset_count
+  if live_hash=$(contract_hash "$contract_id"); then
+    printf '%s\n' "$live_hash"
+    return 0
+  fi
+  if [[ "$ALLOW_TARGET_HASH_FALLBACK" != "YES" || "$RESUME_PAUSED" != "YES" ]]; then
+    fail "$label WASM hash is unavailable; refusing to continue without an explicitly acknowledged paused resume"
+  fi
+  if ! all_pauses_equal true; then
+    fail "$label WASM hash fallback requires all nine market pause flags to be true"
+  fi
+  asset_count=$(view "$contract_id" get_boosted_asset_count)
+  expect_value "$label boosted asset count fallback" "$asset_count" 1
+  echo "WARNING: $label direct WASM hash read is unavailable; accepting the pinned target only for this all-paused resume because the target-only boosted asset count is 1" >&2
+  printf '%s\n' "$TARGET_WASM_HASH"
 }
 
 read_persistent_key() {
@@ -109,6 +157,48 @@ expect_value() {
   if [[ "$actual" != "$expected" && "$actual" != "\"$expected\"" ]]; then
     fail "$label mismatch: expected=$expected actual=$actual"
   fi
+}
+
+# upgrade_wasm intentionally accrues interest before changing code. Deposits and
+# pToken supply must remain exact, while debt, reserves, admin fees, and exchange
+# rate may increase slightly. Fail closed on decreases or changes larger than the
+# configured rollout window tolerance.
+expect_bounded_accrual() {
+  local label=$1
+  local actual=$2
+  local expected=$3
+  local result
+  if ! result=$(python3 - \
+    "$actual" "$expected" "$MAX_ACCRUAL_DRIFT_BPS" "$MAX_ACCRUAL_DRIFT_RAW" 2>&1 <<'PY'
+import sys
+
+def parse_u128(raw):
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+        value = value[1:-1]
+    if not value.isdigit():
+        raise SystemExit(f"not a u128: {raw!r}")
+    return int(value)
+
+actual = parse_u128(sys.argv[1])
+expected = parse_u128(sys.argv[2])
+drift_bps = int(sys.argv[3])
+drift_raw = int(sys.argv[4])
+
+if actual < expected:
+    raise SystemExit(f"decreased from {expected} to {actual}")
+
+delta = actual - expected
+allowed = ((expected * drift_bps) + 9_999) // 10_000 + drift_raw
+if delta > allowed:
+    raise SystemExit(f"increase {delta} exceeds allowed {allowed}")
+
+print(f"delta={delta} allowed={allowed}")
+PY
+  ); then
+    fail "$label changed outside the bounded interest-accrual window: $result"
+  fi
+  echo "    $label accrual check passed ($result)"
 }
 
 get_pause_state() {
@@ -162,6 +252,7 @@ snapshot_accounting() {
   SNAPSHOT_PTOKENS=()
   SNAPSHOT_BORROWED=()
   SNAPSHOT_RESERVES=()
+  SNAPSHOT_ADMIN_FEES=()
   SNAPSHOT_RATES=()
   for i in 0 1 2; do
     market=${MARKETS[$i]}
@@ -169,8 +260,9 @@ snapshot_accounting() {
     SNAPSHOT_PTOKENS[$i]=$(view "$market" get_total_ptokens)
     SNAPSHOT_BORROWED[$i]=$(view "$market" get_total_borrowed)
     SNAPSHOT_RESERVES[$i]=$(view "$market" get_total_reserves)
+    SNAPSHOT_ADMIN_FEES[$i]=$(view "$market" get_total_admin_fees)
     SNAPSHOT_RATES[$i]=$(view "$market" get_exchange_rate)
-    echo "    ${LABELS[$i]} deposited=${SNAPSHOT_DEPOSITED[$i]} ptokens=${SNAPSHOT_PTOKENS[$i]} borrowed=${SNAPSHOT_BORROWED[$i]} reserves=${SNAPSHOT_RESERVES[$i]} exchange_rate=${SNAPSHOT_RATES[$i]}"
+    echo "    ${LABELS[$i]} deposited=${SNAPSHOT_DEPOSITED[$i]} ptokens=${SNAPSHOT_PTOKENS[$i]} borrowed=${SNAPSHOT_BORROWED[$i]} reserves=${SNAPSHOT_RESERVES[$i]} admin_fees=${SNAPSHOT_ADMIN_FEES[$i]} exchange_rate=${SNAPSHOT_RATES[$i]}"
   done
 }
 
@@ -183,11 +275,13 @@ verify_accounting_unchanged() {
     actual=$(view "$market" get_total_ptokens)
     expect_value "${LABELS[$i]} total pTokens" "$actual" "${SNAPSHOT_PTOKENS[$i]}"
     actual=$(view "$market" get_total_borrowed)
-    expect_value "${LABELS[$i]} total borrowed" "$actual" "${SNAPSHOT_BORROWED[$i]}"
+    expect_bounded_accrual "${LABELS[$i]} total borrowed" "$actual" "${SNAPSHOT_BORROWED[$i]}"
     actual=$(view "$market" get_total_reserves)
-    expect_value "${LABELS[$i]} total reserves" "$actual" "${SNAPSHOT_RESERVES[$i]}"
+    expect_bounded_accrual "${LABELS[$i]} total reserves" "$actual" "${SNAPSHOT_RESERVES[$i]}"
+    actual=$(view "$market" get_total_admin_fees)
+    expect_bounded_accrual "${LABELS[$i]} total admin fees" "$actual" "${SNAPSHOT_ADMIN_FEES[$i]}"
     actual=$(view "$market" get_exchange_rate)
-    expect_value "${LABELS[$i]} exchange rate" "$actual" "${SNAPSHOT_RATES[$i]}"
+    expect_bounded_accrual "${LABELS[$i]} exchange rate" "$actual" "${SNAPSHOT_RATES[$i]}"
   done
 }
 
@@ -197,6 +291,30 @@ fi
 
 if [[ ! "$ETA_SAFETY_SECONDS" =~ ^[0-9]+$ ]]; then
   fail "ETA_SAFETY_SECONDS must be a non-negative integer"
+fi
+
+if [[ ! "$MAX_ACCRUAL_DRIFT_BPS" =~ ^[0-9]+$ ]] || (( MAX_ACCRUAL_DRIFT_BPS > 10000 )); then
+  fail "MAX_ACCRUAL_DRIFT_BPS must be an integer in 0..10000"
+fi
+
+if [[ ! "$MAX_ACCRUAL_DRIFT_RAW" =~ ^[0-9]+$ ]]; then
+  fail "MAX_ACCRUAL_DRIFT_RAW must be a non-negative integer"
+fi
+
+if [[ ! "$READ_RETRIES" =~ ^[1-9][0-9]*$ ]]; then
+  fail "READ_RETRIES must be a positive integer"
+fi
+
+if [[ ! "$READ_RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]]; then
+  fail "READ_RETRY_DELAY_SECONDS must be a non-negative integer"
+fi
+
+if [[ "$ALLOW_TARGET_HASH_FALLBACK" != "NO" && "$ALLOW_TARGET_HASH_FALLBACK" != "YES" ]]; then
+  fail "ALLOW_TARGET_HASH_FALLBACK must be NO or YES"
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  fail "python3 is required for exact u128 accounting checks"
 fi
 
 if [[ ! -f "$TARGET_WASM" ]]; then
@@ -220,7 +338,7 @@ for i in 0 1 2; do
   strategy=${STRATEGIES[$i]}
   eta=${UPGRADE_ETAS[$i]}
 
-  live_hash=$(contract_hash "$market")
+  live_hash=$(resolve_contract_hash "$label" "$market")
   LIVE_HASHES[$i]=$live_hash
   if [[ "$live_hash" != "$OLD_WASM_HASH" && "$live_hash" != "$TARGET_WASM_HASH" ]]; then
     fail "$label market has an unexpected WASM hash: $live_hash"
@@ -307,20 +425,25 @@ for i in 0 1 2; do
   label=${LABELS[$i]}
   market=${MARKETS[$i]}
   strategy=${STRATEGIES[$i]}
-  live_hash=$(contract_hash "$market")
+  live_hash=${LIVE_HASHES[$i]}
   if [[ "$live_hash" == "$OLD_WASM_HASH" ]]; then
     invoke "$market" upgrade_wasm --new_wasm_hash "$TARGET_WASM_HASH"
+    live_hash=$(resolve_contract_hash "$label" "$market")
   elif [[ "$live_hash" == "$TARGET_WASM_HASH" ]]; then
     echo "    $label already runs the target hash; skipping upgrade_wasm"
   else
     fail "$label market changed to an unexpected WASM hash: $live_hash"
   fi
 
-  live_hash=$(contract_hash "$market")
   expect_value "$label post-upgrade WASM hash" "$live_hash" "$TARGET_WASM_HASH"
-  invoke "$market" set_boosted_asset_count \
-    --admin "$EXPECTED_ADMIN" --boosted_vault "$strategy" --asset_count 1
   actual=$(view "$market" get_boosted_asset_count)
+  if [[ "$actual" != "1" && "$actual" != '"1"' ]]; then
+    invoke "$market" set_boosted_asset_count \
+      --admin "$EXPECTED_ADMIN" --boosted_vault "$strategy" --asset_count 1
+    actual=$(view "$market" get_boosted_asset_count)
+  else
+    echo "    $label boosted asset count already equals 1; skipping migration write"
+  fi
   expect_value "$label boosted asset count" "$actual" 1
 done
 
