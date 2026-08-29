@@ -16,6 +16,9 @@ test("accepts a public key for dry-run mode", () => {
   assert.equal(config.keypair, null);
   assert.equal(config.targets, MAINNET_TARGETS);
   assert.equal(config.inclusionFeeStroops, 100_000);
+  assert.equal(config.pollIntervalMs, 1_200_000);
+  assert.equal(config.harvestIntervalMs, 21_600_000);
+  assert.equal(config.maxConsecutiveFailedCycles, 3);
 });
 
 test("rejects a public key that does not match the secret", () => {

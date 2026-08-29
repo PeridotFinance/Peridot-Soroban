@@ -84,11 +84,11 @@ export function loadConfig(env = process.env) {
     runOnce: boolean(env, "RUN_ONCE", false),
     runHarvest: boolean(env, "RUN_HARVEST", true),
     harvestOnStart: boolean(env, "HARVEST_ON_START", true),
-    pollIntervalMs: integer(env, "POLL_INTERVAL_MS", 300_000, {
+    pollIntervalMs: integer(env, "POLL_INTERVAL_MS", 1_200_000, {
       min: 30_000,
       max: 3_600_000,
     }),
-    harvestIntervalMs: integer(env, "HARVEST_INTERVAL_MS", 3_600_000, {
+    harvestIntervalMs: integer(env, "HARVEST_INTERVAL_MS", 21_600_000, {
       min: 300_000,
       max: 86_400_000,
     }),
@@ -108,7 +108,7 @@ export function loadConfig(env = process.env) {
       min: 5_000,
       max: 300_000,
     }),
-    maxConsecutiveFailedCycles: integer(env, "MAX_CONSECUTIVE_FAILED_CYCLES", 12, {
+    maxConsecutiveFailedCycles: integer(env, "MAX_CONSECUTIVE_FAILED_CYCLES", 3, {
       min: 1,
       max: 1_000,
     }),

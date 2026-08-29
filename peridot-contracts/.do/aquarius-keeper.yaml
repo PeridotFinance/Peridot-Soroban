@@ -12,7 +12,7 @@ workers:
     alerts:
       - rule: RESTART_COUNT
         operator: GREATER_THAN
-        value: 2
+        value: 0
         window: FIVE_MINUTES
     envs:
       - key: RPC_URL
@@ -38,10 +38,10 @@ workers:
         value: "true"
       - key: POLL_INTERVAL_MS
         scope: RUN_TIME
-        value: "300000"
+        value: "1200000"
       - key: HARVEST_INTERVAL_MS
         scope: RUN_TIME
-        value: "3600000"
+        value: "21600000"
       - key: HARVEST_RETRY_MS
         scope: RUN_TIME
         value: "300000"
@@ -56,7 +56,7 @@ workers:
         value: "90000"
       - key: MAX_CONSECUTIVE_FAILED_CYCLES
         scope: RUN_TIME
-        value: "12"
+        value: "3"
 alerts:
   - rule: DEPLOYMENT_FAILED
   - rule: DEPLOYMENT_LIVE

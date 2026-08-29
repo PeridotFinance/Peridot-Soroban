@@ -2,8 +2,8 @@
 
 One sequence-safe worker maintains all three Mainnet Aquarius strategies:
 
-1. refresh each strategy's cached NAV root every five minutes;
-2. claim, convert, and compound rewards once per hour;
+1. refresh each strategy's cached NAV root every twenty minutes;
+2. claim, convert, and compound rewards every six hours;
 3. refresh each ReceiptVault's boosted-underlying cache.
 
 The worker services XLM, PYUSD, and USDC serially with one dedicated signer. Do
@@ -22,9 +22,11 @@ GBLVLGECHVZAKOJ6XLLF4YRNNBTAZBM4O6ZMIL336BYIHKUZLACLXSE3
 It has no protocol role and receives no harvest proceeds. Fund it with about 25
 XLM for the initial multi-day pilot. The first Mainnet dry run measured roughly
 0.013 XLM of resource fees per refresh-only cycle and 0.185 XLM for a cycle that
-also harvests all three vaults; five-minute refreshes plus hourly harvests are
-therefore about 8 XLM/day before reward-dependent extra work and fee-market
-variance. Keep its secret only in the
+also harvests all three vaults. Twenty-minute refreshes plus four harvests per day
+are therefore about 1.7 XLM/day before reward-dependent extra work and fee-market
+variance. This cadence gives three refresh attempts inside the one-hour NAV safety
+window while avoiding economically wasteful empty harvests for the initial small
+positions. Reassess it as deposits and rewards grow. Keep its secret only in the
 macOS secure store and DigitalOcean's encrypted `KEEPER_SECRET` runtime
 variable. Never put it in Git, an image, logs, or a checked-in `.env` file.
 
@@ -54,9 +56,11 @@ rollout is:
    cloned directly from the `leveraged-fix` branch without GitHub OAuth.
 2. Confirm one dry-run cycle completes for all three targets.
 3. Add `KEEPER_SECRET` as an encrypted runtime variable.
-4. Change `DRY_RUN` to `false` and redeploy exactly one worker instance.
+4. Change `DRY_RUN` and `HARVEST_ON_START` to `false`, then redeploy exactly one
+   worker instance. This prevents a restart inside the contract cooldown from
+   creating a false failure loop.
 5. Verify confirmed transaction hashes for NAV refresh, harvest, and market
-   cache refresh; monitor the following hourly cycles.
+   cache refresh; monitor the following six-hour harvest cycles.
 
 The component costs approximately $5/month at the pinned 512 MiB worker size,
 excluding Stellar transaction fees. Alert on repeated failed cycles, low XLM,
