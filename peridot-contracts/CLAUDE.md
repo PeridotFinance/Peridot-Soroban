@@ -129,6 +129,11 @@ MarginController (leveraged trading, optional)
   original policy only after all checks pass, and never submits the final borrow.
 - Full implementation, operational details, verified addresses, tests, and remaining
   gates are in `contracts/aquarius-lp-vault/CLAUDE.md` and `Agents.md`.
+- The production keeper is `bots/aquarius-keeper`: one process services XLM, PYUSD,
+  and USDC serially with a dedicated, fee-only signer to avoid Stellar sequence
+  collisions. `.do/aquarius-keeper.yaml` defines a single 512 MiB DigitalOcean worker,
+  automatic deployments disabled, starting in dry-run mode. Never commit its secret or
+  scale multiple live instances with the same key.
 
 ### Key Patterns
 

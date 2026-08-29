@@ -299,6 +299,14 @@ VAULT_ID=C... MARKET_ID=C... IDENTITY=keeper NETWORK=mainnet-public \
   bash scripts/run_aquarius_vault_keeper.sh
 ```
 
+For continuous Mainnet operation, `bots/aquarius-keeper` packages the same
+three-step lifecycle as one sequence-safe Node worker. One process services all
+three settlement strategies serially so transactions from a shared signer do
+not collide. `.do/aquarius-keeper.yaml` deploys it as one DigitalOcean App
+Platform worker in dry-run mode first; add the dedicated signer as an encrypted
+runtime secret only after all nine simulations pass. Never scale that component
+above one instance while it uses one signing key.
+
 ### Transaction footprint
 
 The end-to-end path spans ReceiptVault -> vault -> Aquarius pool -> three token
