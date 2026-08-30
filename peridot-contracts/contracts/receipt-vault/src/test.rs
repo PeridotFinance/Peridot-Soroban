@@ -351,6 +351,8 @@ enum BoostedKey {
     FailQuote,
     WithdrawHaircut,
     QuoteMultiplierBps,
+    QuoteFootprintSize,
+    QuoteFootprint(u32),
 }
 
 #[contractimpl]
@@ -371,6 +373,9 @@ impl MockBoostedVault {
         env.storage()
             .persistent()
             .set(&BoostedKey::QuoteMultiplierBps, &1_000_000u128);
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::QuoteFootprintSize, &0u32);
     }
 
     pub fn set_fail_quote(env: Env, fail: bool) {
@@ -391,6 +396,17 @@ impl MockBoostedVault {
             .set(&BoostedKey::QuoteMultiplierBps, &bps);
     }
 
+    pub fn set_quote_footprint(env: Env, entries: u32) {
+        env.storage()
+            .persistent()
+            .set(&BoostedKey::QuoteFootprintSize, &entries);
+        for index in 0..entries {
+            env.storage()
+                .persistent()
+                .set(&BoostedKey::QuoteFootprint(index), &index);
+        }
+    }
+
     pub fn balance(env: Env, owner: Address) -> i128 {
         env.storage()
             .persistent()
@@ -406,6 +422,18 @@ impl MockBoostedVault {
     }
 
     pub fn get_asset_amounts_per_shares(env: Env, shares: i128) -> Vec<i128> {
+        let footprint_size: u32 = env
+            .storage()
+            .persistent()
+            .get(&BoostedKey::QuoteFootprintSize)
+            .unwrap_or(0u32);
+        for index in 0..footprint_size {
+            let _: u32 = env
+                .storage()
+                .persistent()
+                .get(&BoostedKey::QuoteFootprint(index))
+                .expect("quote footprint entry missing");
+        }
         if env
             .storage()
             .persistent()
@@ -2854,28 +2882,45 @@ fn test_borrow_budget_with_two_cross_market_collateral_positions() {
     collateral_a_vault.set_peridottroller(&comp_id);
     collateral_b_vault.set_peridottroller(&comp_id);
 
-    // Match production's DeFindex-backed collateral shape: each collateral
-    // ReceiptVault owns a distinct boosted strategy queried during valuation.
+    // Match production's DeFindex-backed shape: all three ReceiptVaults own a
+    // distinct boosted strategy. Each strategy quote deliberately reads enough
+    // state that synchronously quoting all of them would exceed Mainnet's
+    // 100-entry transaction limit.
+    let boosted_borrow_id = env.register(MockBoostedVault, ());
+    let boosted_borrow = MockBoostedVaultClient::new(&env, &boosted_borrow_id);
+    boosted_borrow.initialize(&borrow_token);
+    boosted_borrow.set_quote_footprint(&20u32);
+    borrow_vault.set_boosted_vault(&admin, &boosted_borrow_id);
     let boosted_a_id = env.register(MockBoostedVault, ());
     let boosted_a = MockBoostedVaultClient::new(&env, &boosted_a_id);
     boosted_a.initialize(&collateral_a_token);
+    boosted_a.set_quote_footprint(&20u32);
     collateral_a_vault.set_boosted_vault(&admin, &boosted_a_id);
     let boosted_b_id = env.register(MockBoostedVault, ());
     let boosted_b = MockBoostedVaultClient::new(&env, &boosted_b_id);
     boosted_b.initialize(&collateral_b_token);
+    boosted_b.set_quote_footprint(&20u32);
     collateral_b_vault.set_boosted_vault(&admin, &boosted_b_id);
 
-    borrow_token_admin.mint(&lender, &1_000i128);
-    borrow_vault.deposit(&lender, &1_000u128);
-    collateral_a_admin.mint(&user, &500i128);
-    collateral_b_admin.mint(&user, &500i128);
-    collateral_a_vault.deposit(&user, &500u128);
-    collateral_b_vault.deposit(&user, &500u128);
+    borrow_token_admin.mint(&lender, &100_000i128);
+    borrow_vault.deposit(&lender, &100_000u128);
+    collateral_a_admin.mint(&user, &50_000i128);
+    collateral_b_admin.mint(&user, &50_000i128);
+    collateral_a_vault.deposit(&user, &50_000u128);
+    collateral_b_vault.deposit(&user, &50_000u128);
     comp.enter_market(&user, &borrow_vault_id);
     comp.enter_market(&user, &collateral_a_vault_id);
     comp.enter_market(&user, &collateral_b_vault_id);
 
-    borrow_vault.borrow(&user, &500u128);
+    // Prefund the requested borrow in a separate transaction. The ReceiptVault
+    // intentionally exposes this split path so a large DeFindex redemption is
+    // not combined with a three-market health check.
+    borrow_vault.prepare_liquidity(&50_000u128);
+    borrow_vault.refresh_boosted_underlying();
+    collateral_a_vault.refresh_boosted_underlying();
+    collateral_b_vault.refresh_boosted_underlying();
+
+    borrow_vault.borrow(&user, &50_000u128);
 
     let resources = env.cost_estimate().resources();
     let read_entries = resources
@@ -2890,7 +2935,97 @@ fn test_borrow_budget_with_two_cross_market_collateral_positions() {
         "three-market borrow write footprint regressed: {resources:?}"
     );
     assert_budget_under(&env, 10_000_000, 3_000_000);
-    assert_eq!(borrow_vault.get_user_borrow_balance(&user), 500u128);
+    assert_eq!(borrow_vault.get_user_borrow_balance(&user), 50_000u128);
+}
+
+#[test]
+fn test_account_snapshot_uses_fresh_boosted_cache_when_live_quote_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().with_mut(|ledger| ledger.timestamp = 100);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token, token_admin) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin.mint(&user, &500i128);
+    vault.deposit(&user, &500u128);
+    vault.refresh_boosted_underlying();
+    boosted.set_fail_quote(&true);
+
+    let (ptokens, debt, rate, underlying) = vault.get_account_snapshot(&user);
+    assert_eq!(ptokens, 500u128);
+    assert_eq!(debt, 0u128);
+    assert_eq!(rate, 1_000_000u128);
+    assert_eq!(underlying, token_address);
+}
+
+#[test]
+#[should_panic(expected = "boosted health cache stale")]
+fn test_account_snapshot_rejects_stale_boosted_cache() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().with_mut(|ledger| ledger.timestamp = 100);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token, token_admin) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin.mint(&user, &500i128);
+    vault.deposit(&user, &500u128);
+    vault.refresh_boosted_underlying();
+    env.ledger().with_mut(|ledger| ledger.timestamp = 401);
+
+    vault.get_account_snapshot(&user);
+}
+
+#[test]
+#[should_panic(expected = "boosted health cache missing")]
+fn test_boosted_share_change_invalidates_account_health_cache() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().with_mut(|ledger| ledger.timestamp = 100);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token, token_admin) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin.mint(&user, &40_000i128);
+    vault.deposit(&user, &20_000u128);
+    vault.refresh_boosted_underlying();
+    let _ = vault.get_account_snapshot(&user);
+
+    // The algebraic cache adjustment after deploying more assets is not a
+    // fresh strategy quote and must not authorize borrowing.
+    vault.deposit(&user, &20_000u128);
+    vault.get_account_snapshot(&user);
 }
 
 #[test]
@@ -4370,6 +4505,10 @@ fn test_update_interest_clamps_inflated_boosted_quote_for_model_cash() {
     // Identical state on both vaults.
     vault_a.deposit(&user, &1_000u128);
     vault_b.deposit(&user, &1_000u128);
+    // These deposits are below the boosted deployment threshold, so seed the
+    // explicit zero-valued health caches before borrowing.
+    vault_a.refresh_boosted_underlying();
+    vault_b.refresh_boosted_underlying();
     vault_a.borrow(&user, &500u128);
     vault_b.borrow(&user, &500u128);
 

@@ -136,14 +136,19 @@ Mocks (for tests only) live under `contracts/mocks/`.
 
 `get_account_snapshot()` uses a narrow, key-specific TTL path because the
 Peridottroller calls it once for every other entered market during a borrow.
-The former broad keepalive loaded unrelated vault configuration on each call:
-a borrow with one debt market and two DeFindex-style collateral markets reached
-132 ledger entries and exceeded Soroban's 100-entry limit. The regression now
-measures 81 entries and enforces a 90-entry ceiling. This guarantees the current
-three-market XLM/USDC/EURC shape, not the theoretical eight-market maximum;
-supporting larger portfolios still requires controller-side position caching or
-bounded collateral selection. Market keepers must call `bump_ttl()` separately
-to maintain global keys omitted from the hot account-health path.
+The former broad keepalive and synchronous strategy quotes loaded unrelated vault
+configuration on each call and exceeded Soroban's 100-entry limit. The regression
+models all three markets as boosted, gives each strategy quote a deliberately heavy
+footprint, and enforces a 90-entry ceiling. Account-health snapshots use a
+keeper-maintained boosted NAV cache instead of loading DeFindex inside the borrow.
+The cache fails closed after five minutes. This guarantees the current three-market
+XLM/USDC/EURC shape, not the theoretical eight-market maximum; supporting larger
+portfolios still requires controller-side position caching or bounded collateral
+selection. Run `scripts/run_boosted_market_keeper_mainnet.sh` below five minutes;
+it refreshes NAV every two minutes by default and calls `bump_ttl()` once per day.
+When a large borrow exceeds the debt market's idle cash, an operator must call
+`prepare_liquidity(amount)` in a separate transaction before the borrow. This keeps
+the strategy redemption footprint out of the cross-market health transaction.
 
 ## Boosted Markets (DeFindex)
 

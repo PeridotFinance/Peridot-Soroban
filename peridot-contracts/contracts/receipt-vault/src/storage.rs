@@ -51,8 +51,9 @@ pub enum DataKey {
     BorrowPrincipal(Address),        // u128 canonical principal per user
     MarginBorrowPrincipal(u64),      // u128 canonical principal per margin position
     MarginWithdrawBypassV2(Address), // scoped bypass for margin-controller-managed withdraw
-    TotalBadDebt,      // u128 cumulative unreserved debt absorbed by margin controller
-    BoostedAssetCount, // u32 expected min_amounts_out length for boosted redemptions
+    TotalBadDebt,       // u128 cumulative unreserved debt absorbed by margin controller
+    BoostedAssetCount,  // u32 expected min_amounts_out length for boosted redemptions
+    BoostedHealthCache, // BoostedHealthCache live quote used by account health
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -82,6 +83,13 @@ pub struct MarketLiquidityHint {
 pub struct BorrowSnapshot {
     pub principal: u128,
     pub interest_index: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct BoostedHealthCache {
+    pub underlying: u128,
+    pub updated_at: u64,
 }
 
 #[contracttype]
@@ -173,6 +181,15 @@ pub fn bump_borrow_index_ttl(env: &Env) {
 pub fn bump_boosted_vault_ttl(env: &Env) {
     let persistent = env.storage().persistent();
     for key in [DataKey::BoostedVault, DataKey::BoostedAssetCount] {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
+}
+
+pub fn bump_boosted_health_cache_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    for key in [DataKey::BoostedVault, DataKey::BoostedHealthCache] {
         if persistent.has(&key) {
             persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
         }

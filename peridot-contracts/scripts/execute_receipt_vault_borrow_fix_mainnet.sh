@@ -107,6 +107,14 @@ invoke() {
     --network "$NETWORK" -- "$@"
 }
 
+simulate() {
+  local contract_id=$1
+  shift
+  stellar contract invoke \
+    --no-cache --id "$contract_id" --source-account "$IDENTITY" \
+    --network "$NETWORK" --send no -- "$@"
+}
+
 contract_hash() {
   local contract_id=$1
   local attempt output
@@ -465,7 +473,7 @@ pause_all_market_operations false
 verify_all_pauses false
 
 echo "==> Simulating (not submitting) the exact 5,000 EURC borrow"
-view "${MARKETS[2]}" borrow --user "$BORROWER" --amount "$BORROW_AMOUNT"
+simulate "${MARKETS[2]}" borrow --user "$BORROWER" --amount "$BORROW_AMOUNT"
 
 cat <<SUMMARY
 

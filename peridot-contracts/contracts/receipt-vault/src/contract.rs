@@ -20,6 +20,10 @@ pub struct ReceiptVault;
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 const DISABLED_BOOSTED_VAULT: &str = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
+// Account-health checks must not synchronously load a boosted strategy. Keep
+// this much tighter than the general accounting fallback because a borrow may
+// rely on the cached value as collateral.
+const BOOSTED_HEALTH_CACHE_MAX_AGE_SECS: u64 = 5 * 60;
 const BPS_SCALE: u128 = 10_000u128;
 const BOOSTED_MODEL_CASH_TOLERANCE_BPS: u128 = 500u128; // 5%
 const BOOSTED_REDEMPTION_QUOTE_FLOOR_BPS: u128 = 9_000u128; // max 10% downward jump
@@ -72,6 +76,22 @@ impl ReceiptVault {
             .persistent()
             .get(&DataKey::BoostedUnderlyingCached)
             .unwrap_or(0u128)
+    }
+
+    fn record_boosted_health_cache(env: &Env, value: u128) {
+        let cache = BoostedHealthCache {
+            underlying: value,
+            updated_at: env.ledger().timestamp(),
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::BoostedHealthCache, &cache);
+    }
+
+    fn invalidate_boosted_health_cache(env: &Env) {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::BoostedHealthCache);
     }
 
     fn estimate_boosted_underlying_from_accounting(env: &Env) -> u128 {
@@ -171,6 +191,7 @@ impl ReceiptVault {
                         }
                         let amt_i = amounts.get(0).unwrap_or(0);
                         if amt_i <= 0 {
+                            Self::invalidate_boosted_health_cache(env);
                             let cached: u128 = env
                                 .storage()
                                 .persistent()
@@ -189,6 +210,7 @@ impl ReceiptVault {
                             &DataKey::BoostedUnderlyingUpdatedAt,
                             &env.ledger().timestamp(),
                         );
+                        Self::record_boosted_health_cache(env, boosted_underlying);
                         boosted_underlying
                     }
                     Err(err) => {
@@ -216,11 +238,95 @@ impl ReceiptVault {
                     }
                 }
             } else {
+                env.storage()
+                    .persistent()
+                    .set(&DataKey::BoostedUnderlyingCached, &0u128);
+                env.storage().persistent().set(
+                    &DataKey::BoostedUnderlyingUpdatedAt,
+                    &env.ledger().timestamp(),
+                );
+                Self::record_boosted_health_cache(env, 0u128);
                 0u128
             }
         } else {
             0u128
         }
+    }
+
+    fn get_boosted_underlying_for_account_health(env: &Env) -> u128 {
+        let persistent = env.storage().persistent();
+        let boosted_key = DataKey::BoostedVault;
+        if persistent.get::<_, Address>(&boosted_key).is_none() {
+            return 0u128;
+        }
+
+        let cache: BoostedHealthCache = persistent
+            .get(&DataKey::BoostedHealthCache)
+            .expect("boosted health cache missing");
+        if env.ledger().timestamp().saturating_sub(cache.updated_at)
+            > BOOSTED_HEALTH_CACHE_MAX_AGE_SECS
+        {
+            panic!("boosted health cache stale");
+        }
+        bump_boosted_health_cache_ttl(env);
+        cache.underlying
+    }
+
+    fn get_total_underlying_for_account_health(env: &Env) -> u128 {
+        bump_account_snapshot_valuation_ttl(env);
+        let cash = Self::get_managed_cash(env);
+        let borrows: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::TotalBorrowed)
+            .expect("total borrowed missing");
+        let reserves: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::TotalReserves)
+            .unwrap_or(0u128);
+        let admin_fees: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::TotalAdminFees)
+            .unwrap_or(0u128);
+        let boosted_underlying = Self::get_boosted_underlying_for_account_health(env);
+        cash.saturating_add(boosted_underlying)
+            .saturating_add(borrows)
+            .saturating_sub(reserves)
+            .saturating_sub(admin_fees)
+    }
+
+    fn get_exchange_rate_for_account_health(env: &Env) -> u128 {
+        let total_ptokens = total_ptokens_supply(env);
+        let total_underlying = Self::get_total_underlying_for_account_health(env);
+        if total_ptokens == 0 {
+            if total_underlying > 0 {
+                panic!("non-empty vault at zero supply");
+            }
+            return env
+                .storage()
+                .persistent()
+                .get(&DataKey::InitialExchangeRate)
+                .unwrap_or(SCALE_1E6);
+        }
+        if total_underlying == 0 {
+            panic!("invalid underlying state");
+        }
+        total_underlying
+            .checked_mul(SCALE_1E6)
+            .expect("exchange rate overflow")
+            / total_ptokens
+    }
+
+    fn get_available_liquidity_for_borrow(env: &Env) -> u128 {
+        let total_underlying = Self::get_total_underlying_for_account_health(env);
+        let total_borrowed: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::TotalBorrowed)
+            .expect("total borrowed missing");
+        total_underlying.saturating_sub(total_borrowed)
     }
 
     fn derive_managed_cash(env: &Env) -> u128 {
@@ -423,6 +529,7 @@ impl ReceiptVault {
                 &DataKey::BoostedUnderlyingUpdatedAt,
                 &env.ledger().timestamp(),
             );
+            Self::invalidate_boosted_health_cache(env);
         }
         moved
     }
@@ -673,6 +780,7 @@ impl ReceiptVault {
                 &DataKey::BoostedUnderlyingUpdatedAt,
                 &env.ledger().timestamp(),
             );
+            Self::invalidate_boosted_health_cache(env);
         }
     }
 
@@ -1067,6 +1175,7 @@ impl ReceiptVault {
         env.storage()
             .persistent()
             .remove(&DataKey::BoostedUnderlyingUpdatedAt);
+        Self::invalidate_boosted_health_cache(&env);
         BoostedVaultSet {
             old_vault: old_boosted,
             new_vault: new_boosted,
@@ -1173,20 +1282,11 @@ impl ReceiptVault {
     }
 
     /// Permissionless: refresh the cached boosted-underlying value from live DeFindex data.
-    /// Call this from a keeper/rebalance bot after each rebalance so that `update_interest`
-    /// uses a fresh value without paying the DeFindex call cost on every user transaction.
+    /// Call this at least every five minutes and after each rebalance. Account-health
+    /// checks fail closed when the cache is stale so they never need to load DeFindex's
+    /// full footprint inside a borrow transaction.
     pub fn refresh_boosted_underlying(env: Env) {
-        let value = Self::get_boosted_underlying(&env);
-        if value == 0 {
-            env.storage()
-                .persistent()
-                .set(&DataKey::BoostedUnderlyingCached, &0u128);
-            env.storage().persistent().set(
-                &DataKey::BoostedUnderlyingUpdatedAt,
-                &env.ledger().timestamp(),
-            );
-        }
-        // When value > 0, get_boosted_underlying already wrote to BoostedUnderlyingCached.
+        let _ = Self::get_boosted_underlying(&env);
     }
 
     /// Admin: move excess live cash into boosted vault to match target buffer.
@@ -1566,7 +1666,9 @@ impl ReceiptVault {
     }
 
     /// Return (ptoken_balance, borrow_balance, exchange_rate, underlying_token) in one call.
-    /// Peridottroller uses this in account-health loops to replace 4 cross-contract reads with 1.
+    /// Peridottroller uses this in account-health loops to replace four cross-contract reads
+    /// with one. Boosted markets use a fresh keeper-maintained NAV cache here; stale or missing
+    /// cache state fails closed instead of synchronously loading a strategy footprint.
     pub fn get_account_snapshot(env: Env, user: Address) -> (u128, u128, u128, Address) {
         // Do not call the broad `ensure_initialized` here. This endpoint runs once
         // per entered market inside controller health checks, and loading every
@@ -1575,7 +1677,7 @@ impl ReceiptVault {
         let token = ensure_initialized_for_snapshot(&env);
         let pbal = ptoken_balance(&env, &user);
         let debt = Self::get_user_borrow_balance_internal(&env, &user, Some(pbal));
-        let rate = Self::get_exchange_rate_internal(&env);
+        let rate = Self::get_exchange_rate_for_account_health(&env);
         (pbal, debt, rate, token)
     }
 
@@ -1995,6 +2097,7 @@ impl ReceiptVault {
         // past Soroban's 100-entry footprint limit. The explicit keeper path
         // can afford to renew this boosted-only key deliberately.
         bump_boosted_vault_ttl(&env);
+        bump_boosted_health_cache_ttl(&env);
     }
 
     /// Get collateral factor (scaled 1e6)
@@ -3310,7 +3413,7 @@ impl ReceiptVault {
                 .expect("total borrowed missing");
             user_ptokens_before = ptoken_balance(&env, &user);
             user_borrow_before = Self::get_user_borrow_balance(env.clone(), user.clone());
-            exchange_rate = Self::get_exchange_rate(env.clone());
+            exchange_rate = Self::get_exchange_rate_for_account_health(&env);
             let hint = ControllerAccrualHint {
                 total_ptokens: Some(total_ptokens_before),
                 total_borrowed: Some(total_borrowed_before),
@@ -3373,7 +3476,7 @@ impl ReceiptVault {
         }
 
         // Liquidity check
-        let available = Self::get_available_liquidity(env.clone());
+        let available = Self::get_available_liquidity_for_borrow(&env);
         if available < amount {
             panic!("Not enough liquidity to borrow");
         }
@@ -3547,7 +3650,7 @@ impl ReceiptVault {
             }
         }
 
-        let available = Self::get_available_liquidity(env.clone());
+        let available = Self::get_available_liquidity_for_borrow(&env);
         if available < amount {
             panic!("Not enough liquidity to borrow");
         }

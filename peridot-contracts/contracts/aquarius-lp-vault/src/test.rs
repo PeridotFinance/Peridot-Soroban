@@ -1488,6 +1488,7 @@ mod boosted_market {
         m.f.usdc.mint(&borrower, &10_000_0000000i128);
         m.market.deposit(&lender, &10_000_0000000u128);
         m.market.deposit(&borrower, &10_000_0000000u128);
+        m.market.refresh_boosted_underlying();
 
         let liq_before = m.f.vault.get_position_liquidity();
         assert!(liq_before > 0, "deposits should have reached the pool");
@@ -1522,6 +1523,7 @@ mod boosted_market {
         let user = Address::generate(&m.f.env);
         m.f.usdc.mint(&user, &3_000_0000000i128);
         m.market.deposit(&user, &3_000_0000000u128);
+        m.market.refresh_boosted_underlying();
 
         let before = m.f.usdc.balance(&user);
         m.market.borrow(&user, &200_0000000u128);
@@ -1541,6 +1543,7 @@ mod boosted_market {
         let user = Address::generate(&m.f.env);
         m.f.usdc.mint(&user, &20_000_0000000i128);
         m.market.deposit(&user, &20_000_0000000u128);
+        m.market.refresh_boosted_underlying();
 
         let idle = m.f.usdc.balance(&m.market.address) as u128;
         m.market.borrow(&user, &(idle + 2_000_0000000u128));
@@ -1589,6 +1592,7 @@ mod boosted_market {
 
         controller.enter_market(&borrower, &m.market.address);
         m.market.deposit(&borrower, &20_000_0000000u128);
+        m.market.refresh_boosted_underlying();
 
         let idle = m.f.usdc.balance(&m.market.address) as u128;
         let amount = idle.saturating_add(2_000_0000000u128);
