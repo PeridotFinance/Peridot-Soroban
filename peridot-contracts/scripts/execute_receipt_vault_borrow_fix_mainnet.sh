@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Execute the timelocked ReceiptVault borrow-footprint upgrade for the existing
-# XLM, USDC, and EURC markets. This script never submits a borrow: after a
-# successful rollout it only simulates the exact 5,000 EURC borrow that
+# Execute the second timelocked ReceiptVault borrow-footprint upgrade for the
+# existing XLM, USDC, and EURC markets. This script never submits a borrow:
+# after a successful rollout it only simulates the exact 5,000 EURC borrow that
 # previously exceeded Soroban's footprint limit.
 #
 # Read-only preflight (the default):
@@ -47,8 +47,8 @@ BORROW_AMOUNT=${BORROW_AMOUNT:-50000000000} # 5,000 EURC at Stellar's 1e7 scale
 
 EXPECTED_ADMIN=GDYDTMY46RNAUIIUVG6RPD2D3I3ES4J2SSXGCKIQP2OET4Q5PV75LSPL
 CONTROLLER=CCVUFGXKFVPAHWMMDDL6HXKUN2B2G73Z27VRM3WXZBBSQEUTNLI6YPEX
-OLD_WASM_HASH=df06cfa8174d5523bb8b067a6179af7d669bcb30fa2ce34d811b5b85788f6f00
-TARGET_WASM_HASH=5f35bc16b3262feb27fb77080fc007d3461a536bd62afd3b5580688ab4b004e1
+OLD_WASM_HASH=5f35bc16b3262feb27fb77080fc007d3461a536bd62afd3b5580688ab4b004e1
+TARGET_WASM_HASH=2aa62df324ae3d28b6492e8e08d230a41c62e1fd6d4719e4bec5ee11b30c66bc
 TARGET_WASM=${TARGET_WASM:-target/wasm32v1-none/release/receipt_vault.optimized.wasm}
 
 LABELS=(XLM USDC EURC)
@@ -67,8 +67,8 @@ STRATEGIES=(
   CAB4JOLSCNELJVDQKZLVGHKWJCLXFDBZZMITJAFL4GBGTHIKWO47PYFH
   CBP2R5KYAWJCOCVDTSNTEVL3O6JBTWOOH7SZOX7DX5DLGVZCAMLBDZM3
 )
-UPGRADE_ETAS=(1787994284 1787994289 1787994294)
-MAX_UPGRADE_ETA=1787994294
+UPGRADE_ETAS=(1788179005 1788179010 1788179016)
+MAX_UPGRADE_ETA=1788179016
 
 # DataKey::PendingUpgradeHash and DataKey::PendingUpgradeEta encoded as ScVal.
 PENDING_HASH_KEY_XDR=AAAAEAAAAAEAAAABAAAADwAAABJQZW5kaW5nVXBncmFkZUhhc2gAAA==
@@ -164,6 +164,28 @@ expect_value() {
   local expected=$3
   if [[ "$actual" != "$expected" && "$actual" != "\"$expected\"" ]]; then
     fail "$label mismatch: expected=$expected actual=$actual"
+  fi
+}
+
+expect_u128_at_least() {
+  local label=$1
+  local actual=$2
+  local minimum=$3
+  if ! python3 - "$actual" "$minimum" <<'PY'
+import sys
+
+def parse_u128(raw):
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+        value = value[1:-1]
+    if not value.isdigit():
+        raise SystemExit(1)
+    return int(value)
+
+raise SystemExit(0 if parse_u128(sys.argv[1]) >= parse_u128(sys.argv[2]) else 1)
+PY
+  then
+    fail "$label is below the required minimum: required=$minimum actual=$actual"
   fi
 }
 
@@ -468,6 +490,22 @@ for i in 0 1 2; do
 done
 verify_accounting_unchanged
 
+echo "==> Refreshing all boosted health caches while markets remain paused"
+for i in 0 1 2; do
+  invoke "${MARKETS[$i]}" refresh_boosted_underlying
+done
+
+echo "==> Preparing 5,000 EURC idle liquidity in a separate transaction"
+invoke "${MARKETS[2]}" prepare_liquidity --amount "$BORROW_AMOUNT"
+
+# prepare_liquidity changes the strategy share balance and deliberately
+# invalidates the account-health cache. Re-quote EURC before unpausing.
+echo "==> Refreshing EURC health cache after liquidity preparation"
+invoke "${MARKETS[2]}" refresh_boosted_underlying
+
+eurc_available=$(view "${MARKETS[2]}" get_available_liquidity)
+expect_u128_at_least "EURC available liquidity" "$eurc_available" "$BORROW_AMOUNT"
+
 echo "==> Restoring the original all-unpaused policy"
 pause_all_market_operations false
 verify_all_pauses false
@@ -482,5 +520,11 @@ ReceiptVault Mainnet upgrade complete.
   markets: XLM, USDC, EURC
   pause policy: deposit=false redeem=false borrow=false
   boosted asset counts: 1, 1, 1
+  boosted health caches: refreshed for XLM, USDC, and EURC
+  EURC idle liquidity: prepared for $BORROW_AMOUNT raw units
   borrow check: simulated only; no EURC borrow transaction was submitted
+
+Start the live boosted-market keeper immediately. Borrowing fails closed once
+the five-minute health cache expires:
+  DRY_RUN=false bash scripts/run_boosted_market_keeper_mainnet.sh
 SUMMARY
