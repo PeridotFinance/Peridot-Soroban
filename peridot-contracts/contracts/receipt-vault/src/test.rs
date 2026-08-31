@@ -2992,14 +2992,14 @@ fn test_account_snapshot_rejects_stale_boosted_cache() {
     token_admin.mint(&user, &500i128);
     vault.deposit(&user, &500u128);
     vault.refresh_boosted_underlying();
-    env.ledger().with_mut(|ledger| ledger.timestamp = 401);
+    env.ledger().with_mut(|ledger| ledger.timestamp = 501);
 
     vault.get_account_snapshot(&user);
 }
 
 #[test]
-#[should_panic(expected = "boosted health cache missing")]
-fn test_boosted_share_change_invalidates_account_health_cache() {
+#[should_panic(expected = "boosted health cache stale")]
+fn test_boosted_deposit_preserves_health_cache_without_renewing_it() {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().with_mut(|ledger| ledger.timestamp = 100);
@@ -3022,9 +3022,79 @@ fn test_boosted_share_change_invalidates_account_health_cache() {
     vault.refresh_boosted_underlying();
     let _ = vault.get_account_snapshot(&user);
 
-    // The algebraic cache adjustment after deploying more assets is not a
-    // fresh strategy quote and must not authorize borrowing.
+    env.ledger().with_mut(|ledger| ledger.timestamp = 200);
     vault.deposit(&user, &20_000u128);
+    let (_, _, rate, _) = vault.get_account_snapshot(&user);
+    assert_eq!(rate, 1_000_000u128);
+
+    // Exact asset movement keeps the cache usable but must not turn the old
+    // strategy quote into a fresh one.
+    env.ledger().with_mut(|ledger| ledger.timestamp = 501);
+    vault.get_account_snapshot(&user);
+}
+
+#[test]
+#[should_panic(expected = "boosted health cache stale")]
+fn test_boosted_redemption_preserves_health_cache_without_renewing_it() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().with_mut(|ledger| ledger.timestamp = 100);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token, token_admin) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin.mint(&user, &40_000i128);
+    vault.deposit(&user, &40_000u128);
+    vault.refresh_boosted_underlying();
+
+    env.ledger().with_mut(|ledger| ledger.timestamp = 200);
+    vault.prepare_liquidity(&10_000u128);
+    let (_, _, rate, _) = vault.get_account_snapshot(&user);
+    assert_eq!(rate, 1_000_000u128);
+
+    env.ledger().with_mut(|ledger| ledger.timestamp = 401);
+    vault.get_account_snapshot(&user);
+}
+
+#[test]
+#[should_panic(expected = "boosted health cache missing")]
+fn test_failed_refresh_does_not_promote_accounting_fallback_to_live_nav() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.ledger().with_mut(|ledger| ledger.timestamp = 100);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token, token_admin) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    token_admin.mint(&vault_id, &20_000i128);
+    let mut amounts = Vec::new(&env);
+    amounts.push_back(20_000i128);
+    boosted.deposit(&amounts, &amounts, &vault_id, &true);
+    vault.set_boosted_vault(&admin, &boosted_id);
+    boosted.set_fail_quote(&true);
+    vault.refresh_boosted_underlying();
+
+    // A failed live quote may preserve accounting continuity, but it must not
+    // create collateral-authorizing health state.
     vault.get_account_snapshot(&user);
 }
 

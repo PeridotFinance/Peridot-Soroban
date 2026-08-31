@@ -94,6 +94,26 @@ impl ReceiptVault {
             .remove(&DataKey::BoostedHealthCache);
     }
 
+    /// Keep an existing live-quote cache aligned with exact asset movements
+    /// without extending its freshness window. Routine deposits/redemptions
+    /// must not let users delete the cache or make an old quote look new.
+    fn adjust_existing_boosted_health_cache(env: &Env, amount: u128, add: bool) {
+        let persistent = env.storage().persistent();
+        let Some(mut cache) = persistent.get::<_, BoostedHealthCache>(&DataKey::BoostedHealthCache)
+        else {
+            return;
+        };
+        cache.underlying = if add {
+            cache
+                .underlying
+                .checked_add(amount)
+                .expect("boosted health cache overflow")
+        } else {
+            cache.underlying.saturating_sub(amount)
+        };
+        persistent.set(&DataKey::BoostedHealthCache, &cache);
+    }
+
     fn estimate_boosted_underlying_from_accounting(env: &Env) -> u128 {
         let storage = env.storage().persistent();
         let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
@@ -521,15 +541,15 @@ impl ReceiptVault {
         if moved > 0 {
             Self::sub_managed_cash(env, moved);
             let cached = Self::cached_boosted_underlying(env);
-            env.storage().persistent().set(
-                &DataKey::BoostedUnderlyingCached,
-                &cached.saturating_add(moved),
-            );
+            let updated_cached = cached.checked_add(moved).expect("boosted cache overflow");
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedUnderlyingCached, &updated_cached);
             env.storage().persistent().set(
                 &DataKey::BoostedUnderlyingUpdatedAt,
                 &env.ledger().timestamp(),
             );
-            Self::invalidate_boosted_health_cache(env);
+            Self::adjust_existing_boosted_health_cache(env, moved, true);
         }
         moved
     }
@@ -772,15 +792,15 @@ impl ReceiptVault {
         if received > 0 {
             Self::add_managed_cash(env, received);
             let cached = Self::cached_boosted_underlying(env);
-            env.storage().persistent().set(
-                &DataKey::BoostedUnderlyingCached,
-                &cached.saturating_sub(received),
-            );
+            let updated_cached = cached.saturating_sub(received);
+            env.storage()
+                .persistent()
+                .set(&DataKey::BoostedUnderlyingCached, &updated_cached);
             env.storage().persistent().set(
                 &DataKey::BoostedUnderlyingUpdatedAt,
                 &env.ledger().timestamp(),
             );
-            Self::invalidate_boosted_health_cache(env);
+            Self::adjust_existing_boosted_health_cache(env, received, false);
         }
     }
 
