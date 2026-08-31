@@ -12,7 +12,7 @@ workers:
     alerts:
       - rule: RESTART_COUNT
         operator: GREATER_THAN
-        value: 0
+        value: 1
         window: FIVE_MINUTES
     envs:
       - key: RPC_URL

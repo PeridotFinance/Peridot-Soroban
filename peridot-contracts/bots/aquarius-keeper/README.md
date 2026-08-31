@@ -63,5 +63,6 @@ rollout is:
    cache refresh; monitor the following six-hour harvest cycles.
 
 The component costs approximately $5/month at the pinned 512 MiB worker size,
-excluding Stellar transaction fees. Alert on repeated failed cycles, low XLM,
+excluding Stellar transaction fees. The App Platform alert fires above one restart
+within five minutes. Also alert on failed cycles, low XLM,
 route-floor failures, stale NAV, material idle AQUA, and pool kill switches.
