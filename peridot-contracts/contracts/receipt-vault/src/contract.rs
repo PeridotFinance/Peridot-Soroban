@@ -211,7 +211,11 @@ impl ReceiptVault {
                         }
                         let amt_i = amounts.get(0).unwrap_or(0);
                         if amt_i <= 0 {
-                            Self::invalidate_boosted_health_cache(env);
+                            // Keep the last successful health quote until its
+                            // original five-minute deadline. A fail-soft or
+                            // rounded-zero strategy response must not let a
+                            // permissionless refresh erase still-valid state,
+                            // and it must never renew that state's timestamp.
                             let cached: u128 = env
                                 .storage()
                                 .persistent()

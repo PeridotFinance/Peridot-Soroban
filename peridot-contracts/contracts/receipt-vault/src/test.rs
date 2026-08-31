@@ -2971,6 +2971,41 @@ fn test_account_snapshot_uses_fresh_boosted_cache_when_live_quote_fails() {
 
 #[test]
 #[should_panic(expected = "boosted health cache stale")]
+fn test_nonpositive_refresh_preserves_health_cache_without_renewing_it() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().with_mut(|ledger| ledger.timestamp = 100);
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, _token, token_admin) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+    vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin.mint(&user, &20_000i128);
+    vault.deposit(&user, &20_000u128);
+    vault.refresh_boosted_underlying();
+
+    env.ledger().with_mut(|ledger| ledger.timestamp = 200);
+    boosted.set_quote_multiplier_bps(&0u128);
+    vault.refresh_boosted_underlying();
+    let (_, _, rate, _) = vault.get_account_snapshot(&user);
+    assert_eq!(rate, 1_000_000u128);
+
+    // The invalid refresh preserved, but did not renew, the t=100 quote.
+    env.ledger().with_mut(|ledger| ledger.timestamp = 401);
+    vault.get_account_snapshot(&user);
+}
+
+#[test]
+#[should_panic(expected = "boosted health cache stale")]
 fn test_account_snapshot_rejects_stale_boosted_cache() {
     let env = Env::default();
     env.mock_all_auths();
