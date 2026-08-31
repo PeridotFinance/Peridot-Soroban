@@ -11,6 +11,9 @@ not scale it above one instance or run another live copy with the same key:
 parallel Stellar transactions from one source account can collide on sequence
 numbers.
 
+Both network endpoints must use HTTPS. The worker refuses to start with a
+plaintext RPC or Horizon URL.
+
 ## Signer
 
 The dedicated public key is:
@@ -53,7 +56,9 @@ in `DRY_RUN=true` mode and has automatic deployments disabled. The intended
 rollout is:
 
 1. Create the app from `.do/aquarius-keeper.yaml`; the public repository is
-   cloned directly from the `leveraged-fix` branch without GitHub OAuth.
+   cloned directly from immutable release tag `aquarius-keeper-v0.1.0` without
+   GitHub OAuth. Never move or replace that tag; publish a new reviewed tag for
+   each keeper release.
 2. Confirm one dry-run cycle completes for all three targets.
 3. Add `KEEPER_SECRET` as an encrypted runtime variable.
 4. Change `DRY_RUN` and `HARVEST_ON_START` to `false`, then redeploy exactly one

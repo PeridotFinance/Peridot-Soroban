@@ -54,4 +54,22 @@ test("rejects unsafe cadence and non-mainnet configuration", () => {
       }),
     /pinned to Stellar Mainnet/,
   );
+  assert.throws(
+    () =>
+      loadConfig({
+        DRY_RUN: "true",
+        KEEPER_PUBLIC_KEY: keypair.publicKey(),
+        RPC_URL: "http://rpc.invalid",
+      }),
+    /RPC_URL must use HTTPS/,
+  );
+  assert.throws(
+    () =>
+      loadConfig({
+        DRY_RUN: "true",
+        KEEPER_PUBLIC_KEY: keypair.publicKey(),
+        HORIZON_URL: "not a URL",
+      }),
+    /HORIZON_URL must be a valid HTTPS URL/,
+  );
 });

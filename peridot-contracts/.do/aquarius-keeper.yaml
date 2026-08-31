@@ -4,7 +4,7 @@ workers:
   - name: mainnet-keeper
     git:
       repo_clone_url: https://github.com/PeridotFinance/Peridot-Soroban.git
-      branch: leveraged-fix
+      branch: aquarius-keeper-v0.1.0
     source_dir: peridot-contracts/bots/aquarius-keeper
     dockerfile_path: peridot-contracts/bots/aquarius-keeper/Dockerfile
     instance_count: 1

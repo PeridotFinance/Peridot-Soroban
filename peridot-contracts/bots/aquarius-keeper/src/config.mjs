@@ -43,6 +43,20 @@ function publicKey(value, name) {
   }
 }
 
+function httpsUrl(env, name, fallback) {
+  const value = env[name] ?? fallback;
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a valid HTTPS URL`);
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error(`${name} must use HTTPS`);
+  }
+  return value;
+}
+
 export function loadConfig(env = process.env) {
   const dryRun = boolean(env, "DRY_RUN", false);
   const secret = env.KEEPER_SECRET?.trim();
@@ -74,8 +88,12 @@ export function loadConfig(env = process.env) {
   }
 
   return {
-    rpcUrl: env.RPC_URL ?? "https://soroban-rpc.mainnet.stellar.gateway.fm",
-    horizonUrl: env.HORIZON_URL ?? "https://horizon.stellar.org",
+    rpcUrl: httpsUrl(
+      env,
+      "RPC_URL",
+      "https://soroban-rpc.mainnet.stellar.gateway.fm",
+    ),
+    horizonUrl: httpsUrl(env, "HORIZON_URL", "https://horizon.stellar.org"),
     networkPassphrase,
     keypair,
     publicKey: validatedPublicKey,

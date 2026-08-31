@@ -17,11 +17,11 @@ function stringify(value) {
 export class StellarClient {
   constructor(config, logger = console) {
     this.server = new rpc.Server(config.rpcUrl, {
-      allowHttp: config.rpcUrl.startsWith("http://"),
+      allowHttp: false,
       timeout: config.rpcTimeoutMs,
     });
     this.horizon = new Horizon.Server(config.horizonUrl, {
-      allowHttp: config.horizonUrl.startsWith("http://"),
+      allowHttp: false,
       appName: "peridot-aquarius-keeper",
     });
     this.config = config;
