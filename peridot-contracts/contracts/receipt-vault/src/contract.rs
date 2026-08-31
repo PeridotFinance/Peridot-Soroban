@@ -1200,6 +1200,17 @@ impl ReceiptVault {
             .persistent()
             .remove(&DataKey::BoostedUnderlyingUpdatedAt);
         Self::invalidate_boosted_health_cache(&env);
+        if new_boosted.is_some() {
+            // Binding is atomic with establishing account-health state. If a
+            // strategy already holds shares but cannot return a positive live
+            // quote, reject the configuration instead of leaving every health
+            // check dependent on a later successful keeper call. An empty
+            // strategy records a valid zero cache here.
+            let _ = Self::get_boosted_underlying(&env);
+            if !env.storage().persistent().has(&DataKey::BoostedHealthCache) {
+                panic!("boosted health cache unavailable");
+            }
+        }
         BoostedVaultSet {
             old_vault: old_boosted,
             new_vault: new_boosted,

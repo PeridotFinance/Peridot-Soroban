@@ -1591,6 +1591,10 @@ mod boosted_market {
         m.f.usdc.mint(&borrower, &20_000_0000000i128);
 
         controller.enter_market(&borrower, &m.market.address);
+        // Admin/controller setup and the user deposit are separate network
+        // transactions. Reset the host-test budget before measuring each
+        // user operation so setup authorization work cannot leak into it.
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.deposit(&borrower, &20_000_0000000u128);
         m.market.refresh_boosted_underlying();
 

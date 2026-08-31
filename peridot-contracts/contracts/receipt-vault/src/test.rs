@@ -724,6 +724,32 @@ fn test_set_boosted_vault_rejects_duplicate_assignment_across_markets() {
 }
 
 #[test]
+#[should_panic(expected = "boosted health cache unavailable")]
+fn test_set_boosted_vault_rejects_unquotable_existing_shares() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+
+    let admin = Address::generate(&env);
+    let (token_address, _token_client, token_admin_client) = create_test_token(&env, &admin);
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    token_admin_client.mint(&vault_id, &20_000i128);
+    let mut amounts = Vec::new(&env);
+    amounts.push_back(20_000i128);
+    boosted.deposit(&amounts, &amounts, &vault_id, &true);
+    boosted.set_quote_multiplier_bps(&0u128);
+
+    vault.set_boosted_vault(&admin, &boosted_id);
+}
+
+#[test]
 fn test_boosted_fallback_prefers_cached_value_when_stale_and_quote_fails() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
@@ -3102,10 +3128,10 @@ fn test_boosted_redemption_preserves_health_cache_without_renewing_it() {
 }
 
 #[test]
-#[should_panic(expected = "boosted health cache missing")]
-fn test_failed_refresh_does_not_promote_accounting_fallback_to_live_nav() {
+#[should_panic(expected = "boosted health cache stale")]
+fn test_failed_refresh_preserves_health_cache_without_renewing_it() {
     let env = Env::default();
-    env.mock_all_auths_allowing_non_root_auth();
+    env.mock_all_auths();
     env.ledger().with_mut(|ledger| ledger.timestamp = 100);
 
     let admin = Address::generate(&env);
@@ -3119,17 +3145,19 @@ fn test_failed_refresh_does_not_promote_accounting_fallback_to_live_nav() {
     let boosted_id = env.register(MockBoostedVault, ());
     let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
     boosted.initialize(&token_address);
-
-    token_admin.mint(&vault_id, &20_000i128);
-    let mut amounts = Vec::new(&env);
-    amounts.push_back(20_000i128);
-    boosted.deposit(&amounts, &amounts, &vault_id, &true);
     vault.set_boosted_vault(&admin, &boosted_id);
+
+    token_admin.mint(&user, &20_000i128);
+    vault.deposit(&user, &20_000u128);
+
+    env.ledger().with_mut(|ledger| ledger.timestamp = 200);
     boosted.set_fail_quote(&true);
     vault.refresh_boosted_underlying();
+    let (_, _, rate, _) = vault.get_account_snapshot(&user);
+    assert_eq!(rate, 1_000_000u128);
 
-    // A failed live quote may preserve accounting continuity, but it must not
-    // create collateral-authorizing health state.
+    // The failed refresh preserved, but did not renew, the t=100 quote.
+    env.ledger().with_mut(|ledger| ledger.timestamp = 401);
     vault.get_account_snapshot(&user);
 }
 
