@@ -287,11 +287,25 @@ impl ReceiptVault {
         let cache: BoostedHealthCache =
             if let Some(cache) = persistent.get(&DataKey::BoostedHealthCache) {
                 cache
+            } else if let (Some(underlying), Some(updated_at)) = (
+                persistent.get::<_, u128>(&DataKey::BoostedUnderlyingCached),
+                persistent.get::<_, u64>(&DataKey::BoostedUnderlyingUpdatedAt),
+            ) {
+                // Deterministically migrate the legacy cache without making
+                // it look fresher than it was. The value was maintained by
+                // the vault's own strategy accounting, and the unchanged
+                // timestamp keeps the five-minute fail-closed boundary.
+                let cache = BoostedHealthCache {
+                    underlying,
+                    updated_at,
+                };
+                persistent.set(&DataKey::BoostedHealthCache, &cache);
+                cache
             } else {
                 // Upgrade compatibility: legacy boosted markets have the
-                // strategy binding and accounting cache but not this health
-                // key. Try one live quote so their first post-upgrade health
-                // read can establish the new state without an admin rebind.
+                // strategy binding but may have lost the older cache keys.
+                // Try one live quote so their first post-upgrade health read
+                // can establish the new state without an admin rebind.
                 // A failed quote must still fail closed; accounting estimates
                 // are never promoted into collateral-authorizing state.
                 let _ = Self::get_boosted_underlying(env);
