@@ -284,9 +284,21 @@ impl ReceiptVault {
             return 0u128;
         }
 
-        let cache: BoostedHealthCache = persistent
-            .get(&DataKey::BoostedHealthCache)
-            .expect("boosted health cache missing");
+        let cache: BoostedHealthCache =
+            if let Some(cache) = persistent.get(&DataKey::BoostedHealthCache) {
+                cache
+            } else {
+                // Upgrade compatibility: legacy boosted markets have the
+                // strategy binding and accounting cache but not this health
+                // key. Try one live quote so their first post-upgrade health
+                // read can establish the new state without an admin rebind.
+                // A failed quote must still fail closed; accounting estimates
+                // are never promoted into collateral-authorizing state.
+                let _ = Self::get_boosted_underlying(env);
+                persistent
+                    .get(&DataKey::BoostedHealthCache)
+                    .expect("boosted health cache unavailable")
+            };
         if env.ledger().timestamp().saturating_sub(cache.updated_at)
             > BOOSTED_HEALTH_CACHE_MAX_AGE_SECS
         {
