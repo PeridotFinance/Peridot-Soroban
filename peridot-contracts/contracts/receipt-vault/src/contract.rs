@@ -683,8 +683,13 @@ impl ReceiptVault {
     }
 
     /// Redeem from boosted vault to satisfy a live-cash requirement.
-    fn redeem_from_boosted(env: &Env, token_address: &Address, needed_cash: u128) {
-        if needed_cash == 0 {
+    fn redeem_from_boosted(
+        env: &Env,
+        token_address: &Address,
+        needed_cash: u128,
+        redeem_all: bool,
+    ) {
+        if needed_cash == 0 && !redeem_all {
             return;
         }
         if needed_cash > i128::MAX as u128 {
@@ -741,6 +746,9 @@ impl ReceiptVault {
             // state untouched so the caller reports its standard shortfall;
             // the admin setter remains available if the strategy cannot even
             // answer the zero-share shape probe.
+            if redeem_all {
+                panic!("boosted asset count unavailable");
+            }
             return;
         };
         if total_amounts.len() == 0 {
@@ -773,27 +781,35 @@ impl ReceiptVault {
             // into a market-wide withdrawal panic.
             fallback_underlying
         };
-        if total_underlying == 0 {
+        if total_underlying == 0 && !redeem_all {
             return;
         }
 
         let target_cash = needed_cash.saturating_add(1);
-        let shares_to_withdraw = Self::boosted_shares_for_cash(
-            target_cash,
-            total_shares,
-            total_underlying,
-            share_balance,
-        );
-        let retry_shares = retry_underlying
-            .map(|live_underlying| {
-                Self::boosted_shares_for_cash(
-                    target_cash,
-                    total_shares,
-                    live_underlying,
-                    share_balance,
-                )
-            })
-            .filter(|shares| *shares > shares_to_withdraw);
+        let shares_to_withdraw = if redeem_all {
+            share_balance
+        } else {
+            Self::boosted_shares_for_cash(
+                target_cash,
+                total_shares,
+                total_underlying,
+                share_balance,
+            )
+        };
+        let retry_shares = if redeem_all {
+            None
+        } else {
+            retry_underlying
+                .map(|live_underlying| {
+                    Self::boosted_shares_for_cash(
+                        target_cash,
+                        total_shares,
+                        live_underlying,
+                        share_balance,
+                    )
+                })
+                .filter(|shares| *shares > shares_to_withdraw)
+        };
 
         let (succeeded, mut received) = Self::try_boosted_redemption(
             env,
@@ -819,6 +835,18 @@ impl ReceiptVault {
             }
         }
 
+        if redeem_all {
+            let remaining =
+                token::TokenClient::new(env, &boosted).balance(&env.current_contract_address());
+            if !succeeded || remaining != 0 {
+                // A zero pToken supply may never retain strategy shares: they
+                // would be captured by the next initial-rate depositor. Panic
+                // here so the entire user withdrawal, including any partial
+                // external redemption, rolls back atomically.
+                panic!("boosted full redemption incomplete");
+            }
+        }
+
         if received > 0 {
             Self::add_managed_cash(env, received);
             let cached = Self::cached_boosted_underlying(env);
@@ -841,7 +869,7 @@ impl ReceiptVault {
             return;
         }
         let needed = required_cash - live_cash;
-        Self::redeem_from_boosted(env, token_address, needed);
+        Self::redeem_from_boosted(env, token_address, needed, false);
     }
 
     fn get_managed_cash(env: &Env) -> u128 {
@@ -1644,7 +1672,8 @@ impl ReceiptVault {
         let total_ptokens_after = total_ptokens_before
             .checked_sub(ptoken_amount)
             .expect("ptoken supply underflow");
-        if total_ptokens_after == 0 {
+        let final_exit = total_ptokens_after == 0;
+        if final_exit {
             let total_borrowed: u128 = env
                 .storage()
                 .persistent()
@@ -1652,13 +1681,6 @@ impl ReceiptVault {
                 .expect("total borrowed missing");
             if total_borrowed > 0 {
                 panic!("cannot zero supply with outstanding borrows");
-            }
-
-            // Prevent a zero-supply state with residual value that would let the
-            // next depositor bootstrap at an unfair initial exchange rate.
-            let total_underlying_before = Self::get_total_underlying(env.clone());
-            if total_underlying_before > underlying_to_return {
-                panic!("cannot zero supply with residual assets");
             }
         }
 
@@ -1669,29 +1691,52 @@ impl ReceiptVault {
         // Burn pTokens without implicit auth (already required above)
         TokenBase::update(&env, Some(&user), None, burn_i128);
         emit_burn(&env, &user, burn_i128);
-        // Update totals
+        // Pull from boosted vault on demand so user withdrawals are backed by
+        // live cash. The last pToken holder redeems every remaining strategy
+        // share, even when the rounded exchange-rate payout already fits in
+        // idle cash. Otherwise residual strategy value would become ownerless
+        // at zero supply and be captured by the next depositor.
+        if final_exit {
+            let live_cash = Self::current_live_cash(&env, &token_address);
+            let needed = underlying_to_return.saturating_sub(live_cash);
+            Self::redeem_from_boosted(&env, &token_address, needed, true);
+        } else {
+            Self::ensure_liquid_cash(&env, &token_address, underlying_to_return);
+        }
+
+        // Non-final exits retain the normal rounded exchange-rate payout. On
+        // the final exit, after all strategy shares are back in cash, pay the
+        // exact remaining supplier-owned value. Reserves and admin fees remain
+        // behind because get_total_underlying subtracts both claims.
+        let payout = if final_exit {
+            Self::get_total_underlying(env.clone())
+        } else {
+            underlying_to_return
+        };
+
+        let cash_after_boost = Self::current_live_cash(&env, &token_address);
+        if payout < underlying_to_return || cash_after_boost < payout {
+            panic!("withdraw liquidity shortfall");
+        }
+
+        // Update tracked supplier principal. A zero pToken supply has no
+        // supplier principal by definition, including after realized losses.
         let total_deposited: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::TotalDeposited)
             .unwrap_or(0u128);
-        // AccumulatedInterest is deprecated from supplier accounting; withdrawals
-        // only adjust tracked deposits.
-        let total_deposited_after = total_deposited.saturating_sub(underlying_to_return);
+        let total_deposited_after = if final_exit {
+            0
+        } else {
+            total_deposited.saturating_sub(payout)
+        };
         env.storage()
             .persistent()
             .set(&DataKey::TotalDeposited, &total_deposited_after);
 
-        // Pull from boosted vault on demand so user withdrawals are backed by live cash.
-        Self::ensure_liquid_cash(&env, &token_address, underlying_to_return);
-
-        let cash_after_boost = Self::current_live_cash(&env, &token_address);
-        if cash_after_boost < underlying_to_return {
-            panic!("withdraw liquidity shortfall");
-        }
-
         // Transfer tokens back to user
-        let underlying_i128 = to_i128(underlying_to_return);
+        let underlying_i128 = to_i128(payout);
         let cash_before_withdraw = Self::current_live_cash(&env, &token_address);
         token_client.transfer(&env.current_contract_address(), &user, &underlying_i128);
         let cash_after_withdraw = Self::current_live_cash(&env, &token_address);
@@ -1703,7 +1748,7 @@ impl ReceiptVault {
         // Emit Compound-style Redeem event
         Redeem {
             redeemer: user.clone(),
-            redeem_amount: underlying_to_return,
+            redeem_amount: payout,
             redeem_tokens: ptoken_amount,
         }
         .publish(&env);

@@ -101,6 +101,9 @@ export function loadConfig(env = process.env) {
     dryRun,
     runOnce: boolean(env, "RUN_ONCE", false),
     runHarvest: boolean(env, "RUN_HARVEST", true),
+    // Fail closed until the concentrated-range contract upgrade and migration
+    // have completed. Operations explicitly enable this in the live app spec.
+    runRebalance: boolean(env, "RUN_REBALANCE", false),
     harvestOnStart: boolean(env, "HARVEST_ON_START", true),
     pollIntervalMs: integer(env, "POLL_INTERVAL_MS", 1_200_000, {
       min: 30_000,

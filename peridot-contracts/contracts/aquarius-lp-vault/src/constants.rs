@@ -10,6 +10,24 @@ pub const NAV_ROOT_SCALE: u128 = 1_000_000_000u128; // 1e9
 /// position uses the widest tick-spacing-aligned bounds inside that limit.
 pub const MAX_TICK_ABS: i32 = 887_272;
 
+/// New deployments start with an approximately +/-1% range. Governance can
+/// widen individual strategies before capital enters; existing Mainnet
+/// deployments remain disabled until a policy is explicitly installed.
+pub const DEFAULT_HALF_WIDTH_TICKS: u32 = 100;
+pub const DEFAULT_REBALANCE_MARGIN_TICKS: u32 = 40;
+pub const DEFAULT_REBALANCE_COOLDOWN_SECS: u64 = 6 * 60 * 60;
+pub const DEFAULT_MAX_REBALANCE_DIVERGENCE_BPS: u32 = 100;
+/// Hard policy bounds. A position this wide is still materially concentrated,
+/// while the lower bound prevents a one-spacing range that can be churned by
+/// ordinary swaps.
+pub const MAX_HALF_WIDTH_TICKS: u32 = 50_000;
+pub const MAX_REBALANCE_DIVERGENCE_BPS: u32 = 500;
+pub const MIN_REBALANCE_COOLDOWN_SECS: u64 = 300;
+/// A successful rebalance must put at least 95% of the independently valued
+/// pair back to work. This catches a bad range quote or a badly imbalanced
+/// unwind before the transaction can strand most capital as idle dust.
+pub const MAX_REBALANCE_IDLE_BPS: u128 = 500;
+
 /// Vault shares are minted 1:1 with underlying on the first deposit, then pro
 /// rata. Matching the pToken convention keeps share math readable.
 pub const SHARE_DECIMALS: u32 = 7;

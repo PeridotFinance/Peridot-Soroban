@@ -1,6 +1,6 @@
 use soroban_sdk::{contracttype, Address, Env, Symbol};
 
-/// Immutable wiring, written once at `initialize`.
+/// Pool wiring and the currently active position range.
 ///
 /// Everything here lives in a single **instance** storage entry. That is not a
 /// style preference: the market-deposit path spans ReceiptVault -> this vault
@@ -67,6 +67,43 @@ pub struct State {
     pub last_harvest: u64,
 }
 
+/// Last observed token amounts backing the active concentrated position.
+///
+/// Unlike a full-range position, concentrated-liquidity NAV cannot be derived
+/// from liquidity alone: its token mix changes as pool price moves through the
+/// configured range. The keeper refreshes this snapshot from Aquarius and all
+/// position mutations update it from actual token balance deltas.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PositionAmounts {
+    pub liquidity: u128,
+    pub amount0: u128,
+    pub amount1: u128,
+    pub updated_at: u64,
+}
+
+/// Keeper-managed range policy. Stored outside `Config` so an upgrade can
+/// decode the exact Config value already present on Mainnet.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RangeParams {
+    /// Requested distance from the center to either edge, in raw ticks.
+    /// Bounds are rounded outward to the pool's tick spacing.
+    pub half_width_ticks: u32,
+    /// Recenter when spot enters this many ticks of either edge.
+    pub rebalance_margin_ticks: u32,
+    pub rebalance_cooldown: u64,
+    /// Independent, tighter pool/oracle guard used only for recentering.
+    pub max_rebalance_divergence_bps: u32,
+    pub enabled: bool,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RangeState {
+    pub last_rebalance_at: u64,
+}
+
 #[contracttype]
 pub enum DataKey {
     // instance
@@ -87,6 +124,11 @@ pub enum DataKey {
     ReceiptVault,
     PrimaryRewardToken,
     RewardMinRate(Address),
+    // Concentrated-range upgrade state. Append only: these variants were
+    // added after the first Mainnet full-range deployment.
+    PositionAmounts,
+    RangeParams,
+    RangeState,
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -201,6 +243,49 @@ pub fn state(env: &Env) -> State {
 
 pub fn set_state(env: &Env, s: &State) {
     env.storage().instance().set(&DataKey::State, s);
+}
+
+pub fn position_amounts(env: &Env) -> Option<PositionAmounts> {
+    env.storage().instance().get(&DataKey::PositionAmounts)
+}
+
+pub fn set_position_amounts(env: &Env, amounts: &PositionAmounts) {
+    env.storage()
+        .instance()
+        .set(&DataKey::PositionAmounts, amounts);
+}
+
+pub fn range_params(env: &Env) -> RangeParams {
+    // Existing full-range deployments deliberately fail closed after the
+    // Wasm upgrade. Governance must install a reviewed policy before anyone
+    // can migrate their live position.
+    env.storage()
+        .instance()
+        .get(&DataKey::RangeParams)
+        .unwrap_or(RangeParams {
+            half_width_ticks: 0,
+            rebalance_margin_ticks: 0,
+            rebalance_cooldown: 0,
+            max_rebalance_divergence_bps: 0,
+            enabled: false,
+        })
+}
+
+pub fn set_range_params(env: &Env, value: &RangeParams) {
+    env.storage().instance().set(&DataKey::RangeParams, value);
+}
+
+pub fn range_state(env: &Env) -> RangeState {
+    env.storage()
+        .instance()
+        .get(&DataKey::RangeState)
+        .unwrap_or(RangeState {
+            last_rebalance_at: 0,
+        })
+}
+
+pub fn set_range_state(env: &Env, value: &RangeState) {
+    env.storage().instance().set(&DataKey::RangeState, value);
 }
 
 pub fn admin(env: &Env) -> Address {

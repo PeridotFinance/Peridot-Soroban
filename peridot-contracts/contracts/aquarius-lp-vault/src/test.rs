@@ -1,20 +1,24 @@
 #![cfg(test)]
 
+extern crate std;
+
 use soroban_sdk::{
     contract, contractimpl, contracttype, testutils::Address as _, testutils::Ledger as _, Address,
-    Env, String, Symbol, Vec,
+    Bytes, Env, String, Symbol, Vec,
 };
 
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::{ReceiptVault, ReceiptVaultClient};
 
-use crate::math::{isqrt, mul_div, mul_div_ceil, try_mul_div};
+use crate::constants::UPGRADE_TIMELOCK_SECS;
+use crate::math::{align_tick_down, centered_range, isqrt, mul_div, mul_div_ceil, try_mul_div};
 use crate::oracle::{Asset, PriceData};
-use crate::storage::DataKey;
+use crate::storage::{config, set_config, state, DataKey};
 use crate::{AquariusLpVault, AquariusLpVaultClient};
 
 // The admin the contract pins at build time (test builds fall back to this).
 const ADMIN_G: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+const PRODUCTION_ADMIN_G: &str = "GDYDTMY46RNAUIIUVG6RPD2D3I3ES4J2SSXGCKIQP2OET4Q5PV75LSPL";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Reflector oracle
@@ -133,6 +137,12 @@ struct Fixture {
 const PRICE_USDC: i128 = 100_000_000_000_000; // $1.00
 const PRICE_EURC: i128 = 116_700_000_000_000; // $1.167
 const PRICE_AQUA: i128 = 37_400_000_000; // $0.000374
+
+fn required_wasm_from_env(variable: &str) -> std::vec::Vec<u8> {
+    let path = std::env::var(variable)
+        .unwrap_or_else(|_| panic!("{variable} must point to a contract WASM"));
+    std::fs::read(&path).unwrap_or_else(|error| panic!("failed to read {variable}={path}: {error}"))
+}
 
 fn deploy_token(env: &Env, symbol: &str) -> (Address, MockTokenClient<'static>) {
     let id = env.register(MockToken, ());
@@ -308,15 +318,26 @@ fn mul_div_avoids_intermediate_overflow() {
     );
 }
 
+#[test]
+fn concentrated_ranges_align_outward_and_handle_negative_ticks() {
+    assert_eq!(align_tick_down(19, 20), 0);
+    assert_eq!(align_tick_down(20, 20), 20);
+    assert_eq!(align_tick_down(-1, 20), -20);
+    assert_eq!(align_tick_down(-20, 20), -20);
+    assert_eq!(centered_range(10, 20, 100, 887_272), (-100, 100));
+    assert_eq!(centered_range(-1, 20, 100, 887_272), (-120, 80));
+    assert_eq!(centered_range(0, 60, 100, 887_272), (-120, 120));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Initialization
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
-fn initialize_derives_full_range_from_tick_spacing() {
+fn initialize_opens_a_spacing_aligned_concentrated_range() {
     let f = setup();
-    // 887272 aligned down to a multiple of 60.
-    assert_eq!(f.vault.get_ticks(), (-887_220i32, 887_220i32));
+    // The requested 100-tick half-width rounds outward to spacing 60.
+    assert_eq!(f.vault.get_ticks(), (-120i32, 120i32));
     assert_eq!(f.vault.get_pool(), f.pool_id);
     assert_eq!(f.vault.get_underlying(), f.usdc_id);
     assert_eq!(f.vault.get_admin(), f.admin);
@@ -325,6 +346,9 @@ fn initialize_derives_full_range_from_tick_spacing() {
         Some(f.receipt_market_id.clone())
     );
     assert_eq!(f.vault.get_primary_reward_token(), Some(f.aqua_id.clone()));
+    let policy = f.vault.get_range_policy();
+    assert!(policy.enabled);
+    assert_eq!(policy.half_width_ticks, 100);
 }
 
 #[test]
@@ -413,31 +437,42 @@ fn env_oracle(f: &Fixture) -> Address {
 // NAV
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The load-bearing property: a full-range position of `L` liquidity units is
-/// worth `2 * L * sqrt(p_other / p_underlying)` in the underlying token.
-///
-/// Checked against the real mainnet figures: 1000 USDC + 862 EURC in the
-/// live pool mints 9_256_822_340 liquidity, which the formula values at
-/// ~2000 USDC.
+/// Concentrated NAV values the cached token composition at the independent
+/// oracle ratio. Liquidity alone is not sufficient once the range is bounded.
 #[test]
-fn nav_matches_the_full_range_closed_form() {
+fn nav_values_both_concentrated_position_legs_at_the_oracle() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
     let amount = 2_000_0000000i128; // 2000 USDC
     deposit_for(&f, &f.receipt_market_id, amount);
 
-    let liq = f.vault.get_position_liquidity();
-    assert!(liq > 0, "expected liquidity to be minted");
-
-    // 2 * L * sqrt(1.167) with 1e9-scaled root arithmetic.
-    let ratio = mul_div(
-        &f.env,
-        PRICE_EURC as u128,
-        1_000_000_000_000_000_000u128,
-        PRICE_USDC as u128,
-    );
-    let expected = mul_div(&f.env, liq, isqrt(ratio), 1_000_000_000u128) * 2;
+    let snapshot = f
+        .vault
+        .get_position_amounts()
+        .expect("position snapshot missing");
+    assert!(snapshot.liquidity > 0, "expected liquidity to be minted");
+    // The contract stores floor(sqrt(ratio)), so square that exact cached
+    // value here instead of reconstructing the unfloored oracle ratio.
+    let root = f
+        .env
+        .as_contract(&f.vault_id, || state(&f.env).last_nav_root);
+    let r_scaled = root * root;
+    let expected = if f.usdc_id < f.eurc_id {
+        snapshot.amount0.saturating_add(mul_div(
+            &f.env,
+            snapshot.amount1,
+            r_scaled,
+            1_000_000_000_000_000_000,
+        ))
+    } else {
+        snapshot.amount1.saturating_add(mul_div(
+            &f.env,
+            snapshot.amount0,
+            r_scaled,
+            1_000_000_000_000_000_000,
+        ))
+    };
 
     let nav = f.vault.get_total_underlying() as u128;
     let idle = f.vault.get_idle() as u128;
@@ -448,6 +483,293 @@ fn nav_matches_the_full_range_closed_form() {
     // swap fee paid to convert half the deposit into the paired token.
     assert!(nav > 1_970_0000000u128, "nav too low: {}", nav);
     assert!(nav <= 2_000_0000000u128, "nav above principal: {}", nav);
+}
+
+#[test]
+fn stale_position_composition_fails_soft_and_blocks_new_deposits() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    assert!(f.vault.get_position_liquidity() > 0);
+
+    f.env.ledger().set_timestamp(1_700_003_601);
+    assert_eq!(
+        f.vault.get_total_underlying(),
+        f.vault.get_idle(),
+        "stale concentrated composition must not be valued"
+    );
+
+    f.usdc.mint(&f.receipt_market_id, &1_000_0000000i128);
+    assert!(
+        f.vault
+            .try_deposit_underlying(&f.receipt_market_id, &1_000_0000000i128, &0i128)
+            .is_err(),
+        "new shares must not mint against stale position composition"
+    );
+
+    assert!(f.vault.refresh_nav_root() > 0);
+    assert!(f
+        .vault
+        .try_deposit_underlying(&f.receipt_market_id, &1_000_0000000i128, &0i128)
+        .is_ok());
+}
+
+#[test]
+fn user_mutations_do_not_renew_the_position_observation() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let shares = deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    let observed_at = f.vault.get_position_amounts().unwrap().updated_at;
+
+    // A top-up adds known spend deltas but does not re-observe the existing
+    // position mix, so it must not extend the one-hour freshness window.
+    f.env.ledger().set_timestamp(observed_at + 3_000);
+    deposit_for(&f, &f.receipt_market_id, 100_0000000i128);
+    assert_eq!(
+        f.vault.get_position_amounts().unwrap().updated_at,
+        observed_at
+    );
+
+    // A protected partial exit may use the last ratio with a non-zero floor,
+    // but subtracting its returned legs also must not make that ratio fresh.
+    f.env.ledger().set_timestamp(observed_at + 3_601);
+    let mut min_out = Vec::new(&f.env);
+    min_out.push_back(1i128);
+    f.vault
+        .withdraw(&(shares / 4), &min_out, &f.receipt_market_id);
+    assert_eq!(
+        f.vault.get_position_amounts().unwrap().updated_at,
+        observed_at
+    );
+
+    f.usdc.mint(&f.receipt_market_id, &100_0000000i128);
+    assert!(f
+        .vault
+        .try_deposit_underlying(&f.receipt_market_id, &100_0000000i128, &0i128)
+        .is_err());
+}
+
+fn make_legacy_full_range(f: &Fixture) {
+    f.env.as_contract(&f.vault_id, || {
+        let mut cfg = config(&f.env);
+        cfg.tick_lower = -887_220;
+        cfg.tick_upper = 887_220;
+        set_config(&f.env, &cfg);
+        f.env.storage().instance().remove(&DataKey::PositionAmounts);
+        f.env.storage().instance().remove(&DataKey::RangeParams);
+        f.env.storage().instance().remove(&DataKey::RangeState);
+    });
+}
+
+#[test]
+fn legacy_full_range_position_migrates_atomically_to_a_narrow_range() {
+    let f = setup();
+    make_legacy_full_range(&f);
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    let old_liquidity = f.vault.get_position_liquidity();
+    assert!(old_liquidity > 0);
+    assert!(!f.vault.needs_rebalance(), "legacy policy must fail closed");
+
+    f.vault
+        .set_range_policy(&f.admin, &120u32, &40u32, &3_600u64, &100u32, &true);
+    assert!(f.vault.refresh_nav_root() > 0);
+    assert!(f.vault.needs_rebalance());
+    let keeper = Address::generate(&f.env);
+    assert!(f.vault.rebalance(&keeper));
+    assert_eq!(f.vault.get_ticks(), (-120, 120));
+    assert!(f.vault.get_position_liquidity() > 0);
+    let snapshot = f.vault.get_position_amounts().unwrap();
+    assert_eq!(snapshot.liquidity, f.vault.get_position_liquidity());
+    let pool_snapshot = f.pool.get_user_position_snapshot(&f.vault_id);
+    assert_eq!(pool_snapshot.ranges.len(), 1);
+    assert_eq!(pool_snapshot.ranges.get(0).unwrap().tick_lower, -120);
+    assert_eq!(pool_snapshot.ranges.get(0).unwrap().tick_upper, 120);
+}
+
+#[test]
+fn full_range_migration_fits_in_one_transaction() {
+    let f = setup();
+    f.env.cost_estimate().disable_resource_limits();
+    make_legacy_full_range(&f);
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    f.vault
+        .set_range_policy(&f.admin, &120u32, &40u32, &3_600u64, &100u32, &true);
+
+    f.env.cost_estimate().budget().reset_unlimited();
+    let keeper = Address::generate(&f.env);
+    assert!(f.vault.rebalance(&keeper));
+
+    let resources = f.env.cost_estimate().resources();
+    let entries = resources.memory_read_entries + resources.write_entries;
+    assert!(
+        entries < 100,
+        "range migration needs {} ledger entries, over the cap: {:?}",
+        entries,
+        resources
+    );
+    assert!(
+        resources.instructions < 100_000_000,
+        "range migration CPU too high: {:?}",
+        resources
+    );
+}
+
+#[test]
+#[ignore = "requires AQUARIUS_LIVE_WASM and AQUARIUS_NEW_WASM"]
+fn exact_mainnet_wasm_upgrade_preserves_state_and_migrates_the_position() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.ledger().set_timestamp(1_700_000_000);
+    env.cost_estimate().disable_resource_limits();
+    let admin = Address::from_string(&String::from_str(&env, PRODUCTION_ADMIN_G));
+
+    let (usdc_id, usdc) = deploy_token(&env, "USDC");
+    let (eurc_id, eurc) = deploy_token(&env, "EURC");
+    let (aqua_id, aqua) = deploy_token(&env, "AQUA");
+    let (token0, token1) = if usdc_id < eurc_id {
+        (usdc_id.clone(), eurc_id.clone())
+    } else {
+        (eurc_id.clone(), usdc_id.clone())
+    };
+    let underlying_index = if token0 == usdc_id { 0 } else { 1 };
+    let pool_id = env.register(mock_aquarius_pool::MockAquariusPool, ());
+    let pool = mock_aquarius_pool::MockAquariusPoolClient::new(&env, &pool_id);
+    pool.initialize(&token0, &token1, &60i32, &30u32);
+    pool.set_reward_tokens(&aqua_id, &eurc_id);
+    let oracle_id = env.register(MockOracle, ());
+    let oracle = MockOracleClient::new(&env, &oracle_id);
+    oracle.set_price(&usdc_id, &PRICE_USDC);
+    oracle.set_price(&eurc_id, &PRICE_EURC);
+    oracle.set_price(&aqua_id, &PRICE_AQUA);
+
+    // Initialize the exact deployed Mainnet binary, then upgrade through its
+    // own timelocked entrypoint. This preserves its real serialized storage.
+    let live_wasm = required_wasm_from_env("AQUARIUS_LIVE_WASM");
+    let vault_id = env.register(live_wasm.as_slice(), ());
+    let vault = AquariusLpVaultClient::new(&env, &vault_id);
+    vault.initialize(&admin, &pool_id, &underlying_index, &oracle_id);
+    let receipt_market_id = env.register(ReceiptVault, ());
+    let receipt_market = ReceiptVaultClient::new(&env, &receipt_market_id);
+    receipt_market.initialize(&usdc_id, &0u128, &0u128, &admin);
+    receipt_market.set_boosted_vault(&admin, &vault_id);
+    vault.set_receipt_vault(&admin, &receipt_market_id);
+    vault.set_primary_reward_token(&admin, &Some(aqua_id.clone()));
+    let f = Fixture {
+        env,
+        admin,
+        vault,
+        vault_id,
+        receipt_market_id,
+        pool,
+        pool_id,
+        usdc,
+        eurc,
+        aqua,
+        usdc_id,
+        eurc_id,
+        aqua_id,
+        oracle,
+    };
+
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    let legacy_liquidity = f.vault.get_position_liquidity();
+    let legacy_shares = f.vault.balance(&f.receipt_market_id);
+    assert!(legacy_liquidity > 0 && legacy_shares > 0);
+
+    let new_wasm = required_wasm_from_env("AQUARIUS_NEW_WASM");
+    let new_hash = f
+        .env
+        .deployer()
+        .upload_contract_wasm(Bytes::from_slice(&f.env, &new_wasm));
+    f.vault.propose_upgrade_wasm(&f.admin, &new_hash);
+    f.env
+        .ledger()
+        .set_timestamp(1_700_000_000 + UPGRADE_TIMELOCK_SECS + 1);
+    f.vault.upgrade_wasm(&f.admin, &new_hash);
+
+    assert_eq!(f.vault.get_admin(), f.admin);
+    assert_eq!(
+        f.vault.get_receipt_vault(),
+        Some(f.receipt_market_id.clone())
+    );
+    assert_eq!(f.vault.balance(&f.receipt_market_id), legacy_shares);
+    assert_eq!(f.vault.get_position_liquidity(), legacy_liquidity);
+    assert!(!f.vault.needs_rebalance());
+
+    f.vault
+        .set_range_policy(&f.admin, &120u32, &40u32, &3_600u64, &100u32, &true);
+    assert!(f.vault.refresh_nav_root() > 0);
+    assert!(f.vault.needs_rebalance());
+    let keeper = Address::generate(&f.env);
+    assert!(f.vault.rebalance(&keeper));
+    assert_eq!(f.vault.get_ticks(), (-120, 120));
+    assert_eq!(f.vault.balance(&f.receipt_market_id), legacy_shares);
+    assert!(f.vault.get_position_liquidity() > 0);
+}
+
+#[test]
+fn rebalance_waits_for_edge_and_cooldown() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    f.vault
+        .set_range_policy(&f.admin, &120u32, &40u32, &3_600u64, &100u32, &true);
+    assert!(!f.vault.needs_rebalance());
+
+    f.pool.set_tick(&100i32);
+    assert!(f.vault.needs_rebalance());
+    let keeper = Address::generate(&f.env);
+    assert!(f.vault.rebalance(&keeper));
+    assert_eq!(f.vault.get_ticks(), (-60, 180));
+
+    f.pool.set_tick(&160i32);
+    assert!(!f.vault.needs_rebalance(), "cooldown must block churn");
+    f.env.ledger().set_timestamp(1_700_003_601);
+    assert!(f.vault.needs_rebalance());
+}
+
+#[test]
+fn rebalance_rejects_a_pool_that_is_not_near_the_oracle() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    let old_ticks = f.vault.get_ticks();
+    let old_liquidity = f.vault.get_position_liquidity();
+    f.pool.set_tick(&100i32);
+    f.oracle.set_price(&f.eurc_id, &(PRICE_EURC * 2));
+    f.vault.refresh_nav_root();
+
+    let keeper = Address::generate(&f.env);
+    assert!(f.vault.try_rebalance(&keeper).is_err());
+    assert_eq!(f.vault.get_ticks(), old_ticks);
+    assert_eq!(f.vault.get_position_liquidity(), old_liquidity);
+}
+
+#[test]
+fn rebalance_rolls_back_when_the_new_position_cannot_be_minted() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    f.vault
+        .set_range_policy(&f.admin, &120u32, &40u32, &3_600u64, &100u32, &true);
+    let old_ticks = f.vault.get_ticks();
+    let old_liquidity = f.vault.get_position_liquidity();
+
+    f.pool.set_tick(&100i32);
+    // A bad quote that exceeds the offered pair is rejected. Rebalancing must
+    // panic so Soroban rolls the earlier full withdrawal back atomically.
+    f.pool.set_deposit_quote_extra(&(u128::MAX / 2), &0u128);
+    let keeper = Address::generate(&f.env);
+    assert!(f.vault.try_rebalance(&keeper).is_err());
+    assert_eq!(f.vault.get_ticks(), old_ticks);
+    assert_eq!(f.vault.get_position_liquidity(), old_liquidity);
+    let pool_snapshot = f.pool.get_user_position_snapshot(&f.vault_id);
+    assert_eq!(pool_snapshot.raw_liquidity, old_liquidity);
+    assert_eq!(pool_snapshot.ranges.get(0).unwrap().tick_lower, old_ticks.0);
+    assert_eq!(pool_snapshot.ranges.get(0).unwrap().tick_upper, old_ticks.1);
 }
 
 /// A swap that moves the pool's spot price must not move reported NAV.
@@ -1344,6 +1666,10 @@ mod boosted_market {
 
     fn setup_market() -> Market {
         let f = setup();
+        // Measure and assert budgets explicitly below. Keeping the host's hard
+        // limiter disabled lets a regression report its exact resource shape
+        // instead of trapping inside authorization bookkeeping.
+        f.env.cost_estimate().disable_resource_limits();
         seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
 
         let market = ReceiptVaultClient::new(&f.env, &f.receipt_market_id);
@@ -1378,6 +1704,7 @@ mod boosted_market {
     #[test]
     fn end_to_end_paths_fit_in_a_transaction() {
         let m = setup_market();
+        m.f.env.cost_estimate().disable_resource_limits();
         let user = Address::generate(&m.f.env);
         m.f.usdc.mint(&user, &10_000_0000000i128);
 
@@ -1392,6 +1719,7 @@ mod boosted_market {
         assert!(r.instructions < 100_000_000, "market deposit CPU too high");
 
         let ptokens = m.market.balance(&user) as u128;
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.withdraw(&user, &(ptokens / 2));
         let r = m.f.env.cost_estimate().resources();
         let withdraw_entries = r.memory_read_entries + r.write_entries;
@@ -1416,6 +1744,7 @@ mod boosted_market {
         // to be satisfied by redeeming from the LP position.
         let ptokens = m.market.balance(&user);
         assert!(ptokens > 0);
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.withdraw(&user, &((ptokens as u128) / 2));
 
         let back = m.f.usdc.balance(&user);
@@ -1432,6 +1761,38 @@ mod boosted_market {
             "withdraw returned too much: {}",
             back
         );
+    }
+
+    #[test]
+    fn final_market_holder_exits_the_entire_lp_position() {
+        let m = setup_market();
+        let user = Address::generate(&m.f.env);
+        let amount = 10_000_0000000i128;
+        m.f.usdc.mint(&user, &amount);
+        m.market.deposit(&user, &(amount as u128));
+        let ptokens = m.market.balance(&user) as u128;
+        assert!(ptokens > 0);
+        assert!(m.f.vault.balance(&m.market.address) > 0);
+
+        m.f.env.cost_estimate().budget().reset_unlimited();
+        m.market.withdraw(&user, &ptokens);
+
+        assert_eq!(m.market.get_total_ptokens(), 0);
+        assert_eq!(m.market.get_total_deposited(), 0);
+        assert_eq!(m.f.vault.balance(&m.market.address), 0);
+        assert_eq!(m.f.vault.total_supply(), 0);
+        assert_eq!(m.f.vault.get_position_liquidity(), 0);
+        assert!(m.f.usdc.balance(&user) > amount * 98 / 100);
+
+        let resources = m.f.env.cost_estimate().resources();
+        let entries = resources.memory_read_entries + resources.write_entries;
+        assert!(
+            entries < 100,
+            "final market exit needs {} ledger entries, over the cap: {:?}",
+            entries,
+            resources
+        );
+        assert!(resources.instructions < 100_000_000);
     }
 
     #[test]
@@ -1487,7 +1848,9 @@ mod boosted_market {
         m.f.usdc.mint(&lender, &10_000_0000000i128);
         m.f.usdc.mint(&borrower, &10_000_0000000i128);
         m.market.deposit(&lender, &10_000_0000000u128);
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.deposit(&borrower, &10_000_0000000u128);
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.refresh_boosted_underlying();
 
         let liq_before = m.f.vault.get_position_liquidity();
@@ -1498,6 +1861,7 @@ mod boosted_market {
         // from the LP position.
         let amount = idle_before + 2_000_0000000u128;
         let before = m.f.usdc.balance(&borrower);
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.borrow(&borrower, &amount);
         let received = (m.f.usdc.balance(&borrower) - before) as u128;
 
@@ -1523,9 +1887,11 @@ mod boosted_market {
         let user = Address::generate(&m.f.env);
         m.f.usdc.mint(&user, &3_000_0000000i128);
         m.market.deposit(&user, &3_000_0000000u128);
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.refresh_boosted_underlying();
 
         let before = m.f.usdc.balance(&user);
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.borrow(&user, &200_0000000u128);
         assert_eq!(m.f.usdc.balance(&user) - before, 200_0000000i128);
         assert_eq!(m.f.eurc.balance(&user), 0);
@@ -1543,9 +1909,11 @@ mod boosted_market {
         let user = Address::generate(&m.f.env);
         m.f.usdc.mint(&user, &20_000_0000000i128);
         m.market.deposit(&user, &20_000_0000000u128);
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.refresh_boosted_underlying();
 
         let idle = m.f.usdc.balance(&m.market.address) as u128;
+        m.f.env.cost_estimate().budget().reset_unlimited();
         m.market.borrow(&user, &(idle + 2_000_0000000u128));
 
         let r = m.f.env.cost_estimate().resources();

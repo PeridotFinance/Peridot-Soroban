@@ -110,3 +110,58 @@ pub fn full_range_bounds(tick_spacing: i32, max_tick_abs: i32) -> (i32, i32) {
     }
     (-aligned, aligned)
 }
+
+/// Greatest tick-spacing multiple less than or equal to `tick`.
+pub fn align_tick_down(tick: i32, tick_spacing: i32) -> i32 {
+    if tick_spacing <= 0 {
+        panic!("invalid tick spacing");
+    }
+    let quotient = tick / tick_spacing;
+    let remainder = tick % tick_spacing;
+    if remainder < 0 {
+        (quotient - 1) * tick_spacing
+    } else {
+        quotient * tick_spacing
+    }
+}
+
+/// Builds a spacing-aligned range centered on the current pool tick.
+///
+/// The requested half-width is rounded outward. Near the protocol boundary,
+/// the whole range is shifted back inside the usable domain without changing
+/// its width.
+pub fn centered_range(
+    tick: i32,
+    tick_spacing: i32,
+    half_width_ticks: u32,
+    max_tick_abs: i32,
+) -> (i32, i32) {
+    if tick_spacing <= 0 || half_width_ticks == 0 {
+        panic!("invalid range parameters");
+    }
+    let half_requested = i32::try_from(half_width_ticks).expect("range too wide");
+    let half = ((half_requested + tick_spacing - 1) / tick_spacing)
+        .checked_mul(tick_spacing)
+        .expect("range overflow");
+    let (min_tick, max_tick) = full_range_bounds(tick_spacing, max_tick_abs);
+    let width = half.checked_mul(2).expect("range overflow");
+    if width >= max_tick.saturating_sub(min_tick) {
+        panic!("range is not concentrated");
+    }
+
+    let center = align_tick_down(tick, tick_spacing);
+    let mut lower = center.saturating_sub(half);
+    let mut upper = center.saturating_add(half);
+    if lower < min_tick {
+        lower = min_tick;
+        upper = min_tick.checked_add(width).expect("range overflow");
+    }
+    if upper > max_tick {
+        upper = max_tick;
+        lower = max_tick.checked_sub(width).expect("range overflow");
+    }
+    if lower >= upper || tick < lower || tick >= upper {
+        panic!("invalid centered range");
+    }
+    (lower, upper)
+}

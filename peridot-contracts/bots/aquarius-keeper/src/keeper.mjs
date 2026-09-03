@@ -32,10 +32,45 @@ export class AquariusKeeper {
     }
   }
 
+  async shouldRebalance(target) {
+    try {
+      const needed = await this.client.read(target.vaultId, "needs_rebalance");
+      if (typeof needed !== "boolean") {
+        throw new Error("needs_rebalance returned a non-boolean value");
+      }
+      this.logger.info("rebalance check completed", {
+        target: target.label,
+        needed,
+      });
+      return { succeeded: true, needed };
+    } catch (error) {
+      this.logger.error("rebalance check failed", {
+        target: target.label,
+        contractId: target.vaultId,
+        error: error.message,
+      });
+      return { succeeded: false, needed: false };
+    }
+  }
+
   async runTarget(target) {
     let failures = 0;
     if (!(await this.step(target, "refresh_nav_root", target.vaultId, "refresh_nav_root"))) {
       failures += 1;
+    }
+
+    if (this.config.runRebalance) {
+      const check = await this.shouldRebalance(target);
+      if (!check.succeeded) {
+        failures += 1;
+      } else if (
+        check.needed &&
+        !(await this.step(target, "rebalance", target.vaultId, "rebalance", [
+          scAddress(this.config.publicKey),
+        ]))
+      ) {
+        failures += 1;
+      }
     }
 
     const now = this.now();

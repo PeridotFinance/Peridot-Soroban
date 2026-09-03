@@ -99,3 +99,60 @@ test("continues the cycle and schedules a short retry after harvest failure", as
   assert.equal(await keeper.runCycle(), 1);
   assert.equal(harvestAttempts, 2);
 });
+
+test("simulates the rebalance check and submits only targets that need it", async () => {
+  const calls = [];
+  const client = {
+    async read(contractId, method) {
+      calls.push(["read", contractId, method]);
+      return contractId === "vault-PYUSD";
+    },
+    async execute(contractId, method) {
+      calls.push(["execute", contractId, method]);
+    },
+  };
+  const keeper = new AquariusKeeper(
+    config({
+      targets: [target("XLM"), target("PYUSD")],
+      runHarvest: false,
+      runRebalance: true,
+    }),
+    client,
+    logger(),
+  );
+
+  assert.equal(await keeper.runCycle(), 0);
+  assert.deepEqual(calls, [
+    ["execute", "vault-XLM", "refresh_nav_root"],
+    ["read", "vault-XLM", "needs_rebalance"],
+    ["execute", "market-XLM", "refresh_boosted_underlying"],
+    ["execute", "vault-PYUSD", "refresh_nav_root"],
+    ["read", "vault-PYUSD", "needs_rebalance"],
+    ["execute", "vault-PYUSD", "rebalance"],
+    ["execute", "market-PYUSD", "refresh_boosted_underlying"],
+  ]);
+});
+
+test("counts a failed rebalance check and still refreshes the market cache", async () => {
+  const methods = [];
+  const client = {
+    async read() {
+      throw new Error("simulation unavailable");
+    },
+    async execute(_contractId, method) {
+      methods.push(method);
+    },
+  };
+  const keeper = new AquariusKeeper(
+    config({
+      targets: [target("XLM")],
+      runHarvest: false,
+      runRebalance: true,
+    }),
+    client,
+    logger(),
+  );
+
+  assert.equal(await keeper.runCycle(), 1);
+  assert.deepEqual(methods, ["refresh_nav_root", "refresh_boosted_underlying"]);
+});

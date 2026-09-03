@@ -107,14 +107,23 @@ MarginController (leveraged trading, optional)
   protected exit may use the last NAV ratio, and the Aquarius quote must still satisfy
   the configured divergence guard. This preserves supplier exits during an oracle outage
   without making the stale value eligible for fresh deposits or unguarded swaps.
+- Concentrated positions use a keeper-refreshed snapshot of their actual token0/token1
+  composition, valued only at the independent oracle ratio. The keeper recenters only
+  near a configured edge and only after a tighter two-sided pool/oracle check. A
+  rebalance withdraws the old position, performs one guarded excess-leg swap, and
+  atomically fails unless a new position is minted with at least 95% of pair value
+  redeployed. XLM/yXLM targets roughly +/-2%; both PYUSD- and USDC-settled strategies
+  target roughly +/-1% in their shared pool, with a six-hour recenter cooldown.
 - The supply-only Mainnet rollout completed on 2026-08-27 after the clean Almanax
   scan and live pool/oracle/route preflights. A live deposit/partial-withdrawal smoke
   test passed for all three markets on 2026-08-28. Isolated controller
   `CCZKDMAP…ENGC` owns XLM market `CBRJTPI…ZECZ`, PYUSD market `CBNVNCP…MLMA`,
   and USDC market `CBIOHQF…AZP7`; their strategies are `CB3WLG4…H6RW`,
   `CANCOWO…5EKY`, and `CAQZ7XP…KGIN`. The deployer retains 24 XLM, 4.8 PYUSD,
-  and 4.8 USDC pTokens backed by live full-range positions. CF remains 0 and borrowing
-  remains paused. No continuous keeper has been started. Do not enable borrowing or
+  and 4.8 USDC pTokens backed by live full-range positions pending the timelocked
+  concentrated-range upgrade. CF remains 0 and borrowing remains paused. The
+  single-worker DigitalOcean keeper is live for NAV, reward conversion, and cache
+  refresh; range maintenance remains disabled until migration completes. Do not enable borrowing or
   collateral until cross-market footprint, depeg-aware PriceRouter, and boosted-
   valuation staleness work is redesigned and re-audited. See `Agents.md` for complete
   IDs, hashes, transactions, and next steps.

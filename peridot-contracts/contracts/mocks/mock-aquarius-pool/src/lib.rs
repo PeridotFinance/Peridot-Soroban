@@ -1,11 +1,9 @@
 #![no_std]
 //! Test double for an Aquarius concentrated-liquidity pool.
 //!
-//! Models only the surface `aquarius-lp-vault` touches. A full-range
-//! concentrated position is mathematically a constant-product position
-//! (`r0 = L/sqrt(P)`, `r1 = L*sqrt(P)` implies `L = sqrt(r0*r1)`), so the
-//! reserve math here is plain `x*y=k` — which is exactly what makes it a
-//! faithful stand-in for the vault's full-range NAV formula.
+//! Models only the ABI, authorization, accounting, and range ownership surface
+//! `aquarius-lp-vault` touches. Its reserve math is deliberately plain `x*y=k`;
+//! it does not reproduce the real pool's tick-dependent concentrated curve.
 
 use soroban_sdk::{
     contract, contractimpl, contracttype, token, Address, Env, Map, Symbol, Vec, U256,
@@ -34,6 +32,14 @@ pub struct UserPositionSnapshot {
 }
 
 #[contracttype]
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct MockPosition {
+    liquidity: u128,
+    tick_lower: i32,
+    tick_upper: i32,
+}
+
+#[contracttype]
 #[derive(Clone)]
 enum Key {
     Token0,
@@ -57,6 +63,7 @@ enum Key {
     SwapOutputBps,
     DepositQuoteExtra0,
     DepositQuoteExtra1,
+    Tick,
 }
 
 fn isqrt(n: u128) -> u128 {
@@ -85,6 +92,18 @@ fn set_u128(env: &Env, key: Key, v: u128) {
 
 fn addr(env: &Env, key: Key) -> Address {
     env.storage().persistent().get(&key).expect("not set")
+}
+
+fn position(env: &Env, owner: &Address) -> Option<MockPosition> {
+    env.storage()
+        .persistent()
+        .get(&Key::Liquidity(owner.clone()))
+}
+
+fn set_position(env: &Env, owner: &Address, value: &MockPosition) {
+    env.storage()
+        .persistent()
+        .set(&Key::Liquidity(owner.clone()), value);
 }
 
 #[contract]
@@ -159,6 +178,10 @@ impl MockAquariusPool {
         set_u128(&env, Key::DepositQuoteExtra1, extra1);
     }
 
+    pub fn set_tick(env: Env, tick: i32) {
+        env.storage().persistent().set(&Key::Tick, &tick);
+    }
+
     /// Simulates trading profit accruing to the pool without minting shares.
     pub fn donate(env: Env, from: Address, amount0: u128, amount1: u128) {
         let t0 = addr(&env, Key::Token0);
@@ -218,14 +241,25 @@ impl MockAquariusPool {
     pub fn get_slot0(env: Env) -> Slot0 {
         Slot0 {
             sqrt_price_x96: U256::from_u32(&env, 0),
-            tick: 0,
+            tick: env.storage().persistent().get(&Key::Tick).unwrap_or(0),
         }
     }
 
     pub fn get_user_position_snapshot(env: Env, user: Address) -> UserPositionSnapshot {
+        let position = position(&env, &user);
+        let liquidity = position.as_ref().map(|p| p.liquidity).unwrap_or(0);
+        let mut ranges = Vec::new(&env);
+        if let Some(position) = position {
+            if position.liquidity > 0 {
+                ranges.push_back(PositionRange {
+                    tick_lower: position.tick_lower,
+                    tick_upper: position.tick_upper,
+                });
+            }
+        }
         UserPositionSnapshot {
-            ranges: Vec::new(&env),
-            raw_liquidity: get_u128(&env, Key::Liquidity(user)),
+            ranges,
+            raw_liquidity: liquidity,
             weighted_liquidity: 0,
         }
     }
@@ -263,18 +297,19 @@ impl MockAquariusPool {
 
     pub fn estimate_deposit_position(
         env: Env,
-        _tick_lower: i32,
-        _tick_upper: i32,
+        tick_lower: i32,
+        tick_upper: i32,
         desired_amounts: Vec<u128>,
     ) -> (Vec<u128>, u128) {
+        Self::validate_range(&env, tick_lower, tick_upper);
         Self::quote_deposit(&env, &desired_amounts)
     }
 
     pub fn deposit_position(
         env: Env,
         sender: Address,
-        _tick_lower: i32,
-        _tick_upper: i32,
+        tick_lower: i32,
+        tick_upper: i32,
         desired_amounts: Vec<u128>,
         min_liquidity: u128,
     ) -> (Vec<u128>, u128) {
@@ -290,6 +325,15 @@ impl MockAquariusPool {
             .unwrap_or(false)
         {
             panic!("DepositKilled");
+        }
+        Self::validate_range(&env, tick_lower, tick_upper);
+        let previous = position(&env, &sender);
+        let held = previous.as_ref().map(|p| p.liquidity).unwrap_or(0);
+        if held > 0 {
+            let active = previous.as_ref().expect("position range missing");
+            if active.tick_lower != tick_lower || active.tick_upper != tick_upper {
+                panic!("MultipleRangesUnsupportedByMock");
+            }
         }
         let (actual, liq) = Self::quote_deposit(&env, &desired_amounts);
         if liq < min_liquidity {
@@ -319,12 +363,28 @@ impl MockAquariusPool {
             Key::TotalLiquidity,
             get_u128(&env, Key::TotalLiquidity) + liq,
         );
-        set_u128(
+        set_position(
             &env,
-            Key::Liquidity(sender.clone()),
-            get_u128(&env, Key::Liquidity(sender)) + liq,
+            &sender,
+            &MockPosition {
+                liquidity: held + liq,
+                tick_lower,
+                tick_upper,
+            },
         );
         (actual, liq)
+    }
+
+    fn validate_range(env: &Env, tick_lower: i32, tick_upper: i32) {
+        let spacing = Self::get_tick_spacing(env.clone());
+        if tick_lower >= tick_upper
+            || tick_lower % spacing != 0
+            || tick_upper % spacing != 0
+            || tick_lower < -887_272
+            || tick_upper > 887_272
+        {
+            panic!("InvalidTickRange");
+        }
     }
 
     fn quote_withdraw(env: &Env, amount: u128) -> Vec<u128> {
@@ -342,19 +402,23 @@ impl MockAquariusPool {
 
     pub fn estimate_withdraw_position(
         env: Env,
-        _owner: Address,
-        _tick_lower: i32,
-        _tick_upper: i32,
+        owner: Address,
+        tick_lower: i32,
+        tick_upper: i32,
         amount: u128,
     ) -> Vec<u128> {
+        let active = position(&env, &owner).expect("position range missing");
+        if active.tick_lower != tick_lower || active.tick_upper != tick_upper {
+            panic!("WrongTickRange");
+        }
         Self::quote_withdraw(&env, amount)
     }
 
     pub fn withdraw_position(
         env: Env,
         owner: Address,
-        _tick_lower: i32,
-        _tick_upper: i32,
+        tick_lower: i32,
+        tick_upper: i32,
         amount: u128,
         min_amounts: Vec<u128>,
     ) -> Vec<u128> {
@@ -367,9 +431,13 @@ impl MockAquariusPool {
         {
             panic!("withdraw disabled");
         }
-        let held = get_u128(&env, Key::Liquidity(owner.clone()));
+        let active = position(&env, &owner).expect("position range missing");
+        let held = active.liquidity;
         if amount > held {
             panic!("InsufficientLiquidity");
+        }
+        if active.tick_lower != tick_lower || active.tick_upper != tick_upper {
+            panic!("WrongTickRange");
         }
         let amounts = Self::quote_withdraw(&env, amount);
         let a0 = amounts.get(0).unwrap_or(0);
@@ -399,7 +467,15 @@ impl MockAquariusPool {
             Key::TotalLiquidity,
             get_u128(&env, Key::TotalLiquidity) - amount,
         );
-        set_u128(&env, Key::Liquidity(owner), held - amount);
+        set_position(
+            &env,
+            &owner,
+            &MockPosition {
+                liquidity: held - amount,
+                tick_lower,
+                tick_upper,
+            },
+        );
         amounts
     }
 

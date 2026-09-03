@@ -104,3 +104,25 @@ pub struct ReceiptVaultBound {
 pub struct PrimaryRewardTokenSet {
     pub reward_token: Option<Address>,
 }
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RangePolicySet {
+    pub enabled: bool,
+    pub half_width_ticks: u32,
+    pub rebalance_margin_ticks: u32,
+    pub rebalance_cooldown: u64,
+    pub max_rebalance_divergence_bps: u32,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PositionRebalanced {
+    pub caller: Address,
+    pub old_tick_lower: i32,
+    pub old_tick_upper: i32,
+    pub new_tick_lower: i32,
+    pub new_tick_upper: i32,
+    pub liquidity_burned: u128,
+    pub liquidity_minted: u128,
+}

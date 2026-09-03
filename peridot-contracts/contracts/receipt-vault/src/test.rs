@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+extern crate std;
+
 use super::*;
 use jump_rate_model as jrm;
 use mock_token::MockTokenClient;
@@ -11,6 +13,12 @@ use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::BytesN;
 use soroban_sdk::{contract, contractimpl, contracttype};
 use soroban_sdk::{testutils::Address as _, token, Address, Bytes, Env, IntoVal, Symbol, Val, Vec};
+
+fn required_wasm_from_env(variable: &str) -> std::vec::Vec<u8> {
+    let path = std::env::var(variable)
+        .unwrap_or_else(|_| panic!("{variable} must point to a contract WASM"));
+    std::fs::read(&path).unwrap_or_else(|error| panic!("failed to read {variable}={path}: {error}"))
+}
 
 fn assert_budget_under(env: &Env, max_cpu: u64, max_mem: u64) {
     let budget = env.cost_estimate().budget();
@@ -5500,6 +5508,110 @@ fn test_direct_donation_does_not_inflate_exchange_rate() {
 //   (f) If the bounded first redemption proves a large loss is real by failing
 //       the cash minimum, one retry uses the lower live quote with that same
 //       non-zero minimum so withdrawals remain live without accepting less cash.
+//   (g) The final pToken holder redeems every strategy share and receives the
+//       exact remaining supplier value, including exchange-rate rounding dust.
+
+#[test]
+fn test_final_holder_redeems_all_boosted_shares_and_rounding_dust() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &20_001i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    let vault_id = env.register(ReceiptVault, ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
+    vault.deposit(&user, &20_001u128);
+
+    let strategy_principal = boosted.balance(&vault_id);
+    assert!(strategy_principal > 0);
+    token_admin_client.mint(&boosted_id, &1_234i128);
+
+    // The live quote is intentionally conservative, like AquariusLpVault's
+    // exit-valued quote. It also makes the 1e6-scaled market exchange rate
+    // round down, reproducing the residual that blocked the Mainnet smoke
+    // account's full exit.
+    boosted.set_quote_multiplier_bps(&970_000u128);
+    let all_ptokens = vault.get_total_ptokens();
+    let expected_cash = 20_001i128 + 1_234i128;
+
+    vault.withdraw(&user, &all_ptokens);
+
+    assert_eq!(vault.get_total_ptokens(), 0);
+    assert_eq!(vault.get_total_deposited(), 0);
+    assert_eq!(boosted.balance(&vault_id), 0);
+    assert_eq!(token_client.balance(&boosted_id), 0);
+    assert_eq!(token_client.balance(&vault_id), 0);
+    assert_eq!(token_client.balance(&user), expected_cash);
+    assert_eq!(vault.get_total_underlying(), 0);
+}
+
+#[test]
+#[ignore = "requires RECEIPT_LIVE_WASM and RECEIPT_NEW_WASM"]
+fn exact_mainnet_wasm_upgrade_allows_the_final_holder_to_exit() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().set_timestamp(1_700_000_000);
+    env.cost_estimate().disable_resource_limits();
+
+    let admin = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        "GDYDTMY46RNAUIIUVG6RPD2D3I3ES4J2SSXGCKIQP2OET4Q5PV75LSPL",
+    ));
+    let user = Address::generate(&env);
+    let (token_address, token_client, token_admin_client) = create_test_token(&env, &admin);
+    token_admin_client.mint(&user, &20_001i128);
+
+    let boosted_id = env.register(MockBoostedVault, ());
+    let boosted = MockBoostedVaultClient::new(&env, &boosted_id);
+    boosted.initialize(&token_address);
+
+    // Initialize and fund the exact ReceiptVault binary currently deployed
+    // behind the three Aquarius markets.
+    let live_wasm = required_wasm_from_env("RECEIPT_LIVE_WASM");
+    let vault_id = env.register(live_wasm.as_slice(), ());
+    let vault = ReceiptVaultClient::new(&env, &vault_id);
+    vault.initialize(&token_address, &0u128, &0u128, &admin);
+    vault.enable_static_rates(&admin);
+    vault.set_boosted_vault(&admin, &boosted_id);
+    vault.set_idle_cash_buffer_bps(&admin, &1_000u32);
+    vault.deposit(&user, &20_001u128);
+    token_admin_client.mint(&boosted_id, &1_234i128);
+    boosted.set_quote_multiplier_bps(&970_000u128);
+    let all_ptokens = vault.get_total_ptokens();
+
+    let new_wasm = required_wasm_from_env("RECEIPT_NEW_WASM");
+    let new_hash = env
+        .deployer()
+        .upload_contract_wasm(Bytes::from_slice(&env, &new_wasm));
+    vault.propose_upgrade_wasm(&new_hash);
+    env.ledger()
+        .set_timestamp(1_700_000_000 + UPGRADE_TIMELOCK_SECS + 1);
+    vault.upgrade_wasm(&new_hash);
+
+    assert_eq!(vault.get_admin(), admin);
+    assert_eq!(vault.get_boosted_vault(), Some(boosted_id.clone()));
+    assert_eq!(vault.get_total_ptokens(), all_ptokens);
+    vault.withdraw(&user, &all_ptokens);
+
+    assert_eq!(vault.get_total_ptokens(), 0);
+    assert_eq!(vault.get_total_deposited(), 0);
+    assert_eq!(boosted.balance(&vault_id), 0);
+    assert_eq!(token_client.balance(&boosted_id), 0);
+    assert_eq!(token_client.balance(&vault_id), 0);
+    assert_eq!(token_client.balance(&user), 21_235i128);
+    assert_eq!(vault.get_total_underlying(), 0);
+}
 
 /// Vault that returns 2 assets from get_asset_amounts_per_shares and enforces
 /// the vector-length requirement on withdraw — models a DefIndex multi-strategy

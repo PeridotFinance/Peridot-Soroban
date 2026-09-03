@@ -5,8 +5,9 @@ set -uo pipefail
 #
 # Each cycle:
 #   1. Refreshes the vault's cached oracle NAV ratio.
-#   2. Harvests rewards when the local harvest interval is due.
-#   3. Refreshes the market's cached boosted-underlying value.
+#   2. Recenters a configured concentrated range when needed.
+#   3. Harvests rewards when the local harvest interval is due.
+#   4. Refreshes the market's cached boosted-underlying value.
 #
 # Required:
 #   VAULT_ID       AquariusLpVault contract id
@@ -20,6 +21,7 @@ set -uo pipefail
 #   HARVEST_RETRY_SECONDS       retry after failed harvest (default: 300)
 #   HARVEST_ON_START            true starts with a harvest (default: false)
 #   RUN_HARVEST                 false disables harvesting (default: true)
+#   RUN_REBALANCE               true enables guarded range maintenance (default: false)
 #   ONCE                        true runs one cycle and exits (default: false)
 #   DRY_RUN                     true simulates every call (default: false)
 #
@@ -34,6 +36,7 @@ HARVEST_INTERVAL_SECONDS=${HARVEST_INTERVAL_SECONDS:-3600}
 HARVEST_RETRY_SECONDS=${HARVEST_RETRY_SECONDS:-300}
 HARVEST_ON_START=${HARVEST_ON_START:-false}
 RUN_HARVEST=${RUN_HARVEST:-true}
+RUN_REBALANCE=${RUN_REBALANCE:-false}
 ONCE=${ONCE:-false}
 DRY_RUN=${DRY_RUN:-false}
 
@@ -69,6 +72,7 @@ validate_positive_integer HARVEST_INTERVAL_SECONDS "$HARVEST_INTERVAL_SECONDS"
 validate_positive_integer HARVEST_RETRY_SECONDS "$HARVEST_RETRY_SECONDS"
 validate_boolean HARVEST_ON_START "$HARVEST_ON_START"
 validate_boolean RUN_HARVEST "$RUN_HARVEST"
+validate_boolean RUN_REBALANCE "$RUN_REBALANCE"
 validate_boolean ONCE "$ONCE"
 validate_boolean DRY_RUN "$DRY_RUN"
 
@@ -105,6 +109,14 @@ invoke() {
   "${command[@]}"
 }
 
+read_contract() {
+  local contract_id=$1
+  local method=$2
+  shift 2
+  stellar contract invoke --id "$contract_id" --source-account "$IDENTITY" \
+    --network "$NETWORK" --send no -- "$method" "$@"
+}
+
 run_step() {
   local label=$1
   shift
@@ -134,6 +146,21 @@ while [[ "$stopping" == "false" ]]; do
   if ! run_step "Refreshing vault NAV root" invoke "$VAULT_ID" refresh_nav_root; then
     echo "[$(timestamp)] NAV refresh failed; continuing cycle." >&2
     cycle_failed=true
+  fi
+
+  if [[ "$RUN_REBALANCE" == "true" ]]; then
+    if needs_rebalance=$(read_contract "$VAULT_ID" needs_rebalance); then
+      if [[ "$needs_rebalance" == "true" || "$needs_rebalance" == '"true"' ]]; then
+        if ! run_step "Recentering concentrated position" \
+          invoke "$VAULT_ID" rebalance --caller "$KEEPER_ADDRESS"; then
+          echo "[$(timestamp)] Rebalance failed; continuing cycle." >&2
+          cycle_failed=true
+        fi
+      fi
+    else
+      echo "[$(timestamp)] Rebalance check failed; continuing cycle." >&2
+      cycle_failed=true
+    fi
   fi
 
   now=$(date +%s)

@@ -7,10 +7,16 @@ use crate::constants::*;
 use crate::events::*;
 use crate::math::*;
 use crate::oracle::{Asset as OracleAsset, PriceData};
-use crate::pool::{ConcentratedPoolClient, UserPositionSnapshot};
+use crate::pool::{ConcentratedPoolClient, Slot0, UserPositionSnapshot};
 use crate::storage::*;
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
+
+struct SwapGuard {
+    max_divergence_bps: u32,
+    two_sided: bool,
+    exit_root: Option<u128>,
+}
 
 #[contract]
 pub struct AquariusLpVault;
@@ -154,6 +160,11 @@ impl AquariusLpVault {
         (cfg.tick_lower, cfg.tick_upper)
     }
 
+    fn is_legacy_full_range(env: &Env) -> bool {
+        let (lower, upper) = Self::ticks(env);
+        lower <= -800_000 && upper >= 800_000
+    }
+
     fn slippage_bps(env: &Env) -> u32 {
         params(env).slippage_bps
     }
@@ -176,7 +187,7 @@ impl AquariusLpVault {
     // NAV
     // ─────────────────────────────────────────────────────────────────────
 
-    /// Liquidity units this vault holds in its single full-range position.
+    /// Liquidity units this vault holds in its single active position.
     ///
     /// Tracked locally rather than read from the pool on every call: the value
     /// is known exactly from `deposit_position` / `withdraw_position` return
@@ -184,13 +195,93 @@ impl AquariusLpVault {
     /// cross-contract call and cannot be bricked by a pool TTL expiry.
     /// `sync_liquidity()` reconciles it against the pool on demand.
     fn position_liquidity(env: &Env) -> u128 {
+        if let Some(snapshot) = position_amounts(env) {
+            return snapshot.liquidity;
+        }
         state(env).position_liquidity
     }
 
     fn set_position_liquidity(env: &Env, value: u128) {
+        if let Some(mut snapshot) = position_amounts(env) {
+            snapshot.liquidity = value;
+            set_position_amounts(env, &snapshot);
+            return;
+        }
         let mut st = state(env);
         st.position_liquidity = value;
         set_state(env, &st);
+    }
+
+    fn position_amounts_value_at_root(env: &Env, amounts: &PositionAmounts, root: u128) -> u128 {
+        let cfg = config(env);
+        let (underlying_amount, other_amount) = if cfg.underlying_index == 0 {
+            (amounts.amount0, amounts.amount1)
+        } else {
+            (amounts.amount1, amounts.amount0)
+        };
+        if root == 0 {
+            return 0;
+        }
+        let r_scaled = root.checked_mul(root).expect("nav root overflow");
+        underlying_amount.saturating_add(mul_div(env, other_amount, r_scaled, NAV_RATIO_SCALE))
+    }
+
+    fn record_position(env: &Env, liquidity: u128, amount0: u128, amount1: u128) {
+        Self::record_position_at(env, liquidity, amount0, amount1, env.ledger().timestamp());
+    }
+
+    fn record_position_at(
+        env: &Env,
+        liquidity: u128,
+        amount0: u128,
+        amount1: u128,
+        updated_at: u64,
+    ) {
+        set_position_amounts(
+            env,
+            &PositionAmounts {
+                liquidity,
+                amount0,
+                amount1,
+                updated_at,
+            },
+        );
+    }
+
+    /// Refreshes the actual token composition of the active concentrated
+    /// position. This is deliberately keeper-side: pulling the pool estimate
+    /// into ReceiptVault's quote path would exceed Soroban's footprint limit.
+    fn refresh_position_amounts_inner(env: &Env) -> bool {
+        let liquidity = Self::position_liquidity(env);
+        if liquidity == 0 {
+            Self::record_position(env, 0, 0, 0);
+            return true;
+        }
+        let pool = Self::pool(env);
+        let me = env.current_contract_address();
+        let (tick_lower, tick_upper) = Self::ticks(env);
+        let estimate: Vec<u128> = match try_call::<Vec<u128>, _>(
+            env,
+            &pool,
+            "estimate_withdraw_position",
+            (me, tick_lower, tick_upper, liquidity),
+        ) {
+            Ok(v) => v,
+            Err(ref e) => {
+                emit_call_failure(env, &pool, e, true);
+                return false;
+            }
+        };
+        if estimate.len() != 2 {
+            return false;
+        }
+        Self::record_position(
+            env,
+            liquidity,
+            estimate.get(0).unwrap_or(0),
+            estimate.get(1).unwrap_or(0),
+        );
+        true
     }
 
     /// Reads a Reflector price, returning `None` on any failure or staleness.
@@ -309,9 +400,29 @@ impl AquariusLpVault {
         st.last_nav_root
     }
 
-    fn position_value_at_root(env: &Env, root: u128) -> u128 {
+    fn position_value_at_root(env: &Env, root: u128, allow_stale_exit: bool) -> u128 {
         let liq = Self::position_liquidity(env);
         if liq == 0 || root == 0 {
+            return 0;
+        }
+        if let Some(amounts) = position_amounts(env) {
+            let max_stale = params(env).nav_root_max_stale;
+            if !allow_stale_exit
+                && max_stale != 0
+                && env.ledger().timestamp().saturating_sub(amounts.updated_at) > max_stale
+            {
+                // Concentrated NAV depends on the position's current token
+                // composition. Never keep valuing an indefinitely stale mix;
+                // fail soft so the ReceiptVault can use its bounded cache for
+                // exits while blocking new deposits against obsolete state.
+                return 0;
+            }
+            return Self::position_amounts_value_at_root(env, &amounts, root);
+        }
+        if !Self::is_legacy_full_range(env) {
+            // Never apply the full-range formula to a concentrated position.
+            // A missing keeper snapshot fails soft to zero so ReceiptVault can
+            // use its bounded cache for exits without authorizing new minting.
             return 0;
         }
         mul_div(env, liq, root, NAV_ROOT_SCALE)
@@ -328,19 +439,19 @@ impl AquariusLpVault {
         mul_div(env, other_balance, r_scaled, NAV_RATIO_SCALE)
     }
 
-    /// Value of the full-range position, denominated in the underlying token.
+    /// Value of the active position, denominated in the underlying token.
     ///
-    /// For a position spanning the entire tick range, `amount0 = L / sqrt(P)`
-    /// and `amount1 = L * sqrt(P)`, so the total expressed in token0 is
-    /// `2L / sqrt(P)` (and `2L * sqrt(P)` in token1). Both collapse to
-    /// `2 * L * sqrt(other_price / underlying_price)`.
+    /// Concentrated positions use a keeper-refreshed token-amount snapshot and
+    /// value both legs at the independent oracle ratio. Legacy full-range
+    /// deployments retain their exact `2 * L * sqrt(P)` fallback only until
+    /// their first snapshot/migration.
     ///
     /// Unclaimed swap fees are deliberately excluded, which understates NAV.
     /// Erring low is the safe direction for a lending market; `harvest()`
     /// folds the fees back into the position where they do get counted.
     fn position_value(env: &Env) -> u128 {
         let root = Self::nav_root(env);
-        Self::position_value_at_root(env, root)
+        Self::position_value_at_root(env, root, false)
     }
 
     /// Value of an idle paired-token balance, expressed in the underlying.
@@ -400,7 +511,7 @@ impl AquariusLpVault {
 
     fn total_underlying_full_at_root(env: &Env, root: u128) -> u128 {
         Self::balance_of_token(env, &Self::underlying(env))
-            .saturating_add(Self::position_value_at_root(env, root))
+            .saturating_add(Self::position_value_at_root(env, root, true))
             .saturating_add(Self::other_idle_value_at_root(env, root))
     }
 
@@ -413,12 +524,12 @@ impl AquariusLpVault {
     /// redeem too few shares and an otherwise solvent borrow/withdraw could
     /// fail its live-cash post-check by the swap fee alone.
     ///
-    /// At the configured divergence boundary the worse full-range exit factor
-    /// is `sqrt(1 - divergence)`. Apply that, then the configured execution
-    /// slippage, so the socket reports realizable rather than gross NAV. A
-    /// quote beyond the divergence bound is refused on both entry and exit;
-    /// the withdrawal reverts atomically and preserves the supplier's shares
-    /// rather than realizing a manipulated rate.
+    /// A concentrated position can be entirely in the paired token near or
+    /// outside an edge, so its conservative exit factor is `1 - divergence`
+    /// rather than the milder full-range square-root factor. Apply that and
+    /// execution slippage so the socket reports realizable rather than gross
+    /// NAV. A quote beyond the divergence bound is refused on both entry and
+    /// exit; the withdrawal reverts atomically and preserves shares.
     fn receipt_quote_value(env: &Env, gross: u128) -> u128 {
         if gross == 0 {
             return 0;
@@ -427,7 +538,7 @@ impl AquariusLpVault {
         let bps = BPS_DENOM as u128;
         let divergence = (prm.max_pool_divergence_bps as u128).min(bps - 1);
         let slippage = (prm.slippage_bps as u128).min(bps - 1);
-        let divergence_factor = isqrt((bps - divergence).saturating_mul(bps));
+        let divergence_factor = bps - divergence;
         let execution_factor = bps - slippage;
         let combined_factor = mul_div(env, divergence_factor, execution_factor, bps);
         mul_div(env, gross, combined_factor, bps)
@@ -481,8 +592,9 @@ impl AquariusLpVault {
         in_amount: u128,
         quoted_out: u128,
         exit_root: Option<u128>,
+        max_div: u32,
+        two_sided: bool,
     ) {
-        let max_div = params(env).max_pool_divergence_bps;
         if max_div == 0 {
             return;
         }
@@ -509,6 +621,227 @@ impl AquariusLpVault {
         if quoted_out < apply_slippage_floor(env, fair_out, max_div) {
             panic!("pool price diverged from oracle");
         }
+        if two_sided {
+            let upper = mul_div(
+                env,
+                fair_out,
+                BPS_DENOM as u128 + max_div as u128,
+                BPS_DENOM as u128,
+            );
+            if quoted_out > upper {
+                panic!("pool price diverged from oracle");
+            }
+        }
+    }
+
+    fn desired_range(env: &Env) -> Option<(i32, i32, i32, i32)> {
+        let policy = range_params(env);
+        if !policy.enabled || policy.half_width_ticks == 0 {
+            return None;
+        }
+        let pool = Self::pool(env);
+        let tick_spacing: i32 = match try_call(env, &pool, "get_tick_spacing", ()) {
+            Ok(v) => v,
+            Err(ref e) => {
+                emit_call_failure(env, &pool, e, true);
+                return None;
+            }
+        };
+        let slot: Slot0 = match try_call(env, &pool, "get_slot0", ()) {
+            Ok(v) => v,
+            Err(ref e) => {
+                emit_call_failure(env, &pool, e, true);
+                return None;
+            }
+        };
+        let (lower, upper) = centered_range(
+            slot.tick,
+            tick_spacing,
+            policy.half_width_ticks,
+            MAX_TICK_ABS,
+        );
+        Some((slot.tick, tick_spacing, lower, upper))
+    }
+
+    fn range_triggered(env: &Env, spot_tick: i32, desired_lower: i32, desired_upper: i32) -> bool {
+        let (current_lower, current_upper) = Self::ticks(env);
+        if current_lower == desired_lower && current_upper == desired_upper {
+            return false;
+        }
+        if Self::is_legacy_full_range(env) {
+            return true;
+        }
+        let margin = i32::try_from(range_params(env).rebalance_margin_ticks)
+            .expect("rebalance margin too large");
+        spot_tick <= current_lower.saturating_add(margin)
+            || spot_tick >= current_upper.saturating_sub(margin)
+    }
+
+    fn rebalance_due(env: &Env, spot_tick: i32, desired_lower: i32, desired_upper: i32) -> bool {
+        let policy = range_params(env);
+        let last = range_state(env).last_rebalance_at;
+        if last != 0 && env.ledger().timestamp() < last.saturating_add(policy.rebalance_cooldown) {
+            return false;
+        }
+        Self::range_triggered(env, spot_tick, desired_lower, desired_upper)
+    }
+
+    /// Burns the complete old position without swapping either returned leg.
+    /// Used only by `rebalance`, where keeping the pair intact avoids a costly
+    /// sell-and-buy round trip before creating the new centered position.
+    fn withdraw_all_for_rebalance(env: &Env) -> Option<u128> {
+        let liquidity = Self::position_liquidity(env);
+        if liquidity == 0 {
+            Self::record_position(env, 0, 0, 0);
+            return Some(0);
+        }
+        let pool = Self::pool(env);
+        let me = env.current_contract_address();
+        let (tick_lower, tick_upper) = Self::ticks(env);
+        let estimate: Vec<u128> = match try_call::<Vec<u128>, _>(
+            env,
+            &pool,
+            "estimate_withdraw_position",
+            (me.clone(), tick_lower, tick_upper, liquidity),
+        ) {
+            Ok(v) if v.len() == 2 => v,
+            Ok(_) => return None,
+            Err(ref e) => {
+                emit_call_failure(env, &pool, e, true);
+                return None;
+            }
+        };
+        let mut mins = Vec::new(env);
+        mins.push_back(apply_slippage_floor(
+            env,
+            estimate.get(0).unwrap_or(0),
+            Self::slippage_bps(env),
+        ));
+        mins.push_back(apply_slippage_floor(
+            env,
+            estimate.get(1).unwrap_or(0),
+            Self::slippage_bps(env),
+        ));
+
+        let args: Vec<Val> =
+            (me.clone(), tick_lower, tick_upper, liquidity, mins.clone()).into_val(env);
+        let mut auths = Vec::new(env);
+        auths.push_back(auth_entry(
+            env,
+            &pool,
+            "withdraw_position",
+            args,
+            Vec::new(env),
+        ));
+        let token0 = Self::token(env, 0);
+        let token1 = Self::token(env, 1);
+        let before0 = Self::balance_of_token(env, &token0);
+        let before1 = Self::balance_of_token(env, &token1);
+        env.authorize_as_current_contract(auths);
+        let result: Result<Vec<u128>, CallError> = try_call(
+            env,
+            &pool,
+            "withdraw_position",
+            (me, tick_lower, tick_upper, liquidity, mins.clone()),
+        );
+        if let Err(ref e) = result {
+            emit_call_failure(env, &pool, e, true);
+            return None;
+        }
+        let got0 = Self::balance_of_token(env, &token0).saturating_sub(before0);
+        let got1 = Self::balance_of_token(env, &token1).saturating_sub(before1);
+        if got0 < mins.get(0).unwrap_or(0) || got1 < mins.get(1).unwrap_or(0) {
+            panic!("pool withdrawal below minimum");
+        }
+        Self::record_position(env, 0, 0, 0);
+        Some(liquidity)
+    }
+
+    /// Converts only the excess side of an unwind so a range centered at the
+    /// current price receives approximately equal value on both legs. At an
+    /// old range edge the withdrawn position can be almost entirely one token;
+    /// offering that pair unchanged would leave most capital idle.
+    fn balance_pair_for_centered_range(env: &Env, root: u128, max_divergence_bps: u32) -> u128 {
+        if root == 0 {
+            panic!("nav unavailable for rebalance");
+        }
+        let underlying = Self::underlying(env);
+        let other = Self::other_token(env);
+        let amount_u = Self::balance_of_token(env, &underlying);
+        let amount_o = Self::balance_of_token(env, &other);
+        let r_scaled = root.checked_mul(root).expect("nav root overflow");
+        let other_value = mul_div(env, amount_o, r_scaled, NAV_RATIO_SCALE);
+        let total_value = amount_u.saturating_add(other_value);
+        let target_value = total_value / 2;
+        let u_idx = Self::underlying_index(env);
+        let o_idx = 1 - u_idx;
+
+        let mut price_checked = false;
+        if amount_u.saturating_sub(target_value) >= MIN_DEPLOY_AMOUNT {
+            let excess = amount_u - target_value;
+            let received = Self::swap_exact_in(
+                env,
+                u_idx,
+                o_idx,
+                excess,
+                Some(SwapGuard {
+                    max_divergence_bps,
+                    two_sided: true,
+                    exit_root: Some(root),
+                }),
+                Some(amount_u),
+            );
+            if received == 0 {
+                panic!("rebalance balancing swap failed");
+            }
+            price_checked = true;
+        } else if other_value.saturating_sub(target_value) >= MIN_DEPLOY_AMOUNT {
+            let excess_value = other_value - target_value;
+            let excess_other =
+                mul_div_ceil(env, excess_value, NAV_RATIO_SCALE, r_scaled).min(amount_o);
+            let received = Self::swap_exact_in(
+                env,
+                o_idx,
+                u_idx,
+                excess_other,
+                Some(SwapGuard {
+                    max_divergence_bps,
+                    two_sided: true,
+                    exit_root: Some(root),
+                }),
+                Some(amount_o),
+            );
+            if received == 0 {
+                panic!("rebalance balancing swap failed");
+            }
+            price_checked = true;
+        }
+        if !price_checked && total_value > 0 {
+            // A perfectly balanced unwind needs no trade, but the pool tick
+            // still determines the new range. One read-only quote keeps that
+            // centering decision under the same two-sided oracle bound.
+            let probe = pow10(Self::decimals_at(&config(env), u_idx));
+            let quoted: u128 = try_call(
+                env,
+                &Self::pool(env),
+                "estimate_swap",
+                (u_idx, o_idx, probe),
+            )
+            .unwrap_or_else(|_| panic!("rebalance price unavailable"));
+            if quoted == 0 {
+                panic!("rebalance price unavailable");
+            }
+            Self::require_quote_near_oracle(
+                env,
+                u_idx,
+                probe,
+                quoted,
+                Some(root),
+                max_divergence_bps,
+                true,
+            );
+        }
+        total_value
     }
 
     /// Swaps `in_amount` of token `in_idx` for the other token.
@@ -517,8 +850,8 @@ impl AquariusLpVault {
     /// a pool-side failure: Aquarius can pause swaps (error 206) and a revert
     /// here would propagate into the backing market's deposit or withdrawal.
     ///
-    /// `enforce_divergence` is enabled for both position entry and the paired
-    /// leg of position exit. A dislocated exit therefore reverts atomically,
+    /// `max_divergence_bps` is set for both position entry and the paired leg
+    /// of position exit. A dislocated exit therefore reverts atomically,
     /// preserving the supplier's shares until the pool returns within bounds
     /// or governance deliberately changes the bound. Reward conversions keep
     /// it disabled because their token pair may not have this vault's oracle
@@ -528,8 +861,7 @@ impl AquariusLpVault {
         in_idx: u32,
         out_idx: u32,
         in_amount: u128,
-        enforce_divergence: bool,
-        exit_root: Option<u128>,
+        guard: Option<SwapGuard>,
         input_balance_before: Option<u128>,
     ) -> u128 {
         if in_amount == 0 {
@@ -550,8 +882,16 @@ impl AquariusLpVault {
         if estimated == 0 {
             return 0;
         }
-        if enforce_divergence {
-            Self::require_quote_near_oracle(env, in_idx, in_amount, estimated, exit_root);
+        if let Some(guard) = guard {
+            Self::require_quote_near_oracle(
+                env,
+                in_idx,
+                in_amount,
+                estimated,
+                guard.exit_root,
+                guard.max_divergence_bps,
+                guard.two_sided,
+            );
         }
         let out_min = apply_slippage_floor(env, estimated, Self::slippage_bps(env));
 
@@ -607,63 +947,22 @@ impl AquariusLpVault {
         received
     }
 
-    /// Deploys idle underlying into the full-range position.
-    ///
-    /// Splits the input in half, swaps one half into the paired token, then
-    /// deposits both legs. `estimate_deposit_position` is called first so the
-    /// authorized transfer amounts match exactly what the pool will pull.
-    fn deploy_idle(env: &Env) -> u128 {
-        let underlying = Self::underlying(env);
-        let idle = Self::balance_of_token(env, &underlying);
-        if idle < MIN_DEPLOY_AMOUNT {
-            return 0;
-        }
-
-        // Respect the TVL cap: this vault's share of a small pool is what sets
-        // its realised APR, so over-deploying quietly destroys the yield it
-        // exists to capture.
-        let max_deploy = params(env).max_deploy;
-        let deployable = if max_deploy == 0 {
-            idle
-        } else {
-            let deployed = Self::position_value(env);
-            if deployed >= max_deploy {
-                return 0;
-            }
-            idle.min(max_deploy - deployed)
-        };
-        if deployable < MIN_DEPLOY_AMOUNT {
-            return 0;
-        }
-
-        // Ask Aquarius whether it will accept a deposit *before* swapping half
-        // the balance into the paired token. Without this the swap still runs,
-        // the deposit then fails on the pause, and the vault is left holding
-        // half its cash in the wrong asset having paid a swap fee for nothing.
-        let pool_addr = Self::pool(env);
-        let deposits_killed: bool =
-            try_call(env, &pool_addr, "get_is_killed_deposit", ()).unwrap_or(false);
-        if deposits_killed {
-            return 0;
-        }
-
-        let u_idx = Self::underlying_index(env);
-        let o_idx = 1 - u_idx;
-
-        let half = deployable / 2;
-        if half == 0 {
-            return 0;
-        }
-        Self::swap_exact_in(env, u_idx, o_idx, half, true, None, Some(idle));
-
-        let underlying_balance = Self::balance_of_token(env, &underlying);
-        let amount_u = underlying_balance.min(deployable - half);
-        let amount_o = Self::balance_of_token(env, &Self::other_token(env));
+    /// Deposits the offered pair balances into the currently configured range.
+    /// The pool receives authority for no more than its exact two-entry quote;
+    /// the returned spend vector is bounded by that quote before it updates
+    /// the position cache.
+    fn deposit_balances(
+        env: &Env,
+        amount_u: u128,
+        amount_o: u128,
+        balance_u_before: u128,
+        balance_o_before: u128,
+    ) -> u128 {
         if amount_u == 0 || amount_o == 0 {
             return 0;
         }
-
         let pool = Self::pool(env);
+        let u_idx = Self::underlying_index(env);
         let (tick_lower, tick_upper) = Self::ticks(env);
 
         let mut desired: Vec<u128> = Vec::new(env);
@@ -677,7 +976,10 @@ impl AquariusLpVault {
 
         // Ask the pool what it would actually take, then authorize exactly
         // that. Price cannot move between the estimate and the call because
-        // both happen inside this transaction.
+        // both happen inside this transaction. The deployed Aquarius ABI
+        // returns the exact spend vector; reading both token balances again
+        // on every call would push the live migration past Soroban's resource
+        // ceiling, so balance-delta replay checks remain conditional below.
         // Aquarius can pause deposits and swaps at will (errors 205/206) — those
         // are their kill switches on their contract, and nothing on our side
         // can prevent that. What we *can* do is refuse to propagate it: a
@@ -735,9 +1037,9 @@ impl AquariusLpVault {
             auths.push_back(auth_entry(env, &tok, "transfer", args, Vec::new(env)));
         }
         let (balance0_before, balance1_before) = if u_idx == 0 {
-            (underlying_balance, amount_o)
+            (balance_u_before, balance_o_before)
         } else {
-            (amount_o, underlying_balance)
+            (balance_o_before, balance_u_before)
         };
         let guard0 = balance0_before >= actual0.saturating_mul(2);
         let guard1 = balance1_before >= actual1.saturating_mul(2);
@@ -755,7 +1057,7 @@ impl AquariusLpVault {
                 min_liquidity,
             ),
         );
-        let (_spent, minted) = match deposited {
+        let (reported_spent, minted) = match deposited {
             Ok(v) => v,
             Err(ref e) => {
                 // Deposits paused, or the pool rejected us. Leave the cash idle;
@@ -764,24 +1066,125 @@ impl AquariusLpVault {
                 return 0;
             }
         };
+        if reported_spent.len() != 2 {
+            panic!("pool returned invalid spend vector");
+        }
+        let spent0 = reported_spent.get(0).unwrap_or(0);
+        let spent1 = reported_spent.get(1).unwrap_or(0);
+        if spent0 > actual0 || spent1 > actual1 {
+            panic!("pool exceeded deposit authorization");
+        }
         if guard0 {
-            let spent0 =
+            let actual_spent0 =
                 balance0_before.saturating_sub(Self::balance_of_token(env, &Self::token(env, 0)));
-            if spent0 > actual0 {
+            if actual_spent0 > actual0 {
                 panic!("pool exceeded deposit authorization");
             }
         }
         if guard1 {
-            let spent1 =
+            let actual_spent1 =
                 balance1_before.saturating_sub(Self::balance_of_token(env, &Self::token(env, 1)));
-            if spent1 > actual1 {
+            if actual_spent1 > actual1 {
                 panic!("pool exceeded deposit authorization");
             }
         }
+        if minted > 0 && (spent0 == 0 || spent1 == 0) {
+            panic!("position minted without both assets");
+        }
+        if minted == 0 && (spent0 > 0 || spent1 > 0) {
+            panic!("pool retained assets without minting liquidity");
+        }
         if minted > 0 {
-            Self::set_position_liquidity(env, Self::position_liquidity(env).saturating_add(minted));
+            let liquidity_before = Self::position_liquidity(env);
+            let liquidity_after = liquidity_before.saturating_add(minted);
+            // Preserve the exact legacy full-range fallback if this was a
+            // top-up before its first snapshot; every concentrated position
+            // always has an explicit amount cache.
+            if position_amounts(env).is_none() && Self::is_legacy_full_range(env) {
+                Self::set_position_liquidity(env, liquidity_after);
+            } else {
+                let current = position_amounts(env).unwrap_or(PositionAmounts {
+                    liquidity: 0,
+                    amount0: 0,
+                    amount1: 0,
+                    updated_at: env.ledger().timestamp(),
+                });
+                let updated_at = if current.liquidity == 0 {
+                    env.ledger().timestamp()
+                } else {
+                    // Adding a quoted deposit to an older composition does
+                    // not re-observe the existing position. Only a pool read
+                    // may renew this timestamp.
+                    current.updated_at
+                };
+                Self::record_position_at(
+                    env,
+                    liquidity_after,
+                    current.amount0.saturating_add(spent0),
+                    current.amount1.saturating_add(spent1),
+                    updated_at,
+                );
+            }
         }
         minted
+    }
+
+    /// Deploys idle underlying into the active concentrated position.
+    ///
+    /// Single-asset inflow is split in half; any paired residue already held
+    /// by the vault is offered too. Aquarius chooses the exact range ratio and
+    /// leaves the non-limiting residue idle and owned by existing shares.
+    fn deploy_idle(env: &Env) -> u128 {
+        let underlying = Self::underlying(env);
+        let idle = Self::balance_of_token(env, &underlying);
+        if idle < MIN_DEPLOY_AMOUNT {
+            return 0;
+        }
+
+        let max_deploy = params(env).max_deploy;
+        let deployable = if max_deploy == 0 {
+            idle
+        } else {
+            let deployed = Self::position_value(env);
+            if deployed >= max_deploy {
+                return 0;
+            }
+            idle.min(max_deploy - deployed)
+        };
+        if deployable < MIN_DEPLOY_AMOUNT {
+            return 0;
+        }
+
+        let pool_addr = Self::pool(env);
+        let deposits_killed: bool =
+            try_call(env, &pool_addr, "get_is_killed_deposit", ()).unwrap_or(false);
+        if deposits_killed {
+            return 0;
+        }
+
+        let u_idx = Self::underlying_index(env);
+        let o_idx = 1 - u_idx;
+        let half = deployable / 2;
+        if half == 0 {
+            return 0;
+        }
+        Self::swap_exact_in(
+            env,
+            u_idx,
+            o_idx,
+            half,
+            Some(SwapGuard {
+                max_divergence_bps: params(env).max_pool_divergence_bps,
+                two_sided: false,
+                exit_root: None,
+            }),
+            Some(idle),
+        );
+
+        let balance_u = Self::balance_of_token(env, &underlying);
+        let balance_o = Self::balance_of_token(env, &Self::other_token(env));
+        let amount_u = balance_u.min(deployable - half);
+        Self::deposit_balances(env, amount_u, balance_o, balance_u, balance_o)
     }
 
     /// Raises `needed` underlying, cheapest source first.
@@ -813,8 +1216,11 @@ impl AquariusLpVault {
                 Self::other_index(env),
                 Self::underlying_index(env),
                 other_balance,
-                true,
-                Some(exit_root),
+                Some(SwapGuard {
+                    max_divergence_bps: params(env).max_pool_divergence_bps,
+                    two_sided: false,
+                    exit_root: Some(exit_root),
+                }),
                 None,
             );
             return true;
@@ -835,7 +1241,7 @@ impl AquariusLpVault {
         if liq == 0 {
             return false;
         }
-        let position_value = Self::position_value_at_root(env, exit_root);
+        let position_value = Self::position_value_at_root(env, exit_root, true);
         if position_value == 0 {
             return false;
         }
@@ -893,9 +1299,7 @@ impl AquariusLpVault {
             (me.clone(), tick_lower, tick_upper, burn, min_amounts),
         );
         match result {
-            Ok(_) => {
-                Self::set_position_liquidity(env, liq.saturating_sub(burn));
-            }
+            Ok(_) => {}
             Err(ref e) => {
                 emit_call_failure(env, &pool, e, false);
                 return false;
@@ -904,6 +1308,28 @@ impl AquariusLpVault {
 
         let under_got = Self::balance_of_token(env, &underlying).saturating_sub(under_before);
         let other_got = Self::balance_of_token(env, &other).saturating_sub(other_before);
+        let (amount0_got, amount1_got) = if Self::underlying_index(env) == 0 {
+            (under_got, other_got)
+        } else {
+            (other_got, under_got)
+        };
+        let liquidity_after = liq.saturating_sub(burn);
+        if burn == liq {
+            Self::record_position(env, 0, 0, 0);
+        } else if let Some(current) = position_amounts(env) {
+            // Actual withdrawal deltas make the cached amounts more
+            // conservative, but they do not reveal the complete remaining
+            // composition. Preserve the original observation time.
+            Self::record_position_at(
+                env,
+                liquidity_after,
+                current.amount0.saturating_sub(amount0_got),
+                current.amount1.saturating_sub(amount1_got),
+                current.updated_at,
+            );
+        } else {
+            Self::set_position_liquidity(env, liquidity_after);
+        }
 
         // Convert the paired leg back to underlying so the caller only ever
         // sees the single asset the market accounts in. Sells the *entire*
@@ -916,8 +1342,11 @@ impl AquariusLpVault {
                 Self::other_index(env),
                 Self::underlying_index(env),
                 other_total,
-                true,
-                Some(exit_root),
+                Some(SwapGuard {
+                    max_divergence_bps: params(env).max_pool_divergence_bps,
+                    two_sided: false,
+                    exit_root: Some(exit_root),
+                }),
                 None,
             );
         }
@@ -1039,6 +1468,16 @@ impl AquariusLpVault {
             panic!("deposit below minimum");
         }
 
+        if Self::position_liquidity(&env) > 0 && !Self::is_legacy_full_range(&env) {
+            let snapshot = position_amounts(&env).expect("position snapshot unavailable");
+            let max_stale = params(&env).nav_root_max_stale;
+            if max_stale != 0
+                && env.ledger().timestamp().saturating_sub(snapshot.updated_at) > max_stale
+            {
+                panic!("position snapshot stale");
+            }
+        }
+
         // NAV is sampled before the incoming funds land, and again after they
         // have been deployed. Minting against the *net* value added means the
         // depositor pays their own entry cost (the swap fee on converting half
@@ -1124,6 +1563,7 @@ impl AquariusLpVault {
             supply,
         );
         let underlying = Self::underlying(&env);
+        let liquidity_before = Self::position_liquidity(&env);
 
         let redeemed_ok = Self::raise_underlying(&env, owed, exit_root);
 
@@ -1138,6 +1578,16 @@ impl AquariusLpVault {
         let available = Self::balance_of_token(&env, &underlying);
         let payout = if shares == supply {
             available
+        } else if from == Self::receipt_vault(&env) {
+            // ReceiptVault is the sole permitted strategy-share holder. Its
+            // non-zero floor may be a few raw units above this cached NAV's
+            // pro-rata result because it deliberately rounds strategy shares
+            // up and can size a stale-oracle exit from its independent cache.
+            // Moving that tiny difference into the same market's idle cash
+            // does not transfer value between users; it keeps the protected
+            // exit live while the final available/minimum checks still bound
+            // the transfer.
+            owed.max(min_out).min(available)
         } else {
             owed.min(available)
         };
@@ -1156,7 +1606,6 @@ impl AquariusLpVault {
         }
         let shares_to_burn = shares;
 
-        let liquidity_before = Self::position_liquidity(&env);
         Self::burn_shares(&env, &from, shares_to_burn);
         if payout > 0 {
             token::TokenClient::new(&env, &underlying).transfer(
@@ -1474,7 +1923,6 @@ impl AquariusLpVault {
                 Self::other_index(&env),
                 Self::underlying_index(&env),
                 other_balance,
-                false,
                 None,
                 None,
             );
@@ -1554,8 +2002,8 @@ impl AquariusLpVault {
 
         let pool_client = ConcentratedPoolClient::new(&env, &pool);
 
-        // The full-range NAV formula (2L/sqrt(P)) only holds for a tick-based
-        // pool. Refuse anything else rather than silently mispricing.
+        // Range management relies on the deployed concentrated-pool ABI.
+        // Refuse anything else rather than silently opening the wrong product.
         let pool_type = pool_client.pool_type();
         if pool_type != Symbol::new(&env, "concentrated") {
             panic!("pool is not concentrated");
@@ -1574,7 +2022,13 @@ impl AquariusLpVault {
         }
 
         let tick_spacing = pool_client.get_tick_spacing();
-        let (tick_lower, tick_upper) = full_range_bounds(tick_spacing, MAX_TICK_ABS);
+        let slot = pool_client.get_slot0();
+        let (tick_lower, tick_upper) = centered_range(
+            slot.tick,
+            tick_spacing,
+            DEFAULT_HALF_WIDTH_TICKS,
+            MAX_TICK_ABS,
+        );
 
         set_config(
             &env,
@@ -1611,6 +2065,23 @@ impl AquariusLpVault {
                 last_nav_root: 0,
                 last_nav_root_at: 0,
                 last_harvest: 0,
+            },
+        );
+        Self::record_position(&env, 0, 0, 0);
+        set_range_params(
+            &env,
+            &RangeParams {
+                half_width_ticks: DEFAULT_HALF_WIDTH_TICKS,
+                rebalance_margin_ticks: DEFAULT_REBALANCE_MARGIN_TICKS,
+                rebalance_cooldown: DEFAULT_REBALANCE_COOLDOWN_SECS,
+                max_rebalance_divergence_bps: DEFAULT_MAX_REBALANCE_DIVERGENCE_BPS,
+                enabled: true,
+            },
+        );
+        set_range_state(
+            &env,
+            &RangeState {
+                last_rebalance_at: 0,
             },
         );
         env.storage().instance().set(&DataKey::Admin, &admin);
@@ -1879,7 +2350,19 @@ impl AquariusLpVault {
     /// current value without paying the oracle's footprint cost themselves.
     pub fn refresh_nav_root(env: Env) -> u128 {
         bump_critical_ttl(&env);
-        Self::refresh_nav_root_inner(&env)
+        let root = Self::refresh_nav_root_inner(&env);
+        if root > 0 {
+            let _ = Self::refresh_position_amounts_inner(&env);
+        }
+        root
+    }
+
+    /// Permissionless position-composition refresh for keepers and recovery.
+    /// Returns false without replacing the last good snapshot if Aquarius is
+    /// temporarily unavailable or returns a malformed amount vector.
+    pub fn refresh_position_amounts(env: Env) -> bool {
+        bump_critical_ttl(&env);
+        Self::refresh_position_amounts_inner(&env)
     }
 
     pub fn set_max_pool_divergence_bps(env: Env, admin_addr: Address, bps: u32) {
@@ -1927,6 +2410,149 @@ impl AquariusLpVault {
         .publish(&env);
     }
 
+    /// Installs the actively managed concentrated-range policy.
+    ///
+    /// Changing policy does not move funds. The permissionless keeper path
+    /// performs the migration only after its independent price guard passes.
+    /// This separation keeps governance changes reviewable and lets existing
+    /// Mainnet full-range deployments fail closed immediately after upgrade.
+    pub fn set_range_policy(
+        env: Env,
+        admin_addr: Address,
+        half_width_ticks: u32,
+        rebalance_margin_ticks: u32,
+        rebalance_cooldown: u64,
+        max_rebalance_divergence_bps: u32,
+        enabled: bool,
+    ) {
+        Self::require_admin(&env, &admin_addr);
+        let pool = Self::pool(&env);
+        let tick_spacing: i32 = try_call(&env, &pool, "get_tick_spacing", ())
+            .unwrap_or_else(|_| panic!("tick spacing unavailable"));
+        let spacing = u32::try_from(tick_spacing).expect("invalid tick spacing");
+        if half_width_ticks < spacing.saturating_mul(2) || half_width_ticks > MAX_HALF_WIDTH_TICKS {
+            panic!("invalid range width");
+        }
+        let aligned_half = half_width_ticks.div_ceil(spacing).saturating_mul(spacing);
+        if rebalance_margin_ticks == 0 || rebalance_margin_ticks >= aligned_half {
+            panic!("invalid rebalance margin");
+        }
+        if rebalance_cooldown < MIN_REBALANCE_COOLDOWN_SECS {
+            panic!("rebalance cooldown too short");
+        }
+        if max_rebalance_divergence_bps == 0
+            || max_rebalance_divergence_bps > MAX_REBALANCE_DIVERGENCE_BPS
+        {
+            panic!("invalid rebalance divergence");
+        }
+        let value = RangeParams {
+            half_width_ticks,
+            rebalance_margin_ticks,
+            rebalance_cooldown,
+            max_rebalance_divergence_bps,
+            enabled,
+        };
+        set_range_params(&env, &value);
+        RangePolicySet {
+            enabled,
+            half_width_ticks,
+            rebalance_margin_ticks,
+            rebalance_cooldown,
+            max_rebalance_divergence_bps,
+        }
+        .publish(&env);
+    }
+
+    /// Cheap simulation/read used by keepers to avoid submitting no-op
+    /// rebalance transactions every polling cycle.
+    pub fn needs_rebalance(env: Env) -> bool {
+        let Some((spot_tick, _, lower, upper)) = Self::desired_range(&env) else {
+            return false;
+        };
+        Self::rebalance_due(&env, spot_tick, lower, upper)
+    }
+
+    /// Permissionlessly recenters the vault's one active position.
+    ///
+    /// The old position is withdrawn in full. A single guarded swap converts
+    /// only the excess side into the approximately equal-value pair required
+    /// by a centered range, avoiding a wasteful sell-and-buy round trip. The
+    /// call reverts atomically unless a new position is minted and at least
+    /// 95% of the pre-deposit pair value is put back to work.
+    pub fn rebalance(env: Env, caller: Address) -> bool {
+        caller.require_auth();
+        bump_critical_ttl(&env);
+        Self::require_not_paused(&env);
+        let Some((spot_tick, _, new_lower, new_upper)) = Self::desired_range(&env) else {
+            return false;
+        };
+        if !Self::rebalance_due(&env, spot_tick, new_lower, new_upper) {
+            return false;
+        }
+        let policy = range_params(&env);
+        let root = Self::nav_root(&env);
+        if root == 0 {
+            panic!("nav unavailable for rebalance");
+        }
+
+        let pool = Self::pool(&env);
+        match try_call::<bool, _>(&env, &pool, "get_is_killed_deposit", ()) {
+            Ok(false) => {}
+            Ok(true) => return false,
+            Err(ref e) => {
+                emit_call_failure(&env, &pool, e, true);
+                return false;
+            }
+        }
+
+        let (old_lower, old_upper) = Self::ticks(&env);
+        let Some(liquidity_burned) = Self::withdraw_all_for_rebalance(&env) else {
+            return false;
+        };
+
+        let mut cfg = config(&env);
+        cfg.tick_lower = new_lower;
+        cfg.tick_upper = new_upper;
+        set_config(&env, &cfg);
+
+        let pair_value =
+            Self::balance_pair_for_centered_range(&env, root, policy.max_rebalance_divergence_bps);
+        let amount_u = Self::balance_of_token(&env, &Self::underlying(&env));
+        let amount_o = Self::balance_of_token(&env, &Self::other_token(&env));
+        let liquidity_minted = Self::deposit_balances(&env, amount_u, amount_o, amount_u, amount_o);
+        if liquidity_burned > 0 && liquidity_minted == 0 {
+            panic!("rebalance deposit failed");
+        }
+        let idle_u = Self::balance_of_token(&env, &Self::underlying(&env));
+        let idle_o = Self::balance_of_token(&env, &Self::other_token(&env));
+        let r_scaled = root.checked_mul(root).expect("nav root overflow");
+        let idle_value = idle_u.saturating_add(mul_div(&env, idle_o, r_scaled, NAV_RATIO_SCALE));
+        if pair_value > 0
+            && mul_div(&env, idle_value, BPS_DENOM as u128, pair_value) > MAX_REBALANCE_IDLE_BPS
+        {
+            panic!("rebalance left excess idle value");
+        }
+
+        let now = env.ledger().timestamp();
+        set_range_state(
+            &env,
+            &RangeState {
+                last_rebalance_at: now,
+            },
+        );
+        PositionRebalanced {
+            caller,
+            old_tick_lower: old_lower,
+            old_tick_upper: old_upper,
+            new_tick_lower: new_lower,
+            new_tick_upper: new_upper,
+            liquidity_burned,
+            liquidity_minted,
+        }
+        .publish(&env);
+        true
+    }
+
     /// Reconciles locally tracked liquidity against the pool's own view.
     ///
     /// Permissionless: it can only ever replace the local number with the
@@ -1943,7 +2569,18 @@ impl AquariusLpVault {
                     return Self::position_liquidity(&env);
                 }
             };
+        if snapshot.raw_liquidity > 0 {
+            let (expected_lower, expected_upper) = Self::ticks(&env);
+            if snapshot.ranges.len() != 1 {
+                return Self::position_liquidity(&env);
+            }
+            let active = snapshot.ranges.get(0).unwrap();
+            if active.tick_lower != expected_lower || active.tick_upper != expected_upper {
+                return Self::position_liquidity(&env);
+            }
+        }
         Self::set_position_liquidity(&env, snapshot.raw_liquidity);
+        let _ = Self::refresh_position_amounts_inner(&env);
         snapshot.raw_liquidity
     }
 
@@ -1984,6 +2621,18 @@ impl AquariusLpVault {
 
     pub fn get_position_liquidity(env: Env) -> u128 {
         Self::position_liquidity(&env)
+    }
+
+    pub fn get_position_amounts(env: Env) -> Option<PositionAmounts> {
+        position_amounts(&env)
+    }
+
+    pub fn get_range_policy(env: Env) -> RangeParams {
+        range_params(&env)
+    }
+
+    pub fn get_last_rebalance_at(env: Env) -> u64 {
+        range_state(&env).last_rebalance_at
     }
 
     /// Idle paired-token balance, valued in the underlying at the oracle rate.

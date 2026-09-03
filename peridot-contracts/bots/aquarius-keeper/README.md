@@ -3,8 +3,9 @@
 One sequence-safe worker maintains all three Mainnet Aquarius strategies:
 
 1. refresh each strategy's cached NAV root every twenty minutes;
-2. claim, convert, and compound rewards every six hours;
-3. refresh each ReceiptVault's boosted-underlying cache.
+2. simulate `needs_rebalance` and, when enabled, recenter an edge-bound range;
+3. claim, convert, and compound rewards every six hours;
+4. refresh each ReceiptVault's boosted-underlying cache.
 
 The worker services XLM, PYUSD, and USDC serially with one dedicated signer. Do
 not scale it above one instance or run another live copy with the same key:
@@ -45,7 +46,9 @@ DRY_RUN=true RUN_ONCE=true \
   npm start
 ```
 
-Dry-run mode simulates all nine calls without signing or submitting. A live
+With rebalancing disabled, dry-run mode simulates all nine maintenance calls
+without signing or submitting. With `RUN_REBALANCE=true`, it additionally reads
+`needs_rebalance` and simulates `rebalance` only for a target that needs it. A live
 cycle requires `KEEPER_SECRET`; if `KEEPER_PUBLIC_KEY` is also configured, the
 worker refuses to start unless both resolve to the same account.
 
@@ -56,16 +59,19 @@ in `DRY_RUN=true` mode and has automatic deployments disabled. The intended
 rollout is:
 
 1. Create the app from `.do/aquarius-keeper.yaml`; the public repository is
-   cloned directly from immutable release tag `aquarius-keeper-v0.1.0` without
-   GitHub OAuth. Never move or replace that tag; publish a new reviewed tag for
-   each keeper release.
-2. Confirm one dry-run cycle completes for all three targets.
-3. Add `KEEPER_SECRET` as an encrypted runtime variable.
-4. Change `DRY_RUN` and `HARVEST_ON_START` to `false`, then redeploy exactly one
+   cloned directly from dedicated immutable release branch
+   `aquarius-keeper-v0.2.0` without GitHub OAuth. Never move or replace that
+   branch or its matching tag; publish a new reviewed ref for each release.
+2. Keep `RUN_REBALANCE=false` until all six contract upgrades are complete and
+   all three live positions have been migrated by the guarded rollout script.
+3. Confirm one dry-run cycle completes for all three upgraded targets, then set
+   `RUN_REBALANCE=true` and confirm the read-only checks remain clean.
+4. Add `KEEPER_SECRET` as an encrypted runtime variable.
+5. Change `DRY_RUN` and `HARVEST_ON_START` to `false`, then redeploy exactly one
    worker instance. This prevents a restart inside the contract cooldown from
    creating a false failure loop.
-5. Verify confirmed transaction hashes for NAV refresh, harvest, and market
-   cache refresh; monitor the following six-hour harvest cycles.
+6. Verify confirmed transaction hashes for NAV refresh, any required rebalance,
+   harvest, and market cache refresh; monitor the following cycles.
 
 The component costs approximately $5/month at the pinned 512 MiB worker size,
 excluding Stellar transaction fees. The App Platform alert fires above one restart

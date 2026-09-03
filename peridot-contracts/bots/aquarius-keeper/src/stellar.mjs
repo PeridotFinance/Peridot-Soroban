@@ -4,6 +4,7 @@ import {
   TransactionBuilder,
   nativeToScVal,
   rpc,
+  scValToNative,
 } from "@stellar/stellar-sdk";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -108,6 +109,20 @@ export class StellarClient {
       ledger: result.ledger,
     });
     return { hash: submitted.hash, ledger: result.ledger };
+  }
+
+  async read(contractId, method, args = []) {
+    const transaction = await this.buildTransaction(contractId, method, args);
+    const simulation = await this.retryRead(`${method} simulation`, () =>
+      this.server.simulateTransaction(transaction),
+    );
+    if (rpc.Api.isSimulationError(simulation)) {
+      throw new Error(`${method} simulation failed: ${simulation.error}`);
+    }
+    if (!simulation.result) {
+      throw new Error(`${method} simulation returned no result`);
+    }
+    return scValToNative(simulation.result.retval);
   }
 
   async waitForTransaction(hash) {
