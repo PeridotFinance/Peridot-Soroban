@@ -127,6 +127,16 @@ MarginController (leveraged trading, optional)
   collateral until cross-market footprint, depeg-aware PriceRouter, and boosted-
   valuation staleness work is redesigned and re-audited. See `Agents.md` for complete
   IDs, hashes, transactions, and next steps.
+- The concentrated-range and final-holder release is implemented in `f2fcdca` with
+  balance-delta deposit hardening in `4bfe469`, both pushed on `leveraged-fix`.
+  Almanax full-range scan `4f97a6f1-24d9-4887-9a69-d2c3d4995761` found one High
+  that `4bfe469` fixes; exact fix scan `3a290a92-65af-4fbf-8951-d2d428d8c598`
+  completed with zero findings. The guarded 2026-09-03 proposal attempt stopped on the
+  first candidate-WASM upload with `TxInsufficientBalance`; no artifact, proposal, or
+  contract state was created. Upload simulation requires about 178.63 XLM for both
+  artifacts before proposal calls, so the production admin needs 200 additional XLM.
+  Range maintenance remains disabled and all live positions remain full-range until
+  the six 24-hour upgrades are proposed, mature, and execute successfully.
 - The separate existing XLM/USDC/EURC markets have the clean-scanned ReceiptVault
   borrow-footprint fix staged under their 24-hour upgrade timelocks. All three target
   hash `5f35bc16…04e1` and mature on 2026-08-29 between 11:04:44 and 11:04:54 CEST.
