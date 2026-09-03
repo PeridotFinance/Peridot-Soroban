@@ -137,6 +137,9 @@ MarginController (leveraged trading, optional)
   artifacts before proposal calls, so the production admin needs 200 additional XLM.
   Range maintenance remains disabled and all live positions remain full-range until
   the six 24-hour upgrades are proposed, mature, and execute successfully.
+  Keeper v0.2 deployment `dbbea016-b18a-415f-a023-f1b12581e545` is active from exact
+  clean-scanned commit `4bfe469` with one live-signing worker and
+  `RUN_REBALANCE=false`; its first six refresh-only transactions all succeeded.
 - The separate existing XLM/USDC/EURC markets have the clean-scanned ReceiptVault
   borrow-footprint fix staged under their 24-hour upgrade timelocks. All three target
   hash `5f35bc16…04e1` and mature on 2026-08-29 between 11:04:44 and 11:04:54 CEST.
