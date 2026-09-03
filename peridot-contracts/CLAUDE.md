@@ -121,8 +121,10 @@ MarginController (leveraged trading, optional)
   and USDC market `CBIOHQF…AZP7`; their strategies are `CB3WLG4…H6RW`,
   `CANCOWO…5EKY`, and `CAQZ7XP…KGIN`. The deployer retains 24 XLM, 4.8 PYUSD,
   and 4.8 USDC pTokens backed by live full-range positions pending the timelocked
-  concentrated-range upgrade. CF remains 0 and borrowing remains paused. The
-  single-worker DigitalOcean keeper is live for NAV, reward conversion, and cache
+  concentrated-range upgrade. CF remains 0; the controller's defense-in-depth borrow
+  breakers expire automatically after 72 hours and must not be mistaken for the durable
+  supply-only control. The single-worker DigitalOcean keeper is live for NAV, reward
+  conversion, and cache
   refresh; range maintenance remains disabled until migration completes. Do not enable borrowing or
   collateral until cross-market footprint, depeg-aware PriceRouter, and boosted-
   valuation staleness work is redesigned and re-audited. See `Agents.md` for complete
@@ -131,12 +133,11 @@ MarginController (leveraged trading, optional)
   balance-delta deposit hardening in `4bfe469`, both pushed on `leveraged-fix`.
   Almanax full-range scan `4f97a6f1-24d9-4887-9a69-d2c3d4995761` found one High
   that `4bfe469` fixes; exact fix scan `3a290a92-65af-4fbf-8951-d2d428d8c598`
-  completed with zero findings. The guarded 2026-09-03 proposal attempt stopped on the
-  first candidate-WASM upload with `TxInsufficientBalance`; no artifact, proposal, or
-  contract state was created. Upload simulation requires about 178.63 XLM for both
-  artifacts before proposal calls, so the production admin needs 200 additional XLM.
-  Range maintenance remains disabled and all live positions remain full-range until
-  the six 24-hour upgrades are proposed, mature, and execute successfully.
+  completed with zero findings. After one balance-rejected upload created no state, the
+  funded 2026-09-03 retry uploaded both candidate artifacts and staged all six exact
+  24-hour upgrades. Their ETAs span 2026-09-04 12:45:10..12:45:39 CEST; the guarded
+  executor will not mutate before 12:46:09 CEST. Range maintenance remains disabled and
+  all live positions remain full-range until the migration executes successfully.
   Keeper v0.2 deployment `dbbea016-b18a-415f-a023-f1b12581e545` is active from exact
   clean-scanned commit `4bfe469` with one live-signing worker and
   `RUN_REBALANCE=false`; its first six refresh-only transactions all succeeded.

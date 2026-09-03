@@ -100,23 +100,10 @@ pending_eta() {
   local value
   value=$(read_key "$1" "$PENDING_ETA_KEY_XDR") || return 1
   python3 - "$value" <<'PY'
-import json
+import re
 import sys
 
-data = json.loads(sys.argv[1])
-values = []
-
-def visit(value):
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if key == "u64":
-                values.append(int(child))
-            visit(child)
-    elif isinstance(value, list):
-        for child in value:
-            visit(child)
-
-visit(data)
+values = [int(value) for value in re.findall(r'u64[^0-9]+([0-9]+)', sys.argv[1])]
 if len(values) != 1:
     raise SystemExit("could not identify one pending upgrade ETA")
 print(values[0])
@@ -162,6 +149,8 @@ for i in 0 1 2; do
   label=${LABELS[$i]}
   market=${MARKETS[$i]}
   strategy=${STRATEGIES[$i]}
+  market_eta=0
+  strategy_eta=0
   market_hash=$(contract_hash "$market")
   strategy_hash=$(contract_hash "$strategy")
   [[ "$market_hash" == "$OLD_RECEIPT_HASH" || "$market_hash" == "$NEW_RECEIPT_HASH" ]] || \
@@ -182,18 +171,22 @@ for i in 0 1 2; do
 
   if [[ "$market_hash" == "$OLD_RECEIPT_HASH" ]]; then
     pending_target "$market" "$NEW_RECEIPT_HASH" || fail "$label ReceiptVault target is not staged"
-    eta=$(pending_eta "$market")
-    (( eta > MAX_ETA )) && MAX_ETA=$eta
+    market_eta=$(pending_eta "$market")
+    (( market_eta > MAX_ETA )) && MAX_ETA=$market_eta
   fi
   if [[ "$strategy_hash" == "$OLD_STRATEGY_HASH" ]]; then
     pending_target "$strategy" "$NEW_STRATEGY_HASH" || fail "$label strategy target is not staged"
-    eta=$(pending_eta "$strategy")
-    (( eta > MAX_ETA )) && MAX_ETA=$eta
+    strategy_eta=$(pending_eta "$strategy")
+    (( strategy_eta > MAX_ETA )) && MAX_ETA=$strategy_eta
   fi
-  echo "    $label market_hash=$market_hash strategy_hash=$strategy_hash"
+  echo "    $label market_hash=$market_hash market_eta=$market_eta"
+  echo "      strategy_hash=$strategy_hash strategy_eta=$strategy_eta"
 done
 
-if pause_state_matches false false true; then
+# Controller emergency pauses expire automatically after 72 hours. CF=0 is the
+# durable supply-only control; accept an expired borrow breaker in normal mode,
+# then renew it before any migration write and again when restoring availability.
+if pause_state_matches false false true || pause_state_matches false false false; then
   PAUSE_MODE=normal
 elif pause_state_matches true true true; then
   PAUSE_MODE=paused
@@ -294,7 +287,7 @@ Mainnet concentrated-range migration complete.
   cooldown:   6 hours
   price guard: 1% against the independent oracle aliases
   collateral factors: 0
-  borrowing: paused
+  borrowing: emergency pause renewed for 72 hours; CF=0 remains the durable supply-only control
 
 Deploy the reviewed keeper release with RUN_REBALANCE=true only after its
 dry-run `needs_rebalance` checks pass against all three upgraded strategies.
