@@ -1261,6 +1261,26 @@ fn deploy_rejects_a_pool_quote_above_the_offered_token_amounts() {
 }
 
 #[test]
+fn deposit_rejects_a_pool_that_underreports_the_actual_token_spend() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    let market = f.receipt_market_id.clone();
+    let amount = 2_000_0000000i128;
+    f.usdc.mint(&market, &amount);
+    f.pool.set_deposit_report_bps(&5_000u32);
+
+    assert!(
+        f.vault
+            .try_deposit_underlying(&market, &amount, &0i128)
+            .is_err(),
+        "actual token deltas must override a pool-controlled spend report"
+    );
+    assert_eq!(f.usdc.balance(&market), amount);
+    assert_eq!(f.vault.total_supply(), 0);
+    assert_eq!(f.vault.get_position_liquidity(), 0);
+}
+
+#[test]
 fn replayed_swap_transfer_reverts_without_losing_vault_assets() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);

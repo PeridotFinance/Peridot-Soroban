@@ -18,6 +18,22 @@ struct SwapGuard {
     exit_root: Option<u128>,
 }
 
+struct DepositResult {
+    minted: u128,
+    idle_underlying: u128,
+    idle_other: u128,
+}
+
+impl DepositResult {
+    fn unchanged(idle_underlying: u128, idle_other: u128) -> Self {
+        Self {
+            minted: 0,
+            idle_underlying,
+            idle_other,
+        }
+    }
+}
+
 #[contract]
 pub struct AquariusLpVault;
 
@@ -432,11 +448,15 @@ impl AquariusLpVault {
 
     fn other_idle_value_at_root(env: &Env, root: u128) -> u128 {
         let other_balance = Self::balance_of_token(env, &Self::other_token(env));
-        if other_balance == 0 || root == 0 {
+        Self::other_amount_value_at_root(env, other_balance, root)
+    }
+
+    fn other_amount_value_at_root(env: &Env, other_amount: u128, root: u128) -> u128 {
+        if other_amount == 0 || root == 0 {
             return 0;
         }
         let r_scaled = root.checked_mul(root).expect("nav root overflow");
-        mul_div(env, other_balance, r_scaled, NAV_RATIO_SCALE)
+        mul_div(env, other_amount, r_scaled, NAV_RATIO_SCALE)
     }
 
     /// Value of the active position, denominated in the underlying token.
@@ -488,6 +508,17 @@ impl AquariusLpVault {
     /// already has the paired token in its footprint.
     fn total_underlying_full(env: &Env) -> u128 {
         Self::total_underlying(env).saturating_add(Self::other_idle_value(env))
+    }
+
+    fn total_underlying_full_from_balances(
+        env: &Env,
+        idle_underlying: u128,
+        idle_other: u128,
+    ) -> u128 {
+        let root = Self::nav_root(env);
+        idle_underlying
+            .saturating_add(Self::position_value_at_root(env, root, false))
+            .saturating_add(Self::other_amount_value_at_root(env, idle_other, root))
     }
 
     /// Exit-only valuation. Once the public NAV has exceeded its stale bound,
@@ -957,9 +988,9 @@ impl AquariusLpVault {
         amount_o: u128,
         balance_u_before: u128,
         balance_o_before: u128,
-    ) -> u128 {
+    ) -> DepositResult {
         if amount_u == 0 || amount_o == 0 {
-            return 0;
+            return DepositResult::unchanged(balance_u_before, balance_o_before);
         }
         let pool = Self::pool(env);
         let u_idx = Self::underlying_index(env);
@@ -976,10 +1007,10 @@ impl AquariusLpVault {
 
         // Ask the pool what it would actually take, then authorize exactly
         // that. Price cannot move between the estimate and the call because
-        // both happen inside this transaction. The deployed Aquarius ABI
-        // returns the exact spend vector; reading both token balances again
-        // on every call would push the live migration past Soroban's resource
-        // ceiling, so balance-delta replay checks remain conditional below.
+        // both happen inside this transaction. The returned vector is then
+        // reconciled to both actual token balance deltas before accounting is
+        // updated; the caller reuses those post-deposit balances so the check
+        // does not increase the overall live-migration footprint.
         // Aquarius can pause deposits and swaps at will (errors 205/206) — those
         // are their kill switches on their contract, and nothing on our side
         // can prevent that. What we *can* do is refuse to propagate it: a
@@ -997,11 +1028,11 @@ impl AquariusLpVault {
             Ok(v) => v,
             Err(ref e) => {
                 emit_call_failure(env, &pool, e, true);
-                return 0;
+                return DepositResult::unchanged(balance_u_before, balance_o_before);
             }
         };
         if actual.len() != 2 {
-            return 0;
+            return DepositResult::unchanged(balance_u_before, balance_o_before);
         }
         let actual0 = actual.get(0).unwrap_or(0);
         let actual1 = actual.get(1).unwrap_or(0);
@@ -1011,10 +1042,10 @@ impl AquariusLpVault {
         // receives. Never let its estimate enlarge that authority beyond the
         // two amounts this vault deliberately offered.
         if actual0 == 0 || actual1 == 0 || actual0 > desired0 || actual1 > desired1 {
-            return 0;
+            return DepositResult::unchanged(balance_u_before, balance_o_before);
         }
         if est_liquidity == 0 {
-            return 0;
+            return DepositResult::unchanged(balance_u_before, balance_o_before);
         }
         let min_liquidity = apply_slippage_floor(env, est_liquidity, Self::slippage_bps(env));
 
@@ -1041,8 +1072,6 @@ impl AquariusLpVault {
         } else {
             (balance_o_before, balance_u_before)
         };
-        let guard0 = balance0_before >= actual0.saturating_mul(2);
-        let guard1 = balance1_before >= actual1.saturating_mul(2);
         env.authorize_as_current_contract(auths);
 
         let deposited: Result<(Vec<u128>, u128), CallError> = try_call(
@@ -1063,30 +1092,26 @@ impl AquariusLpVault {
                 // Deposits paused, or the pool rejected us. Leave the cash idle;
                 // the next `deploy()` or deposit will retry once it reopens.
                 emit_call_failure(env, &pool, e, true);
-                return 0;
+                return DepositResult::unchanged(balance_u_before, balance_o_before);
             }
         };
         if reported_spent.len() != 2 {
             panic!("pool returned invalid spend vector");
         }
-        let spent0 = reported_spent.get(0).unwrap_or(0);
-        let spent1 = reported_spent.get(1).unwrap_or(0);
+        let reported0 = reported_spent.get(0).unwrap_or(0);
+        let reported1 = reported_spent.get(1).unwrap_or(0);
+        if reported0 > actual0 || reported1 > actual1 {
+            panic!("pool exceeded deposit authorization");
+        }
+        let balance0_after = Self::balance_of_token(env, &Self::token(env, 0));
+        let balance1_after = Self::balance_of_token(env, &Self::token(env, 1));
+        let spent0 = balance0_before.saturating_sub(balance0_after);
+        let spent1 = balance1_before.saturating_sub(balance1_after);
         if spent0 > actual0 || spent1 > actual1 {
             panic!("pool exceeded deposit authorization");
         }
-        if guard0 {
-            let actual_spent0 =
-                balance0_before.saturating_sub(Self::balance_of_token(env, &Self::token(env, 0)));
-            if actual_spent0 > actual0 {
-                panic!("pool exceeded deposit authorization");
-            }
-        }
-        if guard1 {
-            let actual_spent1 =
-                balance1_before.saturating_sub(Self::balance_of_token(env, &Self::token(env, 1)));
-            if actual_spent1 > actual1 {
-                panic!("pool exceeded deposit authorization");
-            }
+        if spent0 != reported0 || spent1 != reported1 {
+            panic!("pool deposit accounting mismatch");
         }
         if minted > 0 && (spent0 == 0 || spent1 == 0) {
             panic!("position minted without both assets");
@@ -1126,7 +1151,16 @@ impl AquariusLpVault {
                 );
             }
         }
-        minted
+        let (idle_underlying, idle_other) = if u_idx == 0 {
+            (balance0_after, balance1_after)
+        } else {
+            (balance1_after, balance0_after)
+        };
+        DepositResult {
+            minted,
+            idle_underlying,
+            idle_other,
+        }
     }
 
     /// Deploys idle underlying into the active concentrated position.
@@ -1134,11 +1168,11 @@ impl AquariusLpVault {
     /// Single-asset inflow is split in half; any paired residue already held
     /// by the vault is offered too. Aquarius chooses the exact range ratio and
     /// leaves the non-limiting residue idle and owned by existing shares.
-    fn deploy_idle(env: &Env) -> u128 {
+    fn deploy_idle(env: &Env) -> Option<DepositResult> {
         let underlying = Self::underlying(env);
         let idle = Self::balance_of_token(env, &underlying);
         if idle < MIN_DEPLOY_AMOUNT {
-            return 0;
+            return None;
         }
 
         let max_deploy = params(env).max_deploy;
@@ -1147,26 +1181,26 @@ impl AquariusLpVault {
         } else {
             let deployed = Self::position_value(env);
             if deployed >= max_deploy {
-                return 0;
+                return None;
             }
             idle.min(max_deploy - deployed)
         };
         if deployable < MIN_DEPLOY_AMOUNT {
-            return 0;
+            return None;
         }
 
         let pool_addr = Self::pool(env);
         let deposits_killed: bool =
             try_call(env, &pool_addr, "get_is_killed_deposit", ()).unwrap_or(false);
         if deposits_killed {
-            return 0;
+            return None;
         }
 
         let u_idx = Self::underlying_index(env);
         let o_idx = 1 - u_idx;
         let half = deployable / 2;
         if half == 0 {
-            return 0;
+            return None;
         }
         Self::swap_exact_in(
             env,
@@ -1184,7 +1218,9 @@ impl AquariusLpVault {
         let balance_u = Self::balance_of_token(env, &underlying);
         let balance_o = Self::balance_of_token(env, &Self::other_token(env));
         let amount_u = balance_u.min(deployable - half);
-        Self::deposit_balances(env, amount_u, balance_o, balance_u, balance_o)
+        Some(Self::deposit_balances(
+            env, amount_u, balance_o, balance_u, balance_o,
+        ))
     }
 
     /// Raises `needed` underlying, cheapest source first.
@@ -1493,9 +1529,21 @@ impl AquariusLpVault {
             &to_i128(amount),
         );
 
-        let minted_liquidity = if invest { Self::deploy_idle(&env) } else { 0 };
-
-        let value_added = Self::total_underlying_full(&env).saturating_sub(nav_before);
+        let deployment = if invest {
+            Self::deploy_idle(&env)
+        } else {
+            None
+        };
+        let minted_liquidity = deployment.as_ref().map_or(0, |result| result.minted);
+        let nav_after = match deployment.as_ref() {
+            Some(result) => Self::total_underlying_full_from_balances(
+                &env,
+                result.idle_underlying,
+                result.idle_other,
+            ),
+            None => Self::total_underlying_full(&env),
+        };
+        let value_added = nav_after.saturating_sub(nav_before);
         if value_added == 0 {
             panic!("deposit added no value");
         }
@@ -1930,7 +1978,8 @@ impl AquariusLpVault {
                 did_work = true;
             }
         }
-        if Self::deploy_idle(&env) > 0 {
+        let deployment = Self::deploy_idle(&env);
+        if deployment.as_ref().is_some_and(|result| result.minted > 0) {
             did_work = true;
         }
 
@@ -1943,7 +1992,11 @@ impl AquariusLpVault {
             set_state(&env, &final_state);
         }
 
-        let gained = Self::balance_of_token(&env, &underlying).saturating_sub(before_underlying);
+        let underlying_after = deployment.as_ref().map_or_else(
+            || Self::balance_of_token(&env, &underlying),
+            |r| r.idle_underlying,
+        );
+        let gained = underlying_after.saturating_sub(before_underlying);
         to_i128(gained)
     }
 
@@ -2519,12 +2572,13 @@ impl AquariusLpVault {
             Self::balance_pair_for_centered_range(&env, root, policy.max_rebalance_divergence_bps);
         let amount_u = Self::balance_of_token(&env, &Self::underlying(&env));
         let amount_o = Self::balance_of_token(&env, &Self::other_token(&env));
-        let liquidity_minted = Self::deposit_balances(&env, amount_u, amount_o, amount_u, amount_o);
+        let deposit = Self::deposit_balances(&env, amount_u, amount_o, amount_u, amount_o);
+        let liquidity_minted = deposit.minted;
         if liquidity_burned > 0 && liquidity_minted == 0 {
             panic!("rebalance deposit failed");
         }
-        let idle_u = Self::balance_of_token(&env, &Self::underlying(&env));
-        let idle_o = Self::balance_of_token(&env, &Self::other_token(&env));
+        let idle_u = deposit.idle_underlying;
+        let idle_o = deposit.idle_other;
         let r_scaled = root.checked_mul(root).expect("nav root overflow");
         let idle_value = idle_u.saturating_add(mul_div(&env, idle_o, r_scaled, NAV_RATIO_SCALE));
         if pair_value > 0
@@ -2589,7 +2643,7 @@ impl AquariusLpVault {
     pub fn deploy(env: Env) -> u128 {
         bump_critical_ttl(&env);
         Self::require_not_paused(&env);
-        Self::deploy_idle(&env)
+        Self::deploy_idle(&env).map_or(0, |result| result.minted)
     }
 
     // ─────────────────────────────────────────────────────────────────────

@@ -178,6 +178,17 @@ impl MockAquariusPool {
         set_u128(&env, Key::DepositQuoteExtra1, extra1);
     }
 
+    /// Pulls the quoted amounts but reports only a fraction of the spend,
+    /// modeling the cross-contract accounting attack the production vault
+    /// must reject from actual token balance deltas.
+    pub fn set_deposit_report_bps(env: Env, report_bps: u32) {
+        assert!(report_bps <= 10_000, "invalid report bps");
+        // Reuse the quote-fault keys so ordinary resource tests do not gain a
+        // mock-only ledger entry that the deployed Aquarius pool never reads.
+        set_u128(&env, Key::DepositQuoteExtra0, report_bps as u128);
+        set_u128(&env, Key::DepositQuoteExtra1, u128::MAX);
+    }
+
     pub fn set_tick(env: Env, tick: i32) {
         env.storage().persistent().set(&Key::Tick, &tick);
     }
@@ -290,8 +301,15 @@ impl MockAquariusPool {
         let liq = liq_from_0.min(liq_from_1);
         let a0 = liq.saturating_mul(r0) / total;
         let a1 = liq.saturating_mul(r1) / total;
-        out.push_back(a0.saturating_add(get_u128(env, Key::DepositQuoteExtra0)));
-        out.push_back(a1.saturating_add(get_u128(env, Key::DepositQuoteExtra1)));
+        let extra0 = get_u128(env, Key::DepositQuoteExtra0);
+        let extra1 = get_u128(env, Key::DepositQuoteExtra1);
+        if extra1 == u128::MAX && extra0 <= 10_000 {
+            out.push_back(a0);
+            out.push_back(a1);
+        } else {
+            out.push_back(a0.saturating_add(extra0));
+            out.push_back(a1.saturating_add(extra1));
+        }
         (out, liq)
     }
 
@@ -372,7 +390,16 @@ impl MockAquariusPool {
                 tick_upper,
             },
         );
-        (actual, liq)
+        let report_marker = get_u128(&env, Key::DepositQuoteExtra1);
+        let report_bps = if report_marker == u128::MAX {
+            get_u128(&env, Key::DepositQuoteExtra0)
+        } else {
+            10_000
+        };
+        let mut reported = Vec::new(&env);
+        reported.push_back(a0.saturating_mul(report_bps) / 10_000);
+        reported.push_back(a1.saturating_mul(report_bps) / 10_000);
+        (reported, liq)
     }
 
     fn validate_range(env: &Env, tick_lower: i32, tick_upper: i32) {
