@@ -178,6 +178,21 @@ impl MockAquariusPool {
         set_u128(&env, Key::DepositQuoteExtra1, extra1);
     }
 
+    /// Overrides the amount0/amount1 ratio returned by deposit quotes. This
+    /// models a narrow range whose token composition differs from the pool's
+    /// aggregate reserve ratio. Zero restores the ordinary reserve-ratio quote.
+    pub fn set_deposit_ratio_0_per_1_e6(env: Env, ratio: u128) {
+        // Reuse the two existing quote-fault keys so this test-only control
+        // does not add a ledger entry to every production-footprint test.
+        if ratio == 0 {
+            set_u128(&env, Key::DepositQuoteExtra0, 0);
+            set_u128(&env, Key::DepositQuoteExtra1, 0);
+        } else {
+            set_u128(&env, Key::DepositQuoteExtra0, u128::MAX);
+            set_u128(&env, Key::DepositQuoteExtra1, ratio);
+        }
+    }
+
     /// Pulls the quoted amounts but reports only a fraction of the spend,
     /// modeling the cross-contract accounting attack the production vault
     /// must reject from actual token balance deltas.
@@ -294,16 +309,27 @@ impl MockAquariusPool {
             out.push_back(d1);
             return (out, isqrt(d0.saturating_mul(d1)));
         }
-        // Take both legs at the current reserve ratio, capped by what was
-        // offered, and refund the rest by simply not taking it.
-        let liq_from_0 = d0.saturating_mul(total) / r0;
-        let liq_from_1 = d1.saturating_mul(total) / r1;
-        let liq = liq_from_0.min(liq_from_1);
-        let a0 = liq.saturating_mul(r0) / total;
-        let a1 = liq.saturating_mul(r1) / total;
+        // Take both legs at either the explicitly modeled range ratio or the
+        // current reserve ratio, capped by what was offered, and refund the
+        // rest by simply not taking it.
         let extra0 = get_u128(env, Key::DepositQuoteExtra0);
         let extra1 = get_u128(env, Key::DepositQuoteExtra1);
-        if extra1 == u128::MAX && extra0 <= 10_000 {
+        let ratio = if extra0 == u128::MAX { extra1 } else { 0 };
+        let (a0, a1, liq) = if ratio > 0 {
+            let liq_from_0 = d0.saturating_mul(1_000_000).checked_div(ratio).unwrap_or(0);
+            let liq = liq_from_0.min(d1);
+            (liq.saturating_mul(ratio) / 1_000_000, liq, liq)
+        } else {
+            let liq_from_0 = d0.saturating_mul(total) / r0;
+            let liq_from_1 = d1.saturating_mul(total) / r1;
+            let liq = liq_from_0.min(liq_from_1);
+            (
+                liq.saturating_mul(r0) / total,
+                liq.saturating_mul(r1) / total,
+                liq,
+            )
+        };
+        if (extra0 == u128::MAX && extra1 > 0) || (extra1 == u128::MAX && extra0 <= 10_000) {
             out.push_back(a0);
             out.push_back(a1);
         } else {

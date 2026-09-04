@@ -110,7 +110,8 @@ MarginController (leveraged trading, optional)
 - Concentrated positions use a keeper-refreshed snapshot of their actual token0/token1
   composition, valued only at the independent oracle ratio. The keeper recenters only
   near a configured edge and only after a tighter two-sided pool/oracle check. A
-  rebalance withdraws the old position, performs one guarded excess-leg swap, and
+  rebalance withdraws the old position, derives the exact token ratio from Aquarius'
+  quote for the new spacing-aligned range, performs one guarded excess-leg swap, and
   atomically fails unless a new position is minted with at least 95% of pair value
   redeployed. XLM/yXLM targets roughly +/-2%; both PYUSD- and USDC-settled strategies
   target roughly +/-1% in their shared pool, with a six-hour recenter cooldown.
@@ -120,8 +121,10 @@ MarginController (leveraged trading, optional)
   `CCZKDMAP…ENGC` owns XLM market `CBRJTPI…ZECZ`, PYUSD market `CBNVNCP…MLMA`,
   and USDC market `CBIOHQF…AZP7`; their strategies are `CB3WLG4…H6RW`,
   `CANCOWO…5EKY`, and `CAQZ7XP…KGIN`. The deployer retains 24 XLM, 4.8 PYUSD,
-  and 4.8 USDC pTokens backed by live full-range positions pending the timelocked
-  concentrated-range upgrade. CF remains 0; the controller's defense-in-depth borrow
+  and 4.8 USDC pTokens backed by live full-range positions. The 2026-09-04 upgrade
+  installed the final-holder ReceiptVault build and first concentrated strategy build,
+  but its exact live XLM rebalance simulation exposed a range-ratio defect before any
+  position mutation. CF remains 0; the controller's defense-in-depth borrow
   breakers expire automatically after 72 hours and must not be mistaken for the durable
   supply-only control. The single-worker DigitalOcean keeper is live for NAV, reward
   conversion, and cache
@@ -135,9 +138,14 @@ MarginController (leveraged trading, optional)
   that `4bfe469` fixes; exact fix scan `3a290a92-65af-4fbf-8951-d2d428d8c598`
   completed with zero findings. After one balance-rejected upload created no state, the
   funded 2026-09-03 retry uploaded both candidate artifacts and staged all six exact
-  24-hour upgrades. Their ETAs span 2026-09-04 12:45:10..12:45:39 CEST; the guarded
-  executor will not mutate before 12:46:09 CEST. Range maintenance remains disabled and
-  all live positions remain full-range until the migration executes successfully.
+  24-hour upgrades. All six upgrades executed on 2026-09-04. The guarded executor then
+  stopped on a no-send XLM rebalance: an aligned narrow range at the live tick needed an
+  approximately 0.8972:1 XLM/yXLM ratio, while the deployed code assumed equal value and
+  would have left 5.138% idle, just above its hard 5% cap. The simulation rolled back;
+  all three positions and liquidities remain unchanged full-range. Deposits/redemptions
+  were reopened, borrowing remains paused, and CF/borrows remain zero. The range-aware
+  strategy-only fix is pinned in guarded recovery scripts and must be clean-scanned,
+  proposed under a new 24-hour timelock, and executed before range maintenance starts.
   Keeper v0.2 deployment `dbbea016-b18a-415f-a023-f1b12581e545` is active from exact
   clean-scanned commit `4bfe469` with one live-signing worker and
   `RUN_REBALANCE=false`; its first six refresh-only transactions all succeeded.

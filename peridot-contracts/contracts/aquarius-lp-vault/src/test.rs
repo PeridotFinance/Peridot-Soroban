@@ -702,10 +702,13 @@ fn exact_mainnet_wasm_upgrade_preserves_state_and_migrates_the_position() {
     f.vault
         .set_range_policy(&f.admin, &120u32, &40u32, &3_600u64, &100u32, &true);
     assert!(f.vault.refresh_nav_root() > 0);
+    // Trigger a recenter for both the original full-range production build
+    // and the currently deployed concentrated build.
+    f.pool.set_tick(&100i32);
     assert!(f.vault.needs_rebalance());
     let keeper = Address::generate(&f.env);
     assert!(f.vault.rebalance(&keeper));
-    assert_eq!(f.vault.get_ticks(), (-120, 120));
+    assert_eq!(f.vault.get_ticks(), (-60, 180));
     assert_eq!(f.vault.balance(&f.receipt_market_id), legacy_shares);
     assert!(f.vault.get_position_liquidity() > 0);
 }
@@ -729,6 +732,27 @@ fn rebalance_waits_for_edge_and_cooldown() {
     assert!(!f.vault.needs_rebalance(), "cooldown must block churn");
     f.env.ledger().set_timestamp(1_700_003_601);
     assert!(f.vault.needs_rebalance());
+}
+
+#[test]
+fn rebalance_uses_the_new_ranges_quoted_token_ratio() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+
+    // The legacy full-range position was composed at the reserve ratio. Model
+    // a new narrow range that instead needs two raw token0 units per token1.
+    // A 50/50 value rebalance leaves well over 5% idle and must fail; deriving
+    // the target from the exact range quote keeps the intended width viable.
+    f.pool.set_deposit_ratio_0_per_1_e6(&2_000_000u128);
+    f.vault
+        .set_range_policy(&f.admin, &120u32, &40u32, &3_600u64, &100u32, &true);
+    f.pool.set_tick(&100i32);
+    assert!(f.vault.needs_rebalance());
+    let keeper = Address::generate(&f.env);
+    assert!(f.vault.rebalance(&keeper));
+    assert_eq!(f.vault.get_ticks(), (-60, 180));
+    assert!(f.vault.get_position_liquidity() > 0);
 }
 
 #[test]

@@ -788,10 +788,10 @@ impl AquariusLpVault {
         Some(liquidity)
     }
 
-    /// Converts only the excess side of an unwind so a range centered at the
-    /// current price receives approximately equal value on both legs. At an
-    /// old range edge the withdrawn position can be almost entirely one token;
-    /// offering that pair unchanged would leave most capital idle.
+    /// Converts only the excess side of an unwind into the exact composition
+    /// quoted for the new range. A spacing-aligned range is generally not
+    /// centered on the live tick, so a 50/50 value split can leave more than
+    /// the allowed idle amount even when the range itself is correct.
     fn balance_pair_for_centered_range(env: &Env, root: u128, max_divergence_bps: u32) -> u128 {
         if root == 0 {
             panic!("nav unavailable for rebalance");
@@ -803,13 +803,71 @@ impl AquariusLpVault {
         let r_scaled = root.checked_mul(root).expect("nav root overflow");
         let other_value = mul_div(env, amount_o, r_scaled, NAV_RATIO_SCALE);
         let total_value = amount_u.saturating_add(other_value);
-        let target_value = total_value / 2;
         let u_idx = Self::underlying_index(env);
         let o_idx = 1 - u_idx;
 
+        // Probe the exact active-range ratio with an equal-value pair. The
+        // quote is read-only and happens in the same transaction as the swap
+        // and deposit, so no intervening ledger can change the target. Bound
+        // the untrusted result by what was offered before using its ratio.
+        let probe_u = total_value / 2;
+        let probe_o = mul_div_ceil(env, total_value - probe_u, NAV_RATIO_SCALE, r_scaled);
+        if probe_u == 0 || probe_o == 0 {
+            panic!("rebalance pair too small");
+        }
+        let mut desired: Vec<u128> = Vec::new(env);
+        if u_idx == 0 {
+            desired.push_back(probe_u);
+            desired.push_back(probe_o);
+        } else {
+            desired.push_back(probe_o);
+            desired.push_back(probe_u);
+        }
+        let pool = Self::pool(env);
+        let (tick_lower, tick_upper) = Self::ticks(env);
+        let (quoted, quoted_liquidity): (Vec<u128>, u128) = match try_call(
+            env,
+            &pool,
+            "estimate_deposit_position",
+            (tick_lower, tick_upper, desired.clone()),
+        ) {
+            Ok(v) => v,
+            Err(ref e) => {
+                emit_call_failure(env, &pool, e, true);
+                panic!("rebalance range quote unavailable");
+            }
+        };
+        if quoted.len() != 2 || quoted_liquidity == 0 {
+            panic!("rebalance range quote invalid");
+        }
+        let quoted0 = quoted.get(0).unwrap_or(0);
+        let quoted1 = quoted.get(1).unwrap_or(0);
+        if quoted0 == 0
+            || quoted1 == 0
+            || quoted0 > desired.get(0).unwrap_or(0)
+            || quoted1 > desired.get(1).unwrap_or(0)
+        {
+            panic!("rebalance range quote invalid");
+        }
+        let (quoted_u, quoted_o) = if u_idx == 0 {
+            (quoted0, quoted1)
+        } else {
+            (quoted1, quoted0)
+        };
+        let quoted_o_value = mul_div(env, quoted_o, r_scaled, NAV_RATIO_SCALE);
+        if quoted_o_value == 0 {
+            panic!("rebalance range quote invalid");
+        }
+        let quoted_value = quoted_u.saturating_add(quoted_o_value);
+        if quoted_value == 0 {
+            panic!("rebalance range quote invalid");
+        }
+        let target_u_value = mul_div(env, total_value, quoted_u, quoted_value);
+        let target_o_value = total_value.saturating_sub(target_u_value);
+
         let mut price_checked = false;
-        if amount_u.saturating_sub(target_value) >= MIN_DEPLOY_AMOUNT {
-            let excess = amount_u - target_value;
+        if amount_u.saturating_sub(target_u_value) >= MIN_DEPLOY_AMOUNT {
+            let excess = amount_u - target_u_value;
             let received = Self::swap_exact_in(
                 env,
                 u_idx,
@@ -826,8 +884,8 @@ impl AquariusLpVault {
                 panic!("rebalance balancing swap failed");
             }
             price_checked = true;
-        } else if other_value.saturating_sub(target_value) >= MIN_DEPLOY_AMOUNT {
-            let excess_value = other_value - target_value;
+        } else if other_value.saturating_sub(target_o_value) >= MIN_DEPLOY_AMOUNT {
+            let excess_value = other_value - target_o_value;
             let excess_other =
                 mul_div_ceil(env, excess_value, NAV_RATIO_SCALE, r_scaled).min(amount_o);
             let received = Self::swap_exact_in(
@@ -2528,8 +2586,8 @@ impl AquariusLpVault {
     /// Permissionlessly recenters the vault's one active position.
     ///
     /// The old position is withdrawn in full. A single guarded swap converts
-    /// only the excess side into the approximately equal-value pair required
-    /// by a centered range, avoiding a wasteful sell-and-buy round trip. The
+    /// only the excess side into the exact token ratio quoted for the new
+    /// spacing-aligned range, avoiding a wasteful sell-and-buy round trip. The
     /// call reverts atomically unless a new position is minted and at least
     /// 95% of the pre-deposit pair value is put back to work.
     pub fn rebalance(env: Env, caller: Address) -> bool {
