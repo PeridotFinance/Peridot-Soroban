@@ -27,11 +27,10 @@ pub const MIN_REBALANCE_COOLDOWN_SECS: u64 = 300;
 /// pair back to work. This catches a bad range quote or a badly imbalanced
 /// unwind before the transaction can strand most capital as idle dust.
 pub const MAX_REBALANCE_IDLE_BPS: u128 = 500;
-/// The exact range quote may refine the pair composition, but neither quoted
-/// leg may fall below 20% of total oracle value. A genuinely centered range at
-/// the minimum supported width still stays inside this bound; an extreme pool
-/// quote must not make a permissionless rebalance churn nearly all capital.
-pub const MIN_REBALANCE_TARGET_LEG_BPS: u128 = 2_000;
+/// The pool's exact range quote must agree closely with the value share implied
+/// independently by the live tick and the new centered bounds. Five percentage
+/// points covers tick-spacing alignment and the separate oracle-price guard.
+pub const MAX_REBALANCE_QUOTE_SHARE_DEVIATION_BPS: u128 = 500;
 
 /// Vault shares are minted 1:1 with underlying on the first deposit, then pro
 /// rata. Matching the pToken convention keeps share math readable.

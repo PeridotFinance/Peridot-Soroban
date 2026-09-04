@@ -111,7 +111,9 @@ MarginController (leveraged trading, optional)
   composition, valued only at the independent oracle ratio. The keeper recenters only
   near a configured edge and only after a tighter two-sided pool/oracle check. A
   rebalance withdraws the old position, derives the exact token ratio from Aquarius'
-  quote for the new spacing-aligned range, performs one guarded excess-leg swap, and
+  quote for the new spacing-aligned range, requires that ratio to match the independent
+  live-tick/range geometry within five percentage points, performs one guarded
+  excess-leg swap, and
   atomically fails unless a new position is minted with at least 95% of pair value
   redeployed. XLM/yXLM targets roughly +/-2%; both PYUSD- and USDC-settled strategies
   target roughly +/-1% in their shared pool, with a six-hour recenter cooldown.

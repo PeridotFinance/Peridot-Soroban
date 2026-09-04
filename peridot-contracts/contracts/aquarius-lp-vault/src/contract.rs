@@ -792,7 +792,12 @@ impl AquariusLpVault {
     /// quoted for the new range. A spacing-aligned range is generally not
     /// centered on the live tick, so a 50/50 value split can leave more than
     /// the allowed idle amount even when the range itself is correct.
-    fn balance_pair_for_centered_range(env: &Env, root: u128, max_divergence_bps: u32) -> u128 {
+    fn balance_pair_for_centered_range(
+        env: &Env,
+        root: u128,
+        spot_tick: i32,
+        max_divergence_bps: u32,
+    ) -> u128 {
         if root == 0 {
             panic!("nav unavailable for rebalance");
         }
@@ -859,12 +864,28 @@ impl AquariusLpVault {
             panic!("rebalance range quote invalid");
         }
         let quoted_value = quoted_u.saturating_add(quoted_o_value);
-        if quoted_value == 0 {
-            panic!("rebalance range quote invalid");
-        }
-        let minimum_leg_value = quoted_value / (BPS_DENOM as u128 / MIN_REBALANCE_TARGET_LEG_BPS);
-        if quoted_u < minimum_leg_value || quoted_o_value < minimum_leg_value {
-            panic!("rebalance range quote too imbalanced");
+        let quoted_u_share_bps = quoted_u
+            .checked_mul(BPS_DENOM as u128)
+            .expect("rebalance range quote overflow")
+            / quoted_value;
+
+        // A centered constant-liquidity range has value on each side in
+        // proportion to its tick distance from spot (up to small exponential
+        // curvature). Bind the external quote to that independently derived
+        // geometry before it can determine swap size. The swap itself still
+        // has the tighter two-sided oracle price guard below.
+        let tick_width = (tick_upper - tick_lower) as u128;
+        let token0_tick_span = (tick_upper - spot_tick) as u128;
+        let expected_token0_share_bps = token0_tick_span * BPS_DENOM as u128 / tick_width;
+        let expected_u_share_bps = if u_idx == 0 {
+            expected_token0_share_bps
+        } else {
+            (BPS_DENOM as u128).saturating_sub(expected_token0_share_bps)
+        };
+        if quoted_u_share_bps.abs_diff(expected_u_share_bps)
+            > MAX_REBALANCE_QUOTE_SHARE_DEVIATION_BPS
+        {
+            panic!("rebalance range quote disagrees with tick geometry");
         }
         let target_u_value = mul_div(env, total_value, quoted_u, quoted_value);
         let target_o_value = total_value.saturating_sub(target_u_value);
@@ -2630,8 +2651,12 @@ impl AquariusLpVault {
         cfg.tick_upper = new_upper;
         set_config(&env, &cfg);
 
-        let pair_value =
-            Self::balance_pair_for_centered_range(&env, root, policy.max_rebalance_divergence_bps);
+        let pair_value = Self::balance_pair_for_centered_range(
+            &env,
+            root,
+            spot_tick,
+            policy.max_rebalance_divergence_bps,
+        );
         let amount_u = Self::balance_of_token(&env, &Self::underlying(&env));
         let amount_o = Self::balance_of_token(&env, &Self::other_token(&env));
         let deposit = Self::deposit_balances(&env, amount_u, amount_o, amount_u, amount_o);

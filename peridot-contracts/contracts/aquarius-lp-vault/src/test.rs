@@ -277,6 +277,22 @@ fn seed_pool(f: &Fixture, usdc_amount: i128, eurc_amount: i128) {
         .deposit_position(&lp, &-887_220i32, &887_220i32, &desired, &0u128);
 }
 
+/// Configures the mock's raw amount0/amount1 quote so token0 represents the
+/// requested share of oracle-valued pair capital.
+fn set_deposit_token0_value_share(f: &Fixture, token0_share_bps: u128) {
+    assert!(token0_share_bps > 0 && token0_share_bps < 10_000);
+    let (price0, price1) = if f.usdc_id < f.eurc_id {
+        (PRICE_USDC as u128, PRICE_EURC as u128)
+    } else {
+        (PRICE_EURC as u128, PRICE_USDC as u128)
+    };
+    let ratio_0_per_1_e6 = token0_share_bps
+        .saturating_mul(price1)
+        .saturating_mul(1_000_000)
+        / (10_000 - token0_share_bps).saturating_mul(price0);
+    f.pool.set_deposit_ratio_0_per_1_e6(&ratio_0_per_1_e6);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure math
 // ─────────────────────────────────────────────────────────────────────────────
@@ -705,9 +721,16 @@ fn exact_mainnet_wasm_upgrade_preserves_state_and_migrates_the_position() {
     // Trigger a recenter for both the original full-range production build
     // and the currently deployed concentrated build.
     f.pool.set_tick(&100i32);
+    set_deposit_token0_value_share(&f, 3_333);
     assert!(f.vault.needs_rebalance());
     let keeper = Address::generate(&f.env);
+    // Measure the actual migration transaction, not the cumulative cost of
+    // registering two Wasms and constructing all of its legacy state above.
+    f.env.cost_estimate().budget().reset_unlimited();
     assert!(f.vault.rebalance(&keeper));
+    let resources = f.env.cost_estimate().resources();
+    assert!(resources.instructions < 100_000_000);
+    assert!(resources.memory_read_entries + resources.write_entries < 100);
     assert_eq!(f.vault.get_ticks(), (-60, 180));
     assert_eq!(f.vault.balance(&f.receipt_market_id), legacy_shares);
     assert!(f.vault.get_position_liquidity() > 0);
@@ -723,6 +746,7 @@ fn rebalance_waits_for_edge_and_cooldown() {
     assert!(!f.vault.needs_rebalance());
 
     f.pool.set_tick(&100i32);
+    set_deposit_token0_value_share(&f, 3_333);
     assert!(f.vault.needs_rebalance());
     let keeper = Address::generate(&f.env);
     assert!(f.vault.rebalance(&keeper));
@@ -740,11 +764,11 @@ fn rebalance_uses_the_new_ranges_quoted_token_ratio() {
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
 
-    // The legacy full-range position was composed at the reserve ratio. Model
-    // a new narrow range that instead needs two raw token0 units per token1.
-    // A 50/50 value rebalance leaves well over 5% idle and must fail; deriving
-    // the target from the exact range quote keeps the intended width viable.
-    f.pool.set_deposit_ratio_0_per_1_e6(&2_000_000u128);
+    // The legacy full-range position was composed at 50/50 oracle value. At
+    // tick 100 the new [-60, 180] range instead needs roughly 33/67 token0/
+    // token1 value. A 50/50 rebalance leaves well over 5% idle; deriving the
+    // target from a geometry-consistent exact quote keeps the range viable.
+    set_deposit_token0_value_share(&f, 3_333);
     f.vault
         .set_range_policy(&f.admin, &120u32, &40u32, &3_600u64, &100u32, &true);
     f.pool.set_tick(&100i32);
@@ -766,9 +790,9 @@ fn rebalance_rejects_an_extreme_range_quote_before_swapping() {
     let old_liquidity = f.vault.get_position_liquidity();
 
     // A compromised pool can keep both amounts under the probe limits while
-    // claiming a pathological 100:1 target. Reject it before that quote can
-    // make the keeper churn almost all pair value through a swap.
-    f.pool.set_deposit_ratio_0_per_1_e6(&100_000_000u128);
+    // still claiming a false 70/30 target.
+    // Reject it because that ratio disagrees with the live tick/range geometry.
+    set_deposit_token0_value_share(&f, 7_000);
     f.pool.set_tick(&100i32);
     let keeper = Address::generate(&f.env);
     assert!(f.vault.try_rebalance(&keeper).is_err());
@@ -784,6 +808,7 @@ fn rebalance_rejects_a_pool_that_is_not_near_the_oracle() {
     let old_ticks = f.vault.get_ticks();
     let old_liquidity = f.vault.get_position_liquidity();
     f.pool.set_tick(&100i32);
+    set_deposit_token0_value_share(&f, 3_333);
     f.oracle.set_price(&f.eurc_id, &(PRICE_EURC * 2));
     f.vault.refresh_nav_root();
 
