@@ -862,6 +862,10 @@ impl AquariusLpVault {
         if quoted_value == 0 {
             panic!("rebalance range quote invalid");
         }
+        let minimum_leg_value = quoted_value / (BPS_DENOM as u128 / MIN_REBALANCE_TARGET_LEG_BPS);
+        if quoted_u < minimum_leg_value || quoted_o_value < minimum_leg_value {
+            panic!("rebalance range quote too imbalanced");
+        }
         let target_u_value = mul_div(env, total_value, quoted_u, quoted_value);
         let target_o_value = total_value.saturating_sub(target_u_value);
 

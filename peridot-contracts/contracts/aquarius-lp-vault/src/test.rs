@@ -756,6 +756,27 @@ fn rebalance_uses_the_new_ranges_quoted_token_ratio() {
 }
 
 #[test]
+fn rebalance_rejects_an_extreme_range_quote_before_swapping() {
+    let f = setup();
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    f.vault
+        .set_range_policy(&f.admin, &120u32, &40u32, &3_600u64, &100u32, &true);
+    let old_ticks = f.vault.get_ticks();
+    let old_liquidity = f.vault.get_position_liquidity();
+
+    // A compromised pool can keep both amounts under the probe limits while
+    // claiming a pathological 100:1 target. Reject it before that quote can
+    // make the keeper churn almost all pair value through a swap.
+    f.pool.set_deposit_ratio_0_per_1_e6(&100_000_000u128);
+    f.pool.set_tick(&100i32);
+    let keeper = Address::generate(&f.env);
+    assert!(f.vault.try_rebalance(&keeper).is_err());
+    assert_eq!(f.vault.get_ticks(), old_ticks);
+    assert_eq!(f.vault.get_position_liquidity(), old_liquidity);
+}
+
+#[test]
 fn rebalance_rejects_a_pool_that_is_not_near_the_oracle() {
     let f = setup();
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
