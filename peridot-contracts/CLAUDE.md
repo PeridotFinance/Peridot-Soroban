@@ -146,8 +146,11 @@ MarginController (leveraged trading, optional)
   would have left 5.138% idle, just above its hard 5% cap. The simulation rolled back;
   all three positions and liquidities remain unchanged full-range. Deposits/redemptions
   were reopened, borrowing remains paused, and CF/borrows remain zero. The range-aware
-  strategy-only fix is pinned in guarded recovery scripts and must be clean-scanned,
-  proposed under a new 24-hour timelock, and executed before range maintenance starts.
+  strategy-only fix is pinned in guarded recovery scripts. Final Almanax scan
+  `e09ce891-d72f-4504-b97a-a381b6997ae7` over `4c2e48d..96ee13b` completed with zero
+  findings. The admin needs additional XLM for the approximately 76.85 XLM WASM upload;
+  after funding, propose it under a new 24-hour timelock and execute it before range
+  maintenance starts.
   Keeper v0.2 deployment `dbbea016-b18a-415f-a023-f1b12581e545` is active from exact
   clean-scanned commit `4bfe469` with one live-signing worker and
   `RUN_REBALANCE=false`; its first six refresh-only transactions all succeeded.
