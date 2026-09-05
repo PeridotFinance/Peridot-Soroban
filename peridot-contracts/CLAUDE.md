@@ -148,9 +148,11 @@ MarginController (leveraged trading, optional)
   were reopened, borrowing remains paused, and CF/borrows remain zero. The range-aware
   strategy-only fix is pinned in guarded recovery scripts. Final Almanax scan
   `e09ce891-d72f-4504-b97a-a381b6997ae7` over `4c2e48d..96ee13b` completed with zero
-  findings. The admin needs additional XLM for the approximately 76.85 XLM WASM upload;
-  after funding, propose it under a new 24-hour timelock and execute it before range
-  maintenance starts.
+  findings. After funding, the reviewed strategy was uploaded and all three recovery
+  proposals confirmed on 2026-09-05. Their pending hashes and deadlines were read back;
+  the executor's earliest permitted start is 2026-09-06 08:09:21 CEST, including its
+  30-second margin. Upload and proposals cost 66.9493182 XLM. Execute and verify all
+  three concentrated positions before enabling range maintenance; do not re-propose.
   Keeper v0.2 deployment `dbbea016-b18a-415f-a023-f1b12581e545` is active from exact
   clean-scanned commit `4bfe469` with one live-signing worker and
   `RUN_REBALANCE=false`; its first six refresh-only transactions all succeeded.
