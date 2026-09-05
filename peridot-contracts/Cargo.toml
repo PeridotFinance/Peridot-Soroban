@@ -6,18 +6,21 @@ members = [
   "contracts/jump-rate-model",
   "contracts/peridot-token",
   "contracts/swap-adapter",
+  "contracts/aquarius-lp-vault",
+  "contracts/price-router",
   "contracts/margin-controller",
   "contracts/smart-account-basic",
   "contracts/smart-account-factory",
   "contracts/mocks/mock-token",
   "contracts/mocks/mock-lending-vault",
+  "contracts/mocks/mock-aquarius-pool",
   "contracts/mocks/flash-loan-receiver",
 ]
 
 [workspace.dependencies]
-soroban-sdk = "25.0.0"
-stellar-tokens = { path = "../../openzeppelin-stellar-contracts/packages/tokens" }
-stellar-contract-utils = { path = "../../openzeppelin-stellar-contracts/packages/contract-utils" }
+soroban-sdk = { version = "25.3.0", features = ["experimental_spec_shaking_v2"] }
+stellar-tokens = { path = "../openzeppelin-stellar-contracts/packages/tokens" }
+stellar-contract-utils = { path = "../openzeppelin-stellar-contracts/packages/contract-utils" }
 
 [profile.release]
 opt-level = "z"

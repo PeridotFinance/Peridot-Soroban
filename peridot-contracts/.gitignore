@@ -13,7 +13,11 @@ peridot_smart_accounts_architecture.md
 AUDITFINDS.md
 AuditQuestions.md
 SOROBAN_AUDIT_CONTEXT.md
-#CLAUDE.md
+CLAUDE.md
 ALMANAX_KNOWLEDGE_BASE.md
 DEPLOYMENT.md
-CLAUDE.md
+Peridot-Soroban-Audit-Findings.md
+leveraged-margin-frontend-integration.md
+/docs
+/Agents.md
+/.mainnet-multisig-mock.state.env

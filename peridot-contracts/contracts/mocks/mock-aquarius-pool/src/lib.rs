@@ -1,0 +1,715 @@
+#![no_std]
+//! Test double for an Aquarius concentrated-liquidity pool.
+//!
+//! Models only the ABI, authorization, accounting, and range ownership surface
+//! `aquarius-lp-vault` touches. Its reserve math is deliberately plain `x*y=k`;
+//! it does not reproduce the real pool's tick-dependent concentrated curve.
+
+use soroban_sdk::{
+    contract, contractimpl, contracttype, token, Address, Env, Map, Symbol, Vec, U256,
+};
+
+#[contracttype]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Slot0 {
+    pub sqrt_price_x96: U256,
+    pub tick: i32,
+}
+
+#[contracttype]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct PositionRange {
+    pub tick_lower: i32,
+    pub tick_upper: i32,
+}
+
+#[contracttype]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct UserPositionSnapshot {
+    pub ranges: Vec<PositionRange>,
+    pub raw_liquidity: u128,
+    pub weighted_liquidity: u128,
+}
+
+#[contracttype]
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct MockPosition {
+    liquidity: u128,
+    tick_lower: i32,
+    tick_upper: i32,
+}
+
+#[contracttype]
+#[derive(Clone)]
+enum Key {
+    Token0,
+    Token1,
+    Reserve0,
+    Reserve1,
+    TotalLiquidity,
+    Liquidity(Address),
+    TickSpacing,
+    FeeBps,
+    PendingFees0(Address),
+    PendingFees1(Address),
+    PendingAqua(Address),
+    AquaToken,
+    GaugeToken,
+    PendingGauge(Address),
+    FailWithdraw,
+    KillDeposit,
+    KillSwap,
+    ReplaySwapTransfer,
+    SwapOutputBps,
+    DepositQuoteExtra0,
+    DepositQuoteExtra1,
+    Tick,
+}
+
+fn isqrt(n: u128) -> u128 {
+    if n < 2 {
+        return n;
+    }
+    let bits = 128 - n.leading_zeros();
+    let mut x = 1u128 << bits.div_ceil(2);
+    loop {
+        let y = (x + n / x) / 2;
+        if y >= x {
+            break;
+        }
+        x = y;
+    }
+    x
+}
+
+fn get_u128(env: &Env, key: Key) -> u128 {
+    env.storage().persistent().get(&key).unwrap_or(0u128)
+}
+
+fn set_u128(env: &Env, key: Key, v: u128) {
+    env.storage().persistent().set(&key, &v);
+}
+
+fn addr(env: &Env, key: Key) -> Address {
+    env.storage().persistent().get(&key).expect("not set")
+}
+
+fn position(env: &Env, owner: &Address) -> Option<MockPosition> {
+    env.storage()
+        .persistent()
+        .get(&Key::Liquidity(owner.clone()))
+}
+
+fn set_position(env: &Env, owner: &Address, value: &MockPosition) {
+    env.storage()
+        .persistent()
+        .set(&Key::Liquidity(owner.clone()), value);
+}
+
+#[contract]
+pub struct MockAquariusPool;
+
+#[contractimpl]
+impl MockAquariusPool {
+    pub fn initialize(env: Env, token0: Address, token1: Address, tick_spacing: i32, fee_bps: u32) {
+        env.storage().persistent().set(&Key::Token0, &token0);
+        env.storage().persistent().set(&Key::Token1, &token1);
+        env.storage()
+            .persistent()
+            .set(&Key::TickSpacing, &tick_spacing);
+        env.storage().persistent().set(&Key::FeeBps, &fee_bps);
+        set_u128(&env, Key::SwapOutputBps, 10_000);
+        set_u128(&env, Key::Reserve0, 0);
+        set_u128(&env, Key::Reserve1, 0);
+        set_u128(&env, Key::TotalLiquidity, 0);
+    }
+
+    // ── Test controls ─────────────────────────────────────────────────────
+
+    pub fn set_reward_tokens(env: Env, aqua: Address, gauge: Address) {
+        env.storage().persistent().set(&Key::AquaToken, &aqua);
+        env.storage().persistent().set(&Key::GaugeToken, &gauge);
+    }
+
+    pub fn credit_rewards(env: Env, user: Address, aqua: u128, gauge: u128) {
+        set_u128(&env, Key::PendingAqua(user.clone()), aqua);
+        set_u128(&env, Key::PendingGauge(user), gauge);
+    }
+
+    pub fn credit_fees(env: Env, user: Address, fee0: u128, fee1: u128) {
+        set_u128(&env, Key::PendingFees0(user.clone()), fee0);
+        set_u128(&env, Key::PendingFees1(user), fee1);
+    }
+
+    pub fn set_fail_withdraw(env: Env, fail: bool) {
+        env.storage().persistent().set(&Key::FailWithdraw, &fail);
+    }
+
+    /// Aquarius's own kill switches (errors 205 / 206). Deposits and swaps can
+    /// be paused by the pool admin; `withdraw_position` deliberately has none.
+    pub fn set_kill_deposit(env: Env, killed: bool) {
+        env.storage().persistent().set(&Key::KillDeposit, &killed);
+    }
+
+    pub fn set_kill_swap(env: Env, killed: bool) {
+        env.storage().persistent().set(&Key::KillSwap, &killed);
+    }
+
+    /// Simulates a compromised pool replaying the exact token-transfer auth
+    /// entry granted for a swap. Production callers must detect the excess
+    /// balance delta and revert the whole invocation atomically.
+    pub fn set_replay_swap_transfer(env: Env, replay: bool) {
+        env.storage()
+            .persistent()
+            .set(&Key::ReplaySwapTransfer, &replay);
+    }
+
+    /// Simulates a buggy or compromised pool that quotes normally but sends
+    /// only a fraction of the quoted output while ignoring `out_min`.
+    pub fn set_swap_output_bps(env: Env, output_bps: u32) {
+        assert!(output_bps <= 10_000, "invalid output bps");
+        set_u128(&env, Key::SwapOutputBps, output_bps as u128);
+    }
+
+    /// Makes the test pool request more than the caller offered. A production
+    /// vault must reject this quote before granting token-transfer authority.
+    pub fn set_deposit_quote_extra(env: Env, extra0: u128, extra1: u128) {
+        set_u128(&env, Key::DepositQuoteExtra0, extra0);
+        set_u128(&env, Key::DepositQuoteExtra1, extra1);
+    }
+
+    /// Overrides the amount0/amount1 ratio returned by deposit quotes. This
+    /// models a narrow range whose token composition differs from the pool's
+    /// aggregate reserve ratio. Zero restores the ordinary reserve-ratio quote.
+    pub fn set_deposit_ratio_0_per_1_e6(env: Env, ratio: u128) {
+        // Reuse the two existing quote-fault keys so this test-only control
+        // does not add a ledger entry to every production-footprint test.
+        if ratio == 0 {
+            set_u128(&env, Key::DepositQuoteExtra0, 0);
+            set_u128(&env, Key::DepositQuoteExtra1, 0);
+        } else {
+            set_u128(&env, Key::DepositQuoteExtra0, u128::MAX);
+            set_u128(&env, Key::DepositQuoteExtra1, ratio);
+        }
+    }
+
+    /// Pulls the quoted amounts but reports only a fraction of the spend,
+    /// modeling the cross-contract accounting attack the production vault
+    /// must reject from actual token balance deltas.
+    pub fn set_deposit_report_bps(env: Env, report_bps: u32) {
+        assert!(report_bps <= 10_000, "invalid report bps");
+        // Reuse the quote-fault keys so ordinary resource tests do not gain a
+        // mock-only ledger entry that the deployed Aquarius pool never reads.
+        set_u128(&env, Key::DepositQuoteExtra0, report_bps as u128);
+        set_u128(&env, Key::DepositQuoteExtra1, u128::MAX);
+    }
+
+    pub fn set_tick(env: Env, tick: i32) {
+        env.storage().persistent().set(&Key::Tick, &tick);
+    }
+
+    /// Simulates trading profit accruing to the pool without minting shares.
+    pub fn donate(env: Env, from: Address, amount0: u128, amount1: u128) {
+        let t0 = addr(&env, Key::Token0);
+        let t1 = addr(&env, Key::Token1);
+        let me = env.current_contract_address();
+        if amount0 > 0 {
+            token::TokenClient::new(&env, &t0).transfer(&from, &me, &(amount0 as i128));
+            set_u128(&env, Key::Reserve0, get_u128(&env, Key::Reserve0) + amount0);
+        }
+        if amount1 > 0 {
+            token::TokenClient::new(&env, &t1).transfer(&from, &me, &(amount1 as i128));
+            set_u128(&env, Key::Reserve1, get_u128(&env, Key::Reserve1) + amount1);
+        }
+    }
+
+    // ── Views ─────────────────────────────────────────────────────────────
+
+    pub fn pool_type(env: Env) -> Symbol {
+        Symbol::new(&env, "concentrated")
+    }
+
+    pub fn get_tokens(env: Env) -> Vec<Address> {
+        let mut v = Vec::new(&env);
+        v.push_back(addr(&env, Key::Token0));
+        v.push_back(addr(&env, Key::Token1));
+        v
+    }
+
+    pub fn get_is_killed_deposit(env: Env) -> bool {
+        env.storage()
+            .persistent()
+            .get(&Key::KillDeposit)
+            .unwrap_or(false)
+    }
+
+    pub fn get_is_killed_swap(env: Env) -> bool {
+        env.storage()
+            .persistent()
+            .get(&Key::KillSwap)
+            .unwrap_or(false)
+    }
+
+    pub fn get_tick_spacing(env: Env) -> i32 {
+        env.storage()
+            .persistent()
+            .get(&Key::TickSpacing)
+            .unwrap_or(60)
+    }
+
+    pub fn get_reserves(env: Env) -> Vec<u128> {
+        let mut v = Vec::new(&env);
+        v.push_back(get_u128(&env, Key::Reserve0));
+        v.push_back(get_u128(&env, Key::Reserve1));
+        v
+    }
+
+    pub fn get_slot0(env: Env) -> Slot0 {
+        Slot0 {
+            sqrt_price_x96: U256::from_u32(&env, 0),
+            tick: env.storage().persistent().get(&Key::Tick).unwrap_or(0),
+        }
+    }
+
+    pub fn get_user_position_snapshot(env: Env, user: Address) -> UserPositionSnapshot {
+        let position = position(&env, &user);
+        let liquidity = position.as_ref().map(|p| p.liquidity).unwrap_or(0);
+        let mut ranges = Vec::new(&env);
+        if let Some(position) = position {
+            if position.liquidity > 0 {
+                ranges.push_back(PositionRange {
+                    tick_lower: position.tick_lower,
+                    tick_upper: position.tick_upper,
+                });
+            }
+        }
+        UserPositionSnapshot {
+            ranges,
+            raw_liquidity: liquidity,
+            weighted_liquidity: 0,
+        }
+    }
+
+    // ── Liquidity ─────────────────────────────────────────────────────────
+
+    fn quote_deposit(env: &Env, desired: &Vec<u128>) -> (Vec<u128>, u128) {
+        let d0 = desired.get(0).unwrap_or(0);
+        let d1 = desired.get(1).unwrap_or(0);
+        let r0 = get_u128(env, Key::Reserve0);
+        let r1 = get_u128(env, Key::Reserve1);
+        let total = get_u128(env, Key::TotalLiquidity);
+
+        let mut out = Vec::new(env);
+        if d0 == 0 || d1 == 0 {
+            // Matches the real contract: a full-range position needs both legs.
+            panic!("AllCoinsRequired");
+        }
+        if total == 0 || r0 == 0 || r1 == 0 {
+            out.push_back(d0);
+            out.push_back(d1);
+            return (out, isqrt(d0.saturating_mul(d1)));
+        }
+        // Take both legs at either the explicitly modeled range ratio or the
+        // current reserve ratio, capped by what was offered, and refund the
+        // rest by simply not taking it.
+        let extra0 = get_u128(env, Key::DepositQuoteExtra0);
+        let extra1 = get_u128(env, Key::DepositQuoteExtra1);
+        let ratio = if extra0 == u128::MAX { extra1 } else { 0 };
+        let (a0, a1, liq) = if ratio > 0 {
+            let liq_from_0 = d0.saturating_mul(1_000_000).checked_div(ratio).unwrap_or(0);
+            let liq = liq_from_0.min(d1);
+            (liq.saturating_mul(ratio) / 1_000_000, liq, liq)
+        } else {
+            let liq_from_0 = d0.saturating_mul(total) / r0;
+            let liq_from_1 = d1.saturating_mul(total) / r1;
+            let liq = liq_from_0.min(liq_from_1);
+            (
+                liq.saturating_mul(r0) / total,
+                liq.saturating_mul(r1) / total,
+                liq,
+            )
+        };
+        if (extra0 == u128::MAX && extra1 > 0) || (extra1 == u128::MAX && extra0 <= 10_000) {
+            out.push_back(a0);
+            out.push_back(a1);
+        } else {
+            out.push_back(a0.saturating_add(extra0));
+            out.push_back(a1.saturating_add(extra1));
+        }
+        (out, liq)
+    }
+
+    pub fn estimate_deposit_position(
+        env: Env,
+        tick_lower: i32,
+        tick_upper: i32,
+        desired_amounts: Vec<u128>,
+    ) -> (Vec<u128>, u128) {
+        Self::validate_range(&env, tick_lower, tick_upper);
+        Self::quote_deposit(&env, &desired_amounts)
+    }
+
+    pub fn deposit_position(
+        env: Env,
+        sender: Address,
+        tick_lower: i32,
+        tick_upper: i32,
+        desired_amounts: Vec<u128>,
+        min_liquidity: u128,
+    ) -> (Vec<u128>, u128) {
+        // Deliberately no `sender.require_auth()`. The deployed Aquarius pool
+        // does not authorize the position call itself — it relies on the token
+        // transfers below carrying the sender's authorization. An earlier
+        // version of this mock required auth here, which made the vault's
+        // auth tree look correct in tests while failing on-chain.
+        if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&Key::KillDeposit)
+            .unwrap_or(false)
+        {
+            panic!("DepositKilled");
+        }
+        Self::validate_range(&env, tick_lower, tick_upper);
+        let previous = position(&env, &sender);
+        let held = previous.as_ref().map(|p| p.liquidity).unwrap_or(0);
+        if held > 0 {
+            let active = previous.as_ref().expect("position range missing");
+            if active.tick_lower != tick_lower || active.tick_upper != tick_upper {
+                panic!("MultipleRangesUnsupportedByMock");
+            }
+        }
+        let (actual, liq) = Self::quote_deposit(&env, &desired_amounts);
+        if liq < min_liquidity {
+            panic!("OutMinNotSatisfied");
+        }
+        let a0 = actual.get(0).unwrap_or(0);
+        let a1 = actual.get(1).unwrap_or(0);
+        let me = env.current_contract_address();
+        if a0 > 0 {
+            token::TokenClient::new(&env, &addr(&env, Key::Token0)).transfer(
+                &sender,
+                &me,
+                &(a0 as i128),
+            );
+        }
+        if a1 > 0 {
+            token::TokenClient::new(&env, &addr(&env, Key::Token1)).transfer(
+                &sender,
+                &me,
+                &(a1 as i128),
+            );
+        }
+        set_u128(&env, Key::Reserve0, get_u128(&env, Key::Reserve0) + a0);
+        set_u128(&env, Key::Reserve1, get_u128(&env, Key::Reserve1) + a1);
+        set_u128(
+            &env,
+            Key::TotalLiquidity,
+            get_u128(&env, Key::TotalLiquidity) + liq,
+        );
+        set_position(
+            &env,
+            &sender,
+            &MockPosition {
+                liquidity: held + liq,
+                tick_lower,
+                tick_upper,
+            },
+        );
+        let report_marker = get_u128(&env, Key::DepositQuoteExtra1);
+        let report_bps = if report_marker == u128::MAX {
+            get_u128(&env, Key::DepositQuoteExtra0)
+        } else {
+            10_000
+        };
+        let mut reported = Vec::new(&env);
+        reported.push_back(a0.saturating_mul(report_bps) / 10_000);
+        reported.push_back(a1.saturating_mul(report_bps) / 10_000);
+        (reported, liq)
+    }
+
+    fn validate_range(env: &Env, tick_lower: i32, tick_upper: i32) {
+        let spacing = Self::get_tick_spacing(env.clone());
+        if tick_lower >= tick_upper
+            || tick_lower % spacing != 0
+            || tick_upper % spacing != 0
+            || tick_lower < -887_272
+            || tick_upper > 887_272
+        {
+            panic!("InvalidTickRange");
+        }
+    }
+
+    fn quote_withdraw(env: &Env, amount: u128) -> Vec<u128> {
+        let total = get_u128(env, Key::TotalLiquidity);
+        let mut out = Vec::new(env);
+        if total == 0 {
+            out.push_back(0);
+            out.push_back(0);
+            return out;
+        }
+        out.push_back(amount.saturating_mul(get_u128(env, Key::Reserve0)) / total);
+        out.push_back(amount.saturating_mul(get_u128(env, Key::Reserve1)) / total);
+        out
+    }
+
+    pub fn estimate_withdraw_position(
+        env: Env,
+        owner: Address,
+        tick_lower: i32,
+        tick_upper: i32,
+        amount: u128,
+    ) -> Vec<u128> {
+        let active = position(&env, &owner).expect("position range missing");
+        if active.tick_lower != tick_lower || active.tick_upper != tick_upper {
+            panic!("WrongTickRange");
+        }
+        Self::quote_withdraw(&env, amount)
+    }
+
+    pub fn withdraw_position(
+        env: Env,
+        owner: Address,
+        tick_lower: i32,
+        tick_upper: i32,
+        amount: u128,
+        min_amounts: Vec<u128>,
+    ) -> Vec<u128> {
+        owner.require_auth();
+        if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&Key::FailWithdraw)
+            .unwrap_or(false)
+        {
+            panic!("withdraw disabled");
+        }
+        let active = position(&env, &owner).expect("position range missing");
+        let held = active.liquidity;
+        if amount > held {
+            panic!("InsufficientLiquidity");
+        }
+        if active.tick_lower != tick_lower || active.tick_upper != tick_upper {
+            panic!("WrongTickRange");
+        }
+        let amounts = Self::quote_withdraw(&env, amount);
+        let a0 = amounts.get(0).unwrap_or(0);
+        let a1 = amounts.get(1).unwrap_or(0);
+        if a0 < min_amounts.get(0).unwrap_or(0) || a1 < min_amounts.get(1).unwrap_or(0) {
+            panic!("OutMinNotSatisfied");
+        }
+        let me = env.current_contract_address();
+        if a0 > 0 {
+            token::TokenClient::new(&env, &addr(&env, Key::Token0)).transfer(
+                &me,
+                &owner,
+                &(a0 as i128),
+            );
+        }
+        if a1 > 0 {
+            token::TokenClient::new(&env, &addr(&env, Key::Token1)).transfer(
+                &me,
+                &owner,
+                &(a1 as i128),
+            );
+        }
+        set_u128(&env, Key::Reserve0, get_u128(&env, Key::Reserve0) - a0);
+        set_u128(&env, Key::Reserve1, get_u128(&env, Key::Reserve1) - a1);
+        set_u128(
+            &env,
+            Key::TotalLiquidity,
+            get_u128(&env, Key::TotalLiquidity) - amount,
+        );
+        set_position(
+            &env,
+            &owner,
+            &MockPosition {
+                liquidity: held - amount,
+                tick_lower,
+                tick_upper,
+            },
+        );
+        amounts
+    }
+
+    // ── Swaps ─────────────────────────────────────────────────────────────
+
+    pub fn estimate_swap(env: Env, in_idx: u32, _out_idx: u32, in_amount: u128) -> u128 {
+        let (ri, ro) = if in_idx == 0 {
+            (get_u128(&env, Key::Reserve0), get_u128(&env, Key::Reserve1))
+        } else {
+            (get_u128(&env, Key::Reserve1), get_u128(&env, Key::Reserve0))
+        };
+        if ri == 0 || ro == 0 || in_amount == 0 {
+            return 0;
+        }
+        let fee_bps: u32 = env.storage().persistent().get(&Key::FeeBps).unwrap_or(30);
+        let in_after_fee = in_amount.saturating_mul((10_000 - fee_bps) as u128) / 10_000;
+        ro.saturating_mul(in_after_fee) / (ri + in_after_fee)
+    }
+
+    pub fn swap(
+        env: Env,
+        user: Address,
+        in_idx: u32,
+        out_idx: u32,
+        in_amount: u128,
+        out_min: u128,
+    ) -> u128 {
+        // No `user.require_auth()` — matches the deployed pool; the inner
+        // token transfer is what carries authorization.
+        if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&Key::KillSwap)
+            .unwrap_or(false)
+        {
+            panic!("SwapKilled");
+        }
+        let quoted_out = Self::estimate_swap(env.clone(), in_idx, out_idx, in_amount);
+        if quoted_out < out_min {
+            panic!("OutMinNotSatisfied");
+        }
+        let out = quoted_out.saturating_mul(get_u128(&env, Key::SwapOutputBps)) / 10_000;
+        let t_in = if in_idx == 0 {
+            Key::Token0
+        } else {
+            Key::Token1
+        };
+        let t_out = if out_idx == 0 {
+            Key::Token0
+        } else {
+            Key::Token1
+        };
+        let me = env.current_contract_address();
+        token::TokenClient::new(&env, &addr(&env, t_in.clone())).transfer(
+            &user,
+            &me,
+            &(in_amount as i128),
+        );
+        if env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&Key::ReplaySwapTransfer)
+            .unwrap_or(false)
+        {
+            token::TokenClient::new(&env, &addr(&env, t_in)).transfer(
+                &user,
+                &me,
+                &(in_amount as i128),
+            );
+        }
+        token::TokenClient::new(&env, &addr(&env, t_out)).transfer(&me, &user, &(out as i128));
+        let (k_in, k_out) = if in_idx == 0 {
+            (Key::Reserve0, Key::Reserve1)
+        } else {
+            (Key::Reserve1, Key::Reserve0)
+        };
+        let ri = get_u128(&env, k_in.clone());
+        set_u128(&env, k_in, ri + in_amount);
+        let ro = get_u128(&env, k_out.clone());
+        set_u128(&env, k_out, ro.saturating_sub(out));
+        out
+    }
+
+    // ── Rewards ───────────────────────────────────────────────────────────
+
+    pub fn get_user_reward(env: Env, user: Address) -> u128 {
+        get_u128(&env, Key::PendingAqua(user))
+    }
+
+    pub fn claim(env: Env, user: Address) -> u128 {
+        user.require_auth();
+        let amount = get_u128(&env, Key::PendingAqua(user.clone()));
+        if amount == 0 {
+            return 0;
+        }
+        set_u128(&env, Key::PendingAqua(user.clone()), 0);
+        let aqua = addr(&env, Key::AquaToken);
+        token::TokenClient::new(&env, &aqua).transfer(
+            &env.current_contract_address(),
+            &user,
+            &(amount as i128),
+        );
+        amount
+    }
+
+    pub fn get_gauges(env: Env) -> Map<Address, Address> {
+        let mut m = Map::new(&env);
+        if let Some(g) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&Key::GaugeToken)
+        {
+            m.set(g.clone(), g);
+        }
+        m
+    }
+
+    pub fn gauges_claim(env: Env, user: Address) -> Map<Address, u128> {
+        user.require_auth();
+        let mut m = Map::new(&env);
+        let amount = get_u128(&env, Key::PendingGauge(user.clone()));
+        let Some(gauge) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&Key::GaugeToken)
+        else {
+            return m;
+        };
+        if amount > 0 {
+            set_u128(&env, Key::PendingGauge(user.clone()), 0);
+            token::TokenClient::new(&env, &gauge).transfer(
+                &env.current_contract_address(),
+                &user,
+                &(amount as i128),
+            );
+        }
+        m.set(gauge, amount);
+        m
+    }
+
+    pub fn get_all_position_fees(env: Env, owner: Address) -> Vec<u128> {
+        let mut v = Vec::new(&env);
+        v.push_back(get_u128(&env, Key::PendingFees0(owner.clone())));
+        v.push_back(get_u128(&env, Key::PendingFees1(owner)));
+        v
+    }
+
+    pub fn claim_all_position_fees(env: Env, owner: Address) -> Vec<u128> {
+        owner.require_auth();
+        let f0 = get_u128(&env, Key::PendingFees0(owner.clone()));
+        let f1 = get_u128(&env, Key::PendingFees1(owner.clone()));
+        set_u128(&env, Key::PendingFees0(owner.clone()), 0);
+        set_u128(&env, Key::PendingFees1(owner.clone()), 0);
+        let me = env.current_contract_address();
+        if f0 > 0 {
+            token::TokenClient::new(&env, &addr(&env, Key::Token0)).transfer(
+                &me,
+                &owner,
+                &(f0 as i128),
+            );
+            set_u128(
+                &env,
+                Key::Reserve0,
+                get_u128(&env, Key::Reserve0).saturating_sub(f0),
+            );
+        }
+        if f1 > 0 {
+            token::TokenClient::new(&env, &addr(&env, Key::Token1)).transfer(
+                &me,
+                &owner,
+                &(f1 as i128),
+            );
+            set_u128(
+                &env,
+                Key::Reserve1,
+                get_u128(&env, Key::Reserve1).saturating_sub(f1),
+            );
+        }
+        let mut v = Vec::new(&env);
+        v.push_back(f0);
+        v.push_back(f1);
+        v
+    }
+}

@@ -8,6 +8,10 @@ publish = false
 crate-type = ["lib", "cdylib"]
 doctest = false
 
+[features]
+# Native test fixture support only; contract code rejects this feature for Wasm builds.
+test-default-admin = []
+
 [dependencies]
 soroban-sdk = { workspace = true }
 stellar-tokens = { workspace = true }

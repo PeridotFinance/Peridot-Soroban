@@ -1,0 +1,17 @@
+{
+  "name": "@peridot/aquarius-keeper",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/main.mjs",
+    "check": "node --check src/config.mjs && node --check src/stellar.mjs && node --check src/keeper.mjs && node --check src/main.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "16.3.0"
+  }
+}

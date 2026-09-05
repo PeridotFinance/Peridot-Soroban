@@ -147,6 +147,18 @@ pub struct ReservesReduced {
     pub total_reserves: u128,
 }
 
+/// Margin-controller bad debt absorption.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MarginBadDebtAbsorbed {
+    pub position_id: u64,
+    pub debt_amount: u128,
+    pub reserves_used: u128,
+    pub bad_debt: u128,
+    pub total_borrows: u128,
+    pub total_reserves: u128,
+}
+
 /// Mirrors Compound's AdminFeesReduced event.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -212,6 +224,14 @@ pub struct InterestOverflow {
     pub amount: u128,
     pub yearly_rate_scaled: u128,
     pub elapsed: u128,
+}
+
+/// Emitted when shares were redeemed from the boosted vault but zero underlying was returned.
+/// Indicates a 100% performance fee, a vault malfunction, or extreme rounding.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BoostedRedeemZeroReturn {
+    pub shares_redeemed: u128,
 }
 
 /// Logs failed liquidation attempts for monitoring.

@@ -27,14 +27,14 @@ pub trait Contract {
     fn admin(e: Env) -> Option<Address>;
 }
 
-#[contracttype(export = false)]
+#[contracttype]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Asset {
     Stellar(Address),
     Other(Symbol),
 }
 
-#[contracttype(export = false)]
+#[contracttype]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct PriceData {
     pub price: i128,

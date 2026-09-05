@@ -1,0 +1,65 @@
+name: peridot-aquarius-keeper
+region: fra
+workers:
+  - name: mainnet-keeper
+    git:
+      repo_clone_url: https://github.com/PeridotFinance/Peridot-Soroban.git
+      branch: aquarius-keeper-v0.2.0
+    source_dir: peridot-contracts/bots/aquarius-keeper
+    dockerfile_path: peridot-contracts/bots/aquarius-keeper/Dockerfile
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    alerts:
+      - rule: RESTART_COUNT
+        operator: GREATER_THAN
+        value: 1
+        window: FIVE_MINUTES
+    envs:
+      - key: RPC_URL
+        scope: RUN_TIME
+        value: https://soroban-rpc.mainnet.stellar.gateway.fm
+      - key: HORIZON_URL
+        scope: RUN_TIME
+        value: https://horizon.stellar.org
+      - key: NETWORK_PASSPHRASE
+        scope: RUN_TIME
+        value: Public Global Stellar Network ; September 2015
+      - key: KEEPER_PUBLIC_KEY
+        scope: RUN_TIME
+        value: GBLVLGECHVZAKOJ6XLLF4YRNNBTAZBM4O6ZMIL336BYIHKUZLACLXSE3
+      - key: DRY_RUN
+        scope: RUN_TIME
+        value: "true"
+      - key: HARVEST_ON_START
+        scope: RUN_TIME
+        value: "true"
+      - key: RUN_HARVEST
+        scope: RUN_TIME
+        value: "true"
+      - key: RUN_REBALANCE
+        scope: RUN_TIME
+        value: "false"
+      - key: POLL_INTERVAL_MS
+        scope: RUN_TIME
+        value: "1200000"
+      - key: HARVEST_INTERVAL_MS
+        scope: RUN_TIME
+        value: "21600000"
+      - key: HARVEST_RETRY_MS
+        scope: RUN_TIME
+        value: "300000"
+      - key: INCLUSION_FEE_STROOPS
+        scope: RUN_TIME
+        value: "100000"
+      - key: RPC_TIMEOUT_MS
+        scope: RUN_TIME
+        value: "15000"
+      - key: CONFIRMATION_TIMEOUT_MS
+        scope: RUN_TIME
+        value: "90000"
+      - key: MAX_CONSECUTIVE_FAILED_CYCLES
+        scope: RUN_TIME
+        value: "3"
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DEPLOYMENT_LIVE
