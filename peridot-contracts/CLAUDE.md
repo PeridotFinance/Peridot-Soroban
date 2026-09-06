@@ -123,14 +123,16 @@ MarginController (leveraged trading, optional)
   `CCZKDMAP…ENGC` owns XLM market `CBRJTPI…ZECZ`, PYUSD market `CBNVNCP…MLMA`,
   and USDC market `CBIOHQF…AZP7`; their strategies are `CB3WLG4…H6RW`,
   `CANCOWO…5EKY`, and `CAQZ7XP…KGIN`. The deployer retains 24 XLM, 4.8 PYUSD,
-  and 4.8 USDC pTokens backed by live full-range positions. The 2026-09-04 upgrade
+  and 4.8 USDC pTokens backed by live concentrated positions. The 2026-09-04 upgrade
   installed the final-holder ReceiptVault build and first concentrated strategy build,
   but its exact live XLM rebalance simulation exposed a range-ratio defect before any
-  position mutation. CF remains 0; the controller's defense-in-depth borrow
+  position mutation. The reviewed recovery migrated all three positions on 2026-09-06:
+  XLM ticks `[-200,200]`; both stablecoin strategies `[-120,80]`. CF remains 0;
+  the controller's defense-in-depth borrow
   breakers expire automatically after 72 hours and must not be mistaken for the durable
   supply-only control. The single-worker DigitalOcean keeper is live for NAV, reward
   conversion, and cache
-  refresh; range maintenance remains disabled until migration completes. Do not enable borrowing or
+  refresh; range maintenance is now enabled. Do not enable borrowing or
   collateral until cross-market footprint, depeg-aware PriceRouter, and boosted-
   valuation staleness work is redesigned and re-audited. See `Agents.md` for complete
   IDs, hashes, transactions, and next steps.
@@ -144,18 +146,19 @@ MarginController (leveraged trading, optional)
   stopped on a no-send XLM rebalance: an aligned narrow range at the live tick needed an
   approximately 0.8972:1 XLM/yXLM ratio, while the deployed code assumed equal value and
   would have left 5.138% idle, just above its hard 5% cap. The simulation rolled back;
-  all three positions and liquidities remain unchanged full-range. Deposits/redemptions
+  all three positions and liquidities initially remained unchanged full-range. Deposits/redemptions
   were reopened, borrowing remains paused, and CF/borrows remain zero. The range-aware
   strategy-only fix is pinned in guarded recovery scripts. Final Almanax scan
   `e09ce891-d72f-4504-b97a-a381b6997ae7` over `4c2e48d..96ee13b` completed with zero
   findings. After funding, the reviewed strategy was uploaded and all three recovery
-  proposals confirmed on 2026-09-05. Their pending hashes and deadlines were read back;
-  the executor's earliest permitted start is 2026-09-06 08:09:21 CEST, including its
-  30-second margin. Upload and proposals cost 66.9493182 XLM. Execute and verify all
-  three concentrated positions before enabling range maintenance; do not re-propose.
-  Keeper v0.2 deployment `dbbea016-b18a-415f-a023-f1b12581e545` is active from exact
+  proposals confirmed on 2026-09-05. All three upgrades and rebalances completed after
+  maturity on 2026-09-06, with 36/36 successful transactions costing 0.6531179 XLM.
+  Accounting invariants and all three full-holder withdrawal simulations passed;
+  deposits/redemptions are open. Do not repeat the completed proposals or migration.
+  Keeper v0.2 deployment `908b8045-5ffb-41fe-abbf-8ded8c87b6f8` is active from exact
   clean-scanned commit `4bfe469` with one live-signing worker and
-  `RUN_REBALANCE=false`; its first six refresh-only transactions all succeeded.
+  `RUN_REBALANCE=true`; its first six refresh transactions and all three range checks
+  completed with zero failures. Harvest remains scheduled, with no startup harvest.
 - The separate existing XLM/USDC/EURC markets have the clean-scanned ReceiptVault
   borrow-footprint fix staged under their 24-hour upgrade timelocks. All three target
   hash `5f35bc16…04e1` and mature on 2026-08-29 between 11:04:44 and 11:04:54 CEST.

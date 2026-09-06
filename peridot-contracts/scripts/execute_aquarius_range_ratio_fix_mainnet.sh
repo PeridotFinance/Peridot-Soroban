@@ -269,7 +269,7 @@ echo "==> Restoring supply-only availability"
 set_market_migration_pause false
 pause_state_matches false false true || fail "failed to restore deposit/redeem availability"
 
-cat <<SUMMARY
+cat <<'SUMMARY'
 
 Mainnet concentrated-range migration complete.
   XLM/yXLM:   approximately +/-2%, 80-tick edge margin
