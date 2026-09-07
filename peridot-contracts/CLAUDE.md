@@ -60,6 +60,18 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- PYUSD/USDC +/-40 extension approved on 2026-09-07: reuse the exact uploaded
+  `00a1e909...` candidate below for BOTH existing stablecoin settlement strategies.
+  `scripts/rollout_aquarius_stable40_mainnet.sh` requires LABEL=PYUSD or LABEL=USDC,
+  defaults to read-only, verifies uploaded bytes without another upload, and pins
+  each strategy/market/pool/settlement binding. Proposed policy is half40/margin20,
+  cooldown3600/divergence100; existing twenty-minute stablecoin checks stay unchanged.
+  Each strategy needs its own 24-hour proposal. Submission requires
+  CONFIRM_MAINNET=PROPOSE_STABLE40; execution requires MODE=execute and
+  CONFIRM_MAINNET=MIGRATE_STABLE40, both with PREFLIGHT_ONLY=false. Proposal resource
+  plus inclusion fees are capped at 0.11 XLM each. Do not rerun the XLM proposal.
+  No contract/keeper code changes; existing candidate scans and WASM tests apply.
+  See Agents.md for actual proposal status and ETAs.
 - XLM-only +/-40-tick pilot candidate (2026-09-07): aligned width changes now
   trigger the existing guarded rebalance even away from the old range's edge.
   Cooldown, oracle/quote checks, balance-delta checks and atomic rollback remain
