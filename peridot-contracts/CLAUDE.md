@@ -71,7 +71,14 @@ MarginController (leveraged trading, optional)
   CONFIRM_MAINNET=MIGRATE_STABLE40, both with PREFLIGHT_ONLY=false. Proposal resource
   plus inclusion fees are capped at 0.11 XLM each. Do not rerun the XLM proposal.
   No contract/keeper code changes; existing candidate scans and WASM tests apply.
-  See Agents.md for actual proposal status and ETAs.
+  Both proposals are now confirmed: PYUSD tx `9d057b4a...`, safe execution
+  2026-09-08 19:55:24 CEST; USDC tx `ddaf2861...`, safe execution 19:55:35 CEST.
+  Combined fees 0.0847930 XLM; no repeated WASM upload. Positions/policies remain
+  unchanged until execution. See Agents.md for complete hashes and ETAs.
+  EURC/USDC is assessment-only: real FX exposure, live concentrated pool spacing 60
+  means minimum half-width 120, separate EURC/USDC oracle prices are available,
+  but the checked EURC sale quote is 1.586% below oracle fair value. Investigate
+  before launch; do not relax guards or repurpose the existing EURC market.
 - XLM-only +/-40-tick pilot candidate (2026-09-07): aligned width changes now
   trigger the existing guarded rebalance even away from the old range's edge.
   Cooldown, oracle/quote checks, balance-delta checks and atomic rollback remain
