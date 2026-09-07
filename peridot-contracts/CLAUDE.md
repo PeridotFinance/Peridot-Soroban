@@ -81,8 +81,14 @@ MarginController (leveraged trading, optional)
   is confirmed; safe execution is 2026-09-08 19:07:08 CEST (ETA + 30 seconds).
   The current position/policy remain unchanged until execution. CLI contract-data
   output is CSV containing JSON columns, so the executor parses the ETA column
-  strictly. Keeper v0.4.0 immutable ref is published at `f3d8b3e`; see `Agents.md`
-  for deployment status. Do not mistake the staged upgrade for a live migration.
+  strictly. Final full-range rescan `c7aa7b9b-ae99-4c71-813b-d9474665ed6b`
+  (`4054dbd..a23fc82`) also returned zero findings. Keeper v0.4.0 immutable ref
+  is pinned at `f3d8b3e`; live deployment `2a44ce76-f82e-454b-9cd9-13a1eb3bdecd`
+  is ACTIVE with one worker. First live cycle confirmed six refreshes and three
+  negative range checks with zero failures. Upload/proposal charged 66.8843791 XLM
+  total; the inclusion-fee cap does not cap Soroban resource/rent fees. Deployer
+  balance afterward was 35.6168927 XLM. See `Agents.md` for the transaction trail.
+  Do not mistake the staged upgrade for a live migration.
 - Keeper v0.3.0 (`b5a4aea`, immutable branch/tag `aquarius-keeper-v0.3.0`) adds a
   harvest-only threshold: simulate the exact harvest and sign only when expected
   settlement funds reach `HARVEST_MIN_UNDERLYING_RAW=10000` (0.001 XLM/PYUSD/USDC).
