@@ -6,6 +6,7 @@ import {
   rpc,
   scValToNative,
 } from "@stellar/stellar-sdk";
+import { harvestDecision } from "./harvest.mjs";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -72,24 +73,64 @@ export class StellarClient {
   }
 
   async execute(contractId, method, args = []) {
+    let harvestInputs;
+    if (method === "harvest") {
+      const lastHarvest = await this.read(contractId, "get_last_harvest");
+      const params = await this.read(contractId, "get_params");
+      if (typeof lastHarvest !== "bigint" || lastHarvest < 0n ||
+          !Number.isSafeInteger(params.harvest_cooldown) || params.harvest_cooldown < 0) {
+        throw new Error("invalid on-chain harvest cooldown");
+      }
+      if (lastHarvest > 0n && BigInt(Math.floor(Date.now() / 1000)) <
+          lastHarvest + BigInt(params.harvest_cooldown) + 30n) {
+        return { deferred: true, method, reason: "cooldown" };
+      }
+      const underlying = await this.read(contractId, "get_underlying");
+      const idle = await this.read(underlying, "balance", [scAddress(contractId)]);
+      harvestInputs = { underlying, idle };
+    }
     const transaction = await this.buildTransaction(contractId, method, args);
-    if (this.config.dryRun) {
+    let harvestSimulation;
+    if (this.config.dryRun || harvestInputs) {
       const simulation = await this.retryRead(`${method} simulation`, () =>
         this.server.simulateTransaction(transaction),
       );
       if (rpc.Api.isSimulationError(simulation)) {
         throw new Error(`${method} simulation failed: ${simulation.error}`);
       }
-      this.logger.info("transaction simulated", {
-        contractId,
-        method,
-        latestLedger: simulation.latestLedger,
-        minResourceFee: simulation.minResourceFee,
-      });
-      return { dryRun: true, method };
+      if (harvestInputs) {
+        if (!simulation.result) throw new Error("harvest simulation returned no result");
+        const decision = harvestDecision(
+          simulation.events, contractId, harvestInputs.underlying, harvestInputs.idle,
+          this.config.harvestMinUnderlyingRaw,
+        );
+        for (const skipped of decision.skips) {
+          this.logger.warn("reward conversion blocked in simulation", {
+            contractId, rewardToken: skipped.reward_token,
+            rewardAmount: String(skipped.reward_amount), reason: skipped.reason,
+          });
+        }
+        this.logger.info("harvest threshold checked", {
+          contractId, ready: decision.ready, expectedSettlementRaw: String(decision.peak),
+          minimumSettlementRaw: String(decision.minimum),
+        });
+        if (!decision.ready) return { deferred: true, method, reason: "below_threshold" };
+        harvestSimulation = simulation;
+      }
+      if (this.config.dryRun) {
+        this.logger.info("transaction simulated", {
+          contractId,
+          method,
+          latestLedger: simulation.latestLedger,
+          minResourceFee: simulation.minResourceFee,
+        });
+        return { dryRun: true, method };
+      }
     }
 
-    const prepared = await this.retryRead(`${method} preparation`, () =>
+    // Sign the exact simulation that passed the gate, without a second preparation.
+    const prepared = harvestSimulation ? rpc.assembleTransaction(transaction, harvestSimulation).build()
+      : await this.retryRead(`${method} preparation`, () =>
       this.server.prepareTransaction(transaction),
     );
     prepared.sign(this.config.keypair);
@@ -101,6 +142,17 @@ export class StellarClient {
     const result = await this.waitForTransaction(submitted.hash);
     if (result.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
       throw new Error(`${method} failed on-chain: ${stringify(result)}`);
+    }
+    if (method === "harvest") {
+      for (const event of result.events?.contractEventsXdr?.flat() ?? []) {
+        const topics = event.body().v0().topics().map(scValToNative);
+        if (topics[0] === "harvest_skipped") {
+          this.logger.warn("reward conversion skipped on-chain", {
+            contractId, hash: submitted.hash,
+            outcome: stringify(scValToNative(event.body().v0().data())),
+          });
+        }
+      }
     }
     this.logger.info("transaction confirmed", {
       contractId,

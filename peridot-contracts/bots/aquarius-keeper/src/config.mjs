@@ -101,6 +101,10 @@ export function loadConfig(env = process.env) {
     dryRun,
     runOnce: boolean(env, "RUN_ONCE", false),
     runHarvest: boolean(env, "RUN_HARVEST", true),
+    // Settlement units, never raw AQUA. All launch assets have seven decimals.
+    harvestMinUnderlyingRaw: BigInt(integer(env, "HARVEST_MIN_UNDERLYING_RAW", 10_000, {
+      min: 10_000,
+    })),
     // Fail closed until the concentrated-range contract upgrade and migration
     // have completed. Operations explicitly enable this in the live app spec.
     runRebalance: boolean(env, "RUN_REBALANCE", false),

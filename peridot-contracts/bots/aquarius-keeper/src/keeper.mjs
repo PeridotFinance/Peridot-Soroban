@@ -18,7 +18,11 @@ export class AquariusKeeper {
   async step(target, action, contractId, method, args = []) {
     this.logger.info("keeper step started", { target: target.label, action, contractId });
     try {
-      await this.client.execute(contractId, method, args);
+      const result = await this.client.execute(contractId, method, args);
+      if (result?.deferred) {
+        this.logger.info("harvest deferred", { target: target.label, contractId, reason: result.reason });
+        return "deferred";
+      }
       this.logger.info("keeper step completed", { target: target.label, action, contractId });
       return true;
     } catch (error) {
@@ -83,7 +87,10 @@ export class AquariusKeeper {
         "harvest",
         [scAddress(this.config.publicKey)],
       );
-      if (succeeded) {
+      if (succeeded === "deferred") {
+        // Recheck without signing on the next ordinary maintenance cycle.
+        this.nextHarvest.set(target.vaultId, now + this.config.pollIntervalMs);
+      } else if (succeeded) {
         this.nextHarvest.set(target.vaultId, now + this.config.harvestIntervalMs);
       } else {
         this.nextHarvest.set(target.vaultId, now + this.config.harvestRetryMs);

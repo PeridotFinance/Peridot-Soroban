@@ -4,7 +4,8 @@ One sequence-safe worker maintains all three Mainnet Aquarius strategies:
 
 1. refresh each strategy's cached NAV root every twenty minutes;
 2. simulate `needs_rebalance` and, when enabled, recenter an edge-bound range;
-3. claim, convert, and compound rewards every six hours;
+3. after the six-hour harvest interval, simulate claiming/conversion and submit only
+   when expected settlement funds meet the 0.001-asset deployment threshold;
 4. refresh each ReceiptVault's boosted-underlying cache.
 
 The worker services XLM, PYUSD, and USDC serially with one dedicated signer. Do
@@ -36,6 +37,16 @@ variable. Never put it in Git, an image, logs, or a checked-in `.env` file.
 
 ## Local verification
 
+`HARVEST_MIN_UNDERLYING_RAW` defaults to `10000` (0.001 XLM, PYUSD, or USDC;
+all three have seven decimals). The gate includes existing settlement cash, pending
+reward conversions, and pool fees observed in the simulated settlement-token transfers.
+It excludes raw AQUA and rolled-back calls. Below threshold, no harvest is signed and
+the next twenty-minute maintenance cycle checks again. NAV/cache refreshes and range
+checks continue independently. This is a deployment-dust gate, not a profitability
+guarantee or an atomic on-chain minimum; state can change between simulation and execution.
+Missing simulation evidence fails closed. Blocked conversions are logged as warnings,
+without a paid retry loop or a worker restart solely because the price guard fired.
+
 ```bash
 npm ci
 npm test
@@ -60,7 +71,7 @@ rollout is:
 
 1. Create the app from `.do/aquarius-keeper.yaml`; the public repository is
    cloned directly from dedicated immutable release branch
-   `aquarius-keeper-v0.2.0` without GitHub OAuth. Never move or replace that
+   `aquarius-keeper-v0.3.0` without GitHub OAuth. Never move or replace that
    branch or its matching tag; publish a new reviewed ref for each release.
 2. Keep `RUN_REBALANCE=false` until all six contract upgrades are complete and
    all three live positions have been migrated by the guarded rollout script.

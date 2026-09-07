@@ -21,6 +21,7 @@ function config(overrides = {}) {
     harvestOnStart: true,
     harvestIntervalMs: 3_600_000,
     harvestRetryMs: 300_000,
+    pollIntervalMs: 1_200_000,
     dryRun: true,
     ...overrides,
   };
@@ -155,4 +156,22 @@ test("counts a failed rebalance check and still refreshes the market cache", asy
 
   assert.equal(await keeper.runCycle(), 1);
   assert.deepEqual(methods, ["refresh_nav_root", "refresh_boosted_underlying"]);
+});
+
+test("a threshold deferral is healthy and still refreshes caches and checks ranges", async () => {
+  let now = 1_000_000;
+  const calls = [];
+  const client = {
+    async read() { return false; },
+    async execute(_id, method) {
+      calls.push(method);
+      return method === "harvest" ? { deferred: true } : {};
+    },
+  };
+  const keeper = new AquariusKeeper(config({ targets: [target("XLM")], runRebalance: true }), client, logger(), () => now);
+  assert.equal(await keeper.runCycle(), 0);
+  assert.deepEqual(calls, ["refresh_nav_root", "harvest", "refresh_boosted_underlying"]);
+  now += 1_200_000;
+  assert.equal(await keeper.runCycle(), 0);
+  assert.equal(calls.filter(method => method === "harvest").length, 2);
 });
