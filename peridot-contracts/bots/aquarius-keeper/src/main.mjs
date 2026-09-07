@@ -44,6 +44,8 @@ try {
   logger.info("Aquarius keeper started", {
     publicKey: config.publicKey,
     dryRun: config.dryRun,
+    xlmRebalanceIntervalMs: config.xlmRebalanceIntervalMs,
+    pollIntervalMs: config.pollIntervalMs,
     targets: config.targets.map((target) => ({
       label: target.label,
       vaultId: target.vaultId,

@@ -702,6 +702,14 @@ impl AquariusLpVault {
         if Self::is_legacy_full_range(env) {
             return true;
         }
+        // Only the admin can change the policy. Apply a different aligned width
+        // without waiting for the OLD range's edge; rebalance_due still enforces
+        // the cooldown and rebalance retains every price/accounting guard.
+        if i64::from(current_upper) - i64::from(current_lower)
+            != i64::from(desired_upper) - i64::from(desired_lower)
+        {
+            return true;
+        }
         let margin = i32::try_from(range_params(env).rebalance_margin_ticks)
             .expect("rebalance margin too large");
         spot_tick <= current_lower.saturating_add(margin)

@@ -156,6 +156,10 @@ fn deploy_token(env: &Env, symbol: &str) -> (Address, MockTokenClient<'static>) 
 }
 
 fn setup_with_binding(bind_receipt_market: bool) -> Fixture {
+    setup_with_spacing(bind_receipt_market, 60)
+}
+
+fn setup_with_spacing(bind_receipt_market: bool, spacing: i32) -> Fixture {
     let env = Env::default();
     // The vault authorizes its own nested pool calls via
     // `authorize_as_current_contract`, which is non-root auth.
@@ -179,7 +183,7 @@ fn setup_with_binding(bind_receipt_market: bool) -> Fixture {
 
     let pool_id = env.register(mock_aquarius_pool::MockAquariusPool, ());
     let pool = mock_aquarius_pool::MockAquariusPoolClient::new(&env, &pool_id);
-    pool.initialize(&token0, &token1, &60i32, &30u32);
+    pool.initialize(&token0, &token1, &spacing, &30u32);
     // The primary AQUA claim is deliberately distinct from the optional gauge
     // token. That keeps harvest tests honest: AQUA must be discovered from the
     // configured primary reward, not accidentally through `gauges_claim()`.
@@ -635,6 +639,16 @@ fn full_range_migration_fits_in_one_transaction() {
 #[test]
 #[ignore = "requires AQUARIUS_LIVE_WASM and AQUARIUS_NEW_WASM"]
 fn exact_mainnet_wasm_upgrade_preserves_state_and_migrates_the_position() {
+    run_exact_mainnet_upgrade(false);
+}
+
+#[test]
+#[ignore = "requires concentrated AQUARIUS_LIVE_WASM and AQUARIUS_NEW_WASM"]
+fn exact_mainnet_wasm_upgrade_applies_40_tick_policy_away_from_old_edges() {
+    run_exact_mainnet_upgrade(true);
+}
+
+fn run_exact_mainnet_upgrade(narrow_pilot: bool) {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
     env.ledger().set_timestamp(1_700_000_000);
@@ -652,7 +666,12 @@ fn exact_mainnet_wasm_upgrade_preserves_state_and_migrates_the_position() {
     let underlying_index = if token0 == usdc_id { 0 } else { 1 };
     let pool_id = env.register(mock_aquarius_pool::MockAquariusPool, ());
     let pool = mock_aquarius_pool::MockAquariusPoolClient::new(&env, &pool_id);
-    pool.initialize(&token0, &token1, &60i32, &30u32);
+    pool.initialize(
+        &token0,
+        &token1,
+        &(if narrow_pilot { 20 } else { 60 }),
+        &30u32,
+    );
     pool.set_reward_tokens(&aqua_id, &eurc_id);
     let oracle_id = env.register(MockOracle, ());
     let oracle = MockOracleClient::new(&env, &oracle_id);
@@ -691,6 +710,20 @@ fn exact_mainnet_wasm_upgrade_preserves_state_and_migrates_the_position() {
 
     seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
     deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    if narrow_pilot {
+        // Establish the deployed pilot's 400-tick width using the OLD binary.
+        f.vault
+            .set_range_policy(&f.admin, &200, &100, &3_600, &100, &true);
+        assert!(f.vault.rebalance(&f.admin));
+        assert_eq!(f.vault.get_ticks(), (-200, 200));
+        f.env.ledger().set_timestamp(1_700_003_601);
+        f.vault
+            .set_range_policy(&f.admin, &40, &20, &3_600, &100, &true);
+        assert!(
+            !f.vault.needs_rebalance(),
+            "old binary cannot apply the narrower width here"
+        );
+    }
     let legacy_liquidity = f.vault.get_position_liquidity();
     let legacy_shares = f.vault.balance(&f.receipt_market_id);
     assert!(legacy_liquidity > 0 && legacy_shares > 0);
@@ -703,7 +736,7 @@ fn exact_mainnet_wasm_upgrade_preserves_state_and_migrates_the_position() {
     f.vault.propose_upgrade_wasm(&f.admin, &new_hash);
     f.env
         .ledger()
-        .set_timestamp(1_700_000_000 + UPGRADE_TIMELOCK_SECS + 1);
+        .set_timestamp(f.env.ledger().timestamp() + UPGRADE_TIMELOCK_SECS + 1);
     f.vault.upgrade_wasm(&f.admin, &new_hash);
 
     assert_eq!(f.vault.get_admin(), f.admin);
@@ -713,6 +746,20 @@ fn exact_mainnet_wasm_upgrade_preserves_state_and_migrates_the_position() {
     );
     assert_eq!(f.vault.balance(&f.receipt_market_id), legacy_shares);
     assert_eq!(f.vault.get_position_liquidity(), legacy_liquidity);
+    if narrow_pilot {
+        assert!(f.vault.needs_rebalance());
+        assert!(f.vault.refresh_nav_root() > 0);
+        f.env.cost_estimate().budget().reset_unlimited();
+        assert!(f.vault.rebalance(&f.admin));
+        let resources = f.env.cost_estimate().resources();
+        assert!(resources.instructions < 100_000_000);
+        assert!(resources.memory_read_entries + resources.write_entries < 100);
+        assert_eq!(f.vault.get_ticks(), (-40, 40));
+        assert_eq!(f.vault.balance(&f.receipt_market_id), legacy_shares);
+        assert!(f.vault.get_position_liquidity() > 0);
+        assert!(!f.vault.needs_rebalance());
+        return;
+    }
     assert!(!f.vault.needs_rebalance());
 
     f.vault
@@ -734,6 +781,62 @@ fn exact_mainnet_wasm_upgrade_preserves_state_and_migrates_the_position() {
     assert_eq!(f.vault.get_ticks(), (-60, 180));
     assert_eq!(f.vault.balance(&f.receipt_market_id), legacy_shares);
     assert!(f.vault.get_position_liquidity() > 0);
+}
+
+#[test]
+fn changed_width_migrates_without_an_edge_but_retains_cooldown_and_guards() {
+    let f = setup_with_spacing(true, 20);
+    seed_pool(&f, 1_000_000_0000000i128, 857_000_0000000i128);
+    deposit_for(&f, &f.receipt_market_id, 2_000_0000000i128);
+    f.vault
+        .set_range_policy(&f.admin, &200, &80, &3_600, &100, &true);
+    assert!(f.vault.rebalance(&f.admin));
+    assert_eq!(f.vault.get_ticks(), (-200, 200));
+    let shares = f.vault.total_supply();
+    let liquidity = f.vault.get_position_liquidity();
+
+    let stranger = Address::generate(&f.env);
+    assert!(f
+        .vault
+        .try_set_range_policy(&stranger, &40, &20, &3_600, &100, &true)
+        .is_err());
+    f.vault
+        .set_range_policy(&f.admin, &40, &20, &3_600, &100, &true);
+    assert!(!f.vault.needs_rebalance());
+    assert!(!f.vault.rebalance(&stranger));
+    f.env.ledger().set_timestamp(1_700_003_600);
+    f.vault.refresh_nav_root();
+    assert!(f.vault.needs_rebalance());
+
+    // Width mismatch is not a price/quote guard bypass. Failed mint rolls the
+    // withdrawal back, keeping both pool and strategy ownership intact.
+    f.pool.set_deposit_quote_extra(&(u128::MAX / 2), &0);
+    assert!(f.vault.try_rebalance(&stranger).is_err());
+    assert_eq!(f.vault.get_ticks(), (-200, 200));
+    assert_eq!(f.vault.get_position_liquidity(), liquidity);
+    assert_eq!(
+        f.pool.get_user_position_snapshot(&f.vault_id).raw_liquidity,
+        liquidity
+    );
+    assert_eq!(f.vault.total_supply(), shares);
+    f.pool.set_deposit_quote_extra(&0, &0);
+    assert!(f.vault.rebalance(&stranger));
+    assert_eq!(f.vault.get_ticks(), (-40, 40));
+    assert_eq!(f.vault.total_supply(), shares);
+    assert!(!f.vault.needs_rebalance());
+    f.env.ledger().set_timestamp(1_700_007_200);
+    assert!(
+        !f.vault.needs_rebalance(),
+        "same width must not churn after cooldown"
+    );
+    f.vault
+        .set_range_policy(&f.admin, &200, &80, &3_600, &100, &true);
+    f.vault.refresh_nav_root();
+    assert!(
+        f.vault.rebalance(&stranger),
+        "admin can also restore the wider pilot"
+    );
+    assert_eq!(f.vault.get_ticks(), (-200, 200));
 }
 
 #[test]

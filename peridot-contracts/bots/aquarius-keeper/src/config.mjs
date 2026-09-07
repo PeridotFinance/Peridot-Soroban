@@ -108,6 +108,11 @@ export function loadConfig(env = process.env) {
     // Fail closed until the concentrated-range contract upgrade and migration
     // have completed. Operations explicitly enable this in the live app spec.
     runRebalance: boolean(env, "RUN_REBALANCE", false),
+    // XLM-only scheduling; stablecoin checks retain the ordinary poll cadence.
+    xlmRebalanceIntervalMs: integer(env, "XLM_REBALANCE_INTERVAL_MS", 3_600_000, {
+      min: 1_200_000,
+      max: 3_600_000,
+    }),
     harvestOnStart: boolean(env, "HARVEST_ON_START", true),
     pollIntervalMs: integer(env, "POLL_INTERVAL_MS", 1_200_000, {
       min: 30_000,

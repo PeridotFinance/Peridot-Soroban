@@ -60,6 +60,24 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- XLM-only +/-40-tick pilot candidate (2026-09-07): aligned width changes now
+  trigger the existing guarded rebalance even away from the old range's edge.
+  Cooldown, oracle/quote checks, balance-delta checks and atomic rollback remain
+  unchanged; no storage or ABI migration is added. Proposed policy is half-width
+  40, margin 20, cooldown 3600, divergence 100 bps. PYUSD/USDC remain unchanged.
+  Keeper v0.4.0 adds `XLM_REBALANCE_INTERVAL_MS=3600000`; stable range checks and
+  all NAV/cache refreshes remain on twenty-minute cycles. Harvest threshold and
+  reward floors are untouched. This is not a guaranteed yield increase.
+  `scripts/rollout_aquarius_xlm40_mainnet.sh` defaults to a read-only proposal
+  preflight. It pins the XLM strategy, production admin and optimized target
+  `00a1e9097339cbd1ee194a7a7f938d8d72918a7c95f89520c23c5ea2d4b8162e`
+  (60,556 bytes, `aquarius_lp_vault.xlm40.optimized.wasm`). It refuses another
+  pending target and does not reset a matching timelock. `MODE=execute` enforces
+  maturity plus 30 seconds, pauses only XLM, simulates the exact live rebalance,
+  checks the actual 80-tick position and accounting, then restores availability.
+  Failure after pausing leaves XLM paused for inspection. Almanax and the Mainnet
+  proposal/keeper release are still pending at this candidate checkpoint; see
+  `Agents.md` for current status. Do not mistake the candidate for a live migration.
 - Keeper v0.3.0 (`b5a4aea`, immutable branch/tag `aquarius-keeper-v0.3.0`) adds a
   harvest-only threshold: simulate the exact harvest and sign only when expected
   settlement funds reach `HARVEST_MIN_UNDERLYING_RAW=10000` (0.001 XLM/PYUSD/USDC).

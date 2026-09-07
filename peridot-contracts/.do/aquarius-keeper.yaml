@@ -4,7 +4,7 @@ workers:
   - name: mainnet-keeper
     git:
       repo_clone_url: https://github.com/PeridotFinance/Peridot-Soroban.git
-      branch: aquarius-keeper-v0.3.0
+      branch: aquarius-keeper-v0.4.0
     source_dir: peridot-contracts/bots/aquarius-keeper
     dockerfile_path: peridot-contracts/bots/aquarius-keeper/Dockerfile
     instance_count: 1
@@ -45,6 +45,9 @@ workers:
       - key: POLL_INTERVAL_MS
         scope: RUN_TIME
         value: "1200000"
+      - key: XLM_REBALANCE_INTERVAL_MS
+        scope: RUN_TIME
+        value: "3600000"
       - key: HARVEST_INTERVAL_MS
         scope: RUN_TIME
         value: "21600000"

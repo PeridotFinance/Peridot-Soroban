@@ -31,6 +31,50 @@ function logger() {
   return { info() {}, warn() {}, error() {} };
 }
 
+test("XLM checks hourly while all caches and stable ranges keep twenty-minute cadence", async () => {
+  let now = 0;
+  const reads = [];
+  const writes = [];
+  const client = {
+    async read(id) { reads.push(id); now += 17; return false; },
+    async execute(id, method) { writes.push([id, method]); now += 31; },
+  };
+  const keeper = new AquariusKeeper(config({ runHarvest: false, runRebalance: true }), client, logger(), () => now);
+  for (const time of [0, 1_200_000, 2_400_000, 3_600_000]) {
+    now = time;
+    assert.equal(await keeper.runCycle(), 0);
+  }
+  assert.equal(reads.filter(id => id === "vault-XLM").length, 2);
+  assert.equal(reads.filter(id => id === "vault-PYUSD").length, 4);
+  assert.equal(reads.filter(id => id === "vault-USDC").length, 4);
+  assert.equal(writes.length, 24);
+  now = 10_800_000; // Missed intervals produce one check, not catch-up calls.
+  await keeper.runCycle();
+  assert.equal(reads.filter(id => id === "vault-XLM").length, 3);
+});
+
+test("XLM read failures retry next cycle but failed transactions wait for next hourly slot", async () => {
+  let now = 0;
+  let reads = 0;
+  let rebalances = 0;
+  const client = {
+    async read() { if (++reads === 1) throw new Error("RPC unavailable"); return true; },
+    async execute(_id, method) {
+      if (method === "rebalance") { ++rebalances; throw new Error("guard failed"); }
+    },
+  };
+  const keeper = new AquariusKeeper(config({ targets: [target("XLM")], runHarvest: false, runRebalance: true }), client, logger(), () => now);
+  assert.equal(await keeper.runCycle(), 1);
+  now = 1_200_000;
+  assert.equal(await keeper.runCycle(), 1);
+  now = 2_400_000;
+  assert.equal(await keeper.runCycle(), 0);
+  assert.equal(rebalances, 1);
+  now = 3_600_000;
+  assert.equal(await keeper.runCycle(), 1);
+  assert.equal(rebalances, 2);
+});
+
 test("services all targets serially and harvests only when due", async () => {
   let now = 1_000_000;
   const calls = [];

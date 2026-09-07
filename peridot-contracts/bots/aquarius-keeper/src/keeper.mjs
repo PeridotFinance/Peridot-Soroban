@@ -7,6 +7,8 @@ export class AquariusKeeper {
     this.logger = logger;
     this.now = now;
     const initialHarvest = this.now();
+    this.rebalanceEpoch = initialHarvest;
+    this.nextRebalance = new Map(config.targets.map(target => [target.vaultId, initialHarvest]));
     this.nextHarvest = new Map(
       config.targets.map((target) => [
         target.vaultId,
@@ -63,8 +65,19 @@ export class AquariusKeeper {
       failures += 1;
     }
 
-    if (this.config.runRebalance) {
+    const rebalanceNow = this.now();
+    if (this.config.runRebalance &&
+        (target.label !== "XLM" || rebalanceNow >= this.nextRebalance.get(target.vaultId))) {
       const check = await this.shouldRebalance(target);
+      // Anchor deadlines to startup, not the end of an RPC call: a few seconds
+      // of latency must not turn three twenty-minute cycles into four. Missed
+      // checks never accumulate into catch-up transactions. Failed read-only
+      // checks retry next cycle; a submitted rebalance waits for the next slot.
+      if (check.succeeded && target.label === "XLM") {
+        const interval = this.config.xlmRebalanceIntervalMs ?? 3_600_000;
+        const slot = Math.floor((rebalanceNow - this.rebalanceEpoch) / interval) + 1;
+        this.nextRebalance.set(target.vaultId, this.rebalanceEpoch + slot * interval);
+      }
       if (!check.succeeded) {
         failures += 1;
       } else if (
