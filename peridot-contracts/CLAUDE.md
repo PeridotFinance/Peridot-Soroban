@@ -60,6 +60,27 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- Keeper v0.3.0 (`b5a4aea`, immutable branch/tag `aquarius-keeper-v0.3.0`) adds a
+  harvest-only threshold: simulate the exact harvest and sign only when expected
+  settlement funds reach `HARVEST_MIN_UNDERLYING_RAW=10000` (0.001 XLM/PYUSD/USDC).
+  Include existing settlement cash, converted rewards and pool fees; exclude raw AQUA
+  and failed nested calls. Below-threshold results defer to the next twenty-minute
+  cycle without failing/restarting the worker. Successful harvests retain the six-hour
+  interval; NAV/cache refreshes and range checks continue independently. This is a dust
+  deployment gate, not a profitability guarantee or atomic on-chain minimum.
+  Conversion skips are logged, and the on-chain harvest cooldown is checked before
+  simulation. Missing simulation evidence fails closed. No reward floors were changed.
+  All 17 keeper tests pass; Almanax full-range scan
+  `506550e9-bf92-4897-91b5-f152ebb7d712` (`3895b7a..b5a4aea`) returned zero findings.
+  Mainnet simulation at ledger 64317866 deferred all three harvests with expected
+  settlement balances 4267/5329/5320 raw units and completed with zero failed steps.
+  DigitalOcean dry-run deployment `640f70ff-db3c-427b-8ce9-3dc765ecf656` passed all
+  three gates and all maintenance simulations. Live deployment
+  `00ef5021-83da-40c1-b5bb-eb75adf0581a` is ACTIVE on the exact release commit,
+  with one worker, DRY_RUN=false, HARVEST_ON_START=false and RUN_REBALANCE=true.
+  Its first live cycle at 2026-09-07 15:07 UTC confirmed all six refresh transactions
+  (ledgers 64317888..64317893), no rebalances and zero failures. No harvest was due
+  during startup; the first scheduled threshold check is six hours after startup.
 - Users enter only through ReceiptVault; AquariusLpVault is permanently bound to one
   matching market and rejects direct deposits. Its internal strategy shares are
   non-transferable and may grow only for that bound ReceiptVault; users transfer the
