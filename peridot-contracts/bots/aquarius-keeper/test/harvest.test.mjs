@@ -48,7 +48,7 @@ test("live execute defers below threshold before preparation or signing", async 
   const client = Object.create(StellarClient.prototype);
   client.config = { dryRun: false, harvestMinUnderlyingRaw: 10_000n };
   client.logger = { info() {}, warn() {} };
-  client.read = async (_id, method) => ({ get_underlying: token, get_last_harvest: 0n, get_params: { harvest_cooldown: 3600 }, balance: 100n })[method];
+  client.read = async (_id, method) => ({ get_underlying: token, get_last_harvest: 0n, get_params: { harvest_cooldown: 3600n }, balance: 100n })[method];
   client.buildTransaction = async () => ({});
   client.server = {
     simulateTransaction: async () => ({ result: {}, events: [transfer(50n)] }),
@@ -60,7 +60,7 @@ test("live execute defers below threshold before preparation or signing", async 
 test("on-chain cooldown defers without attempting harvest simulation", async () => {
   const client = Object.create(StellarClient.prototype);
   client.read = async (_id, method) => method === "get_last_harvest"
-    ? BigInt(Math.floor(Date.now() / 1000)) : { harvest_cooldown: 3600 };
+    ? BigInt(Math.floor(Date.now() / 1000)) : { harvest_cooldown: 3600n };
   client.buildTransaction = async () => { throw new Error("must not build"); };
   assert.equal((await client.execute(vault, "harvest")).reason, "cooldown");
 });

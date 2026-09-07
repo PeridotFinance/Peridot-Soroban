@@ -78,11 +78,11 @@ export class StellarClient {
       const lastHarvest = await this.read(contractId, "get_last_harvest");
       const params = await this.read(contractId, "get_params");
       if (typeof lastHarvest !== "bigint" || lastHarvest < 0n ||
-          !Number.isSafeInteger(params.harvest_cooldown) || params.harvest_cooldown < 0) {
+          typeof params.harvest_cooldown !== "bigint" || params.harvest_cooldown < 0n) {
         throw new Error("invalid on-chain harvest cooldown");
       }
       if (lastHarvest > 0n && BigInt(Math.floor(Date.now() / 1000)) <
-          lastHarvest + BigInt(params.harvest_cooldown) + 30n) {
+          lastHarvest + params.harvest_cooldown + 30n) {
         return { deferred: true, method, reason: "cooldown" };
       }
       const underlying = await this.read(contractId, "get_underlying");
