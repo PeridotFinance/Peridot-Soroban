@@ -44,8 +44,18 @@ read_key() {
     --output json --key-xdr "$1"
 }
 pending_eta() {
-  read_key "$PENDING_ETA_KEY" | jq -er '[.. | objects | select(has("u64")) | .u64 | tonumber] |
-    if length == 1 and .[0] > 0 then .[0] else error("invalid upgrade ETA") end'
+  # Stellar CLI emits CSV rows even with --output json: JSON key, JSON value,
+  # ledger metadata. Parse the value column, never regex-match arbitrary text.
+  read_key "$PENDING_ETA_KEY" | python3 -c '
+import csv, json, sys
+rows = list(csv.reader(sys.stdin))
+assert len(rows) == 1 and len(rows[0]) >= 2, "invalid contract-data row"
+value = json.loads(rows[0][1])
+assert set(value) == {"u64"}, "invalid upgrade ETA type"
+eta = int(value["u64"])
+assert 0 < eta < 2**64, "invalid upgrade ETA"
+print(eta)
+'
 }
 width() { jq -er 'if type == "array" and length == 2 then .[1] - .[0] else error("invalid ticks") end'; }
 pause_market() {
@@ -91,7 +101,8 @@ elif [[ "$result" != *"no matching contract data entries were found"* ]]; then
 fi
 if [[ "$MODE" == propose ]]; then
   if [[ "$pending" == true ]]; then
-    echo "Matching XLM proposal already staged; ETA=$(pending_eta). No timelock reset."
+    eta=$(pending_eta)
+    echo "Matching XLM proposal already staged; ETA=$eta. No timelock reset."
     exit 0
   fi
   if [[ "$PREFLIGHT_ONLY" == true ]]; then
@@ -102,7 +113,8 @@ if [[ "$MODE" == propose ]]; then
   expect uploaded_hash "$(stellar contract upload --no-cache --inclusion-fee "$INCLUSION_FEE" \
     --wasm "$STRATEGY_WASM" --source-account "$IDENTITY" --network "$NETWORK")" "$NEW_HASH"
   invoke "$STRATEGY" propose_upgrade_wasm --admin_addr "$ADMIN" --new_wasm_hash "$NEW_HASH"
-  echo "XLM-only 24-hour proposal confirmed; ETA=$(pending_eta). Position/policy unchanged."
+  eta=$(pending_eta)
+  echo "XLM-only 24-hour proposal confirmed; ETA=$eta. Position/policy unchanged."
   exit 0
 fi
 

@@ -75,9 +75,14 @@ MarginController (leveraged trading, optional)
   pending target and does not reset a matching timelock. `MODE=execute` enforces
   maturity plus 30 seconds, pauses only XLM, simulates the exact live rebalance,
   checks the actual 80-tick position and accounting, then restores availability.
-  Failure after pausing leaves XLM paused for inspection. Almanax and the Mainnet
-  proposal/keeper release are still pending at this candidate checkpoint; see
-  `Agents.md` for current status. Do not mistake the candidate for a live migration.
+  Failure after pausing leaves XLM paused for inspection. Full-range Almanax scan
+  `96041ede-a26e-4005-a87c-64dedb658f4b` (`4054dbd..f3d8b3e`) returned zero findings.
+  XLM proposal `f222d9f4b44364db131c956e362077eaa4a728d2d5446df34cc7be5645e5173d`
+  is confirmed; safe execution is 2026-09-08 19:07:08 CEST (ETA + 30 seconds).
+  The current position/policy remain unchanged until execution. CLI contract-data
+  output is CSV containing JSON columns, so the executor parses the ETA column
+  strictly. Keeper v0.4.0 immutable ref is published at `f3d8b3e`; see `Agents.md`
+  for deployment status. Do not mistake the staged upgrade for a live migration.
 - Keeper v0.3.0 (`b5a4aea`, immutable branch/tag `aquarius-keeper-v0.3.0`) adds a
   harvest-only threshold: simulate the exact harvest and sign only when expected
   settlement funds reach `HARVEST_MIN_UNDERLYING_RAW=10000` (0.001 XLM/PYUSD/USDC).
