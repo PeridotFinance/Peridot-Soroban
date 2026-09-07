@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { nativeToScVal, StrKey } from "@stellar/stellar-sdk";
+import { nativeToScVal, scValToNative, StrKey } from "@stellar/stellar-sdk";
 import { harvestDecision } from "../src/harvest.mjs";
 import { StellarClient } from "../src/stellar.mjs";
 
@@ -13,12 +13,26 @@ function event(emitter, topics, data, successful = true) {
     event: () => ({
       contractId: () => StrKey.decodeContract(emitter),
       type: () => ({ name: "contract" }),
-      body: () => ({ v0: () => ({ topics: () => topics.map(x => nativeToScVal(x)), data: () => nativeToScVal(data) }) }),
+      body: () => ({ v0: () => ({
+        topics: () => topics.map(x => nativeToScVal(x, {
+          type: StrKey.isValidContract(x) ? "address" : "symbol",
+        })),
+        data: () => nativeToScVal(data),
+      }) }),
     }),
   };
 }
 const transfer = (amount, incoming = true, successful = true) =>
   event(token, ["transfer", incoming ? pool : vault, incoming ? vault : pool], amount, successful);
+
+test("SDK decodes real Soroban address return values and transfer topics to strings", () => {
+  const encoded = nativeToScVal(token, { type: "address" });
+  assert.equal(encoded.switch().name, "scvAddress");
+  assert.equal(scValToNative(encoded), token);
+  const topics = transfer(1n).event().body().v0().topics();
+  assert.equal(topics[1].switch().name, "scvAddress");
+  assert.equal(scValToNative(topics[2]), vault);
+});
 
 test("uses settlement value plus idle cash and accepts the exact threshold", () => {
   assert.equal(harvestDecision([transfer(4_999n)], vault, token, 5_000n, 10_000n).ready, false);
