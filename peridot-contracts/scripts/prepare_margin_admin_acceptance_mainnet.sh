@@ -53,11 +53,11 @@ one treasury co-signer; they must replace YOUR_IDENTITY with their local key:
 
 FIRST_SIGNED_XDR='$FIRST_SIGNED_XDR'
 EXPECTED_TX_HASH='$EXPECTED_TX_HASH'
-ACTUAL_TX_HASH="\$(stellar tx hash --network $NETWORK \"\$FIRST_SIGNED_XDR\")"
+ACTUAL_TX_HASH=\$(stellar tx hash --network $NETWORK "\$FIRST_SIGNED_XDR")
 if [ "\$ACTUAL_TX_HASH" != "\$EXPECTED_TX_HASH" ]; then
   echo "Transaction hash mismatch; refusing to sign." >&2
   exit 1
 fi
-FULLY_SIGNED_XDR="\$(stellar tx sign --network $NETWORK --sign-with-key YOUR_IDENTITY \"\$FIRST_SIGNED_XDR\")"
+FULLY_SIGNED_XDR=\$(stellar tx sign --network $NETWORK --sign-with-key YOUR_IDENTITY "\$FIRST_SIGNED_XDR")
 stellar tx send --network $NETWORK "\$FULLY_SIGNED_XDR"
 SUMMARY
