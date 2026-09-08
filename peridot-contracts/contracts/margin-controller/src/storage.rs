@@ -44,7 +44,6 @@ pub trait PeridottrollerContract {
     fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)>;
     fn cache_price(env: Env, token: Address) -> Option<(u128, u128)>;
     fn enter_market(env: Env, user: Address, market: Address);
-    fn is_market_supported(env: Env, market: Address) -> bool;
     fn is_borrow_paused(env: Env, market: Address) -> bool;
     fn is_liquidation_paused(env: Env, market: Address) -> bool;
     fn get_market_cf(env: Env, market: Address) -> u128;

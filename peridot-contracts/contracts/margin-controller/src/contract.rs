@@ -1066,7 +1066,11 @@ impl MarginController {
     }
 
     pub(crate) fn assert_market_supported(env: &Env, vault: &Address) {
-        if !get_peridottroller(env).is_market_supported(vault) {
+        // Legacy Mainnet Peridottrollers predate the public
+        // `is_market_supported` view. Their `get_market_cf` returns zero for an
+        // unconfigured market, so a nonzero factor is the compatible eligibility
+        // signal for margin collateral and debt markets.
+        if get_peridottroller(env).get_market_cf(vault) == 0 {
             panic!("market not supported");
         }
     }

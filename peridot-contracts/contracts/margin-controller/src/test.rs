@@ -4498,6 +4498,40 @@ fn test_per_pair_execution_config_rejects_open_pool_oracle_divergence() {
 }
 
 #[test]
+fn test_open_position_v3_rejects_zero_cf_market() {
+    let (env, controller_id, usdt_id, xlm_id, user, peridottroller_id, usdt_vault_id, xlm_vault_id) =
+        setup_min_with_vaults();
+    env.cost_estimate().disable_resource_limits();
+    env.cost_estimate().budget().reset_unlimited();
+    let controller = MarginControllerClient::new(&env, &controller_id);
+
+    receipt_vault::ReceiptVaultClient::new(&env, &usdt_vault_id).deposit(&user, &500u128);
+    controller.transfer_spot_to_margin(&user, &usdt_id, &500u128);
+    let (pool, pool_id, pool_tokens) = setup_perps_pool(&env, &usdt_id, &xlm_id);
+    MockPeridottrollerClient::new(&env, &peridottroller_id).set_market_cf(&xlm_vault_id, &0u128);
+
+    assert!(controller
+        .try_begin_open_position_v3(
+            &user,
+            &usdt_id,
+            &xlm_id,
+            &500u128,
+            &3u128,
+            &PositionSide::Long,
+            &pool_tokens,
+            &pool_id,
+            &pool,
+            &1u128,
+        )
+        .is_err());
+    assert_eq!(controller.get_user_positions(&user).len(), 0);
+    assert_eq!(
+        controller.get_margin_balance_ptokens(&user, &usdt_id),
+        500u128
+    );
+}
+
+#[test]
 fn test_legacy_per_pair_configs_remain_in_persistent_storage() {
     let (
         env,
