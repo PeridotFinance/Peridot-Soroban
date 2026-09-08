@@ -45,8 +45,8 @@ AUDITED_COMMIT=230101e6f79bdfd1459f7854e64b81324aeab08a
 
 # Pilot policy. V3 fee charging is intentionally not configured because the
 # current V3 paths do not consume OpenFeeBps/CloseFeeBps.
-MAX_LEVERAGE=3
-MAINTENANCE_MARGIN_SCALED=50000       # 5%
+MAX_LEVERAGE=5
+MAINTENANCE_MARGIN_SCALED=100000      # 10%
 LIQUIDATION_INCENTIVE_SCALED=10000    # 1%
 MAX_OPEN_DEVIATION_SCALED=50000       # 5%
 OPEN_SLIPPAGE_SCALED=20000            # 2%
