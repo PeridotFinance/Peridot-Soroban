@@ -60,6 +60,26 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- All three +/-40 migrations completed on Mainnet on 2026-09-09, after the
+  individual proposal timelocks matured. Strategies now run the reviewed
+  `00a1e9097339cbd1ee194a7a7f938d8d72918a7c95f89520c23c5ea2d4b8162e` WASM;
+  ReceiptVault binaries are unchanged. Actual positions: XLM `[-40,40]`, PYUSD
+  and USDC `[-60,20]`, each 80 ticks total. Policies are half40/margin20,
+  cooldown3600/divergence100, enabled. Independent post-migration pool snapshots
+  matched strategy liquidity: 60426561125 / 12081792690 / 12081852089 respectively.
+  All pToken supplies, strategy shares and tracked deposits were preserved.
+  Deposits/redemptions are open, CF=0, borrows=0, borrow breakers renewed.
+  Full-holder withdrawal simulations passed for all three after migration; no
+  deposits or withdrawals were submitted. All 36 rollout transactions succeeded,
+  costing 0.5377548 XLM total; deployer retained 48.5861082 XLM. No repeated upload.
+  Keeper v0.4.0 remains on its existing single-worker deployment: XLM checks hourly,
+  stablecoin checks and NAV/cache maintenance every twenty minutes. Reward floors,
+  conversion routes and harvest threshold remain unchanged; no APY is guaranteed.
+  First post-migration keeper cycle completed at 09:50:44 UTC with zero failures,
+  six maintenance refreshes and one XLM harvest. Decoded harvest events confirm
+  0.3470593 AQUA converted into 0.0006317 XLM, without a harvest_skipped event.
+  EURC and the unrelated Margin V3 rollout were not modified. Complete upgrade and
+  rebalance hashes are in Agents.md. The proposal-only records below are historical.
 - PYUSD/USDC +/-40 extension approved on 2026-09-07: reuse the exact uploaded
   `00a1e909...` candidate below for BOTH existing stablecoin settlement strategies.
   `scripts/rollout_aquarius_stable40_mainnet.sh` requires LABEL=PYUSD or LABEL=USDC,
@@ -73,8 +93,8 @@ MarginController (leveraged trading, optional)
   No contract/keeper code changes; existing candidate scans and WASM tests apply.
   Both proposals are now confirmed: PYUSD tx `9d057b4a...`, safe execution
   2026-09-08 19:55:24 CEST; USDC tx `ddaf2861...`, safe execution 19:55:35 CEST.
-  Combined fees 0.0847930 XLM; no repeated WASM upload. Positions/policies remain
-  unchanged until execution. See Agents.md for complete hashes and ETAs.
+  Combined proposal fees 0.0847930 XLM; no repeated WASM upload. Both were executed
+  on 2026-09-09 as recorded above. See Agents.md for complete hashes and ETAs.
   EURC/USDC is assessment-only: real FX exposure, live concentrated pool spacing 60
   means minimum half-width 120, separate EURC/USDC oracle prices are available,
   but the checked EURC sale quote is 1.586% below oracle fair value. Investigate
@@ -83,7 +103,8 @@ MarginController (leveraged trading, optional)
   trigger the existing guarded rebalance even away from the old range's edge.
   Cooldown, oracle/quote checks, balance-delta checks and atomic rollback remain
   unchanged; no storage or ABI migration is added. Proposed policy is half-width
-  40, margin 20, cooldown 3600, divergence 100 bps. PYUSD/USDC remain unchanged.
+  40, margin 20, cooldown 3600, divergence 100 bps. The later approved extension
+  applies the same policy to PYUSD/USDC, as recorded above.
   Keeper v0.4.0 adds `XLM_REBALANCE_INTERVAL_MS=3600000`; stable range checks and
   all NAV/cache refreshes remain on twenty-minute cycles. Harvest threshold and
   reward floors are untouched. This is not a guaranteed yield increase.
@@ -98,7 +119,7 @@ MarginController (leveraged trading, optional)
   `96041ede-a26e-4005-a87c-64dedb658f4b` (`4054dbd..f3d8b3e`) returned zero findings.
   XLM proposal `f222d9f4b44364db131c956e362077eaa4a728d2d5446df34cc7be5645e5173d`
   is confirmed; safe execution is 2026-09-08 19:07:08 CEST (ETA + 30 seconds).
-  The current position/policy remain unchanged until execution. CLI contract-data
+  Execution completed on 2026-09-09 as recorded above. CLI contract-data
   output is CSV containing JSON columns, so the executor parses the ETA column
   strictly. Final full-range rescan `c7aa7b9b-ae99-4c71-813b-d9474665ed6b`
   (`4054dbd..a23fc82`) also returned zero findings. Keeper v0.4.0 immutable ref
@@ -107,7 +128,7 @@ MarginController (leveraged trading, optional)
   negative range checks with zero failures. Upload/proposal charged 66.8843791 XLM
   total; the inclusion-fee cap does not cap Soroban resource/rent fees. Deployer
   balance afterward was 35.6168927 XLM. See `Agents.md` for the transaction trail.
-  Do not mistake the staged upgrade for a live migration.
+  That proposal-only checkpoint is superseded by the verified live migration above.
 - Keeper v0.3.0 (`b5a4aea`, immutable branch/tag `aquarius-keeper-v0.3.0`) adds a
   harvest-only threshold: simulate the exact harvest and sign only when expected
   settlement funds reach `HARVEST_MIN_UNDERLYING_RAW=10000` (0.001 XLM/PYUSD/USDC).
@@ -184,8 +205,8 @@ MarginController (leveraged trading, optional)
   live-tick/range geometry within five percentage points, performs one guarded
   excess-leg swap, and
   atomically fails unless a new position is minted with at least 95% of pair value
-  redeployed. XLM/yXLM targets roughly +/-2%; both PYUSD- and USDC-settled strategies
-  target roughly +/-1% in their shared pool, with a six-hour recenter cooldown.
+  redeployed. All three now target half-width 40 ticks (roughly 0.8% total price
+  width), with a one-hour recenter cooldown. Range centers follow the pool tick grid.
 - The supply-only Mainnet rollout completed on 2026-08-27 after the clean Almanax
   scan and live pool/oracle/route preflights. A live deposit/partial-withdrawal smoke
   test passed for all three markets on 2026-08-28. Isolated controller
