@@ -60,6 +60,7 @@ test("rejects missing evidence and invalid settlement accounting", () => {
 });
 test("live execute defers below threshold before preparation or signing", async () => {
   const client = Object.create(StellarClient.prototype);
+  client.navTarget = () => null; // Freshness has its own client regression suite.
   client.config = { dryRun: false, harvestMinUnderlyingRaw: 10_000n };
   client.logger = { info() {}, warn() {} };
   client.read = async (_id, method) => ({ get_underlying: token, get_last_harvest: 0n, get_params: { harvest_cooldown: 3600n }, balance: 100n })[method];
@@ -73,6 +74,7 @@ test("live execute defers below threshold before preparation or signing", async 
 
 test("on-chain cooldown defers without attempting harvest simulation", async () => {
   const client = Object.create(StellarClient.prototype);
+  client.navTarget = () => null;
   client.read = async (_id, method) => method === "get_last_harvest"
     ? BigInt(Math.floor(Date.now() / 1000)) : { harvest_cooldown: 3600n };
   client.buildTransaction = async () => { throw new Error("must not build"); };

@@ -16,6 +16,24 @@ function stringify(value) {
   return JSON.stringify(value, (_, item) => (typeof item === "bigint" ? item.toString() : item));
 }
 
+// Never serialize SDK transaction objects: they contain full signed envelopes
+// and can exceed the log transport limit, hiding subsequent failure records.
+export function transactionFailure(result) {
+  let code;
+  try { code = result.resultXdr?.result().switch().name; } catch { /* optional XDR */ }
+  return stringify({ status: result.status, hash: result.txHash ?? result.hash, ledger: result.ledger, code });
+}
+
+const TX_LIFETIME_SECONDS = 60;
+const NAV_SAFETY_SECONDS = 30;
+
+export function navIsFresh(timestamp, maxAge, nowSeconds) {
+  return typeof timestamp === "bigint" && timestamp > 0n &&
+    typeof maxAge === "bigint" && maxAge > 0n &&
+    timestamp <= nowSeconds &&
+    nowSeconds - timestamp + BigInt(TX_LIFETIME_SECONDS + NAV_SAFETY_SECONDS) < maxAge;
+}
+
 export class StellarClient {
   constructor(config, logger = console) {
     this.server = new rpc.Server(config.rpcUrl, {
@@ -68,11 +86,34 @@ export class StellarClient {
       networkPassphrase: this.config.networkPassphrase,
     })
       .addOperation(contract.call(method, ...args))
-      .setTimeout(60)
+      .setTimeout(TX_LIFETIME_SECONDS)
       .build();
   }
 
+  async freshNav(vaultId) {
+    const params = await this.read(vaultId, "get_params");
+    const timestamp = await this.read(vaultId, "get_last_nav_root_at");
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    if (navIsFresh(timestamp, params?.nav_root_max_age, now)) return true;
+    this.logger.warn("NAV freshness guard deferred dependent transactions", {
+      vaultId, timestamp: String(timestamp), maxAge: String(params?.nav_root_max_age),
+    });
+    return false;
+  }
+
+  navTarget(contractId, method) {
+    if (!["harvest", "rebalance", "refresh_boosted_underlying"].includes(method)) return null;
+    const target = this.config.targets.find(t => method === "refresh_boosted_underlying"
+      ? t.marketId === contractId : t.vaultId === contractId);
+    if (!target) throw new Error("dependent transaction is not a configured keeper target");
+    return target.vaultId;
+  }
+
   async execute(contractId, method, args = []) {
+    const navTarget = this.navTarget(contractId, method);
+    if (navTarget && !(await this.freshNav(navTarget))) {
+      return { deferred: true, method, reason: "stale_nav" };
+    }
     let harvestInputs;
     if (method === "harvest") {
       const lastHarvest = await this.read(contractId, "get_last_harvest");
@@ -133,15 +174,20 @@ export class StellarClient {
       : await this.retryRead(`${method} preparation`, () =>
       this.server.prepareTransaction(transaction),
     );
+    // Preparation and other read-only probes can take time. Check again before
+    // signing; retain 60s transaction lifetime plus 30s margin below cache expiry.
+    if (navTarget && !(await this.freshNav(navTarget))) {
+      return { deferred: true, method, reason: "stale_nav" };
+    }
     prepared.sign(this.config.keypair);
     const submitted = await this.server.sendTransaction(prepared);
     if (submitted.status === "ERROR" || submitted.status === "TRY_AGAIN_LATER") {
-      throw new Error(`${method} submission failed: ${stringify(submitted)}`);
+      throw new Error(`${method} submission failed: ${transactionFailure(submitted)}`);
     }
 
     const result = await this.waitForTransaction(submitted.hash);
     if (result.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
-      throw new Error(`${method} failed on-chain: ${stringify(result)}`);
+      throw new Error(`${method} failed on-chain: ${transactionFailure(result)}`);
     }
     if (method === "harvest") {
       for (const event of result.events?.contractEventsXdr?.flat() ?? []) {
@@ -160,6 +206,9 @@ export class StellarClient {
       hash: submitted.hash,
       ledger: result.ledger,
     });
+    if (method === "refresh_nav_root" && !(await this.freshNav(contractId))) {
+      return { deferred: true, method, reason: "stale_nav", hash: submitted.hash, ledger: result.ledger };
+    }
     return { hash: submitted.hash, ledger: result.ledger };
   }
 

@@ -22,7 +22,7 @@ export class AquariusKeeper {
     try {
       const result = await this.client.execute(contractId, method, args);
       if (result?.deferred) {
-        this.logger.info("harvest deferred", { target: target.label, contractId, reason: result.reason });
+        this.logger.warn("keeper step deferred", { target: target.label, action, contractId, reason: result.reason });
         return "deferred";
       }
       this.logger.info("keeper step completed", { target: target.label, action, contractId });
@@ -32,7 +32,7 @@ export class AquariusKeeper {
         target: target.label,
         action,
         contractId,
-        error: error.message,
+        error: String(error.message).slice(0, 1000),
       });
       return false;
     }
@@ -61,9 +61,11 @@ export class AquariusKeeper {
 
   async runTarget(target) {
     let failures = 0;
-    if (!(await this.step(target, "refresh_nav_root", target.vaultId, "refresh_nav_root"))) {
-      failures += 1;
-    }
+    const nav = await this.step(target, "refresh_nav_root", target.vaultId, "refresh_nav_root");
+    // An oracle outage may return an old NAV in a SUCCESS transaction. Do not
+    // prepare dependent writes until the client has verified genuine freshness.
+    // Expected deferrals are warned but do not create a paid restart/retry loop.
+    if (nav !== true) return nav === "deferred" ? 0 : 1;
 
     const rebalanceNow = this.now();
     if (this.config.runRebalance &&

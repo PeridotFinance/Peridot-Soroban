@@ -31,6 +31,26 @@ function logger() {
   return { info() {}, warn() {}, error() {} };
 }
 
+test("fallback NAV skips dependent actions without a restart loop and other targets continue", async () => {
+  const calls = [];
+  const client = { async execute(id, method) {
+    calls.push([id, method]);
+    if (id === "vault-XLM" && method === "refresh_nav_root") return { deferred: true, reason: "stale_nav" };
+  } };
+  const keeper = new AquariusKeeper(config({ runHarvest: false }), client, logger());
+  assert.equal(await keeper.runCycle(), 0);
+  assert.deepEqual(calls, [["vault-XLM", "refresh_nav_root"], ["vault-PYUSD", "refresh_nav_root"],
+    ["market-PYUSD", "refresh_boosted_underlying"], ["vault-USDC", "refresh_nav_root"], ["market-USDC", "refresh_boosted_underlying"]]);
+});
+
+test("failed NAV refresh stops the target before any dependent signing", async () => {
+  const calls = [];
+  const client = { async execute(_id, method) { calls.push(method); throw new Error("RPC failure"); } };
+  const keeper = new AquariusKeeper(config({ targets: [target("XLM")] }), client, logger());
+  assert.equal(await keeper.runCycle(), 1);
+  assert.deepEqual(calls, ["refresh_nav_root"]);
+});
+
 test("XLM checks hourly while all caches and stable ranges keep twenty-minute cadence", async () => {
   let now = 0;
   const reads = [];
