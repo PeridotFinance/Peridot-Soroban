@@ -60,6 +60,20 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September13 follow-up: PYUSD and USDC AQUA conversion floors were approved,
+  independently price-checked and changed to3350 (1e7 scale). XLM18194, routes,
+  1% slippage,10000-raw harvest threshold and ranges are unchanged. Both setter
+  transactions succeeded, total fees0.0019086 XLM; subsequent harvest simulations
+  passed with no skips and expected settlement11640/11577 raw units. No manual
+  harvest was submitted. Existing automatic compounding remains enabled.
+  Keeper freshness candidate `be5fb6c` is pushed but NOT DEPLOYED: actual NAV
+  timestamp checks before dependent preparation/signing, fallback deferral without
+  restart loops, and compact transaction error logging. All29 tests passed;
+  Almanax scan81f882fd-2658-42f1-bba5-d77036d42018 returned zero findings.
+  Live worker is still v0.4.0/f3d8b3e. User raised withdrawal-only reward conversion;
+  reward model clarification and separate ownership/accounting design are pending.
+  Do not disable compounding or claim withdrawal-time reward settlement exists.
+  Complete evidence and transaction hashes are in Agents.md.
 - All three +/-40 migrations completed on Mainnet on 2026-09-09, after the
   individual proposal timelocks matured. Strategies now run the reviewed
   `00a1e9097339cbd1ee194a7a7f938d8d72918a7c95f89520c23c5ea2d4b8162e` WASM;
