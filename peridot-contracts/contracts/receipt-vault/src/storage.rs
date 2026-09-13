@@ -44,18 +44,31 @@ pub enum DataKey {
     MarginWithdrawBypass(Address), // bool one-shot bypass for margin-controller-managed withdraw
     PendingUpgradeHash,            // BytesN<32> target wasm hash for timelocked upgrade
     PendingUpgradeEta,             // u64 unix timestamp when upgrade becomes executable
+    // Debt-state migration and canonical per-account principal mirrors.
+    // Keep new variants appended to preserve existing key discriminants.
+    DebtStateVersion,                // u32 debt-state schema version
+    DebtStateMigratedAt,             // u64 timestamp of current debt-state migration
+    BorrowPrincipal(Address),        // u128 canonical principal per user
+    MarginBorrowPrincipal(u64),      // u128 canonical principal per margin position
+    MarginWithdrawBypassV2(Address), // scoped bypass for margin-controller-managed withdraw
+    TotalBadDebt,       // u128 cumulative unreserved debt absorbed by margin controller
+    BoostedAssetCount,  // u32 expected min_amounts_out length for boosted redemptions
+    BoostedHealthCache, // BoostedHealthCache live quote used by account health
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND_TO: u32 = 1_000_000;
-const BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = 500_000;
-const BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = 1_000_000;
-const HAS_BORROWED_TTL_THRESHOLD: u32 = 500_000;
-const HAS_BORROWED_TTL_EXTEND_TO: u32 = 1_000_000;
-const MARGIN_BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = 500_000;
-const MARGIN_BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = 1_000_000;
-const MARGIN_HAS_BORROWED_TTL_THRESHOLD: u32 = 500_000;
-const MARGIN_HAS_BORROWED_TTL_EXTEND_TO: u32 = 1_000_000;
+const DAY_IN_LEDGERS: u32 = 17_280;
+const BORROW_STATE_TTL_EXTEND_TO: u32 = 5_000_000;
+const BORROW_STATE_TTL_THRESHOLD: u32 = BORROW_STATE_TTL_EXTEND_TO - DAY_IN_LEDGERS;
+const BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = BORROW_STATE_TTL_THRESHOLD;
+const BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = BORROW_STATE_TTL_EXTEND_TO;
+const HAS_BORROWED_TTL_THRESHOLD: u32 = BORROW_STATE_TTL_THRESHOLD;
+const HAS_BORROWED_TTL_EXTEND_TO: u32 = BORROW_STATE_TTL_EXTEND_TO;
+const MARGIN_BORROW_SNAPSHOT_TTL_THRESHOLD: u32 = BORROW_STATE_TTL_THRESHOLD;
+const MARGIN_BORROW_SNAPSHOT_TTL_EXTEND_TO: u32 = BORROW_STATE_TTL_EXTEND_TO;
+const MARGIN_HAS_BORROWED_TTL_THRESHOLD: u32 = BORROW_STATE_TTL_THRESHOLD;
+const MARGIN_HAS_BORROWED_TTL_EXTEND_TO: u32 = BORROW_STATE_TTL_EXTEND_TO;
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -74,11 +87,26 @@ pub struct BorrowSnapshot {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct BoostedHealthCache {
+    pub underlying: u128,
+    pub updated_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct ControllerAccrualHint {
     pub total_ptokens: Option<u128>,
     pub total_borrowed: Option<u128>,
     pub user_ptokens: Option<u128>,
     pub user_borrowed: Option<u128>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MarginWithdrawBypassScope {
+    pub recipient: Address,
+    pub max_ptokens: u128,
+    pub ledger_sequence: u32,
 }
 
 #[contracttype]
@@ -109,6 +137,65 @@ pub fn ensure_initialized(env: &Env) -> Address {
     token
 }
 
+/// Lightweight initialization check for controller account-health snapshots.
+///
+/// A full `ensure_initialized` intentionally maintains every core and interest
+/// storage key. Calling it once per entered market makes cross-market health
+/// checks include unrelated configuration in the transaction footprint. The
+/// snapshot path only needs the initialization marker and underlying address;
+/// the valuation and debt helpers maintain the keys they actually consume.
+pub fn ensure_initialized_for_snapshot(env: &Env) -> Address {
+    let persistent = env.storage().persistent();
+    let token_key = DataKey::UnderlyingToken;
+    let initialized_key = DataKey::Initialized;
+    let token: Address = persistent.get(&token_key).expect("Vault not initialized");
+    if !persistent.get::<_, bool>(&initialized_key).unwrap_or(false) {
+        panic!("Vault not initialized");
+    }
+    persistent.extend_ttl(&token_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    persistent.extend_ttl(&initialized_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    token
+}
+
+/// Maintain only the global valuation entries read by an account snapshot.
+pub fn bump_account_snapshot_valuation_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    for key in [
+        DataKey::ManagedCash,
+        DataKey::TotalBorrowed,
+        DataKey::TotalReserves,
+        DataKey::TotalAdminFees,
+    ] {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
+}
+
+pub fn bump_borrow_index_ttl(env: &Env) {
+    env.storage()
+        .persistent()
+        .extend_ttl(&DataKey::BorrowIndex, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+pub fn bump_boosted_vault_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    for key in [DataKey::BoostedVault, DataKey::BoostedAssetCount] {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
+}
+
+pub fn bump_boosted_health_cache_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    for key in [DataKey::BoostedVault, DataKey::BoostedHealthCache] {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
+}
+
 pub fn bump_core_ttl(env: &Env) {
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::Admin) {
@@ -136,6 +223,9 @@ pub fn bump_core_ttl(env: &Env) {
     if persistent.has(&DataKey::Peridottroller) {
         persistent.extend_ttl(&DataKey::Peridottroller, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    if persistent.has(&DataKey::MarginController) {
+        persistent.extend_ttl(&DataKey::MarginController, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
     if persistent.has(&DataKey::InterestModel) {
         persistent.extend_ttl(&DataKey::InterestModel, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
@@ -153,6 +243,9 @@ pub fn bump_core_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::TotalReserves) {
         persistent.extend_ttl(&DataKey::TotalReserves, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::TotalBadDebt) {
+        persistent.extend_ttl(&DataKey::TotalBadDebt, TTL_THRESHOLD, TTL_EXTEND_TO);
     }
     if persistent.has(&DataKey::SupplyCap) {
         persistent.extend_ttl(&DataKey::SupplyCap, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -218,6 +311,13 @@ pub fn bump_has_borrowed_ttl(env: &Env, user: &Address) {
 pub fn bump_user_borrow_state_ttl(env: &Env, user: &Address) {
     bump_borrow_snapshot_ttl(env, user);
     bump_has_borrowed_ttl(env, user);
+    bump_borrow_principal_ttl(env, user);
+}
+
+pub fn bump_user_borrow_live_ttl(env: &Env, user: &Address) {
+    bump_borrow_snapshot_ttl(env, user);
+    bump_has_borrowed_ttl(env, user);
+    bump_borrow_principal_ttl(env, user);
 }
 
 pub fn bump_margin_borrow_snapshot_ttl(env: &Env, position_id: u64) {
@@ -247,6 +347,13 @@ pub fn bump_margin_has_borrowed_ttl(env: &Env, position_id: u64) {
 pub fn bump_margin_borrow_state_ttl(env: &Env, position_id: u64) {
     bump_margin_borrow_snapshot_ttl(env, position_id);
     bump_margin_has_borrowed_ttl(env, position_id);
+    bump_margin_borrow_principal_ttl(env, position_id);
+}
+
+pub fn bump_margin_borrow_live_ttl(env: &Env, position_id: u64) {
+    bump_margin_borrow_snapshot_ttl(env, position_id);
+    bump_margin_has_borrowed_ttl(env, position_id);
+    bump_margin_borrow_principal_ttl(env, position_id);
 }
 
 pub fn bump_borrow_state_ttl(env: &Env) {
@@ -278,6 +385,40 @@ pub fn bump_borrow_state_ttl(env: &Env) {
     }
     if persistent.has(&DataKey::TotalBorrowPrincipal) {
         persistent.extend_ttl(&DataKey::TotalBorrowPrincipal, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_debt_state_marker_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::DebtStateVersion) {
+        persistent.extend_ttl(&DataKey::DebtStateVersion, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    if persistent.has(&DataKey::DebtStateMigratedAt) {
+        persistent.extend_ttl(&DataKey::DebtStateMigratedAt, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_borrow_principal_ttl(env: &Env, user: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::BorrowPrincipal(user.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(
+            &key,
+            BORROW_SNAPSHOT_TTL_THRESHOLD,
+            BORROW_SNAPSHOT_TTL_EXTEND_TO,
+        );
+    }
+}
+
+pub fn bump_margin_borrow_principal_ttl(env: &Env, position_id: u64) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::MarginBorrowPrincipal(position_id);
+    if persistent.has(&key) {
+        persistent.extend_ttl(
+            &key,
+            MARGIN_BORROW_SNAPSHOT_TTL_THRESHOLD,
+            MARGIN_BORROW_SNAPSHOT_TTL_EXTEND_TO,
+        );
     }
 }
 
@@ -315,16 +456,24 @@ pub fn token_balance(env: &Env, token: &Address, owner: &Address) -> i128 {
     use soroban_sdk::{InvokeError, Symbol, Val, Vec};
     let args: Vec<Val> = (owner.clone(),).into_val(env);
     let sym_balance = Symbol::new(env, "balance");
-    match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance, args.clone()) {
-        Ok(Ok(result)) => result,
-        _ => {
-            let sym_balance_of = Symbol::new(env, "balance_of");
-            match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance_of, args) {
-                Ok(Ok(result)) => result,
-                _ => panic!("balance lookup failed"),
+    let result =
+        match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance, args.clone()) {
+            Ok(Ok(result)) => result,
+            _ => {
+                let sym_balance_of = Symbol::new(env, "balance_of");
+                match env.try_invoke_contract::<i128, InvokeError>(token, &sym_balance_of, args) {
+                    Ok(Ok(result)) => result,
+                    _ => panic!("balance lookup failed"),
+                }
             }
-        }
+        };
+    // A compliant token never reports a negative balance. Reject it rather than
+    // letting it flow into live-cash accounting, where a non-standard or malicious
+    // underlying could distort liquidity checks and boosted-vault decisions.
+    if result < 0 {
+        panic!("negative token balance");
     }
+    result
 }
 
 pub fn to_i128(amount: u128) -> i128 {

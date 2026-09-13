@@ -9,6 +9,7 @@ crate-type = ["lib", "cdylib"]
 doctest = false
 
 [features]
+# Native test fixture support only; contract code rejects this feature for Wasm builds.
 test-default-admin = []
 
 [dependencies]
@@ -16,5 +17,5 @@ soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
-receipt-vault = { path = "../receipt-vault" }
+receipt-vault = { path = "../receipt-vault", features = ["test-default-admin"] }
 peridot-token = { path = "../peridot-token", features = ["test-default-admin"] }
