@@ -60,18 +60,38 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September 15 keeper freshness release is LIVE: dedicated branch/tag
+  `aquarius-keeper-v0.4.1` pins reviewed commit
+  `be5fb6cf544cdf4926b3f490c82fbbff027cb8c9`. DigitalOcean deployment
+  `8efb6e62-cb4b-4c30-be85-ad789529a4ff` is ACTIVE, exactly one worker,
+  DRY_RUN=false, RUN_REBALANCE=true, RUN_HARVEST=true, HARVEST_ON_START=false.
+  All 29 tests, syntax checks and production npm audit passed; existing exact
+  Almanax scan was reverified COMPLETE with zero findings. Package metadata in
+  the scanned source remains 0.4.0; identify this release by Git ref and SHA.
+  Dry-run stage passed before live activation. First live cycle at 14:34 UTC
+  confirmed six refreshes across XLM/PYUSD/USDC, independently checked on-chain,
+  costing 0.0129135 XLM. Four cycles through 15:34:50 UTC report zero failures;
+  the hourly XLM check also performed a confirmed automatic rebalance.
+  Compounding, reward floors, 10000-raw threshold, range policies and cadences
+  are unchanged. No contract upgrade or manual harvest. First post-restart harvest
+  check is due around 20:34 UTC / 22:34 CEST, subject to existing guards.
+  This release does NOT implement withdrawal-time reward settlement.
+  Transaction hashes, staging evidence and the 9.7530717 XLM keeper balance
+  snapshot are recorded in Agents.md. Preserve all unrelated Margin work.
 - September13 follow-up: PYUSD and USDC AQUA conversion floors were approved,
   independently price-checked and changed to3350 (1e7 scale). XLM18194, routes,
   1% slippage,10000-raw harvest threshold and ranges are unchanged. Both setter
   transactions succeeded, total fees0.0019086 XLM; subsequent harvest simulations
   passed with no skips and expected settlement11640/11577 raw units. No manual
   harvest was submitted. Existing automatic compounding remains enabled.
-  Keeper freshness candidate `be5fb6c` is pushed but NOT DEPLOYED: actual NAV
+  Keeper freshness candidate `be5fb6c` (deployed September 15, see above): actual NAV
   timestamp checks before dependent preparation/signing, fallback deferral without
   restart loops, and compact transaction error logging. All29 tests passed;
   Almanax scan81f882fd-2658-42f1-bba5-d77036d42018 returned zero findings.
-  Live worker is still v0.4.0/f3d8b3e. User raised withdrawal-only reward conversion;
-  reward model clarification and separate ownership/accounting design are pending.
+  At that checkpoint the worker was v0.4.0/f3d8b3e. The user's agreement was interpreted
+  as retaining compounding plus withdrawal settlement of eligible remaining rewards.
+  See `contracts/aquarius-lp-vault/REWARD_SETTLEMENT_DESIGN.md` for the proposal,
+  source integration points and unresolved accounting proof/release requirements.
   Do not disable compounding or claim withdrawal-time reward settlement exists.
   Complete evidence and transaction hashes are in Agents.md.
 - All three +/-40 migrations completed on Mainnet on 2026-09-09, after the
