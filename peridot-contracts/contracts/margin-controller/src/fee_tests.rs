@@ -767,15 +767,79 @@ fn delayed_claim_skips_fifty_batches_with_constant_footprint() {
     let c = f.client();
     let alice = Address::generate(&f.env);
     f.fund_margin(&alice, 100_000);
+    let mut settlement_footprint = None;
     for _ in 0..50 {
         reserve_test_fees(&f, 1_000, 2_000);
         assert_eq!(c.distribute_margin_fees(&f.uv), 3_000);
+        let resources = f.env.cost_estimate().resources();
+        let footprint = (
+            resources.disk_read_entries + resources.memory_read_entries,
+            resources.write_entries,
+        );
+        if let Some(first) = settlement_footprint {
+            assert_eq!(footprint, first, "settlement footprint grew with history");
+        } else {
+            settlement_footprint = Some(footprint);
+        }
     }
     assert_eq!(c.get_claimable_margin_fees(&alice, &f.usdt), 150_000);
     f.env.cost_estimate().budget().reset_unlimited();
     assert_eq!(c.claim_margin_fees(&alice, &f.usdt), 150_000);
     assert_last_invocation_resources_under(&f.env, 30, 30, 10_000_000);
     assert_eq!(c.claim_margin_fees(&alice, &f.usdt), 0);
+    assert_eq!(c.distribute_margin_fees(&f.uv), 0);
+    f.env.as_contract(&f.id, || {
+        let epoch: MarginFeeEpoch = f
+            .env
+            .storage()
+            .persistent()
+            .get(&DataKey::MarginFeeEpoch(f.uv.clone()))
+            .unwrap();
+        assert_eq!(epoch.id, 50, "empty calls must not create history");
+    });
+}
+
+#[test]
+fn pending_vault_snapshots_are_not_controlled_by_the_caller_or_market_rebinding() {
+    for side in [PositionSide::Long, PositionSide::Short] {
+        let f = Fixture::new(10, 20);
+        let c = f.client();
+        let (id, _) = f.begin(100_000, 5, side.clone());
+        let pending = c.get_pending_perps_open(&id).unwrap();
+        let other = Address::generate(&f.env);
+        assert!(c.try_swap_open_position_v3(&other, &id).is_err());
+        let replacement = f.env.register(ReceiptVault, ());
+        receipt_vault::ReceiptVaultClient::new(&f.env, &replacement).initialize(
+            &f.usdt,
+            &0,
+            &0,
+            &c.get_admin(),
+        );
+        assert!(c.try_set_market(&other, &f.usdt, &replacement).is_err());
+        // Even an authorized mapping change does not rewrite pending/canonical
+        // position addresses. Only begin writes those records, from validated markets.
+        c.set_market(&c.get_admin(), &f.usdt, &replacement);
+        assert_eq!(c.get_pending_perps_open(&id).unwrap(), pending);
+        f.env.as_contract(&f.id, || {
+            let position = get_position_record_or_panic(&f.env, id);
+            let vaults = get_position_vaults(&f.env, id, &position);
+            assert_eq!(vaults.collateral_vault, pending.margin_vault);
+            assert_eq!(vaults.debt_vault, pending.debt_vault);
+            assert_eq!(vaults.position_vault, pending.position_vault);
+        });
+        c.swap_open_position_v3(&f.user, &id);
+        c.activate_open_position_v3(&f.user, &id);
+        assert_eq!(c.get_position(&id).unwrap().status, PositionStatus::Open);
+        assert!(
+            receipt_vault::ReceiptVaultClient::new(&f.env, &pending.debt_vault)
+                .get_margin_borrow_balance(&id)
+                > 0
+        );
+        assert_eq!(
+            receipt_vault::ReceiptVaultClient::new(&f.env, &replacement).get_total_borrowed(),
+            0
+        );
+    }
 }
 
 #[test]

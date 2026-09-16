@@ -55,3 +55,24 @@ signatures and optional keeper distribution call are unchanged.
 
 This accounting prevents retroactive fee capture. It does not impose a holding
 period or prevent someone supplying capital before a future trade earns fees.
+
+## Scan triage notes
+
+Closed history grows by one bounded persistent entry per nonempty conversion,
+not by an ever-growing vector or instance map. Empty distribution calls create
+nothing. Settlement never scans history, and a claim reads at most its first
+closed epoch plus the current prefix. The native 50-batch regression compares
+settlement footprints and bounds catch-up cost. Epoch creation/restoration rent
+is paid by that transaction's fee payer; there is no contract-wide renewal loop.
+Deleting the last N histories would instead destroy legitimate old entitlements.
+This is retained accounting history, not evidence of per-invocation storage DoS.
+See [Stellar storage strategies](https://developers.stellar.org/docs/build/guides/storage/storage-strategies)
+and [footprints](https://developers.stellar.org/docs/learn/fundamentals/contract-development/contract-interactions/transaction-simulation).
+
+Pending V3 vault addresses are not caller-supplied mutable storage. Begin derives
+them from validated admin market mappings and writes the pending and canonical
+records together. There is no external entrypoint to rewrite either snapshot;
+later admin market rebinding does not change them. The swap stage uses the pinned
+pending record to avoid three duplicate reads, and activation checks canonical
+records. A regression exercises Long/Short swap and activation after market
+rebinding, with unauthorized calls rejected and the replacement vault unborrowed.
