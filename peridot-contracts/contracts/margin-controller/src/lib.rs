@@ -3,6 +3,7 @@
 mod constants;
 mod contract;
 mod events;
+mod fee_entitlements;
 mod fees;
 mod helpers;
 mod perps;

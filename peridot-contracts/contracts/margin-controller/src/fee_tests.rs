@@ -158,7 +158,7 @@ fn nonzero_fees_long_short_2_to_5x_amount_matrix() {
                 assert_eq!(c.get_undistributed_margin_fees(&f.uv).underlying, close_fee);
 
                 // Distribution is separate and permissionless. Even an unrelated
-                // caller cannot redirect it; newly returned free margin participates.
+                // caller cannot redirect it; newly returned free margin gets no back-pay.
                 let index_before = c.get_margin_fee_index(&f.usdt);
                 f.env.cost_estimate().budget().reset_unlimited();
                 assert_eq!(c.distribute_margin_fees(&f.uv), close_fee);
@@ -566,7 +566,9 @@ fn fee_enabled_dynamic_rate_stages_do_not_scale_with_sibling_positions() {
         assert_last_invocation_resources_under(&f.env, 100, 45, 30_000_000);
         f.env.cost_estimate().budget().reset_unlimited();
         c.activate_open_position_v3(&f.user, &id);
-        assert_last_invocation_resources_under(&f.env, 100, 45, 30_000_000);
+        // Fee-time ownership adds the epoch and aggregate-weight keys. Keep a
+        // measured bound below the live runner's 200-entry ceiling (not an SDK limit).
+        assert_last_invocation_resources_under(&f.env, 105, 45, 30_000_000);
         f.swap_close(id, &side);
         f.env.cost_estimate().budget().reset_unlimited();
         c.finish_close_position_v3(&id);
@@ -643,9 +645,11 @@ fn one_batch_distributes_open_shares_and_converts_close_underlying() {
 }
 
 #[test]
-fn underlying_dust_does_not_block_distribution_of_reserved_ptokens() {
+fn underlying_dust_defers_the_epoch_without_blocking_principal() {
     let f = Fixture::new(100, 100);
     let c = f.client();
+    let lp = Address::generate(&f.env);
+    f.fund_margin(&lp, 100_000);
     let id = f.open(1_000_000_000, 5, PositionSide::Long);
     let vault = receipt_vault::ReceiptVaultClient::new(&f.env, &f.uv);
     vault.set_borrow_rate(&1_000_000);
@@ -655,22 +659,256 @@ fn underlying_dust_does_not_block_distribution_of_reserved_ptokens() {
     let expected = c.get_undistributed_margin_fees(&f.uv).ptokens;
     MockTokenClient::new(&f.env, &f.usdt).mint(&f.id, &1);
     f.env.as_contract(&f.id, || {
+        crate::fee_entitlements::reserve(&f.env, &f.uv, 0, 1);
         let key = DataKey::PendingMarginFees(f.uv.clone());
         let mut batch: PendingMarginFees = f.env.storage().persistent().get(&key).unwrap();
         batch.underlying = 1;
         f.env.storage().persistent().set(&key, &batch);
     });
-    assert_eq!(c.distribute_margin_fees(&f.uv), expected);
+    assert_eq!(c.distribute_margin_fees(&f.uv), 0);
     assert_eq!(
         c.get_undistributed_margin_fees(&f.uv),
         PendingMarginFees {
             underlying: 1,
-            ptokens: 0
+            ptokens: expected
         }
     );
     assert_eq!(c.distribute_margin_fees(&f.uv), 0);
     assert_eq!(c.get_undistributed_margin_fees(&f.uv).underlying, 1);
+    c.transfer_margin_to_spot(&lp, &f.usdt, &100_000);
+    assert_eq!(c.get_margin_balance_ptokens(&lp, &f.usdt), 0);
     assert!(c.get_position(&id).is_some());
+}
+
+#[test]
+fn late_deposit_cannot_capture_historical_open_or_close_fees() {
+    let f = Fixture::new(100, 100);
+    let c = f.client();
+    let provider = Address::generate(&f.env);
+    let late = Address::generate(&f.env);
+    f.fund_margin(&provider, 100_000);
+    let id = f.open(100_000, 5, PositionSide::Short);
+    f.swap_close(id, &PositionSide::Short);
+    c.finish_close_position_v3(&id);
+    let pending = c.get_undistributed_margin_fees(&f.uv);
+    let batch = pending.ptokens + pending.underlying;
+    let ledger = f.env.ledger().sequence();
+    let timestamp = f.env.ledger().timestamp();
+    f.fund_margin(&late, 900_000);
+    f.env.mock_auths(&[]);
+    assert_eq!(c.distribute_margin_fees(&f.uv), batch);
+    assert_eq!(c.get_claimable_margin_fees(&late, &f.usdt), 0);
+    assert_eq!(c.get_claimable_margin_fees(&provider, &f.usdt), batch);
+    f.env.mock_all_auths();
+    assert_eq!(c.claim_margin_fees(&late, &f.usdt), 0);
+    c.transfer_margin_to_spot(&late, &f.usdt, &900_000);
+    assert_eq!(c.claim_margin_fees(&provider, &f.usdt), batch);
+    assert_eq!(c.claim_margin_fees(&provider, &f.usdt), 0);
+    assert_eq!(f.env.ledger().sequence(), ledger);
+    assert_eq!(f.env.ledger().timestamp(), timestamp);
+}
+
+// Backed fees without a trade, for exact ownership/rounding boundary checks.
+fn reserve_test_fees(f: &Fixture, ptokens: u128, underlying: u128) {
+    MockTokenClient::new(&f.env, &f.usdt).mint(&f.id, &((ptokens + underlying) as i128));
+    if ptokens > 0 {
+        receipt_vault::ReceiptVaultClient::new(&f.env, &f.uv).deposit(&f.id, &ptokens);
+    }
+    f.env.as_contract(&f.id, || {
+        crate::fee_entitlements::reserve(&f.env, &f.uv, ptokens, underlying);
+        let mut pending = crate::fees::pending_margin_fees(&f.env, &f.uv);
+        pending.ptokens += ptokens;
+        pending.underlying += underlying;
+        f.env
+            .storage()
+            .persistent()
+            .set(&DataKey::PendingMarginFees(f.uv.clone()), &pending);
+    });
+}
+
+#[test]
+fn ownership_survives_exit_and_only_future_fees_use_new_weights() {
+    let f = Fixture::new(0, 0);
+    let c = f.client();
+    let alice = Address::generate(&f.env);
+    let bob = Address::generate(&f.env);
+    f.fund_margin(&alice, 100_000);
+    reserve_test_fees(&f, 1_000, 2_000);
+    f.fund_margin(&bob, 300_000);
+    reserve_test_fees(&f, 4_000, 8_000);
+    c.transfer_margin_to_spot(&alice, &f.usdt, &100_000);
+    reserve_test_fees(&f, 3_000, 6_000);
+    c.transfer_margin_to_spot(&bob, &f.usdt, &300_000);
+    assert_eq!(c.distribute_margin_fees(&f.uv), 24_000);
+    assert_eq!(c.get_claimable_margin_fees(&alice, &f.usdt), 6_000);
+    assert_eq!(c.get_claimable_margin_fees(&bob, &f.usdt), 18_000);
+    assert_eq!(c.claim_margin_fees(&alice, &f.usdt), 6_000);
+    assert_eq!(c.claim_margin_fees(&bob, &f.usdt), 18_000);
+    assert_eq!(c.claim_margin_fees(&alice, &f.usdt), 0);
+}
+
+#[test]
+fn fee_orphans_are_decided_when_earned_not_when_converted() {
+    let f = Fixture::new(0, 0);
+    let c = f.client();
+    reserve_test_fees(&f, 1_000, 2_000);
+    let late = Address::generate(&f.env);
+    f.fund_margin(&late, 100_000);
+    reserve_test_fees(&f, 500, 1_000);
+    assert_eq!(c.distribute_margin_fees(&f.uv), 4_500);
+    assert_eq!(c.claim_margin_fees(&late, &f.usdt), 1_500);
+    assert_eq!(c.sweep_orphan_fees(&c.get_admin(), &f.usdt, &late), 3_000);
+    assert_eq!(c.claim_margin_fees(&late, &f.usdt), 0);
+}
+
+#[test]
+fn delayed_claim_skips_fifty_batches_with_constant_footprint() {
+    let f = Fixture::new(0, 0);
+    let c = f.client();
+    let alice = Address::generate(&f.env);
+    f.fund_margin(&alice, 100_000);
+    for _ in 0..50 {
+        reserve_test_fees(&f, 1_000, 2_000);
+        assert_eq!(c.distribute_margin_fees(&f.uv), 3_000);
+    }
+    assert_eq!(c.get_claimable_margin_fees(&alice, &f.usdt), 150_000);
+    f.env.cost_estimate().budget().reset_unlimited();
+    assert_eq!(c.claim_margin_fees(&alice, &f.usdt), 150_000);
+    assert_last_invocation_resources_under(&f.env, 30, 30, 10_000_000);
+    assert_eq!(c.claim_margin_fees(&alice, &f.usdt), 0);
+}
+
+#[test]
+fn conversion_uses_actual_minted_shares_at_the_later_exchange_rate() {
+    let f = Fixture::new(0, 0);
+    let c = f.client();
+    let alice = Address::generate(&f.env);
+    f.fund_margin(&alice, 100_000);
+    reserve_test_fees(&f, 1_000, 20_000);
+    // Model recognized strategy yield without minting shares. A plain donation
+    // is deliberately excluded by ReceiptVault's managed-cash accounting.
+    let vault = receipt_vault::ReceiptVaultClient::new(&f.env, &f.uv);
+    let total = vault.get_total_underlying();
+    MockTokenClient::new(&f.env, &f.usdt).mint(&f.uv, &(total as i128));
+    f.env.as_contract(&f.uv, || {
+        let key = receipt_vault::DataKey::ManagedCash;
+        let cash: u128 = f.env.storage().persistent().get(&key).unwrap();
+        f.env.storage().persistent().set(&key, &(cash + total));
+    });
+    assert_eq!(vault.get_exchange_rate(), 2 * SCALE_1E6);
+    c.transfer_margin_to_spot(&alice, &f.usdt, &100_000);
+    assert_eq!(c.distribute_margin_fees(&f.uv), 11_000);
+    assert_eq!(c.claim_margin_fees(&alice, &f.usdt), 11_000);
+}
+
+#[test]
+fn old_pending_batches_cannot_be_reinterpreted_with_current_weights() {
+    let f = Fixture::new(0, 0);
+    let c = f.client();
+    f.fund_margin(&f.user, 100_000);
+    reserve_test_fees(&f, 1_000, 2_000);
+    f.env.as_contract(&f.id, || {
+        f.env
+            .storage()
+            .persistent()
+            .remove(&DataKey::MarginFeeEpoch(f.uv.clone()))
+    });
+    assert!(c.try_distribute_margin_fees(&f.uv).is_err());
+    assert_eq!(c.get_undistributed_margin_fees(&f.uv).underlying, 2_000);
+    assert_eq!(c.get_claimable_margin_fees(&f.user, &f.usdt), 0);
+}
+
+#[test]
+fn fee_history_ttl_is_renewed_and_missing_required_history_fails_closed() {
+    let f = Fixture::new(0, 0);
+    let c = f.client();
+    f.fund_margin(&f.user, 100_000);
+    reserve_test_fees(&f, 1_000, 2_000);
+    // Persist a current-epoch checkpoint; repeated views must not consume it.
+    assert_eq!(c.claim_margin_fees(&f.user, &f.usdt), 0);
+    c.distribute_margin_fees(&f.uv);
+    let keys = [
+        DataKey::MarginFeeEpoch(f.uv.clone()),
+        DataKey::ClosedMarginFeeEpoch(f.uv.clone(), 0),
+        DataKey::UserMarginFeeEpoch(f.user.clone(), f.uv.clone()),
+    ];
+    let ttl = f
+        .env
+        .as_contract(&f.id, || f.env.storage().persistent().get_ttl(&keys[0]));
+    f.env
+        .ledger()
+        .set_sequence_number(f.env.ledger().sequence() + ttl - 10_000);
+    assert_eq!(c.get_claimable_margin_fees(&f.user, &f.usdt), 3_000);
+    assert_eq!(c.get_claimable_margin_fees(&f.user, &f.usdt), 3_000);
+    f.env.as_contract(&f.id, || {
+        for key in keys {
+            assert!(f.env.storage().persistent().get_ttl(&key) > TTL_THRESHOLD);
+        }
+        f.env
+            .storage()
+            .persistent()
+            .remove(&DataKey::ClosedMarginFeeEpoch(f.uv.clone(), 0));
+    });
+    assert!(c.try_claim_margin_fees(&f.user, &f.usdt).is_err());
+    assert_eq!(c.get_margin_balance_ptokens(&f.user, &f.usdt), 100_000);
+}
+
+#[test]
+fn repeated_balance_changes_and_claims_never_exceed_fee_backing() {
+    let f = Fixture::new(0, 0);
+    let c = f.client();
+    let users: std::vec::Vec<_> = (0..4).map(|_| Address::generate(&f.env)).collect();
+    let mut weights = [0u128; 4];
+    let mut earned = [0.0f64; 4];
+    let mut claimed = [0u128; 4];
+    let mut total_fees = 0u128;
+    for round in 0..30usize {
+        let entrant = round % 4;
+        let deposit = (round as u128 * 13 + 7) % 97 + 1;
+        f.fund_margin(&users[entrant], deposit);
+        weights[entrant] += deposit;
+        let p = round as u128 % 7 + 1;
+        let u = round as u128 % 11 + 1;
+        reserve_test_fees(&f, p, u);
+        total_fees += p + u;
+        let total: u128 = weights.iter().sum();
+        for i in 0..4 {
+            earned[i] += (p + u) as f64 * weights[i] as f64 / total as f64;
+        }
+        let leaver = (round + 1) % 4;
+        if weights[leaver] > 0 {
+            c.transfer_margin_to_spot(&users[leaver], &f.usdt, &weights[leaver]);
+            weights[leaver] = 0;
+        }
+        if round % 3 == 2 {
+            c.distribute_margin_fees(&f.uv);
+            let claimant = (round + 2) % 4;
+            let shares = c.claim_margin_fees(&users[claimant], &f.usdt);
+            claimed[claimant] += shares;
+            weights[claimant] += shares;
+            assert_eq!(c.claim_margin_fees(&users[claimant], &f.usdt), 0);
+        }
+    }
+    c.distribute_margin_fees(&f.uv);
+    for i in 0..4 {
+        let shares = c.claim_margin_fees(&users[i], &f.usdt);
+        claimed[i] += shares;
+        weights[i] += shares;
+        assert!(
+            claimed[i] as f64 <= earned[i] + 1e-9,
+            "user {i} received historical fees"
+        );
+        assert!(
+            earned[i] - (claimed[i] as f64) < 30.0,
+            "unexpected rounding loss"
+        );
+    }
+    assert!(claimed.iter().sum::<u128>() <= total_fees);
+    let backing = receipt_vault::ReceiptVaultClient::new(&f.env, &f.uv).get_ptoken_balance(&f.id);
+    assert_eq!(
+        backing - weights.iter().sum::<u128>(),
+        total_fees - claimed.iter().sum::<u128>()
+    );
 }
 
 #[test]

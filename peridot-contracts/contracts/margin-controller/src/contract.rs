@@ -413,7 +413,7 @@ impl MarginController {
     }
 
     /// Permissionless, independent of position settlement. Recipients are the
-    /// vault's free-margin providers at distribution time; no caller payout.
+    /// vault's free-margin providers when each fee was charged; no caller payout.
     pub fn distribute_margin_fees(env: Env, vault: Address) -> u128 {
         bump_instance_ttl(&env);
         Self::distribute_margin_fees_impl(&env, &vault)
@@ -458,13 +458,18 @@ impl MarginController {
         };
         let accrued_key = DataKey::UserMarginFeeAccrued(user.clone(), vault.clone());
         let accrued: u128 = env.storage().persistent().get(&accrued_key).unwrap_or(0);
-        accrued.checked_add(pending).expect("margin fee overflow")
+        accrued
+            .checked_add(pending)
+            .and_then(|v| v.checked_add(crate::fee_entitlements::claimable(&env, &user, &vault)))
+            .expect("margin fee overflow")
     }
 
     pub fn get_margin_fee_index(env: Env, asset: Address) -> u128 {
         bump_core_ttl(&env);
         let vault = get_market(&env, &asset);
         get_margin_fee_index(&env, &vault)
+            .checked_add(crate::fee_entitlements::settled_index(&env, &vault))
+            .expect("margin fee overflow")
     }
 
     /// Admin function: move orphaned fee pTokens (collected when pool was empty)

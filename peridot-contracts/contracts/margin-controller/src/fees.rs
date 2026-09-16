@@ -3,7 +3,6 @@ use soroban_sdk::{Address, Env};
 use crate::constants::*;
 use crate::contract::MarginController;
 use crate::events::{CloseFeeReserved, MarginFeesDistributed, OpenFeeReserved};
-use crate::helpers::collect_margin_fee;
 use crate::storage::*;
 
 pub(crate) fn fee_for_amount(amount: u128, bps: u128) -> u128 {
@@ -83,6 +82,7 @@ pub(crate) fn collect_open_fee(env: &Env, id: u64, vault: &Address) {
         if fee > 0 {
             terms.open_fee_ptokens = 0;
             set_fee_terms(env, id, &terms);
+            crate::fee_entitlements::reserve(env, vault, fee, 0);
             let mut pending = pending_margin_fees(env, vault);
             pending.ptokens = pending.ptokens.checked_add(fee).expect("fee overflow");
             set_pending_margin_fees(env, vault, &pending);
@@ -132,6 +132,7 @@ pub(crate) fn reserve_close_fee(env: &Env, id: u64, vault: &Address, surplus: u1
     };
     let fee = terms.close_fee_underlying.min(surplus);
     if fee > 0 {
+        crate::fee_entitlements::reserve(env, vault, 0, fee);
         let mut pending = pending_margin_fees(env, vault);
         pending.underlying = pending.underlying.checked_add(fee).expect("fee overflow");
         set_pending_margin_fees(env, vault, &pending);
@@ -150,7 +151,7 @@ pub(crate) fn reserve_close_fee(env: &Env, id: u64, vault: &Address, surplus: u1
 impl MarginController {
     pub(crate) fn distribute_margin_fees_impl(env: &Env, vault: &Address) -> u128 {
         let pending = pending_margin_fees(env, vault);
-        let mut amount = pending.underlying;
+        let amount = pending.underlying;
         if amount == 0 && pending.ptokens == 0 {
             return 0;
         }
@@ -160,9 +161,6 @@ impl MarginController {
         if before < pending.ptokens {
             panic!("fee backing missing");
         }
-        env.storage()
-            .persistent()
-            .remove(&DataKey::PendingMarginFees(vault.clone()));
         let mut minted = 0;
         if amount > 0 {
             client.update_interest();
@@ -172,17 +170,9 @@ impl MarginController {
             }
             let minimum = rate.div_ceil(SCALE_1E6);
             if amount < minimum {
-                // Underlying dust must not hold an otherwise distributable
-                // pToken batch hostage. Preserve it for a later conversion.
-                set_pending_margin_fees(
-                    env,
-                    vault,
-                    &PendingMarginFees {
-                        underlying: amount,
-                        ptokens: 0,
-                    },
-                );
-                amount = 0;
+                // Keep this epoch intact until all its underlying can be converted.
+                // Principal remains withdrawable; historical eligibility is retained.
+                return 0;
             }
         }
         if amount > 0 {
@@ -200,7 +190,10 @@ impl MarginController {
         // Only actual newly minted pTokens enter the index. If depositing dust or
         // into a paused vault fails, rollback preserves the entire reserved balance.
         let distributed = minted.checked_add(pending.ptokens).expect("fee overflow");
-        collect_margin_fee(env, vault, distributed);
+        crate::fee_entitlements::settle(env, vault, amount, minted);
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PendingMarginFees(vault.clone()));
         MarginFeesDistributed {
             vault: vault.clone(),
             underlying: amount,

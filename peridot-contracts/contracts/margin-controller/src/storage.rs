@@ -141,6 +141,40 @@ pub enum DataKey {
     PerpsPairExitExecutionConfig(Address, Address, PositionSide),
     PerpsFeeTerms(u64),
     PendingMarginFees(Address), // vault -> reserved fees awaiting distribution
+    MarginFeeEpoch(Address),
+    ClosedMarginFeeEpoch(Address, u64),
+    UserMarginFeeEpoch(Address, Address),
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct MarginFeeEpoch {
+    pub id: u64,
+    pub ptoken_index: u128,
+    pub underlying_index: u128,
+    pub settled_index: u128,
+    pub orphan_ptokens: u128,
+    pub orphan_underlying: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClosedMarginFeeEpoch {
+    pub ptoken_index: u128,
+    pub underlying_index: u128,
+    pub settled_index: u128,
+    pub underlying: u128,
+    pub minted_ptokens: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct UserMarginFeeEpoch {
+    pub id: u64,
+    pub ptoken_index: u128,
+    pub underlying_index: u128,
+    pub ptokens: u128,
+    pub underlying: u128,
 }
 
 #[contracttype]

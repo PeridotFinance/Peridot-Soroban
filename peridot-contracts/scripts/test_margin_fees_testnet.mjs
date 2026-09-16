@@ -2,7 +2,7 @@
 // Isolated fee-release validation. Never imports a production signing key.
 // This recorded fixture requires its three peridot-fees-20260916 CLI aliases,
 // builds under target/margin-fees-testnet, and margin-liquidator npm dependencies.
-// Modes: deploy, probe, matrix, extras, audit. Mutations additionally require
+// Modes: deploy, probe, matrix, extras, ownership, audit. Mutations additionally require
 // CONFIRM_TESTNET=ISOLATED_MARGIN_FEES; audit is read-only. Preserve state.json
 // when resuming; never run two processes against the same fixture concurrently.
 import assert from 'node:assert/strict';
@@ -17,15 +17,21 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(resolve(root, 'bots/margin-liquidator/package.json'));
 const S = require('@stellar/stellar-sdk');
 const mode = process.argv[2] ?? 'inspect';
-const run = 'peridot-fees-20260916';
-const dir = resolve(root, 'target/margin-fees-testnet');
+// The remediation fixture uses new contracts/state but the same dedicated test
+// signers. Never overwrite the evidence or bindings of the original deployment.
+const entitlements = process.env.FEE_ENTITLEMENTS === 'true';
+const aliases = 'peridot-fees-20260916';
+const run = entitlements ? 'peridot-fee-entitlements-20260916' : aliases;
+const candidate = entitlements ? process.env.CANDIDATE_COMMIT : 'e1104c701f557601929fe0f1c75939b68a8e8ac2';
+assert.match(candidate ?? '', /^[a-f0-9]{40}$/, 'CANDIDATE_COMMIT must identify the tested build');
+const dir = resolve(root, entitlements ? 'target/margin-fee-entitlements-testnet' : 'target/margin-fees-testnet');
 mkdirSync(dir, { recursive: true });
 const stateFile = resolve(dir, 'state.json');
 const state = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile)) : {
-  run, sourceCommit: 'e1104c701f557601929fe0f1c75939b68a8e8ac2', ids: {}, done: {}, results: [],
+  run, sourceCommit: candidate, ids: {}, done: {}, results: [],
 };
 assert.equal(state.run, run);
-assert.equal(state.sourceCommit, 'e1104c701f557601929fe0f1c75939b68a8e8ac2');
+assert.equal(state.sourceCommit, candidate);
 const rpcUrl = 'https://soroban-testnet.stellar.org';
 const server = new S.rpc.Server(rpcUrl);
 const stringify = v => JSON.stringify(v, (_, x) => typeof x === 'bigint' ? x.toString() : x);
@@ -37,8 +43,8 @@ const log = entry => {
 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const actors = Object.fromEntries(['admin', 'alice', 'bob'].map(role => [role, {
-  alias: `${run}-${role}`,
-  address: execFileSync('stellar', ['keys', 'address', `${run}-${role}`], {
+  alias: `${aliases}-${role}`,
+  address: execFileSync('stellar', ['keys', 'address', `${aliases}-${role}`], {
     encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
   }).trim(),
 }]));
@@ -423,6 +429,41 @@ async function matrix() {
   }
 }
 
+async function ownership() {
+  assert.ok(entitlements, 'ownership regression is only for the new isolated fixture');
+  const label = 'ownership:late-entry-and-early-exit';
+  if (state.results.includes(label)) return;
+  const { margin: mc, usdVault, usd } = state.ids;
+  const bob = actors.bob.address;
+  const alice = actors.alice.address;
+  if (!state.ownership) {
+    await distribution('ownership:baseline');
+    state.ownership = { bobPrincipal: String(await call(mc, 'get_margin_balance_ptokens', { user: bob, asset: usd })) };
+    save();
+  }
+  const bobPrincipal = BigInt(state.ownership.bobPrincipal);
+  await write(mc, 'transfer_margin_to_spot', { user: bob, asset: usd, ptoken_amount: bobPrincipal }, `${label}:bob-exit`, 'bob');
+  const id = await open(label, 'alice', 'Short', 10n * U, 5);
+  await close(label, 'alice', 'Short', id);
+  if (!state.ownership.alicePrincipal) {
+    state.ownership.alicePrincipal = String(await call(mc, 'get_margin_balance_ptokens', { user: alice, asset: usd }));
+    save();
+  }
+  const alicePrincipal = BigInt(state.ownership.alicePrincipal);
+  // Alice leaves before conversion; Bob enters after both fees were charged.
+  await write(mc, 'transfer_margin_to_spot', { user: alice, asset: usd, ptoken_amount: alicePrincipal }, `${label}:alice-exit`, 'alice');
+  await write(mc, 'transfer_spot_to_margin', { user: bob, asset: usd, ptoken_amount: bobPrincipal }, `${label}:bob-enter`, 'bob');
+  const distributed = BigInt(await write(mc, 'distribute_margin_fees', { vault: usdVault }, `${label}:distribute`, 'bob'));
+  assert.ok(distributed > 0n);
+  assert.equal(BigInt(await call(mc, 'get_claimable_margin_fees', { user: bob, asset: usd })), 0n);
+  const earned = BigInt(await write(mc, 'claim_margin_fees', { user: alice, asset: usd }, `${label}:alice-claim`, 'alice'));
+  assert.ok(earned > 0n && earned <= distributed && distributed - earned <= 4n);
+  assert.equal(BigInt(await call(mc, 'get_claimable_margin_fees', { user: alice, asset: usd })), 0n);
+  await write(mc, 'transfer_spot_to_margin', { user: alice, asset: usd, ptoken_amount: alicePrincipal }, `${label}:alice-return`, 'alice');
+  state.results.push(label); save();
+  log({ passed: label, position_id: id, distributed, originalProviderClaimed: earned, lateDepositorClaimed: 0 });
+}
+
 async function extras() {
   const { margin: mc, usd, base, usdVault: uv, baseVault: bv, controller } = state.ids;
   const alice = actors.alice.address;
@@ -677,6 +718,7 @@ if (mode === 'deploy') await setup();
 else if (mode === 'probe') await begin('probe', 'alice', 'Long', U / 10n, 2);
 else if (mode === 'matrix') await matrix();
 else if (mode === 'extras') await extras();
+else if (mode === 'ownership') await ownership();
 else if (mode === 'audit') await audit();
 else if (mode === 'inspect') log({ state, actors });
 else throw new Error(`Unknown mode ${mode}`);

@@ -842,6 +842,7 @@ pub fn compute_margin_fee_pending(delta: u128, user_bal: u128) -> u128 {
 /// the user's fee-index snapshot to the current global index.
 /// Must be called BEFORE any `MarginBalancePtokens` change for `(user, vault)`.
 pub fn accrue_user_fee(env: &Env, user: &Address, vault: &Address) {
+    crate::fee_entitlements::checkpoint(env, user, vault);
     let fee_index = get_margin_fee_index(env, vault);
     let user_index = get_user_margin_fee_index(env, user, vault);
     let delta = fee_index.saturating_sub(user_index);
