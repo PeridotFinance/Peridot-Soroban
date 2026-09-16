@@ -84,6 +84,35 @@ pub struct CloseResidual {
     pub takeover_after: u64,
 }
 
+#[contractevent(topics = ["open_fee_reserved"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OpenFeeReserved {
+    #[topic]
+    pub position_id: u64,
+    #[topic]
+    pub vault: Address,
+    pub fee_ptokens: u128,
+}
+
+#[contractevent(topics = ["close_fee_reserved"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CloseFeeReserved {
+    #[topic]
+    pub position_id: u64,
+    #[topic]
+    pub vault: Address,
+    pub fee_underlying: u128,
+}
+
+#[contractevent(topics = ["margin_fees_distributed"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MarginFeesDistributed {
+    #[topic]
+    pub vault: Address,
+    pub underlying: u128,
+    pub fee_ptokens: u128,
+}
+
 #[contractevent(topics = ["liquidation_started"])]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LiquidationStarted {

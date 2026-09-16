@@ -41,6 +41,7 @@ export class MarginLiquidationKeeper {
     this.state = state;
     this.save = save;
     this.logger = logger;
+    this.nextFeeDistributionAt = 0;
   }
 
   async initialize() {
@@ -141,6 +142,29 @@ export class MarginLiquidationKeeper {
       ...ids.filter((id) => stillActive.has(id)),
     ];
     await this.save();
+    await this.distributeFees();
+  }
+
+  async distributeFees() {
+    const vaults = this.config.feeDistributionVaults ?? [];
+    if (vaults.length === 0 || Date.now() < this.nextFeeDistributionAt) return;
+    // No paid retries every position-poll cycle after a failed conversion.
+    this.nextFeeDistributionAt = Date.now() + this.config.feeDistributionIntervalMs;
+    for (const vault of vaults) {
+      try {
+        const args = [scAddress(vault)];
+        const pending = await this.client.read("get_undistributed_margin_fees", args);
+        const underlying = BigInt(pending.underlying);
+        const ptokens = BigInt(pending.ptokens);
+        if (underlying < this.config.minFeeUnderlying && ptokens < this.config.minFeePtokens) continue;
+        await this.client.submit("distribute_margin_fees", args);
+        this.logger.info("margin fee distribution processed", {
+          vault, underlying: underlying.toString(), ptokens: ptokens.toString(), dryRun: this.config.dryRun,
+        });
+      } catch (error) {
+        this.logger.error("margin fee distribution failed", { vault, error: error.message });
+      }
+    }
   }
 
   async processPosition(positionId) {

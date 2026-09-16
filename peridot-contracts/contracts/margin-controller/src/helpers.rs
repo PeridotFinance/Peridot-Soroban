@@ -317,6 +317,9 @@ pub fn clear_position_mode(env: &Env, position_id: u64) {
 pub fn clear_perps_v3_position_storage(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
+        .remove(&DataKey::PerpsFeeTerms(position_id));
+    env.storage()
+        .persistent()
         .remove(&DataKey::Position(position_id));
     clear_pending_perps_open_position(env, position_id);
     clear_pending_perps_open_execution(env, position_id);
@@ -345,6 +348,7 @@ pub fn get_position_record_or_panic(env: &Env, position_id: u64) -> Position {
 }
 
 pub fn bump_position_record_ttl(env: &Env, position_id: u64) {
+    crate::fees::bump_fee_terms_ttl(env, position_id);
     let key = DataKey::Position(position_id);
     let persistent = env.storage().persistent();
     if persistent.has(&key) {
@@ -360,7 +364,7 @@ pub fn set_pending_perps_open_position(
     env.storage()
         .persistent()
         .set(&DataKey::PendingPerpsOpenPosition(position_id), pending);
-    bump_position_ttl(env, position_id);
+    bump_pending_perps_open_ttl(env, position_id);
 }
 
 pub fn get_pending_perps_open_position(
@@ -372,7 +376,7 @@ pub fn get_pending_perps_open_position(
         .persistent()
         .get(&DataKey::PendingPerpsOpenPosition(position_id));
     if pending.is_some() {
-        bump_position_ttl(env, position_id);
+        bump_pending_perps_open_ttl(env, position_id);
     }
     pending
 }
@@ -398,7 +402,7 @@ pub fn set_pending_perps_open_execution(
     env.storage()
         .persistent()
         .set(&DataKey::PendingPerpsOpenExecution(position_id), execution);
-    bump_position_ttl(env, position_id);
+    bump_pending_perps_open_ttl(env, position_id);
 }
 
 pub fn get_pending_perps_open_execution(
@@ -410,7 +414,7 @@ pub fn get_pending_perps_open_execution(
         .persistent()
         .get(&DataKey::PendingPerpsOpenExecution(position_id));
     if execution.is_some() {
-        bump_position_ttl(env, position_id);
+        bump_pending_perps_open_ttl(env, position_id);
     }
     execution
 }
@@ -426,6 +430,22 @@ pub fn clear_pending_perps_open_execution(env: &Env, position_id: u64) {
     env.storage()
         .persistent()
         .remove(&DataKey::PendingPerpsOpenExecution(position_id));
+}
+
+fn bump_pending_perps_open_ttl(env: &Env, position_id: u64) {
+    bump_position_record_ttl(env, position_id);
+    let persistent = env.storage().persistent();
+    // Hot-path pending state. Public pending getters additionally keep the full
+    // position alive; activation reads/bumps the canonical vault snapshots.
+    for key in [
+        DataKey::PendingPerpsOpenPosition(position_id),
+        DataKey::PendingPerpsOpenExecution(position_id),
+        DataKey::PositionMode(position_id),
+    ] {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
 }
 
 pub fn set_pending_perps_close(env: &Env, position_id: u64, pending: &PendingPerpsClose) {
@@ -499,7 +519,11 @@ pub fn set_perps_position_data(env: &Env, position_id: u64, data: &PerpsPosition
     env.storage()
         .persistent()
         .set(&DataKey::PerpsPositionData(position_id), data);
-    bump_position_ttl(env, position_id);
+    let key = DataKey::PerpsPositionData(position_id);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    bump_position_record_ttl(env, position_id);
 }
 
 pub fn get_perps_position_data(env: &Env, position_id: u64) -> Option<PerpsPositionData> {
@@ -1006,6 +1030,7 @@ pub fn bump_perps_pair_config_ttl(
 }
 
 pub fn bump_position_ttl(env: &Env, position_id: u64) {
+    crate::fees::bump_fee_terms_ttl(env, position_id);
     let persistent = env.storage().persistent();
     let key = DataKey::Position(position_id);
     if persistent.has(&key) {

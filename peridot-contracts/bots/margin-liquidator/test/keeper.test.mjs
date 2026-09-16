@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { Keypair, nativeToScVal } from "@stellar/stellar-sdk";
+import { Keypair, nativeToScVal, StrKey, scValToNative } from "@stellar/stellar-sdk";
 
 import {
   MarginLiquidationKeeper,
@@ -17,6 +17,64 @@ test("enumTag decodes Soroban enum vectors", () => {
   assert.equal(enumTag(["Open"]), "Open");
   assert.equal(enumTag("Liquidated"), "Liquidated");
   assert.equal(enumTag(null), null);
+});
+
+test("fee distribution is opt-in and batches only configured reserved balances", async () => {
+  const vault = StrKey.encodeContract(Buffer.alloc(32, 1));
+  const submissions = [];
+  let pending = 9_999n;
+  const client = {
+    async read(method, args) {
+      assert.equal(method, "get_undistributed_margin_fees");
+      assert.equal(scValToNative(args[0]), vault);
+      return { underlying: pending, ptokens: 0n };
+    },
+    async submit(method, args) {
+      submissions.push(method);
+      assert.equal(scValToNative(args[0]), vault);
+    },
+  };
+  const keeper = new MarginLiquidationKeeper({}, client, {}, async () => {}, {
+    info() {}, error() {},
+  });
+  await keeper.distributeFees();
+  assert.equal(submissions.length, 0);
+  keeper.config = {
+    feeDistributionVaults: [vault], feeDistributionIntervalMs: 300_000,
+    minFeeUnderlying: 10_000n, minFeePtokens: 10_000n, dryRun: true,
+  };
+  await keeper.distributeFees();
+  assert.equal(submissions.length, 0);
+  pending = 10_000n;
+  keeper.nextFeeDistributionAt = 0;
+  await keeper.distributeFees();
+  assert.deepEqual(submissions, ["distribute_margin_fees"]);
+  await keeper.distributeFees();
+  assert.equal(submissions.length, 1, "no resubmission before the next interval");
+});
+
+test("fee distribution failure is isolated and never retried each polling cycle", async () => {
+  const vaults = [1, 2].map((byte) => StrKey.encodeContract(Buffer.alloc(32, byte)));
+  const calls = [];
+  const errors = [];
+  const keeper = new MarginLiquidationKeeper({
+    feeDistributionVaults: vaults, feeDistributionIntervalMs: 300_000,
+    minFeeUnderlying: 10_000n, minFeePtokens: 10_000n, dryRun: false,
+  }, {
+    async read() { return { underlying: 0n, ptokens: 10_000n }; },
+    async submit(method, args) {
+      const vault = scValToNative(args[0]);
+      calls.push(vault);
+      if (vault === vaults[0]) throw new Error("vault paused");
+    },
+  }, {}, async () => {}, {
+    info() {}, error(message, details) { errors.push({ message, ...details }); },
+  });
+  await keeper.distributeFees();
+  await keeper.distributeFees();
+  assert.deepEqual(calls, vaults);
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].vault, vaults[0]);
 });
 
 test("chooseLiquidationMinOut applies quote slippage without crossing oracle floor", () => {

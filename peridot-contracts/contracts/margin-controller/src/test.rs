@@ -5307,6 +5307,19 @@ fn test_exact_live_wasm_upgrade_preserves_v3_positions_and_pending_recovery() {
     );
     controller.upgrade_wasm(&admin, &new_hash);
 
+    // An upgrade enabling fees must not retroactively reprice existing opens,
+    // including either pending-open state written by the previous WASM.
+    controller.set_open_fee_bps(&admin, &100u128);
+    controller.set_close_fee_bps(&admin, &100u128);
+    for id in [
+        long_id,
+        short_id,
+        unexecuted_pending_id,
+        executed_pending_id,
+    ] {
+        assert!(controller.get_position_fee_terms(&id).is_none());
+    }
+
     assert_eq!(
         controller.get_perps_pair_exit_config(&usdt_id, &xlm_id, &PositionSide::Long),
         PerpsPairExitExecutionConfig {
@@ -5369,4 +5382,12 @@ fn test_exact_live_wasm_upgrade_preserves_v3_positions_and_pending_recovery() {
     );
     controller.finish_close_position_v3(&short_id);
     assert!(controller.get_position(&short_id).is_none());
+    assert_eq!(
+        controller
+            .get_undistributed_margin_fees(&usdt_vault_id)
+            .underlying,
+        0
+    );
 }
+#[path = "fee_tests.rs"]
+mod fee_tests;

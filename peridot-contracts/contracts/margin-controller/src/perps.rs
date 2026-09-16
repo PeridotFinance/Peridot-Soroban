@@ -7,6 +7,7 @@ use crate::events::{
     CloseResidual, LiquidationFinished, LiquidationStarted, LiquidationSwapped,
     PositionCollateralAdded, PositionPoolReplaced, PositionReleased,
 };
+use crate::fees::*;
 use crate::helpers::*;
 use crate::storage::*;
 
@@ -81,8 +82,9 @@ impl MarginController {
             expected_out,
         );
 
+        let fee_quote = preview_open_fees(env, margin_ptokens, leverage);
         let free_margin = get_margin_balance_ptokens(env, &user, &margin_vault);
-        if free_margin < margin_ptokens {
+        if free_margin < fee_quote.total_required_ptokens {
             panic!("insufficient margin balance");
         }
         accrue_user_fee(env, &user, &margin_vault);
@@ -90,9 +92,9 @@ impl MarginController {
             env,
             &user,
             &margin_vault,
-            free_margin.saturating_sub(margin_ptokens),
+            free_margin - fee_quote.total_required_ptokens,
         );
-        update_total_margin_ptokens(env, &margin_vault, margin_ptokens, false);
+        update_total_margin_ptokens(env, &margin_vault, fee_quote.total_required_ptokens, false);
 
         let margin_rate = ReceiptVaultClient::new(env, &margin_vault).get_exchange_rate();
         if margin_rate == 0 {
@@ -157,6 +159,7 @@ impl MarginController {
         }
 
         let id = next_position_id(env);
+        initialize_fee_terms(env, id, &fee_quote);
         let now = env.ledger().timestamp();
         let position = Position {
             owner: user.clone(),
@@ -386,6 +389,7 @@ impl MarginController {
             }
         }
 
+        collect_open_fee(env, position_id, &pending.margin_vault);
         let activated = position.clone();
         clear_pending_perps_open_position(env, position_id);
         clear_pending_perps_open_execution(env, position_id);
@@ -399,7 +403,7 @@ impl MarginController {
         position_id: u64,
         enforce_expiry: bool,
     ) -> (Position, PendingPerpsOpenPosition, PositionVaults) {
-        let position = get_position_or_panic(env, position_id);
+        let position = get_position_record_or_panic(env, position_id);
         if position.owner != *user {
             panic!("not owner");
         }
@@ -416,7 +420,18 @@ impl MarginController {
         if enforce_expiry && env.ledger().timestamp() > pending.expires_at {
             panic!("pending open expired");
         }
-        let vaults = get_position_vaults(env, position_id, &position);
+        let vaults = if enforce_expiry {
+            // The immutable pending record already pins all vault addresses at
+            // begin. Do not read three duplicate snapshots in the borrow+swap
+            // stage; activation checks them before committing the open position.
+            PositionVaults {
+                collateral_vault: pending.margin_vault.clone(),
+                debt_vault: pending.debt_vault.clone(),
+                position_vault: pending.position_vault.clone(),
+            }
+        } else {
+            get_position_vaults(env, position_id, &position)
+        };
         if vaults.collateral_vault != pending.margin_vault
             || vaults.debt_vault != pending.debt_vault
             || vaults.position_vault != pending.position_vault
@@ -499,15 +514,25 @@ impl MarginController {
         position: &Position,
         pending: &PendingPerpsOpenPosition,
     ) {
+        if get_pending_perps_open_execution(env, position_id).is_some() {
+            panic!("open already swapped");
+        }
+        let fee_refund = get_fee_terms(env, position_id)
+            .map(|terms| terms.open_fee_ptokens)
+            .unwrap_or(0);
+        let refund = pending
+            .margin_ptokens
+            .checked_add(fee_refund)
+            .expect("margin balance overflow");
         accrue_user_fee(env, &position.owner, &pending.margin_vault);
         let free = get_margin_balance_ptokens(env, &position.owner, &pending.margin_vault);
         set_margin_balance_ptokens(
             env,
             &position.owner,
             &pending.margin_vault,
-            free.saturating_add(pending.margin_ptokens),
+            free.checked_add(refund).expect("margin balance overflow"),
         );
-        update_total_margin_ptokens(env, &pending.margin_vault, pending.margin_ptokens, true);
+        update_total_margin_ptokens(env, &pending.margin_vault, refund, true);
         clear_perps_v3_position_storage(env, position_id);
         remove_user_position(env, &position.owner, position_id);
     }
@@ -949,6 +974,12 @@ impl MarginController {
         if received_debt_asset < buffered_debt {
             panic!("debt remains");
         }
+
+        let fee_notional = match position.side {
+            PositionSide::Long => received_debt_asset,
+            PositionSide::Short => swap_amount_in,
+        };
+        set_close_execution_fee(env, position_id, fee_notional);
 
         pending.debt_amount = debt_amount;
         pending.received_debt_asset = received_debt_asset;
@@ -1903,6 +1934,30 @@ impl MarginController {
         }
     }
 
+    fn credit_close_surplus(
+        env: &Env,
+        user: &Address,
+        vault: &Address,
+        asset: &Address,
+        amount: u128,
+        fee_charged: bool,
+    ) {
+        if amount > 0 && fee_charged {
+            // Debt was updated/repaid in this invocation. Do not let a fee turn
+            // a redeemable surplus into a deposit that cannot mint one pToken.
+            let rate = ReceiptVaultClient::new(env, vault).get_exchange_rate();
+            if rate == 0 {
+                panic!("invalid exchange rate");
+            }
+            let minimum = rate.div_ceil(SCALE_1E6);
+            if amount < minimum {
+                Self::transfer_controller_underlying(env, asset, user, amount);
+                return;
+            }
+        }
+        Self::credit_margin_underlying(env, user, vault, amount);
+    }
+
     fn release_open_position_ptokens(
         env: &Env,
         position_id: u64,
@@ -1942,7 +1997,10 @@ impl MarginController {
     ) {
         let was_swapped = pending.debt_amount > 0;
         if was_swapped {
+            let mut remainder = get_pending_perps_close_remainder(env, position_id);
             if position.side == PositionSide::Short {
+                let fee = reserve_close_fee(env, position_id, &vaults.position_vault, remainder);
+                remainder -= fee;
                 Self::transfer_controller_underlying(
                     env,
                     &position.debt_asset,
@@ -1950,18 +2008,26 @@ impl MarginController {
                     pending.received_debt_asset,
                 );
             } else {
-                Self::credit_margin_underlying(
+                let fee = reserve_close_fee(
+                    env,
+                    position_id,
+                    &vaults.debt_vault,
+                    pending.received_debt_asset,
+                );
+                Self::credit_close_surplus(
                     env,
                     &position.owner,
                     &vaults.debt_vault,
-                    pending.received_debt_asset,
+                    &position.debt_asset,
+                    pending.received_debt_asset - fee,
+                    fee > 0,
                 );
             }
             Self::transfer_controller_underlying(
                 env,
                 &position.collateral_asset,
                 &position.owner,
-                get_pending_perps_close_remainder(env, position_id),
+                remainder,
             );
         } else {
             Self::credit_margin_underlying(
@@ -2099,6 +2165,14 @@ impl MarginController {
             debt_vault_client.absorb_margin_bad_debt(&position_id);
         }
         let mut surplus = received_debt_asset.saturating_sub(repay_amount);
+        let mut close_fee = 0;
+        if liquidator.is_none() {
+            // User atomic closes are Long-only. Liquidations never charge an
+            // additional trading fee or divert repayment funds to fee providers.
+            set_close_execution_fee(env, position_id, received_debt_asset);
+            close_fee = reserve_close_fee(env, position_id, &vaults.debt_vault, surplus);
+            surplus -= close_fee;
+        }
         if let Some(liquidator_addr) = liquidator {
             let incentive = surplus.min(
                 debt_amount
@@ -2123,12 +2197,19 @@ impl MarginController {
                 surplus = surplus.saturating_sub(incentive);
             }
         }
-        Self::credit_margin_underlying(env, user, &vaults.debt_vault, surplus);
+        Self::credit_close_surplus(
+            env,
+            user,
+            &vaults.debt_vault,
+            &position.debt_asset,
+            surplus,
+            close_fee > 0,
+        );
         clear_perps_v3_position_storage(env, position_id);
         remove_user_position(env, user, position_id);
     }
 
-    fn authorize_controller_vault_deposit(
+    pub(crate) fn authorize_controller_vault_deposit(
         env: &Env,
         vault: &Address,
         token: &Address,

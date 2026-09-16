@@ -393,6 +393,32 @@ impl MarginController {
             .set(&DataKey::CloseFeeBps, &fee_bps);
     }
 
+    pub fn preview_open_fees_v3(
+        env: Env,
+        margin_ptokens: u128,
+        leverage: u128,
+    ) -> PerpsOpenFeeQuote {
+        bump_core_ttl(&env);
+        crate::fees::preview_open_fees(&env, margin_ptokens, leverage)
+    }
+
+    pub fn get_position_fee_terms(env: Env, position_id: u64) -> Option<PerpsFeeTerms> {
+        bump_position_ttl(&env, position_id);
+        crate::fees::get_fee_terms(&env, position_id)
+    }
+
+    pub fn get_undistributed_margin_fees(env: Env, vault: Address) -> PendingMarginFees {
+        bump_instance_ttl(&env);
+        crate::fees::pending_margin_fees(&env, &vault)
+    }
+
+    /// Permissionless, independent of position settlement. Recipients are the
+    /// vault's free-margin providers at distribution time; no caller payout.
+    pub fn distribute_margin_fees(env: Env, vault: Address) -> u128 {
+        bump_instance_ttl(&env);
+        Self::distribute_margin_fees_impl(&env, &vault)
+    }
+
     /// Accrue any pending fees and transfer claimable pTokens into the
     /// caller's free margin balance. Returns the number of pTokens claimed.
     pub fn claim_margin_fees(env: Env, user: Address, asset: Address) -> u128 {
@@ -628,19 +654,21 @@ impl MarginController {
     }
 
     pub fn execute_open_position_v3(env: Env, user: Address, position_id: u64) {
-        bump_core_ttl(&env);
+        bump_instance_ttl(&env);
         user.require_auth();
         Self::execute_open_position_v3_impl(&env, user, position_id);
     }
 
     pub fn swap_open_position_v3(env: Env, user: Address, position_id: u64) {
-        bump_core_ttl(&env);
+        // Begin snapshots terms and refreshes configuration. Subsequent stages
+        // extend only the configuration and position records they actually use.
+        bump_instance_ttl(&env);
         user.require_auth();
         Self::swap_open_position_v3_impl(&env, user, position_id);
     }
 
     pub fn activate_open_position_v3(env: Env, user: Address, position_id: u64) {
-        bump_core_ttl(&env);
+        bump_instance_ttl(&env);
         user.require_auth();
         Self::activate_open_position_v3_impl(&env, user, position_id);
     }
@@ -663,6 +691,7 @@ impl MarginController {
 
     pub fn get_pending_perps_open(env: Env, position_id: u64) -> Option<PendingPerpsOpenPosition> {
         bump_core_ttl(&env);
+        bump_position_ttl(&env, position_id);
         get_pending_perps_open_position(&env, position_id)
     }
 
@@ -671,6 +700,7 @@ impl MarginController {
         position_id: u64,
     ) -> Option<PendingPerpsOpenExecution> {
         bump_core_ttl(&env);
+        bump_position_ttl(&env, position_id);
         get_pending_perps_open_execution(&env, position_id)
     }
 

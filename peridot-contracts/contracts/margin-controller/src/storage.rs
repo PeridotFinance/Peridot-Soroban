@@ -139,6 +139,31 @@ pub enum DataKey {
     UserPositionsCompactionCursor(Address),
     ConfiguredPerpsPairs,
     PerpsPairExitExecutionConfig(Address, Address, PositionSide),
+    PerpsFeeTerms(u64),
+    PendingMarginFees(Address), // vault -> reserved fees awaiting distribution
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PerpsFeeTerms {
+    pub open_fee_ptokens: u128, // reserved until activation; refundable only before the swap
+    pub close_fee_bps: u128,    // fixed at begin; legacy positions have no fee terms
+    pub close_fee_underlying: u128, // gross execution fee, before the surplus cap
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PerpsOpenFeeQuote {
+    pub open_fee_ptokens: u128,
+    pub total_required_ptokens: u128,
+    pub close_fee_bps: u128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingMarginFees {
+    pub underlying: u128,
+    pub ptokens: u128,
 }
 
 #[contracttype]
@@ -353,11 +378,17 @@ pub fn get_peridottroller(env: &Env) -> PeridottrollerClient<'_> {
 }
 
 pub fn get_swap_adapter(env: &Env) -> Address {
-    bump_core_ttl(env);
-    env.storage()
-        .persistent()
+    crate::helpers::bump_instance_ttl(env);
+    let persistent = env.storage().persistent();
+    let adapter = persistent
         .get(&DataKey::SwapAdapter)
-        .expect("swap adapter not set")
+        .expect("swap adapter not set");
+    persistent.extend_ttl(
+        &DataKey::SwapAdapter,
+        crate::constants::TTL_THRESHOLD,
+        crate::constants::TTL_EXTEND_TO,
+    );
+    adapter
 }
 
 pub fn get_max_leverage(env: &Env) -> u128 {

@@ -75,6 +75,36 @@ sudo journalctl -u peridot-margin-liquidator -f
 
 ## Operations
 
+### Optional V3 Fee Distribution
+
+Only enable this after deploying the reviewed fee-capable controller. Existing
+deployments do not expose these new methods; an empty configuration (default)
+performs no fee calls.
+
+```bash
+FEE_DISTRIBUTION_VAULTS=<RECEIPT_VAULT_ID>,<ANOTHER_RECEIPT_VAULT_ID>
+FEE_DISTRIBUTION_INTERVAL_MS=300000
+MIN_FEE_UNDERLYING=10000
+MIN_FEE_PTOKENS=10000
+DRY_RUN=true
+```
+
+Use ReceiptVault addresses, not token addresses. The keeper reads
+`get_undistributed_margin_fees(vault)` and submits `distribute_margin_fees(vault)`
+when either raw-unit threshold is met. These independent thresholds are dust
+limits, not estimates of income versus transaction fees. The existing submission
+client simulates only in dry-run mode. No account other than the keeper needs to
+sign; it cannot choose reward recipients.
+
+Position processing runs first. Fee failures are logged separately and retried no
+sooner than the next configured interval, never on every position polling cycle.
+Free-margin providers participate at distribution time, not at the original trade
+time. A keeper outage delays rewards but does not hold up user closes. Fees are
+reserved on-chain, so restarting does not require reconstructing fee events.
+Alert on `margin fee distribution failed` and growing pending inventory.
+
+### General Operations
+
 - Run one active process per signing key to avoid account-sequence collisions.
 - A standby keeper should use a different funded key; it can take over after
   the on-chain timeout.
