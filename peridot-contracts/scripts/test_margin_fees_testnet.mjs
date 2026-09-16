@@ -2,7 +2,8 @@
 // Isolated fee-release validation. Never imports a production signing key.
 // This recorded fixture requires its three peridot-fees-20260916 CLI aliases,
 // builds under target/margin-fees-testnet, and margin-liquidator npm dependencies.
-// Modes: deploy, probe, matrix, extras, ownership, audit. Mutations additionally require
+// Modes: deploy, probe, matrix, extras, ownership, audit, audit-ownership.
+// Mutations additionally require
 // CONFIRM_TESTNET=ISOLATED_MARGIN_FEES; audit is read-only. Preserve state.json
 // when resuming; never run two processes against the same fixture concurrently.
 import assert from 'node:assert/strict';
@@ -608,10 +609,14 @@ async function extras() {
   }
 }
 
-async function audit() {
-  assert.equal(state.results.filter(x => x.startsWith('matrix:')).length, 24, 'matrix incomplete');
-  for (const label of ['cancel-refund', 'repay-add-recover-release', 'siblings', 'delayed-close', 'liquidation', 'withdraw-fees', 'keeper-liquidation']) {
-    assert.ok(state.results.includes(label), `${label} incomplete`);
+async function audit(ownershipOnly = false) {
+  if (ownershipOnly) {
+    assert.ok(entitlements && state.results.includes('ownership:late-entry-and-early-exit'));
+  } else {
+    assert.equal(state.results.filter(x => x.startsWith('matrix:')).length, 24, 'matrix incomplete');
+    for (const label of ['cancel-refund', 'repay-add-recover-release', 'siblings', 'delayed-close', 'liquidation', 'withdraw-fees', 'keeper-liquidation']) {
+      assert.ok(state.results.includes(label), `${label} incomplete`);
+    }
   }
   for (const [idName, artifact] of Object.entries({ margin: 'margin_controller', adapter: 'swap_adapter',
     controller: 'simple_peridottroller', usdVault: 'receipt_vault', baseVault: 'receipt_vault', model: 'jump_rate_model' })) {
@@ -693,7 +698,7 @@ async function audit() {
       if (!peaks[key] || value > peaks[key].value) peaks[key] = { value, label };
     }
   }
-  assert.equal(liquidationFinishes.length, 2, 'both liquidation directions must settle');
+  if (!ownershipOnly) assert.equal(liquidationFinishes.length, 2, 'both liquidation directions must settle');
   const successfulHashes = new Set(confirmed.map(([, tx]) => tx.hash));
   const attempts = new Map(readFileSync(resolve(dir, 'transactions.jsonl'), 'utf8').trim().split('\n')
     .map(line => JSON.parse(line)).filter(entry => entry.submitting).map(entry => [entry.hash, entry]));
@@ -708,7 +713,7 @@ async function audit() {
     failedAttempts.push({ hash, label: attempt.submitting, ledger: result.ledger,
       reason: 'Pool token instance absent from simulated footprint; execution trapped and rolled back' });
   }
-  log({ auditPassed: true, sourceCommit: state.sourceCommit, scenarios: state.results, clearedPositions: count,
+  log({ auditPassed: true, scope: ownershipOnly ? 'targeted-fee-ownership' : 'complete-lifecycle-matrix', sourceCommit: state.sourceCommit, scenarios: state.results, clearedPositions: count,
     confirmedTransactions: confirmed.length, failedAttempts, liquidationFinishes, resourcePeaks: peaks });
 }
 
@@ -720,5 +725,6 @@ else if (mode === 'matrix') await matrix();
 else if (mode === 'extras') await extras();
 else if (mode === 'ownership') await ownership();
 else if (mode === 'audit') await audit();
+else if (mode === 'audit-ownership') await audit(true);
 else if (mode === 'inspect') log({ state, actors });
 else throw new Error(`Unknown mode ${mode}`);
