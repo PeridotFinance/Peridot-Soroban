@@ -8,6 +8,10 @@ crate-type = ["cdylib"]
 
 [features]
 test-default-admin = []
+# Native integration only until ownership hooks and activation guards are complete.
+hybrid-rewards = []
+# Re-run only the native reward harness against the separate lean receipt engine.
+lp-receipt-prototype = []
 
 [dependencies]
 soroban-sdk = { workspace = true }
@@ -16,6 +20,7 @@ soroban-sdk = { workspace = true }
 soroban-sdk = { workspace = true, features = ["testutils"] }
 mock-token = { path = "../mocks/mock-token" }
 mock-aquarius-pool = { path = "../mocks/mock-aquarius-pool" }
-receipt-vault = { path = "../receipt-vault", features = ["test-default-admin"] }
+receipt-vault = { path = "../receipt-vault", features = ["test-default-admin", "hybrid-rewards"] }
+lp-receipt-vault = { path = "../lp-receipt-vault" }
 simple-peridottroller = { path = "../simple-peridottroller", features = ["test-default-admin"] }
 jump-rate-model = { path = "../jump-rate-model", features = ["test-default-admin"] }

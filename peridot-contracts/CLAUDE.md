@@ -60,6 +60,86 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September17 LOCAL outage follow-up supersedes the claim/stale-quote limitation
+  in the earlier native coordinator entry below. Failed claims now checkpoint
+  independently observable primary/gauge receivables; these are NOT cash/NAV and
+  cannot be swapped or paid until actually collected. Recovery never indexes the
+  same debt twice. Missing/decreasing observations still fail closed. Proportional
+  principal exit burns only attributable strategy shares plus managed idle cash,
+  checks actual deltas and the user's final minimum, and retains strategy guards.
+  It never forwards an inflated user minimum to the strategy to draw others' cash.
+  Six added outage regressions; lean bridge48 passed/2 explicit-WASM ignores.
+  Full workspace595 unit/3 doc tests passed. Two separately enabled local tests
+  using exact deployed concentrated-pool WASM also passed:87 entries each,87.33M
+  and95.44M instructions (fresh/stale oracle respectively). These use native
+  receipt/strategy, controlled oracle/plane/reward-route mocks and fresh local
+  pool state, NOT a compiled-stack or Mainnet simulation; real gauge WASM remains
+  untested. Full compiled budgets, multi-route worst cases, fees/pair emissions,
+  rotation/restoration/migration, production ABI and security review remain gates.
+  No deployment, keeper changes or Mainnet writes. See the design for scan scope
+  and reproducible exact-pool test commands; do not deploy this native prototype.
+- September17 LOCAL all-stream follow-up: native-only
+  `lp-receipt-vault/src/reward_coordinator.rs` now splits actual new emissions
+  between ordinary holders and escrow, derives pending inventory across up to4
+  retained tokens, and settles old backing yield before new-unit issue/redemption.
+  Deposit/transfer/withdraw wrappers checkpoint all retained streams; principal
+  exits do not require a reward swap. Failed claims/quotes still block exits and
+  remain a release blocker. Registration cannot reset a missing old registry.
+  Thirteen functional coordinator tests plus one explicitly over-budget diagnostic
+  added; lean bridge total42 passed. Shared backing total now18 tests; ordinary
+  ReceiptVault171/1 intentional ignore, Aquarius93/2 intentional ignores, LP9 pass.
+  Two-stream principal exit81 entries, staged reward payout82; four-registry staged
+  recycling74–75. Combined four-route payout152/SDK100 is DIAGNOSTIC ONLY with
+  limits disabled, not network-fit evidence. Staging always reclaims fresh rewards;
+  it is not a continuous-emission liveness/budget proof. Actual pool-WASM/resource
+  checks, dust/fees/pair-emission policy, outage recovery, production ABI and
+  migration/controller obligations remain required. All WASM gates remain; no
+  scan, commit/push, deployment, keeper or Mainnet change. Detailed evidence is in
+  REWARD_SETTLEMENT_DESIGN.md and ignored Agents.md.
+- September16 LOCAL LP-only split: `contracts/lp-receipt-vault/src/contract.rs`
+  is a separate native supply-only principal engine. Generic lending/DeFindex is
+  unchanged. No borrowing/JRM/flash loans/collateral/liquidation/margin/controller
+  incentives; same development reward backing/ledger sources are reused. No public
+  ABI or migration, and WASM compilation is blocked. Nine core tests and28 lean
+  bridge tests pass, including both settlement indices. Native strategy-funded
+  ownership deposit75 entries (generic106), exits66 each, conversion53 and separate
+  reinvestment52, with transaction limits enabled. Correction:100 is the SDK fixture
+  ceiling, NOT a fresh Mainnet-limit read. Actual pool-WASM budgets, all-stream/
+  recycled yield, outage exit recovery, migration/controller obligations and review
+  remain release gates. Existing receipt-address bindings cannot simply be changed.
+  No scan, commit/push, deployment or keeper/Mainnet changes. See the design/handoff.
+- September16 LOCAL persistent ownership follow-up: `receipt-vault/src/reward_ledger.rs`
+  tracks per-token epochs, per-holder raw/converted claims and withdrawal reserves
+  in persistent storage. Native receipt tests now derive allocations from real
+  pToken weights and connect actual claims/swaps/backing without admin allocation.
+  Thirteen added tests; totals ReceiptVault170/1 intentional WASM ignore and
+  Aquarius93/2 intentional WASM ignores. IMPORTANT: one test is a diagnostic of
+  the generic106-entry strategy-deposit footprint (SDK test ceiling100), not network-fit
+  evidence. Functional exit/deposit tests use idle cash. Recycled escrow emissions
+  and multi-stream coordination still fail closed; production mutation hooks are
+  not wired. Both contracts reject hybrid-rewards WASM builds. No release/Mainnet
+  action. Full evidence and limitations: REWARD_SETTLEMENT_DESIGN.md and Agents.md.
+- September 16 LOCAL hybrid bridge work: native-only receipt-authorized primary/
+  gauge claims and exact-input reward swaps now compose with real ReceiptVault
+  backing and Aquarius reinvestment in tests. Explicit `hybrid-rewards` WASM builds
+  are rejected; default production behavior is unchanged. Combined conversion and
+  reinvestment hit104 ledger entries, so conversion now creates immediately backed
+  idle cash via `finish_idle`, with reinvestment separate (77 entries each in the
+  native mock-pool fixture). Twelve new bridge tests pass; targeted totals are
+  ReceiptVault170/1 intentional WASM ignore and Aquarius80/2 intentional WASM ignores.
+  Per-user allocation remains a test stand-in; ownership hooks, fees/pair emissions,
+  migration/TTL, controller incentives and exact-WASM budgets still block release.
+  No hybrid scan, release, keeper or Mainnet change. See REWARD_SETTLEMENT_DESIGN.md.
+- September 15 hybrid reward work is LOCAL/DEVELOPMENT ONLY: receipt allocation
+  model plus `reward_backing.rs` real-token custody/reinvestment library. Backing
+  uses escrowed pTokens with separate claim units; it has no production entrypoints
+  or activation and is excluded from default builds. Seventeen custody tests and
+  sixteen allocation tests pass; full targeted suites: ReceiptVault170 passed/1
+  intentional WASM ignore, Aquarius68 passed/2 intentional WASM ignores. Pool
+  recognition, multi-token coordinator, controller incentive checkpoints, receipt
+  mutation hooks, TTL/migration and exact-WASM/budget tests still need integration.
+  No new scan, release or Mainnet change. See REWARD_SETTLEMENT_DESIGN.md; do not
+  deploy this library or claim withdrawal-time AQUA settlement is implemented.
 - September 15 keeper freshness release is LIVE: dedicated branch/tag
   `aquarius-keeper-v0.4.1` pins reviewed commit
   `be5fb6cf544cdf4926b3f490c82fbbff027cb8c9`. DigitalOcean deployment

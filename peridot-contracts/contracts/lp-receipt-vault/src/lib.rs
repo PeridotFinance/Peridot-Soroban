@@ -1,0 +1,24 @@
+#![no_std]
+//! Native-only supply-only receipt prototype for the three Aquarius markets.
+//! No exported contract ABI, deployment artifact, or legacy migration yet.
+//! The test coordinator MUST wrap every share mutation with reward checkpoints.
+
+#[cfg(target_arch = "wasm32")]
+compile_error!("lp-receipt-vault is a native prototype, not a deployable release");
+
+mod contract;
+mod storage;
+pub use contract::LpReceiptVault as ReceiptVault;
+pub use storage::*;
+pub const SCALE_1E6: u128 = 1_000_000;
+
+// Share the existing DEVELOPMENT accounting implementation instead of forking
+// its economic rules. Its crate-local imports resolve to this lean receipt core.
+#[path = "../../receipt-vault/src/reward_backing.rs"]
+pub mod reward_backing;
+pub mod reward_coordinator;
+#[path = "../../receipt-vault/src/reward_ledger.rs"]
+pub mod reward_ledger;
+
+#[cfg(test)]
+mod test;

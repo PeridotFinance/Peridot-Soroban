@@ -59,6 +59,8 @@ enum Key {
     FailWithdraw,
     KillDeposit,
     KillSwap,
+    KillClaim,
+    FailRewardQuote,
     ReplaySwapTransfer,
     SwapOutputBps,
     DepositQuoteExtra0,
@@ -615,11 +617,55 @@ impl MockAquariusPool {
     // ── Rewards ───────────────────────────────────────────────────────────
 
     pub fn get_user_reward(env: Env, user: Address) -> u128 {
+        assert!(
+            !env.storage()
+                .persistent()
+                .get::<_, bool>(&Key::FailRewardQuote)
+                .unwrap_or(false),
+            "reward quote unavailable"
+        );
         get_u128(&env, Key::PendingAqua(user))
+    }
+
+    pub fn set_kill_claim(env: Env, killed: bool) {
+        env.storage().persistent().set(&Key::KillClaim, &killed);
+    }
+    pub fn set_fail_reward_quote(env: Env, fail: bool) {
+        env.storage().persistent().set(&Key::FailRewardQuote, &fail);
+    }
+    pub fn gauges_get_reward_info(env: Env, user: Address) -> Map<Address, Map<Symbol, i128>> {
+        assert!(
+            !env.storage()
+                .persistent()
+                .get::<_, bool>(&Key::FailRewardQuote)
+                .unwrap_or(false),
+            "reward quote unavailable"
+        );
+        let mut result = Map::new(&env);
+        if let Some(asset) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&Key::GaugeToken)
+        {
+            let mut info = Map::new(&env);
+            info.set(
+                Symbol::new(&env, "to_claim"),
+                i128::try_from(get_u128(&env, Key::PendingGauge(user))).unwrap(),
+            );
+            result.set(asset, info);
+        }
+        result
     }
 
     pub fn claim(env: Env, user: Address) -> u128 {
         user.require_auth();
+        assert!(
+            !env.storage()
+                .persistent()
+                .get::<_, bool>(&Key::KillClaim)
+                .unwrap_or(false),
+            "claim killed"
+        );
         let amount = get_u128(&env, Key::PendingAqua(user.clone()));
         if amount == 0 {
             return 0;

@@ -1398,7 +1398,7 @@ impl ReceiptVault {
         Self::deposit_excess_idle_cash(&env, &token_address, live_cash);
     }
 
-    fn deposit_excess_idle_cash(env: &Env, token_address: &Address, live_cash: u128) {
+    pub(crate) fn deposit_excess_idle_cash(env: &Env, token_address: &Address, live_cash: u128) {
         let bps = Self::idle_cash_buffer_bps(env) as u128;
         let total_underlying = Self::get_total_underlying(env.clone());
         let desired_idle = total_underlying.saturating_mul(bps) / BPS_SCALE;

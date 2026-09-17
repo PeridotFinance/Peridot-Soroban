@@ -37,6 +37,23 @@ impl DepositResult {
 #[contract]
 pub struct AquariusLpVault;
 
+// Native-only integration interface; the hybrid feature cannot compile to WASM.
+// Keep generated SDK client extensions in the contract's defining module.
+#[cfg(any(test, feature = "hybrid-rewards"))]
+#[contractimpl]
+impl AquariusLpVault {
+    pub fn hybrid_reward_quote(env: Env) -> Map<Address, u128> {
+        crate::reward_bridge::RewardBridge::hybrid_reward_quote(env)
+    }
+    pub fn hybrid_claim(env: Env) -> Map<Address, u128> {
+        crate::reward_bridge::RewardBridge::hybrid_claim(env)
+    }
+
+    pub fn hybrid_swap(env: Env, reward: Address, amount: u128, minimum: u128) -> u128 {
+        crate::reward_bridge::RewardBridge::hybrid_swap(env, reward, amount, minimum)
+    }
+}
+
 #[cfg(all(feature = "test-default-admin", target_arch = "wasm32"))]
 compile_error!("aquarius-lp-vault test-default-admin must not be enabled for Wasm builds");
 
@@ -106,7 +123,7 @@ fn pow10(exp: u32) -> u128 {
 }
 
 /// Builds an `InvokerContractAuthEntry` for a nested call this contract makes.
-fn auth_entry(
+pub(crate) fn auth_entry(
     env: &Env,
     contract: &Address,
     fn_name: &str,
@@ -1810,7 +1827,7 @@ impl AquariusLpVault {
     /// Sells `amount` of `reward_token` for underlying through its configured
     /// route pool. Returns 0 (and emits) rather than reverting, so one
     /// unsellable reward cannot block the rest of the harvest.
-    fn swap_reward(env: &Env, reward_token: &Address, amount: u128) -> u128 {
+    pub(crate) fn swap_reward(env: &Env, reward_token: &Address, amount: u128) -> u128 {
         let underlying = Self::underlying(env);
         if *reward_token == underlying {
             return amount;
@@ -1926,9 +1943,10 @@ impl AquariusLpVault {
             emit_call_failure(env, &route_pool, e, true);
             return 0;
         }
-        // `amount` is the vault's complete reward-token balance. Replaying the
-        // exact transfer therefore fails inside SEP-41 and reverts the route
-        // invocation without another cross-contract balance read here.
+        // Legacy harvest/sweep callers pass the complete reward-token balance,
+        // so replaying the transfer fails inside SEP-41. The development-only
+        // exact-input bridge instead verifies actual input consumption itself;
+        // its partial-balance calls cannot rely on that legacy assumption.
         Self::balance_of_token(env, &underlying).saturating_sub(underlying_before)
     }
 

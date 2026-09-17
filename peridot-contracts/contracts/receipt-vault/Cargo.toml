@@ -11,6 +11,8 @@ doctest = false
 [features]
 # Native test fixture support only; contract code rejects this feature for Wasm builds.
 test-default-admin = []
+# Development library only; no hybrid entrypoints or activation in the default build.
+hybrid-rewards = []
 
 [dependencies]
 soroban-sdk = { workspace = true }
