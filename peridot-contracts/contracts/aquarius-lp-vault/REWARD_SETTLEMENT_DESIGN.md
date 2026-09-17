@@ -600,6 +600,15 @@ strict LP-library clippy (`--no-deps -- -D warnings`) and diff checks passed.
 
 ### Still required before production hooks
 
+The migration/production-interface draft and native local accounting rehearsals
+are now in [the LP migration specification](../lp-receipt-vault/MIGRATION.md).
+This is NOT an implemented migration. Normal controller delisting requires zero
+pToken supply, old incentives and historical pooled yield need an explicit
+retirement/disposition protocol, and a complete mutation fence is still missing.
+Local zero-debt inspection cannot prove absence of per-owner or external claims.
+Keep all activation/WASM gates; no test-only shadow marker insertion is a release
+entrypoint. Raw balances/allowances/metadata must be preserved, never rescaled.
+
 - Wire the persistent ownership ledger to the separate LP receipt's production
   interface only after real-WASM footprint and recycled-yield blockers are resolved.
   Leave generic lending/DeFindex methods untouched. Native tests now

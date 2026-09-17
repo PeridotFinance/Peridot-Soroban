@@ -60,6 +60,20 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September17 LOCAL migration specification and shadow rehearsal:
+  `contracts/lp-receipt-vault/MIGRATION.md` defines in-place address/share
+  preservation, external controller/incentive retirement, legacy-yield policy,
+  fenced cutover and production ABI gates. Native `migration.rs` inspects local
+  accounting only; success is NOT activation readiness. No activation method was
+  added. Tests use actual generic native receipt deposits in an idle-only scratch
+  fixture, then a TEST-ONLY marker insertion to compare raw shares, allowances,
+  metadata, cash, donations and non-par redemption. Missing state, one-raw-unit
+  liabilities and controller links reject. Individual debt can hide behind zero
+  totals: tests explicitly demonstrate that local checks cannot prove absence.
+  Normal controller delisting requires zero supply; nonempty retirement remains
+  unresolved. Old pooled reward treatment requires approval; never silently
+  reassign it as new individual claims. See Agents.md for checks/scan evidence.
+  No production ABI, deployable artifact, keeper change or Mainnet mutation.
 - September17 LOCAL lifecycle follow-up: native coordinator now pins primary
   denomination and supports admin-authorized, staged rotation. Preparation unwinds
   custody into receipt cash without changing shares/weights; completion rechecks
