@@ -14,6 +14,7 @@ pub const SCALE_1E6: u128 = 1_000_000;
 
 // Share the existing DEVELOPMENT accounting implementation instead of forking
 // its economic rules. Its crate-local imports resolve to this lean receipt core.
+pub mod exit_request;
 #[path = "../../receipt-vault/src/reward_backing.rs"]
 pub mod reward_backing;
 pub mod reward_coordinator;

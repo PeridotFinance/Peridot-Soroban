@@ -14,7 +14,7 @@
 use crate::{reward_backing as backing, reward_ledger as ledger, DataKey, ReceiptVault};
 use soroban_sdk::{
     auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
-    contracttype, token, Address, Env, IntoVal, Map, Symbol, Vec, U256,
+    contractevent, contracttype, token, Address, Env, IntoVal, Map, Symbol, Vec, U256,
 };
 
 #[contracttype]
@@ -22,6 +22,7 @@ use soroban_sdk::{
 pub enum CoordinatorKey {
     RecycledRaw(Address),
     PoolOwed(Address),
+    PinnedPrimary,
 }
 
 #[contracttype]
@@ -30,6 +31,13 @@ pub enum Outcome {
     Nothing,
     Deferred,
     Completed(u128),
+}
+
+#[contractevent(topics = ["lp_primary_rotate"])]
+pub struct PrimaryRotated {
+    pub previous: Address,
+    pub next: Address,
+    pub managed_cash: u128,
 }
 
 fn add(a: u128, b: u128) -> u128 {
@@ -45,6 +53,22 @@ fn ratio(env: &Env, a: u128, b: u128, d: u128) -> u128 {
 }
 fn strategy(env: &Env) -> Address {
     ReceiptVault::get_boosted_vault(env.clone()).expect("LP strategy missing")
+}
+fn primary(env: &Env) -> Address {
+    env.invoke_contract::<Option<Address>>(
+        &strategy(env),
+        &Symbol::new(env, "get_primary_reward_token"),
+        Vec::new(env),
+    )
+    .expect("primary reward missing")
+}
+fn require_admin(env: &Env) {
+    let admin: Address = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Admin)
+        .expect("admin missing");
+    admin.require_auth();
 }
 fn weight(env: &Env, owner: &Address) -> u128 {
     ReceiptVault::balance(env.clone(), owner.clone())
@@ -100,12 +124,7 @@ pub fn owed(env: &Env, asset: &Address) -> u128 {
 /// Native admin registration only; retained streams can never be removed/reset.
 /// Register new assets before a claim, so untracked donations cannot be indexed.
 pub fn register(env: &Env, asset: &Address) {
-    let admin: Address = env
-        .storage()
-        .persistent()
-        .get(&DataKey::Admin)
-        .expect("admin missing");
-    admin.require_auth();
+    require_admin(env);
     assert_ne!(
         *asset,
         ReceiptVault::get_underlying_token(env.clone()),
@@ -120,6 +139,21 @@ pub fn register(env: &Env, asset: &Address) {
             .has(&CoordinatorKey::RecycledRaw(asset.clone())),
         "recycled history exists"
     );
+    // Instance pin cannot expire independently of the receipt. Never recreate it
+    // after ledger initialization; legacy activation/restoration needs migration.
+    if !env.storage().instance().has(&CoordinatorKey::PinnedPrimary) {
+        assert!(
+            !env.storage()
+                .instance()
+                .has(&ledger::LedgerKey::HybridRegistryInitialized),
+            "primary pin requires restoration"
+        );
+        let configured = primary(env);
+        assert_eq!(*asset, configured, "register primary first");
+        env.storage()
+            .instance()
+            .set(&CoordinatorKey::PinnedPrimary, &configured);
+    }
     ledger::register(env, asset, ordinary);
     put_recycled(env, asset, 0);
     put_owed(env, asset, 0);
@@ -180,6 +214,12 @@ pub fn check(env: &Env) {
 /// Unknown tokens/declining debt revert; never reset/reuse old token history.
 pub fn claim(env: &Env) {
     check(env);
+    let pinned: Address = env
+        .storage()
+        .instance()
+        .get(&CoordinatorKey::PinnedPrimary)
+        .expect("primary pin missing");
+    assert_eq!(primary(env), pinned, "uncoordinated primary rotation");
     let assets = ledger::assets(env);
     let b = backing::state(env);
     let supply = ReceiptVault::get_total_ptokens(env.clone());
@@ -242,6 +282,93 @@ pub fn claim(env: &Env) {
     }
     sync_pending(env);
     check(env);
+}
+
+/// Custody-only preparation, staged separately to bound real pool-WASM costs.
+/// Keeps the old denomination and every ownership weight. It is NOT permission
+/// to skip fresh claims on subsequent mutations or proof that a rotation is ready.
+pub fn prepare_rotation(env: &Env, minimum_cash: u128) -> u128 {
+    require_admin(env);
+    check(env);
+    assert_eq!(
+        env.storage()
+            .instance()
+            .get::<_, Address>(&CoordinatorKey::PinnedPrimary),
+        Some(primary(env)),
+        "uncoordinated primary rotation"
+    );
+    let supply = ReceiptVault::get_total_ptokens(env.clone());
+    let before = backing::state(env);
+    let managed = ReceiptVault::unwind_for_rotation(env, minimum_cash);
+    assert_eq!(ReceiptVault::get_total_ptokens(env.clone()), supply);
+    assert_eq!(backing::state(env), before);
+    check(env);
+    managed
+}
+
+/// Native admin-only, atomic denomination change after custody preparation.
+/// Recheck actual zero strategy shares; fresh claims include the pool withdrawal.
+/// No outstanding IOU can be re-denominated.
+/// Registered old streams, reservations, fractions and backing units survive.
+/// The bridge disables observation fallback until real new-primary cash proves
+/// its denomination. Governance must coordinate the external pool transition;
+/// this function cannot change Aquarius's own reward configuration.
+pub fn rotate_primary(env: &Env, next: &Address, minimum_cash: u128) -> u128 {
+    require_admin(env);
+    let old = primary(env);
+    assert_ne!(old, *next, "primary unchanged");
+    assert!(
+        ledger::assets(env).contains(next.clone()),
+        "register new primary first"
+    );
+    check(env);
+    assert_eq!(
+        env.storage()
+            .instance()
+            .get::<_, Address>(&CoordinatorKey::PinnedPrimary),
+        Some(old.clone()),
+        "uncoordinated primary rotation"
+    );
+    let supply = ReceiptVault::get_total_ptokens(env.clone());
+    let old_backing = backing::state(env);
+    assert_eq!(
+        token::Client::new(env, &strategy(env)).balance(&env.current_contract_address()),
+        0,
+        "prepare rotation custody first"
+    );
+    // Zero strategy shares: this just validates managed cash and the admin floor.
+    let managed = ReceiptVault::unwind_for_rotation(env, minimum_cash);
+    claim(env); // same ownership weights, includes rewards checkpointed by pool exit
+    for asset in ledger::assets(env).iter() {
+        assert_eq!(owed(env, &asset), 0, "collect withdrawal rewards first");
+    }
+    env.invoke_contract::<()>(
+        &strategy(env),
+        &Symbol::new(env, "hybrid_rotate_primary"),
+        (old.clone(), next.clone()).into_val(env),
+    );
+    assert_eq!(primary(env), *next, "primary switch mismatch");
+    env.storage()
+        .instance()
+        .set(&CoordinatorKey::PinnedPrimary, next);
+    assert_eq!(ReceiptVault::get_total_ptokens(env.clone()), supply);
+    let after = backing::state(env);
+    assert_eq!(
+        (after.units, after.ptokens, after.unallocated_units),
+        (
+            old_backing.units,
+            old_backing.ptokens,
+            old_backing.unallocated_units
+        )
+    );
+    check(env);
+    PrimaryRotated {
+        previous: old,
+        next: next.clone(),
+        managed_cash: managed,
+    }
+    .publish(env);
+    managed
 }
 
 fn swap(env: &Env, reward: &Address, raw: u128, minimum: u128) -> Option<u128> {

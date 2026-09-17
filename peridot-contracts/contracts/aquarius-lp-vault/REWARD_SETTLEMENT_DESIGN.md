@@ -514,6 +514,90 @@ package, reused ReceiptVault reward ledger/backing/model, Aquarius bridge,
 coordinator/exact-pool tests, mocks and feature gates. A previous MarginController
 scan or an Aquarius-only project filter does not cover this change.
 
+## Primary-token lifecycle and durable exit intent — September 17
+
+The native coordinator pins the primary token in receipt instance storage during
+first primary-stream registration. Later claims reject out-of-band changes to the
+strategy's configured token. The pin cannot be recreated after ledger activation;
+this is native schema evolution, NOT an automatic migration for deployed receipts.
+
+Primary rotation is deliberately two bounded, receipt-admin-authorized stages:
+
+1. `prepare_rotation(minimum_cash)` withdraws all strategy shares into managed
+   settlement cash and verifies actual cash/share deltas. Its floor covers total
+   managed settlement cash, including existing idle cash—not original principal
+   or a price guarantee. It changes neither receipt shares nor reward weights and
+   keeps the old denomination. Unknown rewards remain unmodified until checkpoint.
+2. `rotate_primary(next, minimum_cash)` requires a registered token and actual zero
+   strategy shares NOW; it does not reuse a preparation certificate. It freshly
+   collects all old rewards (including those checkpointed by the pool withdrawal),
+   rejects any remaining per-token receivable, and verifies actual pool raw and
+   weighted liquidity are zero and all observable old claimables are zero. It
+   validates the new route's two-token shape and nonzero floor, updates the bridge
+   and receipt pin atomically, and emits the old/new token and managed cash.
+
+Old registry entries, raw reserves, fractional ownership, compounded backing and
+routes are retained. Re-selecting an old token does not reset its history. The
+four-lifetime-token cap remains; fifth-token migration is not implemented. Gauge
+source retirement/replacement and pair-token emissions remain separate work.
+
+Preparation is custody management, not a global freeze: subsequent safe operations
+still use the old denomination and fresh reward checkpoints. If a later deposit
+or rebalance reinvests cash, rotation completion fails until custody is prepared
+again. Governance may use the existing deposit pause during an operational change;
+production orchestration/policy has not been wired. Old funded raw reserves can
+still be paid without waiting for a new primary claim.
+
+The pinned deployed pool exposes no primary-token address getter. Our rotation
+does NOT change its external emission configuration. After changing the strategy's
+expectation, independently quoted IOUs are disabled until a strictly validated,
+positive actual PRIMARY transfer proves the new denomination. Zero claims, gauge
+payments of that same token, and reverted partial primary/gauge claims cannot
+enable fallback. Successful zero-cash checkpoints are permitted; an actual mismatch
+fails closed. Bootstrap primary configuration remains an operator trust assumption.
+Changing primary again behind the receipt's back cannot bypass the receipt pin.
+If Aquarius changes/removes an old source before its debt is collected, this flow
+cannot manufacture recovery or re-denominate the liability; coordinated pool-side
+transition/upgrade compatibility remains required.
+
+`exit_request.rs` records a signed per-owner nonce, share amount and nonzero minimum
+without contacting reward APIs. Shares are NOT moved, burned, frozen or locked;
+the user keeps earning while waiting and can cancel or use another safe action.
+`execute` requires fresh owner authorization plus the existing proportional-exit
+checkpoint, current sufficient shares and stored final minimum. A failed quote,
+claim, principal exit, minimum or authorization leaves the request intact. Completion
+or cancellation retains a tombstone/nonce, preventing replay; read/use renews TTL.
+No public FIFO, user enumeration, keeper spending authority, admin override or
+arbitrary historical reward estimates are introduced. This is a durable retry
+workflow, NOT guaranteed/immediate principal liveness when all reward data is lost.
+Archival restoration must preserve these records as well as reward/account history.
+
+### Lifecycle evidence and limits
+
+Nine native regressions cover retained old backing/reserves, future owner fairness,
+new-denomination proof (including gauge-only and rolled-back claims), outstanding
+debt, bad routes/floors, failed unwind/minimum rollback, direct configuration bypass,
+exact receipt-admin/owner auth, staged reinvestment races/fresh tail rewards,
+outage request/retry, current-share changes, cancellation/replay and TTL renewal.
+The historical retired-token test now uses the coordinated rotation, not direct
+configuration replacement. Default resource limits remain enabled for these tests.
+
+The explicitly enabled exact-pool suite adds staged rotation against the same
+hash-pinned WASM on BOTH settlement indices. Preparation uses79 entries and
+77,110,311 /85,113,518 instructions; completion67 entries and22,899,125 /22,897,175.
+Initial combined work measured108.7M, then105.1M on the second leg even after
+removing a duplicate claim, exceeding our conservative100M assertion. Splitting
+custody preparation from fresh collection/configuration solves this measured shape
+without raising the assertion or using stale ownership. The100M ceiling is a test
+policy, not a new Mainnet resource-limit read. The original paused-claim exit tests
+also pass (87 entries,87.71M /95.83M). These are native receipt/strategy plus actual
+pool WASM with controlled oracle/plane/reward-route dependencies, NOT fully compiled
+candidate contracts, real gauge WASM or a live new-token emission migration.
+
+Final checks for this step: full workspace595 unit/3 doc tests; lean bridge57
+passed/3 explicit-WASM ignores; all3 explicitly enabled exact-pool tests passed;
+strict LP-library clippy (`--no-deps -- -D warnings`) and diff checks passed.
+
 ### Still required before production hooks
 
 - Wire the persistent ownership ledger to the separate LP receipt's production

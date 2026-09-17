@@ -174,6 +174,91 @@ fn exact_deployed_pool_stale_oracle_and_claim_pause_second_settlement_leg() {
     paused_exit(1, true);
 }
 
+#[test]
+#[ignore = "requires the hash-pinned actual Mainnet concentrated pool WASM; local execution only"]
+fn exact_deployed_pool_rotation_unwinds_and_preserves_old_rewards() {
+    for index in [0, 1] {
+        let f = fixture(index);
+        let (next, _) = super::reward_coordinator_test::second_token(&f);
+        token::StellarAssetClient::new(&f.env, &f.reward).mint(&f.pool, &1_000_000_000);
+        invoke::<()>(
+            &f.env,
+            &f.pool,
+            "set_rewards_config",
+            (f.admin.clone(), 10_000u64, 100_000u128).into_val(&f.env),
+        );
+        f.env.ledger().set_timestamp(100);
+        let pending: u128 = invoke(
+            &f.env,
+            &f.pool,
+            "get_user_reward",
+            (f.strategy.clone(),).into_val(&f.env),
+        );
+        assert!(pending > 0);
+        f.env.cost_estimate().budget().reset_unlimited();
+        f.env.mock_auths(&[]);
+        f.receipt()
+            .mock_auths(&[MockAuth {
+                address: &f.receipt_admin,
+                invoke: &MockAuthInvoke {
+                    contract: &f.receipt,
+                    fn_name: "co_prepare_rotate",
+                    args: (900_000u128,).into_val(&f.env),
+                    sub_invokes: &[],
+                },
+            }])
+            .co_prepare_rotate(&900_000);
+        let prepared = f.env.cost_estimate().resources();
+        std::println!(
+            "exact pool rotation preparation leg{index}: {} entries / {} instructions",
+            prepared.memory_read_entries + prepared.write_entries,
+            prepared.instructions
+        );
+        assert!(prepared.memory_read_entries + prepared.write_entries <= 100);
+        assert!(prepared.instructions <= 100_000_000);
+        f.env.cost_estimate().budget().reset_unlimited();
+        let cash = f
+            .receipt()
+            .mock_auths(&[MockAuth {
+                address: &f.receipt_admin,
+                invoke: &MockAuthInvoke {
+                    contract: &f.receipt,
+                    fn_name: "co_rotate",
+                    args: (next.clone(), 900_000u128).into_val(&f.env),
+                    sub_invokes: &[],
+                },
+            }])
+            .co_rotate(&next, &900_000);
+        let r = f.env.cost_estimate().resources();
+        std::println!(
+            "exact pool rotation leg{index}: {} entries / {} instructions",
+            r.memory_read_entries + r.write_entries,
+            r.instructions
+        );
+        assert!(r.memory_read_entries + r.write_entries <= 100);
+        assert!(r.instructions <= 100_000_000);
+        assert!(cash >= 900_000);
+        assert_eq!(f.receipt().balance(&f.user), 1_000_000);
+        assert_eq!(
+            AquariusLpVaultClient::new(&f.env, &f.strategy).balance(&f.receipt),
+            0
+        );
+        let account = f.receipt().earned(&f.reward, &f.user);
+        assert_eq!(account.raw_scaled, pending * ledger::SCALE);
+        let position: crate::pool::UserPositionSnapshot = invoke(
+            &f.env,
+            &f.pool,
+            "get_user_position_snapshot",
+            (f.strategy.clone(),).into_val(&f.env),
+        );
+        assert_eq!(position.raw_liquidity, 0);
+        assert_eq!(position.weighted_liquidity, 0);
+        // This only changes our native strategy's expectation. No Aquarius token
+        // mutation is exposed by this pinned binary; real new-token claim proof
+        // remains unavailable here, so never call this a live reward migration.
+    }
+}
+
 fn paused_exit(index: u32, stale: bool) {
     let f = fixture(index);
     let p = &f.pool;

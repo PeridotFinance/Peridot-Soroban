@@ -270,6 +270,44 @@ impl LpReceiptVault {
         let asset = ensure_initialized(&env);
         Self::deposit_excess_idle_cash(&env, &asset, managed(&env));
     }
+
+    /// Internal coordinator primitive: stop future emissions before rotating the
+    /// reward denomination. Changes custody only, never receipt/escrow ownership.
+    pub(crate) fn unwind_for_rotation(env: &Env, minimum: u128) -> u128 {
+        assert!(minimum > 0, "rotation minimum required");
+        let asset = ensure_initialized(env);
+        let boosted = strategy(env).expect("strategy missing");
+        let owned = token::Client::new(env, &boosted).balance(&env.current_contract_address());
+        assert!(owned >= 0, "negative strategy shares");
+        let before = cash(env, &asset);
+        assert!(before >= managed(env), "managed cash missing");
+        if owned > 0 {
+            let result: Vec<i128> = env.invoke_contract(
+                &boosted,
+                &Symbol::new(env, "withdraw"),
+                (owned, vec![env, 1i128], env.current_contract_address()).into_val(env),
+            );
+            let received = cash(env, &asset)
+                .checked_sub(before)
+                .expect("negative unwind");
+            assert_eq!(
+                result,
+                vec![env, to_i128(received)],
+                "unwind payout mismatch"
+            );
+            assert_eq!(
+                token::Client::new(env, &boosted).balance(&env.current_contract_address()),
+                0
+            );
+            env.storage().persistent().set(
+                &DataKey::ManagedCash,
+                &managed(env).checked_add(received).expect("cash overflow"),
+            );
+        }
+        // Floor protects total managed settlement cash, including pre-existing idle.
+        assert!(managed(env) >= minimum, "rotation below minimum");
+        managed(env)
+    }
     pub fn deposit(env: Env, owner: Address, amount: u128) {
         let asset = ensure_initialized(&env);
         owner.require_auth();

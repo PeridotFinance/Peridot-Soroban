@@ -26,7 +26,7 @@ fn reset(f: &Fixture) {
     // Reset only cumulative host accounting. Transaction limits remain enabled.
     f.env.cost_estimate().budget().reset_unlimited();
 }
-fn second_token(f: &Fixture) -> (Address, Address) {
+pub(super) fn second_token(f: &Fixture) -> (Address, Address) {
     let reward = f
         .env
         .register_stellar_asset_contract_v2(f.admin.clone())
@@ -657,9 +657,14 @@ fn coordinator_retired_tokens_keep_claims_and_unregistered_emissions_roll_back()
     f.receipt().co_claim();
     assert_eq!(stream(&f, &f.reward).raw, 110_000);
     assert_eq!(stream(&f, &new).raw, 20_000);
+    let route = f.env.register(MockAquariusPool, ());
+    MockAquariusPoolClient::new(&f.env, &route).initialize(&new, &f.asset, &60, &0);
+    let strategy = AquariusLpVaultClient::new(&f.env, &f.strategy);
+    strategy.set_reward_route(&f.admin, &new, &Some(route));
+    strategy.set_reward_min_rate(&f.admin, &new, &9_000_000);
+    reset(&f);
+    f.receipt().co_rotate(&new, &1);
     MockAquariusPoolClient::new(&f.env, &f.pool).set_reward_tokens(&new, &new);
-    AquariusLpVaultClient::new(&f.env, &f.strategy)
-        .set_primary_reward_token(&f.admin, &Some(new.clone()));
     let receiver = Address::generate(&f.env);
     reset(&f);
     f.receipt().co_transfer(&f.user, &receiver, &500_000);
@@ -671,6 +676,9 @@ fn coordinator_retired_tokens_keep_claims_and_unregistered_emissions_roll_back()
     assert_eq!(f.receipt().earned(&new, &receiver).raw_scaled, 0);
     assert!(f.receipt().try_co_register(&f.reward).is_err());
 }
+
+#[path = "reward_lifecycle_test.rs"]
+mod reward_lifecycle_test;
 
 #[test]
 fn coordinator_donations_missing_history_and_registry_cap_fail_safely() {

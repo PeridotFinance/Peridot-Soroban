@@ -91,6 +91,27 @@ fn swap(env: &Env, reward: &Address, amount: u128, minimum: u128) -> Result<u128
 #[cfg(feature = "lp-receipt-prototype")]
 #[contractimpl]
 impl HybridReceipt {
+    pub fn co_prepare_rotate(env: Env, minimum: u128) -> u128 {
+        coordinator::prepare_rotation(&env, minimum)
+    }
+    pub fn co_rotate(env: Env, next: Address, minimum: u128) -> u128 {
+        coordinator::rotate_primary(&env, &next, minimum)
+    }
+    pub fn co_request(env: Env, owner: Address, shares: u128, minimum: u128) -> u64 {
+        receipt_core::exit_request::request(&env, &owner, shares, minimum)
+    }
+    pub fn co_request_get(
+        env: Env,
+        owner: Address,
+    ) -> Option<receipt_core::exit_request::ExitRecord> {
+        receipt_core::exit_request::get(&env, &owner)
+    }
+    pub fn co_cancel(env: Env, owner: Address, nonce: u64) {
+        receipt_core::exit_request::cancel(&env, &owner, nonce);
+    }
+    pub fn co_execute(env: Env, owner: Address, nonce: u64) -> (Map<Address, u128>, u128) {
+        receipt_core::exit_request::execute(&env, &owner, nonce)
+    }
     pub fn co_register(env: Env, asset: Address) {
         coordinator::register(&env, &asset);
     }

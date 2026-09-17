@@ -60,6 +60,24 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September17 LOCAL lifecycle follow-up: native coordinator now pins primary
+  denomination and supports admin-authorized, staged rotation. Preparation unwinds
+  custody into receipt cash without changing shares/weights; completion rechecks
+  zero strategy shares and actual pool liquidity, collects old rewards, rejects
+  outstanding IOUs, and retains every old token's claims/history/routes. Registered
+  new primary needs a valid route/floor; quoted IOUs stay disabled until an actual
+  positive PRIMARY claim proves its denomination (gauge/zero/reverted claims do
+  not). Pool-side configuration remains external; bootstrap primary remains a
+  trust assumption. Out-of-band strategy primary changes fail the receipt pin.
+  Durable per-user exit requests record nonce/shares/minimum without moving or
+  locking shares. Execution needs fresh owner auth, current shares, fresh reward
+  checkpoint and the stored minimum; failures preserve the request. This is NOT
+  immediate exit during a total reward-data outage. Initial combined rotation
+  exceeded100M instructions; staged exact-pool tests pass both settlement indices:
+  preparation79 entries/~77.11M or85.11M CPU, completion67/~22.90M. Native
+  receipt/strategy, real pool WASM, mocked ancillary dependencies—not a full
+  compiled-stack or live token migration. WASM gates remain. See design/handoff
+  for final tests/scan status; the prior2677209 scan does not cover these changes.
 - September17 LOCAL outage follow-up supersedes the claim/stale-quote limitation
   in the earlier native coordinator entry below. Failed claims now checkpoint
   independently observable primary/gauge receivables; these are NOT cash/NAV and

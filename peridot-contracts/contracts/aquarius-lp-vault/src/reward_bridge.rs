@@ -12,9 +12,15 @@ use crate::storage::{
     bound_receipt_vault, bump_critical_ttl, config, params, primary_reward_token, DataKey,
 };
 use crate::AquariusLpVault;
-use soroban_sdk::{token, Address, Env, IntoVal, Map, Symbol, Vec};
+use soroban_sdk::{contracttype, token, Address, Env, IntoVal, Map, Symbol, Vec};
 
 const MAX_REWARD_TOKENS: u32 = 4;
+
+#[contracttype]
+#[derive(Clone)]
+enum BridgeKey {
+    UnprovenPrimary,
+}
 
 fn receipt(env: &Env) -> Address {
     bump_critical_ttl(env);
@@ -55,6 +61,17 @@ impl RewardBridge {
     /// and match the pool registry; unreadable/unknown shapes fail closed.
     pub fn hybrid_reward_quote(env: Env) -> Map<Address, u128> {
         receipt(&env);
+        assert!(
+            !env.storage()
+                .instance()
+                .get::<_, bool>(&BridgeKey::UnprovenPrimary)
+                .unwrap_or(false),
+            "new primary needs actual claim proof"
+        );
+        Self::quote(env)
+    }
+
+    fn quote(env: Env) -> Map<Address, u128> {
         let cfg = config(&env);
         let primary = primary_reward_token(&env).expect("primary reward missing");
         let gauges: Map<Address, Address> =
@@ -101,6 +118,62 @@ impl RewardBridge {
         quoted
     }
 
+    /// Receipt-coordinated change only after old emissions have stopped and all
+    /// claimable inventory was collected. Initial primary remains a bootstrap
+    /// trust assumption; rotated primary cannot authorize quoted IOUs unproven.
+    pub fn hybrid_rotate_primary(env: Env, expected: Address, next: Address) {
+        receipt(&env);
+        let cfg = config(&env);
+        assert_eq!(primary_reward_token(&env), Some(expected.clone()));
+        assert_ne!(next, expected, "primary unchanged");
+        assert!(
+            next != cfg.token0 && next != cfg.token1,
+            "pair reward unsupported"
+        );
+        assert_eq!(
+            crate::storage::state(&env).total_shares,
+            0,
+            "unwind strategy first"
+        );
+        let position: crate::pool::UserPositionSnapshot = env.invoke_contract(
+            &cfg.pool,
+            &Symbol::new(&env, "get_user_position_snapshot"),
+            (env.current_contract_address(),).into_val(&env),
+        );
+        assert_eq!(position.raw_liquidity, 0, "pool liquidity remains");
+        assert_eq!(position.weighted_liquidity, 0, "pool reward weight remains");
+        let quote = Self::quote(env.clone());
+        for (_, amount) in quote.iter() {
+            assert_eq!(amount, 0, "old claimable rewards remain");
+        }
+        let route: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::RewardRoute(next.clone()))
+            .expect("new reward route missing");
+        let floor: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::RewardMinRate(next.clone()))
+            .expect("new reward floor missing");
+        assert!(floor > 0, "new reward floor zero");
+        let tokens: Vec<Address> =
+            env.invoke_contract(&route, &Symbol::new(&env, "get_tokens"), Vec::new(&env));
+        let underlying = if cfg.underlying_index == 0 {
+            cfg.token0
+        } else {
+            cfg.token1
+        };
+        assert!(
+            tokens.len() == 2 && tokens.contains(next.clone()) && tokens.contains(underlying),
+            "invalid new reward route"
+        );
+        crate::storage::set_primary_reward(&env, &Some(next));
+        env.storage()
+            .instance()
+            .set(&BridgeKey::UnprovenPrimary, &true);
+    }
+
     /// Strict checkpoint: every configured stream must claim successfully before
     /// holder weights can change. Return values are checked, not used as backing.
     pub fn hybrid_claim(env: Env) -> Map<Address, u128> {
@@ -139,6 +212,17 @@ impl RewardBridge {
             claimed,
             "primary claim mismatch"
         );
+        if claimed > 0
+            && env
+                .storage()
+                .instance()
+                .get::<_, bool>(&BridgeKey::UnprovenPrimary)
+                == Some(true)
+        {
+            env.storage()
+                .instance()
+                .set(&BridgeKey::UnprovenPrimary, &false);
+        }
         // Snapshot gauge balances AFTER primary claim; the same asset may occur
         // in both streams and must not be counted twice.
         let mut gauge_before = Map::new(&env);

@@ -42,6 +42,9 @@ pub struct AquariusLpVault;
 #[cfg(any(test, feature = "hybrid-rewards"))]
 #[contractimpl]
 impl AquariusLpVault {
+    pub fn hybrid_rotate_primary(env: Env, expected: Address, next: Address) {
+        crate::reward_bridge::RewardBridge::hybrid_rotate_primary(env, expected, next)
+    }
     pub fn hybrid_reward_quote(env: Env) -> Map<Address, u128> {
         crate::reward_bridge::RewardBridge::hybrid_reward_quote(env)
     }
