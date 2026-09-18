@@ -1,5 +1,20 @@
 # LP receipt migration specification — native draft
 
+> Superseded target, September 17: the user clarified that LP markets must support
+> borrowing under a NEW LP-only Peridottroller, isolated from core/DeFindex markets.
+> This document and its tests describe the earlier supply-only migration research,
+> NOT the deployment plan for that lending target. The lean receipt has no debt,
+> interest or liquidation support. Retiring controller integration without a
+> lending-capable replacement would violate the request. Preserve the conservation
+> tests, but revise the architecture/migration before implementation or deployment.
+> User confirmed one shared LP collateral group: an XLM deposit can collateralize
+> PYUSD or USDC borrowing. Isolation is BETWEEN LP and core/DeFindex groups, not
+> between the three LP markets. The new controller must aggregate LP-group health
+> while excluding all collateral and debts from the other group.
+
+See [the lending integration boundary](LENDING_INTEGRATION.md) for the current
+implementation direction and its explicit production gates.
+
 Status: September 17, 2026. **Not an approved migration or deployable release.**
 Applies only to the three isolated Aquarius settlement receipts, not core
 DeFindex/lending receipts or Margin. No new public ABI or activation method exists.

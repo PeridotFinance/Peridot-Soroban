@@ -1080,6 +1080,7 @@ dependencies = [
  "jump-rate-model",
  "mock-token",
  "simple-peridottroller",
+ "soroban-env-host",
  "soroban-sdk",
  "stellar-tokens",
 ]

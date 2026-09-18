@@ -11,6 +11,8 @@ mod storage;
 pub mod reward_backing;
 #[cfg(any(test, feature = "hybrid-rewards"))]
 pub mod reward_ledger;
+#[cfg(any(test, feature = "hybrid-rewards"))]
+pub mod reward_share_hooks;
 #[cfg(all(feature = "hybrid-rewards", target_arch = "wasm32"))]
 compile_error!("hybrid-rewards is native integration work, not a deployable release");
 
@@ -28,3 +30,6 @@ mod reward_accounting_model;
 
 #[cfg(test)]
 mod reward_backing_test;
+
+#[cfg(test)]
+mod lp_lending_test;

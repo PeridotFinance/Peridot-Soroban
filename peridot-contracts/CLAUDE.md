@@ -60,6 +60,35 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September17 native LENDING boundary work now lives in
+  `contracts/lp-receipt-vault/LENDING_INTEGRATION.md`. The existing lending engine
+  is the baseline; the lean supply-only principal engine is NOT being enabled for
+  borrowing. New native reward_share_hooks checkpoint all retained streams around
+  supply-neutral transfer/delegated-transfer/seizure and preserve earned rewards
+  for old holders. Two-controller tests cover LP XLM collateral backing both stable
+  debts, exclusion of identical-token collateral across groups, loan/interest NAV,
+  liquidations and rollback. Controlled funded rewards and idle liquidity only:
+  actual Aquarius all-stream/outage/unwind integration is still required. Native
+  tests use an explicit200-entry research envelope after exceeding SDK25's bundled
+  100 entries; CPU/memory/write limits remain enforced. Not compiled/network-fit
+  evidence. No production hook, ABI, governance or keeper changes.
+- September17 USER DIRECTION CORRECTION (supersedes the supply-only FINAL target
+  in the prototype/migration notes below): user requests a NEW dedicated LP
+  Peridottroller, isolated from core/DeFindex markets, WITH borrowing support.
+  The current lean lp-receipt-vault omits borrowing, interest/JRM, collateral and
+  liquidation and is therefore NOT a suitable deployment target as-is. Preserve
+  its reward-accounting research, but redesign the receipt integration around
+  lending-capable accounting and controller health/liquidation hooks. Existing
+  records already identify a separate LP pilot controller CCZKDMAP...ENGC; this
+  was not a shared core controller. New controller deployment does not itself
+  add borrowing or safely migrate obligations. User CONFIRMED cross-market
+  collateral WITHIN the LP group: deposit XLM as collateral and borrow PYUSD or
+  USDC. One shared LP risk group, NOT separate per-market controllers; collateral
+  and debt must never cross into the core/DeFindex group. Do not
+  select risk parameters or enable borrowing under the temporary parity-alias
+  oracle policy. Existing live safety gates remain until reviewed replacements,
+  resources, liquidation/liquidity tests, security scan and governed activation.
+  No deployment or keeper change was made for this clarification.
 - September17 LOCAL migration specification and shadow rehearsal:
   `contracts/lp-receipt-vault/MIGRATION.md` defines in-place address/share
   preservation, external controller/incentive retirement, legacy-yield policy,
