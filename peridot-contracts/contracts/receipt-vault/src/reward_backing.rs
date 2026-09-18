@@ -428,6 +428,9 @@ fn finish_mode(
         .unallocated_units
         .checked_add(units)
         .expect("reward units overflow");
+    // Advance the market denominator using OLD supply, and settle old escrow
+    // holdings before they grow. New reward shares cannot dilute past emissions.
+    ReceiptVault::checkpoint_reward_share_owner(env, &env.current_contract_address());
     env.storage().persistent().set(
         &DataKey::ManagedCash,
         &snapshot
@@ -530,6 +533,10 @@ pub fn redeem_with(
         mul_div(env, units, current.ptokens, current.units)
     };
     assert!(shares > 0, "reward redemption below share dust");
+    // Both checkpoints precede the temporary owner credit. Core withdrawal's
+    // later checkpoint must not earn old incentives on these transient shares.
+    ReceiptVault::checkpoint_reward_share_owner(env, &env.current_contract_address());
+    ReceiptVault::checkpoint_reward_share_owner(env, owner);
     let cash_before = token::Client::new(env, &underlying).balance(owner);
     current.units = current.units.checked_sub(units).expect("units underflow");
     current.ptokens = current

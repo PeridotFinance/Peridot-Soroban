@@ -60,6 +60,19 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September18 native controller-incentive checkpoint follow-up: backing mint now
+  accrues with OLD total supply/escrow balance; backing payout checkpoints escrow
+  and owner BEFORE temporary share credit. Enabled-incentive regressions reproduce
+  both old dilution and retroactive payout capture, then verify the correction,
+  exact owner auth, atomic rollback, repeated minting, exited owners and distinct
+  borrower emissions. Complete hints come only from local accounting, outside
+  contractimpl; no public selector or production behavior changed. Escrow PERI
+  accrual is retained by the controller, NOT attributed/paid to historical backing
+  owners yet, and never added to principal NAV. Unsolicited permissionless claims,
+  owner attribution across unit changes, liquidation incentive checkpoints and
+  missing-index restoration remain release gates. Do not expose production ABI
+  or treat this as complete controller-incentive integration. See
+  contracts/lp-receipt-vault/LENDING_INTEGRATION.md and Agents.md.
 - September18 native lending reward-settlement follow-up: the LP wrappers now
   select managed-only cash for borrowing, principal/reward withdrawal and admin
   reinvestment. Donated settlement stays untracked even through full exit; missing

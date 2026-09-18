@@ -21,6 +21,26 @@ pub struct ReceiptVault;
 // or caller-supplied policy can bypass the reward coordinator in deployed WASM.
 #[cfg(any(test, feature = "hybrid-rewards"))]
 impl ReceiptVault {
+    /// Internal backing-share boundary, never a public caller-supplied hint.
+    /// Called BEFORE minting escrow shares or temporarily crediting an owner.
+    /// Keep the controller's full supply denominator (including real escrow)
+    /// and preserve escrow accrual separately; this does not distribute it to
+    /// backing-unit owners or include unpaid incentives in principal NAV.
+    pub(crate) fn checkpoint_reward_share_owner(env: &Env, owner: &Address) {
+        ensure_initialized(env);
+        if !env.storage().persistent().has(&DataKey::Peridottroller) {
+            return;
+        }
+        Self::ensure_user_borrow_flag(env, owner);
+        let hint = ControllerAccrualHint {
+            total_ptokens: Some(total_ptokens_supply(env)),
+            total_borrowed: Some(Self::get_total_borrowed(env.clone())),
+            user_ptokens: Some(ptoken_balance(env, owner)),
+            user_borrowed: Some(Self::get_user_borrow_balance(env.clone(), owner.clone())),
+        };
+        Self::accrue_user_rewards(env, owner, hint, "reward_backing");
+    }
+
     pub(crate) fn validate_managed_cash(env: &Env) {
         let token = ensure_initialized(env);
         Self::spendable_cash(env, &token, true);

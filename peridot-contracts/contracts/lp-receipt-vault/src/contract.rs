@@ -71,6 +71,17 @@ fn strategy_value(env: &Env) -> (u128, u128) {
 }
 
 impl LpReceiptVault {
+    /// Shared backing hook for this strictly supply-only research engine.
+    /// A controller link here is a configuration error, not permission to skip
+    /// incentives. The lending research engine implements the actual checkpoint.
+    pub(crate) fn checkpoint_reward_share_owner(env: &Env, _owner: &Address) {
+        ensure_initialized(env);
+        assert!(
+            !env.storage().persistent().has(&DataKey::Peridottroller),
+            "lean receipt cannot checkpoint controller incentives"
+        );
+    }
+
     /// Native fixture initializer. A release needs atomic constructor/admin
     /// policy plus an independently tested legacy-state activation path.
     pub fn initialize(

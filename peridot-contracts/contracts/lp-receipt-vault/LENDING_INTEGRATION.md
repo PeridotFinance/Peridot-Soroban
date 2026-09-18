@@ -181,11 +181,73 @@ concentrated pools/oracle. The bounded250-entry fixture and other SDK limits sta
 enabled; no full compiled lending-stack, current-network or production-liveness
 claim follows from these tests. See Agents.md for final measurements/checks/scan.
 
+## Controller incentive share boundaries — September 18
+
+Controller incentives are separate from Aquarius primary/gauge emissions. The
+older lending fixtures left the controller reward token unset, which makes its
+accrual entrypoint return early. Those tests did not validate PERI distribution.
+
+New funded-asset/native-controller fixtures enable supply and borrow emissions.
+Two regressions failed before this patch: converting rewards after an elapsed
+interval reduced the original supplier's 10,000 raw entitlement to 9,065; redeeming
+backing instead credited 9,999 to the ordinary supplier rather than 9,065 because
+Core saw temporarily credited escrow shares. These figures are controlled test
+units, not a Mainnet loss or APY estimate.
+
+Shared backing now invokes an internal engine hook before escrow mint and before
+escrow-to-owner temporary credit. Lending constructs authenticated complete hints
+from actual old supply, old holder balances and debt. It advances the global
+denominator before mint, preserves the escrow account's accrued incentives and
+settles the payout owner's ordinary position before any temporary credit. Later
+Core withdrawal at the same timestamp cannot retroactively earn on those shares.
+Failure of authorization, controller accrual, payout minimum or withdrawal reverts
+the entire invocation, including controller state and earlier token conversions.
+The lean engine rejects a controller link instead of silently skipping incentives.
+
+Eight new regressions cover both stable settlement indices, repeated minting,
+all-escrow supply after principal exit, separate borrower emissions, exact payout
+auth, controller failure, auth/minimum rollback and unfunded/funded controller
+claims. Actual SAC cash/native controller/strategy/JRM; MOCK pool/oracle. Existing
+250-entry research envelope and other SDK limits remain enabled. No compiled
+stack or Mainnet claim follows from this coverage.
+
+**This is not yet end-to-end escrow PERI ownership.** The controller retains a
+liability to the receipt account, not historical backing-unit owners. After all
+units exit, that liability still exists. Permissionless `claim_all` can send real
+PERI to the receipt outside its own coordinator; current reward cash snapshots
+alone cannot safely attribute it. Never reset this liability, assign it to new
+unit holders, count it in principal NAV, or classify it as an admin donation.
+An ownership-preserving pending-incentive ledger and reconciliation for unsolicited
+payments must precede activation. Underfunded controller accrual is not cash.
+Missing/archived incentive indices and late controller attachment also require a
+reviewed restoration/migration policy, not reconstruction from current weights.
+
+### Production entrypoint boundary (still blocked)
+
+| Operation | Required boundary before export |
+|---|---|
+| Deposit, withdraw, transfer, transfer_from | Complete pool checkpoint plus lending engine, including all managed-cash/delta and historical-ownership checks |
+| Borrow | Complete pool checkpoint, shared LP controller/JRM, managed-only liquidity and collateral checks |
+| Repay | Keep risk-reducing cash-for-debt path independent of pool reward availability |
+| Seize, repay_on_behalf | Controller must settle pre-mutation supply/borrow incentives for every affected account; receipt calling back into the active controller would reenter it |
+| Backing mint/payout | New internal checkpoints plus still-pending historical escrow PERI attribution and payment reconciliation |
+| Compound, recycle, reserved payout | Complete retained-stream coordinator and actual cash gates; no externally selected callback or accounting hints |
+| Init, migration, admin, upgrades | Atomic mode/binding checks, old debt/incentive preservation, strategy binding and legacy harvest exclusion |
+| Generic margin, flash-loan or token mutation helpers | Do not inherit exports accidentally; explicitly support with complete accounting or exclude |
+
+Current controller liquidation invokes `repay_on_behalf`/`seize` without those
+pre-mutation incentive checkpoints. Existing no-retroactive-liquidator test uses
+a fresh recipient index and does not establish conservation for already-indexed
+borrower/liquidator/fee accounts. Resolve and test this in the controller call
+frame, including repayment-only liquidation, before enabling the LP public ABI.
+This patch does not change liquidation or generic production entrypoints.
+
 ## Next release gates
 
 1. Complete production coverage of the native all-stream/recycled/outage lending
-   integration, including controller incentive accounting during escrow share
-   mint/burn and temporary owner credit before backing withdrawal. Preserve
+   integration, including historical escrow controller-incentive ownership,
+   unsolicited payment reconciliation and liquidation accrual. Native share
+   mint/burn ordering is fixed; full incentive ownership is not. Preserve
    deferred owner claims without assuming a reward swap can always run.
    Inability to observe rewards must not silently reassign rights; liquidation
    liveness under a total reward-data outage remains an unresolved design gate.
