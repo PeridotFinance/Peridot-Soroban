@@ -17,6 +17,27 @@ compile_error!("receipt-vault test-default-admin must not be enabled for Wasm bu
 #[contract]
 pub struct ReceiptVault;
 
+// Native integration only, deliberately outside contractimpl: no public selector
+// or caller-supplied policy can bypass the reward coordinator in deployed WASM.
+#[cfg(any(test, feature = "hybrid-rewards"))]
+impl ReceiptVault {
+    pub(crate) fn validate_managed_cash(env: &Env) {
+        let token = ensure_initialized(env);
+        Self::spendable_cash(env, &token, true);
+    }
+    pub(crate) fn withdraw_managed(env: Env, owner: Address, shares: u128) {
+        Self::validate_managed_cash(&env);
+        Self::withdraw_with_cash_policy(env, owner, shares, true);
+    }
+    pub(crate) fn borrow_managed(env: Env, owner: Address, amount: u128) {
+        Self::validate_managed_cash(&env);
+        Self::borrow_with_cash_policy(env, owner, amount, true);
+    }
+    pub(crate) fn rebalance_managed(env: Env, admin: Address) {
+        Self::rebalance_cash_with_policy(env, admin, true);
+    }
+}
+
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 const DISABLED_BOOSTED_VAULT: &str = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 const BOOSTED_CACHE_MAX_AGE_SECS: u64 = 60 * 60;
@@ -864,7 +885,32 @@ impl ReceiptVault {
 
     /// Ensure live cash can satisfy an immediate payout/borrow.
     fn ensure_liquid_cash(env: &Env, token_address: &Address, required_cash: u128) {
-        let live_cash = Self::current_live_cash(env, token_address);
+        Self::ensure_liquid_cash_with_policy(env, token_address, required_cash, false);
+    }
+
+    // The existing ABI retains its legacy cash policy. Native LP callers select
+    // tracked cash explicitly, without a mutable mode/activation storage flag.
+    fn spendable_cash(env: &Env, token_address: &Address, managed_only: bool) -> u128 {
+        let live = Self::current_live_cash(env, token_address);
+        if !managed_only {
+            return live;
+        }
+        let managed: u128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::ManagedCash)
+            .expect("managed cash missing");
+        assert!(live >= managed, "managed cash custody deficit");
+        managed
+    }
+
+    fn ensure_liquid_cash_with_policy(
+        env: &Env,
+        token_address: &Address,
+        required_cash: u128,
+        managed_only: bool,
+    ) {
+        let live_cash = Self::spendable_cash(env, token_address, managed_only);
         if live_cash >= required_cash {
             return;
         }
@@ -1380,6 +1426,10 @@ impl ReceiptVault {
 
     /// Admin: move excess live cash into boosted vault to match target buffer.
     pub fn rebalance_idle_cash(env: Env, admin: Address) {
+        Self::rebalance_cash_with_policy(env, admin, false);
+    }
+
+    fn rebalance_cash_with_policy(env: Env, admin: Address, managed_only: bool) {
         let token_address = ensure_initialized(&env);
         let stored: Address = env
             .storage()
@@ -1391,7 +1441,7 @@ impl ReceiptVault {
         }
         admin.require_auth();
 
-        let live_cash = Self::current_live_cash(&env, &token_address);
+        let live_cash = Self::spendable_cash(&env, &token_address, managed_only);
         if live_cash == 0 {
             return;
         }
@@ -1532,6 +1582,10 @@ impl ReceiptVault {
 
     /// Withdraw tokens using pTokens
     pub fn withdraw(env: Env, user: Address, ptoken_amount: u128) {
+        Self::withdraw_with_cash_policy(env, user, ptoken_amount, false);
+    }
+
+    fn withdraw_with_cash_policy(env: Env, user: Address, ptoken_amount: u128, managed_only: bool) {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
         user.require_auth();
@@ -1697,11 +1751,16 @@ impl ReceiptVault {
         // idle cash. Otherwise residual strategy value would become ownerless
         // at zero supply and be captured by the next depositor.
         if final_exit {
-            let live_cash = Self::current_live_cash(&env, &token_address);
+            let live_cash = Self::spendable_cash(&env, &token_address, managed_only);
             let needed = underlying_to_return.saturating_sub(live_cash);
             Self::redeem_from_boosted(&env, &token_address, needed, true);
         } else {
-            Self::ensure_liquid_cash(&env, &token_address, underlying_to_return);
+            Self::ensure_liquid_cash_with_policy(
+                &env,
+                &token_address,
+                underlying_to_return,
+                managed_only,
+            );
         }
 
         // Non-final exits retain the normal rounded exchange-rate payout. On
@@ -1714,7 +1773,7 @@ impl ReceiptVault {
             underlying_to_return
         };
 
-        let cash_after_boost = Self::current_live_cash(&env, &token_address);
+        let cash_after_boost = Self::spendable_cash(&env, &token_address, managed_only);
         if payout < underlying_to_return || cash_after_boost < payout {
             panic!("withdraw liquidity shortfall");
         }
@@ -3490,6 +3549,10 @@ impl ReceiptVault {
 
     /// Borrow tokens against pToken collateral
     pub fn borrow(env: Env, user: Address, amount: u128) {
+        Self::borrow_with_cash_policy(env, user, amount, false);
+    }
+
+    fn borrow_with_cash_policy(env: Env, user: Address, amount: u128, managed_only: bool) {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
         Self::ensure_user_borrow_flag(&env, &user);
@@ -3613,11 +3676,18 @@ impl ReceiptVault {
         // This avoids extra token-balance reads on the common non-boosted path.
         let managed_cash = Self::get_managed_cash(&env);
         if managed_cash < amount {
-            Self::ensure_liquid_cash(&env, &token_address, amount);
-            let cash_for_borrow = Self::current_live_cash(&env, &token_address);
+            Self::ensure_liquid_cash_with_policy(&env, &token_address, amount, managed_only);
+            let cash_for_borrow = Self::spendable_cash(&env, &token_address, managed_only);
             if cash_for_borrow < amount {
                 panic!("borrow liquidity shortfall");
             }
+        }
+
+        if managed_only {
+            assert!(
+                Self::spendable_cash(&env, &token_address, true) >= amount,
+                "managed borrow shortfall"
+            );
         }
 
         // Update totals, debt snapshot, and true-principal mirror.

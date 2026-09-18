@@ -23,6 +23,8 @@ pub mod reward_claims;
 pub mod reward_coordinator;
 #[path = "../../receipt-vault/src/reward_ledger.rs"]
 pub mod reward_ledger;
+#[path = "../../receipt-vault/src/reward_settlement.rs"]
+pub mod reward_settlement;
 
 #[cfg(test)]
 mod test;

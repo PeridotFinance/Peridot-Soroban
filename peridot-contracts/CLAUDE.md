@@ -60,6 +60,22 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September18 native lending reward-settlement follow-up: the LP wrappers now
+  select managed-only cash for borrowing, principal/reward withdrawal and admin
+  reinvestment. Donated settlement stays untracked even through full exit; missing
+  cash records/custody deficits fail closed before legacy helpers can reconstruct
+  them. Core functions were refactored with an internal cash-policy parameter;
+  existing public ABI always selects legacy policy. Native helpers are outside
+  contractimpl, feature/test gated; no production LP selector or activation flag.
+  Shared reward_settlement.rs now supplies the SAME conversion/recycling/reserved
+  payout logic to lean and lending engines. Lending backing is priced using NAV
+  including debt and redeemed through managed-only, health-checked withdrawal.
+  New tests cover all settlement roles, both stable indices, deferred recycling,
+  actual reward payout with debt, historical converted rights after liquidation/
+  exit, donation isolation and exact auth/rollback. Native strategies/controllers
+  with MOCK pools/oracle, not full compiled-stack evidence. Production ABI,
+  incentives, fee/pair emissions, loss/oracle/liquidation policy, migration and
+  full-WASM/resource gates remain. No chain or keeper changes. See Agents.md.
 - September17 native Aquarius/LENDING integration now shares `reward_claims.rs`
   between generic lending and lean research engines; no copied claim rules or
   changed reward key encodings. Native `reward_lending.rs` checkpoints actual

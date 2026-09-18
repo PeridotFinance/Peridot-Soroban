@@ -44,7 +44,29 @@ impl Market {
         Core::refresh_boosted_underlying(env);
     }
     pub fn reinvest(env: Env, admin: Address) {
-        Core::rebalance_idle_cash(env, admin);
+        lending::reinvest(&env, &admin);
+    }
+    pub fn compound(env: Env, asset: Address) -> receipt_vault::reward_settlement::Outcome {
+        receipt_vault::reward_settlement::compound(&env, &asset)
+    }
+    pub fn recycle(env: Env, asset: Address) -> receipt_vault::reward_settlement::Outcome {
+        receipt_vault::reward_settlement::recycle(&env, &asset)
+    }
+    pub fn payout(
+        env: Env,
+        owner: Address,
+        minimum: u128,
+    ) -> receipt_vault::reward_settlement::Outcome {
+        lending::redeem_rewards(&env, &owner, minimum)
+    }
+    pub fn settle(
+        env: Env,
+        asset: Address,
+        owner: Address,
+        raw: u128,
+        minimum: u128,
+    ) -> receipt_vault::reward_settlement::Outcome {
+        receipt_vault::reward_settlement::settle_reserved(&env, &asset, &owner, raw, minimum)
     }
     pub fn bootstrap(env: Env, user: Address, amount: u128) {
         assert!(!env
@@ -491,7 +513,7 @@ fn aquarius_lending_liquidation_checkpoints_pool_rewards_before_seizure() {
 }
 
 #[test]
-fn aquarius_lending_partial_exit_keeps_loan_nav_but_legacy_cash_can_spend_donations() {
+fn aquarius_lending_partial_exit_keeps_loan_nav_and_untracked_cash_separate() {
     let f = Fixture::new();
     f.reset();
     f.r(1).borrow(&f.user, &200_000);
@@ -529,20 +551,18 @@ fn aquarius_lending_partial_exit_keeps_loan_nav_but_legacy_cash_can_spend_donati
         .try_into()
         .unwrap();
     assert_eq!(f.r(1).nav(), managed + boosted + 200_000);
-    // Known LEGACY policy gap, not strict donation segregation: Core sizes
-    // liquidity from live cash, so donated settlement can subsidize the payout
-    // while leaving more strategy value for remaining holders. Pin the observed
-    // behavior rather than claiming the lean engine's custody invariant holds.
-    // Resolve this before production LP activation; no core behavior changed.
     let untracked_after = (f.cash(1, &f.markets[1]) as u128)
         .checked_sub(managed)
         .unwrap();
-    assert!(untracked_after < 50_000);
+    assert_eq!(untracked_after, 50_000);
     assert_eq!(
         token::Client::new(&f.env, &f.rewards[0]).balance(&f.markets[1]),
         1777
     );
 }
+
+#[path = "reward_lending_settlement_test.rs"]
+mod settlement_test;
 
 #[test]
 fn aquarius_lending_failed_liquidity_unwind_rolls_back_debt_and_claims() {

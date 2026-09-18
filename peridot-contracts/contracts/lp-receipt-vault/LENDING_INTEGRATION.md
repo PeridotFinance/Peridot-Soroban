@@ -142,11 +142,51 @@ that behavior explicitly; it is NOT proof of strict donation segregation. Raw
 reward donations stay unallocated. Resolve settlement cash policy/segregation
 before the LP production ABI; no generic core or Mainnet behavior was changed.
 
+## Managed cash and lending-backed reward settlement — September 18
+
+The legacy donation issue above is now fixed in the **native LP path**. Core's
+borrow/withdraw/rebalance bodies share an internal cash-policy parameter. Existing
+public entrypoints select the legacy policy; native LP helpers select managed
+cash and are outside `contractimpl`, behind test/hybrid gates. There is no mutable
+mode flag, production activation or caller-selected policy. Source was refactored,
+so do not claim byte-identical deployed WASM; the live contracts are untouched.
+
+LP payouts and LP redeployment now use only tracked cash, require actual custody
+to cover it, and pull missing liquidity from the strategy. Donations remain intact
+after deposit, borrow, repay, reinvestment, partial/final withdrawal and reward
+payout. Missing records are checked before legacy helpers can reconstruct them.
+The new regression replaces the prior expectation of donation consumption. This
+does not retroactively change existing core/DeFindex donation policy.
+
+`reward_settlement.rs` extracts the existing conversion/recycling/reserved payout
+rules once for both research engines. All retained recycled streams must settle
+before new reward units or owner payouts; a blocked route preserves pending
+inventory and returns Deferred. Successful staged conversions enrich old units
+without issuing new units. Each later operation still claims fresh emissions.
+Lending uses the same real escrow pTokens and loan-inclusive NAV. Its internal
+backing redemption selects managed-only Core withdrawal via a Rust function
+pointer, never a user-supplied contract callback/selector. Ordinary collateral,
+liquidity, authorization and last-lender debt checks still apply. In particular,
+an already-underwater borrower cannot use reward payout to bypass Core health
+checks; that liveness policy remains explicit rather than silently relaxed.
+
+Nine additional native regressions cover converted payouts in all three asset
+roles, both stable settlement indices, LP-funded payout while debt remains,
+new escrow pricing against outstanding debt, staged recycling failure/retry,
+principal/repayment during reward-route failure, converted/reserved claims after
+full exit and later deposit, exact payout auth/minimum rollback, donations and
+missing custody, and converted rights retained by the borrower after liquidation.
+Tests use real SAC transfers and native strategy/controller/JRM with **mock**
+concentrated pools/oracle. The bounded250-entry fixture and other SDK limits stay
+enabled; no full compiled lending-stack, current-network or production-liveness
+claim follows from these tests. See Agents.md for final measurements/checks/scan.
+
 ## Next release gates
 
-1. Integrate actual Aquarius all-stream/recycled/outage checkpointing with lending
-   share mutations, including deposit, withdraw, delegated transfer and seizure.
-   Preserve deferred owner claims without assuming a reward swap can always run.
+1. Complete production coverage of the native all-stream/recycled/outage lending
+   integration, including controller incentive accounting during escrow share
+   mint/burn and temporary owner credit before backing withdrawal. Preserve
+   deferred owner claims without assuming a reward swap can always run.
    Inability to observe rewards must not silently reassign rights; liquidation
    liveness under a total reward-data outage remains an unresolved design gate.
 2. Validate real strategy-funded borrowing, repayment/redeployment, loan-backed

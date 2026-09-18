@@ -71,6 +71,21 @@ fn amount(value: u128) -> i128 {
     value.try_into().expect("reward amount exceeds i128")
 }
 
+// Check before any legacy NAV/interest helper can derive a missing cash record.
+// Native reward accounting requires tracked custody, not restoration by guess.
+fn require_managed_custody(env: &Env, token: &Address) {
+    let managed: u128 = env
+        .storage()
+        .persistent()
+        .get(&DataKey::ManagedCash)
+        .expect("managed cash missing");
+    let live: u128 = token::Client::new(env, token)
+        .balance(&env.current_contract_address())
+        .try_into()
+        .expect("negative settlement cash");
+    assert!(live >= managed, "managed cash custody deficit");
+}
+
 fn mul_div(env: &Env, a: u128, b: u128, denominator: u128) -> u128 {
     assert!(denominator > 0, "reward division by zero");
     U256::from_u128(env, a)
@@ -234,6 +249,7 @@ pub fn begin_recycled(env: &Env) -> FundingSnapshot {
 
 fn begin_mode(env: &Env, recycle_only: bool) -> FundingSnapshot {
     let token = ensure_initialized(env);
+    require_managed_custody(env, &token);
     assert!(
         !env.storage()
             .persistent()
@@ -477,6 +493,19 @@ pub fn fund(env: &Env, source: &Address, received: u128, recycled: u128, min_uni
 /// Release only the owner's backed units and redeem through existing receipt
 /// withdrawal checks. Parent coordinator MUST checkpoint reward weights first.
 pub fn redeem(env: &Env, owner: &Address, units: u128, min_underlying: u128) -> u128 {
+    redeem_with(env, owner, units, min_underlying, ReceiptVault::withdraw)
+}
+
+/// Non-serializable, internal engine selection. LP lending uses the same debt/
+/// health checks with managed-only liquidity; the lean engine is already managed.
+/// Never expose this function pointer as a user-selected contract call.
+pub fn redeem_with(
+    env: &Env,
+    owner: &Address,
+    units: u128,
+    min_underlying: u128,
+    withdraw: fn(Env, Address, u128),
+) -> u128 {
     // ReceiptVault::withdraw authenticates this owner below, in this same frame.
     // Requiring the same authorization twice in one frame is invalid on Soroban;
     // any missing authorization rolls back the preceding internal changes too.
@@ -487,6 +516,7 @@ pub fn redeem(env: &Env, owner: &Address, units: u128, min_underlying: u128) -> 
     );
     assert!(units > 0, "zero reward redemption");
     let underlying = ensure_initialized(env);
+    require_managed_custody(env, &underlying);
     let mut current = state(env);
     assert_eq!(current.pending_rewards, 0, "unsettled backing rewards");
     ReceiptVault::update_interest(env.clone());
@@ -515,7 +545,7 @@ pub fn redeem(env: &Env, owner: &Address, units: u128, min_underlying: u128) -> 
     );
     put(env, &current);
     // Native internal call, NOT an external callback into this contract.
-    ReceiptVault::withdraw(env.clone(), owner.clone(), shares);
+    withdraw(env.clone(), owner.clone(), shares);
     let received = token::Client::new(env, &underlying)
         .balance(owner)
         .checked_sub(cash_before)

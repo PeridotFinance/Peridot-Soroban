@@ -20,6 +20,7 @@ fn ordinary_owner(env: &Env, owner: &Address) {
 
 pub fn deposit(env: &Env, owner: &Address, amount: u128) {
     ordinary_owner(env, owner);
+    Core::validate_managed_cash(env);
     claims::claim(env);
     let before = claims::weight(env, owner);
     let supply = Core::get_total_ptokens(env.clone());
@@ -68,7 +69,7 @@ pub fn withdraw(
     let underlying = Core::get_underlying_token(env.clone());
     let token = token::Client::new(env, &underlying);
     let cash = token.balance(owner);
-    Core::withdraw(env.clone(), owner.clone(), shares);
+    Core::withdraw_managed(env.clone(), owner.clone(), shares);
     let after = claims::weight(env, owner);
     assert_eq!(
         before.checked_sub(after),
@@ -99,7 +100,7 @@ pub fn borrow(env: &Env, owner: &Address, amount: u128) {
     claims::claim(env);
     let supply = Core::get_total_ptokens(env.clone());
     let escrow = backing::state(env);
-    Core::borrow(env.clone(), owner.clone(), amount);
+    Core::borrow_managed(env.clone(), owner.clone(), amount);
     assert_eq!(Core::get_total_ptokens(env.clone()), supply);
     assert_eq!(backing::state(env), escrow);
     claims::check(env);
@@ -108,6 +109,20 @@ pub fn borrow(env: &Env, owner: &Address, amount: u128) {
 // Repayment deliberately uses Core::repay directly: it only exchanges real
 // settlement cash for debt, with no share mutation or strategy redeployment.
 // Do not make risk-reducing repayment depend on reward observation availability.
+
+pub fn reinvest(env: &Env, admin: &Address) {
+    // Custody-only: no weight change, claim/conversion or donation adoption.
+    Core::rebalance_managed(env.clone(), admin.clone());
+}
+
+pub fn redeem_rewards(
+    env: &Env,
+    owner: &Address,
+    minimum: u128,
+) -> crate::reward_settlement::Outcome {
+    Core::validate_managed_cash(env);
+    crate::reward_settlement::redeem_with(env, owner, minimum, Core::withdraw_managed)
+}
 
 pub fn transfer(env: &Env, from: &Address, to: &Address, amount: i128) {
     claims::claim(env);
