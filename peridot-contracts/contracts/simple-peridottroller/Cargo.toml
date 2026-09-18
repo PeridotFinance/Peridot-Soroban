@@ -11,6 +11,8 @@ doctest = false
 [features]
 # Native test fixture support only; contract code rejects this feature for Wasm builds.
 test-default-admin = []
+# Internal source-sharing switch; do not activate on this generic package.
+lp-zero-peri = []
 
 [dependencies]
 soroban-sdk = { workspace = true }

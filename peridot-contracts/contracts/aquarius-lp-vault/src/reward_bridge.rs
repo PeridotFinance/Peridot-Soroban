@@ -20,6 +20,44 @@ const MAX_REWARD_TOKENS: u32 = 4;
 #[derive(Clone)]
 enum BridgeKey {
     UnprovenPrimary,
+    HybridEnabled,
+}
+
+pub(crate) fn hybrid_enabled(env: &Env) -> bool {
+    env.storage()
+        .instance()
+        .get(&BridgeKey::HybridEnabled)
+        .unwrap_or(false)
+}
+
+pub(crate) fn enable_hybrid(env: &Env) {
+    assert!(!hybrid_enabled(env), "hybrid already enabled");
+    let receipt = bound_receipt_vault(env).expect("receipt not bound");
+    let version: u32 =
+        env.invoke_contract(&receipt, &Symbol::new(env, "lp_version"), Vec::new(env));
+    assert_eq!(version, 1, "LP lending receipt required");
+    let st = crate::storage::state(env);
+    assert_eq!(st.total_shares, 0, "legacy strategy requires migration");
+    assert_eq!(
+        st.position_liquidity, 0,
+        "legacy position requires migration"
+    );
+    let cfg = config(env);
+    let me = env.current_contract_address();
+    for asset in [
+        cfg.token0,
+        cfg.token1,
+        primary_reward_token(env).expect("primary missing"),
+    ] {
+        assert_eq!(
+            balance(env, &asset, &me),
+            0,
+            "legacy cash requires migration"
+        );
+    }
+    env.storage()
+        .instance()
+        .set(&BridgeKey::HybridEnabled, &true);
 }
 
 fn receipt(env: &Env) -> Address {

@@ -1,8 +1,9 @@
 use soroban_sdk::{
     auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
-    contract, contractimpl, token, Address, Bytes, Env, IntoVal, MuxedAddress, String, Symbol, Val,
-    Vec,
+    token, Address, Bytes, Env, IntoVal, MuxedAddress, String, Symbol, Val, Vec,
 };
+#[cfg(not(feature = "lp-engine"))]
+use soroban_sdk::{contract, contractimpl};
 use stellar_tokens::fungible::burnable::emit_burn;
 use stellar_tokens::fungible::Base as TokenBase;
 
@@ -14,7 +15,7 @@ use crate::storage::*;
 #[cfg(all(feature = "test-default-admin", target_arch = "wasm32"))]
 compile_error!("receipt-vault test-default-admin must not be enabled for Wasm builds");
 
-#[contract]
+#[cfg_attr(not(feature = "lp-engine"), contract)]
 pub struct ReceiptVault;
 
 // Native integration only, deliberately outside contractimpl: no public selector
@@ -71,7 +72,7 @@ const BOOSTED_REDEMPTION_QUOTE_FLOOR_BPS: u128 = 9_000u128; // max 10% downward 
 const MAX_BOOSTED_ASSETS: u32 = 16;
 const DEBT_STATE_VERSION_V1: u32 = 1u32;
 
-#[contractimpl]
+#[cfg_attr(not(feature = "lp-engine"), contractimpl)]
 impl ReceiptVault {
     fn ensure_fee_factors_within_cap(reserve_factor_scaled: u128, admin_fee_scaled: u128) {
         if reserve_factor_scaled > SCALE_1E6

@@ -1,6 +1,7 @@
 use soroban_sdk::{contractevent, Address, Symbol};
 
 /// Mirrors Compound's Mint event: emitted on deposit when pTokens are minted.
+#[cfg(not(feature = "lp-engine"))]
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Mint {
@@ -9,6 +10,20 @@ pub struct Mint {
     pub mint_amount: u128,
     pub mint_tokens: u128,
 }
+
+// The LP artifact also exports the token library's Mint event. Keep the legacy
+// runtime topic but give this distinct payload an unambiguous spec name.
+#[cfg(feature = "lp-engine")]
+#[contractevent(topics = ["mint"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LpMint {
+    #[topic]
+    pub minter: Address,
+    pub mint_amount: u128,
+    pub mint_tokens: u128,
+}
+#[cfg(feature = "lp-engine")]
+pub type Mint = LpMint;
 
 /// Mirrors Compound's Redeem event: emitted on withdraw when pTokens are burned.
 #[contractevent]

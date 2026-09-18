@@ -60,6 +60,33 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September18 explicit LP lending interface: new `lp-lending-vault` exports only
+  checkpointed lending/reward methods over the shared engine, not generic margin,
+  flash-loan/recovery or uncheckpointed token selectors. New `lp-peridottroller`
+  requires fresh zero-PERI state, rejects nonzero emission settings and admits
+  at most3 LP-versioned markets. AQUA conversion/payout remains enabled. Approved
+  CF targets are XLM500000/PYUSD800000/USDC800000; activation checks exact targets.
+  Public config `config/lp-lending-mainnet.json` records targets/old pilot addresses,
+  NOT live changes. Existing CFs remain0. Receipt bindings seal on activation;
+  native Aquarius hybrid activation fences legacy harvest/raw primary rotation.
+  Both new artifacts reject fresh Mainnet initialization. Generic hybrid/Aquarius
+  WASM guards remain. Compiled receipt+controller local lifecycle passes with
+  NATIVE strategy/mock pools, not full compiled-stack/Mainnet evidence. Full
+  pricing, migration/restoration, claim-outage liquidation, exact-WASM resources,
+  security and governed deployment gates remain. See LENDING_INTEGRATION.md.
+- September18 USER SCOPE: PERI is not intended to pay rewards now or for the
+  foreseeable future. New LP deployment must explicitly use zero supply/borrow
+  emissions, retaining a token reference if deployment needs it. AQUA rewards,
+  swaps and owner payouts remain enabled in the design. Do not confuse PERI
+  emission speeds with liquidation bonuses, lending interest or keeper thresholds.
+  Defer unfinished escrow PERI distribution for a verified zero-emission release;
+  require an activation guard, legacy-liability reconciliation and a reviewed
+  opt-in before PERI can ever be enabled. Do not erase earned historical claims.
+  Native checkpoint fixes remain. Production ABI, lending/liquidation safety,
+  migration, oracle policy and compiled testing still apply. Fresh Mainnet settings
+  and existing deployed LP addresses are now recorded in addresses.md. Existing
+  LP pause timers expired September12: fresh getters return false; CF remains0.
+  No Mainnet setting or keeper was changed for this clarification.
 - September18 native controller-incentive checkpoint follow-up: backing mint now
   accrues with OLD total supply/escrow balance; backing payout checkpoints escrow
   and owner BEFORE temporary share credit. Enabled-incentive regressions reproduce

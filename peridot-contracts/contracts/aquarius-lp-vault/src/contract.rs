@@ -42,6 +42,14 @@ pub struct AquariusLpVault;
 #[cfg(any(test, feature = "hybrid-rewards"))]
 #[contractimpl]
 impl AquariusLpVault {
+    pub fn enable_hybrid(env: Env, admin: Address) {
+        Self::require_admin(&env, &admin);
+        crate::reward_bridge::enable_hybrid(&env);
+    }
+    pub fn hybrid_is_enabled(env: Env) -> bool {
+        bump_critical_ttl(&env);
+        crate::reward_bridge::hybrid_enabled(&env)
+    }
     pub fn hybrid_rotate_primary(env: Env, expected: Address, next: Address) {
         crate::reward_bridge::RewardBridge::hybrid_rotate_primary(env, expected, next)
     }
@@ -1960,6 +1968,11 @@ impl AquariusLpVault {
     /// Rate-limited because each call moves the share price; without a cooldown
     /// it could be used to grind rounding in the depositor's favour.
     pub fn harvest(env: Env, caller: Address) -> i128 {
+        #[cfg(any(test, feature = "hybrid-rewards"))]
+        assert!(
+            !crate::reward_bridge::hybrid_enabled(&env),
+            "hybrid rewards must pass through receipt"
+        );
         caller.require_auth();
         bump_critical_ttl(&env);
 
@@ -2409,6 +2422,11 @@ impl AquariusLpVault {
     /// Changes the token transferred by Aquarius' primary `claim()` path.
     /// Reward conversion routes remain independently configurable per token.
     pub fn set_primary_reward_token(env: Env, admin_addr: Address, reward_token: Option<Address>) {
+        #[cfg(any(test, feature = "hybrid-rewards"))]
+        assert!(
+            !crate::reward_bridge::hybrid_enabled(&env),
+            "hybrid rotation must pass through receipt"
+        );
         Self::require_admin(&env, &admin_addr);
         set_primary_reward(&env, &reward_token);
         PrimaryRewardTokenSet { reward_token }.publish(&env);

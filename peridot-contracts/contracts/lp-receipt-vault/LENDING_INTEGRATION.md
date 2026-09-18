@@ -1,9 +1,69 @@
 # Isolated LP lending — implementation boundary
 
-September 17, 2026. This supersedes the **supply-only final target**, not existing
-Mainnet safety controls. Native research only; no deployment candidate exists.
+September 18, 2026. This supersedes the **supply-only final target**, not existing
+Mainnet safety controls. Local validation artifacts now exist; they are NOT
+Mainnet release candidates. Fresh Mainnet initialization is explicitly blocked.
+
+## Explicit LP lending interface — September 18
+
+`contracts/lp-lending-vault` now exports a separate contract interface over the
+shared lending engine. Engine methods compile as ordinary Rust, not inherited
+contract exports. Deposit, withdraw, borrow, transfer, transfer_from and seizure
+use the complete reward coordinator; repayment stays independent of reward
+availability. Conversion, recycling, reserved claims and owner payouts use the
+same managed-cash and historical-ownership accounting. Admin handoff and upgrades
+retain the core authorization/timelock checks. Margin, flash loans, recovery,
+bootstrap and uncheckpointed token mutations are not receipt exports.
+
+`contracts/lp-peridottroller` is a separate zero-PERI artifact. Its fresh-instance
+policy marker cannot be reconstructed by upgrading an old controller. Nonzero
+supply/borrow emission rates are rejected even for the admin; the PERI token may
+still be configured. It admits at most three LP-versioned receipts, not generic
+core markets. The receipt seals controller/strategy bindings after activation.
+This is a code-enforced configuration policy, not a promise that a future
+governance-approved code upgrade cannot change it.
+
+User-approved target collateral factors are **XLM 50%, PYUSD 80%, USDC 80%**
+(1e6-scaled: 500000/800000/800000). Fresh activation checks the controller's factor
+against the receipt's target. `config/lp-lending-mainnet.json` records those targets
+and existing pilot addresses, NOT applied Mainnet settings. Existing live factors
+remain zero; temporary parity-alias pricing is not sufficient borrowing validation.
+
+The native Aquarius bridge now has a one-way fresh-strategy hybrid activation
+marker. It fences legacy harvest and raw primary-token changes, and receipt
+activation verifies it. The ordinary Aquarius hybrid-WASM compile gate remains;
+there is no reviewed legacy-state migration or deployable full hybrid stack yet.
+Fresh deployment constructors reject the public-network ID. Do not remove these
+release guards or install validation artifacts on existing Mainnet contracts.
+
+Actual-interface tests use three receipt instances, the zero-PERI controller,
+real SACs, native Aquarius/JRM and mock pools/oracle. Both stable settlement
+strategies use one pool with opposite settlement indices. Tests cover cross-market
+loans, aggregate limits, reward ownership, liquidation, authorization, outage
+repayment, sealed setup and Mainnet-init rejection. A separate explicit test loads
+the compiled receipt AND controller; it passes borrowing, conversion, payout,
+repayment, transfer and exit with the strategy still native. Measured compiled
+steps: loan 220 entries/80.59M CPU, conversion 122/65.79M, payout119/96.08M.
+The bounded250-entry research envelope and other SDK resource limits stay on.
+The payout is close to this fixture's100M CPU ceiling. This is NOT full compiled
+strategy/pool/oracle/gauge resource evidence or a Mainnet simulation.
+
+Historical sections below describe the stages leading to this interface. Their
+old "native-only/no exports" statements are superseded only for the new explicit
+validation package; generic ReceiptVault remains gated against hybrid WASM.
 
 ## Confirmed product
+
+September 18 scope clarification: **PERI emissions are zero for the initial
+Mainnet release and foreseeable future.** Retain the token reference if needed
+for deployment, explicitly configure supply/borrow emission speeds to zero, and
+verify that constraint before activation. AQUA conversion and payouts are NOT
+disabled. Escrow PERI attribution/payment and incentive-specific liquidation
+checkpoints can be deferred for a proven zero-emission, no-legacy-liability
+release; they must be completed/reviewed before enabling PERI later. Zero current
+speeds alone cannot erase historical accrued obligations. An explicit launch
+guard is implemented by the fresh zero-PERI controller; legacy migration and any
+subsequent nonzero-emission release still need a separate reviewed policy.
 
 One NEW LP-only Peridottroller manages three lending-capable receipts (XLM, PYUSD,
 USDC). A user supplies XLM collateral to this group and can borrow PYUSD or USDC
@@ -211,18 +271,21 @@ claims. Actual SAC cash/native controller/strategy/JRM; MOCK pool/oracle. Existi
 250-entry research envelope and other SDK limits remain enabled. No compiled
 stack or Mainnet claim follows from this coverage.
 
-**This is not yet end-to-end escrow PERI ownership.** The controller retains a
+**This is not yet end-to-end escrow PERI ownership.** With positive emissions,
+the controller retains a
 liability to the receipt account, not historical backing-unit owners. After all
 units exit, that liability still exists. Permissionless `claim_all` can send real
 PERI to the receipt outside its own coordinator; current reward cash snapshots
 alone cannot safely attribute it. Never reset this liability, assign it to new
 unit holders, count it in principal NAV, or classify it as an admin donation.
 An ownership-preserving pending-incentive ledger and reconciliation for unsolicited
-payments must precede activation. Underfunded controller accrual is not cash.
+payments must precede PERI-enabled activation. The later user-approved zero-PERI
+release can defer that functionality only with verified zero emissions and no
+unresolved legacy incentive liabilities. Underfunded controller accrual is not cash.
 Missing/archived incentive indices and late controller attachment also require a
 reviewed restoration/migration policy, not reconstruction from current weights.
 
-### Production entrypoint boundary (still blocked)
+### Production release boundary (new validation interface implemented above)
 
 | Operation | Required boundary before export |
 |---|---|
@@ -240,26 +303,34 @@ pre-mutation incentive checkpoints. Existing no-retroactive-liquidator test uses
 a fresh recipient index and does not establish conservation for already-indexed
 borrower/liquidator/fee accounts. Resolve and test this in the controller call
 frame, including repayment-only liquidation, before enabling the LP public ABI.
-This patch does not change liquidation or generic production entrypoints.
+This patch does not change liquidation or generic production entrypoints. This
+incentive-specific work is deferred under the later zero-PERI release constraint;
+actual loan liquidation, collateral health and Aquarius reward ownership remain
+required. Existing core settings and deployed LP addresses are in addresses.md;
+they are reference values, not automatic LP risk-parameter approvals.
 
 ## Next release gates
 
 1. Complete production coverage of the native all-stream/recycled/outage lending
    integration, including historical escrow controller-incentive ownership,
-   unsolicited payment reconciliation and liquidation accrual. Native share
-   mint/burn ordering is fixed; full incentive ownership is not. Preserve
+   unsolicited payment reconciliation and liquidation accrual IF PERI is enabled.
+   For the approved zero-PERI release, instead enforce zero emissions and reconcile
+   legacy liabilities; prevent an unreviewed nonzero-emission configuration.
+   Native share mint/burn ordering is fixed; full incentive ownership is not. Preserve
    deferred owner claims without assuming a reward swap can always run.
    Inability to observe rewards must not silently reassign rights; liquidation
    liveness under a total reward-data outage remains an unresolved design gate.
 2. Validate real strategy-funded borrowing, repayment/redeployment, loan-backed
    withdrawal and post-unwind health. Exercise simultaneous users, bad debt,
    LP losses, fees, zero-cash states and liquidation price/quote outages.
-3. Implement explicit receipt mode/ABI and legacy harvest exclusion. No generic
-   lending selector or standalone helper may bypass the complete coordinator.
+3. Validate the new explicit receipt ABI and native legacy-harvest fence against
+   the full compiled strategy/pool stack. No generic lending selector or standalone
+   helper may bypass the complete coordinator. Preserve the release guards.
 4. Replace temporary parity-alias collateral valuation with reviewed depeg-aware
-   pricing/freshness behavior. Choose collateral factors, debt caps, cash buffers,
-   rate curves and liquidation parameters explicitly; fixture numbers are NOT
-   production defaults or approvals.
+   pricing/freshness behavior. Collateral factors are now approved at50% XLM and
+   80% PYUSD/USDC; apply them only with the remaining activation safeguards.
+   Debt caps, cash buffers, rate curves and liquidation policy still need final
+   configuration review; fixture numbers are NOT production approvals.
 5. Rework the migration from the existing LP pilot controller into the NEW
    controller, preserving balances, strategy binding, old debt and incentive
    obligations. A new controller does not make old obligations disappear. The

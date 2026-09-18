@@ -1,5 +1,8 @@
 #![no_std]
 
+#[cfg(feature = "lp-engine")]
+compile_error!("lp-engine is reserved for the lp-lending-vault source consumer");
+
 mod constants;
 mod contract;
 mod events;

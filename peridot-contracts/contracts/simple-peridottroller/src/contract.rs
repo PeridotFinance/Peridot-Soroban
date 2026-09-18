@@ -393,6 +393,8 @@ impl SimplePeridottroller {
     }
 
     pub fn initialize(env: Env, admin: Address) {
+        #[cfg(feature = "lp-zero-peri")]
+        crate::require_validation_network(&env);
         bump_core_ttl(&env);
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
@@ -439,7 +441,32 @@ impl SimplePeridottroller {
             .persistent()
             .set(&DataKey::OracleMaxAgeMultiplier, &2u64);
         env.storage().instance().set(&DataKey::Initialized, &true);
+        #[cfg(feature = "lp-zero-peri")]
+        env.storage()
+            .instance()
+            .set(&Symbol::new(&env, "LpZeroPeriV1"), &true);
         bump_core_ttl(&env);
+    }
+
+    /// A fresh zero-emission LP controller, not a certificate for legacy state.
+    pub fn lp_reward_policy(env: Env) -> u32 {
+        #[cfg(feature = "lp-zero-peri")]
+        {
+            assert!(
+                env.storage()
+                    .instance()
+                    .get::<_, bool>(&Symbol::new(&env, "LpZeroPeriV1"))
+                    .unwrap_or(false),
+                "LP controller requires fresh initialization"
+            );
+            bump_core_ttl(&env);
+            return 1;
+        }
+        #[cfg(not(feature = "lp-zero-peri"))]
+        {
+            let _ = env;
+            0
+        }
     }
 
     pub fn set_oracle(env: Env, oracle: Address) {
@@ -1061,6 +1088,8 @@ impl SimplePeridottroller {
     }
 
     pub fn set_supply_speed(env: Env, market: Address, speed_per_sec: u128) {
+        #[cfg(feature = "lp-zero-peri")]
+        assert_eq!(speed_per_sec, 0, "LP PERI emissions are disabled");
         bump_core_ttl(&env);
         require_admin(env.clone());
         if speed_per_sec > MAX_REWARD_SPEED_PER_SEC {
@@ -1111,6 +1140,8 @@ impl SimplePeridottroller {
     }
 
     pub fn set_borrow_speed(env: Env, market: Address, speed_per_sec: u128) {
+        #[cfg(feature = "lp-zero-peri")]
+        assert_eq!(speed_per_sec, 0, "LP PERI emissions are disabled");
         bump_core_ttl(&env);
         require_admin(env.clone());
         if speed_per_sec > MAX_REWARD_SPEED_PER_SEC {
@@ -1647,11 +1678,26 @@ impl SimplePeridottroller {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        #[cfg(feature = "lp-zero-peri")]
+        {
+            assert_eq!(Self::lp_reward_policy(env.clone()), 1);
+            let version: u32 =
+                env.invoke_contract(&market, &Symbol::new(&env, "lp_version"), Vec::new(&env));
+            assert_eq!(
+                version, 1,
+                "only LP lending receipts may join this controller"
+            );
+        }
         let mut markets: Map<Address, bool> = env
             .storage()
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+        #[cfg(feature = "lp-zero-peri")]
+        assert!(
+            markets.contains_key(market.clone()) || markets.len() < 3,
+            "LP group is limited to three markets"
+        );
         markets.set(market.clone(), true);
         env.storage()
             .persistent()
@@ -3045,6 +3091,10 @@ impl SimplePeridottroller {
     // attackers from supplying malicious hint values that could inflate reward distributions.
     // Without hints (None), values are fetched on-chain which is safe but more expensive.
     pub fn accrue_user_market(env: Env, user: Address, market: Address, hint: Option<AccrualHint>) {
+        #[cfg(feature = "lp-zero-peri")]
+        if Self::lp_reward_policy(env.clone()) == 1 {
+            return;
+        }
         // Reward accrual is disabled until a reward token is configured.
         // Keep this before broad TTL bumps so no-op accrual calls used by vault
         // borrow paths do not add unrelated controller keys to the footprint.

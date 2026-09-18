@@ -8,7 +8,7 @@ use crate::{
     reward_backing as backing, reward_claims as claims, reward_ledger as ledger,
     reward_share_hooks as hooks, ReceiptVault as Core, SeizeContext,
 };
-use soroban_sdk::{token, vec, Address, Env, Map};
+use soroban_sdk::{token, vec, Address, Env, Map, MuxedAddress};
 
 fn ordinary_owner(env: &Env, owner: &Address) {
     assert_ne!(
@@ -125,9 +125,13 @@ pub fn redeem_rewards(
 }
 
 pub fn transfer(env: &Env, from: &Address, to: &Address, amount: i128) {
+    transfer_muxed(env, from, &to.clone().into(), amount);
+}
+
+pub fn transfer_muxed(env: &Env, from: &Address, to: &MuxedAddress, amount: i128) {
     claims::claim(env);
-    let snapshot = hooks::begin(env, vec![env, from.clone(), to.clone()]);
-    Core::transfer(env.clone(), from.clone(), to.clone().into(), amount);
+    let snapshot = hooks::begin(env, vec![env, from.clone(), to.address()]);
+    Core::transfer(env.clone(), from.clone(), to.clone(), amount);
     hooks::finish(env, snapshot);
     claims::check(env);
 }

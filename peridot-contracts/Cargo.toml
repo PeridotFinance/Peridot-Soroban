@@ -3,6 +3,8 @@ resolver = "2"
 members = [
   "contracts/receipt-vault",
   "contracts/lp-receipt-vault",
+  "contracts/lp-lending-vault",
+  "contracts/lp-peridottroller",
   "contracts/simple-peridottroller",
   "contracts/jump-rate-model",
   "contracts/peridot-token",

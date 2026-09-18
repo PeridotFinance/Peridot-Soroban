@@ -102,9 +102,70 @@ on the router, which is authoritative.
 
 - Aquarius USDC/EURC LP Vault (mainnet): _not yet deployed_
 - Aquarius USDC/EURC LP Market (mainnet): _not yet deployed_
-- Aquarius XLM/yXLM LP Vault + XLM market (mainnet): _not yet deployed_
-- Aquarius PYUSD/USDC PYUSD-settled LP Vault + PYUSD market (mainnet): _not yet deployed_
-- Aquarius PYUSD/USDC USDC-settled LP Vault + USDC market (mainnet): _not yet deployed_
+- Existing isolated LP pilot controller: `CCZKDMAP23ZFL55RVITKSW4LAONQABGPSK2Y77RS64GPHOVDDFF5ENGC`
+
+User-approved September18 NEW LP lending targets: XLM collateral factor50%,
+PYUSD80%, USDC80%. These are recorded in `config/lp-lending-mainnet.json` and
+checked by the new validation receipt's activation. They have **not** been applied
+to the existing pilot (live factors below remain0%). The new isolated controller
+has not been deployed; do not publish local validation addresses as Mainnet IDs.
+
+Verified by public Mainnet ledger reads on **2026-09-18, 16:46 UTC**. These are
+the existing pilot contracts, NOT a deployment of the new hybrid-reward lending
+implementation. No replacement controller has been deployed by this work.
+
+| Settlement / concentrated pool | ReceiptVault market | Aquarius strategy |
+|---|---|---|
+| XLM / XLM-yXLM | `CBRJTPI3327YPP57KGIZIU4Z6APBUN5F6LJ2Q3MPKCISUQJLAQFFZECZ` | `CB3WLG4QITFRELACDR74N63VEPICMQ35QW3DSAMF4KCFOITKOJSHH6RW` |
+| PYUSD / PYUSD-USDC | `CBNVNCPEW2XXGBEGVMZQXBSODO5V2HMGPT5FFLVLT355SXJMYY53MLMA` | `CANCOWOI6R2FZBDLZKUL6BUZJN3VONPZSUUSWFL3KF3MPG5INAF25EKY` |
+| USDC / PYUSD-USDC | `CBIOHQFWKSYTRET3LJV4LTO3ZQWRQMQ7I2SJAZ62IZCQHDST4YO3AZP7` | `CAQZ7XPUSOSBI66A4RPSNPEBI2EADBMBVUBSW6R2DYWC64QHDM3HKGIN` |
+
+Receipt-to-controller, receipt-to-strategy and reverse strategy-to-receipt
+bindings were checked. Stable strategies share `CAPIOQNU...HIDQYX`, with
+underlying indices 0 (PYUSD) and 1 (USDC); XLM uses `CADMDTCQ...HFS7F`.
+All three strategies use AQUA as primary reward and the existing `00a1e909...`
+WASM. Range half-width remains 40 ticks; ranges move with keeper rebalancing.
+
+#### Mainnet settings snapshot (not new deployment approvals)
+
+| Setting | Core / DeFindex group | Existing LP pilot |
+|---|---|---|
+| Controller collateral factors | XLM 70%; USDC/EURC 90% | XLM/PYUSD/USDC 0% |
+| Liquidation close factor | 50% | 50% |
+| Liquidation incentive | 1.08 multiplier (8% bonus) | Same |
+| Liquidation fee to reserves | 0% | 0% |
+| Receipt reserve factor | 10% | 0% |
+| Receipt admin fee | 0% | 0% |
+| Target idle cash | 10% | 30% |
+| Supply caps | 0 (uncapped) | 100,000 XLM; 12,500 PYUSD; 12,500 USDC |
+| Borrow caps | 0 (uncapped, NOT disabled) | 0 (uncapped, NOT disabled) |
+| PERI token binding | Existing `$P` above | No live binding entry returned |
+| PERI supply/borrow speeds | No live entries returned; code defaults to zero | Same; no live token binding |
+
+Controller `get_market_cf` was freshly simulated to verify the factors above.
+Receipt-local `CollateralFactorScaled` is separately 50% on all six receipts;
+do not mistake that stored value for the cross-market controller's factor.
+The isolated controller lists only its three LP markets, not the core markets.
+Both groups use the volatile JRM above for XLM and the stable JRM for stablecoins.
+Current raw curve parameters, scaled by 1e6 (coefficients, NOT supplier APY):
+
+| Model | Base/year | Multiplier/year | Jump multiplier/year | Kink |
+|---|---:|---:|---:|---:|
+| Volatile | 10000 | 180000 | 4000000 | 800000 |
+| Stable | 0 | 80000 | 2000000 | 900000 |
+
+**Pause correction:** all six deployed `is_borrow_paused` getters returned false
+at ledgers 64492839–64492840. The LP stored pause flags are still true, but their
+expiry timestamps passed on September 12. Do not report those breakers as active.
+LP collateral factors remain zero and stored total debts were zero. No pause,
+collateral factor, emission rate, or other Mainnet setting was changed here.
+
+Missing ledger entries are not proof that no archived incentive history exists.
+For the NEW LP release, user direction is PERI supply/borrow emission rates
+explicitly zero, retaining any deployment token reference if needed. This does
+NOT disable AQUA collection/conversion or change liquidation incentives. Before
+activation, enforce zero emissions and reconcile any legacy reward liabilities;
+enabling PERI later requires the deferred ownership work and another review.
 
 Testnet verification against the **deployed** Aquarius pool:
 - Aquarius LP Vault: `CCG5OPVXIE55TVNIM3766IRKOTJPI6XWEO4WSVWCAFJDLRRP55G7AN4H`
