@@ -33,6 +33,7 @@ dependencies = [
  "mock-token",
  "receipt-vault",
  "simple-peridottroller",
+ "soroban-env-host",
  "soroban-sdk",
 ]
 

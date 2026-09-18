@@ -60,6 +60,23 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September17 native Aquarius/LENDING integration now shares `reward_claims.rs`
+  between generic lending and lean research engines; no copied claim rules or
+  changed reward key encodings. Native `reward_lending.rs` checkpoints actual
+  primary/gauge claims or observable IOUs around lending deposit/withdraw/borrow,
+  transfer/delegated transfer and seizure. Core still supplies authorization,
+  debt-inclusive NAV, collateral checks and liquidity protection. Withdrawal
+  reserves historical raw rewards and checks actual payout against a user floor.
+  Repayment remains Core's cash-for-debt path, independent of reward outages.
+  New local three-market tests use native strategy/controller/JRM, real SACs and
+  MOCK concentrated pools/oracle (stable settlements share one mock pool). Both
+  stable loans actually unwind positions. No production hooks/ABI or artifact.
+  The integrated exit exceeded200 research entries at205; fixture now bounds250
+  while keeping all other SDK limits ON. This is NOT compiled/Mainnet fit proof.
+  Regression also pins a LEGACY cash-policy gap: donations are excluded from NAV
+  but live-cash sizing can spend them during payout, leaving more LP capital for
+  remaining holders. Strict unmanaged-cash segregation is not established and
+  must be resolved before activation. See LENDING_INTEGRATION.md and Agents.md.
 - September17 native LENDING boundary work now lives in
   `contracts/lp-receipt-vault/LENDING_INTEGRATION.md`. The existing lending engine
   is the baseline; the lean supply-only principal engine is NOT being enabled for

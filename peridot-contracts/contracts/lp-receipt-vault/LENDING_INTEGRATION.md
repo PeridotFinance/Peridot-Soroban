@@ -91,6 +91,57 @@ current network limits or compiled transaction fit. The direct host dev-dependen
 only names the same SDK-pinned host to configure that bounded test envelope; no
 production dependency version changed. Final measured values are in Agents.md.
 
+## Aquarius-backed native follow-up
+
+`receipt-vault/src/reward_claims.rs` now contains the existing all-stream claim,
+receivable, registration and custody-check code. Both principal engines compile
+that same source. Retained keys and accounting rules are unchanged. This does not
+port the lean proportional exit or retirement policy into the lending engine.
+
+`reward_lending.rs` calls this checkpoint around lending deposit, withdrawal,
+borrow, transfer, delegated transfer and seizure. Share movements use the existing
+opaque hooks. Deposit/withdrawal reconcile actual owner/supply deltas, retain
+escrow, and update every retained stream. Withdrawal reserves earned raw claims,
+then calls Core's debt-aware withdrawal and enforces the user's actual payout
+minimum. Failed health, liquidity, auth or minimum checks roll everything back.
+Core authenticates once in the same frame; a second wrapper auth conflicted with
+Core's authorization arguments and was removed, not bypassed.
+
+Repayment deliberately remains Core's settlement-cash-for-debt operation: it does
+not change shares or redeploy liquidity, so reward-data failure must not block it.
+Separate native admin reinvestment changes custody only, not reward weights.
+Lending-specific recycled backing conversion/payout, fee attribution and complete
+production selector coverage still require integration; these tests do not prove
+all of those work together with debt. The native test wrapper has no production
+activation, and default contract entrypoints remain unchanged.
+
+Run `cargo test -p aquarius-lp-vault --locked aquarius_lending_ -- --nocapture`.
+Nine new regressions use actual native Aquarius strategy/bridge, lending engine,
+controller/JRM, real SACs, and controlled **mock** concentrated pools and oracle.
+The two stable settlement strategies use opposite indices of one shared pool.
+Both stable loans unwind actual strategy shares; wallet/debt/share and reward
+cash are checked. Tests also cover repayment/reinvestment, partial lender exit
+with an outstanding loan, refusal to erase all lender shares while debt exists,
+unsafe collateral withdrawal, minimum rollback, late-deposit/delegated-transfer
+reward ownership, exact borrower/liquidator/full-exit auth, failed swap rollback,
+and observable versus unobservable reward outages. Primary and gauge use distinct
+real tokens. Rewards do not need a conversion route for principal exit.
+
+Initial integrated exit/minimum rollback exceeded the earlier200-entry research
+envelope at205. This fixture explicitly uses250 entries, retaining SDK CPU,
+memory and write limits; limits are never disabled. Current native maxima include
+206 entries for an LP-funded collateral exit,196 for the second stable borrow,
+191 for liquidation with claims and42 writes. This is NOT full compiled-stack,
+actual deployed-pool-WASM, live oracle/gauge or current network-limit evidence.
+
+**Newly exposed legacy cash-policy gap:** donations are excluded from initial
+NAV, but Core's `ensure_liquid_cash` counts actual cash (including donations).
+An exit can therefore consume untracked settlement cash, unwind less LP, and
+leave additional strategy value for remaining holders. The new regression pins
+that behavior explicitly; it is NOT proof of strict donation segregation. Raw
+reward donations stay unallocated. Resolve settlement cash policy/segregation
+before the LP production ABI; no generic core or Mainnet behavior was changed.
+
 ## Next release gates
 
 1. Integrate actual Aquarius all-stream/recycled/outage checkpointing with lending

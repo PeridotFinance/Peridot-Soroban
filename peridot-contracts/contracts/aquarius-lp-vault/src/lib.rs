@@ -21,6 +21,8 @@ compile_error!("hybrid-rewards is native integration work, not a deployable rele
 mod reward_bridge;
 #[cfg(test)]
 mod reward_bridge_test;
+#[cfg(test)]
+mod reward_lending_test;
 
 #[cfg(test)]
 mod test;

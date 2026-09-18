@@ -18,6 +18,8 @@ pub mod exit_request;
 pub mod migration;
 #[path = "../../receipt-vault/src/reward_backing.rs"]
 pub mod reward_backing;
+#[path = "../../receipt-vault/src/reward_claims.rs"]
+pub mod reward_claims;
 pub mod reward_coordinator;
 #[path = "../../receipt-vault/src/reward_ledger.rs"]
 pub mod reward_ledger;

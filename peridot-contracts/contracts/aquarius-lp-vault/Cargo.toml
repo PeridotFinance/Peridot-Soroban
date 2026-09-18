@@ -18,6 +18,8 @@ soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+# Same SDK-pinned host; bounded native lending research only.
+soroban-env-host = { version = "=25.0.1", features = ["testutils"] }
 mock-token = { path = "../mocks/mock-token" }
 mock-aquarius-pool = { path = "../mocks/mock-aquarius-pool" }
 receipt-vault = { path = "../receipt-vault", features = ["test-default-admin", "hybrid-rewards"] }
