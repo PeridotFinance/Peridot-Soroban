@@ -1,0 +1,15 @@
+{
+  "network": "Public Global Stellar Network ; September 2015",
+  "status": "approved-targets-not-applied",
+  "activationBlockedBy": ["depeg-aware pricing", "reviewed migration", "compiled full-stack validation", "final security review"],
+  "existingPilotController": "CCZKDMAP23ZFL55RVITKSW4LAONQABGPSK2Y77RS64GPHOVDDFF5ENGC",
+  "replacementController": null,
+  "periToken": "CDNJSOJKURHQUDBO7OHK7Z64R2CNMIAWXENHM24ALK7Y3H56EU6PUOKR",
+  "periSupplySpeed": "0",
+  "periBorrowSpeed": "0",
+  "markets": [
+    {"asset": "XLM", "receipt": "CBRJTPI3327YPP57KGIZIU4Z6APBUN5F6LJ2Q3MPKCISUQJLAQFFZECZ", "collateralFactorScaled": "500000"},
+    {"asset": "PYUSD", "receipt": "CBNVNCPEW2XXGBEGVMZQXBSODO5V2HMGPT5FFLVLT355SXJMYY53MLMA", "collateralFactorScaled": "800000"},
+    {"asset": "USDC", "receipt": "CBIOHQFWKSYTRET3LJV4LTO3ZQWRQMQ7I2SJAZ62IZCQHDST4YO3AZP7", "collateralFactorScaled": "800000"}
+  ]
+}

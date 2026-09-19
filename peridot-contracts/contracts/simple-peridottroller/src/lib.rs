@@ -1,4 +1,6 @@
 #![no_std]
+#[cfg(feature = "lp-zero-peri")]
+compile_error!("lp-zero-peri is reserved for the lp-peridottroller source consumer");
 #[cfg(test)]
 extern crate std;
 
