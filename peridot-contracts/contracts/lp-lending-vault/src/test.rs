@@ -28,6 +28,31 @@ struct PriceData {
 }
 #[contract]
 struct Oracle;
+#[contract]
+struct TestPlane;
+#[contractimpl]
+impl TestPlane {
+    pub fn total_supply(_env: Env) -> u128 {
+        0
+    }
+    pub fn update(
+        _env: Env,
+        _pool: Address,
+        _kind: Symbol,
+        _args: Vec<u128>,
+        _reserves: Vec<u128>,
+    ) {
+    }
+}
+
+fn invoke<T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>>(
+    env: &Env,
+    target: &Address,
+    name: &str,
+    args: Vec<soroban_sdk::Val>,
+) -> T {
+    env.invoke_contract(target, &Symbol::new(env, name), args)
+}
 #[contractimpl]
 impl Oracle {
     pub fn set(env: Env, asset: Address, value: i128) {
@@ -61,15 +86,32 @@ struct Fixture {
     rewards: [Address; 2],
     controller: Address,
     oracle: Address,
+    cpu_limit: i64,
 }
 impl Fixture {
     fn new(active: bool) -> Self {
-        Self::build(active, None, None)
+        Self::build(active, None, None, None, None)
     }
-    fn build(active: bool, receipt_wasm: Option<&[u8]>, controller_wasm: Option<&[u8]>) -> Self {
+    fn build(
+        active: bool,
+        receipt_wasm: Option<&[u8]>,
+        controller_wasm: Option<&[u8]>,
+        strategy_wasm: Option<&[u8]>,
+        pool_wasm: Option<&[u8]>,
+    ) -> Self {
         let env = Env::default();
         let mut limits = soroban_env_host::InvocationResourceLimits::mainnet();
-        limits.ledger_entries = 250; // Explicit research envelope, not a network fit claim.
+        // Explicit research envelope, not a network fit claim.
+        limits.ledger_entries = 250;
+        // Compiled strategy payout measured108.6M, above the earlier native100M
+        // assertion. Mainnet read at ledger64494069 gives400M; retain a smaller
+        // explicit200M compiled research bound, not an unlimited diagnostic.
+        let cpu_limit = if strategy_wasm.is_some() {
+            200_000_000
+        } else {
+            100_000_000
+        };
+        limits.instructions = cpu_limit;
         env.cost_estimate().enforce_resource_limits(limits);
         env.mock_all_auths_allowing_non_root_auth();
         env.ledger().with_mut(|l| {
@@ -82,13 +124,21 @@ impl Fixture {
         );
         let alice = Address::generate(&env);
         let bob = Address::generate(&env);
-        let assets: [Address; 3] = core::array::from_fn(|_| {
+        let mut assets: [Address; 3] = core::array::from_fn(|_| {
             env.register_stellar_asset_contract_v2(admin.clone())
                 .address()
         });
-        let paired = env
+        let mut paired = env
             .register_stellar_asset_contract_v2(admin.clone())
             .address();
+        if pool_wasm.is_some() {
+            if assets[0] > paired {
+                core::mem::swap(&mut assets[0], &mut paired);
+            }
+            if assets[1] > assets[2] {
+                assets.swap(1, 2);
+            }
+        }
         let rewards: [Address; 2] = core::array::from_fn(|_| {
             env.register_stellar_asset_contract_v2(admin.clone())
                 .address()
@@ -99,12 +149,63 @@ impl Fixture {
             token::StellarAssetClient::new(&env, a).mint(&alice, &10_000_000);
             token::StellarAssetClient::new(&env, a).mint(&bob, &10_000_000_000_000);
         }
-        let xlm = env.register(MockAquariusPool, ());
-        let stable = env.register(MockAquariusPool, ());
+        let register_pool = || match pool_wasm {
+            Some(wasm) => env.register(wasm, ()),
+            None => env.register(MockAquariusPool, ()),
+        };
+        let xlm = register_pool();
+        let stable = register_pool();
         for (id, a, b) in [
             (&xlm, &assets[0], &paired),
             (&stable, &assets[1], &assets[2]),
         ] {
+            if pool_wasm.is_some() {
+                env.cost_estimate().budget().reset_unlimited();
+                let plane = env.register(TestPlane, ());
+                let boost = env
+                    .register_stellar_asset_contract_v2(admin.clone())
+                    .address();
+                let roles = (
+                    admin.clone(),
+                    admin.clone(),
+                    admin.clone(),
+                    admin.clone(),
+                    vec![&env, admin.clone()],
+                    admin.clone(),
+                );
+                invoke::<()>(
+                    &env,
+                    id,
+                    "initialize_all",
+                    (
+                        admin.clone(),
+                        roles,
+                        admin.clone(),
+                        vec![&env, a.clone(), b.clone()],
+                        10u32,
+                        20i32,
+                        0u32,
+                        (rewards[0].clone(), boost, plane.clone()),
+                        plane,
+                    )
+                        .into_val(&env),
+                );
+                env.cost_estimate().budget().reset_unlimited();
+                invoke::<(Vec<u128>, u128)>(
+                    &env,
+                    id,
+                    "deposit_position",
+                    (
+                        bob.clone(),
+                        -2000i32,
+                        2000i32,
+                        vec![&env, 100_000_000_000u128, 100_000_000_000u128],
+                        0u128,
+                    )
+                        .into_val(&env),
+                );
+                continue;
+            }
             let p = MockAquariusPoolClient::new(&env, id);
             p.initialize(a, b, &20, &0);
             p.set_deposit_ratio_0_per_1_e6(&1_000_000);
@@ -134,7 +235,10 @@ impl Fixture {
             Some(wasm) => env.register(wasm, (&assets[i], &admin, i != 0)),
             None => env.register(LpLendingVault, (&assets[i], &admin, i != 0)),
         });
-        let strategies = core::array::from_fn(|_| env.register(AquariusLpVault, ()));
+        let strategies = core::array::from_fn(|_| match strategy_wasm {
+            Some(wasm) => env.register(wasm, ()),
+            None => env.register(AquariusLpVault, ()),
+        });
         for i in 0..3 {
             env.cost_estimate().budget().reset_unlimited();
             let r = LpLendingVaultClient::new(&env, &markets[i]);
@@ -175,6 +279,7 @@ impl Fixture {
             rewards,
             controller,
             oracle,
+            cpu_limit,
         }
     }
     fn r(&self, i: usize) -> LpLendingVaultClient<'_> {
@@ -194,7 +299,7 @@ impl Fixture {
             r.write_entries,
             r.instructions
         );
-        assert!(entries <= 250 && r.instructions <= 100_000_000);
+        assert!(entries <= 250 && r.instructions <= self.cpu_limit);
     }
     fn credit(&self, i: usize, a: u128, b: u128) {
         for (asset, n) in self.rewards.iter().zip([a, b]) {
@@ -315,8 +420,13 @@ fn abi_zero_peri_policy_is_not_an_admin_toggle_and_legacy_harvest_is_fenced() {
     for i in 0..3 {
         assert!(f.c().try_set_supply_speed(&f.markets[i], &1).is_err());
         assert!(f.c().try_set_borrow_speed(&f.markets[i], &1).is_err());
+        assert!(f
+            .c()
+            .try_set_price_fallback(&f.assets[i], &Some((1, 1)))
+            .is_err());
         let s = AquariusLpVaultClient::new(&f.env, &f.strategies[i]);
         assert!(s.try_harvest(&f.admin).is_err());
+        assert!(s.try_sweep_reward(&f.admin, &f.rewards[0]).is_err());
         assert!(s
             .try_set_primary_reward_token(&f.admin, &Some(f.rewards[1].clone()))
             .is_err());
@@ -326,6 +436,86 @@ fn abi_zero_peri_policy_is_not_an_admin_toggle_and_legacy_harvest_is_fenced() {
     f.r(1).borrow(&f.alice, &100_000);
     assert_eq!(f.c().get_accrued(&f.alice), 0);
     assert_eq!(f.c().get_accrued(&f.bob), 0);
+}
+
+#[test]
+#[ignore = "compiled price-router and LP controller; native receipt/strategy, mock pools/upstream"]
+fn compiled_observation_oracle_halts_lp_borrowing_but_not_repayment() {
+    let controller =
+        std::fs::read(std::env::var("LP_CONTROLLER_WASM").expect("LP_CONTROLLER_WASM required"))
+            .unwrap();
+    let f = Fixture::build(true, None, Some(&controller), None, None);
+    let wasm = std::fs::read(
+        std::env::var("LP_PRICE_ROUTER_WASM").expect("LP_PRICE_ROUTER_WASM required"),
+    )
+    .unwrap();
+    let id = f.env.register(wasm.as_slice(), ());
+    let r = price_router::PriceRouterClient::new(&f.env, &id);
+    r.initialize(&f.admin, &f.oracle, &300);
+    let paired = MockAquariusPoolClient::new(&f.env, &f.pools[0])
+        .get_tokens()
+        .get(1)
+        .unwrap();
+    let reporter = Address::generate(&f.env);
+    let cfg = price_router::ObservationConfig {
+        reporter: reporter.clone(),
+        quote_to: f.assets[0].clone(),
+        pool: f.pools[0].clone(),
+        in_idx: 1,
+        out_idx: 0,
+        probe_amount: 1_000_000_000,
+        window_secs: 300,
+        max_age_secs: 300,
+        min_interval_secs: 300,
+        max_deviation_bps: 100,
+        max_step_bps: 100,
+        min_ratio: 800_000_000_000,
+        max_ratio: 1_050_000_000_000,
+    };
+    r.set_source(&f.admin, &paired, &price_router::PriceSource::Observed(cfg));
+    for asset in &f.assets {
+        r.set_required_observation(&f.admin, asset, &Some(paired.clone()));
+    }
+    f.c().set_oracle(&id);
+    // Honor the existing governance delay in the local fixture.
+    f.env.ledger().with_mut(|l| l.timestamp = 100_000);
+    f.c().set_oracle(&id);
+    assert_eq!(f.c().get_oracle(), Some(id));
+    for i in 0..3 {
+        f.reset();
+        AquariusLpVaultClient::new(&f.env, &f.strategies[i]).refresh_nav_root();
+        f.r(i).refresh_boosted_underlying();
+    }
+    f.reset();
+    assert!(f.r(1).try_borrow(&f.alice, &100_000).is_err());
+    f.reset();
+    r.publish_observation(&reporter, &paired, &1_000_000_000_000, &99_700, &100_000);
+    f.reset();
+    f.r(1).borrow(&f.alice, &100_000);
+    f.measure("compiled router healthy loan");
+    f.reset();
+    r.invalidate_observation(&reporter, &paired);
+    f.reset();
+    assert!(f.c().get_price_usd(&f.assets[0]).is_none());
+    f.reset();
+    // The already-used market has a warm price cache; it must not bypass halt.
+    assert!(f.r(1).try_borrow(&f.alice, &1).is_err());
+    f.reset();
+    assert!(f.r(2).try_borrow(&f.alice, &100_000).is_err());
+    f.reset();
+    f.r(1).repay(&f.alice, &100_000);
+    assert_eq!(f.r(1).get_total_borrowed(), 0);
+    f.env.ledger().with_mut(|l| l.timestamp = 100_300);
+    f.reset();
+    r.publish_observation(&reporter, &paired, &1_000_000_000_000, &100_000, &100_300);
+    f.reset();
+    f.r(2).borrow(&f.alice, &100_000);
+    f.env.ledger().with_mut(|l| l.timestamp = 100_601);
+    f.reset();
+    assert!(f.r(1).try_borrow(&f.alice, &100_000).is_err());
+    f.reset();
+    // Repayment remains available despite expired observation / borrowing halt.
+    f.r(2).repay(&f.alice, &100_001);
 }
 
 #[test]
@@ -566,7 +756,7 @@ fn compiled_lp_abi_borrow_transfer_reward_payout_and_exit() {
     let controller =
         std::fs::read(std::env::var("LP_CONTROLLER_WASM").expect("LP_CONTROLLER_WASM required"))
             .unwrap();
-    let f = Fixture::build(true, Some(&receipt), Some(&controller));
+    let f = Fixture::build(true, Some(&receipt), Some(&controller), None, None);
     f.route(2);
     f.credit(2, 100_000, 200_000);
     f.reset();
@@ -592,4 +782,155 @@ fn compiled_lp_abi_borrow_transfer_reward_payout_and_exit() {
     f.r(2).withdraw(&f.alice, &100_000);
     assert_eq!(f.r(2).get_total_borrowed(), 0);
     assert_eq!(f.r(2).reward_reserved(&f.rewards[1], &f.alice), 0);
+}
+
+#[test]
+#[ignore = "compiled receipt/controller/strategy; mock pool and oracle, no Mainnet writes"]
+fn compiled_lp_strategy_borrow_reward_payout_and_mainnet_guards() {
+    let read = |name| std::fs::read(std::env::var(name).expect(name)).unwrap();
+    let receipt = read("LP_RECEIPT_WASM");
+    let controller = read("LP_CONTROLLER_WASM");
+    let strategy = read("LP_STRATEGY_WASM");
+    let f = Fixture::build(
+        true,
+        Some(&receipt),
+        Some(&controller),
+        Some(&strategy),
+        None,
+    );
+    for i in [1, 2] {
+        let s = AquariusLpVaultClient::new(&f.env, &f.strategies[i]);
+        assert!(s.try_harvest(&f.admin).is_err());
+        assert!(s.try_sweep_reward(&f.admin, &f.rewards[0]).is_err());
+        f.route(i);
+        f.credit(i, 100_000, 200_000);
+        f.reset();
+        f.r(i).borrow(&f.alice, &200_000);
+        f.measure("compiled strategy loan");
+        f.reset();
+        assert!(matches!(
+            f.r(i).compound(&f.rewards[0]),
+            Outcome::Completed(_)
+        ));
+        f.measure("compiled strategy conversion");
+        f.reset();
+        assert!(matches!(
+            f.r(i).payout_rewards(&f.bob, &1),
+            Outcome::Completed(_)
+        ));
+        f.measure("compiled strategy payout");
+        f.reset();
+        f.r(i).repay(&f.alice, &200_000);
+        f.reset();
+        f.r(i).withdraw(&f.bob, &100_000);
+        assert_eq!(f.r(i).get_total_borrowed(), 0);
+    }
+    let fresh = f.env.register(strategy.as_slice(), ());
+    let public = f.env.crypto().sha256(&soroban_sdk::Bytes::from_slice(
+        &f.env,
+        b"Public Global Stellar Network ; September 2015",
+    ));
+    f.env
+        .ledger()
+        .with_mut(|l| l.network_id = public.to_array());
+    assert!(AquariusLpVaultClient::new(&f.env, &fresh)
+        .try_initialize(&f.admin, &f.pools[0], &0, &f.oracle)
+        .is_err());
+    // A previously initialized/upgraded instance cannot bypass the network fence.
+    assert!(AquariusLpVaultClient::new(&f.env, &f.strategies[0])
+        .try_hybrid_claim()
+        .is_err());
+    assert!(AquariusLpVaultClient::new(&f.env, &f.strategies[0])
+        .try_enable_hybrid(&f.admin)
+        .is_err());
+}
+
+#[test]
+#[ignore = "hash-pinned actual concentrated pool plus compiled receipt/controller/strategy; controlled local state"]
+fn compiled_lp_exact_pool_cross_borrow_and_reward_payout() {
+    let read = |name| std::fs::read(std::env::var(name).expect(name)).unwrap();
+    let receipt = read("LP_RECEIPT_WASM");
+    let controller = read("LP_CONTROLLER_WASM");
+    let strategy = read("LP_STRATEGY_WASM");
+    let pool = read("AQUARIUS_CONCENTRATED_WASM");
+    let env = Env::default();
+    let hash = env
+        .crypto()
+        .sha256(&soroban_sdk::Bytes::from_slice(&env, &pool))
+        .to_array();
+    let hex: std::string::String = hash.iter().map(|b| std::format!("{b:02x}")).collect();
+    assert_eq!(
+        hex,
+        "12fca5a7a96577273b6d4184cf9c984036cda0e8f0594747e7b2933dced37ee6"
+    );
+    let f = Fixture::build(
+        true,
+        Some(&receipt),
+        Some(&controller),
+        Some(&strategy),
+        Some(&pool),
+    );
+    for i in [1, 2] {
+        f.route(i);
+    }
+    token::StellarAssetClient::new(&f.env, &f.rewards[0]).mint(&f.pools[1], &1_000_000_000_000);
+    invoke::<()>(
+        &f.env,
+        &f.pools[1],
+        "set_rewards_config",
+        (f.admin.clone(), 10_000u64, 1_000_000_000u128).into_val(&f.env),
+    );
+    f.env.ledger().with_mut(|l| l.timestamp += 100);
+    for i in [1, 2] {
+        f.reset();
+        let pending: u128 = invoke(
+            &f.env,
+            &f.pools[i],
+            "get_user_reward",
+            (f.strategies[i].clone(),).into_val(&f.env),
+        );
+        assert!(pending > 0);
+        f.env.mock_auths(&[]);
+        f.reset();
+        assert!(f.r(i).try_borrow(&f.alice, &200_000).is_err());
+        f.env.mock_auths(&[MockAuth {
+            address: &f.alice,
+            invoke: &MockAuthInvoke {
+                contract: &f.markets[i],
+                fn_name: "borrow",
+                args: (&f.alice, 200_000u128).into_val(&f.env),
+                sub_invokes: &[],
+            },
+        }]);
+        f.reset();
+        f.r(i).borrow(&f.alice, &200_000);
+        f.measure("exact pool compiled loan");
+        assert!(f.r(i).reward_earned(&f.rewards[0], &f.bob) > 0);
+        assert_eq!(f.r(i).reward_earned(&f.rewards[0], &f.alice), 0);
+    }
+    assert_eq!(f.r(1).get_user_borrow_balance(&f.alice), 200_000);
+    assert_eq!(f.r(2).get_user_borrow_balance(&f.alice), 200_000);
+    f.env.mock_all_auths();
+    f.reset();
+    assert!(f.r(1).try_borrow(&f.alice, &200_000).is_err());
+    for i in [1, 2] {
+        f.reset();
+        assert!(matches!(
+            f.r(i).compound(&f.rewards[0]),
+            Outcome::Completed(_)
+        ));
+        f.measure("exact pool compiled conversion");
+        f.reset();
+        assert!(matches!(
+            f.r(i).payout_rewards(&f.bob, &1),
+            Outcome::Completed(_)
+        ));
+        f.measure("exact pool compiled payout");
+        f.reset();
+        f.r(i).repay_max(&f.alice);
+        f.reset();
+        f.r(i).withdraw_with_minimum(&f.bob, &100_000, &90_000);
+        f.measure("exact pool compiled exit");
+        assert_eq!(f.r(i).get_user_borrow_balance(&f.alice), 0);
+    }
 }

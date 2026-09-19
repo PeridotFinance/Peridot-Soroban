@@ -31,6 +31,8 @@ pub(crate) fn hybrid_enabled(env: &Env) -> bool {
 }
 
 pub(crate) fn enable_hybrid(env: &Env) {
+    #[cfg(feature = "hybrid-validation")]
+    crate::require_validation_network(env);
     assert!(!hybrid_enabled(env), "hybrid already enabled");
     let receipt = bound_receipt_vault(env).expect("receipt not bound");
     let version: u32 =
@@ -61,6 +63,8 @@ pub(crate) fn enable_hybrid(env: &Env) {
 }
 
 fn receipt(env: &Env) -> Address {
+    #[cfg(feature = "hybrid-validation")]
+    crate::require_validation_network(env);
     bump_critical_ttl(env);
     let receipt = bound_receipt_vault(env).expect("receipt not bound");
     receipt.require_auth();

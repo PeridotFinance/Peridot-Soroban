@@ -990,6 +990,9 @@ impl SimplePeridottroller {
     pub fn set_price_fallback(env: Env, token: Address, price: Option<(u128, u128)>) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        if cfg!(feature = "lp-zero-peri") {
+            assert!(price.is_none(), "LP prices require live oracle validation");
+        }
         match price {
             Some((p, s)) => {
                 if p == 0 || s == 0 || p > MAX_FALLBACK_PRICE || s > MAX_FALLBACK_SCALE {
@@ -3439,6 +3442,9 @@ impl SimplePeridottroller {
 
     // Price quotation via cached oracle data or fallback (no on-chain oracle call).
     pub fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)> {
+        if cfg!(feature = "lp-zero-peri") {
+            return Self::cache_price(env, token);
+        }
         storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()
@@ -3580,6 +3586,11 @@ impl SimplePeridottroller {
     // Non-panicking version of require_price for FIND-039 fix
     // Returns None instead of panicking when price unavailable
     fn try_require_price(env: &Env, token: &Address) -> Option<(u128, u128)> {
+        // LP oracle invalidation/observation expiry must take effect even when
+        // this market has a warm cache. Generic core pricing is unchanged.
+        if cfg!(feature = "lp-zero-peri") {
+            return Self::cache_price(env.clone(), token.clone());
+        }
         storage::bump_price_cache_ttl(env, token);
         if let Some(cached) = env
             .storage()
@@ -3623,6 +3634,9 @@ impl SimplePeridottroller {
     }
 
     fn require_price(env: Env, token: Address) -> (u128, u128) {
+        if cfg!(feature = "lp-zero-peri") {
+            return Self::cache_price(env, token).expect("LP live price unavailable");
+        }
         storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()

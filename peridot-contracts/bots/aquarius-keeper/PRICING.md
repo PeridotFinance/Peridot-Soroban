@@ -1,0 +1,85 @@
+# LP pricing observer (not activated)
+
+The September18 user-approved design is implemented separately from the existing
+live keeper entrypoint. `node src/price-main.mjs` runs one **read-only** Mainnet
+observation; `--loop` repeats every60seconds. It loads no secret in observation
+mode, signs nothing and makes no changes to DigitalOcean or the deployed keeper.
+
+The collector resolves and verifies the yXLM SAC issuer against its contract ID,
+checks the native-XLM quote and actual pool token order, checks both RPC/Horizon
+network identities and Horizon freshness, and requests six CLOSED five-minute
+SDEX trade-aggregation buckets. It computes each bucket's volume-weighted
+XLM/yXLM ratio with integer arithmetic, then equally weights these six intervals.
+Missing buckets are not filled; the current spot quote is never substituted.
+Both directions of a100-unit Aquarius executable quote must agree with that
+window. The pool is a cross-check, never averaged into the SDEX price.
+
+Candidate policy (requires exposure/liquidity review before Mainnet activation):
+30-minute window; each bucket>=3trades and>=10yXLM; window>=1000yXLM; every bucket
+and both pool directions within1% of the window; ratio between0.80 and1.05XLM;
+report age<=300seconds; updates at least300seconds apart and step<=1%.
+Sparse trading, low volume, fast price changes or depegs can deliberately halt
+pricing. Do not lower these thresholds merely to obtain a price. The first live
+read-only run on September18 stopped with `insufficient bucket volume`.
+
+## Contract and authority
+
+`PriceSource::Observed` records a separately authorized reporter, reference asset,
+pool, probe and bounds. Reporter may publish/invalidate only that observation;
+it cannot set sources, change parameters, transfer administration or upgrade.
+On-chain publishing independently checks pool token identity at configuration,
+both executable directions at publication, window duration/freshness, bounds,
+rate limits and monotonic window ends. The contract cannot prove SDEX history:
+the reporter and data service remain trust dependencies, and wash trading is not
+eliminated by volume checks. A compromised reporter may deny service or publish
+a false bounded observation. This is not a trustless manipulation-proof oracle.
+
+Expiry uses the observation END, not submission time. Invalidation preserves the
+old ratio/replay history; polls do not repeatedly advance an invalid watermark.
+Only a newer healthy complete window can recover. A large genuine move beyond
+the step guard needs reviewed governance recovery, not automatic ramping through
+invented intermediate prices. A dead keeper cannot invalidate immediately, so
+the last report may remain usable until its300-second expiry. Likewise a pool
+move after publication is caught on the next poll, not retroactively.
+
+The router multiplies the observed ratio by fresh upstream XLM/USD and preserves
+the oldest timestamp. Configure `set_required_observation` for ALL three LP
+settlement assets so absence, expiry or invalidation also gates XLM/PYUSD/USDC
+controller pricing. Use address-based yXLM pricing; do not retain a strategy's
+old yXLM→Other("XLM") parity alias. Required-observation metadata and reporter
+history live in bounded instance storage; missing source configuration fails
+the dependency check. Loss/restoration and governance procedures remain release
+gates, not permission to initialize a replacement historical state.
+
+The new LP controller always revalidates live oracle prices for risk checks and
+rejects static fallback settings. A warm cache cannot bypass an observation
+halt. Generic core controller behavior is unchanged. Repayment does not require
+a price; collateral transfers, withdrawals and liquidation can still be blocked
+by missing price data. Total oracle-outage liquidation liveness remains a release
+gate; do not claim this alone solves it.
+
+## Testnet publisher and release controls
+
+`PRICE_MODE=publish` is fenced to `PRICE_NETWORK=testnet` plus
+`CONFIRM_PRICE_TESTNET=ISOLATED_ORACLE`. It requires explicit `PRICE_ASSET`,
+`PRICE_QUOTE`, `PRICE_POOL`, `PRICE_ROUTER`, and a separately scoped
+`PRICE_REPORTER_SECRET` (optional matching `PRICE_REPORTER_PUBLIC_KEY`). Do not
+reuse or transmit the deployer/admin seed. `PRICE_RPC_URL`/`PRICE_HORIZON_URL`
+override the default network endpoints. Mainnet publication is rejected even
+when a seed is supplied; removing this gate requires the release review.
+
+Before signing, the publisher checks the on-chain source configuration, simulates
+the exact call, refuses restoration/unexpected signers and caps total fee at
+0.1XLM. Only public hashes are logged; an unknown submission exits without
+retrying. Reconcile that hash before restarting. An unhealthy collection
+invalidates a previously valid report; on-chain invalidation failure cannot be
+claimed as a successful halt. Never deploy this process with automatic restarts
+that bypass transaction reconciliation. No funded Testnet publisher or Mainnet
+pricing service has been deployed yet.
+
+Tests: `node --test test/*.test.mjs`; router Rust tests include exact reporter auth,
+replay/invalidation/freshness and both quote directions. The explicit compiled
+router/LP regression also tests warm-cache borrowing rejection and repayment.
+
+Horizon field and alignment reference:
+https://developers.stellar.org/docs/data/apis/horizon/api-reference/list-trade-aggregations

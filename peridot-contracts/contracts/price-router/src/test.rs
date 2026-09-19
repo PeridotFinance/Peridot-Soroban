@@ -7,6 +7,234 @@ use soroban_sdk::{
 
 use crate::{Asset, PegConfig, PriceData, PriceRouter, PriceRouterClient, PriceSource, PushGuard};
 
+#[contract]
+struct ReferenceFeed;
+#[contractimpl]
+impl ReferenceFeed {
+    pub fn configure(env: Env, base: Asset, decimals: u32, price: i128, timestamp: u64) {
+        env.storage()
+            .instance()
+            .set(&Symbol::new(&env, "base"), &base);
+        env.storage()
+            .instance()
+            .set(&Symbol::new(&env, "decimals"), &decimals);
+        env.storage()
+            .instance()
+            .set(&Symbol::new(&env, "price"), &PriceData { price, timestamp });
+    }
+    pub fn base(env: Env) -> Asset {
+        env.storage()
+            .instance()
+            .get(&Symbol::new(&env, "base"))
+            .unwrap()
+    }
+    pub fn decimals(env: Env) -> u32 {
+        env.storage()
+            .instance()
+            .get(&Symbol::new(&env, "decimals"))
+            .unwrap()
+    }
+    pub fn lastprice(env: Env, _asset: Asset) -> Option<PriceData> {
+        env.storage().instance().get(&Symbol::new(&env, "price"))
+    }
+}
+
+fn cross_quote(f: &F) -> ReferenceFeedClient<'_> {
+    let id = f.env.register(ReferenceFeed, ());
+    f.router.set_source(
+        &f.admin,
+        &f.yxlm,
+        &PriceSource::CrossQuoted(crate::CrossQuoteConfig {
+            oracle: id.clone(),
+            quote_to: f.xlm.clone(),
+            max_age_secs: 600,
+        }),
+    );
+    ReferenceFeedClient::new(&f.env, &id)
+}
+
+#[test]
+fn cross_feed_multiplies_reference_price_without_a_debt_underpricing_peg_cap() {
+    let f = setup();
+    let feed = cross_quote(&f);
+    feed.configure(
+        &Asset::Stellar(f.xlm.clone()),
+        &7,
+        &10_100_000,
+        &1_699_999_900,
+    );
+    let p = f.router.lastprice(&Asset::Stellar(f.yxlm.clone())).unwrap();
+    assert_eq!(p.price, PRICE_XLM * 101 / 100);
+    assert_eq!(p.timestamp, 1_699_999_900);
+    feed.configure(
+        &Asset::Stellar(f.xlm.clone()),
+        &7,
+        &8_000_000,
+        &1_699_999_900,
+    );
+    assert_eq!(
+        f.router
+            .lastprice(&Asset::Stellar(f.yxlm.clone()))
+            .unwrap()
+            .price,
+        PRICE_XLM * 80 / 100
+    );
+}
+
+#[test]
+fn cross_feed_rejects_stale_future_zero_wrong_base_and_invalid_decimals() {
+    let f = setup();
+    let feed = cross_quote(&f);
+    for (base, decimals, price, ts) in [
+        (
+            Asset::Stellar(f.xlm.clone()),
+            14,
+            100_000_000_000_000i128,
+            1_699_999_399,
+        ),
+        (
+            Asset::Stellar(f.xlm.clone()),
+            14,
+            100_000_000_000_000,
+            1_700_000_001,
+        ),
+        (Asset::Stellar(f.xlm.clone()), 14, 0, 1_700_000_000),
+        (Asset::Stellar(f.xlm.clone()), 14, -1, 1_700_000_000),
+        (
+            Asset::Stellar(f.yxlm.clone()),
+            14,
+            100_000_000_000_000,
+            1_700_000_000,
+        ),
+        (
+            Asset::Stellar(f.xlm.clone()),
+            19,
+            100_000_000_000_000,
+            1_700_000_000,
+        ),
+    ] {
+        feed.configure(&base, &decimals, &price, &ts);
+        assert!(f
+            .router
+            .lastprice(&Asset::Stellar(f.yxlm.clone()))
+            .is_none());
+    }
+}
+
+#[test]
+fn cross_feed_unavailable_upstream_or_secondary_never_falls_back_to_parity() {
+    let f = setup();
+    let feed = cross_quote(&f);
+    assert!(f
+        .router
+        .lastprice(&Asset::Stellar(f.yxlm.clone()))
+        .is_none());
+    feed.configure(
+        &Asset::Stellar(f.xlm.clone()),
+        &14,
+        &100_000_000_000_000,
+        &1_700_000_000,
+    );
+    f.up.set_down(&true);
+    assert!(f
+        .router
+        .lastprice(&Asset::Stellar(f.yxlm.clone()))
+        .is_none());
+}
+
+#[test]
+fn cross_feed_reference_uses_symbol_mapping_and_authenticates_configuration() {
+    let f = setup();
+    let feed = cross_quote(&f);
+    f.up.set_price(&f.xlm, &0);
+    let usdc = Symbol::new(&f.env, "USDC");
+    f.up.set_symbol_price(&usdc, &100_020_000_000_000);
+    f.router
+        .set_symbol_asset(&f.admin, &usdc, &Some(f.xlm.clone()));
+    feed.configure(
+        &Asset::Stellar(f.xlm.clone()),
+        &14,
+        &100_100_000_000_000,
+        &1_700_000_000,
+    );
+    assert_eq!(
+        f.router
+            .lastprice(&Asset::Stellar(f.yxlm.clone()))
+            .unwrap()
+            .price,
+        100_120_020_000_000
+    );
+    f.env.mock_auths(&[]);
+    assert!(f
+        .router
+        .try_set_source(&f.admin, &f.yxlm, &PriceSource::Upstream)
+        .is_err());
+}
+
+#[test]
+fn cross_feed_requires_upstream_precision_even_when_its_price_is_available() {
+    let f = setup();
+    let feed = cross_quote(&f);
+    feed.configure(
+        &Asset::Stellar(f.xlm.clone()),
+        &14,
+        &100_000_000_000_000,
+        &1_700_000_000,
+    );
+    assert!(f
+        .router
+        .lastprice(&Asset::Stellar(f.yxlm.clone()))
+        .is_some());
+    f.up.set_metadata_down(&true);
+    assert!(f.up.lastprice(&Asset::Stellar(f.xlm.clone())).is_some());
+    assert!(f
+        .router
+        .lastprice(&Asset::Stellar(f.yxlm.clone()))
+        .is_none());
+}
+
+#[test]
+fn cross_feed_invalid_configuration_and_unrepresentable_price_fail_closed() {
+    let f = setup();
+    let feed = cross_quote(&f);
+    for age in [0, 3601] {
+        assert!(f
+            .router
+            .try_set_source(
+                &f.admin,
+                &f.yxlm,
+                &PriceSource::CrossQuoted(crate::CrossQuoteConfig {
+                    oracle: feed.address.clone(),
+                    quote_to: f.xlm.clone(),
+                    max_age_secs: age,
+                })
+            )
+            .is_err());
+    }
+    assert!(f
+        .router
+        .try_set_source(
+            &f.admin,
+            &f.yxlm,
+            &PriceSource::CrossQuoted(crate::CrossQuoteConfig {
+                oracle: f.router.address.clone(),
+                quote_to: f.xlm.clone(),
+                max_age_secs: 600,
+            })
+        )
+        .is_err());
+    feed.configure(
+        &Asset::Stellar(f.xlm.clone()),
+        &0,
+        &i128::MAX,
+        &1_700_000_000,
+    );
+    assert!(f
+        .router
+        .lastprice(&Asset::Stellar(f.yxlm.clone()))
+        .is_none());
+}
+
 const ADMIN_G: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 /// Reflector convention: 1e14-scaled.
 const PRICE_XLM: i128 = 19_571_505_057_876; // ~$0.1957
@@ -20,6 +248,7 @@ enum OKey {
     Price(Address),
     SymPrice(Symbol),
     Down,
+    MetadataDown,
 }
 
 #[contract]
@@ -27,6 +256,9 @@ pub struct MockUpstream;
 
 #[contractimpl]
 impl MockUpstream {
+    pub fn set_metadata_down(env: Env, down: bool) {
+        env.storage().instance().set(&OKey::MetadataDown, &down);
+    }
     pub fn set_price(env: Env, token: Address, price: i128) {
         env.storage().persistent().set(&OKey::Price(token), &price);
     }
@@ -70,7 +302,12 @@ impl MockUpstream {
         300
     }
 
-    pub fn decimals(_env: Env) -> u32 {
+    pub fn decimals(env: Env) -> u32 {
+        assert!(!env
+            .storage()
+            .instance()
+            .get::<_, bool>(&OKey::MetadataDown)
+            .unwrap_or(false));
         14
     }
 }
@@ -249,8 +486,8 @@ fn at_parity_the_pegged_asset_prices_at_the_peg() {
 
 /// The load-bearing property: no observation, from any source, can price the
 /// asset *above* the thing it is a claim on. This is what makes a manipulated
-/// pool, a compromised keeper, and a compromised upstream all survivable — the
-/// direction that produces bad debt is closed by construction.
+/// observation stay below the reference. This does NOT prove the reference or
+/// observation is correct, prevent debt underpricing, or solve depeg liquidations.
 #[test]
 fn a_pegged_asset_can_never_price_above_its_peg() {
     let f = setup();

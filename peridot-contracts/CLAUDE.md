@@ -60,6 +60,36 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September18 approved yXLM reporter implementation is local, NOT activated.
+  Router `Observed` source uses a separate reporter, time-window/replay/rate
+  checks, on-chain two-way Aquarius cross-check and observation-end freshness.
+  Configure required-observation dependencies for all3 LP settlement assets.
+  LP-only controller now revalidates live oracle prices and rejects static
+  fallbacks: warm caches otherwise bypass reporter invalidation (regression
+  reproduced and fixed). Generic core behavior unchanged; repayment stays open.
+  Separate `bots/aquarius-keeper/src/price-main.mjs` defaults to read-only Mainnet
+  observation and rejects Mainnet publishing. First live window correctly halted
+  for insufficient bucket volume; do not weaken candidate policy to force launch.
+  See `bots/aquarius-keeper/PRICING.md` for trust, thresholds and release gates.
+  User confirmed both price-router and aquarius-keeper Almanax paths in addition
+  to the five LP contract paths. No seed transmission or keeper deployment.
+- September18 fresh-stack canary migration is now user-approved, conditional on
+  release checks and concrete bounds: settle legacy rewards, withdraw ONLY the
+  small pilot positions to deployer, then redeposit via NEW Peridot receipts.
+  No core/DeFindex or treasury migration. See `FRESH_STACK_MIGRATION.md` under
+  `contracts/lp-receipt-vault/`. Nothing has been signed or deployed for this step.
+  Compiled receipt/controller/strategy plus exact deployed pool WASM now pass
+  simultaneous stable loans, exact borrower auth, reward conversion/payout and
+  exits locally (latest peak240entries/197.13M CPU with live-price controller,
+  bounded250/200M fixture). Mock oracle,
+  reward routes and boost/plane remain; this is not a full live-dependency canary.
+  `hybrid-validation` permits compiled research with Mainnet runtime fences;
+  ordinary hybrid WASM remains blocked. Hybrid strategies fence BOTH legacy
+  harvest and sweep_reward, plus raw primary rotation.
+  Native Reflector CALI2BY...PLE6M now supplies PYUSD/USDC, not PYUSD/USD.
+  New CrossQuoted router source multiplies it by upstream USDC/USD with metadata,
+  age and positivity checks and no upside peg cap. yXLM feed still absent;
+  keeper-published pricing was subsequently approved; implementation status above.
 - September18 explicit LP lending interface: new `lp-lending-vault` exports only
   checkpointed lending/reward methods over the shared engine, not generic margin,
   flash-loan/recovery or uncheckpointed token selectors. New `lp-peridottroller`

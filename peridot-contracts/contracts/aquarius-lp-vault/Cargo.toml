@@ -10,6 +10,8 @@ crate-type = ["lib", "cdylib"]
 test-default-admin = []
 # Native integration only until ownership hooks and activation guards are complete.
 hybrid-rewards = []
+# Explicit local/Testnet compiled integration only; runtime rejects Mainnet.
+hybrid-validation = ["hybrid-rewards"]
 # Re-run only the native reward harness against the separate lean receipt engine.
 lp-receipt-prototype = []
 

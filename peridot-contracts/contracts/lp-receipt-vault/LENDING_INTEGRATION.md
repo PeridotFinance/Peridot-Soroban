@@ -4,6 +4,33 @@ September 18, 2026. This supersedes the **supply-only final target**, not existi
 Mainnet safety controls. Local validation artifacts now exist; they are NOT
 Mainnet release candidates. Fresh Mainnet initialization is explicitly blocked.
 
+## Latest compiled validation and migration scope
+
+The separate `hybrid-validation` strategy feature now permits compiled local or
+Testnet tests, with public-network fences in initialization, hybrid activation and
+all bridge calls. Ordinary `hybrid-rewards` WASM compilation remains blocked.
+Hybrid activation excludes both legacy harvest and sweep, not just primary-token
+rotation. Compiled receipt/controller/strategy plus exact deployed pool WASM pass
+simultaneous loans from both stable markets against XLM, exact borrower auth,
+aggregate over-limit rejection, actual primary rewards, conversion, payout, repay
+and exit. Latest peak240entries/197.13M CPU with live-price controller in the
+bounded250-entry/200M fixture; live
+read-only network limit400M CPU. Mock oracle/reward routes/plane/boost remain.
+These tests are not a Mainnet simulation, real gauge test or live canary.
+
+User approved the fresh small-canary migration described in
+`FRESH_STACK_MIGRATION.md`; no funds moved. Existing pooled rewards must settle
+before withdrawing to deployer and redepositing via NEW Peridot receipts.
+Native Reflector now provides PYUSD/USDC; the new `CrossQuoted` router source
+converts through upstream USDC/USD, checks currency/precision/freshness and does
+not cap debt valuation at parity. yXLM has no observed Reflector feed. The proposed
+keeper-published observation source is now user-approved and implemented locally:
+window-end freshness, scoped reporter, two-way pool checks and required-observation
+dependencies; LP controller risk checks bypass neither live invalidation nor
+expiry via caches/fallbacks. Read-only live collector halted on sparse SDEX volume.
+See `../../bots/aquarius-keeper/PRICING.md` for candidate policy and limitations. Neither
+the router change nor migration approval removes the remaining release gates.
+
 ## Explicit LP lending interface — September 18
 
 `contracts/lp-lending-vault` now exports a separate contract interface over the

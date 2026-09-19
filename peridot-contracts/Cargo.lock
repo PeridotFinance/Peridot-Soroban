@@ -847,6 +847,7 @@ dependencies = [
  "jump-rate-model",
  "lp-peridottroller",
  "mock-aquarius-pool",
+ "price-router",
  "simple-peridottroller",
  "soroban-env-host",
  "soroban-sdk",

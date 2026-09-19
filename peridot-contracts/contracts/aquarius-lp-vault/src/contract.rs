@@ -37,7 +37,7 @@ impl DepositResult {
 #[contract]
 pub struct AquariusLpVault;
 
-// Native-only integration interface; the hybrid feature cannot compile to WASM.
+// Hybrid integration interface; WASM requires explicit non-Mainnet validation.
 // Keep generated SDK client extensions in the contract's defining module.
 #[cfg(any(test, feature = "hybrid-rewards"))]
 #[contractimpl]
@@ -2128,6 +2128,11 @@ impl AquariusLpVault {
     /// Sells any configured reward held by the vault. Kept separate from
     /// `harvest` so a route can be exercised even when claiming is paused.
     pub fn sweep_reward(env: Env, caller: Address, reward_token: Address) -> i128 {
+        #[cfg(any(test, feature = "hybrid-rewards"))]
+        assert!(
+            !crate::reward_bridge::hybrid_enabled(&env),
+            "hybrid rewards must pass through receipt"
+        );
         caller.require_auth();
         bump_critical_ttl(&env);
         let underlying = Self::underlying(&env);
@@ -2166,6 +2171,8 @@ impl AquariusLpVault {
         underlying_index: u32,
         oracle: Address,
     ) {
+        #[cfg(feature = "hybrid-validation")]
+        crate::require_validation_network(&env);
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
         }

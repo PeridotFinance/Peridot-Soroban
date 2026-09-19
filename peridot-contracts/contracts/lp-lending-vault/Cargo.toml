@@ -26,3 +26,4 @@ simple-peridottroller = { path = "../simple-peridottroller", features = ["test-d
 jump-rate-model = { path = "../jump-rate-model", features = ["test-default-admin"] }
 aquarius-lp-vault = { path = "../aquarius-lp-vault", features = ["test-default-admin", "hybrid-rewards"] }
 mock-aquarius-pool = { path = "../mocks/mock-aquarius-pool" }
+price-router = { path = "../price-router", features = ["test-default-admin"] }

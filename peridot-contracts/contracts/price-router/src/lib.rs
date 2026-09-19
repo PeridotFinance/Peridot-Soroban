@@ -1,5 +1,5 @@
 #![no_std]
-//! Price router — a Reflector-shaped oracle that no single source can dictate.
+//! Price router — Reflector-compatible source routing and optional peg ceilings.
 //!
 //! Implements Reflector's `lastprice` / `resolution` surface, so anything that
 //! already speaks to Reflector (notably `aquarius-lp-vault`) can be pointed at
@@ -18,18 +18,19 @@
 //!    has already caused real losses in this ecosystem. So this router treats
 //!    **every** source as untrusted and bounds all of them the same way.
 //!
-//! The strongest bound available is the peg clamp. For an asset that is a
-//! wrapper or claim on another (yXLM → XLM), the true price can never exceed
-//! the thing it wraps. `min(peg, observed)` therefore caps the upside
-//! *regardless of where the bad number came from* — manipulated pool spot, a
-//! compromised keeper, or a compromised upstream oracle. Over-valuation is the
-//! direction that produces bad debt, so that is the direction to make
-//! impossible by construction.
+//! An optional peg clamp (for example yXLM → XLM) supplies a valuation ceiling,
+//! not a statement that the market price or redeemable claim is always at parity.
+//! `min(peg, observed)` caps the observation at the reference
+//! price, NOT at the unknown true value. A false reference or a concealed depeg
+//! can still overvalue collateral, and a downward-manipulated quote can undervalue
+//! debt or cause liquidation. A peg ceiling alone is NOT lending-oracle safety.
 
 use soroban_sdk::{
     contract, contractevent, contractimpl, contracttype, Address, BytesN, Env, IntoVal, String,
     Symbol, Val, Vec,
 };
+mod observation;
+pub use observation::{Observation, ObservationConfig};
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 
@@ -106,6 +107,17 @@ pub struct PegConfig {
     pub min_ratio_bps: u32,
 }
 
+/// A secondary Reflector feed denominated in a supported upstream asset.
+/// Example: Stellar PYUSD/USDC * external USDC/USD = PYUSD/USD. No parity alias
+/// or peg ceiling: the same underlying price may also value borrowed liabilities.
+#[contracttype]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct CrossQuoteConfig {
+    pub oracle: Address,
+    pub quote_to: Address,
+    pub max_age_secs: u64,
+}
+
 #[contracttype]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum PriceSource {
@@ -115,6 +127,8 @@ pub enum PriceSource {
     Pushed,
     /// Priced as a claim on another asset: `min(peg_price, observed)`.
     Pegged(PegConfig),
+    CrossQuoted(CrossQuoteConfig),
+    Observed(ObservationConfig),
 }
 
 /// Bounds applied to every pushed price. A push oracle puts a key into the
@@ -398,6 +412,7 @@ impl PriceRouter {
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
         let addr = Self::asset_address(&env, &asset)?;
+        observation::dependency_ready(&env, &addr)?;
         match Self::source_of(&env, &addr) {
             PriceSource::Upstream => {
                 let upstream_asset = Self::upstream_asset(&env, &addr);
@@ -405,7 +420,73 @@ impl PriceRouter {
             }
             PriceSource::Pushed => Self::pushed_price(&env, &addr),
             PriceSource::Pegged(cfg) => Self::pegged_price(&env, &addr, &cfg),
+            PriceSource::CrossQuoted(cfg) => Self::cross_quoted_price(&env, &addr, &cfg),
+            PriceSource::Observed(cfg) => observation::price(&env, &addr, &cfg),
         }
+    }
+
+    fn cross_quoted_price(env: &Env, asset: &Address, cfg: &CrossQuoteConfig) -> Option<PriceData> {
+        if cfg.max_age_secs == 0 || cfg.max_age_secs > 3600 || asset == &cfg.quote_to {
+            return None;
+        }
+        // Do not serve a price whose reported precision could come from the
+        // legacy decimals() fallback when upstream metadata is unavailable.
+        match env.try_invoke_contract::<u32, soroban_sdk::InvokeError>(
+            &Self::upstream(env),
+            &Symbol::new(env, "decimals"),
+            Vec::new(env),
+        ) {
+            Ok(Ok(v)) if v <= 18 => (),
+            _ => return None,
+        }
+        // Revalidate metadata each time. A source upgrade must not silently
+        // change the currency or precision of collateral AND debt valuation.
+        let base: Asset = match env.try_invoke_contract::<Asset, soroban_sdk::InvokeError>(
+            &cfg.oracle,
+            &Symbol::new(env, "base"),
+            Vec::new(env),
+        ) {
+            Ok(Ok(v)) => v,
+            _ => return None,
+        };
+        if base != Asset::Stellar(cfg.quote_to.clone()) {
+            return None;
+        }
+        let decimals: u32 = match env.try_invoke_contract::<u32, soroban_sdk::InvokeError>(
+            &cfg.oracle,
+            &Symbol::new(env, "decimals"),
+            Vec::new(env),
+        ) {
+            Ok(Ok(v)) if v <= 18 => v,
+            _ => return None,
+        };
+        let observed = match env.try_invoke_contract::<Option<PriceData>, soroban_sdk::InvokeError>(
+            &cfg.oracle,
+            &Symbol::new(env, "lastprice"),
+            (Asset::Stellar(asset.clone()),).into_val(env),
+        ) {
+            Ok(Ok(Some(v))) => v,
+            _ => return None,
+        };
+        let quote = Self::upstream_price(env, &Self::upstream_asset(env, &cfg.quote_to))?;
+        let now = env.ledger().timestamp();
+        for p in [&observed, &quote] {
+            if p.price <= 0 || p.timestamp > now || now - p.timestamp > cfg.max_age_secs {
+                return None;
+            }
+        }
+        let price = try_to_i128(try_mul_div(
+            observed.price as u128,
+            quote.price as u128,
+            10u128.pow(decimals),
+        )?)?;
+        if price <= 0 {
+            return None;
+        }
+        Some(PriceData {
+            price,
+            timestamp: core::cmp::min(observed.timestamp, quote.timestamp),
+        })
     }
 
     fn pushed_price(env: &Env, asset: &Address) -> Option<PriceData> {
@@ -430,8 +511,9 @@ impl PriceRouter {
     ///
     /// The clamp is the point. It holds no matter which source is lying:
     /// manipulated pool spot, a compromised keeper, or a compromised upstream
-    /// oracle all get capped at the peg. Over-valuation is what produces bad
-    /// debt, so it is made impossible rather than merely unlikely.
+    /// oracle observations cannot exceed the reference, but the reference itself
+    /// may be wrong and a depegged asset can still be worth less than the ceiling.
+    /// This is not a manipulation-resistant price or a safe debt-price bound.
     fn pegged_price(env: &Env, asset: &Address, cfg: &PegConfig) -> Option<PriceData> {
         let peg_asset = Self::upstream_asset(env, &cfg.peg_to);
         let peg = Self::upstream_price(env, &peg_asset)?;
@@ -496,6 +578,41 @@ impl PriceRouter {
     }
 
     // ── Keeper ────────────────────────────────────────────────────────────
+
+    pub fn publish_observation(
+        env: Env,
+        caller: Address,
+        asset: Address,
+        ratio: u128,
+        start: u64,
+        end: u64,
+    ) {
+        env.storage()
+            .instance()
+            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+        observation::publish(&env, &caller, &asset, ratio, start, end);
+    }
+
+    pub fn invalidate_observation(env: Env, caller: Address, asset: Address) {
+        env.storage()
+            .instance()
+            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+        observation::invalidate(&env, &caller, &asset);
+    }
+
+    pub fn get_observation(env: Env, asset: Address) -> Option<Observation> {
+        observation::get(&env, &asset)
+    }
+
+    pub fn set_required_observation(
+        env: Env,
+        caller: Address,
+        asset: Address,
+        required: Option<Address>,
+    ) {
+        Self::require_admin(&env, &caller);
+        observation::set_dependency(&env, &asset, required);
+    }
 
     /// Pushes a price for an asset configured as `Pushed`.
     ///
@@ -571,6 +688,21 @@ impl PriceRouter {
 
     pub fn set_source(env: Env, caller: Address, asset: Address, source: PriceSource) {
         Self::require_admin(&env, &caller);
+        if let PriceSource::Observed(ref cfg) = source {
+            observation::configure(&env, &asset, cfg);
+        }
+        if let PriceSource::CrossQuoted(ref cfg) = source {
+            assert!(
+                cfg.max_age_secs > 0 && cfg.max_age_secs <= 3600,
+                "invalid cross-feed age"
+            );
+            assert_ne!(asset, cfg.quote_to, "self-quoted asset");
+            assert_ne!(
+                cfg.oracle,
+                env.current_contract_address(),
+                "recursive oracle"
+            );
+        }
         if let PriceSource::Pegged(ref cfg) = source {
             if cfg.min_ratio_bps as u128 > BPS {
                 panic!("floor above peg");
@@ -751,5 +883,7 @@ fn expected_admin_config() -> &'static str {
     }
 }
 
+#[cfg(test)]
+mod observation_test;
 #[cfg(test)]
 mod test;
