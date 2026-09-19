@@ -82,6 +82,10 @@ exposure review, then an explicit reviewed policy decision before any publisher
 change. Full compiled oracle+pool/gauge/route validation and outage/liquidation,
 restoration, funding and migration gates remain. The additional research suite
 passes49 keeper tests in total; Rust artifacts and production behavior unchanged.
+Code commit `5a38639` is pushed on `leveraged-fix`. Almanax scan
+`3246cd80-0bb2-46ce-901d-45b5076f184c` over `b09defc..5a38639` completed with
+zero findings and no triage. This is a code-diff result, not validation of the
+economic safety or continuous availability of a potential replacement oracle.
 
 References: [strict-send paths](https://developers.stellar.org/docs/data/apis/horizon/api-reference/list-strict-send-payment-paths)
 and [path-payment venues](https://developers.stellar.org/docs/build/guides/transactions/path-payments).

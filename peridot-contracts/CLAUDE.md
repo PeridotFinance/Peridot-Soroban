@@ -70,6 +70,9 @@ MarginController (leveraged trading, optional)
   Mainnet transaction or migration changed. Continuous shadow/economic exposure
   review and full combined oracle/pool/gauge/routes validation remain required.
   See bots/aquarius-keeper/PRICING.md for exact evidence and research limitations.
+  Research code5a38639 pushed; Almanax3246cd80-0bb2-46ce-901d-45b5076f184c over
+  b09defc..5a38639 completed with zero findings, without triage. This scan does
+  not establish oracle economic safety or remove any deployment gate.
 - LP pricing/migration implementation committed/pushed as991ffff on leveraged-fix;
   Almanax a73c307f-c911-4ad6-b255-de0e3825d8b2 overc2d70ca..991ffff completed with
   zero findings. Tests672unit+3doc,39keeper and4explicit compiled checks passed;
