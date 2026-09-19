@@ -188,7 +188,8 @@ retrying. Reconcile that hash before restarting. An unhealthy collection
 invalidates a previously valid report; on-chain invalidation failure cannot be
 claimed as a successful halt. Never deploy this process with automatic restarts
 that bypass transaction reconciliation. No funded Testnet publisher or Mainnet
-pricing service has been deployed yet.
+pricing publisher has been deployed yet; the independent read-only cloud observer
+below does not publish or invalidate on-chain prices.
 
 Tests: `node --test test/*.test.mjs`; router Rust tests include exact reporter auth,
 replay/invalidation/freshness and both quote directions. The explicit compiled
@@ -229,6 +230,30 @@ development stays on leveraged-fix and no automatic deployment from that branch
 is enabled. Verify the exact resolved source SHA after deployment. Never apply
 this spec to existing signing app `b38d552c-3cd6-4742-82da-ca44222f5a13`.
 
-Prepared62-test release; live app ID/status and exact commit will be recorded after
-security scan and deployment verification. Publishing remains disabled regardless
-of any healthy-window result.
+Deployed September19: app `ab177729-9cf6-43c7-8510-aaa70855c2e3`, deployment
+`c09690f5-387b-436a-9c27-f94d936ec2e1`, ACTIVE on exact source
+`8b6636f3e058ffd1d0bc53a0695ed932701a01ad`. Both release branch and tag match that
+commit. Cloud build completed using the dedicated Dockerfile;62 keeper tests and
+local read-only startup/shutdown smoke passed, npm production audit found zero
+vulnerabilities. Almanax `6d470ae2-cd31-4daa-af01-c72aef1d1413` over
+`2351a60..8b6636f` completed with zero findings, without triage. Config was also
+manually reviewed and server-validated; Almanax API does not reveal path settings.
+
+App and worker env counts are both zero, one instance, no ingress. Runtime started
+15:32:05UTC, run ID `a263fa6e-9873-4290-949a-9decc50e4a28`. First three samples
+through15:34:07UTC were healthy point observations, all agreeing, no misses/failures;
+still warming the initial30-minute window. This is startup/cadence evidence,
+NOT a completed continuous window or economic safety result. Raw evidence:
+`/private/tmp/peridot-cloud-observer-verified-runtime.log`. The original signing
+keeper's active deployment and exact spec SHA256 were independently verified
+unchanged after observer deployment. Worker remains running.
+
+Inspect without keys or chain writes:
+
+```sh
+doctl --context peridot apps logs ab177729-9cf6-43c7-8510-aaa70855c2e3 price-observer --type run --tail 100 --no-prefix
+```
+
+Keep different run IDs separate and export logs before rotation. Publishing remains
+disabled regardless of any healthy-window result; activation still requires the
+remaining economic, contract, liquidation and release checks.

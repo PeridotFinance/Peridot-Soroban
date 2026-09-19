@@ -68,6 +68,10 @@ MarginController (leveraged trading, optional)
   30m warm-up per restart. Cloud logs are not a promised durable history store.
   Release branch/tag aquarius-price-observer-v0.1.0 must never move; development
   remains leveraged-fix. See PRICING.md for deployment/scan status and limitations.
+  Observer app ab177729-9cf6-43c7-8510-aaa70855c2e3 is ACTIVE on exact8b6636f;
+  deployment c09690f5-387b-436a-9c27-f94d936ec2e1. Almanax6d470ae2-cd31-4daa-af01-c72aef1d1413
+  completed with zero findings. First three minute-spaced cloud points agree, no
+  misses/failures; still initial30m warmup, not economic validation. Worker stays on.
 - September19 continuous pricing research: new bounded read-only price-soak.mjs
   observes every60s, preserves failed slots, cross-checks each Aquarius sample and
   complete30m windows, and emits a final JSONL digest.56 keeper tests pass. Initial
