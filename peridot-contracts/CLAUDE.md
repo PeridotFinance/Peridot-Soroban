@@ -60,6 +60,13 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September19 continuous pricing research: new bounded read-only price-soak.mjs
+  observes every60s, preserves failed slots, cross-checks each Aquarius sample and
+  complete30m windows, and emits a final JSONL digest.56 keeper tests pass. Initial
+  run started14:31:58UTC for35minutes; results/status in bots/aquarius-keeper/PRICING.md.
+  PRICING_RISK_REVIEW.md documents near-price orderbook concentration (~71% largest
+  account per side) and lack of a proven manipulation-cost bound. No policy change,
+  safe exposure recommendation, deployed publisher or borrowing activation.
 - September19 read-only pricing research confirms uneven activity, not a reason
   to weaken guards: seven days passed544/2011 trade-policy windows (27.05%), with
   82.61% of volume in the top10% of observed buckets. New price-audit.mjs preserves

@@ -90,6 +90,34 @@ economic safety or continuous availability of a potential replacement oracle.
 References: [strict-send paths](https://developers.stellar.org/docs/data/apis/horizon/api-reference/list-strict-send-payment-paths)
 and [path-payment venues](https://developers.stellar.org/docs/build/guides/transactions/path-payments).
 
+## Bounded continuous shadow runner
+
+```sh
+node src/price-soak.mjs 35
+```
+
+Runs one observation per minute for a bounded32–120minutes (default35), including
+the initial sample. Each child invokes the existing read-only price-shadow.mjs;
+only PATH is inherited, with no keeper/deployer credentials. A45-second subprocess
+timeout kills stalled collection. There is no signing, publishing, deployment or
+automatic restart. A clock jump aborts; late slots and failed samples are retained,
+never backfilled. Every JSONL record is explicitly non-publishable, and a final
+digest covers all preceding JSONL lines. No digest/summary means an incomplete run.
+
+The evaluator retains the boundary point and every attempted slot in a30-minute
+window. It rechecks both Aquarius directions for each point and against the window
+average. It rejects gaps, replayed ledgers, failed samples and venue divergence;
+agreement flags saved in input are never trusted. Summary denominators include
+all scheduled mature attempts, including failures and boundary warm-up. Overlapping
+windows are not independent statistical trials. Tests now total56 keeper tests.
+
+The first run started September19 at14:31:58UTC, targeting15:06:58UTC plus final
+collection, with evidence in `/private/tmp/peridot-yxlm-shadow-soak-20260919.jsonl`.
+At this entry’s creation it is RUNNING; no completed window result is claimed.
+The [risk review](PRICING_RISK_REVIEW.md) records observed orderbook concentration,
+correlated-venue/reporter threats and why quote size cannot establish a safe cap.
+Do not treat a passing soak or code scan as approval to activate borrowing.
+
 ## Contract and authority
 
 `PriceSource::Observed` records a separately authorized reporter, reference asset,
