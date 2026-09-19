@@ -60,6 +60,15 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- LP pricing/migration implementation committed/pushed as991ffff on leveraged-fix;
+  Almanax a73c307f-c911-4ad6-b255-de0e3825d8b2 overc2d70ca..991ffff completed with
+  zero findings. Tests672unit+3doc,39keeper and4explicit compiled checks passed;
+  clippy with existing warnings/option_env_unwrap allowance, not strict-clean.
+  Deployment remains blocked: 24h SDEX availability check at02:48UTC September19
+  passed only27/283 candidate windows BEFORE historical pool cross-checks. Current
+  candidate thresholds would frequently halt borrowing; review liquidity/policy
+  or a stronger independent reference, do not simply disable safety checks.
+  No Mainnet transaction, migration, keeper deployment or activation occurred.
 - September18 approved yXLM reporter implementation is local, NOT activated.
   Router `Observed` source uses a separate reporter, time-window/replay/rate
   checks, on-chain two-way Aquarius cross-check and observation-end freshness.

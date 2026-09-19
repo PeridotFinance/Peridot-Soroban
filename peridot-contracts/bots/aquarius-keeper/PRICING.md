@@ -22,6 +22,15 @@ Sparse trading, low volume, fast price changes or depegs can deliberately halt
 pricing. Do not lower these thresholds merely to obtain a price. The first live
 read-only run on September18 stopped with `insufficient bucket volume`.
 
+Follow-up at02:48UTC September19: over the preceding24hours only27/283 overlapping
+windows passed SDEX policy checks.181 failed per-bucket volume,8 total volume,
+15 trade count and52 missing buckets. This excludes historical Aquarius checks
+and is NOT manipulation-resistance evidence. Current candidate policy is not
+suitable for reliably available borrowing; additional reference/policy review
+is required before activation. Code commit991ffff passed Almanax scan
+`a73c307f-c911-4ad6-b255-de0e3825d8b2` with zero findings; that does not validate
+the economic safety or availability of a chosen pricing policy.
+
 ## Contract and authority
 
 `PriceSource::Observed` records a separately authorized reporter, reference asset,
