@@ -60,6 +60,16 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September19 read-only pricing research confirms uneven activity, not a reason
+  to weaken guards: seven days passed544/2011 trade-policy windows (27.05%), with
+  82.61% of volume in the top10% of observed buckets. New price-audit.mjs preserves
+  public observations/hash; price-shadow.mjs obtains one depth/Aquarius sample.
+  A same-ledger sample agreed at about0.9793045XLM/yXLM; this is NOT a continuous
+  30-minute observation. Shadow TWAP has synthetic tests only and cannot publish.
+  49 keeper tests pass. No production source/policy, WASM, keeper deployment,
+  Mainnet transaction or migration changed. Continuous shadow/economic exposure
+  review and full combined oracle/pool/gauge/routes validation remain required.
+  See bots/aquarius-keeper/PRICING.md for exact evidence and research limitations.
 - LP pricing/migration implementation committed/pushed as991ffff on leveraged-fix;
   Almanax a73c307f-c911-4ad6-b255-de0e3825d8b2 overc2d70ca..991ffff completed with
   zero findings. Tests672unit+3doc,39keeper and4explicit compiled checks passed;

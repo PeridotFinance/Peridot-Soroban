@@ -31,6 +31,61 @@ is required before activation. Code commit991ffff passed Almanax scan
 `a73c307f-c911-4ad6-b255-de0e3825d8b2` with zero findings; that does not validate
 the economic safety or availability of a chosen pricing policy.
 
+## Read-only availability and depth research — September19
+
+From this directory:
+
+```sh
+node src/price-audit.mjs 7
+node src/price-shadow.mjs
+```
+
+The first command checks one to seven days of public trade aggregations, using
+bounded twelve-hour requests below the page limit. It rejects malformed,
+duplicate and out-of-range records; it never fills missing buckets. Its JSON
+includes normalized observations and their SHA256 for independent reproduction.
+The second command collects **one** two-way classic execution-quote sample at
+1000 and10000 units, then simulates unsigned two-way100-unit Aquarius quotes.
+Neither command accesses keys, signs, submits, loops or changes the live keeper.
+
+At13:29UTC September19, the seven-day interval September12 13:25 through
+September19 13:25 contained1994/2016 buckets and1,690,025.0419071yXLM of volume.
+Only544/2011 overlapping windows passed (27.05%); the longest consecutive failing
+window run spanned12h10m. The top10% of observed buckets accounted for82.61% of
+volume. First-rejection counts:1190 bucket-volume,81 total-volume,89 trade-count,
+107 incomplete windows. These results exclude historical Aquarius agreement and
+publication step/uptime checks, so actual combined availability may be lower.
+The raw-data report is `/private/tmp/peridot-yxlm-pricing-audit-20260919.json`;
+normalized observations SHA256:
+`5f4f1b2f08c1a0aef314d2a4ba686d69b02d57d39c8910d6597b8b1402a04da2`.
+
+The depth prototype requires exact asset identity, a direct route, positive
+two-sided liquidity, <=1% spread, <=0.5% midpoint change between probe sizes,
+bounded ratio and coherent fresh ledgers. Classic paths may draw on the orderbook
+or classic AMMs; they are not proof of independently owned liquidity, locked
+liquidity or actual fills. `depthWindow` evaluates31–64 samples over30minutes,
+with <=90-second gaps, increasing ledger IDs, integer trapezoidal time weighting
+and <=1% per-sample deviation. It is tested with synthetic history only. All
+outputs explicitly retain `publicationEligible:false`; nothing imports this
+reference into the publisher or modifies the approved trade-based implementation.
+
+One live combined sample at13:36UTC used the same Horizon/RPC ledger64507836.
+The classic large-probe midpoint was0.979304495473XLM/yXLM and both Aquarius
+directions agreed within1%. Evidence:
+`/private/tmp/peridot-yxlm-depth-aquarius-shadow-20260919.json`. This is NOT a
+collected30-minute window or a continuous availability/manipulation-resistance
+result. No shadow daemon or pricing service was started. Issuer redemption
+claims are not a substitute for an independently validated market price.
+
+Next: continuous depth/Aquarius shadow collection, economic manipulation and
+exposure review, then an explicit reviewed policy decision before any publisher
+change. Full compiled oracle+pool/gauge/route validation and outage/liquidation,
+restoration, funding and migration gates remain. The additional research suite
+passes49 keeper tests in total; Rust artifacts and production behavior unchanged.
+
+References: [strict-send paths](https://developers.stellar.org/docs/data/apis/horizon/api-reference/list-strict-send-payment-paths)
+and [path-payment venues](https://developers.stellar.org/docs/build/guides/transactions/path-payments).
+
 ## Contract and authority
 
 `PriceSource::Observed` records a separately authorized reporter, reference asset,
