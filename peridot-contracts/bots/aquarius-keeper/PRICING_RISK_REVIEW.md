@@ -11,7 +11,11 @@ The earlier seven-day trade audit passed544/2011 candidate windows (27.05%).
 High aggregate trading volume does not establish continuous pricing availability.
 The bounded live depth/Aquarius run now samples once per minute, retaining failures
 and enforcing contiguous30-minute windows. Results and final run status are recorded
-in PRICING.md; a passing short run cannot establish long-term availability.
+in PRICING.md. The first completed run collected23/36 samples with23 agreements,
+but missed13 slots during local scheduling pauses:0/6 healthy mature windows.
+This establishes neither uninterrupted coverage nor market unavailability. An
+always-on collection environment is needed; even a passing short run cannot
+establish long-term availability.
 
 A separate orderbook snapshot at14:34:58UTC, Horizon ledger64508543, fetched all
 259 asks and402 bids through bounded pagination, verifying the exact pair and
@@ -30,6 +34,23 @@ independent owners; shared control can make concentration worse. No offers were
 placed, cancelled or executed. Snapshot evidence and read-only reproduction script:
 `/private/tmp/peridot-yxlm-offers-review-20260919.json` and
 `/private/tmp/peridot-yxlm-offers-review.mjs`.
+
+At14:53:33–36UTC, unsigned Aquarius simulations (ledgers64508766–67) and classic
+direct path quotes returned the following indicative sell-side outputs:
+
+| yXLM input | Classic XLM output | Aquarius XLM output |
+| --- | --- | --- |
+| 100 | 97.7928845 | 97.9728578 |
+| 10000 | 9760.3291584 | 9785.6327249 |
+| 50000 | 48673.7710519 | 48531.8717162 |
+| 100000 | 95561.9749165 | 81505.3297774 |
+
+The100000-unit Aquarius average sell rate is about16.8% below its100-unit rate.
+This is evidence that small-probe agreement does not establish large-exit value,
+not an estimate of attack cost. Both directions and the intermediate1000-unit
+probe are preserved in `/private/tmp/peridot-yxlm-depth-curve-20260919.json`;
+reproduction script `/private/tmp/peridot-yxlm-depth-curve.mjs`. Quotes were not
+executed, reserved, or combined into a liquidation simulation; state can change.
 
 ## Threat model and conclusions
 

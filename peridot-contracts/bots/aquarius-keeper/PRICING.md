@@ -96,8 +96,10 @@ and [path-payment venues](https://developers.stellar.org/docs/build/guides/trans
 node src/price-soak.mjs 35
 ```
 
-Runs one observation per minute for a bounded32–120minutes (default35), including
-the initial sample. Each child invokes the existing read-only price-shadow.mjs;
+Schedules one observation per minute for32–120minutes (default35), including
+the initial sample. Host suspension can extend elapsed wall time; overdue slots
+are recorded as missed after resumption, not sampled retroactively. Each child
+invokes the existing read-only price-shadow.mjs;
 only PATH is inherited, with no keeper/deployer credentials. A45-second subprocess
 timeout kills stalled collection. There is no signing, publishing, deployment or
 automatic restart. A clock jump aborts; late slots and failed samples are retained,
@@ -112,8 +114,20 @@ all scheduled mature attempts, including failures and boundary warm-up. Overlapp
 windows are not independent statistical trials. Tests now total56 keeper tests.
 
 The first run started September19 at14:31:58UTC, targeting15:06:58UTC plus final
-collection, with evidence in `/private/tmp/peridot-yxlm-shadow-soak-20260919.jsonl`.
-At this entry’s creation it is RUNNING; no completed window result is claimed.
+collection, and completed at15:11:43UTC after local scheduling pauses. Process
+exited0. Of36 scheduled attempts,23 were collected and all23 agreed;13 were missed
+slots (indices8–18 and34–35), not quote rejections. All six mature window checks
+failed: four `failed_sample_in_window`, two `latest_sample_unavailable`. The
+cause of local scheduling pauses was not established; these are NOT measured
+market outages. No uninterrupted30-minute validation was achieved. No collector
+remains running. Always-on collection is needed before assessing market liveness.
+
+Evidence: `/private/tmp/peridot-yxlm-shadow-soak-20260919.jsonl`; final digest over
+all preceding JSONL lines independently verified:
+`9bb3cc587016559377bad02d4932b69ae993f8a9e65eba4601f906d5114530a2`.
+Runner commit `b8229ca` was pushed on `leveraged-fix`; Almanax scan
+`1ac226b8-7169-4a86-bf08-217dc10c1fe9` over `ac6fb63..b8229ca` completed with zero
+findings and no triage. Subsequent changes only document results; runtime unchanged.
 The [risk review](PRICING_RISK_REVIEW.md) records observed orderbook concentration,
 correlated-venue/reporter threats and why quote size cannot establish a safe cap.
 Do not treat a passing soak or code scan as approval to activate borrowing.

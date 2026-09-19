@@ -63,7 +63,11 @@ MarginController (leveraged trading, optional)
 - September19 continuous pricing research: new bounded read-only price-soak.mjs
   observes every60s, preserves failed slots, cross-checks each Aquarius sample and
   complete30m windows, and emits a final JSONL digest.56 keeper tests pass. Initial
-  run started14:31:58UTC for35minutes; results/status in bots/aquarius-keeper/PRICING.md.
+  run scheduled35minutes, completed14:31:58–15:11:43UTC after local scheduling pauses:
+  23/36 samples collected/all23 agree,13 missed slots,0/6 healthy mature windows.
+  No uninterrupted30m validation achieved; no collector remains running. Runner
+  b8229ca passed Almanax1ac226b8-7169-4a86-bf08-217dc10c1fe9 with zero findings.
+  Results/digest in bots/aquarius-keeper/PRICING.md; no runtime change after scan.
   PRICING_RISK_REVIEW.md documents near-price orderbook concentration (~71% largest
   account per side) and lack of a proven manipulation-cost bound. No policy change,
   safe exposure recommendation, deployed publisher or borrowing activation.
