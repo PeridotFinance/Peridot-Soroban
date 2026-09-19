@@ -60,6 +60,14 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September19 user authorized a cloud read-only pricing observer after local
+  standby/scheduling gaps. New continuous price-observer-main/runtime, dedicated
+  Dockerfile.observer and separate .do/aquarius-price-observer.yaml: one Frankfurt
+  512MiB/$5-month instance, no credentials, no publishing, no existing keeper change.
+  62 keeper tests pass; bounded64-record history, coalesced gap accounting and fresh
+  30m warm-up per restart. Cloud logs are not a promised durable history store.
+  Release branch/tag aquarius-price-observer-v0.1.0 must never move; development
+  remains leveraged-fix. See PRICING.md for deployment/scan status and limitations.
 - September19 continuous pricing research: new bounded read-only price-soak.mjs
   observes every60s, preserves failed slots, cross-checks each Aquarius sample and
   complete30m windows, and emits a final JSONL digest.56 keeper tests pass. Initial

@@ -1,0 +1,20 @@
+# Separate app: never apply this specification to the existing signing keeper.
+# Public-data research only, no secrets, no Mainnet publication or auto-deploy.
+name: peridot-lp-price-observer
+region: fra
+workers:
+  - name: price-observer
+    git:
+      repo_clone_url: https://github.com/PeridotFinance/Peridot-Soroban.git
+      branch: aquarius-price-observer-v0.1.0
+    source_dir: peridot-contracts/bots/aquarius-keeper
+    dockerfile_path: peridot-contracts/bots/aquarius-keeper/Dockerfile.observer
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    alerts:
+      - rule: RESTART_COUNT
+        operator: GREATER_THAN
+        value: 1
+        window: FIVE_MINUTES
+alerts:
+  - rule: DEPLOYMENT_FAILED

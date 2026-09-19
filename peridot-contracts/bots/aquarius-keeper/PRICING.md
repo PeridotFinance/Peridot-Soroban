@@ -134,6 +134,9 @@ Do not treat a passing soak or code scan as approval to activate borrowing.
 
 ## Contract and authority
 
+The independent cloud observer is described below; it does not publish observations
+or change the contract/reporter authority described in this section.
+
 `PriceSource::Observed` records a separately authorized reporter, reference asset,
 pool, probe and bounds. Reporter may publish/invalidate only that observation;
 it cannot set sources, change parameters, transfer administration or upgrade.
@@ -193,3 +196,39 @@ router/LP regression also tests warm-cache borrowing rejection and repayment.
 
 Horizon field and alignment reference:
 https://developers.stellar.org/docs/data/apis/horizon/api-reference/list-trade-aggregations
+
+## Always-on read-only observer
+
+`node src/price-observer-main.mjs` runs continuously at60-second intervals. It
+reuses the shadow point/window checks but keeps at most64 recent records. Long
+pauses become one bounded gap marker with the full missed-slot count; no burst
+of backfilled quotes. Every sample logs per-process cumulative scheduled,
+collected, agreeing, missed and mature/healthy-window counts, plus a unique run ID.
+These are observations, not price publications or borrowing approvals.
+
+SIGTERM/SIGINT stop the worker and its unsigned child gracefully. Each child is
+limited to45seconds and inherits only PATH. The parent rejects publishing mode
+and credential-bearing environment variable names; no keys are needed. Clock
+jumps terminate the run. Restarts deliberately discard in-memory history and
+require a fresh30-minute window; NEVER stitch separate run IDs into continuous
+coverage. This initial research worker does not add a database or promise durable
+history across restart/deployment. Export cloud logs before rotation; long-term
+external log storage and market-health alert delivery are not configured here.
+
+`Dockerfile.observer` copies only explicitly listed research sources, excludes
+main.mjs and price-main.mjs, installs locked production dependencies with lifecycle
+scripts disabled, and runs as non-root. The existing Dockerfile/signing worker is
+unchanged. No public HTTP ingress is needed.
+
+The separate `.do/aquarius-price-observer.yaml` app spec uses one Frankfurt
+512MiB worker (`apps-s-1vcpu-0.5gb`, verified $5/month), no autoscaling and no env
+secrets. Deployment/restart-count alerts are configured; they are not proof that
+market-price failure notifications reach an operator. The source uses a dedicated
+release branch/tag `aquarius-price-observer-v0.1.0`, never advanced after publication;
+development stays on leveraged-fix and no automatic deployment from that branch
+is enabled. Verify the exact resolved source SHA after deployment. Never apply
+this spec to existing signing app `b38d552c-3cd6-4742-82da-ca44222f5a13`.
+
+Prepared62-test release; live app ID/status and exact commit will be recorded after
+security scan and deployment verification. Publishing remains disabled regardless
+of any healthy-window result.
