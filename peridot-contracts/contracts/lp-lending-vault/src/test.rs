@@ -1,4 +1,6 @@
 extern crate std;
+#[path = "full_stack_test.rs"]
+mod full_stack;
 use crate::{LpLendingVault, LpLendingVaultClient, Outcome};
 use aquarius_lp_vault::{AquariusLpVault, AquariusLpVaultClient};
 use jump_rate_model::{JumpRateModel, JumpRateModelClient};
@@ -63,6 +65,33 @@ impl Oracle {
     }
     pub fn resolution(_env: Env) -> u32 {
         300
+    }
+    pub fn price_snapshot(env: Env, asset: Asset) -> Option<(PriceData, u32, u32)> {
+        let fault: u32 = env
+            .storage()
+            .instance()
+            .get(&Symbol::new(&env, "snapshot_fault"))
+            .unwrap_or(0);
+        if fault == 1 {
+            return None;
+        }
+        let mut pd = Self::lastprice(env.clone(), asset)?;
+        if fault == 2 {
+            pd.timestamp = env.ledger().timestamp() + 1;
+        }
+        if fault == 5 {
+            pd.price = -1;
+        }
+        Some((
+            pd,
+            if fault == 3 { 19 } else { 14 },
+            if fault == 4 { 0 } else { 300 },
+        ))
+    }
+    pub fn set_snapshot_fault(env: Env, fault: u32) {
+        env.storage()
+            .instance()
+            .set(&Symbol::new(&env, "snapshot_fault"), &fault);
     }
     pub fn lastprice(env: Env, asset: Asset) -> Option<PriceData> {
         let Asset::Stellar(id) = asset else {
@@ -295,11 +324,13 @@ impl Fixture {
         let r = self.env.cost_estimate().resources();
         let entries = r.disk_read_entries + r.memory_read_entries + r.write_entries;
         std::println!(
-            "lp-abi {label}: {entries} entries, {} writes, {} CPU",
+            "lp-abi {label}: {entries} entries, {} writes, {} CPU, {} memory bytes",
             r.write_entries,
-            r.instructions
+            r.instructions,
+            r.mem_bytes
         );
         assert!(entries <= 250 && r.instructions <= self.cpu_limit);
+        assert!(r.mem_bytes <= 41_943_040);
     }
     fn credit(&self, i: usize, a: u128, b: u128) {
         for (asset, n) in self.rewards.iter().zip([a, b]) {

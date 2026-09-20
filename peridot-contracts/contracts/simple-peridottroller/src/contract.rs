@@ -2756,17 +2756,33 @@ impl SimplePeridottroller {
             panic!("repay too small");
         }
 
+        // Fresh LP receipts batch the same balance/live-NAV/underlying reads.
+        // No cached rate or stale-price fallback is introduced for liquidation.
+        let lp_collateral_snapshot: Option<(u128, u128, Address)> =
+            if cfg!(feature = "lp-zero-peri") {
+                Some(env.invoke_contract(
+                    &collateral_market,
+                    &Symbol::new(&env, "get_liquidation_snapshot"),
+                    (borrower.clone(),).into_val(&env),
+                ))
+            } else {
+                None
+            };
         // tokens and prices
         let borrow_token: Address = env.invoke_contract(
             &repay_market,
             &Symbol::new(&env, "get_underlying_token"),
             ().into_val(&env),
         );
-        let coll_token: Address = env.invoke_contract(
-            &collateral_market,
-            &Symbol::new(&env, "get_underlying_token"),
-            ().into_val(&env),
-        );
+        let coll_token: Address = if let Some((_, _, token)) = &lp_collateral_snapshot {
+            token.clone()
+        } else {
+            env.invoke_contract(
+                &collateral_market,
+                &Symbol::new(&env, "get_underlying_token"),
+                ().into_val(&env),
+            )
+        };
         let (pb, sb) = Self::require_price(env.clone(), borrow_token.clone());
         let (pc, sc) = Self::require_price(env.clone(), coll_token.clone());
         // Checked math throughout: on overflow these would otherwise saturate to
@@ -2776,11 +2792,15 @@ impl SimplePeridottroller {
         let seize_underlying_usd =
             repay_usd.checked_mul(li_scaled).expect("liq overflow") / 1_000_000u128;
         let seize_underlying = seize_underlying_usd.checked_mul(sc).expect("liq overflow") / pc;
-        let rate: u128 = env.invoke_contract(
-            &collateral_market,
-            &Symbol::new(&env, "get_exchange_rate"),
-            ().into_val(&env),
-        );
+        let rate: u128 = if let Some((_, rate, _)) = &lp_collateral_snapshot {
+            *rate
+        } else {
+            env.invoke_contract(
+                &collateral_market,
+                &Symbol::new(&env, "get_exchange_rate"),
+                ().into_val(&env),
+            )
+        };
         if rate == 0 {
             panic!("invalid exchange rate");
         }
@@ -2791,11 +2811,15 @@ impl SimplePeridottroller {
 
         // Clamp to available collateral and proportionally scale repay down first,
         // so liquidators never pay for collateral that cannot be seized.
-        let borrower_pbal: u128 = env.invoke_contract(
-            &collateral_market,
-            &Symbol::new(&env, "get_ptoken_balance"),
-            (borrower.clone(),).into_val(&env),
-        );
+        let borrower_pbal: u128 = if let Some((balance, _, _)) = &lp_collateral_snapshot {
+            *balance
+        } else {
+            env.invoke_contract(
+                &collateral_market,
+                &Symbol::new(&env, "get_ptoken_balance"),
+                (borrower.clone(),).into_val(&env),
+            )
+        };
         let mut seize_cap = borrower_pbal;
         if let Some(max_seize) = max_seize_ptokens {
             if max_seize == 0 {
@@ -2838,15 +2862,23 @@ impl SimplePeridottroller {
             fee_ptokens = 0;
         }
         let liquidity_after_repay = repay_usd.saturating_sub(shortfall_for_ctx);
-        let max_redeem_ptokens = Self::liquidation_redeem_max_ptokens(
-            env.clone(),
-            collateral_market.clone(),
-            borrower_pbal,
-            rate,
-            pc,
-            sc,
-            liquidity_after_repay,
-        );
+        // This legacy field is advisory only: LP seizure transfers pTokens, not
+        // pool cash. Every later withdrawal performs its own live liquidity and
+        // health checks. Zero is the conservative "no redeem preview" value and
+        // avoids another full strategy/pool quote inside an already heavy call.
+        let max_redeem_ptokens = if cfg!(feature = "lp-zero-peri") {
+            0
+        } else {
+            Self::liquidation_redeem_max_ptokens(
+                env.clone(),
+                collateral_market.clone(),
+                borrower_pbal,
+                rate,
+                pc,
+                sc,
+                liquidity_after_repay,
+            )
+        };
         let seize_ctx = SeizeContext {
             liquidity: liquidity_for_ctx,
             shortfall: shortfall_for_ctx,
@@ -3185,11 +3217,32 @@ impl SimplePeridottroller {
 
             // Attempt get_account_snapshot (new vaults) — collapses 4 cross-contract reads
             // into 1. Falls back to individual calls for old vaults / test mocks that lack it.
+            // Fresh LP receipts expose an atomic accrued snapshot. Avoid loading
+            // the same compiled receipt three times for a cross-market debt.
+            // Generic/core markets retain their existing compatibility path.
+            let accrued_snapshot = cfg!(feature = "lp-zero-peri") && refresh_market_state;
             let snapshot = env.try_invoke_contract::<(u128, u128, u128, Address), InvokeError>(
                 &m,
-                &Symbol::new(&env, "get_account_snapshot"),
+                &Symbol::new(
+                    &env,
+                    if accrued_snapshot {
+                        "get_accrued_account_snapshot"
+                    } else {
+                        "get_account_snapshot"
+                    },
+                ),
                 (user.clone(),).into_val(&env),
             );
+
+            if accrued_snapshot && !matches!(snapshot, Ok(Ok(_))) {
+                // No unaccrued fallback when interest refresh or health data
+                // fails. Missing debt/collateral cannot improve account health.
+                indeterminate = true;
+                if market_cf > 0 {
+                    collateral_indeterminate = true;
+                }
+                continue;
+            }
 
             let (mut pbal, mut pbal_known, mut debt, mut snapshot_rate, mut token_opt) =
                 match snapshot {
@@ -3236,7 +3289,7 @@ impl SimplePeridottroller {
             // transaction footprint, exhausting tx_max_read_ledger_entries for users with
             // cross-market collateral positions (FIND-039 budget fix).
             // FIND-043 is preserved: refresh still fires whenever cross-market debt > 0.
-            if refresh_market_state && debt > 0 {
+            if refresh_market_state && debt > 0 && !accrued_snapshot {
                 let refreshed = env.try_invoke_contract::<(), InvokeError>(
                     &m,
                     &Symbol::new(&env, "update_interest"),
@@ -3503,6 +3556,59 @@ impl SimplePeridottroller {
         let Some(oracle_addr) = oracle else {
             return None;
         };
+        if cfg!(feature = "lp-zero-peri") {
+            // LP release requires the router's atomic, live quote interface.
+            // No fallback on missing ABI, metadata failure or absent observation.
+            storage::bump_oracle_asset_symbol_ttl(&env, &token);
+            let asset = match env
+                .storage()
+                .persistent()
+                .get::<_, Symbol>(&DataKey::OracleAssetSymbol(token.clone()))
+            {
+                Some(sym) => crate::reflector::Asset::Other(sym),
+                None => crate::reflector::Asset::Stellar(token.clone()),
+            };
+            let (pd, decimals, resolution) = match env.try_invoke_contract::<Option<(
+                crate::reflector::PriceData,
+                u32,
+                u32,
+            )>, InvokeError>(
+                &oracle_addr,
+                &Symbol::new(&env, "price_snapshot"),
+                (asset,).into_val(&env),
+            ) {
+                Ok(Ok(Some(v))) => v,
+                _ => return None,
+            };
+            let scale = pow10_u128(decimals)?;
+            let now = env.ledger().timestamp();
+            let k: u64 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::OracleMaxAgeMultiplier)
+                .unwrap_or(2);
+            if pd.price <= 0
+                || scale == 0
+                || decimals > 18
+                || resolution == 0
+                || pd.timestamp > now
+                || now - pd.timestamp > (resolution as u64).saturating_mul(k)
+            {
+                return None;
+            }
+            let price = u128::try_from(pd.price).ok()?;
+            env.storage().persistent().set(
+                &DataKey::PriceCache(token.clone()),
+                &CachedPrice {
+                    price,
+                    scale,
+                    timestamp: pd.timestamp,
+                    resolution,
+                },
+            );
+            storage::bump_price_cache_ttl(&env, &token);
+            return Some((price, scale));
+        }
         let dec: u32 = match env.try_invoke_contract::<u32, InvokeError>(
             &oracle_addr,
             &Symbol::new(&env, "decimals"),

@@ -60,6 +60,16 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September20 combined compiled-router/controller/receipt/strategy plus actual
+  pool tests exposed second-loan and liquidation memory overruns. LP-only atomic
+  price/account snapshots and removal of redundant zero-PERI/advisory work bring
+  these paths under the unchanged40MiB limit. Receipt ABI now58 explicit exports.
+  No stale-price fallback or Mainnet fence removal. See
+  `contracts/lp-receipt-vault/FULL_STACK_VALIDATION.md` for evidence and remaining
+  release gates. Cloud scheduling had zero misses but343 collection/validation
+  failures over the first24h; this is not clean pricing availability. Latest
+  legacy XLM migration withdrawal simulation fails; stable previews succeed.
+  No Mainnet signing, keeper change or migration occurred in this work.
 - September19 user authorized a cloud read-only pricing observer after local
   standby/scheduling gaps. New continuous price-observer-main/runtime, dedicated
   Dockerfile.observer and separate .do/aquarius-price-observer.yaml: one Frankfurt

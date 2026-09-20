@@ -1111,6 +1111,13 @@ impl ReceiptVault {
         hint: ControllerAccrualHint,
         operation: &str,
     ) {
+        // The separate LP ABI only activates with a fresh, permanently zero-PERI
+        // controller and seals that binding. Its controller accrual is already a
+        // no-op; avoid a redundant cross-contract frame. AQUA ownership is handled
+        // by the LP reward coordinator, never by this PERI accrual helper.
+        if cfg!(feature = "lp-engine") {
+            return;
+        }
         if let Some(comp_addr) = env
             .storage()
             .persistent()

@@ -425,6 +425,23 @@ impl PriceRouter {
         }
     }
 
+    /// Atomic live quote plus metadata for the isolated LP controller. Reuses
+    /// lastprice's dependency/observation checks; no persistent quote cache.
+    /// Metadata failure is unavailable, never the legacy decimals fallback.
+    pub fn price_snapshot(env: Env, asset: Asset) -> Option<(PriceData, u32, u32)> {
+        let decimals = match env.try_invoke_contract::<u32, soroban_sdk::InvokeError>(
+            &Self::upstream(&env),
+            &Symbol::new(&env, "decimals"),
+            Vec::new(&env),
+        ) {
+            Ok(Ok(v)) if v <= 18 => v,
+            _ => return None,
+        };
+        let resolution = Self::resolution(env.clone());
+        let price = Self::lastprice(env, asset)?;
+        Some((price, decimals, resolution))
+    }
+
     fn cross_quoted_price(env: &Env, asset: &Address, cfg: &CrossQuoteConfig) -> Option<PriceData> {
         if cfg.max_age_secs == 0 || cfg.max_age_secs > 3600 || asset == &cfg.quote_to {
             return None;

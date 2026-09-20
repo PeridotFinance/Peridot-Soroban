@@ -5,6 +5,23 @@ use soroban_sdk::{
     token, vec,
 };
 const SCALE: u128 = observation::RATIO_SCALE;
+
+#[test]
+fn atomic_snapshot_preserves_observation_invalidation_and_expiry() {
+    let (e, id, _, who, a, q, _) = fixture();
+    let r = PriceRouterClient::new(&e, &id);
+    let dependent = Asset::Stellar(q);
+    assert!(r.price_snapshot(&dependent).is_none());
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_500, &1_700_000_300);
+    assert!(r.price_snapshot(&dependent).is_some());
+    r.invalidate_observation(&who, &a);
+    assert!(r.price_snapshot(&dependent).is_none());
+    e.ledger().set_timestamp(1_700_000_600);
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_800, &1_700_000_600);
+    assert!(r.price_snapshot(&dependent).is_some());
+    e.ledger().set_timestamp(1_700_000_901);
+    assert!(r.price_snapshot(&dependent).is_none());
+}
 #[contract]
 struct Quotes;
 #[contractimpl]

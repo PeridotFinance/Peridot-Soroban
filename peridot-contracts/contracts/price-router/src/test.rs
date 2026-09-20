@@ -54,6 +54,20 @@ fn cross_quote(f: &F) -> ReferenceFeedClient<'_> {
 }
 
 #[test]
+fn atomic_price_snapshot_matches_live_price_and_rejects_metadata_outage() {
+    let f = setup();
+    let asset = Asset::Stellar(f.xlm.clone());
+    let (price, decimals, resolution) = f.router.price_snapshot(&asset).unwrap();
+    assert_eq!(price, f.router.lastprice(&asset).unwrap());
+    assert_eq!((decimals, resolution), (14, 300));
+    f.up.set_metadata_down(&true);
+    assert!(f.router.lastprice(&asset).is_some());
+    assert!(f.router.price_snapshot(&asset).is_none());
+    f.up.set_metadata_down(&false);
+    assert!(f.router.price_snapshot(&asset).is_some());
+}
+
+#[test]
 fn cross_feed_multiplies_reference_price_without_a_debt_underpricing_peg_cap() {
     let f = setup();
     let feed = cross_quote(&f);

@@ -356,6 +356,26 @@ impl LpLendingVault {
         config(&env);
         Core::get_account_snapshot(env, user)
     }
+    /// One-call risk snapshot for this isolated group. Interest refresh and the
+    /// returned debt must be atomic; never substitute a prior-transaction cache.
+    /// Like update_interest, this is permissionless and changes no share weights.
+    pub fn get_accrued_account_snapshot(env: Env, user: Address) -> (u128, u128, u128, Address) {
+        ready(&env);
+        if Core::get_user_borrow_balance(env.clone(), user.clone()) > 0 {
+            Core::update_interest(env.clone());
+        }
+        Core::get_account_snapshot(env, user)
+    }
+    /// Batch the existing liquidation reads without changing their live NAV
+    /// semantics. This is deliberately NOT the cached account-health rate.
+    pub fn get_liquidation_snapshot(env: Env, user: Address) -> (u128, u128, Address) {
+        ready(&env);
+        (
+            Core::get_ptoken_balance(env.clone(), user),
+            Core::get_exchange_rate(env.clone()),
+            Core::get_underlying_token(env),
+        )
+    }
     pub fn get_user_balance(env: Env, user: Address) -> u128 {
         config(&env);
         Core::get_user_balance(env, user)

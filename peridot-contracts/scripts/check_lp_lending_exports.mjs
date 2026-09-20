@@ -9,7 +9,8 @@ const actual = WebAssembly.Module.exports(module)
   .filter(({ kind }) => kind === 'function').map(({ name }) => name).sort();
 const expected = `
 __constructor accept_admin activate allowance approve balance borrow bump_ttl
-claim_pool_rewards compound decimals deposit get_account_snapshot get_admin
+claim_pool_rewards compound decimals deposit get_account_snapshot get_accrued_account_snapshot get_admin
+get_liquidation_snapshot
 get_boosted_vault get_exchange_rate get_ptoken_balance get_total_borrowed
 get_total_ptokens get_total_underlying get_underlying_token get_user_balance
 get_user_borrow_balance initialize_rewards is_active lp_version name payout_rewards

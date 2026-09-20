@@ -6,6 +6,13 @@ Mainnet release candidates. Fresh Mainnet initialization is explicitly blocked.
 
 ## Latest compiled validation and migration scope
 
+September20 update: see `FULL_STACK_VALIDATION.md`. The combined router/pool stack
+now has bounded tests after fixing memory overruns. LP pricing requires atomic
+live `price_snapshot`; receipts add accrued-account and live-liquidation snapshot
+reads.58 explicit receipt exports. No Mainnet initialization fence was removed.
+The earlier measurements below describe previous component tests, not the final
+release boundary or current compiled hashes.
+
 The separate `hybrid-validation` strategy feature now permits compiled local or
 Testnet tests, with public-network fences in initialization, hybrid activation and
 all bridge calls. Ordinary `hybrid-rewards` WASM compilation remains blocked.
