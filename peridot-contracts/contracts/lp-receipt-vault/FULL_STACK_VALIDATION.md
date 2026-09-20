@@ -4,6 +4,14 @@ Status: improved validation candidate, **not a Mainnet release approval**.
 Mainnet initialization/publication fences remain. No funds moved, no deployment
 or keeper configuration changed during this work.
 
+Code/tests committed and pushed as
+`3352477e769340f7392d3b059c14e2fe74cd9bcf` on `leveraged-fix`.
+Almanax scan request on September20 16:26UTC was rejected with
+`subscription has expired`; no scan ID or findings were returned. This change set
+is NOT Almanax-cleared. After service renewal scan from
+`d54feb7bc9bee97eefa2ade64b239c5673f1ba56` through the code commit above (or the
+later documentation-only handoff commit). Do not substitute earlier scan results.
+
 ## Defects reproduced and targeted changes
 
 Combining the compiled router, controller, receipt and strategy with the actual

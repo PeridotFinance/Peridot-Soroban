@@ -70,6 +70,8 @@ MarginController (leveraged trading, optional)
   failures over the first24h; this is not clean pricing availability. Latest
   legacy XLM migration withdrawal simulation fails; stable previews succeed.
   No Mainnet signing, keeper change or migration occurred in this work.
+  Code/tests3352477 pushed; Almanax refused the new scan with "subscription has
+  expired". No scan ID/findings, and no security clearance for this change set.
 - September19 user authorized a cloud read-only pricing observer after local
   standby/scheduling gaps. New continuous price-observer-main/runtime, dedicated
   Dockerfile.observer and separate .do/aquarius-price-observer.yaml: one Frankfurt
