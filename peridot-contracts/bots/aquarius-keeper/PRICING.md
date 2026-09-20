@@ -6,11 +6,18 @@ method-tagged unsigned30-minute candidate and plans publish/hold/invalidate
 decisions against supplied fresh router state. No transaction adapter is wired;
 the existing trade publisher remains unchanged. The continuous keyless observer
 records `depthCandidate` without signing/publication.74keeper tests and7existing
-native router-observation tests pass. Proposed observer releasev0.1.2 awaits its
-own security scan/deployment. See `DEPTH_PRICING_REVIEW.md` for exact bounds,
+native router-observation tests pass. Releasev0.1.2 (immutable branch/tag) points
+to `e890878621ea6bb272110f1d383323d7f9503c5d`. Almanax
+`92c2af1d-8a05-43c5-a43f-5aca2863a317` completed with zero findings, fetched.
+Deployment `610a3b07-739e-4c6e-a7ba-87f9f4eb0452` is ACTIVE on that exact commit
+in the existing keyless observer app. Only its source ref changed; signing keeper
+untouched. New run `0841699f-48ff-4a37-aa9b-ccfa1ba61223` starts17:21:13UTC.
+First4samples collected/agreed,0misses/0failures, unsigned candidate state warming.
+This is startup evidence, not a completed30-minute window or production approval.
+See `DEPTH_PRICING_REVIEW.md` for exact bounds,
 test limitations and unresolved manipulation/liquidation/availability risks.
 
-September20 diagnostics follow-up: v0.1.1 adds a fixed, allowlisted failure
+Earlier September20 diagnostics release (superseded byv0.1.2 above): v0.1.1 adds a fixed, allowlisted failure
 stage/reason to the keyless depth observer. It distinguishes transport/timeouts,
 HTTP status classes, missing direct routes, stale/coherence guards, spread/impact
 guards and unavailable Aquarius simulations without printing arbitrary errors,
@@ -21,7 +28,7 @@ Commit `2ca34e75e0450b990a55f13df62acbf87d05d756` passed Almanax scan
 `067e983b-110f-491c-b5e5-bc01b1ec6cf6` (zero findings, fetched). Immutable branch
 and tag `aquarius-price-observer-v0.1.1` point to that commit; never move either
 release's refs. App `ab177729-9cf6-43c7-8510-aaa70855c2e3` deployment
-`e54e9d7a-e82c-42f0-9681-3ece623328f5` is ACTIVE on the verified exact commit.
+`e54e9d7a-e82c-42f0-9681-3ece623328f5` was ACTIVE on the verified exact commit.
 Only the source branch changed; one512MiB Frankfurt instance, no credentials or
 publishing, existing signing keeper untouched. New run
 `0199a5c4-0d39-40d1-a4bf-9f26320a09a5` starts September20 16:50:47UTC.

@@ -56,7 +56,10 @@ ramping, malformed/missing chain state, expiry and recovery only after a new
 complete window. A manual review tightened missing-state handling before commit.
 The7existing router-observation tests were rerun and pass (native controlled
 quotes/upstream, not a newly integrated depth-publisher or Mainnet-state test).
-Almanax review of this new candidate is pending; previous scans cover earlier code.
+Candidate commit `e890878621ea6bb272110f1d383323d7f9503c5d` passed Almanax scan
+`92c2af1d-8a05-43c5-a43f-5aca2863a317` over2ca34e7..e890878: COMPLETE, zero
+findings fetched. No runtime change followed that scan. This is code-review
+evidence, not economic safety or Mainnet activation approval.
 
 ## Economic and release conclusion
 

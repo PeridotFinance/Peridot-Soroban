@@ -66,8 +66,10 @@ MarginController (leveraged trading, optional)
   builder/planner preserves all depth/spread/freshness guards, rejects missing
   chain history and requires a fresh30m process window.74keeper +7existing native
   router-observation tests pass. No transaction adapter wired; trade publisher,
-  contract code and all Mainnet fences unchanged. Observer v0.1.2 candidate logging
-  awaits scan/deployment. See bots/aquarius-keeper/DEPTH_PRICING_REVIEW.md; economic
+  contract code and all Mainnet fences unchanged. Observer v0.1.2 at e890878 passed
+  Almanax92c2af1d... (zero findings) and is ACTIVE, deployment
+  610a3b07-739e-4c6e-a7ba-87f9f4eb0452. First4new samples agree,0misses/failures;
+  candidate still warming, not a completed window. See bots/aquarius-keeper/DEPTH_PRICING_REVIEW.md; economic
   manipulation/uncapped liquidation-loss review and migration recovery still gate.
 
 - September20 combined compiled-router/controller/receipt/strategy plus actual
