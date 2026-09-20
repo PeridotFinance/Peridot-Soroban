@@ -105,6 +105,12 @@ collector failure, one invalidation,30-minute recovery and no repeated watermark
 movement. Separate9native router tests prove exact auth, expiry, replay checks,
 0.5% genuine recovery and a3% move remaining halted even after reconfiguration.
 No production Rust changed in this follow-up.
+The full router suite passes39tests, and all7existing compiled LP validation
+tests were rerun successfully (pinned validation artifacts, not final production
+or Mainnet-state validation). Commitfcfb91c3351d90c43c6dee8d888fea492758deed is
+pushed to leveraged-fix. Almanax scan0b74548a-592f-4776-9b58-bf5ecb500673 over
+cd07141..fcfb91c completed with zero findings fetched. No code changed after
+that scan; this does not certify economic safety or remove the release fences.
 
 Still required: provision/review an isolated Testnet fixture and exercise actual
 publication, restart and on-chain post-state reconciliation; prove live cadence;

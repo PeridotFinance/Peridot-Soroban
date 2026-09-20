@@ -59,8 +59,10 @@ The7existing router-observation tests were rerun and pass (native controlled
 quotes/upstream, not a newly integrated depth-publisher or Mainnet-state test).
 Candidate commit `e890878621ea6bb272110f1d383323d7f9503c5d` passed Almanax scan
 `92c2af1d-8a05-43c5-a43f-5aca2863a317` over2ca34e7..e890878: COMPLETE, zero
-findings fetched. The new adapter/runtime tests are subsequent work and require
-their own scan. This is code-review evidence, not economic safety or Mainnet
+findings fetched. The subsequent adapter/runtime commit
+`fcfb91c3351d90c43c6dee8d888fea492758deed` also passed Almanax scan
+`0b74548a-592f-4776-9b58-bf5ecb500673` overcd07141..fcfb91c: COMPLETE, zero
+findings fetched. This is code-review evidence, not economic safety or Mainnet
 activation approval.
 
 September20 follow-up:87keeper tests pass, including11new publisher/journal tests
@@ -72,6 +74,10 @@ not execute the Rust contract; the separate9native router-observation tests do.
 Two new native cases prove honest0.5% recovery works, but a genuine3% move remains
 blocked after invalidation and reapplying the same policy. This is a release
 blocker, not a request to relax guards or invent intermediate prices.
+The full router suite passes39tests. All7explicit compiled LP validation tests
+were rerun successfully against the existing pinned validation WASMs and exact
+pool WASM. Their earlier limitations remain: controlled upstream/quotes/local
+pool state, not final production artifacts or a Mainnet-state migration rehearsal.
 
 At17:58:16UTC the unchanged cloud v0.1.2 run0841699f had38/38collected/agreed,
 0missed,0failures,7healthy/8mature attempts. Latest31–32point candidate ratio was

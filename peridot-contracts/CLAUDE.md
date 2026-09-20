@@ -72,6 +72,9 @@ MarginController (leveraged trading, optional)
   (short run only).18:00UTC migration preview still rejects XLM; stable previews
   pay4.8427814PYUSD/4.8449612USDC. Four validation uploads still estimate
   328.8256722XLM, not a final total; no fee spending or migration performed.
+  Code commitfcfb91c is pushed on leveraged-fix; Almanax0b74548a... COMPLETE,
+  zero findings fetched. Full router39tests and7existing compiled validation
+  tests pass. Only review/handoff documentation changed after the code scan.
 
 - September20 user approved depth-TWAP replacement development/review (not
   Mainnet activation), plus400XLM total LP deployment/migration fee ceiling after
