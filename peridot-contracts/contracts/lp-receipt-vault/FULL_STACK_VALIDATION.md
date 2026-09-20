@@ -109,9 +109,11 @@ submitted. Diagnose its precise live guard/configuration before changing anythin
 do not treat this as permission to widen protections. No historical-claim audit
 is implied merely by current share ownership and zero debt.
 
-User was asked to approve canary-only supply caps30XLM/6PYUSD/6USDC and borrow
-principal caps1XLM/1PYUSD/1USDC. These are proposed exposure limits, NOT applied
-settings or manipulation-safety bounds. Fee budget still needs a reproducible
+User explicitly rejected proposed supply caps30XLM/6PYUSD/6USDC and borrow caps
+1XLM/1PYUSD/1USDC: **no supply or borrowing caps**. Target configuration records
+raw zero for both caps in all three markets; zero disables a cap, not borrowing.
+These targets are NOT applied. A small deployer canary transaction does not bound
+total public protocol exposure when caps are disabled. Fee budget still needs a reproducible
 production-admin artifact and fresh upload/deployment simulations. Pricing
 availability/outage policy, actual dependency/restoration/migration validation and
 final scoped security review still gate deployment. Existing CF targets remain
