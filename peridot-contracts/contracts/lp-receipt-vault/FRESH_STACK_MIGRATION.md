@@ -118,3 +118,29 @@ simulations fitting that ceiling. No spending has occurred under this approval.
 Public deployer balance at16:51UTC is245.6311139XLM (before minimum reserve),
 below even this preliminary upload estimate. Do not withdraw unrelated positions
 or exchange other assets to fund deployment without authorization.
+
+September20 18:00UTC refresh (ledgers64528288–91): reciprocal bindings, strategy
+hashes and deployer ownership are unchanged; reported pilot debts remain zero.
+Full XLM withdrawal still traps after the same242708102raw yXLM input quotes only
+235853022raw XLM, below the unchanged237853939parity floor. Stable previews return
+4.8427814PYUSD/4.8449612USDC. These are independent unsigned simulations, not
+executed withdrawals. Primary claimable readings are0AQUA for XLM,
+0.6456494AQUA for PYUSD and0.6455209AQUA for USDC; all gauge maps read empty.
+Do not interpret the current snapshot as proof of no historical liabilities.
+Validation-upload estimate remains328.8256722XLM at ledger64528289; still not
+production bytes or the complete budget. No transaction was signed/submitted.
+
+The user separately completed the requested core100XLM withdrawal, confirmed
+at17:36:18UTC in txdbb947a0f0cf463fd8820dff25063e4332249589334c42df329782b72d059c3f.
+The deployer wallet held345.5778744XLM at17:37:20UTC. Do NOT repeat this withdrawal
+or assume this past balance funds the final rollout; recheck reserves and fees.
+
+A non-parity recovery rehearsal must use the exact deployed strategy/receipt and
+pool dependencies, first prove the current alias failure, then test an approved
+fresh oracle plus removal of BOTH token symbol aliases (`None`, not `Other(XLM)`).
+Changing just the oracle while leaving the yXLM alias would retain parity. Existing
+`set_oracle`/`set_oracle_symbol` invalidate cached NAV; refresh under the replacement
+before withdrawal. Preserve200bps divergence/100bps slippage, auth, recipient and
+liability checks. This is a proposed LOCAL rehearsal, not authority to apply a
+new oracle or erase aliases on Mainnet. The depth replacement remains unapproved
+for Mainnet activation and its genuine-large-move recovery policy is unresolved.

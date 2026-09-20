@@ -49,10 +49,28 @@ test('deployment image allowlist excludes signing and publisher entrypoints',()=
   const docker=readFileSync(new URL('../Dockerfile.observer',import.meta.url),'utf8');
   assert(!docker.includes('COPY src ./src'));
   assert(!docker.includes('src/main.mjs'));assert(!docker.includes('src/price-main.mjs'));
+  assert(!docker.includes('depth-publisher'));assert(!docker.includes('depth-publication-journal'));
   assert(docker.includes('--ignore-scripts'));assert(docker.includes('USER node'));
   const spec=readFileSync(new URL('../../../.do/aquarius-price-observer.yaml',import.meta.url),'utf8');
   assert(!/^\s*envs:/m.test(spec));assert(!spec.includes('aquarius-keeper-v0.4.1'));
   assert(spec.includes('instance_count: 1'));
+});
+test('optional Testnet callback cannot mutate observer history or swallow submission errors',async()=>{
+  let ms=0,calls=0;const controller=new AbortController(),rows=[];
+  await assert.rejects(runObserver({runId:'isolated',signal:controller.signal,now:()=>start+ms/1000,monotonic:()=>ms,
+    sleep:async n=>{ms+=n;},collect:async()=>sample(start+ms/1000),emit:r=>rows.push(r),
+    afterSample:async ({records})=>{calls++;assert.equal(records[0].state,'ok');records[0].state='tampered';
+      if(calls===2)throw Error('unresolved test hash');}}),/unresolved test hash/);
+  assert.equal(calls,2);assert.equal(rows.filter(r=>r.kind==='observer_sample').length,2);
+  assert(rows.filter(r=>r.kind==='observer_sample').every(r=>r.state==='ok'));
+});
+test('slow Testnet callback creates real missed slots without backfill',async()=>{
+  let ms=0,calls=0;const controller=new AbortController(),rows=[];
+  await runObserver({runId:'slow',signal:controller.signal,now:()=>start+ms/1000,monotonic:()=>ms,
+    sleep:async n=>{ms+=n;},collect:async()=>sample(start+ms/1000),emit:r=>rows.push(r),
+    afterSample:async()=>{if(calls++===0)ms+=180000;else controller.abort();}});
+  assert.equal(rows.find(r=>r.kind==='observer_gap').count,2);
+  assert.equal(rows.at(-1).stats.collected,2);assert.equal(rows.at(-1).stats.missed,2);
 });
 test('entrypoint refuses publishing and credential injection before any network call',()=>{
   const script=fileURLToPath(new URL('../src/price-observer-main.mjs',import.meta.url));

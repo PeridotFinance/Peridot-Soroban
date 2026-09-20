@@ -60,12 +60,25 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September20 follow-up adds a separate isolated-Testnet depth publisher (not
+  deployed): exact network/code/policy/auth checks, fresh two-way quotes,0.1XLM
+  fee cap, bounded validity, durable public-hash journal and no unknown-hash retry.
+  Mainnet observer/signing keeper unchanged.87keeper tests and9native router
+  observation tests pass, including offline SDK-signed end-to-end outage recovery.
+  This is NOT live Testnet or actual-dependency validation. Genuine3% moves stay
+  halted after invalidation/reconfiguration; no synthetic ramp or guard widening.
+  See `bots/aquarius-keeper/DEPTH_PUBLISHER_TESTNET.md` for remaining gates.
+  At17:58UTC cloud v0.1.2 collected38/38,0misses/failures,7healthy mature windows
+  (short run only).18:00UTC migration preview still rejects XLM; stable previews
+  pay4.8427814PYUSD/4.8449612USDC. Four validation uploads still estimate
+  328.8256722XLM, not a final total; no fee spending or migration performed.
+
 - September20 user approved depth-TWAP replacement development/review (not
   Mainnet activation), plus400XLM total LP deployment/migration fee ceiling after
   final release checks and fresh final-byte simulations. New unsigned candidate
   builder/planner preserves all depth/spread/freshness guards, rejects missing
   chain history and requires a fresh30m process window.74keeper +7existing native
-  router-observation tests pass. No transaction adapter wired; trade publisher,
+  router-observation tests passed at that checkpoint. No adapter then; trade publisher,
   contract code and all Mainnet fences unchanged. Observer v0.1.2 at e890878 passed
   Almanax92c2af1d... (zero findings) and is ACTIVE, deployment
   610a3b07-739e-4c6e-a7ba-87f9f4eb0452. First4new samples agree,0misses/failures;

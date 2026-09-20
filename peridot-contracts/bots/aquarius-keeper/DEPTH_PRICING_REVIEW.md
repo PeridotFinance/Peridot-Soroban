@@ -38,17 +38,18 @@ otherwise hold. A step violation also invalidates inside the update interval.
 Repeated invalidation cannot move the watermark when the report is already invalid.
 No synthetic intermediate reports or resetting history after a depeg.
 
-There is intentionally **no transaction adapter connected to this planner**.
-The existing trade publisher, price-router contract, required-observation bindings
-and all Mainnet fences are unchanged. The keyless image still excludes signing
-and publishing entrypoints. Before connecting a publisher it must validate the
-configured source/reporter/asset/network/policy, read fresh chain state and both
-pool quotes, simulate and enforce fee/auth guards, recheck freshness, and stop on
-an unresolved submission hash. Cloud candidate generation authorizes none of this.
+There is now a separate **isolated-Testnet-only transaction adapter**, described
+in `DEPTH_PUBLISHER_TESTNET.md`. It is not deployed and has not submitted a live
+Testnet transaction. Real SDK signing/assembly against controlled RPC responses
+is covered locally; this must not be described as a live network canary. The
+existing trade publisher, price-router production code, required-observation
+bindings and all Mainnet fences are unchanged. The keyless image still excludes
+the signing adapter and its entrypoint. Cloud candidate generation authorizes
+neither Mainnet signing nor a policy change.
 
 ## Review and tests
 
-74keeper tests pass, including9new candidate/planner tests: deterministic evidence,
+The prior74keeper tests included9candidate/planner tests: deterministic evidence,
 restart/warm-up, failed/omitted/replayed/reordered slots, forged health flags,
 spread/depth/pool mismatch, bounded history, slow/future/overlapping attempts,
 stored-state replay/invalidation/rate checks, excessive step without synthetic
@@ -58,8 +59,24 @@ The7existing router-observation tests were rerun and pass (native controlled
 quotes/upstream, not a newly integrated depth-publisher or Mainnet-state test).
 Candidate commit `e890878621ea6bb272110f1d383323d7f9503c5d` passed Almanax scan
 `92c2af1d-8a05-43c5-a43f-5aca2863a317` over2ca34e7..e890878: COMPLETE, zero
-findings fetched. No runtime change followed that scan. This is code-review
-evidence, not economic safety or Mainnet activation approval.
+findings fetched. The new adapter/runtime tests are subsequent work and require
+their own scan. This is code-review evidence, not economic safety or Mainnet
+activation approval.
+
+September20 follow-up:87keeper tests pass, including11new publisher/journal tests
+and2observer-consumer tests. The end-to-end offline replay executes the actual
+collector scheduler, candidate builder, SDK assembly/signing, public hash journal
+and publication/invalidation controller against controlled RPC: one failed sample
+causes one invalidation and requires30new healthy minutes before recovery. It does
+not execute the Rust contract; the separate9native router-observation tests do.
+Two new native cases prove honest0.5% recovery works, but a genuine3% move remains
+blocked after invalidation and reapplying the same policy. This is a release
+blocker, not a request to relax guards or invent intermediate prices.
+
+At17:58:16UTC the unchanged cloud v0.1.2 run0841699f had38/38collected/agreed,
+0missed,0failures,7healthy/8mature attempts. Latest31–32point candidate ratio was
+0.966425406394XLM/yXLM. The first mature attempt was still warming due to ledger
+timestamp lag. This is short-run evidence, not a sustained availability claim.
 
 ## Economic and release conclusion
 

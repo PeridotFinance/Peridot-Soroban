@@ -220,3 +220,54 @@ fn configuration_checks_pool_asset_identity_and_decimal_compatibility() {
         .is_err());
     assert_eq!(token::Client::new(&e, &a).decimals(), 7);
 }
+
+#[test]
+fn genuine_large_move_stays_halted_after_invalidation_and_same_policy_reconfigure() {
+    let (e, id, admin, who, a, q, cfg) = fixture();
+    let r = PriceRouterClient::new(&e, &id);
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_500, &1_700_000_300);
+    r.invalidate_observation(&who, &a);
+    // Both executable directions honestly move 3%; waiting or reapplying the
+    // same configuration must not erase the last accepted-price step bound.
+    let moved = SCALE * 97 / 100;
+    QuotesClient::new(&e, &cfg.pool).set(&moved, &moved);
+    e.ledger().set_timestamp(1_700_002_400);
+    assert!(r
+        .try_publish_observation(&who, &a, &moved, &1_700_000_600, &1_700_002_400)
+        .is_err());
+    r.set_source(&admin, &a, &PriceSource::Observed(cfg));
+    e.ledger().set_timestamp(1_700_004_500);
+    assert!(r
+        .try_publish_observation(&who, &a, &moved, &1_700_002_700, &1_700_004_500)
+        .is_err());
+    let retained = r.get_observation(&a).unwrap();
+    assert_eq!(retained.ratio, SCALE);
+    assert_eq!(retained.end, 1_700_000_300);
+    assert!(!retained.valid);
+    assert!(r.price_snapshot(&Asset::Stellar(a)).is_none());
+    assert!(r.price_snapshot(&Asset::Stellar(q)).is_none());
+    // This is a documented recovery-policy blocker, NOT permission to fabricate
+    // intermediate reports, loosen the bound or reset state in the keeper.
+}
+
+#[test]
+fn bounded_honest_recovery_requires_fresh_window_and_keeps_dependency_gating() {
+    let (e, id, _, who, a, q, cfg) = fixture();
+    let r = PriceRouterClient::new(&e, &id);
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_500, &1_700_000_300);
+    r.invalidate_observation(&who, &a);
+    let moved = SCALE * 995 / 1000;
+    QuotesClient::new(&e, &cfg.pool).set(&moved, &moved);
+    assert!(r
+        .try_publish_observation(&who, &a, &moved, &1_699_998_500, &1_700_000_300)
+        .is_err());
+    assert!(r.price_snapshot(&Asset::Stellar(q.clone())).is_none());
+    e.ledger().set_timestamp(1_700_002_400);
+    r.publish_observation(&who, &a, &moved, &1_700_000_600, &1_700_002_400);
+    assert!(r.get_observation(&a).unwrap().valid);
+    assert_eq!(
+        r.price_snapshot(&Asset::Stellar(a)).unwrap().0.price,
+        99_500_000_000_000
+    );
+    assert!(r.price_snapshot(&Asset::Stellar(q)).is_some());
+}

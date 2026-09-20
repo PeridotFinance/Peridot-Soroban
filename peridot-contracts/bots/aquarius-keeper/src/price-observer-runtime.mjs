@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {assessWindow,validateSample} from './price-shadow-soak.mjs';
 import {classifyFailure,safeFailure} from './price-observer-errors.mjs';
 import {depthCandidate} from './depth-pricing.mjs';
-export async function runObserver({collect,now,monotonic,sleep,emit,signal,runId}) {
+export async function runObserver({collect,now,monotonic,sleep,emit,signal,runId,afterSample}) {
   assert(typeof runId==='string'&&runId.length>0);
   const began=monotonic(),startedAt=now(),records=[];
   const stats={scheduled:0,collected:0,agreeing:0,missed:0,collectionFailures:0,matureAttempts:0,healthyWindows:0};
@@ -47,12 +47,17 @@ export async function runObserver({collect,now,monotonic,sleep,emit,signal,runId
       }
     }
     row.finishedAt=now();remember(row);
+    assert(Math.abs((now()-startedAt)*1000-(monotonic()-began))<=5000,'clock jump');
     row.window=assessWindow(records,now());
     row.depthCandidate=depthCandidate(records,now(),startedAt);
     if(index>=30){stats.matureAttempts++;if(row.window.state==='healthy')stats.healthyWindows++;}
     // Stats in every heartbeat preserve aggregate evidence in a bounded log tail.
     // They are per-process only; never combine separate runs as continuous history.
     log({...row,historySize:records.length,stats:{...stats}});index++;
+    // Optional isolated Testnet consumer; the deployed keyless entrypoint never
+    // supplies it. Await outside the collection catch: submission uncertainty is
+    // fatal, not a sample failure. Slow consumers leave genuine scheduler gaps.
+    if(afterSample&&!signal.aborted)await afterSample({records:structuredClone(records),startedAt});
   }
   log({kind:'observer_stop',startedAt,finishedAt:now(),stats:{...stats}});
   return stats;
