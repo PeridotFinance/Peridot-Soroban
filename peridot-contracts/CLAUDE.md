@@ -60,6 +60,16 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September20 user approved depth-TWAP replacement development/review (not
+  Mainnet activation), plus400XLM total LP deployment/migration fee ceiling after
+  final release checks and fresh final-byte simulations. New unsigned candidate
+  builder/planner preserves all depth/spread/freshness guards, rejects missing
+  chain history and requires a fresh30m process window.74keeper +7existing native
+  router-observation tests pass. No transaction adapter wired; trade publisher,
+  contract code and all Mainnet fences unchanged. Observer v0.1.2 candidate logging
+  awaits scan/deployment. See bots/aquarius-keeper/DEPTH_PRICING_REVIEW.md; economic
+  manipulation/uncapped liquidation-loss review and migration recovery still gate.
+
 - September20 combined compiled-router/controller/receipt/strategy plus actual
   pool tests exposed second-loan and liquidation memory overruns. LP-only atomic
   price/account snapshots and removal of redundant zero-PERI/advisory work bring
@@ -83,7 +93,14 @@ MarginController (leveraged trading, optional)
   Preliminary four-validation-WASM upload simulations total328.8256722XLM, NOT
   a final deployment budget. See FRESH_STACK_MIGRATION.md. Keyless observer v0.1.1
   diagnostics add safe failure categories without changing pricing or publication;
-  65 keeper tests pass, new release scan/deployment pending.
+  65 keeper tests pass; commit2ca34e7 passed Almanax067e983b... with zero findings.
+  Observer v0.1.1 is ACTIVE, deployment e54e9d7a-e82c-42f0-9681-3ece623328f5.
+  First new sample failed depth/spread_guard (not scheduler delay), preserving
+  unavailability. Existing signing keeper unchanged. Trade-window check still
+  fails insufficient volume. User APPROVED developing/reviewing a replacement
+  depth-TWAP policy (NOT Mainnet activation), and a400XLM total deployment/migration
+  fee ceiling conditional on release checks/fresh final-byte simulations. Deployer wallet at16:51UTC
+  holds245.6311139XLM, below the preliminary upload estimate; no funds moved.
 - September19 user authorized a cloud read-only pricing observer after local
   standby/scheduling gaps. New continuous price-observer-main/runtime, dedicated
   Dockerfile.observer and separate .do/aquarius-price-observer.yaml: one Frankfurt

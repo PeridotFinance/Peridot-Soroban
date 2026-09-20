@@ -5,6 +5,15 @@ reference remains read-only research, not a replacement for the implemented
 trade-window observer. No risk parameters, reporter, keeper or contracts changed.
 This is a scoped engineering review, not an independent economic audit.
 
+September20 decision update: the user explicitly rejected supply and borrow
+caps. Target raw caps are now zero (unlimited), not yet applied. References below
+to approving numeric caps are superseded by this decision; they are not permission
+to reintroduce caps. The oracle manipulation/availability and liquidation-loss
+review must address uncapped public exposure. Small canary trades do not bound it.
+The user then approved developing/reviewing the depth-TWAP replacement, explicitly
+NOT Mainnet activation. Candidate construction/publication planning is documented
+in `DEPTH_PRICING_REVIEW.md`; the economic findings below are not resolved by it.
+
 ## What the available evidence establishes
 
 The earlier seven-day trade audit passed544/2011 candidate windows (27.05%).
@@ -75,7 +84,8 @@ executed, reserved, or combined into a liquidation simulation; state can change.
    attack cost. Capital may be recoverable and the attacker may already control
    the liquidity. No safe borrow cap can be derived merely as a percentage of the
   10000-unit probe. Neither this review nor an Almanax code scan establishes such
-   a bound. Activation requires an explicit economic loss budget and approved caps.
+   a bound. Activation still requires review of losses under the approved uncapped
+   exposure policy; this evidence does not establish safety for unlimited borrowing.
 5. **Window lag, step limits and depegs.** A30-minute average responds slowly to a
    genuine move. A1% publication step limit is a rate bound, not an absolute bound
    against accumulated bias. A depeg or move outside configured bounds can halt
@@ -103,9 +113,9 @@ executed, reserved, or combined into a liquidation simulation; state can change.
 - Exposure-scaled two-way liquidation/slippage checks, including loss of dominant
   liquidity, out-of-range LP concentration and simultaneous market exits. Include
   account/control concentration and possible common control across venues.
-- Explicit approved supply/borrow caps, maximum acceptable loss, liquidation
-  parameters, liquidity buffers and recovery authority. No numeric safe cap is
-  recommended by this evidence alone.
+- Record the approved no-cap policy, maximum acceptable loss, liquidation
+  parameters, liquidity buffers and recovery authority. No numeric safe cap or
+  safe unlimited exposure is established by this evidence alone.
 - Full compiled router/controller/receipt/strategy integration with actual pool,
   reward routes/gauges, oracle expiry, restoration and liquidation. Keep current
   Mainnet fences until these checks and scoped final security review pass.

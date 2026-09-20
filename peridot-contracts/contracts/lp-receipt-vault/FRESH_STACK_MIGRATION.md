@@ -112,4 +112,9 @@ WASM hashes and only simulates unsigned uploads. At ledger64527360 these total
 controller81.7296050, strategy87.5321065, router39.2361154. These are NOT final
 production bytes or a complete budget. Excludes contract creation/initialization,
 JRM, configuration, migration, canary, inclusion surge and safety margin. No
-upload occurred. A400XLM total ceiling was proposed to the user, not yet approved.
+upload occurred. The user explicitly approved a400XLM TOTAL LP deployment and
+migration fee ceiling, conditional on release checks and fresh final-binary
+simulations fitting that ceiling. No spending has occurred under this approval.
+Public deployer balance at16:51UTC is245.6311139XLM (before minimum reserve),
+below even this preliminary upload estimate. Do not withdraw unrelated positions
+or exchange other assets to fund deployment without authorization.

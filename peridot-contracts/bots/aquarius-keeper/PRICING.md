@@ -1,5 +1,15 @@
 # LP pricing observer (not activated)
 
+September20 replacement development: user approved the depth-based method's
+implementation/review, not activation. `depth-pricing.mjs` now constructs a
+method-tagged unsigned30-minute candidate and plans publish/hold/invalidate
+decisions against supplied fresh router state. No transaction adapter is wired;
+the existing trade publisher remains unchanged. The continuous keyless observer
+records `depthCandidate` without signing/publication.74keeper tests and7existing
+native router-observation tests pass. Proposed observer releasev0.1.2 awaits its
+own security scan/deployment. See `DEPTH_PRICING_REVIEW.md` for exact bounds,
+test limitations and unresolved manipulation/liquidation/availability risks.
+
 September20 diagnostics follow-up: v0.1.1 adds a fixed, allowlisted failure
 stage/reason to the keyless depth observer. It distinguishes transport/timeouts,
 HTTP status classes, missing direct routes, stale/coherence guards, spread/impact
@@ -7,13 +17,27 @@ guards and unavailable Aquarius simulations without printing arbitrary errors,
 URLs, headers or subprocess stderr. Unknown failures stay generic and unavailable.
 Failed samples still invalidate overlapping windows; no retries/backfill, endpoint
 fallback, threshold changes or publishing were added.65 keeper tests pass.
-Release is pending scan/deployment; never move the old v0.1.0 branch/tag.
+Commit `2ca34e75e0450b990a55f13df62acbf87d05d756` passed Almanax scan
+`067e983b-110f-491c-b5e5-bc01b1ec6cf6` (zero findings, fetched). Immutable branch
+and tag `aquarius-price-observer-v0.1.1` point to that commit; never move either
+release's refs. App `ab177729-9cf6-43c7-8510-aaa70855c2e3` deployment
+`e54e9d7a-e82c-42f0-9681-3ece623328f5` is ACTIVE on the verified exact commit.
+Only the source branch changed; one512MiB Frankfurt instance, no credentials or
+publishing, existing signing keeper untouched. New run
+`0199a5c4-0d39-40d1-a4bf-9f26320a09a5` starts September20 16:50:47UTC.
+Its first sample at16:50:50 fails `depth/spread_guard`: the market quote spread
+exceeds the unchanged1% bound. This is a current market-data rejection, not a
+scheduler miss; do NOT use it to retroactively classify older unknown failures.
+No healthy30-minute window established for the new run at this checkpoint.
 
 Old cloud run a263fa6e... through16:40UTC:1509scheduled,1166collected/allagreeing,
 0missed,343collectionFailures,1046/1479healthy mature windows. It recovered but
 these aggregate counts do not identify historical failure causes. The new labels
 can diagnose only future failures. This remains research-only depth data, not an
 approved replacement for the trade-window lending oracle.
+An independent fresh read-only `price-main.mjs` run at16:49UTC still halted with
+`insufficient bucket volume`. User subsequently APPROVED developing/reviewing a
+depth-TWAP replacement policy, explicitly not Mainnet activation.
 
 The September18 user-approved design is implemented separately from the existing
 live keeper entrypoint. `node src/price-main.mjs` runs one **read-only** Mainnet

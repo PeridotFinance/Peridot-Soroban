@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {assessWindow,validateSample} from './price-shadow-soak.mjs';
 import {classifyFailure,safeFailure} from './price-observer-errors.mjs';
+import {depthCandidate} from './depth-pricing.mjs';
 export async function runObserver({collect,now,monotonic,sleep,emit,signal,runId}) {
   assert(typeof runId==='string'&&runId.length>0);
   const began=monotonic(),startedAt=now(),records=[];
@@ -47,6 +48,7 @@ export async function runObserver({collect,now,monotonic,sleep,emit,signal,runId
     }
     row.finishedAt=now();remember(row);
     row.window=assessWindow(records,now());
+    row.depthCandidate=depthCandidate(records,now(),startedAt);
     if(index>=30){stats.matureAttempts++;if(row.window.state==='healthy')stats.healthyWindows++;}
     // Stats in every heartbeat preserve aggregate evidence in a bounded log tail.
     // They are per-process only; never combine separate runs as continuous history.

@@ -3,6 +3,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 # Explicit read-only source allowlist; no live keeper or publisher entrypoint.
-COPY src/price-observer-main.mjs src/price-observer-runtime.mjs src/price-observer-errors.mjs src/price-shadow.mjs src/price-shadow-rpc.mjs src/price-depth-shadow.mjs src/price-shadow-soak.mjs src/price-diagnostics.mjs src/price-collector.mjs src/observation.mjs ./src/
+COPY src/price-observer-main.mjs src/price-observer-runtime.mjs src/price-observer-errors.mjs src/depth-pricing.mjs src/price-shadow.mjs src/price-shadow-rpc.mjs src/price-depth-shadow.mjs src/price-shadow-soak.mjs src/price-diagnostics.mjs src/price-collector.mjs src/observation.mjs ./src/
 USER node
 CMD ["node", "src/price-observer-main.mjs"]
