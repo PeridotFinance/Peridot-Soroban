@@ -1,6 +1,7 @@
 // Continuous research observer. No signer, storage of keys, or publishing path.
 import assert from 'node:assert/strict';
 import {assessWindow,validateSample} from './price-shadow-soak.mjs';
+import {classifyFailure,safeFailure} from './price-observer-errors.mjs';
 export async function runObserver({collect,now,monotonic,sleep,emit,signal,runId}) {
   assert(typeof runId==='string'&&runId.length>0);
   const began=monotonic(),startedAt=now(),records=[];
@@ -39,8 +40,9 @@ export async function runObserver({collect,now,monotonic,sleep,emit,signal,runId
         const comparison=validateSample(sample,now());
         row.state='ok';row.sample={...sample,comparison};stats.collected++;
         if(comparison.agrees)stats.agreeing++;
-      } catch {
+      } catch(error) {
         row.reason=signal.aborted?'shutdown':'collection_or_validation_failed';stats.collectionFailures++;
+        if(!signal.aborted)row.failure=safeFailure(error?.diagnostic)??classifyFailure(error,'validation');
       }
     }
     row.finishedAt=now();remember(row);

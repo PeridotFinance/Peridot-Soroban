@@ -34,7 +34,7 @@ separate final step after validated deployment, funding and canary checks.
    Actual SDEX liquidity/liveness and exposure review still apply; a same-pool spot
    price or parity alias is not a substitute. Set required-observation dependencies
    on all three settlement assets and do not retain yXLM parity symbol aliases.
-3. Record exact approved supply/borrow caps, rate curve, cash buffer, liquidation
+3. Record the approved uncapped supply/borrow policy, rate curve, cash buffer, liquidation
    parameters, reward routes/floors, keeper cadence and funded fee budget. The
    collateral-factor approval does not approve arbitrary exposure or upload fees.
 4. Verify admin authority and any applicable timelocks. No governance bypass.
@@ -66,7 +66,8 @@ separate final step after validated deployment, funding and canary checks.
    only through normal zero-liability/membership checks, never a force shortcut.
 5. Deploy and validate fresh controller/JRM/router, receipts and strategies;
    register only these three markets, zero PERI emissions, approved collateral
-   factors and bounded exposure. Bind each receipt and strategy in both directions
+   factors and the user-approved zero caps (unlimited supply and borrowing).
+   Small canary transactions do not bound total public exposure. Bind each receipt and strategy in both directions
    and enable the reviewed reward mode before receipt activation. Publish verified
    addresses with explicit group labels, never replace core addresses accidentally.
 6. Deposit only reconciled migration proceeds via each new receipt as deployer,
@@ -89,3 +90,26 @@ A future executor must journal public transaction hashes and confirmed deltas,
 explicit network/source/target IDs and bounds, never seeds or signed envelopes.
 Resume by querying any previously submitted hash before rebuilding a transaction.
 Preflight evidence expires as ledger state changes and must be refreshed at cutover.
+
+## September20 diagnosis and preliminary upload estimate
+
+Read-only preflight at16:44UTC (ledgers64527376–77) verifies all three strategy
+hashes remain `00a1e9097339cbd1ee194a7a7f938d8d72918a7c95f89520c23c5ea2d4b8162e`
+and their admin remains the deployer. XLM's range is[20,100]; its oracle is
+CAFJZQ...34DLN, max-pool divergence200bps, execution slippage100bps. The failed
+withdrawal trace reads the same Other(XLM) feed for both tokens (legacy parity
+alias). The 242708102raw yXLM liquidation quote returns236759670raw XLM,
+below the parity guard's floor237853939. The trace stops immediately after that
+quote; this agrees with the source's oracle-divergence rejection. Production
+WASM strips the panic text, so the trace itself only reports a VM trap.
+This is not evidence of missing assets or permission to widen the guard. A
+validated non-parity price/recovery plan is required before migration. Stable
+withdrawal previews still return4.8427816PYUSD and4.8449612USDC; nothing submitted.
+
+`node scripts/estimate_lp_upload_fees_mainnet.mjs` verifies the four validation
+WASM hashes and only simulates unsigned uploads. At ledger64527360 these total
+328.8256722XLM including nominal100-stroop base fees: receipt120.3278453,
+controller81.7296050, strategy87.5321065, router39.2361154. These are NOT final
+production bytes or a complete budget. Excludes contract creation/initialization,
+JRM, configuration, migration, canary, inclusion surge and safety margin. No
+upload occurred. A400XLM total ceiling was proposed to the user, not yet approved.

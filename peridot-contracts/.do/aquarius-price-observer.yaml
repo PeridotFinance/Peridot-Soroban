@@ -6,7 +6,7 @@ workers:
   - name: price-observer
     git:
       repo_clone_url: https://github.com/PeridotFinance/Peridot-Soroban.git
-      branch: aquarius-price-observer-v0.1.0
+      branch: aquarius-price-observer-v0.1.1
     source_dir: peridot-contracts/bots/aquarius-keeper
     dockerfile_path: peridot-contracts/bots/aquarius-keeper/Dockerfile.observer
     instance_count: 1

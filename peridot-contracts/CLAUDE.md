@@ -70,11 +70,20 @@ MarginController (leveraged trading, optional)
   failures over the first24h; this is not clean pricing availability. Latest
   legacy XLM migration withdrawal simulation fails; stable previews succeed.
   No Mainnet signing, keeper change or migration occurred in this work.
-  Code/tests3352477 pushed; Almanax refused the new scan with "subscription has
-  expired". No scan ID/findings, and no security clearance for this change set.
+  Code/tests3352477 pushed; after subscription renewal Almanax scan
+  8b7a25a9-09a5-4252-8fb5-ddfea67a261f completed over d54feb7..06a95e2;
+  findings fetched: zero. Operational/economic release gates remain.
   User explicitly rejected supply/borrow caps: target JSON now specifies0 for
   both in every market (unlimited, NOT disabled borrowing); not applied Mainnet.
   Tiny canary transactions do not limit total protocol exposure without caps.
+- September20 follow-up: live XLM strategy still00a1e909..., divergence200bps;
+  both oracle symbols resolve to XLM. Withdrawal's paired-asset quote falls below
+  the parity guard, consistent with the observed post-quote trap. Do not silently
+  widen guards. Both stable previews succeed; no Mainnet transaction sent.
+  Preliminary four-validation-WASM upload simulations total328.8256722XLM, NOT
+  a final deployment budget. See FRESH_STACK_MIGRATION.md. Keyless observer v0.1.1
+  diagnostics add safe failure categories without changing pricing or publication;
+  65 keeper tests pass, new release scan/deployment pending.
 - September19 user authorized a cloud read-only pricing observer after local
   standby/scheduling gaps. New continuous price-observer-main/runtime, dedicated
   Dockerfile.observer and separate .do/aquarius-price-observer.yaml: one Frankfurt

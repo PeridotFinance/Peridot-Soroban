@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {runObserver} from '../src/price-observer-runtime.mjs';
 import {SHADOW_POLICY} from '../src/price-depth-shadow.mjs';
+import {classifyFailure,collectorOutput,diagnosticError,safeFailure} from '../src/price-observer-errors.mjs';
 const start=1_800_000_000;
 const sample=seconds=>({publicationEligible:false,point:{policy:SHADOW_POLICY,timestamp:seconds,
   ledgerBefore:1000+(seconds-start),ledgerAfter:1001+(seconds-start),depth:[1000n,10000n].map(n=>({
@@ -61,4 +62,44 @@ test('entrypoint refuses publishing and credential injection before any network 
       assert.equal(result.kind,'observer_fatal');assert.equal(result.publicationEligible,false);return true;
     });
   }
+});
+test('failure labels distinguish transport, depth policy, and RPC guards without raw errors',()=>{
+  const cases=[
+    [Error('price data HTTP 429'),'depth','http_rate_limit'],
+    [Error('price data HTTP 503'),'depth','http_server_error'],
+    [{response:{status:401},message:'secret URL'},'aquarius','http_client_error'],
+    [{name:'TimeoutError',message:'secret URL'},'depth','transport_timeout'],
+    [Error('fetch failed'),'depth','transport_failure'],
+    [Error('shadow spread exceeds 1%'),'depth','spread_guard'],
+    [Error('depth impact exceeds 0.5%'),'depth','depth_impact_guard'],
+    [Error('stale/future ledger'),'depth','stale_ledger'],
+    [Error('one unambiguous direct route required'),'depth','missing_direct_route'],
+    [Error('estimate_swap unavailable/restoration required'),'aquarius','quote_unavailable'],
+    [Error('Horizon/RPC ledger mismatch'),'cross_check','ledger_coherence_guard'],
+    [Error('secret URL'),'cross_check','guard_failed'],
+  ];
+  for(const [error,stage,reason] of cases)assert.deepEqual(classifyFailure(error,stage),{stage,reason});
+  assert.equal(safeFailure({stage:'secret URL',reason:'guard_failed'}),null);
+  assert.equal(safeFailure({stage:'depth',reason:'secret URL'}),null);
+});
+test('child error envelopes are allowlisted, never interpreted as valid prices',()=>{
+  assert.throws(()=>collectorOutput(JSON.stringify({kind:'observer_collection_error',stage:'depth',
+    reason:'spread_guard',secret:'do not log'})),e=>{
+      assert.deepEqual(e.diagnostic,{stage:'depth',reason:'spread_guard'});
+      assert(!JSON.stringify(e).includes('do not log'));return true;
+    });
+  assert.throws(()=>collectorOutput('not JSON, secret'),e=>e.diagnostic.reason==='invalid_response');
+  assert.throws(()=>collectorOutput(JSON.stringify({kind:'observer_collection_error',stage:'secret',reason:'secret'})),
+    e=>e.diagnostic.reason==='process_failed');
+});
+test('categorized collection failures preserve failed slots and prevent a healthy window',async()=>{
+  let ms=0;const events=[],controller=new AbortController();
+  await runObserver({runId:'diagnostics',signal:controller.signal,now:()=>start+ms/1000,monotonic:()=>ms,
+    sleep:async n=>{ms+=n;},collect:async()=>{throw diagnosticError({stage:'depth',reason:'spread_guard'});},
+    emit:r=>{events.push(r);if(r.kind==='observer_sample'&&r.index===31)controller.abort();}});
+  const rows=events.filter(r=>r.kind==='observer_sample');
+  assert.equal(rows.length,32);
+  assert(rows.every(r=>r.state==='unavailable'&&r.failure.reason==='spread_guard'&&r.window.state!=='healthy'));
+  assert.equal(events.at(-1).stats.collectionFailures,32);
+  assert.equal(events.at(-1).stats.healthyWindows,0);
 });

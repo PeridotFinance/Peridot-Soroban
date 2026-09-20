@@ -49,6 +49,15 @@ async function view(id, method, args=[]) {
     ? {ledger:sim.latestLedger, value:S.scValToNative(sim.result.retval)}
     : {ledger:sim.latestLedger, error:sim.error ?? 'unavailable'};
 }
+async function codeHash(id) {
+  const key=S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({
+    contract:new S.Address(id).toScAddress(),key:S.xdr.ScVal.scvLedgerKeyContractInstance(),
+    durability:S.xdr.ContractDataDurability.persistent()}));
+  const result=await rpc.getLedgerEntries(key);
+  const executable=result.entries[0]?.val.contractData().val().instance().executable();
+  return {ledger:result.latestLedger,sha256:executable?.switch().name==='contractExecutableWasm'
+    ? executable.wasmHash().toString('hex'):null};
+}
 const latest = await rpc.getLatestLedger();
 const report = {time:new Date().toISOString(), network:{sequence:latest.sequence,protocolVersion:latest.protocolVersion,closeTime:latest.closeTime},
   limitation:'Rolling read-only simulations, not an atomic snapshot. Supply equality does not prove absence of historical/archived claims.',
@@ -69,7 +78,8 @@ for (const m of cfg.markets) {
   const strategy = r.views.get_boosted_vault.value;
   if (typeof strategy === 'string') {
     r.strategy.id = strategy;
-    for (const method of ['get_pool','get_receipt_vault','get_primary_reward_token'])
+    r.strategy.code = await codeHash(strategy);
+    for (const method of ['get_pool','get_receipt_vault','get_primary_reward_token','get_config','get_params','get_admin'])
       r.strategy[method] = await view(strategy,method);
     if (typeof r.strategy.get_pool.value === 'string') {
       r.strategy.tokens = await view(r.strategy.get_pool.value,'get_tokens');

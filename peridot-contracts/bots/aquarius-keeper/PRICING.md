@@ -1,5 +1,20 @@
 # LP pricing observer (not activated)
 
+September20 diagnostics follow-up: v0.1.1 adds a fixed, allowlisted failure
+stage/reason to the keyless depth observer. It distinguishes transport/timeouts,
+HTTP status classes, missing direct routes, stale/coherence guards, spread/impact
+guards and unavailable Aquarius simulations without printing arbitrary errors,
+URLs, headers or subprocess stderr. Unknown failures stay generic and unavailable.
+Failed samples still invalidate overlapping windows; no retries/backfill, endpoint
+fallback, threshold changes or publishing were added.65 keeper tests pass.
+Release is pending scan/deployment; never move the old v0.1.0 branch/tag.
+
+Old cloud run a263fa6e... through16:40UTC:1509scheduled,1166collected/allagreeing,
+0missed,343collectionFailures,1046/1479healthy mature windows. It recovered but
+these aggregate counts do not identify historical failure causes. The new labels
+can diagnose only future failures. This remains research-only depth data, not an
+approved replacement for the trade-window lending oracle.
+
 The September18 user-approved design is implemented separately from the existing
 live keeper entrypoint. `node src/price-main.mjs` runs one **read-only** Mainnet
 observation; `--loop` repeats every60seconds. It loads no secret in observation

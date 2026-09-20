@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {runObserver} from './price-observer-runtime.mjs';
+import {collectorOutput,diagnosticError} from './price-observer-errors.mjs';
 const controller=new AbortController();
 process.once('SIGINT',()=>controller.abort());
 process.once('SIGTERM',()=>controller.abort());
@@ -20,9 +21,20 @@ try {
     now:()=>Math.floor(Date.now()/1000),monotonic:()=>performance.now(),
     sleep:(ms,signal)=>sleep(ms,undefined,{signal}),emit:log,
     collect:async signal=>{
-      const {stdout}=await run(process.execPath,[fileURLToPath(new URL('./price-shadow.mjs',import.meta.url))],
+      let result;
+      try {
+      result=await run(process.execPath,[fileURLToPath(new URL('./price-shadow.mjs',import.meta.url))],
         {timeout:45000,killSignal:'SIGKILL',maxBuffer:65536,env:{PATH:process.env.PATH??''},signal});
-      return JSON.parse(stdout);
+      } catch(error) {
+        if(error?.killed)throw diagnosticError({stage:'subprocess',reason:'process_timeout'});
+        // An unsuccessful child may supply ONLY an allowlisted error envelope;
+        // never accept a sample from a failed process or print its output.
+        try {collectorOutput(error?.stdout);}catch(diagnostic){
+          if(diagnostic?.diagnostic)throw diagnostic;
+        }
+        throw diagnosticError({stage:'subprocess',reason:'process_failed'});
+      }
+      return collectorOutput(result.stdout);
     }});
 } catch {
   // Never include arbitrary SDK/subprocess/environment content in errors.

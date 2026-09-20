@@ -6,11 +6,12 @@ or keeper configuration changed during this work.
 
 Code/tests committed and pushed as
 `3352477e769340f7392d3b059c14e2fe74cd9bcf` on `leveraged-fix`.
-Almanax scan request on September20 16:26UTC was rejected with
-`subscription has expired`; no scan ID or findings were returned. This change set
-is NOT Almanax-cleared. After service renewal scan from
-`d54feb7bc9bee97eefa2ade64b239c5673f1ba56` through the code commit above (or the
-later documentation-only handoff commit). Do not substitute earlier scan results.
+The initial scan request failed because the subscription expired. After renewal,
+Almanax scan `8b7a25a9-09a5-4252-8fb5-ddfea67a261f` completed over
+`d54feb7bc9bee97eefa2ade64b239c5673f1ba56` through
+`06a95e25235e402c4c981c7fdccd32752cad4866`. Findings were fetched: **zero**.
+This covers the compiled-stack memory fixes, not subsequent observer changes,
+and does not resolve the operational/economic release gates below.
 
 ## Defects reproduced and targeted changes
 
