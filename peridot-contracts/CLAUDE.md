@@ -60,6 +60,21 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September21 development follow-up: depth policy v2 permits120s updates with
+  unchanged300s expiry; normal100bps/300s movement allowance is prorated (40bps
+  at120s), not multiplied by heartbeat frequency. Added admin-approved large-move
+  recovery: full fresh30m post-approval window, snapshot-bound approval, separate
+  admin completion after300s report progression plus fresh upstream/pool checks.
+  Cancellation/expiry keep pricing locked. Borrowing AND liquidation are blocked
+  until completion; repayments work. Reporter cannot approve/complete recovery.
+  All recovery mutations reject Public network; existing live contracts and both
+  cloud keepers remain unchanged. Router45tests, keeper94tests and8compiled LP
+  tests pass, including actual pool WASM with controlled local state. New router
+  validation hashcf6a9ec566350b74be7787eabab6c2cfd669c58d07762bdb188e79578f58ffd8
+  is isolated in target/depth-recovery-validation, NOT a production candidate.
+  Live Testnet replay, non-parity migration rehearsal, uncapped economic review,
+  final artifacts/fees and explicit Mainnet activation remain outstanding.
+
 - September20 follow-up adds a separate isolated-Testnet depth publisher (not
   deployed): exact network/code/policy/auth checks, fresh two-way quotes,0.1XLM
   fee cap, bounded validity, durable public-hash journal and no unknown-hash retry.

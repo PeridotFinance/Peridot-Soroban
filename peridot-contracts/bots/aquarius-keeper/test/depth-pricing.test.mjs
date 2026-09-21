@@ -60,7 +60,7 @@ test('fresh on-chain state controls replay, invalidation and minimum update inte
   assert.equal(plan(previous()).action,'publish_candidate');
   assert.equal(plan(previous({end:BigInt(candidate.end),start:BigInt(candidate.start)})).reason,'newer_window_required');
   assert.equal(plan(previous({valid:false,invalidated_at:BigInt(candidate.end)})).reason,'newer_window_required');
-  assert.equal(plan(previous({end:BigInt(candidate.end-299),start:BigInt(candidate.start-299)})).reason,'minimum_interval');
+  assert.equal(plan(previous({end:BigInt(candidate.end-119),start:BigInt(candidate.start-119)})).reason,'minimum_interval');
 });
 test('step violations are not rounded away, ramped synthetically or reset after invalidation',()=>{
   const ratio=BigInt(candidate.ratio)*98n/100n;
@@ -81,4 +81,31 @@ test('one failed sample requires a newly complete healthy window, not last-good 
   const rs=history(64);rs[30]={...rs[30],state:'unavailable'};
   assert.notEqual(build(rs.slice(0,61),rs[60].finishedAt).state,'candidate');
   assert.equal(build(rs,rs.at(-1).finishedAt).state,'candidate');
+});
+const approval=(overrides={})=>({admin:'fixture-admin',reference_ratio:BigInt(candidate.ratio),
+  proposed_at:BigInt(startedAt),expires_at:BigInt(startedAt+7200),recovered_end:0n,cancelled:false,...overrides});
+const recover=(r=approval(),p=previous({valid:false,end:BigInt(startedAt-300),start:BigInt(startedAt-2100),ratio:1_000_000_000_000n}))=>
+  planDepthPublication({records,now,startedAt,previous:p,recovery:r});
+test('admin approval permits a truthful post-approval recovery report, never synthetic ramping',()=>{
+  assert.equal(recover().action,'publish_recovery_candidate');
+  assert.equal(recover().candidate.ratio,candidate.ratio);
+  assert.equal(recover(approval({proposed_at:BigInt(candidate.start+1),expires_at:BigInt(candidate.start+7201)})).reason,'post_approval_window_required');
+  assert.equal(recover(approval({reference_ratio:950_000_000_000n})).reason,'recovery_reference_deviation');
+});
+test('malformed, cancelled, expired or bootstrap recovery approval cannot publish',()=>{
+  for(const r of [approval({reference_ratio:'980000000000'}),approval({expires_at:0n}),approval({recovered_end:BigInt(now+1)}),approval({proposed_at:BigInt(now+1)})])
+    assert.equal(recover(r).action,'halt');
+  assert.equal(recover(approval(),initial).action,'halt');
+  assert.equal(recover(approval({cancelled:true})).action,'hold');
+  assert.equal(recover(approval({proposed_at:BigInt(startedAt-7200),expires_at:BigInt(startedAt)})).reason,'recovery_cancelled_or_expired');
+});
+test('accepted recovery uses ordinary rate-checked reports and never proposes admin completion',()=>{
+  const p=previous(),r=approval({proposed_at:BigInt(startedAt-600),expires_at:BigInt(startedAt+6600),recovered_end:p.end});
+  assert.equal(recover(r,p).action,'publish_candidate');
+  assert.equal(recover({...r,reference_ratio:950_000_000_000n},p).action,'invalidate');
+});
+test('two-minute updates prorate the original five-minute price movement budget',()=>{
+  const price=BigInt(candidate.ratio),p=previous({end:BigInt(candidate.end-120),start:BigInt(candidate.start-120)});
+  assert.equal(plan({...p,ratio:price*1000n/1005n}).reason,'ratio_step');
+  assert.equal(plan({...p,ratio:price*10000n/10039n}).action,'publish_candidate');
 });

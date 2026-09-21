@@ -85,7 +85,7 @@ fn fixture() -> (
         probe_amount: 1_000_000_000,
         window_secs: 1800,
         max_age_secs: 300,
-        min_interval_secs: 300,
+        min_interval_secs: 120,
         max_deviation_bps: 100,
         max_step_bps: 100,
         min_ratio: SCALE * 80 / 100,
@@ -270,4 +270,209 @@ fn bounded_honest_recovery_requires_fresh_window_and_keeps_dependency_gating() {
         99_500_000_000_000
     );
     assert!(r.price_snapshot(&Asset::Stellar(q)).is_some());
+}
+
+#[test]
+fn two_minute_heartbeat_has_expiry_headroom_without_accelerating_step_budget() {
+    let (e, id, _, who, a, q, cfg) = fixture();
+    let r = PriceRouterClient::new(&e, &id);
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_500, &1_700_000_300);
+    e.ledger().set_timestamp(1_700_000_420);
+    let too_far = SCALE * 995 / 1000;
+    QuotesClient::new(&e, &cfg.pool).set(&too_far, &too_far);
+    assert!(r
+        .try_publish_observation(&who, &a, &too_far, &1_699_998_620, &1_700_000_420)
+        .is_err());
+    let limit = SCALE * 996 / 1000;
+    QuotesClient::new(&e, &cfg.pool).set(&limit, &limit);
+    r.publish_observation(&who, &a, &limit, &1_699_998_620, &1_700_000_420);
+    e.ledger().set_timestamp(1_700_000_600);
+    assert!(r.price_snapshot(&Asset::Stellar(q)).is_some());
+}
+
+#[test]
+fn governed_recovery_accepts_true_move_but_keeps_prices_unavailable_until_admin_finish() {
+    let (e, id, admin, who, a, q, cfg) = fixture();
+    let r = PriceRouterClient::new(&e, &id);
+    let moved = SCALE * 97 / 100;
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_500, &1_700_000_300);
+    r.begin_observation_recovery(&admin, &a, &moved);
+    let proposal = r.get_observation_recovery(&a).unwrap();
+    assert_eq!(proposal.recovered_end, 0);
+    QuotesClient::new(&e, &cfg.pool).set(&moved, &moved);
+    e.ledger().set_timestamp(1_700_002_100);
+    assert!(r
+        .try_publish_observation(&who, &a, &moved, &1_700_000_300, &1_700_002_100)
+        .is_err());
+    r.publish_recovery_observation(&who, &a, &moved, &1_700_000_300, &1_700_002_100);
+    assert!(r.get_observation(&a).unwrap().valid);
+    for token in [a.clone(), q.clone()] {
+        assert!(r.price_snapshot(&Asset::Stellar(token)).is_none());
+    }
+    assert!(r.try_finish_observation_recovery(&admin, &a).is_err());
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &moved, &1_700_000_300, &1_700_002_100)
+        .is_err());
+    e.ledger().set_timestamp(1_700_002_400);
+    r.publish_observation(&who, &a, &moved, &1_700_000_600, &1_700_002_400);
+    assert!(r.price_snapshot(&Asset::Stellar(q.clone())).is_none());
+    assert!(r.try_finish_observation_recovery(&who, &a).is_err());
+    r.finish_observation_recovery(&admin, &a);
+    assert!(r.get_observation_recovery(&a).is_none());
+    assert_eq!(
+        r.price_snapshot(&Asset::Stellar(a)).unwrap().0.price,
+        97_000_000_000_000
+    );
+    assert!(r.price_snapshot(&Asset::Stellar(q)).is_some());
+}
+
+#[test]
+fn recovery_guards_bind_window_reference_configuration_and_real_quotes() {
+    let (e, id, admin, who, a, q, cfg) = fixture();
+    let r = PriceRouterClient::new(&e, &id);
+    let moved = SCALE * 97 / 100;
+    assert!(r
+        .try_begin_observation_recovery(&admin, &a, &moved)
+        .is_err());
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_500, &1_700_000_300);
+    assert!(r
+        .try_begin_observation_recovery(&admin, &a, &(SCALE * 79 / 100))
+        .is_err());
+    r.begin_observation_recovery(&admin, &a, &moved);
+    e.ledger().set_timestamp(1_700_002_100);
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &moved, &1_700_000_299, &1_700_002_099)
+        .is_err());
+    // Pool still at parity: admin approval alone cannot manufacture agreement.
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &moved, &1_700_000_300, &1_700_002_100)
+        .is_err());
+    assert_eq!(r.get_observation_recovery(&a).unwrap().recovered_end, 0);
+    assert_eq!(r.get_observation(&a).unwrap().ratio, SCALE);
+    let outside = SCALE * 95 / 100;
+    QuotesClient::new(&e, &cfg.pool).set(&outside, &outside);
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &outside, &1_700_000_300, &1_700_002_100)
+        .is_err());
+    let mut changed = cfg;
+    changed.max_deviation_bps = 200;
+    r.set_source(&admin, &a, &PriceSource::Observed(changed));
+    e.ledger().set_timestamp(1_700_002_400);
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &moved, &1_700_000_600, &1_700_002_400)
+        .is_err());
+    assert!(r.price_snapshot(&Asset::Stellar(q)).is_none());
+}
+
+#[test]
+fn cancelled_or_expired_recovery_never_unpauses_and_replacement_requires_new_window() {
+    let (e, id, admin, who, a, q, cfg) = fixture();
+    let r = PriceRouterClient::new(&e, &id);
+    let moved = SCALE * 97 / 100;
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_500, &1_700_000_300);
+    r.begin_observation_recovery(&admin, &a, &moved);
+    r.cancel_observation_recovery(&admin, &a);
+    e.ledger().set_timestamp(1_700_002_100);
+    QuotesClient::new(&e, &cfg.pool).set(&moved, &moved);
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &moved, &1_700_000_300, &1_700_002_100)
+        .is_err());
+    assert!(r.try_finish_observation_recovery(&admin, &a).is_err());
+    r.begin_observation_recovery(&admin, &a, &moved);
+    e.ledger().set_timestamp(1_700_002_400);
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &moved, &1_700_000_600, &1_700_002_400)
+        .is_err());
+    e.ledger().set_timestamp(1_700_010_000);
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &moved, &1_700_008_200, &1_700_010_000)
+        .is_err());
+    assert!(r.get_observation_recovery(&a).is_some());
+    assert!(r.price_snapshot(&Asset::Stellar(q)).is_none());
+}
+
+#[test]
+fn recovery_finish_rechecks_freshness_and_quotes_instead_of_trusting_old_approval() {
+    let (e, id, admin, who, a, q, cfg) = fixture();
+    let r = PriceRouterClient::new(&e, &id);
+    let moved = SCALE * 97 / 100;
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_500, &1_700_000_300);
+    r.begin_observation_recovery(&admin, &a, &moved);
+    QuotesClient::new(&e, &cfg.pool).set(&moved, &moved);
+    e.ledger().set_timestamp(1_700_002_100);
+    r.publish_recovery_observation(&who, &a, &moved, &1_700_000_300, &1_700_002_100);
+    e.ledger().set_timestamp(1_700_002_400);
+    r.publish_observation(&who, &a, &moved, &1_700_000_600, &1_700_002_400);
+    QuotesClient::new(&e, &cfg.pool).set(&SCALE, &SCALE);
+    assert!(r.try_finish_observation_recovery(&admin, &a).is_err());
+    QuotesClient::new(&e, &cfg.pool).set(&moved, &moved);
+    e.ledger().set_timestamp(1_700_002_461);
+    assert!(r.try_finish_observation_recovery(&admin, &a).is_err());
+    assert!(r.price_snapshot(&Asset::Stellar(q)).is_none());
+}
+
+#[test]
+fn recovery_requires_exact_admin_and_reporter_authorization_and_rejects_mainnet() {
+    let (e, id, admin, who, a, _, cfg) = fixture();
+    let r = PriceRouterClient::new(&e, &id);
+    // SDK exact mock-auth contracts use C-addresses. Exercise the real two-step
+    // admin handoff before testing exact auth, rather than rewriting storage.
+    let contract_admin = Address::generate(&e);
+    r.set_admin(&admin, &contract_admin);
+    r.accept_admin();
+    let admin = contract_admin;
+    let moved = SCALE * 97 / 100;
+    r.publish_observation(&who, &a, &SCALE, &1_699_998_500, &1_700_000_300);
+    e.mock_auths(&[]);
+    assert!(r
+        .try_begin_observation_recovery(&admin, &a, &moved)
+        .is_err());
+    assert!(r.try_begin_observation_recovery(&who, &a, &moved).is_err());
+    e.mock_auths(&[MockAuth {
+        address: &admin,
+        invoke: &MockAuthInvoke {
+            contract: &id,
+            fn_name: "begin_observation_recovery",
+            args: (admin.clone(), a.clone(), moved).into_val(&e),
+            sub_invokes: &[],
+        },
+    }]);
+    r.begin_observation_recovery(&admin, &a, &moved);
+    QuotesClient::new(&e, &cfg.pool).set(&moved, &moved);
+    e.ledger().set_timestamp(1_700_002_100);
+    e.mock_auths(&[]);
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &moved, &1_700_000_300, &1_700_002_100)
+        .is_err());
+    e.mock_auths(&[MockAuth {
+        address: &who,
+        invoke: &MockAuthInvoke {
+            contract: &id,
+            fn_name: "publish_recovery_observation",
+            args: (
+                who.clone(),
+                a.clone(),
+                moved,
+                1_700_000_300u64,
+                1_700_002_100u64,
+            )
+                .into_val(&e),
+            sub_invokes: &[],
+        },
+    }]);
+    r.publish_recovery_observation(&who, &a, &moved, &1_700_000_300, &1_700_002_100);
+    e.mock_all_auths();
+    let public = e.crypto().sha256(&soroban_sdk::Bytes::from_slice(
+        &e,
+        b"Public Global Stellar Network ; September 2015",
+    ));
+    e.ledger().set_network_id(public.to_array());
+    assert!(r
+        .try_begin_observation_recovery(&admin, &a, &moved)
+        .is_err());
+    assert!(r.try_cancel_observation_recovery(&admin, &a).is_err());
+    assert!(r.try_finish_observation_recovery(&admin, &a).is_err());
+    assert!(r
+        .try_publish_recovery_observation(&who, &a, &moved, &1_700_000_300, &1_700_002_100)
+        .is_err());
 }

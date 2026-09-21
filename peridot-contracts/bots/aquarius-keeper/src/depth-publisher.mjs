@@ -1,6 +1,7 @@
 // Isolated Testnet replay only. The production observer never imports this file.
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
 import {Address,Asset,Contract,Networks,StrKey,TransactionBuilder,nativeToScVal,scValToNative,rpc,xdr} from '@stellar/stellar-sdk';
 import {planDepthPublication,DEPTH_PRICING_POLICY} from './depth-pricing.mjs';
 import {crossCheck} from './observation.mjs';
@@ -30,6 +31,7 @@ export function createDepthTransport({manifest,server,key,now}) {
   const m=validateDepthManifest(manifest),source=m.reporter;
   assert(key.publicKey()===source,'fixture signer mismatch');
   let floorLedger=0;
+  let verifiedConfig=null;
   async function latest() {
     const l=await server.getLatestLedger(),t=Number(l.closeTime),current=now();
     assert(Number.isSafeInteger(current)&&Number.isSafeInteger(t)&&t<=current&&current-t<=60,'stale RPC ledger');
@@ -42,7 +44,9 @@ export function createDepthTransport({manifest,server,key,now}) {
   }
   async function build(id,method,args=[],until=now()+30) {
     assert(Number.isSafeInteger(until)&&until>now(),'expired transaction');
-    return new TransactionBuilder(await server.getAccount(source),{networkPassphrase:Networks.TESTNET,fee:'100000'})
+    const account=await server.getAccount(source);
+    assert(account.accountId()===source,'RPC source account mismatch');
+    return new TransactionBuilder(account,{networkPassphrase:Networks.TESTNET,fee:'100000'})
       .addOperation(new Contract(id).call(method,...args)).setTimebounds(0,until).build();
   }
   async function read(id,method,args=[]) {
@@ -67,24 +71,32 @@ export function createDepthTransport({manifest,server,key,now}) {
       const sourceConfig=await read(m.router,'get_source',[addr(m.asset)]);
       const c=Array.isArray(sourceConfig)&&sourceConfig[0]==='Observed'?sourceConfig[1]:null;
       assert(c&&c.reporter===source&&c.pool===m.pool&&c.quote_to===m.quote&&c.in_idx===m.inIndex&&c.out_idx===1-m.inIndex
-        &&c.probe_amount===probe&&c.window_secs===1800n&&c.max_age_secs===300n&&c.min_interval_secs===300n
+        &&c.probe_amount===probe&&c.window_secs===1800n&&c.max_age_secs===300n&&c.min_interval_secs===120n
         &&c.max_deviation_bps===100&&c.max_step_bps===100&&c.min_ratio===DEPTH_PRICING_POLICY.minRatio
         &&c.max_ratio===DEPTH_PRICING_POLICY.maxRatio,'fixture observation policy mismatch');
+      verifiedConfig=c;
       await latest();
     },
     previous:()=>read(m.router,'get_observation',[addr(m.asset)]),
+    async recovery() {
+      const r=await read(m.router,'get_observation_recovery',[addr(m.asset)]);
+      // A changed source requires a NEW approval, never adapt the old approval.
+      if(r!==null&&r!==undefined)assert(isDeepStrictEqual(r.config,verifiedConfig),'recovery source changed');
+      return r??null;
+    },
     async quotes() {
       const arg=(v,type)=>nativeToScVal(v,{type});
       const quote=(i,j)=>read(m.pool,'estimate_swap',[arg(i,'u32'),arg(j,'u32'),arg(probe,'u128')]);
       return {probe,sell:await quote(m.inIndex,1-m.inIndex),buy:await quote(1-m.inIndex,m.inIndex)};
     },
     async prepare(method,candidate) {
-      assert(['publish_observation','invalidate_observation'].includes(method),'unexpected publication method');
+      assert(['publish_observation','publish_recovery_observation','invalidate_observation'].includes(method),'unexpected publication method');
       const args=[addr(source),addr(m.asset)];
-      if(method==='publish_observation')args.push(nativeToScVal(BigInt(candidate.ratio),{type:'u128'}),
+      const publishing=method!=='invalidate_observation';
+      if(publishing)args.push(nativeToScVal(BigInt(candidate.ratio),{type:'u128'}),
         nativeToScVal(BigInt(candidate.start),{type:'u64'}),nativeToScVal(BigInt(candidate.end),{type:'u64'}));
       // Inclusion is bounded by both report freshness and a thirty-second TTL.
-      const until=method==='publish_observation'?Math.min(now()+30,candidate.end+60):now()+30;
+      const until=publishing?Math.min(now()+30,candidate.end+60):now()+30;
       const tx=await build(m.router,method,args,until),sim=await server.simulateTransaction(tx);
       assert(rpc.Api.isSimulationSuccess(sim)&&!sim.restorePreamble&&sim.result,'publication simulation/restoration guard');
       ledger(sim.latestLedger);
@@ -135,16 +147,17 @@ export function createDepthPublisher({transport,journal,now,sleep,emit=()=>{}}) 
   }
   async function decision(input) {
     const previous=await transport.previous();
-    const plan=planDepthPublication({...input,now:now(),previous});
+    const recovery=await transport.recovery();
+    const plan=planDepthPublication({...input,now:now(),previous,recovery});
     assert(plan.action!=='halt','invalid on-chain observation state');
     if(plan.candidate.state==='candidate') {
       try {
         const q=await transport.quotes();crossCheck({ratio:BigInt(plan.candidate.ratio)},q.sell,q.buy,q.probe);
       } catch {
-        return {...plan,action:previous.valid?'invalidate':'hold',reason:'live_crosscheck_failed',previous};
+        return {...plan,action:previous.valid?'invalidate':'hold',reason:'live_crosscheck_failed',previous,recovery};
       }
     }
-    return {...plan,previous};
+    return {...plan,previous,recovery};
   }
   return {
     reconcile:exclusive(async()=>{await transport.verify();await reconcile();}),
@@ -152,12 +165,14 @@ export function createDepthPublisher({transport,journal,now,sleep,emit=()=>{}}) 
       await transport.verify();await reconcile();
       const plan=await decision(input);
       if(plan.action==='hold')return {action:'hold',reason:plan.reason};
-      const method=plan.action==='publish_candidate'?'publish_observation':'invalidate_observation';
+      const method=plan.action==='publish_candidate'?'publish_observation':
+        plan.action==='publish_recovery_candidate'?'publish_recovery_observation':'invalidate_observation';
       const prepared=await transport.prepare(method,plan.candidate);
       // No cached policy, observation or pool quote is sufficient for signing.
       await transport.verify();
       const fresh=await decision(input);
       if(fresh.action!==plan.action||canonical(fresh.previous)!==canonical(plan.previous)
+        ||canonical(fresh.recovery)!==canonical(plan.recovery)
         ||canonical(fresh.candidate)!==canonical(plan.candidate)||now()>=prepared.until)
         return {action:'hold',reason:'state_or_freshness_changed_before_signing'};
       await journal.intent(prepared.hash,method); // durable BEFORE any signature/send

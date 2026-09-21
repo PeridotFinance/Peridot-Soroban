@@ -24,11 +24,11 @@ function fixture() {
   const m={kind:'isolated-depth-price-replay-v1',network:Networks.TESTNET,reporter:key.publicKey(),
     router:contract(1),asset:contract(2),pool:contract(3),quote:Asset.native().contractId(Networks.TESTNET),
     routerWasmHash:'a'.repeat(64),poolWasmHash:'b'.repeat(64),inIndex:0};
-  const state={previous:{ratio:0n,start:0n,end:0n,invalidated_at:BigInt(start),valid:false},
+  const state={previous:{ratio:0n,start:0n,end:0n,invalidated_at:BigInt(start),valid:false},recovery:null,
     quotes:{probe:1_000_000_000n,sell:980_000_000n,buy:1_018_000_000n},sent:[],simulated:[],status:'SUCCESS',
     network:Networks.TESTNET,fee:'1000',ledger:1000,age:0,auth:'normal',code:true,restore:false,config:true};
   const cfg=()=>({reporter:m.reporter,pool:m.pool,quote_to:m.quote,in_idx:0,out_idx:1,probe_amount:1_000_000_000n,
-    window_secs:1800n,max_age_secs:300n,min_interval_secs:300n,max_deviation_bps:100,max_step_bps:100,
+    window_secs:1800n,max_age_secs:300n,min_interval_secs:120n,max_deviation_bps:100,max_step_bps:100,
     min_ratio:800_000_000_000n,max_ratio:1_050_000_000_000n});
   const server={
     getNetwork:async()=>({passphrase:state.network}),
@@ -48,8 +48,9 @@ function fixture() {
         case 'decimals':value=7;break;
         case 'get_source':value=['Observed',{...cfg(),...(state.config?{}:{max_step_bps:500})}];break;
         case 'get_observation':value=structuredClone(state.previous);break;
+        case 'get_observation_recovery':value=state.recovery?{config:cfg(),...structuredClone(state.recovery)}:null;break;
         case 'estimate_swap':value=scValToNative(call.args()[0])===0?state.quotes.sell:state.quotes.buy;break;
-        case 'publish_observation':case 'invalidate_observation': {
+        case 'publish_observation':case 'publish_recovery_observation':case 'invalidate_observation': {
           if(state.simulationError)return {error:'controlled simulation failure',latestLedger:state.ledger};
           const root=new xdr.SorobanAuthorizedInvocation({function:xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(call),subInvocations:[]});
           if(state.auth==='wrong_method')root.function().contractFn().functionName('transfer');
@@ -186,4 +187,38 @@ test('collector to signed SDK replay: outage invalidates, then requires thirty n
   assert(submissions.some(r=>r.method==='publish_observation'&&r.index>=66));
   assert(!submissions.some(r=>r.method==='publish_observation'&&r.index>=35&&r.index<66));
   assert.equal(f.state.previous.valid,true);assert.equal(f.journal.pending(),null);
+});
+function approveRecovery(f) {
+  const candidate=depthCandidate(f.records,f.now(),start);
+  f.state.previous={ratio:1_000_000_000_000n,start:BigInt(start-2100),end:BigInt(start-300),invalidated_at:BigInt(start),valid:false};
+  f.state.recovery={admin:contract(4),reference_ratio:BigInt(candidate.ratio),proposed_at:BigInt(start),expires_at:BigInt(start+7200),recovered_end:0n,cancelled:false};
+}
+test('approved recovery signs only the reporter method; keeper never signs admin recovery actions',async t=>{
+  const f=await withPublisher(t);approveRecovery(f);
+  const result=await f.publisher.cycle(f.input);
+  assert.equal(result.method,'publish_recovery_observation');assert.equal(f.state.sent.length,1);
+  const call=f.state.sent[0].operations[0].func.invokeContract();
+  assert.equal(call.functionName().toString(),'publish_recovery_observation');
+  const lines=(await readFile(f.path,'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(lines[0].method,'publish_recovery_observation');
+  for(const method of ['begin_observation_recovery','cancel_observation_recovery','finish_observation_recovery'])
+    await assert.rejects(f.transport.prepare(method,{}),/unexpected publication method/);
+});
+test('cancelled, changed, mismatched-policy or forged recovery state prevents signing',async t=>{
+  for(const mutation of [f=>{f.state.recovery.cancelled=true;},f=>{f.state.recovery.reference_ratio='bogus';},
+    f=>{f.state.recovery.config={};},f=>{f.state.onPrepare=()=>{f.state.recovery.reference_ratio-=1n;};}]) {
+    const f=await withPublisher(t);approveRecovery(f);mutation(f);
+    const outcome=await f.publisher.cycle(f.input).then(result=>({result}),error=>({error}));
+    if(outcome.result)assert.equal(outcome.result.action,'hold');
+    else assert(outcome.error instanceof Error);
+    assert.equal(f.state.sent.length,0);assert.equal(f.journal.pending(),null);
+  }
+});
+test('missing recovery getter and wrong RPC source fail closed before signature',async t=>{
+  const f=await withPublisher(t),original=f.server.simulateTransaction;
+  f.server.simulateTransaction=async tx=>tx.operations[0].func.invokeContract().functionName().toString()==='get_observation_recovery'
+    ?{error:'missing getter'}:original(tx);
+  await assert.rejects(f.publisher.cycle(f.input));assert.equal(f.state.sent.length,0);
+  const g=await withPublisher(t);g.server.getAccount=async()=>new Account(Keypair.random().publicKey(),'1');
+  await assert.rejects(g.publisher.cycle(g.input),/source account mismatch/);assert.equal(g.state.sent.length,0);
 });

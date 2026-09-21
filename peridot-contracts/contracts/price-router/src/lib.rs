@@ -30,7 +30,7 @@ use soroban_sdk::{
     Symbol, Val, Vec,
 };
 mod observation;
-pub use observation::{Observation, ObservationConfig};
+pub use observation::{Observation, ObservationConfig, ObservationRecovery};
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 
@@ -619,6 +619,45 @@ impl PriceRouter {
 
     pub fn get_observation(env: Env, asset: Address) -> Option<Observation> {
         observation::get(&env, &asset)
+    }
+
+    pub fn get_observation_recovery(env: Env, asset: Address) -> Option<ObservationRecovery> {
+        observation::recovery(&env, &asset)
+    }
+
+    /// Validation-only recovery; retains the pause until a separate admin finish.
+    pub fn begin_observation_recovery(
+        env: Env,
+        caller: Address,
+        asset: Address,
+        reference_ratio: u128,
+    ) {
+        Self::require_admin(&env, &caller);
+        observation::begin_recovery(&env, &caller, &asset, reference_ratio);
+    }
+
+    pub fn cancel_observation_recovery(env: Env, caller: Address, asset: Address) {
+        Self::require_admin(&env, &caller);
+        observation::cancel_recovery(&env, &asset);
+    }
+
+    pub fn finish_observation_recovery(env: Env, caller: Address, asset: Address) {
+        Self::require_admin(&env, &caller);
+        observation::finish_recovery(&env, &caller, &asset);
+    }
+
+    pub fn publish_recovery_observation(
+        env: Env,
+        caller: Address,
+        asset: Address,
+        ratio: u128,
+        start: u64,
+        end: u64,
+    ) {
+        env.storage()
+            .instance()
+            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+        observation::publish_recovery(&env, &caller, &asset, ratio, start, end);
     }
 
     pub fn set_required_observation(

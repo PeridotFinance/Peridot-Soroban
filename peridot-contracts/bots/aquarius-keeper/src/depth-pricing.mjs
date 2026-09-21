@@ -3,9 +3,9 @@
 import {createHash} from 'node:crypto';
 import {assessWindow} from './price-shadow-soak.mjs';
 import {near} from './observation.mjs';
-export const DEPTH_PRICING_POLICY=Object.freeze({id:'yxlm-depth-twap-candidate-v1',
-  windowSeconds:1800,minimumUpdateSeconds:300,reportMaxAgeSeconds:60,
-  onChainMaxAgeSeconds:300,maxStepBps:100n,minRatio:800000000000n,maxRatio:1050000000000n});
+export const DEPTH_PRICING_POLICY=Object.freeze({id:'yxlm-depth-twap-candidate-v2',
+  windowSeconds:1800,minimumUpdateSeconds:120,reportMaxAgeSeconds:60,
+  onChainMaxAgeSeconds:300,stepWindowSeconds:300,maxStepBps:100n,minRatio:800000000000n,maxRatio:1050000000000n});
 const hold=reason=>({state:'unavailable',reason,publicationEligible:false});
 export function depthCandidate(records,now,startedAt) {
   try {
@@ -36,7 +36,7 @@ export function depthCandidate(records,now,startedAt) {
 
 // A proposed action, not a submitted transaction. `previous` must be freshly read
 // from get_observation; never substitute the last locally proposed report.
-export function planDepthPublication({records,now,startedAt,previous}) {
+export function planDepthPublication({records,now,startedAt,previous,recovery=null}) {
   const candidate=depthCandidate(records,now,startedAt);
   const result=(action,reason)=>({action,reason,candidate,publicationEligible:false});
   if(!Number.isSafeInteger(now)||now<=0)return result('halt','invalid_process_clock');
@@ -48,14 +48,34 @@ export function planDepthPublication({records,now,startedAt,previous}) {
       ||previous.ratio<DEPTH_PRICING_POLICY.minRatio||previous.ratio>DEPTH_PRICING_POLICY.maxRatio)))
     return result('halt','invalid_chain_state');
   const reject=reason=>result(previous?.valid?'invalidate':'hold',reason);
+  if(recovery!==null) {
+    if(!recovery||previous.end===0n||typeof recovery.cancelled!=='boolean'||typeof recovery.admin!=='string'
+      ||['reference_ratio','proposed_at','expires_at','recovered_end'].some(k=>typeof recovery[k]!=='bigint'||recovery[k]<0n)
+      ||recovery.proposed_at>BigInt(now)||recovery.expires_at-recovery.proposed_at!==7200n
+      ||recovery.recovered_end>previous.end
+      ||(recovery.recovered_end>0n&&recovery.recovered_end<recovery.proposed_at+1800n)
+      ||recovery.reference_ratio<DEPTH_PRICING_POLICY.minRatio||recovery.reference_ratio>DEPTH_PRICING_POLICY.maxRatio)
+      return result('halt','invalid_recovery_state');
+    if(recovery.cancelled||BigInt(now)>recovery.expires_at)return reject('recovery_cancelled_or_expired');
+  }
   if(candidate.state!=='candidate')return reject(candidate.reason??'fresh_window_required');
   const end=BigInt(candidate.end),ratio=BigInt(candidate.ratio);
   if(now-candidate.end>DEPTH_PRICING_POLICY.reportMaxAgeSeconds)return reject('candidate_expired');
   if(previous&&(end<=previous.end||end<=previous.invalidated_at))return result('hold','newer_window_required');
+  if(recovery!==null) {
+    if(!near(ratio,recovery.reference_ratio,100n))return reject('recovery_reference_deviation');
+    if(recovery.recovered_end===0n) {
+      if(BigInt(candidate.start)<recovery.proposed_at)return reject('post_approval_window_required');
+      return result('publish_recovery_candidate','admin_approved_recovery_still_paused');
+    }
+  }
   if(previous?.end>0n){
     // Step violations invalidate even when too early to publish; do not silently
     // retain a live old observation through a newly detected large move.
-    if(!near(ratio,previous.ratio,DEPTH_PRICING_POLICY.maxStepBps))return reject('ratio_step');
+    const elapsed=end-previous.end;
+    const stepWindow=BigInt(DEPTH_PRICING_POLICY.stepWindowSeconds);
+    const stepBps=DEPTH_PRICING_POLICY.maxStepBps*(elapsed<stepWindow?elapsed:stepWindow)/stepWindow;
+    if(!near(ratio,previous.ratio,stepBps))return reject('ratio_step');
     if(end-previous.end<BigInt(DEPTH_PRICING_POLICY.minimumUpdateSeconds))return result('hold','minimum_interval');
   }
   return result('publish_candidate','review_and_live_crosscheck_required');

@@ -31,19 +31,24 @@ as `depthCandidate`, always with `publicationEligible:false`.
 `planDepthPublication` is a **pure proposal planner**, not a publisher. Freshly
 queried router state is mandatory; missing/malformed state halts (never interpreted
 as permission to bootstrap). A valid candidate can propose publication only after
-replay/invalidation, >=300-second update spacing, <=1% ratio step and <=60-second
+replay/invalidation, >=120-second update spacing, a prorated ratio step and <=60-second
 candidate age checks. Existing on-chain maximum age remains300seconds. Bad/newly
 unavailable data proposes invalidation if the stored observation is still valid;
 otherwise hold. A step violation also invalidates inside the update interval.
 Repeated invalidation cannot move the watermark when the report is already invalid.
 No synthetic intermediate reports or resetting history after a depeg.
+September21 policy v2 prorates100bps over300seconds, capped at100bps per update:
+40bps at120seconds. This avoids simply multiplying the old drift allowance by
+publishing more often; it is not a formal rolling-window manipulation bound.
 
 There is now a separate **isolated-Testnet-only transaction adapter**, described
 in `DEPTH_PUBLISHER_TESTNET.md`. It is not deployed and has not submitted a live
 Testnet transaction. Real SDK signing/assembly against controlled RPC responses
 is covered locally; this must not be described as a live network canary. The
-existing trade publisher, price-router production code, required-observation
-bindings and all Mainnet fences are unchanged. The keyless image still excludes
+existing trade publisher, live contracts, required-observation bindings and all
+Mainnet fences are unchanged. Router source now implements separately admin-
+approved recovery; all four recovery mutations reject Public network execution.
+The keyless image still excludes
 the signing adapter and its entrypoint. Cloud candidate generation authorizes
 neither Mainnet signing nor a policy change.
 
@@ -72,8 +77,8 @@ and publication/invalidation controller against controlled RPC: one failed sampl
 causes one invalidation and requires30new healthy minutes before recovery. It does
 not execute the Rust contract; the separate9native router-observation tests do.
 Two new native cases prove honest0.5% recovery works, but a genuine3% move remains
-blocked after invalidation and reapplying the same policy. This is a release
-blocker, not a request to relax guards or invent intermediate prices.
+blocked after invalidation and reapplying the same policy. September21 adds a
+separate governed path rather than relaxing that ordinary-publication guard.
 The full router suite passes39tests. All7explicit compiled LP validation tests
 were rerun successfully against the existing pinned validation WASMs and exact
 pool WASM. Their earlier limitations remain: controlled upstream/quotes/local
@@ -85,6 +90,16 @@ At17:58:16UTC the unchanged cloud v0.1.2 run0841699f had38/38collected/agreed,
 timestamp lag. This is short-run evidence, not a sustained availability claim.
 
 ## Economic and release conclusion
+
+September21 recovery review: the admin must approve a bounded reference, wait for
+a full new30-minute healthy window, then separately complete recovery after at
+least300seconds of report-end progression and fresh report/upstream/quote checks.
+Cancelled/expired/changed-configuration approvals stay locked; the reporter cannot
+finish. Borrowing AND liquidation pricing are unavailable until completion, while
+repayment works. An honest real3% move is covered natively; compiled full-stack
+tests cover the state machine at parity using actual pool code with controlled
+local state. Neither proves live non-parity migration or economic safety.
+See `DEPTH_PUBLISHER_TESTNET.md` for exact authority and operational restrictions.
 
 Keep borrowing activation blocked. This method avoids requiring traded volume in
 every bucket, but does not establish reliable availability or manipulation cost.

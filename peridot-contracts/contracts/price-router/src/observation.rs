@@ -1,9 +1,32 @@
 //! Reporter-attested SDEX windows. The contract verifies time, rate and actual
 //! two-way Aquarius quotes, NOT the off-chain SDEX history. Reporter trust remains.
 use crate::{try_mul_div, try_to_i128, PriceData, PriceRouter, PriceSource};
-use soroban_sdk::{contracttype, Address, Env, IntoVal, Map, Symbol, Vec};
+use soroban_sdk::{contractevent, contracttype, Address, Bytes, Env, IntoVal, Map, Symbol, Vec};
 
 pub const RATIO_SCALE: u128 = 1_000_000_000_000;
+pub const STEP_WINDOW_SECS: u64 = 300;
+pub const RECOVERY_LIFETIME_SECS: u64 = 7200;
+pub const RECOVERY_REVIEW_SECS: u64 = 300;
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ObservationRecovery {
+    pub admin: Address,
+    pub reference_ratio: u128,
+    pub proposed_at: u64,
+    pub expires_at: u64,
+    pub recovered_end: u64,
+    pub cancelled: bool,
+    pub config: ObservationConfig,
+}
+
+#[contractevent(topics = ["obs_recovery"])]
+pub struct RecoveryEvent {
+    pub asset: Address,
+    pub stage: Symbol,
+    pub ratio: u128,
+    pub timestamp: u64,
+}
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -38,6 +61,126 @@ enum Key {
     State(Address),
     Registry,
     Dependencies,
+    Recovery(Address),
+}
+
+fn recovery_network(env: &Env) {
+    let public = env.crypto().sha256(&Bytes::from_slice(
+        env,
+        b"Public Global Stellar Network ; September 2015",
+    ));
+    assert_ne!(
+        env.ledger().network_id(),
+        public.to_bytes(),
+        "recovery release gate"
+    );
+}
+
+pub fn recovery(env: &Env, asset: &Address) -> Option<ObservationRecovery> {
+    env.storage().instance().get(&Key::Recovery(asset.clone()))
+}
+
+pub fn begin_recovery(env: &Env, admin: &Address, asset: &Address, reference_ratio: u128) {
+    recovery_network(env);
+    let c = config(env, asset);
+    assert!(
+        reference_ratio >= c.min_ratio && reference_ratio <= c.max_ratio,
+        "recovery bounds"
+    );
+    let mut previous = get(env, asset).expect("observation state missing");
+    assert!(previous.end != 0, "recovery is not bootstrap");
+    let now = env.ledger().timestamp();
+    // Replacing an expired/cancelled proposal restarts the FULL observation window.
+    previous.valid = false;
+    previous.invalidated_at = now;
+    env.storage()
+        .instance()
+        .set(&Key::State(asset.clone()), &previous);
+    env.storage().instance().set(
+        &Key::Recovery(asset.clone()),
+        &ObservationRecovery {
+            admin: admin.clone(),
+            reference_ratio,
+            proposed_at: now,
+            expires_at: now.checked_add(RECOVERY_LIFETIME_SECS).unwrap(),
+            recovered_end: 0,
+            cancelled: false,
+            config: c,
+        },
+    );
+    RecoveryEvent {
+        asset: asset.clone(),
+        stage: Symbol::new(env, "proposed"),
+        ratio: reference_ratio,
+        timestamp: now,
+    }
+    .publish(env);
+}
+
+pub fn cancel_recovery(env: &Env, asset: &Address) {
+    recovery_network(env);
+    let mut r = recovery(env, asset).expect("no recovery");
+    r.cancelled = true;
+    // Retain a durable lock: cancellation/expiry must NEVER enable borrowing.
+    env.storage()
+        .instance()
+        .set(&Key::Recovery(asset.clone()), &r);
+    let mut value = get(env, asset).expect("observation state missing");
+    value.valid = false;
+    value.invalidated_at = env.ledger().timestamp();
+    env.storage()
+        .instance()
+        .set(&Key::State(asset.clone()), &value);
+    RecoveryEvent {
+        asset: asset.clone(),
+        stage: Symbol::new(env, "cancelled"),
+        ratio: r.reference_ratio,
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
+}
+
+fn active_recovery(env: &Env, asset: &Address, c: &ObservationConfig) -> ObservationRecovery {
+    let r = recovery(env, asset).expect("no recovery");
+    assert!(
+        !r.cancelled && env.ledger().timestamp() <= r.expires_at,
+        "recovery expired/cancelled"
+    );
+    assert_eq!(&r.config, c, "recovery configuration changed");
+    r
+}
+
+pub fn finish_recovery(env: &Env, admin: &Address, asset: &Address) {
+    recovery_network(env);
+    let c = config(env, asset);
+    let r = active_recovery(env, asset, &c);
+    assert_eq!(admin, &r.admin, "recovery approver changed");
+    let value = get(env, asset).expect("observation state missing");
+    assert!(
+        r.recovered_end > 0
+            && value.end >= r.recovered_end.checked_add(RECOVERY_REVIEW_SECS).unwrap(),
+        "recovery review incomplete"
+    );
+    assert!(
+        value.valid && env.ledger().timestamp().saturating_sub(value.end) <= 60,
+        "fresh recovery report required"
+    );
+    assert!(
+        near(value.ratio, r.reference_ratio, c.max_deviation_bps),
+        "recovery reference deviation"
+    );
+    price_unlocked(env, asset, &c).expect("recovery upstream unavailable");
+    check_quotes(env, &c, value.ratio);
+    env.storage()
+        .instance()
+        .remove(&Key::Recovery(asset.clone()));
+    RecoveryEvent {
+        asset: asset.clone(),
+        stage: Symbol::new(env, "completed"),
+        ratio: value.ratio,
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
 }
 
 fn config(env: &Env, asset: &Address) -> ObservationConfig {
@@ -146,6 +289,30 @@ fn near(a: u128, b: u128, bps: u32) -> bool {
 }
 
 pub fn publish(env: &Env, caller: &Address, asset: &Address, ratio: u128, start: u64, end: u64) {
+    publish_inner(env, caller, asset, ratio, start, end, false);
+}
+
+pub fn publish_recovery(
+    env: &Env,
+    caller: &Address,
+    asset: &Address,
+    ratio: u128,
+    start: u64,
+    end: u64,
+) {
+    recovery_network(env);
+    publish_inner(env, caller, asset, ratio, start, end, true);
+}
+
+fn publish_inner(
+    env: &Env,
+    caller: &Address,
+    asset: &Address,
+    ratio: u128,
+    start: u64,
+    end: u64,
+    recovering: bool,
+) {
     let c = config(env, asset);
     assert_eq!(*caller, c.reporter, "not reporter");
     caller.require_auth();
@@ -161,13 +328,64 @@ pub fn publish(env: &Env, caller: &Address, asset: &Address, ratio: u128, start:
         end > prev.invalidated_at && end > prev.end,
         "replayed window"
     );
-    if prev.end != 0 {
+    let pending = recovery(env, asset);
+    if recovering {
+        let mut r = active_recovery(env, asset, &c);
+        assert_eq!(r.recovered_end, 0, "recovery already published");
+        assert!(
+            start >= r.proposed_at,
+            "fresh post-approval window required"
+        );
+        assert!(
+            near(ratio, r.reference_ratio, c.max_deviation_bps),
+            "recovery reference deviation"
+        );
+        r.recovered_end = end;
+        env.storage()
+            .instance()
+            .set(&Key::Recovery(asset.clone()), &r);
+    } else if pending.is_some() {
+        let r = active_recovery(env, asset, &c);
+        assert!(r.recovered_end > 0, "recovery publication required");
+        assert!(
+            near(ratio, r.reference_ratio, c.max_deviation_bps),
+            "recovery reference deviation"
+        );
+    }
+    if prev.end != 0 && !recovering {
         assert!(
             end - prev.end >= c.min_interval_secs,
             "updates too frequent"
         );
-        assert!(near(ratio, prev.ratio, c.max_step_bps), "ratio step");
+        // Faster heartbeats must not multiply the permitted price drift. The
+        // old 1%/300s budget is pro-rated, capped at 1% even after long outages.
+        let elapsed = core::cmp::min(end - prev.end, STEP_WINDOW_SECS);
+        let step_bps = (u64::from(c.max_step_bps) * elapsed / STEP_WINDOW_SECS) as u32;
+        assert!(near(ratio, prev.ratio, step_bps), "ratio step");
     }
+    check_quotes(env, &c, ratio);
+    env.storage().instance().set(
+        &Key::State(asset.clone()),
+        &Observation {
+            ratio,
+            start,
+            end,
+            valid: true,
+            invalidated_at: prev.invalidated_at,
+        },
+    );
+    if recovering {
+        RecoveryEvent {
+            asset: asset.clone(),
+            stage: Symbol::new(env, "reported"),
+            ratio,
+            timestamp: now,
+        }
+        .publish(env);
+    }
+}
+
+fn check_quotes(env: &Env, c: &ObservationConfig, ratio: u128) {
     // Both directions must be executable and close to the independent window.
     // Never average a manipulated pool quote into the reported SDEX price.
     let sell: u128 = env.invoke_contract(
@@ -186,19 +404,16 @@ pub fn publish(env: &Env, caller: &Address, asset: &Address, ratio: u128, start:
         near(bid, ratio, c.max_deviation_bps) && near(ask, ratio, c.max_deviation_bps),
         "pool deviation"
     );
-    env.storage().instance().set(
-        &Key::State(asset.clone()),
-        &Observation {
-            ratio,
-            start,
-            end,
-            valid: true,
-            invalidated_at: prev.invalidated_at,
-        },
-    );
 }
 
 pub fn price(env: &Env, asset: &Address, c: &ObservationConfig) -> Option<PriceData> {
+    if recovery(env, asset).is_some() {
+        return None;
+    }
+    price_unlocked(env, asset, c)
+}
+
+fn price_unlocked(env: &Env, asset: &Address, c: &ObservationConfig) -> Option<PriceData> {
     let value = get(env, asset)?;
     let now = env.ledger().timestamp();
     if !value.valid || value.end > now || now - value.end > c.max_age_secs {

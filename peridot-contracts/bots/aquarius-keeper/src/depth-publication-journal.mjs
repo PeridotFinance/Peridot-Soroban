@@ -4,6 +4,7 @@ import {open,unlink} from 'node:fs/promises';
 import {dirname,isAbsolute} from 'node:path';
 import assert from 'node:assert/strict';
 const hashPattern=/^[a-f0-9]{64}$/;
+const methods=['publish_observation','publish_recovery_observation','invalidate_observation'];
 export async function openPublicationJournal(path,scope) {
   assert(isAbsolute(path)&&hashPattern.test(scope),'invalid journal configuration');
   const lock=await open(`${path}.lock`,'wx',0o600);
@@ -22,7 +23,7 @@ export async function openPublicationJournal(path,scope) {
       const r=JSON.parse(line);
       assert(r.scope===scope&&hashPattern.test(r.hash),'journal scope/hash mismatch');
       if(r.state==='intent') {
-        assert(!pending&&['publish_observation','invalidate_observation'].includes(r.method),'invalid journal intent');
+        assert(!pending&&methods.includes(r.method),'invalid journal intent');
         pending=r;
       } else {
         assert(['SUCCESS','FAILED'].includes(r.state)&&pending?.hash===r.hash,'invalid journal resolution');
@@ -43,7 +44,7 @@ export async function openPublicationJournal(path,scope) {
     pending:()=>pending?{...pending}:null,
     failed:()=>last?.state==='FAILED',
     async intent(hash,method) {
-      assert(!pending&&hashPattern.test(hash)&&['publish_observation','invalidate_observation'].includes(method),'invalid intent');
+      assert(!pending&&hashPattern.test(hash)&&methods.includes(method),'invalid intent');
       const record={scope,state:'intent',hash,method};
       // Reserve before IO: any partial/failed durable write poisons this process.
       pending=record;await append(record);

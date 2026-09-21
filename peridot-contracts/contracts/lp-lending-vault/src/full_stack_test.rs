@@ -258,6 +258,62 @@ fn compiled_full_stack_oracle_outage_repayment_and_liquidation_recovery() {
 }
 
 #[test]
+#[ignore = "compiled recovery router plus exact pool; controlled upstream/state, not Mainnet"]
+fn compiled_full_stack_governed_recovery_keeps_borrowing_paused_until_completion() {
+    let (f, router, reporter, paired) = compiled_fixture();
+    let r = PriceRouterClient::new(&f.env, &router);
+    f.reset();
+    f.r(1).borrow(&f.alice, &200_000);
+    let mut cfg = match r.get_source(&paired) {
+        PriceSource::Observed(c) => c,
+        _ => panic!("wrong fixture source"),
+    };
+    cfg.window_secs = 1800;
+    cfg.min_interval_secs = 120;
+    r.set_source(&f.admin, &paired, &PriceSource::Observed(cfg));
+    f.reset();
+    r.begin_observation_recovery(&f.admin, &paired, &1_000_000_000_000);
+    for i in [1, 2] {
+        f.reset();
+        assert!(f.r(i).try_borrow(&f.alice, &1).is_err());
+    }
+    f.reset();
+    f.r(1).repay(&f.alice, &100_000);
+    f.measure("governed recovery pending repayment");
+    f.env.ledger().with_mut(|l| l.timestamp = 101_800);
+    f.reset();
+    r.publish_recovery_observation(&reporter, &paired, &1_000_000_000_000, &100_000, &101_800);
+    f.measure("governed recovery exact pool publication");
+    assert!(r.get_observation(&paired).unwrap().valid);
+    for i in [1, 2] {
+        f.reset();
+        assert!(f.r(i).try_borrow(&f.alice, &1).is_err());
+    }
+    f.reset();
+    f.r(1).repay_max(&f.alice);
+    assert_eq!(f.r(1).get_user_borrow_balance(&f.alice), 0);
+    f.env.ledger().with_mut(|l| l.timestamp = 102_100);
+    f.reset();
+    r.publish_observation(&reporter, &paired, &1_000_000_000_000, &100_300, &102_100);
+    f.reset();
+    assert!(f.r(2).try_borrow(&f.alice, &1).is_err());
+    f.reset();
+    r.finish_observation_recovery(&f.admin, &paired);
+    f.measure("governed recovery admin completion");
+    for i in 0..3 {
+        f.reset();
+        AquariusLpVaultClient::new(&f.env, &f.strategies[i]).refresh_nav_root();
+        f.r(i).refresh_boosted_underlying();
+    }
+    f.reset();
+    f.r(2).borrow(&f.alice, &100_000);
+    f.measure("governed recovery resumed borrowing");
+    f.reset();
+    f.r(2).repay_max(&f.alice);
+    assert_eq!(f.r(2).get_user_borrow_balance(&f.alice), 0);
+}
+
+#[test]
 #[ignore = "explicit compiled stack; second loan must fit without increasing Mainnet memory limit"]
 fn compiled_full_stack_simultaneous_debts() {
     let (f, _, _, _) = compiled_fixture();
