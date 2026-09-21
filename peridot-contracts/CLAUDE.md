@@ -74,6 +74,10 @@ MarginController (leveraged trading, optional)
   is isolated in target/depth-recovery-validation, NOT a production candidate.
   Live Testnet replay, non-parity migration rehearsal, uncapped economic review,
   final artifacts/fees and explicit Mainnet activation remain outstanding.
+  Scoped code commit528d95c is pushed on leveraged-fix. Almanax scan
+  9cdc87ab-7891-482f-80e9-ba5ed20a3e09 over00bec2c..528d95c COMPLETE, zero findings
+  fetched. Workspace684unit+3doc pass (13intentional ignores); compiled tests are
+  additional. Router clippy passes with existing option_env_unwrap allowance.
 
 - September20 follow-up adds a separate isolated-Testnet depth publisher (not
   deployed): exact network/code/policy/auth checks, fresh two-way quotes,0.1XLM

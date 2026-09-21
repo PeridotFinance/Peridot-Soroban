@@ -169,6 +169,11 @@ resumed borrowing230/184,843,956/34,765,881. Full workspace regression passes;
 router clippy passes with the pre-existing `option_env_unwrap` lint allowance
 (an unqualified `-D warnings` fails that existing initialization macro).
 No new live Testnet deployment/signature, cloud change or Mainnet action occurred.
+Full workspace:684unit+3doc passed,13intentional ignores;8compiled tests above are
+additional. Scoped code commit `528d95c25ee6ab7b68f4b4fbbe77c87fa882377b` is pushed
+on leveraged-fix. Almanax scan `9cdc87ab-7891-482f-80e9-ba5ed20a3e09` over
+00bec2c..528d95c completed with zero findings fetched. Only result documentation
+changed afterward; this does not establish economic safety or authorize Mainnet.
 
 Still required: provision/review an isolated Testnet fixture and exercise actual
 publication, restart and on-chain post-state reconciliation; prove live cadence;
