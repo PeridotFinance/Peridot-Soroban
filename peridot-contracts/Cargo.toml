@@ -17,6 +17,7 @@ members = [
   "contracts/mocks/mock-token",
   "contracts/mocks/mock-lending-vault",
   "contracts/mocks/mock-aquarius-pool",
+  "contracts/mocks/mock-depth-fixture",
   "contracts/mocks/flash-loan-receiver",
 ]
 

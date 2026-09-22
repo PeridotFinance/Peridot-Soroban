@@ -60,6 +60,15 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September21 live Testnet follow-up: dedicated routerCDTUAUSK...P6KZ and controlled
+  mock pair deployed with new faucet-funded admin/reporter;8setup transactions
+  independently SUCCESS and code hashes verified. Live real collector attempt
+  had3failures/0missed/0publications; stopped cleanly.13:50UTC10000-unit direct
+  quote spread1.0585% exceeds unchanged1%guard (1000-unit0.6470%). No healthy
+  window was fabricated. Positive publication/restart/recovery still INCOMPLETE.
+  No Mainnet/cloud mutation or400XLM budget spending. See
+  bots/aquarius-keeper/DEPTH_LIVE_REHEARSAL.md for addresses/evidence/resume rules.
+
 - September21 development follow-up: depth policy v2 permits120s updates with
   unchanged300s expiry; normal100bps/300s movement allowance is prorated (40bps
   at120s), not multiplied by heartbeat frequency. Added admin-approved large-move

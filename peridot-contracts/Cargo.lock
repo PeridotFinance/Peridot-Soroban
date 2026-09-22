@@ -906,6 +906,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "mock-depth-fixture"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "mock-lending-vault"
 version = "0.1.0"
 dependencies = [
