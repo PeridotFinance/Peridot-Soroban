@@ -60,6 +60,15 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September22 continuation: Testnet-only rehearsal tooling9f0d485 committed/pushed
+  on leveraged-fix; Almanax ca75706b-5bf1-4961-9a3f-7e1994313518 COMPLETE with
+  zero findings fetched. Fresh2mock/94keeper tests pass.14:31UTC independent
+  Testnet audit verifies8setup successes/code hashes/no pending or published price.
+  Actual collector still fails spread_guard;14:32UTC10000-unit spread1.1540%
+  exceeds unchanged1%maximum. No new signing/live run/Mainnet/cloud changes.
+  Positive live publication/restart/recovery remains incomplete. See
+  bots/aquarius-keeper/DEPTH_LIVE_REHEARSAL.md; do not fabricate healthy history.
+
 - September21 live Testnet follow-up: dedicated routerCDTUAUSK...P6KZ and controlled
   mock pair deployed with new faucet-funded admin/reporter;8setup transactions
   independently SUCCESS and code hashes verified. Live real collector attempt

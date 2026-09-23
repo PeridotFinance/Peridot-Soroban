@@ -4,6 +4,21 @@ Status: fixture deployed and independently verified; **live positive publication
 lost-response restart and governed recovery remain incomplete**. Mainnet and both
 DigitalOcean workers are unchanged. No Mainnet fees or withdrawals occurred.
 
+September22 continuation: committed/pushed as `9f0d4852388c97c80c93a47e7fcb354c2083b2bd`
+on leveraged-fix. Fresh14:31UTC read-only audit again verifies all8setup successes,
+all3code hashes, empty observation/recovery and no pending transaction. Fresh2mock
+tests and94keeper tests pass. The live collector still rejects `depth/spread_guard`.
+At14:32UTC the1000-unit spread was0.6941% and10000-unit spread1.1540%, above the
+unchanged1% limit. No new live publisher run or transaction was started. These
+point-in-time checks do not establish continuous availability/unavailability.
+Current prices are also below the fixture's fixed0.966 quote; before a later
+healthy-data replay, explicitly configure/review its Testnet-only mock reference.
+Matching a mock quote is not independent real-market validation. No production
+guard or price was changed to force a pass.
+Almanax scan `ca75706b-5bf1-4961-9a3f-7e1994313518` overaf856a1..9f0d485 completed
+with zero findings fetched. Only result documentation changed after scanned code;
+this is not proof of live publication, economic safety or Mainnet readiness.
+
 ## Isolation and artifacts
 
 The runner is `scripts/depth-testnet-rehearsal.mjs` in this keeper package. It uses
