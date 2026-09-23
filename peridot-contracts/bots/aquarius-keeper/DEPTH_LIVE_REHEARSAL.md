@@ -43,6 +43,32 @@ Independent harvest/withdraw simulations do not prove sequential settlement,
 historical-liability reconciliation, or an exit under non-parity market conditions.
 No transaction or guard change was made on Mainnet.
 
+The clock/calibration change is committed/pushed as
+`e1d0ab3c3dc9d8e955fd7c940a482b5e5a4360a9` on leveraged-fix. Almanax scan
+`823f7a3b-48a7-42be-9138-3ed7081bd24d` completed with zero findings fetched.
+All8explicit compiled LP checks pass again against pinned validation artifacts
+and freshly downloaded exact Mainnet pool code12fca5a7...ee6. Controlled local
+state/dependencies remain: these are not production artifacts or live positions.
+
+### Optional bounded automatic new-process handoff
+
+While the first `run` is active, an operator may attach ONE supervisor:
+
+```sh
+CONFIRM_DEPTH_TESTNET=ISOLATED_DEPTH_REPLAY caffeinate -i \
+  node bots/aquarius-keeper/scripts/supervise-depth-testnet-replay.mjs
+```
+
+It pins this disposable fixture's network/accounts/addresses/code, takes its own
+exclusive lock and waits up to7500seconds for `response_lost` AND release of the
+first process's lock. It starts one NEW runner process, which independently
+reconciles the recorded hash before outage/recovery. It never imports history,
+retries a stopped/failed run, deletes another process's lock, resets a journal or
+signs itself. After successful completion it invokes the independent read-only
+audit. Unexpected state/config/pending setup hash, missing lost hash, clock
+regression or timeout stops it.99keeper tests include three supervisor regressions.
+Do not attach a manual second runner while this supervisor is active.
+
 ## September21–22 results
 
 Status: fixture deployed and independently verified; **live positive publication,
