@@ -1,4 +1,49 @@
-# Isolated Testnet depth rehearsal — September21,2026
+# Isolated Testnet depth rehearsal
+
+## September23 continuation (in progress)
+
+The genuine-data replay started16:30:44UTC, run
+`95f2890e-ace5-45ce-a9bf-8345f631baa5`. Completion is NOT yet established.
+Fresh Mainnet public samples pass the unchanged guards. Before starting, the
+explicit `calibrate` mode changed ONLY the unused Testnet quote stub to
+0.998888741990XLM/yXLM from a fresh validated public sample. Transaction
+`f49f557c805bf39614bb32c7d04b5b1b5198997284f0aab6ecfd82450f6727b8`
+succeeded at4831487. The mode requires fresh phase, no prior observation/recovery,
+the pinned disposable pool, independent fixture audit and venue agreement.
+This is mock setup, NOT an independently priced Testnet market; it never follows
+the market automatically during a run. No Mainnet or cloud configuration changed.
+
+The first calibration attempt stopped before signing because Testnet RPC returned
+a closed-ledger timestamp2seconds ahead of the local clock. The harness and
+Testnet-only reporter now wait at most5seconds for that actual timestamp and then
+recheck: future timestamps and ledgers older than60seconds still fail closed.
+They do not widen price freshness or alter collection cadence.96keeper tests pass,
+including no-wait, bounded wait, stalled/jumped clock and stale/future rejection.
+
+Read-only cloud history through16:27:13UTC contains4267attempts since September20:
+1249collected,1215agreeing,3018collection/validation failures,0missed slots and
+833healthy of4237overlapping mature windows. Failures classify as2686spread,
+331ratio and1generic depth guard. Last24hours:1086failures of1440attempts and
+203healthy windows; last2hours:120successful agreeing samples and healthy windows.
+The longest consecutive collection-failure streak is740minutes. Recent recovery
+does NOT establish sufficient availability or liquidation safety for uncapped
+lending. Cloud unsigned policy-v1 candidates are not interchangeable with this
+policy-v2 Testnet publisher. No old history seeds the fresh local window.
+
+Evidence: `/private/tmp/peridot-observer-{history,summary}-20260923.{log,json}`,
+`/private/tmp/peridot-depth-calibrate-retry-20260923.log`,
+`/private/tmp/peridot-depth-replay-20260923.log` and the ignored fixture journal.
+
+Mainnet migration remains unsigned:16:34UTC preflight (64579095–97) previews
+24.2152411XLM,4.8441242PYUSD and4.8463068USDC full exits. XLM harvest traps
+before external calls while last_harvest1790179728 plus3600second cooldown is
+still in the future (eligible17:08:48UTC). This matches the source's cooldown
+guard; recheck after expiry without disabling it. Stable harvest previews pass.
+Independent harvest/withdraw simulations do not prove sequential settlement,
+historical-liability reconciliation, or an exit under non-parity market conditions.
+No transaction or guard change was made on Mainnet.
+
+## September21–22 results
 
 Status: fixture deployed and independently verified; **live positive publication,
 lost-response restart and governed recovery remain incomplete**. Mainnet and both

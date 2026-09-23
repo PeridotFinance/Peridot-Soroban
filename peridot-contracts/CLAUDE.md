@@ -60,6 +60,15 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September23: genuine-data isolated Testnet rehearsal is in progress; see
+  `bots/aquarius-keeper/DEPTH_LIVE_REHEARSAL.md`. Explicit unused-mock calibration
+  succeeded at4831487; no Mainnet/cloud writes. Testnet-only publisher now waits
+  up to5seconds for a slightly ahead closed-ledger timestamp, then still rejects
+  future/stale ledgers.96keeper tests pass. Do not claim live restart/recovery
+  completion until journal and independent audit confirm it. Cloud last24h has
+  1086validation failures/1440attempts despite last2h healthy; no uncapped economic
+  clearance. Read-only migration preflight now includes last-harvest timestamp
+  for cooldown diagnosis.400XLM conditional ceiling remains unspent.
 - September22 continuation: Testnet-only rehearsal tooling9f0d485 committed/pushed
   on leveraged-fix; Almanax ca75706b-5bf1-4961-9a3f-7e1994313518 COMPLETE with
   zero findings fetched. Fresh2mock/94keeper tests pass.14:31UTC independent

@@ -79,7 +79,7 @@ for (const m of cfg.markets) {
   if (typeof strategy === 'string') {
     r.strategy.id = strategy;
     r.strategy.code = await codeHash(strategy);
-    for (const method of ['get_pool','get_receipt_vault','get_primary_reward_token','get_config','get_params','get_admin'])
+    for (const method of ['get_pool','get_receipt_vault','get_primary_reward_token','get_config','get_params','get_admin','get_last_harvest'])
       r.strategy[method] = await view(strategy,method);
     if (typeof r.strategy.get_pool.value === 'string') {
       r.strategy.tokens = await view(r.strategy.get_pool.value,'get_tokens');

@@ -5,6 +5,7 @@ import {isDeepStrictEqual} from 'node:util';
 import {Address,Asset,Contract,Networks,StrKey,TransactionBuilder,nativeToScVal,scValToNative,rpc,xdr} from '@stellar/stellar-sdk';
 import {planDepthPublication,DEPTH_PRICING_POLICY} from './depth-pricing.mjs';
 import {crossCheck} from './observation.mjs';
+import {requireClosedLedger} from './depth-ledger-clock.mjs';
 const addr=a=>new Address(a).toScVal();
 const canonical=value=>JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v);
 const probe=1_000_000_000n;
@@ -33,8 +34,8 @@ export function createDepthTransport({manifest,server,key,now}) {
   let floorLedger=0;
   let verifiedConfig=null;
   async function latest() {
-    const l=await server.getLatestLedger(),t=Number(l.closeTime),current=now();
-    assert(Number.isSafeInteger(current)&&Number.isSafeInteger(t)&&t<=current&&current-t<=60,'stale RPC ledger');
+    const l=await server.getLatestLedger();
+    await requireClosedLedger(l,now);
     assert(Number.isSafeInteger(l.sequence)&&l.sequence>=floorLedger,'RPC ledger went backwards');
     floorLedger=l.sequence;return l;
   }

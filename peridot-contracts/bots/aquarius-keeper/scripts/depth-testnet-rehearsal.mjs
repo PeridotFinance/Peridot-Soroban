@@ -1,5 +1,5 @@
 // Explicit isolated TESTNET harness. No Mainnet secrets, writes or cloud changes.
-// Modes: deploy, run, audit. Public evidence is resumable; unknown hashes stop.
+// Modes: deploy, calibrate, run, audit. Public evidence is resumable; unknown hashes stop.
 import assert from 'node:assert/strict';
 import {execFileSync,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
@@ -11,6 +11,8 @@ import {setTimeout as sleep} from 'node:timers/promises';
 import * as S from '@stellar/stellar-sdk';
 import {runObserver} from '../src/price-observer-runtime.mjs';
 import {collectorOutput,diagnosticError} from '../src/price-observer-errors.mjs';
+import {validateSample} from '../src/price-shadow-soak.mjs';
+import {requireClosedLedger} from '../src/depth-ledger-clock.mjs';
 import {createDepthTransport,createDepthPublisher,depthJournalScope,validateDepthManifest} from '../src/depth-publisher.mjs';
 import {openPublicationJournal} from '../src/depth-publication-journal.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
@@ -21,7 +23,7 @@ const reporter='GCQFJG4JVPI4SLBOAHMQOO27JGA6II6NZWCVUY2B5L6TKLFDPON3HND7';
 const network=S.Networks.TESTNET,quote=S.Asset.native().contractId(network);
 const server=new S.rpc.Server(rpcUrl,{timeout:10000});
 const mode=process.argv[2];
-assert(['deploy','run','audit'].includes(mode)&&process.argv.length===3,'choose deploy/run/audit');
+assert(['deploy','calibrate','run','audit'].includes(mode)&&process.argv.length===3,'choose deploy/calibrate/run/audit');
 if(mode!=='audit')assert.equal(process.env.CONFIRM_DEPTH_TESTNET,'ISOLATED_DEPTH_REPLAY');
 const encode=v=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?x.toString():x);
 const now=()=>Math.floor(Date.now()/1000);
@@ -51,7 +53,7 @@ function key(role) {
 async function checkNetwork() {
   assert.equal((await server.getNetwork()).passphrase,network);
   const l=await server.getLatestLedger();
-  assert(Number(l.closeTime)<=now()&&now()-Number(l.closeTime)<=60,'stale Testnet RPC');
+  await requireClosedLedger(l,now);
   return l;
 }
 async function build(op,role='admin') {
@@ -168,6 +170,25 @@ async function audit() {
   }
   emit({kind:'independent_audit',phase:state.phase,transactions,postState:await prices(),pending:state.pending});
 }
+async function calibrate() {
+  // Explicit disposable-fixture setup only, before ANY published history/debt.
+  // Never automatically follow the market during a replay to hide divergence.
+  assert.equal(state.phase,'fresh');
+  assert.equal(state.ids.pool,'CD7RGNVHWDDPVWLRTGGTK72WFJYYLW6H55MMTEICYMODZFHP23VLESWL');
+  await audit();
+  const before=await prices();
+  assert.equal(before.observed.end,0n);assert.equal(before.recovery,null);
+  const result=await promisify(execFile)(process.execPath,[resolve(root,'bots/aquarius-keeper/src/price-shadow.mjs')],
+    {timeout:45000,killSignal:'SIGKILL',maxBuffer:65536,env:{PATH:process.env.PATH??''}});
+  const sample=collectorOutput(result.stdout),comparison=validateSample(sample,now());
+  assert(comparison.agrees,'real venue disagreement');
+  const ratio=BigInt(comparison.referenceRatio);
+  emit({kind:'testnet_mock_calibration',ratio,sample,limitation:'controlled quote stub, NOT independent market validation'});
+  await write(`calibrate:${sample.point.timestamp}`,state.ids.pool,'set_ratio',{ratio});
+  const sold=await read(state.ids.pool,'estimate_swap',{in_idx:0,out_idx:1,in_amount:1_000_000_000n});
+  assert.equal(sold,ratio/1000n);
+  emit({kind:'testnet_mock_calibrated',ratio,sold});
+}
 async function runReplay() {
   assert(['fresh','response_lost','recovery'].includes(state.phase),'completed/unknown run requires operator review');
   const m=manifest();
@@ -250,6 +271,7 @@ try {
   if(mode!=='audit')lock=openSync(resolve(dir,'harness.lock'),'wx',0o600);
   await checkNetwork();
   if(mode==='deploy'){await reconcile();await setup();}
+  if(mode==='calibrate'){await reconcile();await calibrate();}
   if(mode==='run'){await reconcile();await runReplay();}
   if(mode==='audit')await audit();
 }catch(error){emit({kind:'rehearsal_fatal',category:error instanceof assert.AssertionError?'assertion':'operation',
