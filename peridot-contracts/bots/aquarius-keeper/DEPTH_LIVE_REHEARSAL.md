@@ -69,6 +69,17 @@ audit. Unexpected state/config/pending setup hash, missing lost hash, clock
 regression or timeout stops it.99keeper tests include three supervisor regressions.
 Do not attach a manual second runner while this supervisor is active.
 
+Supervisor commit `b563f0315de973e5b41bce6cffd9bdb950c3b774` was pushed and
+independently remote-verified. Almanax scan
+`adb1f587-5abf-4489-8214-4eaee1885262` completed with zero findings fetched.
+The supervisor attached16:43:50UTC to the existing first runner; log
+`/private/tmp/peridot-depth-supervisor-20260923.log`. It is RUNNING, not a
+completed rehearsal. First process has14/14healthy samples at16:43:48UTC,
+0missed/0failures; no publication yet. New-process recovery and the final audit
+will appear in the supervisor log, also appended to the fixture public evidence.
+Latest full workspace:686unit+3doc pass,13intentional skips. No code changed
+after the two scans; subsequent edits record evidence only.
+
 ## September21–22 results
 
 Status: fixture deployed and independently verified; **live positive publication,

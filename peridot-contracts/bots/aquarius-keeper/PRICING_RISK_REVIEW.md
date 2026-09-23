@@ -5,6 +5,18 @@ reference remains read-only research, not a replacement for the implemented
 trade-window observer. No risk parameters, reporter, keeper or contracts changed.
 This is a scoped engineering review, not an independent economic audit.
 
+September23 availability refresh: the always-on cloud run has0missed scheduler
+slots but3018collection/validation failures in4267attempts through16:27:13UTC.
+The latest24hours contain1086failures in1440attempts; the last2hours are healthy.
+The longest consecutive failure streak is740minutes. Failure categories are now
+available (spread/ratio guards), so laptop sleep does not explain these recorded
+rejections. These are sample/window metrics, not observations of real loans or
+realized losses. They fail to establish dependable liquidation pricing under the
+uncapped target. See `DEPTH_LIVE_REHEARSAL.md` for exact counts and limitations.
+The isolated Testnet positive/restart/recovery rehearsal is now running, not yet
+complete. Reviewed governed recovery addresses resumption mechanics only; it
+does not prevent losses while liquidations are price-gated during an outage.
+
 September20 decision update: the user explicitly rejected supply and borrow
 caps. Target raw caps are now zero (unlimited), not yet applied. References below
 to approving numeric caps are superseded by this decision; they are not permission

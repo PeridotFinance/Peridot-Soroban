@@ -69,6 +69,17 @@ MarginController (leveraged trading, optional)
   1086validation failures/1440attempts despite last2h healthy; no uncapped economic
   clearance. Read-only migration preflight now includes last-harvest timestamp
   for cooldown diagnosis.400XLM conditional ceiling remains unspent.
+  Runtime clock/calibration commit e1d0ab3 passed Almanax823f7a3b... with0findings;
+  supervisor commit b563f03 passed Almanaxadb1f587... with0findings. Supervisor attaches to ONE
+  active first process, waits for the recorded response loss/lock release and
+  launches one new process for reconciliation/recovery, then audits; no retries.
+  Keeper99tests and all8compiled checks pass; full workspace686unit+3doc pass,
+  13intentional skips. Compiled artifacts remain validation-only; local state is
+  controlled, not a live migration/restoration rehearsal.
+  Supervisor attached16:43:50UTC and remains running; logs
+  /private/tmp/peridot-depth-{replay,supervisor}-20260923.log. First run started
+  16:30:44UTC;14/14healthy samples/0missed/0failure, no publication yet. Do not
+  start another runner or assume completion: inspect saved phase/journal/audit.
 - September22 continuation: Testnet-only rehearsal tooling9f0d485 committed/pushed
   on leveraged-fix; Almanax ca75706b-5bf1-4961-9a3f-7e1994313518 COMPLETE with
   zero findings fetched. Fresh2mock/94keeper tests pass.14:31UTC independent
