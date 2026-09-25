@@ -60,6 +60,14 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September25: September23 published successfully (c6f60bda...41d6,4831865), but
+  the restarted process stopped BEFORE recorded inclusion. No recovery completed;
+  no runner remained. New bounded same-hash confirmation polling and explicit
+  Testnet-only `recover-expired` mode have104passing keeper tests. This mode
+  verifies the exact included transaction/report and records timelyRestartVerified
+  false, never resets history or claims a timely restart. New healthy window,
+  guarded recovery and final audit remain required. Scan/live run pending; see
+  `bots/aquarius-keeper/DEPTH_LIVE_REHEARSAL.md`. No Rust/Mainnet/cloud changes.
 - September23: genuine-data isolated Testnet rehearsal is in progress; see
   `bots/aquarius-keeper/DEPTH_LIVE_REHEARSAL.md`. Explicit unused-mock calibration
   succeeded at4831487; no Mainnet/cloud writes. Testnet-only publisher now waits

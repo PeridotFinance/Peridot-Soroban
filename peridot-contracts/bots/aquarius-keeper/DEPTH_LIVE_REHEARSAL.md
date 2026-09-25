@@ -1,5 +1,47 @@
 # Isolated Testnet depth rehearsal
 
+## September25 restart repair and explicit expired recovery
+
+The September23 first process collected32/32valid agreeing samples, no failures
+or missed slots, and published a genuine30-minute window. Transaction
+`c6f60bdab87005a5f5399da4e5f80fb2187af2c39980d945361bfa9b59ef41d6`
+is independently confirmed SUCCESS at4831865,17:01:52UTC. The supervisor's new
+process had already failed an assertion at17:01:51.734UTC. This supports an
+inclusion/ingestion race; the original log did not preserve the exact assertion.
+It did NOT complete restart verification or recovery. No processes/locks remained
+on September25. The retained observation was expired and dependent pricing absent.
+
+The Testnet publisher now polls ONLY the recorded hash for at most20reads with
+1second waits, and stops initiating reads after30seconds elapsed (an in-flight
+RPC request remains subject to its own timeout). It never resends, rebuilds or
+switches hashes. Timeout keeps the intent and stops the process; FAILED resolves
+as failure and blocks further work. RPC errors/hash mismatches still stop safely.
+Regressions cover reopened durable journal/delayed SUCCESS, delayed FAILED,
+permanent NOT_FOUND, RPC/hash errors and elapsed-time bounds.104keeper tests pass.
+
+An explicit `recover-expired` mode is separate from the normal timely-restart
+test. It verifies the exact successful envelope/hash/reporter/router/method/args
+against the retained observation, Testnet network, absent recovery, expired report
+and unavailable dependent price. It records `timelyRestartVerified:false`, then
+invalidates and starts governed recovery without altering history, mock quote,
+pricing guards or policy. A NEW real30-minute window and subsequent report
+progression/admin finish remain mandatory. Ordinary `run` still refuses to claim
+a timely restart from an expired report. Fixed diagnostic stage labels preserve
+failure location without logging raw SDK/key errors. Completion now audits itself.
+
+After review, from peridot-contracts (only one runner):
+
+```sh
+CONFIRM_DEPTH_TESTNET=ISOLATED_DEPTH_REPLAY caffeinate -i \
+  node bots/aquarius-keeper/scripts/depth-testnet-rehearsal.mjs recover-expired
+```
+
+As of implementation, no resumed transaction yet. Read-only exact-envelope
+verification passes on the confirmed transaction. Fresh17:46UTC actual collector
+passes unchanged guards at0.997773697119XLM/yXLM; that is one point, not a window.
+Current scoped scan and live recovery results must be recorded before claiming
+completion. Mainnet/cloud unchanged;400XLM ceiling untouched.
+
 ## September23 continuation (in progress)
 
 The genuine-data replay started16:30:44UTC, run

@@ -1,5 +1,5 @@
 // Explicit isolated TESTNET harness. No Mainnet secrets, writes or cloud changes.
-// Modes: deploy, calibrate, run, audit. Public evidence is resumable; unknown hashes stop.
+// Modes: deploy, calibrate, run, recover-expired, audit. Unknown hashes stop.
 import assert from 'node:assert/strict';
 import {execFileSync,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
@@ -13,6 +13,7 @@ import {runObserver} from '../src/price-observer-runtime.mjs';
 import {collectorOutput,diagnosticError} from '../src/price-observer-errors.mjs';
 import {validateSample} from '../src/price-shadow-soak.mjs';
 import {requireClosedLedger} from '../src/depth-ledger-clock.mjs';
+import {verifyReplayResume} from '../src/depth-replay-resume.mjs';
 import {createDepthTransport,createDepthPublisher,depthJournalScope,validateDepthManifest} from '../src/depth-publisher.mjs';
 import {openPublicationJournal} from '../src/depth-publication-journal.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
@@ -23,10 +24,11 @@ const reporter='GCQFJG4JVPI4SLBOAHMQOO27JGA6II6NZWCVUY2B5L6TKLFDPON3HND7';
 const network=S.Networks.TESTNET,quote=S.Asset.native().contractId(network);
 const server=new S.rpc.Server(rpcUrl,{timeout:10000});
 const mode=process.argv[2];
-assert(['deploy','calibrate','run','audit'].includes(mode)&&process.argv.length===3,'choose deploy/calibrate/run/audit');
+assert(['deploy','calibrate','run','recover-expired','audit'].includes(mode)&&process.argv.length===3,'choose deploy/calibrate/run/recover-expired/audit');
 if(mode!=='audit')assert.equal(process.env.CONFIRM_DEPTH_TESTNET,'ISOLATED_DEPTH_REPLAY');
 const encode=v=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?x.toString():x);
 const now=()=>Math.floor(Date.now()/1000);
+let stage='startup'; // Fixed labels only; never log raw SDK/key/transport errors.
 mkdirSync(dir,{recursive:true});
 const statePath=resolve(dir,'state.json');
 const state=existsSync(statePath)?JSON.parse(readFileSync(statePath,'utf8')):
@@ -191,32 +193,41 @@ async function calibrate() {
 }
 async function runReplay() {
   assert(['fresh','response_lost','recovery'].includes(state.phase),'completed/unknown run requires operator review');
+  if(mode==='recover-expired')assert.equal(state.phase,'response_lost','expired recovery requires recorded response loss');
   const m=manifest();
   const journal=await openPublicationJournal(resolve(dir,'publisher.jsonl'),depthJournalScope(m));
   let publisher,dropResponse=state.phase==='fresh',count=0;
-  const transport=createDepthTransport({manifest:m,server,key:key('reporter'),now});
   // Fault injection only at the response boundary. Real server receives the tx
   // once; the publisher sees a lost response and must reconcile its public hash.
   const actualSend=server.sendTransaction.bind(server);
   server.sendTransaction=async tx=>{const r=await actualSend(tx);if(dropResponse){dropResponse=false;throw Error('controlled response loss');}return r;};
-  const makePublisher=()=>createDepthPublisher({transport,journal,now,sleep,emit});
   const run=promisify(execFile),started=now();
   try {
-    publisher=makePublisher();await publisher.reconcile();
+    stage='reporter_load';
+    const transport=createDepthTransport({manifest:m,server,key:key('reporter'),now});
+    publisher=createDepthPublisher({transport,journal,now,sleep,emit});
+    stage='publication_reconciliation';await publisher.reconcile();
     if(state.phase==='response_lost') {
       assert.equal(journal.pending(),null);
       const transaction=await server.getTransaction(state.lostHash);
-      assert.equal(transaction.status,'SUCCESS');
-      const good=await prices();assert(good.dependent,'first publication expired before restart verification');
-      emit({kind:'response_loss_reconciled_after_process_restart',hash:state.lostHash,postState:good});
+      stage='resume_report_verification';
+      const good=await prices();
+      const verified=verifyReplayResume({transaction,hash:state.lostHash,manifest:m,post:good,now:now(),
+        allowExpired:mode==='recover-expired'});
+      emit({kind:verified.expired?'expired_publication_reconciled':'response_loss_reconciled_after_process_restart',
+        hash:state.lostHash,postState:good,...verified});
+      state.timelyRestartVerified=verified.timelyRestartVerified;save();
       // Deliberately unavailable collector input exercises actual invalidation.
+      stage='outage_invalidation';
       await publisher.cycle({records:[],startedAt:now()});
       const outage=await prices();assert.equal(outage.dependent,null);assert.equal(outage.observed.valid,false);
+      stage='begin_recovery';
       await write('begin_recovery',state.ids.router,'begin_observation_recovery',
         {caller:admin,asset:state.ids.asset,reference_ratio:good.observed.ratio});
       state.phase='recovery';save();emit({kind:'outage_and_restart',postState:await prices(),freshWindowRequired:true});
     }
     while(now()-started<7200) {
+      stage=state.phase==='recovery'?'recovery_collection':'initial_collection';
       const controller=new AbortController();
       const stop=()=>controller.abort();process.once('SIGINT',stop);process.once('SIGTERM',stop);
       try {
@@ -249,6 +260,7 @@ async function runReplay() {
             const post=await prices();emit({kind:'live_depth_poststate',...post});
             if(state.phase==='recovery'&&post.recovery?.recovered_end>0n&&post.observed.end>=post.recovery.recovered_end+300n) {
               assert.equal(post.dependent,null,'recovery must stay locked');
+              stage='finish_recovery';
               await write('finish_recovery',state.ids.router,'finish_observation_recovery',{caller:admin,asset:state.ids.asset});
               const final=await prices();assert(final.dependent,'completed recovery must resume pricing');
               state.phase='complete';save();emit({kind:'live_recovery_complete',...final});controller.abort();
@@ -269,11 +281,14 @@ async function runReplay() {
 let lock;
 try {
   if(mode!=='audit')lock=openSync(resolve(dir,'harness.lock'),'wx',0o600);
-  await checkNetwork();
+  stage='network_check';await checkNetwork();stage=mode;
   if(mode==='deploy'){await reconcile();await setup();}
   if(mode==='calibrate'){await reconcile();await calibrate();}
-  if(mode==='run'){await reconcile();await runReplay();}
+  if(mode==='run'||mode==='recover-expired'){
+    await reconcile();await runReplay();
+    if(state.phase==='complete'){stage='completion_audit';await audit();}
+  }
   if(mode==='audit')await audit();
-}catch(error){emit({kind:'rehearsal_fatal',category:error instanceof assert.AssertionError?'assertion':'operation',
+}catch(error){emit({kind:'rehearsal_fatal',stage,category:error instanceof assert.AssertionError?'assertion':'operation',
   instruction:'Inspect public state/pending hashes; do not resubmit uncertain transactions.'});process.exitCode=1;}
 finally{if(lock!==undefined){closeSync(lock);unlinkSync(resolve(dir,'harness.lock'));}}

@@ -142,6 +142,47 @@ test('NOT_FOUND stays unresolved after timeout/restart; FAILED remains blocked f
     assert.equal(status==='NOT_FOUND',f.journal.pending()!==null);
   }
 });
+test('durable new-process journal polls delayed inclusion by the exact hash without re-sending',async t=>{
+  const f=await withPublisher(t);f.state.sendError=true;
+  await assert.rejects(f.publisher.cycle(f.input));
+  const hash=f.journal.pending().hash;
+  await f.journal.close();
+  const reopened=await openPublicationJournal(f.path,depthJournalScope(f.m));
+  t.after(()=>reopened.close());
+  let calls=0,waits=0;
+  f.server.getTransaction=async requested=>{
+    assert.equal(requested,hash);calls++;
+    return {txHash:requested,status:calls<3?'NOT_FOUND':'SUCCESS',ledger:1001};
+  };
+  const restarted=createDepthPublisher({transport:f.transport,journal:reopened,now:f.now,
+    sleep:async ms=>{assert.equal(ms,1000);waits++;}});
+  await restarted.reconcile();
+  assert.equal(calls,3);assert.equal(waits,2);assert.equal(reopened.pending(),null);
+  assert.equal(f.state.sent.length,1);
+  await restarted.reconcile();assert.equal(calls,3);
+  await reopened.close();
+});
+test('confirmation polling is bounded and poisons timeout, mismatch and RPC error without another send',async t=>{
+  for(const mode of ['timeout','mismatch','rpc_error','failed']) {
+    const f=await withPublisher(t);f.state.sendError=true;
+    await assert.rejects(f.publisher.cycle(f.input));
+    const hash=f.journal.pending().hash;let calls=0,waits=0;
+    f.server.getTransaction=async requested=>{
+      assert.equal(requested,hash);calls++;
+      if(mode==='rpc_error')throw Error('private transport details');
+      return {txHash:mode==='mismatch'?'0'.repeat(64):hash,
+        status:mode==='failed'&&calls===3?'FAILED':'NOT_FOUND',ledger:1001};
+    };
+    const restarted=createDepthPublisher({transport:f.transport,journal:f.journal,now:f.now,
+      sleep:async()=>{waits++;}});
+    await assert.rejects(restarted.reconcile());
+    assert.equal(calls,mode==='timeout'?20:mode==='failed'?3:1);
+    assert.equal(waits,mode==='timeout'?19:mode==='failed'?2:0);
+    assert.equal(f.journal.pending()!==null,mode!=='failed');
+    await assert.rejects(restarted.reconcile(),/stopped/);
+    assert.equal(f.state.sent.length,1);
+  }
+});
 test('journal exclusive lock, durable restart, scope mismatch and truncation guards',async t=>{
   const f=await withPublisher(t),scope=depthJournalScope(f.m);
   await assert.rejects(openPublicationJournal(f.path,scope),/EEXIST/);
@@ -151,6 +192,17 @@ test('journal exclusive lock, durable restart, scope mismatch and truncation gua
   assert.equal(reopened.pending().hash,'d'.repeat(64));await reopened.close();
   await appendFile(f.path,'{"state":');
   await assert.rejects(openPublicationJournal(f.path,scope),/partial/);
+});
+test('slow confirmation reads stop at the elapsed-time bound with intent intact',async t=>{
+  const f=await withPublisher(t);f.state.sendError=true;
+  await assert.rejects(f.publisher.cycle(f.input));
+  let elapsed=0,calls=0;
+  f.server.getTransaction=async hash=>{elapsed+=10_000;calls++;return {txHash:hash,status:'NOT_FOUND'};};
+  const restarted=createDepthPublisher({transport:f.transport,journal:f.journal,now:f.now,
+    monotonic:()=>elapsed,sleep:async ms=>{elapsed+=ms;}});
+  await assert.rejects(restarted.reconcile(),/unresolved/);
+  assert.equal(calls,3);assert.equal(elapsed,32_000);
+  assert(f.journal.pending());assert.equal(f.state.sent.length,1);
 });
 test('journal failure before send prevents broadcast; concurrent cycles are forbidden',async t=>{
   const f=await withPublisher(t);await f.journal.close();

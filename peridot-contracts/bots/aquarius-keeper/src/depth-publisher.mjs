@@ -131,17 +131,31 @@ export function createDepthTransport({manifest,server,key,now}) {
 
 // All calls serialized by caller + exclusive journal lock. Reconciliation never
 // resends an envelope, treats NOT_FOUND as terminal, or authorizes another hash.
-export function createDepthPublisher({transport,journal,now,sleep,emit=()=>{}}) {
+export function createDepthPublisher({transport,journal,now,sleep,emit=()=>{},monotonic=()=>performance.now()}) {
   let busy=false,poisoned=false;
   const exclusive=fn=>async(...args)=>{
     assert(!busy&&!poisoned,'publisher stopped or concurrent cycle');busy=true;
     try {return await fn(...args);}catch(error){poisoned=true;throw error;}finally{busy=false;}
   };
+  async function confirmation(hash) {
+    // A restarted process may beat ledger inclusion/RPC ingestion. Poll only
+    // the durable hash, with bounded attempts/time; never rebuild or rebroadcast.
+    const deadline=monotonic()+30_000;
+    for(let attempt=0;attempt<20;attempt++) {
+      const result=await transport.status(hash);
+      if(result.status!=='NOT_FOUND')return result;
+      if(attempt===0)emit({kind:'depth_confirmation_pending',hash,network:'testnet'});
+      if(attempt===19||monotonic()>=deadline)break;
+      await sleep(1000);
+      if(monotonic()>=deadline)break;
+    }
+    emit({kind:'depth_confirmation_unresolved',hash,network:'testnet'});
+    throw Error('unresolved transaction: manual hash reconciliation required');
+  }
   async function reconcile() {
     assert(!journal.failed(),'failed transaction requires operator review');
     const pending=journal.pending();if(!pending)return;
-    const result=await transport.status(pending.hash);
-    assert(result.status!=='NOT_FOUND','unresolved transaction: manual hash reconciliation required');
+    const result=await confirmation(pending.hash);
     await journal.resolve(pending.hash,result.status);
     assert(result.status==='SUCCESS','failed transaction requires operator review');
     emit({kind:'depth_reconciled',hash:pending.hash,ledger:result.ledger,network:'testnet'});
@@ -179,17 +193,11 @@ export function createDepthPublisher({transport,journal,now,sleep,emit=()=>{}}) 
       await journal.intent(prepared.hash,method); // durable BEFORE any signature/send
       await prepared.send();
       emit({kind:'depth_submitted',method,hash:prepared.hash,network:'testnet'});
-      for(let i=0;i<20;i++) {
-        const result=await transport.status(prepared.hash);
-        if(result.status!=='NOT_FOUND') {
-          await journal.resolve(prepared.hash,result.status);
-          assert(result.status==='SUCCESS','publication failed');
-          emit({kind:'depth_confirmed',method,hash:prepared.hash,ledger:result.ledger,network:'testnet'});
-          return {action:'confirmed',method,hash:prepared.hash};
-        }
-        await sleep(1000);
-      }
-      throw Error('publication unresolved: reconcile journal hash before restart');
+      const result=await confirmation(prepared.hash);
+      await journal.resolve(prepared.hash,result.status);
+      assert(result.status==='SUCCESS','publication failed');
+      emit({kind:'depth_confirmed',method,hash:prepared.hash,ledger:result.ledger,network:'testnet'});
+      return {action:'confirmed',method,hash:prepared.hash};
     })
   };
 }
