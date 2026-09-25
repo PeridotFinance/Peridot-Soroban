@@ -60,6 +60,21 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September25 18:14UTC: original recovery process disappeared after16samples;
+  independently reconciled12successful transactions/no pending hashes, archived
+  stale locks without deleting journal. Now explicit KeepAlivefalse local one-shot
+  launchd job gui/501/com.peridot.depth-recovery-20260925, same scanned8578949code.
+  Fresh window, no approval reset; log /private/tmp/peridot-depth-recovery-service-
+  20260925.log. NOT complete. Unload job after checking final audit/failure.
+  Fresh unsigned18:10Mainnetpreview: XLM/USDCexits pass, PYUSDexitFAILS and all3
+  harvestsFAIL later than cooldown. No execution or guard change; diagnosis pending.
+- September25 18:08UTC update:8578949 pushed/remote-verified;104keeper tests pass;
+  Almanaxbb4df603... COMPLETE0findings. Dedicated Testnet expired recovery is
+  RUNNING, not complete: old hash reconciled without resend, invalidation/admin
+  begin confirmed,16/16fresh samples pass. Log
+  /private/tmp/peridot-depth-recovery-20260925.log. Completion self-audits; never
+  start duplicate runner/reset journal. Original timely-restart remains unproven.
+  No Mainnet/cloud change,400XLM spending or Treasury action.
 - September25: September23 published successfully (c6f60bda...41d6,4831865), but
   the restarted process stopped BEFORE recorded inclusion. No recovery completed;
   no runner remained. New bounded same-hash confirmation polling and explicit

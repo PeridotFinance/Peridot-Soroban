@@ -4,6 +4,14 @@ September 18, 2026. The user approved moving the small canary positions, not
 executing an unvalidated release. This supersedes the old supply-only migration
 proposal in `MIGRATION.md` for this rollout. **No migration has been executed.**
 
+September25 18:10UTC unsigned refresh supersedes prior successful previews:
+XLMfull exit24.2567754XLM andUSDC4.8462838USDC simulate; PYUSDfull exitFAILS.
+All three harvests now trap after swap estimates in later processing, not the
+September23 entrypoint cooldown. Cause remains undiagnosed. Deployer owns all
+reported live shares and reported debts are0; historical liabilities still need
+reconciliation. No signing/execution or protections changed. Evidence:
+`/private/tmp/peridot-lp-migration-preview-20260925.json`. Migration remains blocked.
+
 September23 refresh (unsigned): at16:34UTC all three exits simulate successfully:
 24.2152411XLM,4.8441242PYUSD and4.8463068USDC. XLM market reference is near parity
 again; this does not validate the previously failing non-parity exit or fix its

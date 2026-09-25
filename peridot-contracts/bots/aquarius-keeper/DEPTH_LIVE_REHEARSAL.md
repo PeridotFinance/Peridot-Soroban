@@ -1,5 +1,50 @@
 # Isolated Testnet depth rehearsal
 
+## September25 live recovery status
+
+18:14UTC update: the first recovery process stopped without a shutdown record
+after16good samples (last18:07:45). No process remained; cause unknown. Independent
+audit18:11:58 confirmed all12transactions SUCCESS, no unresolved journal/fixture
+hash, unchanged recovery and unavailable price. Stale empty locks were archived
+(not the journal) only after that reconciliation. A detached-shell attempt did not
+survive. A temporary `launchctl submit` job was removed cleanly after1sample/no
+transactions because it did not explicitly disable restart.
+
+The same scanned runtime is now a one-shot user launchd job:
+`gui/501/com.peridot.depth-recovery-20260925`, with explicit RunAtLoad=true,
+KeepAlive=false (verified OnDemand=true), configured in ignored
+`target/depth-testnet-replay/com.peridot.depth-recovery-20260925.plist`.
+It starts a NEW30-minute window; no history, approval, guard or price was reset.
+Log `/private/tmp/peridot-depth-recovery-service-20260925.log`. Existing recovery
+approval expires19:52:42UTC. Completion/failure must be checked, not assumed.
+Afterward unload with `launchctl bootout gui/501/com.peridot.depth-recovery-20260925`.
+Do not run another copy while active. Laptop lid closure/network loss can still
+interrupt collection; the job only prevents idle sleep and terminal-lifetime loss.
+
+Runtime commit `85789496eb498f1c8cb53ca0a02d551ea4e1aef6` is pushed and
+remote-verified on leveraged-fix.104keeper tests pass; Almanax scan
+`bb4df603-e6f1-4c86-b6d8-2d3575196965` COMPLETE with zero findings fetched.
+No runtime changes after that scan.
+
+The resumed Testnet process reconciled the original publication without resending
+and recorded `timelyRestartVerified:false`. Invalidation
+`d6badccfde92eda145a2a96e50447b665e4048b24a11bd43521c221ab0a959ec`
+and admin begin-recovery
+`a4669185724f674b7c18ef7bd4e21ec35fb877d9e4114ee2b1ba499f91c7ae7d`
+confirmed. New observer run `7bf25542-c2a1-4e38-807a-9c22c5fa281d` began
+17:52:43UTC. At18:07:45UTC16/16samples pass,0misses/0failures, still warming.
+Pricing remains unavailable while recovery is pending. Completion is NOT yet
+established. Log `/private/tmp/peridot-depth-recovery-20260925.log`; the runner
+audits on completion. Do not start a second runner or reset the journal.
+
+Read-only cloud refresh through17:51:13UTC:7231attempts,3989collected,
+3955agreeing,3242failures,0missed,3361healthy overlapping windows. Latest24h:
+1216/1440samples collected/agreed,224failures (220spread,3Aquarius guard,
+1depth transport),1004healthy windows, longest failure streak77minutes. Latest2h:
+120/120successful agreeing samples and healthy windows. Improvement does not
+establish liquidation availability or uncapped economic safety. Existing observer
+deployment/configuration remains unchanged; no Mainnet fees or funds moved.
+
 ## September25 restart repair and explicit expired recovery
 
 The September23 first process collected32/32valid agreeing samples, no failures
