@@ -74,7 +74,15 @@ MarginController (leveraged trading, optional)
   separate from5XLM funding; conditional400XLM migration ceiling untouched.
   Keeper fee-reserve pre-signing checks, <1XLM spendable warnings, decoded
   submission errors and expiry guards have119passing tests locally. New keeper
-  code is NOT deployed or Almanax-scanned: Almanax tools/keyenv unavailable.
+  code254a919 is NOT deployed. September26 Almanax scan
+  885fa306-a710-4eea-9cca-b19ce9176d22 (b344702..254a919) completed with one LOW
+  finding fe287b61-56f1-4208-bc41-50dbe5c837c7 about buying liabilities.
+  Reviewed as false positive: Stellar CAP-0003 and stellar-core
+  TransactionUtils.cpp/getAvailableBalance subtract reserve and SELLING
+  liabilities only; buying liabilities constrain receiving capacity instead.
+  Keep current calculation. User-authorized release review dismissed this
+  finding with protocol/Core evidence on September26; the scan originally
+  reported one LOW, not zero findings. See Agents.md for source links/evidence.
   Production remains single-worker aquarius-keeper-v0.4.1. This repair does not
   clear the separately gated new LP lending/oracle rollout. See Agents.md.
 - September26 19:47UTC: separate Testnet reporter now RUNNING on DO context
@@ -82,8 +90,9 @@ MarginController (leveraged trading, optional)
   Only dedicated Testnet reporter key transferred; admin/Mainnet keys stay local.
   Remote persistent journal is canonical; do NOT rerun local completed fixture
   or overwrite live journal.106tests pass; runtime remains scanned8578949,
-  new deployment package270e6b6 pushed/verified but NOT newly Almanax-scanned
-  (connection/keyenv unavailable). Initial Testnet invalidation82ee8048...d57b
+  new deployment package270e6b6 pushed/verified; September26 Almanax scan
+  4b4bd14d-493f-4450-9da5-418ee8945a3d (6f124e3..270e6b6) completed with0findings.
+  Initial Testnet invalidation82ee8048...d57b
   confirmed4885692; new healthy30m window/publication pending. See
   `bots/aquarius-keeper/DEPTH_DROPLET.md` for access, restrictions and identifiers.
   Timely restart/Mainnet migration/economic release gates remain unresolved.
