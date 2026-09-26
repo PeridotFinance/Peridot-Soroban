@@ -60,6 +60,18 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September26 verified completion supersedes historical running notes below:
+  expired-report governed Testnet recovery completed September25 18:51UTC,
+  38/38 good samples,0missed/failed; finish b3a1ecef...e1a8fe5 at4867736.
+  Independent September26 19:14UTC audit verifies17successful recorded transactions,
+  phasecomplete/no pending hash/no recovery. Dependent mock price was available
+  on completion; now expired as expected for a finished one-shot. Completed local
+  launchd job verified exit0 and unloaded. Timely restart remains UNPROVEN.
+  No runtime change after scanned8578949; no Mainnet readiness claim.
+  User approves <=$10/month Droplet and dedicated Testnet admin/reporter key
+  transfer for Testnet-only signing. DO token cannot list Droplets (403); no
+  provisioning/key transfer/cloud spending initiated. Need scoped token update.
+  See `bots/aquarius-keeper/DEPTH_LIVE_REHEARSAL.md`; migration blockers unchanged.
 - September25 18:14UTC: original recovery process disappeared after16samples;
   independently reconciled12successful transactions/no pending hashes, archived
   stale locks without deleting journal. Now explicit KeepAlivefalse local one-shot

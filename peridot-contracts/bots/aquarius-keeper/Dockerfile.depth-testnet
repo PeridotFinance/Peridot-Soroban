@@ -1,0 +1,8 @@
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+# Isolated reporter only: no production keeper or fixture-admin entrypoint.
+COPY src/price-observer-runtime.mjs src/price-observer-errors.mjs src/depth-pricing.mjs src/price-shadow.mjs src/price-shadow-rpc.mjs src/price-depth-shadow.mjs src/price-shadow-soak.mjs src/price-diagnostics.mjs src/price-collector.mjs src/observation.mjs src/depth-ledger-clock.mjs src/depth-publication-journal.mjs src/depth-publisher.mjs src/depth-publisher-main.mjs ./src/
+USER node
+CMD ["node", "src/depth-publisher-main.mjs"]

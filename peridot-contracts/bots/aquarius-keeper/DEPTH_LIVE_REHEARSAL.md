@@ -1,5 +1,32 @@
 # Isolated Testnet depth rehearsal
 
+## September26 verification: expired-report recovery complete
+
+This supersedes the historical running status below. The one-shot finished
+September25 at18:51:08UTC after38/38 collected and agreeing samples,0missed slots,
+0collection failures and8healthy mature windows. Admin finish transaction
+`b3a1ecef8e7a39fdcd4f6f3673bcab3af8d0a19fd4b12742ab9d65f22e1a8fe5`
+succeeded at ledger4867736; recovery cleared and the dependent mock price was
+available. Independent September26 19:14:08UTC audit verifies all17recorded
+transactions, phasecomplete, pendingnull and recoverynull. The price is now absent
+because the finished one-shot's report expired, not because recovery failed.
+Evidence: `/private/tmp/peridot-depth-final-audit-20260926.log` and the service log
+below. Verified launchd exit0; completed job has been unloaded.
+
+`timelyRestartVerified:false` remains correct: the original timely lost-response
+restart was NOT demonstrated. This completes only the expired-report governed
+recovery in the controlled Testnet fixture, not actual lending positions,
+Mainnet migration or uncapped economic/liquidation review. Do not reset this
+completed fixture's journal or rerun it as a fresh test. Runtime remains scanned
+`85789496eb498f1c8cb53ca0a02d551ea4e1aef6`; no new runtime changes or transactions.
+
+User approved a Droplet costing at most$10/month and secure transfer of the
+dedicated Testnet reporter/admin keys for Testnet-only signing. Provisioning is
+blocked: the `peridot` DigitalOcean context returns403 for GET /v2/droplets.
+No Droplet created, key transferred or new cloud spending initiated. Existing
+production keeper and keyless observer are unchanged. Update scoped DO access
+before provisioning; preserve durable journals and separate Testnet identities.
+
 ## September25 live recovery status
 
 18:14UTC update: the first recovery process stopped without a shutdown record
