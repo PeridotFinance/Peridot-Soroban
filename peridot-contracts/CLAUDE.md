@@ -74,7 +74,7 @@ MarginController (leveraged trading, optional)
   separate from5XLM funding; conditional400XLM migration ceiling untouched.
   Keeper fee-reserve pre-signing checks, <1XLM spendable warnings, decoded
   submission errors and expiry guards have119passing tests locally. New keeper
-  code254a919 is NOT deployed. September26 Almanax scan
+  code254a919 is now DEPLOYED as aquarius-keeper-v0.4.2. September26 Almanax scan
   885fa306-a710-4eea-9cca-b19ce9176d22 (b344702..254a919) completed with one LOW
   finding fe287b61-56f1-4208-bc41-50dbe5c837c7 about buying liabilities.
   Reviewed as false positive: Stellar CAP-0003 and stellar-core
@@ -83,8 +83,20 @@ MarginController (leveraged trading, optional)
   Keep current calculation. User-authorized release review dismissed this
   finding with protocol/Core evidence on September26; the scan originally
   reported one LOW, not zero findings. See Agents.md for source links/evidence.
-  Production remains single-worker aquarius-keeper-v0.4.1. This repair does not
-  clear the separately gated new LP lending/oracle rollout. See Agents.md.
+  September26 22:17:55UTC production started single-worker aquarius-keeper-v0.4.2,
+  exact254a919f1b53e118ee77506fc51f06d26d5a22f2, deployment
+  f31f9ce4-4e31-4ba5-bffa-6d0cf87690e5. Dry-run stage1524868c... preceded live
+  activation; oldv0.4.1 deployment was SUPERSEDED before enabling new signing.
+  Every other setting and encrypted secret unchanged (checked spec hash).
+  All6first-cycle refreshes SUCCESS64635060–64635065; independent Horizon/RPC
+  verifies source, method, contract and inclusion. Failures0; range checksfalse;
+  actualfees0.0105602XLM, keeperbalance5.9476256XLM at22:18:58UTC.
+  All9keyless simulations including3harvests passed before rollout. No live
+  harvest forced; HARVEST_ON_STARTfalse/six-hour schedule unchanged, first due
+  approximatelySeptember27 04:18UTC if continuously running and guards permit.
+  Low-fee warning/no-sign paths unit-tested, not induced by draining live funds.
+  Branch/tagv0.4.2 immutable; rollbackv0.4.1 remains available. This keeper release
+  does not clear separately gated new LP lending/oracle migration. See Agents.md.
 - September26 19:47UTC: separate Testnet reporter now RUNNING on DO context
   `peridot2`, Droplet603935393/$6month/fra1; existing `peridot` XLMkeeper untouched.
   Only dedicated Testnet reporter key transferred; admin/Mainnet keys stay local.
