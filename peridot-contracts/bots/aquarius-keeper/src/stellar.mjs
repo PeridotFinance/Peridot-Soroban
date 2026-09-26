@@ -7,6 +7,7 @@ import {
   scValToNative,
 } from "@stellar/stellar-sdk";
 import { harvestDecision } from "./harvest.mjs";
+import { feeCoverage } from "./fees.mjs";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -20,7 +21,7 @@ function stringify(value) {
 // and can exceed the log transport limit, hiding subsequent failure records.
 export function transactionFailure(result) {
   let code;
-  try { code = result.resultXdr?.result().switch().name; } catch { /* optional XDR */ }
+  try { code = (result.errorResult ?? result.resultXdr)?.result().switch().name; } catch { /* optional XDR */ }
   return stringify({ status: result.status, hash: result.txHash ?? result.hash, ledger: result.ledger, code });
 }
 
@@ -109,6 +110,31 @@ export class StellarClient {
     return target.vaultId;
   }
 
+  async canPayFee(prepared) {
+    const [account, page] = await Promise.all([
+      this.retryRead("fee balance read", () => this.horizon.loadAccount(this.config.publicKey)),
+      this.retryRead("base reserve read", () => this.horizon.ledgers().order("desc").limit(1).call()),
+    ]);
+    if (account.account_id !== this.config.publicKey) throw new Error("fee account mismatch");
+    const ledger = page.records[0];
+    const closed = Date.parse(ledger?.closed_at);
+    const now = Date.now();
+    if (!Number.isFinite(closed) || now - closed > 60_000 || closed > now + 5_000) {
+      throw new Error("fee reserve ledger is stale or invalid");
+    }
+    const coverage = feeCoverage(account, ledger.base_reserve_in_stroops, prepared.fee);
+    if (!coverage.sufficient || coverage.available < 10_000_000n) {
+      this.logger.warn("keeper fee balance low", {
+        publicKey: this.config.publicKey,
+        availableStroops: String(coverage.available),
+        requiredStroops: String(coverage.required),
+        reserveStroops: String(coverage.reserve),
+        sufficient: coverage.sufficient,
+      });
+    }
+    return coverage.sufficient;
+  }
+
   async execute(contractId, method, args = []) {
     const navTarget = this.navTarget(contractId, method);
     if (navTarget && !(await this.freshNav(navTarget))) {
@@ -174,10 +200,22 @@ export class StellarClient {
       : await this.retryRead(`${method} preparation`, () =>
       this.server.prepareTransaction(transaction),
     );
+    // Defer before signing if the native reserve leaves too little for this
+    // exact prepared fee. No automatic funding or reduced-fee retry.
+    if (!(await this.canPayFee(prepared))) {
+      return { deferred: true, method, reason: "insufficient_fee_balance" };
+    }
     // Preparation and other read-only probes can take time. Check again before
     // signing; retain 60s transaction lifetime plus 30s margin below cache expiry.
     if (navTarget && !(await this.freshNav(navTarget))) {
       return { deferred: true, method, reason: "stale_nav" };
+    }
+    const expires = Number(prepared.timeBounds?.maxTime);
+    if (!Number.isSafeInteger(expires) || expires <= 0) {
+      throw new Error("prepared transaction requires a finite expiry");
+    }
+    if (Date.now() + 10_000 >= expires * 1000) {
+      return { deferred: true, method, reason: "transaction_expiring" };
     }
     prepared.sign(this.config.keypair);
     const submitted = await this.server.sendTransaction(prepared);

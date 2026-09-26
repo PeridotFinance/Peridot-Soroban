@@ -60,6 +60,23 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September26 Mainnet maintenance: the reported PYUSD withdrawal and three
+  harvest failures were caused by ~65h-old NAV/composition caches after the
+  production keeper exhausted spendable fees. User-approved5XLM top-up
+  693bd5b2...bc42e succeeded64633873; all six existing NAV/receipt refreshes
+  confirmed64633898–64633903. No contract upgrade or withdrawal-guard change.
+  Explicitly approved AQUA->XLM floor18194->16025 confirmed fbf0d740...c751a
+  at64633973 after direct classic DEX/Aquarius quotes agreed. Other reward
+  floors, slippage/oracle/collateral settings unchanged.20:48UTC all3unsigned
+  harvests and full exits pass; AQUA conversions appear in all3simulations.
+  Simulated exits24.2574316XLM/4.8442131PYUSD/4.8462840USDC; no withdrawals or
+  manual harvests sent. Eight payment/maintenance transactions cost0.0113773XLM,
+  separate from5XLM funding; conditional400XLM migration ceiling untouched.
+  Keeper fee-reserve pre-signing checks, <1XLM spendable warnings, decoded
+  submission errors and expiry guards have119passing tests locally. New keeper
+  code is NOT deployed or Almanax-scanned: Almanax tools/keyenv unavailable.
+  Production remains single-worker aquarius-keeper-v0.4.1. This repair does not
+  clear the separately gated new LP lending/oracle rollout. See Agents.md.
 - September26 19:47UTC: separate Testnet reporter now RUNNING on DO context
   `peridot2`, Droplet603935393/$6month/fra1; existing `peridot` XLMkeeper untouched.
   Only dedicated Testnet reporter key transferred; admin/Mainnet keys stay local.
