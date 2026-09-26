@@ -60,6 +60,16 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September26 19:47UTC: separate Testnet reporter now RUNNING on DO context
+  `peridot2`, Droplet603935393/$6month/fra1; existing `peridot` XLMkeeper untouched.
+  Only dedicated Testnet reporter key transferred; admin/Mainnet keys stay local.
+  Remote persistent journal is canonical; do NOT rerun local completed fixture
+  or overwrite live journal.106tests pass; runtime remains scanned8578949,
+  new deployment package270e6b6 pushed/verified but NOT newly Almanax-scanned
+  (connection/keyenv unavailable). Initial Testnet invalidation82ee8048...d57b
+  confirmed4885692; new healthy30m window/publication pending. See
+  `bots/aquarius-keeper/DEPTH_DROPLET.md` for access, restrictions and identifiers.
+  Timely restart/Mainnet migration/economic release gates remain unresolved.
 - September26 verified completion supersedes historical running notes below:
   expired-report governed Testnet recovery completed September25 18:51UTC,
   38/38 good samples,0missed/failed; finish b3a1ecef...e1a8fe5 at4867736.

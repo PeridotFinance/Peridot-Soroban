@@ -1,5 +1,13 @@
 # Isolated Testnet depth rehearsal
 
+## September26 cloud continuation
+
+The completed fixture now has a continuous Testnet-only reporter on a separate
+$6/month Droplet using DO context `peridot2`; production keeper untouched.
+See `DEPTH_DROPLET.md`. Remote persistent journal is canonical from19:47UTC;
+do NOT rerun local harness/publisher or copy the old local journal over it.
+Cloud start does not prove the earlier timely lost-response restart test.
+
 ## September26 verification: expired-report recovery complete
 
 This supersedes the historical running status below. The one-shot finished
