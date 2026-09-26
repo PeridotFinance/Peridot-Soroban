@@ -1,0 +1,29 @@
+[package]
+name = "lp-lending-vault"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["lib", "cdylib"]
+doctest = false
+
+[features]
+default = ["lp-engine", "hybrid-rewards"]
+lp-engine = []
+hybrid-rewards = []
+test-default-admin = []
+
+[dependencies]
+soroban-sdk = { workspace = true }
+stellar-tokens = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+soroban-env-host = { version = "=25.0.1", features = ["testutils"] }
+lp-peridottroller = { path = "../lp-peridottroller", features = ["test-default-admin"] }
+simple-peridottroller = { path = "../simple-peridottroller", features = ["test-default-admin"] }
+jump-rate-model = { path = "../jump-rate-model", features = ["test-default-admin"] }
+aquarius-lp-vault = { path = "../aquarius-lp-vault", features = ["test-default-admin", "hybrid-rewards"] }
+mock-aquarius-pool = { path = "../mocks/mock-aquarius-pool" }
+price-router = { path = "../price-router", features = ["test-default-admin"] }

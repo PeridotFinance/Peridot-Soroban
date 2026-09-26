@@ -1,0 +1,24 @@
+[Unit]
+Description=Peridot margin liquidation keeper
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=peridot
+Group=peridot
+WorkingDirectory=/opt/peridot/peridot-contracts/bots/margin-liquidator
+EnvironmentFile=/etc/peridot/margin-liquidator.env
+Environment=STATE_FILE=/var/lib/peridot-liquidator/state.json
+ExecStart=/usr/bin/node src/main.mjs
+Restart=always
+RestartSec=5
+StateDirectory=peridot-liquidator
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/peridot-liquidator
+
+[Install]
+WantedBy=multi-user.target

@@ -42,6 +42,8 @@ Mocks (for tests only) live under `contracts/mocks/`.
   - `initialize(token, supply_yearly_rate_scaled, borrow_yearly_rate_scaled, admin)`
   - `set_boosted_vault(admin, defindex_vault)` (optional)
   - `get_boosted_vault()`
+  - `get_boosted_asset_count()` / `set_boosted_asset_count(admin, boosted_vault, count)`
+    (the setter is an upgrade migration/recovery path; use the strategy ABI's exact count)
   - `set_admin(new_admin)` / `get_admin()`
   - `set_interest_rate(admin, yearly_rate_scaled)`
   - `set_borrow_rate(admin, yearly_rate_scaled)`
@@ -58,8 +60,12 @@ Mocks (for tests only) live under `contracts/mocks/`.
   - `withdraw(user, ptoken_amount)` → burns pTokens, returns underlying (USD-gated when peridottroller set)
   - `borrow(user, amount)` → USD risk check via peridottroller; liquidity-guarded
   - `repay(user, amount)`
+  - `bump_user_borrow_ttl(user)` / `bump_margin_borrow_ttl(position_id)` (permissionless keepalive)
+  - `recover_borrow_snapshot(user)` / `recover_margin_snapshot(position_id)` (permissionless snapshot rebuild when canonical principal mirror exists)
+  - `migrate_borrow_state_batch(users)` / `migrate_margin_state_batch(position_ids)` (permissionless migration + TTL keepalive batch)
 - Flash loans
-  - `flash_loan(receiver, amount, data)` → transfers underlying to `receiver`, then expects repayment of `amount + fee` (fee = `amount * flash_loan_fee_scaled / 1e6`).
+  - `flash_loan(initiator, receiver, amount, data)` → requires `initiator` auth, transfers underlying to `receiver`, then expects repayment of `amount + fee` (fee uses ceil division: `ceil(amount * flash_loan_fee_scaled / 1e6)`).
+  - `preview_flash_loan_fee(amount)` → deterministic fee preview using the exact same rounding as `flash_loan`.
   - `receiver` must implement `on_flash_loan(vault: Address, amount: u128, fee: u128, data: Bytes)`; the vault reverts if the callback fails or does not return the required funds.
   - Flash loan fees accrue to reserves after repayment and respect peridottroller pause checks and liquidity guards.
 - pToken (ERC20-like)
@@ -76,6 +82,7 @@ Mocks (for tests only) live under `contracts/mocks/`.
   - `get_exchange_rate()`
   - `get_user_balance(user)` / `get_ptoken_balance(user)`
   - `get_user_borrow_balance(user)`
+  - `bump_ttl()` (permissionless global/config keepalive; call from market keepers)
   - `get_total_deposited()` / `get_total_ptokens()` / `get_total_underlying()`
   - `get_total_borrowed()` / `get_total_reserves()` / `get_available_liquidity()`
 
@@ -125,6 +132,24 @@ Mocks (for tests only) live under `contracts/mocks/`.
 - User actions require `user.require_auth()`.
 - Liquidation requires `liquidator.require_auth()` in the peridottroller; vault hooks `repay_on_behalf` and `seize` are callable only when the vault is wired to a Peridottroller.
 
+## Core Lending Resource Budget
+
+`get_account_snapshot()` uses a narrow, key-specific TTL path because the
+Peridottroller calls it once for every other entered market during a borrow.
+The former broad keepalive and synchronous strategy quotes loaded unrelated vault
+configuration on each call and exceeded Soroban's 100-entry limit. The regression
+models all three markets as boosted, gives each strategy quote a deliberately heavy
+footprint, and enforces a 90-entry ceiling. Account-health snapshots use a
+keeper-maintained boosted NAV cache instead of loading DeFindex inside the borrow.
+The cache fails closed after five minutes. This guarantees the current three-market
+XLM/USDC/EURC shape, not the theoretical eight-market maximum; supporting larger
+portfolios still requires controller-side position caching or bounded collateral
+selection. Run `scripts/run_boosted_market_keeper_mainnet.sh` below five minutes;
+it refreshes NAV every two minutes by default and calls `bump_ttl()` once per day.
+When a large borrow exceeds the debt market's idle cash, an operator must call
+`prepare_liquidity(amount)` in a separate transaction before the borrow. This keeps
+the strategy redemption footprint out of the cross-market health transaction.
+
 ## Boosted Markets (DeFindex)
 
 ReceiptVaults can optionally forward deposits into a DeFindex vault (single-asset) to earn external yield.
@@ -154,6 +179,225 @@ stellar contract invoke --id "$VAULT" --source-account dev --network testnet -- 
   set_boosted_vault --admin "$ADMIN" --boosted_vault "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"
 ```
 
+## Boosted Markets (Aquarius LP)
+
+`contracts/aquarius-lp-vault` is a second implementation of the same
+boosted-vault interface, backed by an Aquarius concentrated-liquidity position
+instead of a DeFindex strategy. It implements the DeFindex ABI verbatim, so it
+attaches through the unmodified `set_boosted_vault` entrypoint and needs no
+change to ReceiptVault or the peridottroller.
+
+Shape:
+- Holds one **full-range** position (`deposit_position` / `withdraw_position`),
+  so it is always in range and never needs a rebalance keeper.
+- Accepts and settles in a **single** asset. Deposits are split (half swapped
+  into the paired token) on the way in and recombined on the way out, so the
+  market only ever sees its own underlying.
+- Accepts capital **only from its permanently bound ReceiptVault**. An
+  unbound strategy fails closed, and `set_receipt_vault` verifies the market
+  already points back to the strategy and uses the same underlying. Users
+  deposit the market asset and receive pTokens; they cannot bypass its supply
+  cap by minting internal LP-vault shares directly. The selected concentrated
+  pools expose range positions rather than fungible LP tokens, so there is no
+  LP-token deposit path to support; the ReceiptVault is the sole entry. Internal
+  LP-vault shares are non-transferable and only the bound ReceiptVault can gain
+  them; user-facing pTokens remain transferable.
+- Reports NAV as `2 * L * sqrt(other_price / underlying_price)` using
+  **Reflector prices, never pool spot**. A full-range position satisfies
+  `amount0 = L/sqrt(P)` and `amount1 = L*sqrt(P)`, so this closed form is exact,
+  and it means swinging the pool price cannot move the market's exchange rate.
+  Unrepresentable oracle arithmetic fails soft into the bounded last-good NAV
+  path instead of trapping supplier quotes or withdrawals.
+- `harvest()` is permissionless: claims the admin-configured primary reward
+  token (AQUA at launch), third-party gauge incentives and accrued swap fees,
+  sells them for underlying through per-token route pools, and redeploys.
+  `set_primary_reward_token`, `set_reward_route`, and `set_reward_min_rate` let
+  governance rotate the reward asset, conversion venue, and minimum acceptable
+  raw-underlying/raw-reward rate independently if Aquarius changes either.
+  A route without a non-zero 1e7-scaled minimum rate fails closed and leaves
+  the reward idle; permissionless callers cannot force a sale from a
+  temporarily manipulated route quote.
+- The ReceiptVault-facing share quote is a conservative liquidation value. It
+  discounts gross oracle NAV by the configured pool-divergence and execution-
+  slippage bounds so a redemption does not come back a few basis points short
+  solely because the paired leg had to be swapped.
+- ReceiptVault always marks its exchange rate to live strategy NAV, including
+  real losses. For fixed-cash redemptions only, a quote below 90% of independent
+  book accounting cannot immediately force a full strategy unwind. ReceiptVault
+  first attempts the book-sized exit with a non-zero cash floor. Only if that
+  exact call fails does it retry once using the lower positive live quote, with
+  the same cash floor. A fake dust quote therefore cannot unwind healthy capital,
+  while a genuine loss does not permanently block supplier withdrawals.
+- Aquarius swaps and position deposits enforce transaction-atomic input
+  balance-delta caps. If a pool replays an exact root token-transfer
+  authorization, the enclosing invocation reverts without asset loss. Swap
+  settlement also checks the actual output-token balance delta against
+  `out_min`, so a pool cannot bypass slippage by ignoring its argument.
+- ReceiptVault records the boosted strategy's bounded output-vector length when
+  `set_boosted_vault` binds it and uses that persisted count during quote
+  outages. The Aquarius deployment scripts assert the expected single-asset
+  shape. If an older/archived market lacks the append-only count, ReceiptVault
+  recovers it from a zero-share strategy quote before a protected redemption.
+  After an upgrade, still verify `get_boosted_asset_count`; use the admin
+  recovery setter only if the strategy cannot answer that shape probe.
+- AquariusLpVault performs mul-div pricing and share calculations with exact
+  Soroban `U256` intermediates. It never substitutes `u128::MAX` for a
+  representable quotient when only the intermediate product exceeds `u128`.
+
+Two guards protect the position entry and paired-token exit swaps:
+- `set_slippage_bps` — movement between the pool's quote and execution.
+- `set_max_pool_divergence_bps` — the pool being *mispriced against the oracle*
+  to begin with, which the slippage floor cannot see because it is derived from
+  the pool's own quote. Verified on testnet: a ~7% pool/oracle gap cost 4.65%
+  of a deposit before this existed.
+
+If an exit quote breaches that oracle floor, the transaction reverts atomically
+and keeps the supplier's shares intact for a later retry. This deliberately
+prefers temporary withdrawal unavailability over realizing a manipulated rate.
+
+Capacity is the binding constraint. Realised APR scales with
+`pool_tvl / (pool_tvl + deployed)`, so `set_max_deploy` is a yield control as
+much as a risk control — an uncapped vault on a thin pool dilutes itself to
+near-zero yield.
+
+The two requested launch markets both use concentrated pools and settle in the
+first named asset:
+
+- `scripts/deploy_aquarius_xlm_yxlm_mainnet.sh` — XLM deposits into the
+  XLM/yXLM concentrated pool.
+- `scripts/deploy_aquarius_pyusd_usdc_mainnet.sh` — separate PYUSD and USDC
+  ReceiptVault markets backed by separate settlement vaults that share the
+  same PYUSD/USDC concentrated pool. The two contracts are
+  necessary because a strategy has one underlying, one share price and one
+  ReceiptVault binding. AQUA is converted to PYUSD for one and USDC for the
+  other.
+
+For the temporary supply-only rollout, `deploy_aquarius_lp_controller_mainnet.sh`
+creates an isolated controller that points directly at Reflector. Symbol aliases
+price XLM and yXLM from `Other("XLM")`, and PYUSD and USDC from
+`Other("USDC")`. The strategy scripts install the same aliases. This is a
+deliberate parity assumption, not a depeg-aware oracle: collateral factors must
+remain 0 and borrowing must remain paused. The scripts still reject a bad live
+pool quote before deployment, and the strategies block new LP entry when their
+runtime pool-divergence bound is exceeded. Use PriceRouter's peg clamp before
+these markets ever become collateral or borrowable.
+
+Both scripts hard-fail unless the target reports `pool_type = concentrated`
+with the exact expected token order. They create new supply-only markets,
+leave collateral factors at 0, and pause borrowing. The generic
+`scripts/deploy_aquarius_lp_market_mainnet.sh` remains the USDC/EURC deployment
+path. Each script also probes its AQUA route and installs a governance reward
+floor at 95% of that live quote unless an explicit reviewed floor is supplied.
+
+Keepers to schedule:
+- `refresh_nav_root()` — keeps the cached price ratio fresh so user
+  transactions do not pay the oracle's footprint cost.
+- `harvest(caller)` — compounds rewards. The cooldown starts only after the
+  call actually claims, converts, or deploys value, so an empty/failed
+  permissionless call cannot delay the keeper.
+- `refresh_boosted_underlying()` on the market — existing DeFindex keeper.
+
+All three are driven by `scripts/run_aquarius_vault_keeper.sh`. For example:
+
+```bash
+VAULT_ID=C... MARKET_ID=C... IDENTITY=keeper NETWORK=mainnet-public \
+  bash scripts/run_aquarius_vault_keeper.sh
+```
+
+For continuous Mainnet operation, `bots/aquarius-keeper` packages the same
+three-step lifecycle as one sequence-safe Node worker. One process services all
+three settlement strategies serially so transactions from a shared signer do
+not collide. `.do/aquarius-keeper.yaml` deploys it as one DigitalOcean App
+Platform worker in dry-run mode first; add the dedicated signer as an encrypted
+runtime secret only after all nine simulations pass. Never scale that component
+above one instance while it uses one signing key.
+
+### Transaction footprint
+
+The end-to-end path spans ReceiptVault -> vault -> Aquarius pool -> three token
+contracts -> the oracle, against Soroban's 100-entry cap. Two design choices
+exist purely to fit inside it, and both are pinned by tests:
+- Vault config, params and global accounting live in **single instance storage
+  entries**. A key-per-field layout put the market deposit at 113 entries.
+- The NAV price ratio is **cached** (`nav_root_max_age`, default 300s) so the
+  withdraw path does not read Reflector inline.
+- Past `nav_root_max_stale`, public strategy quotes fail soft to zero. A
+  ReceiptVault redemption then sizes from its cached/accounting value and
+  supplies a nonzero underlying floor; only that protected exit may use the
+  strategy's last ratio, and it still enforces the pool-divergence guard. When
+  the live quote is unavailable, share sizing prefers independent book
+  accounting and uses cache only when that baseline is absent. When a lower
+  positive live quote indicates a loss larger than the anti-grief bound, a
+  failed book-sized exit may be retried once at that quote, still subject to the
+  original nonzero cash floor.
+
+Measured: market deposit 90 entries / 5.0M instructions, market withdraw
+79 entries / 6.0M instructions.
+
+A controller-wired borrow only fits when the borrower is collateralized in
+the boosted market itself. Cross-market shapes exceed the 100-entry limit:
+one additional collateral market measures 130 entries with an atomic unwind
+(106 even when liquidity is pre-funded), and two additional markets measure
+167 entries (143 pre-funded). Until the controller/market footprint is
+redesigned, launch a new Aquarius-backed market as supply-only: collateral
+factor 0 and borrowing paused. This still delivers LP fees and AQUA emissions
+to XLM, PYUSD and USDC suppliers without exposing an unexecutable borrow path.
+
+For rollout, use a separate LP-market Peridottroller from the existing
+DeFindex markets. The LP group has different execution and oracle failure
+modes, and separating it prevents cross-group collateral positions that do not
+fit Soroban's transaction footprint. The supply-only markets can reuse the
+existing asset-appropriate JRM; while borrowing is paused the model is not an
+active risk surface. Give the LP group its own JRM only when borrowing is later
+enabled or its utilization curve needs to differ. Deployment scripts therefore
+require `CONTROLLER` to be supplied explicitly instead of silently choosing the
+currently deployed controller.
+
+### Known limitations
+
+Three findings from review are accepted rather than fixed:
+
+- **A stale boosted valuation can outlive its bound in the market above.** This
+  vault returns a fail-soft zero past `nav_root_max_stale`, while
+  `receipt-vault` falls back to `max(cached, estimated)` with no further
+  freshness cutoff. Supplier exits remain available when the Aquarius pool is
+  still within the last ratio's divergence bound: ReceiptVault passes the cash
+  requirement as a nonzero minimum and the vault uses its cached ratio only for
+  that protected unwind. The market's cached value can nevertheless overstate
+  collateral after an oracle outage plus an adverse price move. Keep these
+  markets at CF=0 with borrowing paused until cache freshness is enforced for
+  collateral and borrowing decisions.
+
+- **Unclaimed swap fees are not in NAV.** `position_value` excludes fees the
+  pool still owes the position, so a deposit landing just before a `harvest`
+  is priced against a slightly understated NAV and captures a share of fees
+  that accrued before it. Including them needs a `get_all_position_fees` call
+  on the deposit path, which already sits at 90 of the 100-entry transaction
+  cap through the backing market — there is no room. The exposure is bounded by
+  fees accrued since the last harvest, and `harvest()` is permissionless and
+  rate-limited to once an hour by default; run it on a keeper to keep the
+  window small.
+- **Reward swaps have no live oracle cross-check.** Reward tokens generally
+  have no Reflector feed, so every route instead requires an independent
+  governance minimum raw exchange rate. A missing or breached floor leaves the
+  reward idle. Review the floor against external market data and prefer deep
+  route pools; do not update it mechanically from the route quote it guards.
+
+### Authorization shape
+
+The Aquarius pool does **not** call `user.require_auth()` on `swap` or
+`deposit_position` — it relies on the token transfers carrying the caller's
+authorization. So the transfer entries passed to `authorize_as_current_contract`
+must sit at the **root** of the authorization list; nested under a pool-call
+entry they are unreachable and the transfer fails with `Auth(InvalidAction)`.
+This matches the shape `receipt-vault` already uses for DeFindex
+(contract.rs:311-327). `withdraw_position` and the claim entrypoints *do*
+authorize the pool call itself.
+
+This was only found by running against the deployed pool on testnet — a mock
+that required auth where the real pool does not made the wrong tree look
+correct. `mock-aquarius-pool` now mirrors the real behaviour.
+
 ## Oracle Behavior
 
 - Prices are fetched from the Reflector oracle and normalized by `10^decimals` returned by `decimals()`.
@@ -172,11 +416,12 @@ stellar contract invoke --id "$VAULT" --source-account dev --network testnet -- 
 
 - Overview
 
-  - The peridottroller can distribute Peridot Tokens to suppliers and borrowers per-market using per-second speeds.
+  - Rewards are optional and are not wired by the current testnet/mainnet deployment scripts.
+  - If a reward token is explicitly configured later, the peridottroller can distribute Peridot Tokens to suppliers and borrowers per-market using per-second speeds.
   - Rewards accrue lazily on user actions (deposit/withdraw/borrow/repay) and are minted on `claim(user)`.
   - Speeds are set per market independently for supply and borrow sides and are denominated in Peridot base units (decimals typically 6).
 
-- Deploy Peridot Token and wire rewards
+- Optional: deploy Peridot Token and wire rewards
 
 ```rust
 // Deploy Peridot Token (symbol "P", 6 decimals) with admin = peridottroller
@@ -237,16 +482,17 @@ cd /home/josh/soroban/peridot-lending/receipt-vault && cargo test
 Build WASMs and deploy to Soroban sandbox:
 
 ```bash
+export INIT_ADMIN=$(soroban keys address alice)
 bash scripts/build_wasm.sh
 bash scripts/deploy_sandbox.sh
 ```
 
 The deploy script:
 
-- Deploys `SimplePeridottroller`, `JumpRateModel`, `PeridotToken`, and two `ReceiptVault` markets
-- Initializes PERI and wires it to the controller
+- Deploys `SimplePeridottroller`, `JumpRateModel`, a mock USDT token, and two `ReceiptVault` markets
+- Leaves `$P` rewards unwired
 - Adds markets to the controller, wires controller to vaults
-- Configures CF and reward speeds
+- Configures collateral factors
 
 Update `TOKEN_A`/`TOKEN_B` placeholders in `scripts/deploy_sandbox.sh` with real asset contract addresses.
 
@@ -255,8 +501,9 @@ Update `TOKEN_A`/`TOKEN_B` placeholders in `scripts/deploy_sandbox.sh` with real
 Set up a testnet identity and deploy:
 
 ```bash
-soroban config identity generate dev
+stellar keys generate --global dev --network testnet --fund
 export IDENTITY=dev
+export INIT_ADMIN=$(stellar keys public-key "$IDENTITY")
 bash scripts/build_wasm.sh
 bash scripts/deploy_testnet.sh
 ```
@@ -290,7 +537,7 @@ bash scripts/verify_testnet.sh
 
 ### Teardown (testnet)
 
-To pause markets and zero reward speeds (safe teardown/reset):
+To pause markets during teardown/reset:
 
 ```bash
 export CTRL_ID=<controller_id>
@@ -420,7 +667,9 @@ vault.reduce_admin_fees(&amount);
 - Multi-claim and self-claim:
 
 ```rust
-// Claim for a batch of users (permissionless)
+// Only relevant if a reward token is explicitly configured.
+// Claim for a batch of users (permissionless).
+// Third parties can trigger claim timing, but rewards are always minted to each user.
 peridottroller.claim_all(&vec![user1, user2, user3]);
 
 // User claims their own rewards (auth required for user)

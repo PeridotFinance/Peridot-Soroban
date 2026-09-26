@@ -1,10 +1,38 @@
 pub const SCALE_1E6: u128 = 1_000_000u128;
-pub const DEFAULT_MAX_SLIPPAGE_BPS: u128 = 50_000u128; // 5%
-pub const MAX_SLIPPAGE_BPS_CAP: u128 = 500_000u128; // 50%
+pub const REQUIRED_UNDERLYING_DECIMALS: u32 = 7;
+pub const DEFAULT_MAX_SLIPPAGE_SCALED: u128 = 50_000u128; // 5% (1e6-scaled)
+pub const MAX_SLIPPAGE_SCALED_CAP: u128 = 500_000u128; // 50% (1e6-scaled)
+pub const DEFAULT_OPEN_POOL_ORACLE_DEVIATION_SCALED: u128 = 100_000u128; // 10%
+pub const DEFAULT_CLOSE_POOL_ORACLE_DEVIATION_SCALED: u128 = 250_000u128; // 25%
+pub const DEFAULT_LIQUIDATION_POOL_ORACLE_DEVIATION_SCALED: u128 = 300_000u128; // 30%
+pub const DEFAULT_OPEN_POOL_SLIPPAGE_SCALED: u128 = 50_000u128; // 5%
+pub const DEFAULT_CLOSE_POOL_SLIPPAGE_SCALED: u128 = 50_000u128; // 5%
+pub const DEFAULT_LIQUIDATION_POOL_SLIPPAGE_SCALED: u128 = 100_000u128; // 10%
+pub const MAX_POOL_EXECUTION_DEVIATION_SCALED: u128 = 500_000u128; // 50%
 pub const MAX_USER_POSITIONS: u32 = 64;
+pub const MAX_POSITION_COMPACTION_BATCH: u32 = 8;
+// Risk and execution policies share one bounded pair-side registry. At this
+// limit, all pair policy values remain comfortably below the 64 KiB instance
+// entry limit even when both policy types are configured for every pair.
+pub const MAX_PERPS_PAIR_CONFIGS: u32 = 32;
 pub const MAX_LEVERAGE_CAP: u128 = 10;
 pub const DEFAULT_MARGIN_LIQ_BONUS_SCALED: u128 = 1_080_000u128; // 8%
+pub const DEFAULT_MARGIN_CLOSE_FACTOR_SCALED: u128 = 500_000u128; // 50%
+pub const DEFAULT_MARGIN_MIN_OPEN_HF_SCALED: u128 = 1_100_000u128; // 10% open buffer
+pub const DEFAULT_PERPS_MAINTENANCE_MARGIN_SCALED: u128 = 50_000u128; // 5%
+pub const MAX_PERPS_MAINTENANCE_MARGIN_SCALED: u128 = 500_000u128; // 50%
+pub const DEFAULT_PERPS_LIQUIDATION_INCENTIVE_SCALED: u128 = 10_000u128; // 1%
+pub const MAX_PERPS_LIQUIDATION_INCENTIVE_SCALED: u128 = 100_000u128; // 10%
 pub const MAX_SWAP_PATH_LEN: u32 = 5;
 pub const TTL_THRESHOLD: u32 = 500_000;
 pub const TTL_EXTEND_TO: u32 = 1_000_000;
 pub const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
+pub const BPS_SCALE: u128 = 10_000u128;
+pub const MAX_BASIS_FEE_BPS: u128 = 500u128; // 5% max per open/close
+pub const MARGIN_FEE_PRECISION: u128 = 1_000_000_000_000_000_000u128; // 1e18
+pub const PENDING_OPEN_TTL_SECS: u64 = 30 * 60;
+pub const PENDING_LIQUIDATION_TTL_SECS: u64 = 5 * 60;
+pub const PENDING_CLOSE_TTL_SECS: u64 = 5 * 60;
+// Covers more than 30 minutes of accrual at ReceiptVault's 1000% yearly-rate cap.
+// Any unused Short-close output is returned to the user's debt-asset wallet.
+pub const CLOSE_DEBT_BUFFER_BPS: u128 = 10u128; // 0.10%

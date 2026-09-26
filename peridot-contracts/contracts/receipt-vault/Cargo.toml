@@ -8,12 +8,22 @@ publish = false
 crate-type = ["lib", "cdylib"]
 doctest = false
 
+[features]
+# Native test fixture support only; contract code rejects this feature for Wasm builds.
+test-default-admin = []
+# Development library only; no hybrid entrypoints or activation in the default build.
+hybrid-rewards = []
+# Internal source-sharing switch used only by the separate LP lending crate.
+lp-engine = []
+
 [dependencies]
 soroban-sdk = { workspace = true }
 stellar-tokens = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+# Native bounded lending-resource fixture; same host version already pinned by SDK.
+soroban-env-host = { version = "=25.0.1", features = ["testutils"] }
 simple-peridottroller = { path = "../simple-peridottroller", features = ["test-default-admin"] }
 jump-rate-model = { path = "../jump-rate-model", features = ["test-default-admin"] }
 mock-token = { path = "../mocks/mock-token" }
