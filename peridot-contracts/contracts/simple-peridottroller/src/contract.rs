@@ -8,6 +8,9 @@ use crate::events::*;
 use crate::storage;
 use crate::storage::*;
 
+#[cfg(all(feature = "test-default-admin", target_arch = "wasm32"))]
+compile_error!("simple-peridottroller test-default-admin must not be enabled for Wasm builds");
+
 #[contract]
 pub struct SimplePeridottroller;
 
@@ -110,17 +113,26 @@ impl SimplePeridottroller {
         );
 
         let mut user_ptokens_hint: Option<u128> = None;
-        let supply_index: u128 = env
+        let supply_index_opt: Option<u128> = env
             .storage()
             .persistent()
-            .get(&DataKey::SupplyIndex(market.clone()))
-            .unwrap_or(INDEX_SCALE_1E18);
-        let user_supply_index: u128 = env
+            .get(&DataKey::SupplyIndex(market.clone()));
+        let supply_index = supply_index_opt.unwrap_or(INDEX_SCALE_1E18);
+        let user_supply_index_opt: Option<u128> = env
             .storage()
             .persistent()
-            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()))
-            .unwrap_or(INDEX_SCALE_1E18);
-        if supply_index != user_supply_index {
+            .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()));
+        let user_supply_index = user_supply_index_opt.unwrap_or(INDEX_SCALE_1E18);
+        let supply_rewards_relevant = supply_speed > 0
+            || supply_index_opt
+                .map(|idx| idx != INDEX_SCALE_1E18)
+                .unwrap_or(false)
+            || user_supply_index_opt.is_some()
+            || env
+                .storage()
+                .persistent()
+                .has(&DataKey::SupplyIndexTime(market.clone()));
+        if supply_rewards_relevant && supply_index != user_supply_index {
             let user_ptokens = match env.try_invoke_contract::<u128, InvokeError>(
                 market,
                 &Symbol::new(env, "get_ptoken_balance"),
@@ -161,7 +173,9 @@ impl SimplePeridottroller {
             user_borrowed_hint = Some(user_borrowed);
         }
 
-        Self::distribute_supply(env.clone(), user.clone(), market.clone(), user_ptokens_hint);
+        if supply_rewards_relevant {
+            Self::distribute_supply(env.clone(), user.clone(), market.clone(), user_ptokens_hint);
+        }
         Self::distribute_borrow(
             env.clone(),
             user.clone(),
@@ -180,15 +194,28 @@ impl SimplePeridottroller {
         }
     }
 
+    #[cfg(any(
+        test,
+        all(
+            feature = "test-default-admin",
+            debug_assertions,
+            not(target_arch = "wasm32")
+        )
+    ))]
     fn expected_admin_config() -> Option<&'static str> {
-        if cfg!(any(test, feature = "test-default-admin")) {
-            option_env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN")
-        } else {
-            Some(
-                option_env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN")
-                    .expect("SIMPLE_PERIDOTTROLLER_INIT_ADMIN must be set at build time"),
-            )
-        }
+        option_env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN")
+    }
+
+    #[cfg(not(any(
+        test,
+        all(
+            feature = "test-default-admin",
+            debug_assertions,
+            not(target_arch = "wasm32")
+        )
+    )))]
+    fn expected_admin_config() -> Option<&'static str> {
+        Some(env!("SIMPLE_PERIDOTTROLLER_INIT_ADMIN"))
     }
 
     fn ensure_user_market_entered(env: &Env, user: &Address, market: &Address) {
@@ -227,9 +254,20 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(env));
+        storage::bump_supported_markets_ttl(env);
         if !markets.get(market.clone()).unwrap_or(false) {
             panic!("market not supported");
         }
+    }
+
+    pub fn is_market_supported(env: Env, market: Address) -> bool {
+        bump_core_ttl(&env);
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        markets.get(market).unwrap_or(false)
     }
 
     fn is_margin_liquidation_controller_allowed(env: &Env, controller: &Address) -> bool {
@@ -315,13 +353,48 @@ impl SimplePeridottroller {
         } else {
             env.storage().persistent().remove(&token_key);
         }
+        let mut counts: Map<Address, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey::MarketUserCounts)
+            .unwrap_or(Map::new(env));
+        counts.remove(market.clone());
+        env.storage()
+            .instance()
+            .set(&DataKey::MarketUserCounts, &counts);
         MarketRemoved {
             market: market.clone(),
         }
         .publish(env);
     }
 
+    fn clear_all_price_caches(env: &Env) {
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(env));
+        let keys = markets.keys();
+        for i in 0..keys.len() {
+            let market = keys.get(i).unwrap();
+            if !markets.get(market.clone()).unwrap_or(false) {
+                continue;
+            }
+            if let Some(token) = env
+                .storage()
+                .persistent()
+                .get::<_, Address>(&DataKey::MarketUnderlying(market))
+            {
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::PriceCache(token));
+            }
+        }
+    }
+
     pub fn initialize(env: Env, admin: Address) {
+        #[cfg(feature = "lp-zero-peri")]
+        crate::require_validation_network(&env);
         bump_core_ttl(&env);
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("already initialized");
@@ -368,7 +441,32 @@ impl SimplePeridottroller {
             .persistent()
             .set(&DataKey::OracleMaxAgeMultiplier, &2u64);
         env.storage().instance().set(&DataKey::Initialized, &true);
+        #[cfg(feature = "lp-zero-peri")]
+        env.storage()
+            .instance()
+            .set(&Symbol::new(&env, "LpZeroPeriV1"), &true);
         bump_core_ttl(&env);
+    }
+
+    /// A fresh zero-emission LP controller, not a certificate for legacy state.
+    pub fn lp_reward_policy(env: Env) -> u32 {
+        #[cfg(feature = "lp-zero-peri")]
+        {
+            assert!(
+                env.storage()
+                    .instance()
+                    .get::<_, bool>(&Symbol::new(&env, "LpZeroPeriV1"))
+                    .unwrap_or(false),
+                "LP controller requires fresh initialization"
+            );
+            bump_core_ttl(&env);
+            return 1;
+        }
+        #[cfg(not(feature = "lp-zero-peri"))]
+        {
+            let _ = env;
+            0
+        }
     }
 
     pub fn set_oracle(env: Env, oracle: Address) {
@@ -389,6 +487,7 @@ impl SimplePeridottroller {
         if current.is_none() {
             persistent.remove(&DataKey::PendingOracle);
             persistent.remove(&DataKey::PendingOracleEta);
+            Self::clear_all_price_caches(&env);
             persistent.set(&DataKey::Oracle, &oracle);
             OracleUpdated {
                 oracle: oracle.clone(),
@@ -399,6 +498,7 @@ impl SimplePeridottroller {
 
         let delay = Self::admin_param_change_delay_secs();
         if delay == 0 {
+            Self::clear_all_price_caches(&env);
             persistent.set(&DataKey::Oracle, &oracle);
             OracleUpdated {
                 oracle: oracle.clone(),
@@ -431,6 +531,7 @@ impl SimplePeridottroller {
             }
             persistent.remove(&DataKey::PendingOracle);
             persistent.remove(&DataKey::PendingOracleEta);
+            Self::clear_all_price_caches(&env);
             persistent.set(&DataKey::Oracle, &oracle);
             OracleUpdated {
                 oracle: oracle.clone(),
@@ -540,7 +641,7 @@ impl SimplePeridottroller {
     pub fn set_close_factor(env: Env, close_factor_scaled: u128) {
         bump_core_ttl(&env);
         require_admin(env.clone());
-        if close_factor_scaled > MAX_CLOSE_FACTOR {
+        if close_factor_scaled < MIN_CLOSE_FACTOR || close_factor_scaled > MAX_CLOSE_FACTOR {
             panic!("invalid close factor");
         }
         let persistent = env.storage().persistent();
@@ -777,8 +878,30 @@ impl SimplePeridottroller {
         .publish(&env);
     }
 
-    pub fn get_market_cf(env: Env, market: Address) -> u128 {
+    // Emergency escape hatch for a supported market whose collateral valuation is
+    // broken. Normal CF updates reject zero and are timelocked after initial set;
+    // this path lets governance immediately stop treating the market as collateral
+    // so unknown exchange rates cannot freeze liquidations across other markets.
+    pub fn emergency_disable_collateral(env: Env, market: Address, acknowledge_risk: bool) {
         bump_core_ttl(&env);
+        require_admin(env.clone());
+        if !acknowledge_risk {
+            panic!("ack required");
+        }
+        Self::require_market_supported(&env, &market);
+        let persistent = env.storage().persistent();
+        persistent.remove(&DataKey::PendingMarketCF(market.clone()));
+        persistent.remove(&DataKey::PendingMarketCFEta(market.clone()));
+        persistent.set(&DataKey::MarketCF(market.clone()), &0u128);
+        storage::bump_market_cf_ttl(&env, &market);
+        MarketCollateralFactorUpdated {
+            market,
+            cf_mantissa: 0u128,
+        }
+        .publish(&env);
+    }
+
+    pub fn get_market_cf(env: Env, market: Address) -> u128 {
         storage::bump_market_cf_ttl(&env, &market);
         // Safe default: unconfigured markets contribute no collateral until admin sets CF.
         env.storage()
@@ -800,6 +923,37 @@ impl SimplePeridottroller {
             fee_mantissa: fee_scaled,
         }
         .publish(&env);
+    }
+
+    pub fn get_close_factor_scaled(env: Env) -> u128 {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::CloseFactorScaled)
+            .unwrap_or(500_000u128)
+    }
+
+    pub fn get_liquidation_incentive_scaled(env: Env) -> u128 {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::LiquidationIncentiveScaled)
+            .unwrap_or(1_080_000u128)
+    }
+
+    pub fn get_liquidation_fee_scaled(env: Env) -> u128 {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::LiquidationFeeScaled)
+            .unwrap_or(0u128)
+    }
+
+    pub fn get_reserve_recipient(env: Env) -> Option<Address> {
+        bump_core_ttl(&env);
+        env.storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::ReserveRecipient)
     }
 
     pub fn set_oracle_max_age_multiplier(env: Env, k: u64) {
@@ -827,12 +981,18 @@ impl SimplePeridottroller {
                 .persistent()
                 .remove(&DataKey::OracleAssetSymbol(token.clone())),
         }
+        env.storage()
+            .persistent()
+            .remove(&DataKey::PriceCache(token.clone()));
         OracleAssetSymbolMapped { token, symbol }.publish(&env);
     }
 
     pub fn set_price_fallback(env: Env, token: Address, price: Option<(u128, u128)>) {
         bump_core_ttl(&env);
         require_admin(env.clone());
+        if cfg!(feature = "lp-zero-peri") {
+            assert!(price.is_none(), "LP prices require live oracle validation");
+        }
         match price {
             Some((p, s)) => {
                 if p == 0 || s == 0 || p > MAX_FALLBACK_PRICE || s > MAX_FALLBACK_SCALE {
@@ -846,6 +1006,9 @@ impl SimplePeridottroller {
                     &DataKey::FallbackPriceSetAt(token.clone()),
                     &env.ledger().timestamp(),
                 );
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::PriceCache(token.clone()));
                 FallbackPriceUpdated {
                     token,
                     price: Some(p),
@@ -860,6 +1023,9 @@ impl SimplePeridottroller {
                 env.storage()
                     .persistent()
                     .remove(&DataKey::FallbackPriceSetAt(token.clone()));
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::PriceCache(token.clone()));
                 FallbackPriceUpdated {
                     token,
                     price: None,
@@ -925,6 +1091,8 @@ impl SimplePeridottroller {
     }
 
     pub fn set_supply_speed(env: Env, market: Address, speed_per_sec: u128) {
+        #[cfg(feature = "lp-zero-peri")]
+        assert_eq!(speed_per_sec, 0, "LP PERI emissions are disabled");
         bump_core_ttl(&env);
         require_admin(env.clone());
         if speed_per_sec > MAX_REWARD_SPEED_PER_SEC {
@@ -975,6 +1143,8 @@ impl SimplePeridottroller {
     }
 
     pub fn set_borrow_speed(env: Env, market: Address, speed_per_sec: u128) {
+        #[cfg(feature = "lp-zero-peri")]
+        assert_eq!(speed_per_sec, 0, "LP PERI emissions are disabled");
         bump_core_ttl(&env);
         require_admin(env.clone());
         if speed_per_sec > MAX_REWARD_SPEED_PER_SEC {
@@ -1234,33 +1404,43 @@ impl SimplePeridottroller {
         until_key: DataKey,
         market: &Address,
     ) -> bool {
-        let mut flags: Map<Address, bool> = env
-            .storage()
-            .persistent()
-            .get(&pause_key)
-            .unwrap_or(Map::new(env));
+        let persistent = env.storage().persistent();
+        let mut flags: Map<Address, bool> = persistent.get(&pause_key).unwrap_or(Map::new(env));
         if !flags.get(market.clone()).unwrap_or(false) {
+            // pause_key is already in the footprint from the get() above, so
+            // extend_ttl here adds no new entries. Bump so a set-but-inactive
+            // market pause map doesn't silently expire between admin calls.
+            if persistent.has(&pause_key) {
+                persistent.extend_ttl(&pause_key, 500_000, 1_000_000);
+            }
             return false;
         }
-        let mut untils: Map<Address, u64> = env
-            .storage()
-            .persistent()
-            .get(&until_key)
-            .unwrap_or(Map::new(env));
+        let mut untils: Map<Address, u64> = persistent.get(&until_key).unwrap_or(Map::new(env));
         let Some(expires_at) = untils.get(market.clone()) else {
             // Fail closed on inconsistent pause metadata.
+            if persistent.has(&pause_key) {
+                persistent.extend_ttl(&pause_key, 500_000, 1_000_000);
+            }
             return true;
         };
         let now = env.ledger().timestamp();
         if now <= expires_at {
+            // Both keys already in footprint from reads above; extend_ttl adds
+            // no new entries. Required so an active pause cannot silently expire.
+            if persistent.has(&pause_key) {
+                persistent.extend_ttl(&pause_key, 500_000, 1_000_000);
+            }
+            if persistent.has(&until_key) {
+                persistent.extend_ttl(&until_key, 500_000, 1_000_000);
+            }
             return true;
         }
 
         // Self-heal stale pause entries once the pause has expired.
         flags.remove(market.clone());
         untils.remove(market.clone());
-        env.storage().persistent().set(&pause_key, &flags);
-        env.storage().persistent().set(&until_key, &untils);
+        persistent.set(&pause_key, &flags);
+        persistent.set(&until_key, &untils);
         false
     }
 
@@ -1295,7 +1475,6 @@ impl SimplePeridottroller {
         .publish(&env);
     }
     pub fn is_borrow_paused(env: Env, market: Address) -> bool {
-        bump_core_ttl(&env);
         Self::is_pause_active(
             &env,
             DataKey::PauseBorrow,
@@ -1322,7 +1501,6 @@ impl SimplePeridottroller {
         .publish(&env);
     }
     pub fn is_redeem_paused(env: Env, market: Address) -> bool {
-        bump_core_ttl(&env);
         Self::is_pause_active(
             &env,
             DataKey::PauseRedeem,
@@ -1478,7 +1656,6 @@ impl SimplePeridottroller {
         .publish(&env);
     }
     pub fn is_liquidation_paused(env: Env, market: Address) -> bool {
-        bump_core_ttl(&env);
         Self::is_pause_active(
             &env,
             DataKey::PauseLiquidation,
@@ -1488,7 +1665,6 @@ impl SimplePeridottroller {
     }
 
     pub fn is_deposit_paused(env: Env, market: Address) -> bool {
-        bump_core_ttl(&env);
         Self::is_pause_active(
             &env,
             DataKey::PauseDeposit,
@@ -1505,11 +1681,26 @@ impl SimplePeridottroller {
             .get(&DataKey::Admin)
             .expect("admin not set");
         admin.require_auth();
+        #[cfg(feature = "lp-zero-peri")]
+        {
+            assert_eq!(Self::lp_reward_policy(env.clone()), 1);
+            let version: u32 =
+                env.invoke_contract(&market, &Symbol::new(&env, "lp_version"), Vec::new(&env));
+            assert_eq!(
+                version, 1,
+                "only LP lending receipts may join this controller"
+            );
+        }
         let mut markets: Map<Address, bool> = env
             .storage()
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+        #[cfg(feature = "lp-zero-peri")]
+        assert!(
+            markets.contains_key(market.clone()) || markets.len() < 3,
+            "LP group is limited to three markets"
+        );
         markets.set(market.clone(), true);
         env.storage()
             .persistent()
@@ -1651,7 +1842,6 @@ impl SimplePeridottroller {
     }
 
     pub fn get_user_markets(env: Env, user: Address) -> Vec<Address> {
-        bump_core_ttl(&env);
         storage::bump_user_markets_ttl(&env, &user);
         env.storage()
             .persistent()
@@ -1677,6 +1867,7 @@ impl SimplePeridottroller {
 
         // Defense in depth: only supported markets can be queried by exit checks.
         Self::require_market_supported(&env, &market);
+        let market_cf = Self::get_market_cf(env.clone(), market.clone());
 
         // Safety: block exit if user has pTokens or borrow balance in this market
         // Use try_invoke_contract and fail-closed: reject exit if we cannot verify safety
@@ -1690,7 +1881,7 @@ impl SimplePeridottroller {
             Ok(Ok(bal)) => bal,
             _ => panic!("Cannot verify collateral balance - market unavailable"),
         };
-        if pbal > 0 {
+        if pbal > 0 && market_cf > 0 {
             panic!("Cannot exit with collateral in market");
         }
 
@@ -1730,6 +1921,44 @@ impl SimplePeridottroller {
         env.storage()
             .instance()
             .set(&DataKey::MarketUserCounts, &counts);
+        MarketExited {
+            account: user.clone(),
+            market,
+        }
+        .publish(&env);
+    }
+
+    pub fn exit_unsupported_market(env: Env, user: Address, market: Address) {
+        bump_core_ttl(&env);
+        user.require_auth();
+        let markets: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
+        if markets.get(market.clone()).unwrap_or(false) {
+            panic!("market supported");
+        }
+        storage::bump_user_markets_ttl(&env, &user);
+        let entered: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserMarkets(user.clone()))
+            .unwrap_or(Vec::new(&env));
+        if !entered.contains(market.clone()) {
+            return;
+        }
+
+        let mut new_vec = Vec::new(&env);
+        for i in 0..entered.len() {
+            let m = entered.get(i).unwrap();
+            if m != market {
+                new_vec.push_back(m);
+            }
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserMarkets(user.clone()), &new_vec);
         MarketExited {
             account: user.clone(),
             market,
@@ -1792,7 +2021,8 @@ impl SimplePeridottroller {
     // This intentionally bypasses cross-contract total checks but still requires:
     // - admin auth
     // - explicit risk acknowledgement
-    // - zero entered users tracked in the controller
+    // - zero expected borrows
+    // - zero controller collateral factor if users or residual pTokens remain
     pub fn force_remove_market(
         env: Env,
         market: Address,
@@ -1811,8 +2041,8 @@ impl SimplePeridottroller {
         if !acknowledge_risk {
             panic!("ack required");
         }
-        if expected_total_ptokens > 0 || expected_total_borrowed > 0 {
-            panic!("expected active positions");
+        if expected_total_borrowed > 0 {
+            panic!("expected active borrows");
         }
         let markets: Map<Address, bool> = env
             .storage()
@@ -1827,8 +2057,11 @@ impl SimplePeridottroller {
             .instance()
             .get(&DataKey::MarketUserCounts)
             .unwrap_or(Map::new(&env));
-        if counts.get(market.clone()).unwrap_or(0u32) > 0 {
-            panic!("market has active users");
+        let active_users = counts.get(market.clone()).unwrap_or(0u32);
+        if active_users > 0 || expected_total_ptokens > 0 {
+            if Self::get_market_cf(env.clone(), market.clone()) != 0 {
+                panic!("market collateral enabled");
+            }
         }
         if !Self::are_market_openings_paused(&env, &market) {
             panic!("market not paused");
@@ -1846,16 +2079,18 @@ impl SimplePeridottroller {
         } else {
             panic!("market underlying missing");
         };
-        let verified_at: u64 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::MarketZeroTotalsVerifiedAt(market.clone()))
-            .unwrap_or_else(|| panic!("missing zero-totals proof"));
-        storage::bump_market_zero_totals_verified_ttl(&env, &market);
-        let now = env.ledger().timestamp();
-        if now.saturating_sub(verified_at) > FORCE_REMOVE_ZERO_TOTALS_MAX_AGE_SECS {
-            panic!("stale zero-totals proof");
-        };
+        if expected_total_ptokens == 0 {
+            let verified_at: u64 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::MarketZeroTotalsVerifiedAt(market.clone()))
+                .unwrap_or_else(|| panic!("missing zero-totals proof"));
+            storage::bump_market_zero_totals_verified_ttl(&env, &market);
+            let now = env.ledger().timestamp();
+            if now.saturating_sub(verified_at) > FORCE_REMOVE_ZERO_TOTALS_MAX_AGE_SECS {
+                panic!("stale zero-totals proof");
+            };
+        }
         Self::apply_market_removal(&env, &market, &effective_removed_token, markets, false);
     }
 
@@ -1911,6 +2146,10 @@ impl SimplePeridottroller {
             if !supported.get(m.clone()).unwrap_or(false) {
                 continue;
             }
+            let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
+            if cf == 0 {
+                continue;
+            }
             let pbal: u128 = env.invoke_contract(
                 &m,
                 &Symbol::new(&env, "get_ptoken_balance"),
@@ -1922,7 +2161,6 @@ impl SimplePeridottroller {
                     &Symbol::new(&env, "get_exchange_rate"),
                     ().into_val(&env),
                 );
-                let cf: u128 = Self::get_market_cf(env.clone(), m.clone());
                 let underlying = (pbal.saturating_mul(rate)) / 1_000_000u128;
                 let discounted = (underlying.saturating_mul(cf)) / 1_000_000u128;
                 total = total.saturating_add(discounted);
@@ -1936,8 +2174,16 @@ impl SimplePeridottroller {
         bump_core_ttl(&env);
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
+        let supported: Map<Address, bool> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SupportedMarkets)
+            .unwrap_or(Map::new(&env));
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
+            if !supported.get(m.clone()).unwrap_or(false) {
+                continue;
+            }
             let debt: u128 = env.invoke_contract(
                 &m,
                 &Symbol::new(&env, "get_user_borrow_balance"),
@@ -1950,7 +2196,6 @@ impl SimplePeridottroller {
 
     // Sum borrows in USD across markets excluding a specific market
     pub fn get_borrows_excl(env: Env, user: Address, exclude_market: Address) -> u128 {
-        bump_core_ttl(&env);
         use soroban_sdk::{IntoVal, InvokeError};
         let mut total: u128 = 0u128;
         let markets = Self::get_user_markets(env.clone(), user.clone());
@@ -2027,7 +2272,6 @@ impl SimplePeridottroller {
 
     // Sum collateral in USD across markets excluding a specific market
     pub fn get_collateral_excl_usd(env: Env, user: Address, exclude_market: Address) -> u128 {
-        bump_core_ttl(&env);
         let (collateral_usd, _borrows, indeterminate, _collateral_indeterminate) =
             Self::sum_positions_usd(env, user, Some(exclude_market));
         if indeterminate {
@@ -2065,7 +2309,6 @@ impl SimplePeridottroller {
         borrow_amount: u128,
         underlying: Address,
     ) -> (u128, u128) {
-        bump_core_ttl(&env);
         let markets = Self::get_user_markets(env.clone(), user.clone());
         if !markets.contains(market.clone()) {
             panic!("market not entered");
@@ -2102,9 +2345,9 @@ impl SimplePeridottroller {
         underlying: Address,
         hint: MarketLiquidityHint,
     ) -> (u128, u128) {
-        bump_core_ttl(&env);
         // This path may refresh cross-market state; restrict it to the calling market.
         market.require_auth();
+        Self::require_market_supported(&env, &market);
         let markets = Self::get_user_markets(env.clone(), user.clone());
         if !markets.contains(market.clone()) {
             panic!("market not entered");
@@ -2394,6 +2637,7 @@ impl SimplePeridottroller {
         if !Self::is_margin_liquidation_controller_allowed(&env, &controller) {
             panic!("unauthorized controller");
         }
+        liquidator.require_auth();
         Self::liquidate_internal(
             env,
             borrower,
@@ -2418,9 +2662,7 @@ impl SimplePeridottroller {
         position_shortfall_usd: Option<u128>,
         max_seize_ptokens: Option<u128>,
     ) -> u128 {
-        // Direct liquidations require liquidator auth at this level.
-        // Margin-path liquidations are already authorized by margin-controller and avoid
-        // liquidator sub-invocation auth entries with dynamic repay amounts.
+        // Public entrypoints require liquidator auth before reaching this shared path.
         if require_account_shortfall {
             liquidator.require_auth();
         }
@@ -2504,7 +2746,7 @@ impl SimplePeridottroller {
         if debt == 0 {
             panic!("no debt");
         }
-        let max_repay = (debt.saturating_mul(close_factor)) / 1_000_000u128;
+        let max_repay = debt.checked_mul(close_factor).expect("liq overflow") / 1_000_000u128;
         let mut repay = if repay_amount > max_repay {
             max_repay
         } else {
@@ -2514,39 +2756,70 @@ impl SimplePeridottroller {
             panic!("repay too small");
         }
 
+        // Fresh LP receipts batch the same balance/live-NAV/underlying reads.
+        // No cached rate or stale-price fallback is introduced for liquidation.
+        let lp_collateral_snapshot: Option<(u128, u128, Address)> =
+            if cfg!(feature = "lp-zero-peri") {
+                Some(env.invoke_contract(
+                    &collateral_market,
+                    &Symbol::new(&env, "get_liquidation_snapshot"),
+                    (borrower.clone(),).into_val(&env),
+                ))
+            } else {
+                None
+            };
         // tokens and prices
         let borrow_token: Address = env.invoke_contract(
             &repay_market,
             &Symbol::new(&env, "get_underlying_token"),
             ().into_val(&env),
         );
-        let coll_token: Address = env.invoke_contract(
-            &collateral_market,
-            &Symbol::new(&env, "get_underlying_token"),
-            ().into_val(&env),
-        );
+        let coll_token: Address = if let Some((_, _, token)) = &lp_collateral_snapshot {
+            token.clone()
+        } else {
+            env.invoke_contract(
+                &collateral_market,
+                &Symbol::new(&env, "get_underlying_token"),
+                ().into_val(&env),
+            )
+        };
         let (pb, sb) = Self::require_price(env.clone(), borrow_token.clone());
         let (pc, sc) = Self::require_price(env.clone(), coll_token.clone());
-        let repay_usd = (repay.saturating_mul(pb)) / sb;
-        let seize_underlying_usd = (repay_usd.saturating_mul(li_scaled)) / 1_000_000u128;
-        let seize_underlying = (seize_underlying_usd.saturating_mul(sc)) / pc;
-        let rate: u128 = env.invoke_contract(
-            &collateral_market,
-            &Symbol::new(&env, "get_exchange_rate"),
-            ().into_val(&env),
-        );
+        // Checked math throughout: on overflow these would otherwise saturate to
+        // u128::MAX, inflating seize_ptokens and (via the rescale below) letting a
+        // liquidator seize full collateral for a negligible repay. Fail closed instead.
+        let repay_usd = repay.checked_mul(pb).expect("liq overflow") / sb;
+        let seize_underlying_usd =
+            repay_usd.checked_mul(li_scaled).expect("liq overflow") / 1_000_000u128;
+        let seize_underlying = seize_underlying_usd.checked_mul(sc).expect("liq overflow") / pc;
+        let rate: u128 = if let Some((_, rate, _)) = &lp_collateral_snapshot {
+            *rate
+        } else {
+            env.invoke_contract(
+                &collateral_market,
+                &Symbol::new(&env, "get_exchange_rate"),
+                ().into_val(&env),
+            )
+        };
         if rate == 0 {
             panic!("invalid exchange rate");
         }
-        let mut seize_ptokens = (seize_underlying.saturating_mul(1_000_000u128)) / rate;
+        let mut seize_ptokens = seize_underlying
+            .checked_mul(1_000_000u128)
+            .expect("liq overflow")
+            / rate;
 
         // Clamp to available collateral and proportionally scale repay down first,
         // so liquidators never pay for collateral that cannot be seized.
-        let borrower_pbal: u128 = env.invoke_contract(
-            &collateral_market,
-            &Symbol::new(&env, "get_ptoken_balance"),
-            (borrower.clone(),).into_val(&env),
-        );
+        let borrower_pbal: u128 = if let Some((balance, _, _)) = &lp_collateral_snapshot {
+            *balance
+        } else {
+            env.invoke_contract(
+                &collateral_market,
+                &Symbol::new(&env, "get_ptoken_balance"),
+                (borrower.clone(),).into_val(&env),
+            )
+        };
         let mut seize_cap = borrower_pbal;
         if let Some(max_seize) = max_seize_ptokens {
             if max_seize == 0 {
@@ -2559,7 +2832,7 @@ impl SimplePeridottroller {
         if seize_ptokens > seize_cap {
             // Scale repay down with ceil-div so tiny-but-nonzero collateral does
             // not round to zero and block liquidation.
-            let scaled = repay.saturating_mul(seize_cap);
+            let scaled = repay.checked_mul(seize_cap).expect("liq overflow");
             repay = if scaled == 0 {
                 0
             } else {
@@ -2570,13 +2843,14 @@ impl SimplePeridottroller {
             }
             seize_ptokens = seize_cap;
         }
-        let repay_usd = (repay.saturating_mul(pb)) / sb;
+        let repay_usd = repay.checked_mul(pb).expect("liq overflow") / sb;
         let liq_fee: u128 = env
             .storage()
             .persistent()
             .get(&DataKey::LiquidationFeeScaled)
             .unwrap_or(0u128);
-        let mut fee_ptokens = (seize_ptokens.saturating_mul(liq_fee)) / 1_000_000u128;
+        let mut fee_ptokens =
+            seize_ptokens.checked_mul(liq_fee).expect("liq overflow") / 1_000_000u128;
         let fee_recipient = if fee_ptokens > 0 {
             env.storage()
                 .persistent()
@@ -2588,15 +2862,23 @@ impl SimplePeridottroller {
             fee_ptokens = 0;
         }
         let liquidity_after_repay = repay_usd.saturating_sub(shortfall_for_ctx);
-        let max_redeem_ptokens = Self::liquidation_redeem_max_ptokens(
-            env.clone(),
-            collateral_market.clone(),
-            borrower_pbal,
-            rate,
-            pc,
-            sc,
-            liquidity_after_repay,
-        );
+        // This legacy field is advisory only: LP seizure transfers pTokens, not
+        // pool cash. Every later withdrawal performs its own live liquidity and
+        // health checks. Zero is the conservative "no redeem preview" value and
+        // avoids another full strategy/pool quote inside an already heavy call.
+        let max_redeem_ptokens = if cfg!(feature = "lp-zero-peri") {
+            0
+        } else {
+            Self::liquidation_redeem_max_ptokens(
+                env.clone(),
+                collateral_market.clone(),
+                borrower_pbal,
+                rate,
+                pc,
+                sc,
+                liquidity_after_repay,
+            )
+        };
         let seize_ctx = SeizeContext {
             liquidity: liquidity_for_ctx,
             shortfall: shortfall_for_ctx,
@@ -2672,13 +2954,13 @@ impl SimplePeridottroller {
         repay_amount: u128,
         liquidator: Address,
     ) {
-        bump_core_ttl(&env);
         liquidator.require_auth();
         let supported: Map<Address, bool> = env
             .storage()
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+        storage::bump_supported_markets_ttl(&env);
         if !supported.get(repay_market.clone()).unwrap_or(false) {
             panic!("market not supported");
         }
@@ -2702,6 +2984,7 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::CloseFactorScaled)
             .unwrap_or(500_000u128);
+        storage::bump_close_factor_ttl(&env);
         let debt: u128 = env.invoke_contract(
             &repay_market,
             &Symbol::new(&env, "get_user_borrow_balance"),
@@ -2743,16 +3026,24 @@ impl SimplePeridottroller {
     pub fn claim(env: Env, user: Address) {
         bump_core_ttl(&env);
         user.require_auth();
+        Self::claim_internal(&env, &user);
+    }
+
+    fn claim_internal(env: &Env, user: &Address) {
         // Accrue and distribute on all entered markets
         let markets = Self::get_user_markets(env.clone(), user.clone());
         for i in 0..markets.len() {
             let m = markets.get(i).unwrap();
-            let _ = Self::claim_market_best_effort(&env, &user, &m);
+            let _ = Self::claim_market_best_effort(env, user, &m);
         }
+        Self::pay_accrued_rewards(env, user, markets.len() > 0);
+    }
+
+    fn pay_accrued_rewards(env: &Env, user: &Address, emit_missing: bool) {
         let accrued_key = DataKey::Accrued(user.clone());
         if !env.storage().persistent().has(&accrued_key) {
-            if markets.len() > 0 {
-                ClaimAccruedMissing { user: user.clone() }.publish(&env);
+            if emit_missing {
+                ClaimAccruedMissing { user: user.clone() }.publish(env);
             }
             return;
         }
@@ -2778,32 +3069,48 @@ impl SimplePeridottroller {
         } else {
             accrued as i128
         };
+        // Distribute from the controller's pre-funded PERI balance instead of
+        // minting. Admin tops up the controller treasury via standard token
+        // transfer; controller doesn't need to be the PERI admin.
+        let controller = env.current_contract_address();
+        let token_client = soroban_sdk::token::Client::new(env, &token);
+        let treasury_balance = token_client.balance(&controller);
+        let payable: i128 = if treasury_balance < amt {
+            treasury_balance
+        } else {
+            amt
+        };
+        if payable <= 0 {
+            // Treasury empty (or negative balance impossible); leave accrued in place.
+            Self::emit_claim_call_failed(env, user, &token, "transfer");
+            return;
+        }
         let auths = vec![
-            &env,
+            env,
             InvokerContractAuthEntry::Contract(SubContractInvocation {
                 context: ContractContext {
                     contract: token.clone(),
-                    fn_name: Symbol::new(&env, "mint"),
-                    args: (user.clone(), amt).into_val(&env),
+                    fn_name: Symbol::new(env, "transfer"),
+                    args: (controller.clone(), user.clone(), payable).into_val(env),
                 },
-                sub_invocations: vec![&env],
+                sub_invocations: vec![env],
             }),
         ];
         env.authorize_as_current_contract(auths);
-        let mint_res = env.try_invoke_contract::<(), InvokeError>(
+        let xfer_res = env.try_invoke_contract::<(), InvokeError>(
             &token,
-            &Symbol::new(&env, "mint"),
-            (user.clone(), amt).into_val(&env),
+            &Symbol::new(env, "transfer"),
+            (controller, user.clone(), payable).into_val(env),
         );
-        if !matches!(mint_res, Ok(Ok(()))) {
-            Self::emit_claim_call_failed(&env, &user, &token, "mint");
+        if !matches!(xfer_res, Ok(Ok(()))) {
+            Self::emit_claim_call_failed(env, user, &token, "transfer");
             return;
         }
-        let minted = if amt < 0 { 0u128 } else { amt as u128 };
-        let remaining = accrued.saturating_sub(minted);
+        let paid = payable as u128;
+        let remaining = accrued.saturating_sub(paid);
         env.storage()
             .persistent()
-            .set(&DataKey::Accrued(user), &remaining);
+            .set(&DataKey::Accrued(user.clone()), &remaining);
     }
 
     pub fn get_accrued(env: Env, user: Address) -> u128 {
@@ -2819,9 +3126,13 @@ impl SimplePeridottroller {
     // attackers from supplying malicious hint values that could inflate reward distributions.
     // Without hints (None), values are fetched on-chain which is safe but more expensive.
     pub fn accrue_user_market(env: Env, user: Address, market: Address, hint: Option<AccrualHint>) {
-        bump_core_ttl(&env);
-
+        #[cfg(feature = "lp-zero-peri")]
+        if Self::lp_reward_policy(env.clone()) == 1 {
+            return;
+        }
         // Reward accrual is disabled until a reward token is configured.
+        // Keep this before broad TTL bumps so no-op accrual calls used by vault
+        // borrow paths do not add unrelated controller keys to the footprint.
         if env
             .storage()
             .persistent()
@@ -2830,6 +3141,8 @@ impl SimplePeridottroller {
         {
             return;
         }
+
+        bump_core_ttl(&env);
 
         // Always restrict accrual calls to configured markets to avoid arbitrary external calls.
         let supported: Map<Address, bool> = env
@@ -2841,12 +3154,16 @@ impl SimplePeridottroller {
             panic!("market not supported");
         }
 
-        // When hints are provided, require authorization from the market contract.
-        // This prevents external attackers from manipulating total_ptokens/total_borrowed
-        // to inflate reward indexes, or user_ptokens/user_borrowed to inflate accruals.
-        // The ReceiptVault contract satisfies this when calling during user operations.
+        // Auth gating prevents arbitrary addresses from being written into persistent storage:
+        // - With hints: require market.require_auth() to prevent manipulated totals/balances.
+        //   ReceiptVault satisfies this when calling during user operations.
+        // - Without hints: require user.require_auth() to prevent spam — anyone could otherwise
+        //   call accrue_user_market(victim, market, None) to anchor a UserSupplyIndex entry
+        //   for an arbitrary address at the current global index, locking out their future rewards.
         if hint.is_some() {
             market.require_auth();
+        } else {
+            user.require_auth();
         }
 
         let hint = hint.unwrap_or(AccrualHint {
@@ -2881,6 +3198,7 @@ impl SimplePeridottroller {
             .persistent()
             .get(&DataKey::SupportedMarkets)
             .unwrap_or(Map::new(&env));
+        storage::bump_supported_markets_ttl(&env);
 
         use soroban_sdk::{IntoVal, InvokeError};
 
@@ -2899,11 +3217,32 @@ impl SimplePeridottroller {
 
             // Attempt get_account_snapshot (new vaults) — collapses 4 cross-contract reads
             // into 1. Falls back to individual calls for old vaults / test mocks that lack it.
+            // Fresh LP receipts expose an atomic accrued snapshot. Avoid loading
+            // the same compiled receipt three times for a cross-market debt.
+            // Generic/core markets retain their existing compatibility path.
+            let accrued_snapshot = cfg!(feature = "lp-zero-peri") && refresh_market_state;
             let snapshot = env.try_invoke_contract::<(u128, u128, u128, Address), InvokeError>(
                 &m,
-                &Symbol::new(&env, "get_account_snapshot"),
+                &Symbol::new(
+                    &env,
+                    if accrued_snapshot {
+                        "get_accrued_account_snapshot"
+                    } else {
+                        "get_account_snapshot"
+                    },
+                ),
                 (user.clone(),).into_val(&env),
             );
+
+            if accrued_snapshot && !matches!(snapshot, Ok(Ok(_))) {
+                // No unaccrued fallback when interest refresh or health data
+                // fails. Missing debt/collateral cannot improve account health.
+                indeterminate = true;
+                if market_cf > 0 {
+                    collateral_indeterminate = true;
+                }
+                continue;
+            }
 
             let (mut pbal, mut pbal_known, mut debt, mut snapshot_rate, mut token_opt) =
                 match snapshot {
@@ -2950,7 +3289,7 @@ impl SimplePeridottroller {
             // transaction footprint, exhausting tx_max_read_ledger_entries for users with
             // cross-market collateral positions (FIND-039 budget fix).
             // FIND-043 is preserved: refresh still fires whenever cross-market debt > 0.
-            if refresh_market_state && debt > 0 {
+            if refresh_market_state && debt > 0 && !accrued_snapshot {
                 let refreshed = env.try_invoke_contract::<(), InvokeError>(
                     &m,
                     &Symbol::new(&env, "update_interest"),
@@ -2965,8 +3304,8 @@ impl SimplePeridottroller {
                 }
 
                 // Re-read post-accrual state. Try snapshot first, then individual calls.
-                let refreshed_snap =
-                    env.try_invoke_contract::<(u128, u128, u128, Address), InvokeError>(
+                let refreshed_snap = env
+                    .try_invoke_contract::<(u128, u128, u128, Address), InvokeError>(
                         &m,
                         &Symbol::new(&env, "get_account_snapshot"),
                         (user.clone(),).into_val(&env),
@@ -3034,39 +3373,53 @@ impl SimplePeridottroller {
                 },
             };
 
-            // Get price — fail-closed when debt exists
+            // Get price — fail-closed.
             let (price, scale) = match Self::try_require_price(&env, &token) {
                 Some((p, s)) if p > 0 => (p, s),
                 _ => {
+                    // Missing/invalid price. If the account holds priced collateral here
+                    // (pbal > 0, cf > 0), omitting it would understate collateral and could
+                    // manufacture an artificial shortfall, so flag collateral_indeterminate to
+                    // make liquidation fail closed (FIND 0c08187f) — this must happen even when
+                    // the market carries no debt. Outstanding debt additionally marks the borrow
+                    // side indeterminate. Markets with no collateral contribution (cf == 0 or
+                    // pbal == 0) can be skipped silently.
+                    if pbal_known && pbal > 0 && market_cf > 0 {
+                        collateral_indeterminate = true;
+                    }
                     if debt > 0 {
                         indeterminate = true;
-                        if pbal_known && pbal > 0 && market_cf > 0 {
-                            collateral_indeterminate = true;
-                        }
-                        continue;
                     }
                     continue;
                 }
             };
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
-            if pbal > 0 {
+            if pbal > 0 && market_cf > 0 {
                 // Use exchange rate from snapshot when available; else individual call.
-                let rate: u128 = match snapshot_rate {
-                    Some(r) if r > 0 => r,
-                    _ => match env.try_invoke_contract::<u128, InvokeError>(
+                // A missing/zero rate on a collateral-enabled market must fail closed:
+                // omitting the pToken collateral can manufacture an artificial shortfall.
+                let rate: Option<u128> = match snapshot_rate {
+                    Some(r) if r > 0 => Some(r),
+                    Some(_) => None,
+                    None => match env.try_invoke_contract::<u128, InvokeError>(
                         &m,
                         &Symbol::new(&env, "get_exchange_rate"),
                         ().into_val(&env),
                     ) {
-                        Ok(Ok(r)) if r > 0 => r,
-                        _ => 0u128,
+                        Ok(Ok(r)) if r > 0 => Some(r),
+                        _ => None,
                     },
                 };
-                let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
-                let discounted = (underlying_amount.saturating_mul(market_cf)) / 1_000_000u128;
-                let usd = (discounted.saturating_mul(price)) / scale;
-                collateral_total = collateral_total.saturating_add(usd);
+                if let Some(rate) = rate {
+                    let underlying_amount = (pbal.saturating_mul(rate)) / 1_000_000u128;
+                    let discounted = (underlying_amount.saturating_mul(market_cf)) / 1_000_000u128;
+                    let usd = (discounted.saturating_mul(price)) / scale;
+                    collateral_total = collateral_total.saturating_add(usd);
+                } else if pbal_known {
+                    indeterminate = true;
+                    collateral_indeterminate = true;
+                }
             }
 
             // Borrows: borrow balance * price
@@ -3142,7 +3495,9 @@ impl SimplePeridottroller {
 
     // Price quotation via cached oracle data or fallback (no on-chain oracle call).
     pub fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)> {
-        bump_core_ttl(&env);
+        if cfg!(feature = "lp-zero-peri") {
+            return Self::cache_price(env, token);
+        }
         storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()
@@ -3201,6 +3556,59 @@ impl SimplePeridottroller {
         let Some(oracle_addr) = oracle else {
             return None;
         };
+        if cfg!(feature = "lp-zero-peri") {
+            // LP release requires the router's atomic, live quote interface.
+            // No fallback on missing ABI, metadata failure or absent observation.
+            storage::bump_oracle_asset_symbol_ttl(&env, &token);
+            let asset = match env
+                .storage()
+                .persistent()
+                .get::<_, Symbol>(&DataKey::OracleAssetSymbol(token.clone()))
+            {
+                Some(sym) => crate::reflector::Asset::Other(sym),
+                None => crate::reflector::Asset::Stellar(token.clone()),
+            };
+            let (pd, decimals, resolution) = match env.try_invoke_contract::<Option<(
+                crate::reflector::PriceData,
+                u32,
+                u32,
+            )>, InvokeError>(
+                &oracle_addr,
+                &Symbol::new(&env, "price_snapshot"),
+                (asset,).into_val(&env),
+            ) {
+                Ok(Ok(Some(v))) => v,
+                _ => return None,
+            };
+            let scale = pow10_u128(decimals)?;
+            let now = env.ledger().timestamp();
+            let k: u64 = env
+                .storage()
+                .persistent()
+                .get(&DataKey::OracleMaxAgeMultiplier)
+                .unwrap_or(2);
+            if pd.price <= 0
+                || scale == 0
+                || decimals > 18
+                || resolution == 0
+                || pd.timestamp > now
+                || now - pd.timestamp > (resolution as u64).saturating_mul(k)
+            {
+                return None;
+            }
+            let price = u128::try_from(pd.price).ok()?;
+            env.storage().persistent().set(
+                &DataKey::PriceCache(token.clone()),
+                &CachedPrice {
+                    price,
+                    scale,
+                    timestamp: pd.timestamp,
+                    resolution,
+                },
+            );
+            storage::bump_price_cache_ttl(&env, &token);
+            return Some((price, scale));
+        }
         let dec: u32 = match env.try_invoke_contract::<u32, InvokeError>(
             &oracle_addr,
             &Symbol::new(&env, "decimals"),
@@ -3209,7 +3617,9 @@ impl SimplePeridottroller {
             Ok(Ok(v)) => v,
             _ => return None,
         };
-        let scale = pow10_u128(dec);
+        let Some(scale) = pow10_u128(dec) else {
+            return None;
+        };
         if scale == 0 {
             return None;
         }
@@ -3251,6 +3661,9 @@ impl SimplePeridottroller {
                     .get(&DataKey::OracleMaxAgeMultiplier)
                     .unwrap_or(2u64);
                 let max_age = res.saturating_mul(k);
+                if pd.timestamp > now {
+                    return None;
+                }
                 if pd.timestamp + max_age < now {
                     return None;
                 }
@@ -3279,7 +3692,11 @@ impl SimplePeridottroller {
     // Non-panicking version of require_price for FIND-039 fix
     // Returns None instead of panicking when price unavailable
     fn try_require_price(env: &Env, token: &Address) -> Option<(u128, u128)> {
-        bump_core_ttl(env);
+        // LP oracle invalidation/observation expiry must take effect even when
+        // this market has a warm cache. Generic core pricing is unchanged.
+        if cfg!(feature = "lp-zero-peri") {
+            return Self::cache_price(env.clone(), token.clone());
+        }
         storage::bump_price_cache_ttl(env, token);
         if let Some(cached) = env
             .storage()
@@ -3323,7 +3740,9 @@ impl SimplePeridottroller {
     }
 
     fn require_price(env: Env, token: Address) -> (u128, u128) {
-        bump_core_ttl(&env);
+        if cfg!(feature = "lp-zero-peri") {
+            return Self::cache_price(env, token).expect("LP live price unavailable");
+        }
         storage::bump_price_cache_ttl(&env, &token);
         if let Some(cached) = env
             .storage()
@@ -3368,11 +3787,15 @@ impl SimplePeridottroller {
 
     fn cached_price_fresh(env: &Env, cached_timestamp: u64, cached_resolution: u32) -> bool {
         let now = env.ledger().timestamp();
+        if cached_timestamp > now {
+            return false;
+        }
         let k: u64 = env
             .storage()
             .persistent()
             .get(&DataKey::OracleMaxAgeMultiplier)
             .unwrap_or(2u64);
+        storage::bump_oracle_max_age_multiplier_ttl(env);
         let res = cached_resolution as u64;
         let grace = res.saturating_mul(k);
         cached_timestamp + grace >= now
@@ -3385,6 +3808,7 @@ impl SimplePeridottroller {
 }
 
 // Rewards internals
+#[contractimpl]
 impl SimplePeridottroller {
     fn accrue_market(
         env: Env,
@@ -3416,18 +3840,43 @@ impl SimplePeridottroller {
                             ().into_val(&env),
                         )
                     });
-                    if total_ptokens > 0 {
-                        let mut idx: u128 = env
-                            .storage()
+                    if total_ptokens == 0 {
+                        // No suppliers this interval; advance the clock so nothing accrues.
+                        env.storage()
                             .persistent()
-                            .get(&DataKey::SupplyIndex(market.clone()))
-                            .unwrap_or(INDEX_SCALE_1E18);
+                            .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+                        storage::bump_reward_market_ttl(&env, &market);
+                    } else {
                         let product = speed
                             .checked_mul(dt_s as u128)
                             .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
-                        let delta = match product {
-                            Some(total) => total / total_ptokens,
+                        match product {
+                            Some(total) => {
+                                let delta = total / total_ptokens;
+                                if delta > 0 {
+                                    let idx: u128 = env
+                                        .storage()
+                                        .persistent()
+                                        .get(&DataKey::SupplyIndex(market.clone()))
+                                        .unwrap_or(INDEX_SCALE_1E18)
+                                        .saturating_add(delta);
+                                    env.storage()
+                                        .persistent()
+                                        .set(&DataKey::SupplyIndex(market.clone()), &idx);
+                                    env.storage()
+                                        .persistent()
+                                        .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+                                    storage::bump_reward_market_ttl(&env, &market);
+                                }
+                                // delta == 0: the emission for this interval rounds below one
+                                // index unit. Leave SupplyIndexTime untouched so the elapsed
+                                // time folds into the next accrual instead of being discarded
+                                // (otherwise anyone can grief emissions by forcing tiny dt via
+                                // permissionless claim_all, FIND bf888b9c).
+                            }
                             None => {
+                                // Overflow: disable the speed and advance the clock. Accrual is
+                                // now off, so the stale dt cannot resume.
                                 env.storage()
                                     .persistent()
                                     .set(&DataKey::SupplySpeed(market.clone()), &0u128);
@@ -3435,19 +3884,13 @@ impl SimplePeridottroller {
                                     market: market.clone(),
                                 }
                                 .publish(&env);
-                                0u128
+                                env.storage()
+                                    .persistent()
+                                    .set(&DataKey::SupplyIndexTime(market.clone()), &now);
+                                storage::bump_reward_market_ttl(&env, &market);
                             }
-                        };
-                        idx = idx.saturating_add(delta);
-                        env.storage()
-                            .persistent()
-                            .set(&DataKey::SupplyIndex(market.clone()), &idx);
-                        storage::bump_reward_market_ttl(&env, &market);
+                        }
                     }
-                    env.storage()
-                        .persistent()
-                        .set(&DataKey::SupplyIndexTime(market.clone()), &now);
-                    storage::bump_reward_market_ttl(&env, &market);
                 }
             } else {
                 env.storage()
@@ -3480,18 +3923,40 @@ impl SimplePeridottroller {
                             ().into_val(&env),
                         )
                     });
-                    if total_borrowed > 0 {
-                        let mut idx: u128 = env
-                            .storage()
+                    if total_borrowed == 0 {
+                        // No borrowers this interval; advance the clock so nothing accrues.
+                        env.storage()
                             .persistent()
-                            .get(&DataKey::BorrowIndex(market.clone()))
-                            .unwrap_or(INDEX_SCALE_1E18);
+                            .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+                        storage::bump_reward_market_ttl(&env, &market);
+                    } else {
                         let product = speed
                             .checked_mul(dt_b as u128)
                             .and_then(|v| v.checked_mul(INDEX_SCALE_1E18));
-                        let delta = match product {
-                            Some(total) => total / total_borrowed,
+                        match product {
+                            Some(total) => {
+                                let delta = total / total_borrowed;
+                                if delta > 0 {
+                                    let idx: u128 = env
+                                        .storage()
+                                        .persistent()
+                                        .get(&DataKey::BorrowIndex(market.clone()))
+                                        .unwrap_or(INDEX_SCALE_1E18)
+                                        .saturating_add(delta);
+                                    env.storage()
+                                        .persistent()
+                                        .set(&DataKey::BorrowIndex(market.clone()), &idx);
+                                    env.storage()
+                                        .persistent()
+                                        .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+                                    storage::bump_reward_market_ttl(&env, &market);
+                                }
+                                // delta == 0: rounds below one index unit. Leave
+                                // BorrowIndexTime untouched so the elapsed time folds into the
+                                // next accrual instead of being discarded (FIND bf888b9c).
+                            }
                             None => {
+                                // Overflow: disable the speed and advance the clock.
                                 env.storage()
                                     .persistent()
                                     .set(&DataKey::BorrowSpeed(market.clone()), &0u128);
@@ -3499,19 +3964,13 @@ impl SimplePeridottroller {
                                     market: market.clone(),
                                 }
                                 .publish(&env);
-                                0u128
+                                env.storage()
+                                    .persistent()
+                                    .set(&DataKey::BorrowIndexTime(market.clone()), &now);
+                                storage::bump_reward_market_ttl(&env, &market);
                             }
-                        };
-                        idx = idx.saturating_add(delta);
-                        env.storage()
-                            .persistent()
-                            .set(&DataKey::BorrowIndex(market.clone()), &idx);
-                        storage::bump_reward_market_ttl(&env, &market);
+                        }
                     }
-                    env.storage()
-                        .persistent()
-                        .set(&DataKey::BorrowIndexTime(market.clone()), &now);
-                    storage::bump_reward_market_ttl(&env, &market);
                 }
             } else {
                 env.storage()
@@ -3539,15 +3998,24 @@ impl SimplePeridottroller {
             .storage()
             .persistent()
             .get(&DataKey::UserSupplyIndex(user.clone(), market.clone()));
-        let uidx: u128 = user_idx_opt.unwrap_or(idx);
-        if idx == uidx {
-            if user_idx_opt.is_none() {
+        let Some(uidx) = user_idx_opt else {
+            let pbal: u128 = user_ptokens_hint.unwrap_or_else(|| {
+                env.invoke_contract(
+                    &market,
+                    &Symbol::new(&env, "get_ptoken_balance"),
+                    (user.clone(),).into_val(&env),
+                )
+            });
+            if user_ptokens_hint.is_some() || pbal > 0 {
                 env.storage().persistent().set(
                     &DataKey::UserSupplyIndex(user.clone(), market.clone()),
                     &idx,
                 );
                 storage::bump_reward_user_ttl(&env, &user, &market);
             }
+            return;
+        };
+        if idx == uidx {
             return;
         }
         let pbal: u128 = user_ptokens_hint.unwrap_or_else(|| {
@@ -3626,7 +4094,9 @@ impl SimplePeridottroller {
         storage::bump_reward_user_ttl(&env, &user, &market);
     }
 
-    // UX: allow claiming for many users at once (permissionless)
+    // UX: allow payout of already-accrued rewards for many users at once.
+    // Permissionless batch claims intentionally do not run per-market distribution:
+    // doing so could anchor missing/expired reward indexes for another user.
     pub fn claim_all(env: Env, users: Vec<Address>) {
         bump_core_ttl(&env);
         if users.len() > MAX_CLAIM_BATCH {
@@ -3634,7 +4104,7 @@ impl SimplePeridottroller {
         }
         for i in 0..users.len() {
             let u = users.get(i).unwrap();
-            Self::claim(env.clone(), u);
+            Self::pay_accrued_rewards(&env, &u, false);
         }
     }
 
@@ -3642,7 +4112,7 @@ impl SimplePeridottroller {
     pub fn claim_self(env: Env, user: Address) {
         bump_core_ttl(&env);
         user.require_auth();
-        Self::claim(env, user);
+        Self::claim_internal(&env, &user);
     }
 
     // UX: portfolio view summarizing per-market balances and USD totals

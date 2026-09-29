@@ -1,0 +1,18 @@
+[package]
+name = "lp-receipt-vault"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["lib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+stellar-tokens = { workspace = true }
+# Reuse the legacy key type, not its lending operations or TTL sweep.
+receipt-vault = { path = "../receipt-vault", features = ["test-default-admin"] }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
