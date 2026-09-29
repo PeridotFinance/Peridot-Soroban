@@ -69,8 +69,17 @@ MarginController (leveraged trading, optional)
   change; partial/full exit regression with tiny pending rewards/no harvest
   passes. All3unsigned Mainnet full exits pass September29 13:01UTC without
   executing harvest. See `bots/aquarius-keeper/HARVEST_ECONOMICS.md`.
-  New code not yet scanned/deployed; production remains v0.4.2 until a verified
-  release. No withdrawal, manual harvest, settings change or funds moved.
+  132keeper tests and12boostedmarket tests pass. Almanax
+  2c6af8f1-1078-47e7-901c-b48045c24e60 (dd47300..dc6b548) COMPLETE0findings.
+  DEPLOYED single-worker v0.4.3 at exactdc6b5487ef6d7cd1b58fd4cb5733465f3fc1ba81,
+  deployment4cc2055e-3d31-4586-b86b-ba83f190afc4, Sept29 13:10:56UTC. Dryrun
+  stage then verifiedoldsignerstopped before liveactivation; allother settings
+  andencryptedsecret unchanged. First6refreshes SUCCESS64680336–64680341,
+  independentlyverified RPC+Horizon,0failures,fees0.0105602XLM, balance3.7122409XLM.
+  Freshkeyless cycle confirms normalmaintenance simulates while harvests defer
+  belowdust; separate actualsimulation economicprobes allunprofitable. Newlive
+  scheduledharvest decision not yet observed (six-hour cadence, firstdue~19:11UTC
+  ifuninterrupted). No manualharvest/withdrawal/funding or contractsettings change.
 - September26 Mainnet maintenance: the reported PYUSD withdrawal and three
   harvest failures were caused by ~65h-old NAV/composition caches after the
   production keeper exhausted spendable fees. User-approved5XLM top-up
