@@ -8,6 +8,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { harvestDecision } from "./harvest.mjs";
 import { feeCoverage } from "./fees.mjs";
+import { convertedRewards, harvestProfitability, FEE_ORACLE, NATIVE, USDC, PYUSD } from "./profitability.mjs";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -135,6 +136,25 @@ export class StellarClient {
     return coverage.sufficient;
   }
 
+  async harvestPrices(underlying) {
+    if (underlying === NATIVE) return null;
+    if (underlying !== USDC && underlying !== PYUSD) throw new Error("unsupported settlement asset");
+    const asset = id => nativeToScVal(["Stellar", id], { type: ["symbol", "address"] });
+    const [base, decimals, xlm, price] = await Promise.all([
+      this.read(FEE_ORACLE, "base"), this.read(FEE_ORACLE, "decimals"),
+      this.read(FEE_ORACLE, "lastprice", [asset(NATIVE)]),
+      underlying === PYUSD ? this.read(FEE_ORACLE, "lastprice", [asset(PYUSD)]) : null,
+    ]);
+    if (!Array.isArray(base) || base.length !== 2 || base[0] !== "Stellar" || base[1] !== USDC || decimals !== 14) {
+      throw new Error("unexpected fee oracle denomination");
+    }
+    return { xlm, asset: price };
+  }
+
+  checkHarvestProfit(rewards, prepared, underlying, prices) {
+    return harvestProfitability(rewards, prepared.fee, underlying, prices, Math.floor(Date.now() / 1000));
+  }
+
   async execute(contractId, method, args = []) {
     const navTarget = this.navTarget(contractId, method);
     if (navTarget && !(await this.freshNav(navTarget))) {
@@ -158,6 +178,7 @@ export class StellarClient {
     }
     const transaction = await this.buildTransaction(contractId, method, args);
     let harvestSimulation;
+    let harvestPrepared, rewardProceeds, feePrices;
     if (this.config.dryRun || harvestInputs) {
       const simulation = await this.retryRead(`${method} simulation`, () =>
         this.server.simulateTransaction(transaction),
@@ -183,6 +204,23 @@ export class StellarClient {
         });
         if (!decision.ready) return { deferred: true, method, reason: "below_threshold" };
         harvestSimulation = simulation;
+        // This gate applies ONLY to optional harvest. Cache maintenance and
+        // user withdrawal calls never depend on these prices or economics.
+        try {
+          rewardProceeds = convertedRewards(simulation.events, contractId);
+          harvestPrepared = rpc.assembleTransaction(transaction, simulation).build();
+          feePrices = await this.harvestPrices(harvestInputs.underlying);
+          const profit = this.checkHarvestProfit(rewardProceeds, harvestPrepared, harvestInputs.underlying, feePrices);
+          this.logger.info("harvest profitability checked", {
+            contractId, ready: profit.ready, convertedRewardRaw: String(rewardProceeds),
+            conservativeXlmStroops: String(profit.conservativeXlm), requiredXlmStroops: String(profit.requiredXlm),
+            preparedFeeStroops: harvestPrepared.fee,
+          });
+          if (!profit.ready) return { deferred: true, method, reason: "unprofitable_harvest" };
+        } catch {
+          this.logger.warn("harvest profitability unavailable", { contractId });
+          return { deferred: true, method, reason: "harvest_economics_unavailable" };
+        }
       }
       if (this.config.dryRun) {
         this.logger.info("transaction simulated", {
@@ -196,7 +234,7 @@ export class StellarClient {
     }
 
     // Sign the exact simulation that passed the gate, without a second preparation.
-    const prepared = harvestSimulation ? rpc.assembleTransaction(transaction, harvestSimulation).build()
+    const prepared = harvestSimulation ? harvestPrepared
       : await this.retryRead(`${method} preparation`, () =>
       this.server.prepareTransaction(transaction),
     );
@@ -216,6 +254,15 @@ export class StellarClient {
     }
     if (Date.now() + 10_000 >= expires * 1000) {
       return { deferred: true, method, reason: "transaction_expiring" };
+    }
+    if (harvestInputs) {
+      try {
+        if (!this.checkHarvestProfit(rewardProceeds, prepared, harvestInputs.underlying, feePrices).ready) {
+          return { deferred: true, method, reason: "unprofitable_harvest" };
+        }
+      } catch {
+        return { deferred: true, method, reason: "harvest_economics_unavailable" };
+      }
     }
     prepared.sign(this.config.keypair);
     const submitted = await this.server.sendTransaction(prepared);

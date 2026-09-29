@@ -60,6 +60,17 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- September29 optional keeper economics implementation: only successful
+  strategy-emitted reward-conversion proceeds count, excluding idle/principal
+  and LP trading fees. 5% proceeds haircut must exceed full prepared maxfee+25%.
+  USDC/PYUSD use fresh independent Reflector Stellar-asset prices in USDC base;
+  no PYUSD parity assumption. Missing/stale prices defer harvest only. NAV and
+  receipt-cache maintenance remain independent. No Rust runtime/withdrawal path
+  change; partial/full exit regression with tiny pending rewards/no harvest
+  passes. All3unsigned Mainnet full exits pass September29 13:01UTC without
+  executing harvest. See `bots/aquarius-keeper/HARVEST_ECONOMICS.md`.
+  New code not yet scanned/deployed; production remains v0.4.2 until a verified
+  release. No withdrawal, manual harvest, settings change or funds moved.
 - September26 Mainnet maintenance: the reported PYUSD withdrawal and three
   harvest failures were caused by ~65h-old NAV/composition caches after the
   production keeper exhausted spendable fees. User-approved5XLM top-up

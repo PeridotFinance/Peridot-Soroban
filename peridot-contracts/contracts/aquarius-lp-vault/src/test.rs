@@ -1925,6 +1925,33 @@ mod boosted_market {
     }
 
     #[test]
+    fn market_withdraw_does_not_require_an_economical_or_completed_harvest() {
+        let m = setup_market();
+        let user = Address::generate(&m.f.env);
+        let amount = 10_000_0000000i128;
+        m.f.usdc.mint(&user, &amount);
+        m.market.deposit(&user, &(amount as u128));
+
+        // Leave tiny pending rewards and no configured sale route. The keeper
+        // may defer this harvest indefinitely; principal exits must not call it.
+        m.f.aqua.mint(&m.f.pool_id, &1i128);
+        m.f.pool.credit_rewards(&m.f.vault_id, &1u128, &0u128);
+        assert_eq!(m.f.vault.get_last_harvest(), 0);
+        let shares = m.market.balance(&user) as u128;
+        m.f.env.cost_estimate().budget().reset_unlimited();
+        m.market.refresh_boosted_underlying();
+        m.market.withdraw(&user, &(shares / 2));
+        assert!(m.f.usdc.balance(&user) > amount * 48 / 100);
+        assert_eq!(m.f.vault.get_last_harvest(), 0);
+        m.market.refresh_boosted_underlying();
+        m.market.withdraw(&user, &(m.market.balance(&user) as u128));
+        assert_eq!(m.market.balance(&user), 0);
+        assert_eq!(m.f.vault.total_supply(), 0);
+        assert!(m.f.usdc.balance(&user) > amount * 98 / 100);
+        assert_eq!(m.f.vault.get_last_harvest(), 0);
+    }
+
+    #[test]
     fn market_withdraw_pulls_back_through_the_boosted_vault() {
         let m = setup_market();
         let user = Address::generate(&m.f.env);

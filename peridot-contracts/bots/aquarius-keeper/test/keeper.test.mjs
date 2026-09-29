@@ -239,3 +239,22 @@ test("a threshold deferral is healthy and still refreshes caches and checks rang
   assert.equal(await keeper.runCycle(), 0);
   assert.equal(calls.filter(method => method === "harvest").length, 2);
 });
+
+for (const reason of ["unprofitable_harvest", "harvest_economics_unavailable"]) {
+  test(`${reason} leaves withdrawal-supporting maintenance active for all markets`, async () => {
+    const calls = [];
+    const client = {
+      async read() { return false; },
+      async execute(id, method) {
+        calls.push([id, method]);
+        return method === "harvest" ? { deferred: true, reason } : {};
+      },
+    };
+    const keeper = new AquariusKeeper(config({targets: [target("XLM"), target("PYUSD"), target("USDC")]}), client, logger());
+    assert.equal(await keeper.runCycle(), 0);
+    for (const name of ["XLM", "PYUSD", "USDC"]) {
+      assert.ok(calls.some(([id,m])=>id===`vault-${name}`&&m==="refresh_nav_root"));
+      assert.ok(calls.some(([id,m])=>id===`market-${name}`&&m==="refresh_boosted_underlying"));
+    }
+  });
+}
