@@ -30,3 +30,6 @@ pub(crate) fn require_validation_network(env: &soroban_sdk::Env) {
         "LP release gates: Mainnet initialization disabled"
     );
 }
+
+#[cfg(test)]
+mod network_gate_test;

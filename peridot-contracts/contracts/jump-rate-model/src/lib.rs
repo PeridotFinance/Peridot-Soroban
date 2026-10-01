@@ -320,6 +320,9 @@ fn bump_pending_upgrade_ttl(env: &Env) {
 }
 
 #[cfg(test)]
+mod property_test;
+
+#[cfg(test)]
 mod test {
     use super::*;
     use soroban_sdk::testutils::Address as _;
