@@ -54,6 +54,11 @@ is not proof that an unresolved old journal can resume. Public logs are in
 
 ## Verified result and limits
 
+October6: service inspection confirmed a stopped process with an unresolved
+publication intent, not continuous operation. SSH now also allows the approved
+operator80.138.100.7/32. See `DEPTH_INTENT_RECOVERY.md` for the reviewed recovery
+design; implementation is not evidence of deployment or completed recovery.
+
 Service began September26 19:47:14UTC, run `21de8877-cbb2-4635-a3d9-f0f9d33648f8`.
 First sample collected/agreed with unchanged guards; no missed slot or failure.
 Expired prior report invalidated successfully on Testnet:
@@ -66,9 +71,9 @@ not an independent Testnet yXLM market or live lending migration.
 syntax verification, Testnet network/manifest preflight, time synchronization,
 copied artifact hashes and container restrictions verified. npm install audit
 reported0vulnerabilities. Packaging commit `270e6b69863798d1f0ded3f69393a511f0d9ee8c`
-is pushed and remote-verified on `leveraged-fix`. These deployment files have NOT
-received a new Almanax scan: its MCP connection and shell API-key environment are
-unavailable in this session. Prior runtime scan is not a scan of the new package.
+is pushed and remote-verified on `leveraged-fix`. Subsequent September26 Almanax
+scan `4b4bd14d-493f-4450-9da5-418ee8945a3d` completed with zero findings for this
+deployment package. Later recovery changes require their own scan.
 
 Original timely lost-response restart remains unproven. Prior expired-report
 governed recovery did complete; see `DEPTH_LIVE_REHEARSAL.md`. Mainnet migration,

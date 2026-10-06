@@ -12,7 +12,7 @@ test('Testnet image pins base and copies only reporter dependencies',async()=>{
   assert.equal(copies.length,2);
   assert(!copies.join(' ').match(/(?:\.env|target\/|scripts\/|src\/main\.mjs|\*|COPY \. )/));
   const sourceFiles=copies[1].split(' ').slice(1,-1);
-  assert.equal(sourceFiles.length,14);
+  assert.equal(sourceFiles.length,17);
   for(const path of sourceFiles)assert.match(path,/^src\/[a-z-]+\.mjs$/);
 });
 test('Testnet service preserves state and does not auto-retry or expose key arguments',async()=>{

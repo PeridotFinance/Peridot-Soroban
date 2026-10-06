@@ -6,6 +6,7 @@ import {Address,Asset,Contract,Networks,StrKey,TransactionBuilder,nativeToScVal,
 import {planDepthPublication,DEPTH_PRICING_POLICY} from './depth-pricing.mjs';
 import {crossCheck} from './observation.mjs';
 import {requireClosedLedger} from './depth-ledger-clock.mjs';
+import {depthStage,depthDiagnostic} from './depth-diagnostics.mjs';
 const addr=a=>new Address(a).toScVal();
 const canonical=value=>JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v);
 const probe=1_000_000_000n;
@@ -28,7 +29,7 @@ export function validateDepthManifest(value) {
 }
 export const depthJournalScope=m=>createHash('sha256').update(canonical(validateDepthManifest(m))).digest('hex');
 
-export function createDepthTransport({manifest,server,key,now}) {
+export function createDepthTransport({manifest,server,key,now,emit=()=>{}}) {
   const m=validateDepthManifest(manifest),source=m.reporter;
   assert(key.publicKey()===source,'fixture signer mismatch');
   let floorLedger=0;
@@ -113,10 +114,12 @@ export function createDepthTransport({manifest,server,key,now}) {
       const prepared=rpc.assembleTransaction(tx,sim).build();
       assert(BigInt(prepared.fee)<=1_000_000n,'publication exceeds 0.1 XLM fee limit');
       return {hash:prepared.hash().toString('hex'),until,
+        intentDetails:{source,sequence:prepared.sequence,maxTime:until},
         async send() {
           assert(now()<until,'transaction expired before signing');
           prepared.sign(key);
-          const sent=await server.sendTransaction(prepared);
+          const sent=await depthStage(emit,'send_rpc',()=>server.sendTransaction(prepared));
+          if(sent.status==='ERROR')emit(depthDiagnostic('send_rejected',sent));
           assert(sent.hash===prepared.hash().toString('hex')&&['PENDING','DUPLICATE'].includes(sent.status),'submission unresolved');
         }};
     },
@@ -153,6 +156,7 @@ export function createDepthPublisher({transport,journal,now,sleep,emit=()=>{},mo
     throw Error('unresolved transaction: manual hash reconciliation required');
   }
   async function reconcile() {
+    assert(!journal.fence?.(),'operator recovery fence must be reconciled first');
     assert(!journal.failed(),'failed transaction requires operator review');
     const pending=journal.pending();if(!pending)return;
     const result=await confirmation(pending.hash);
@@ -177,23 +181,23 @@ export function createDepthPublisher({transport,journal,now,sleep,emit=()=>{},mo
   return {
     reconcile:exclusive(async()=>{await transport.verify();await reconcile();}),
     cycle:exclusive(async input=>{
-      await transport.verify();await reconcile();
-      const plan=await decision(input);
+      await depthStage(emit,'verify',()=>transport.verify());await depthStage(emit,'reconcile',reconcile);
+      const plan=await depthStage(emit,'decision',()=>decision(input));
       if(plan.action==='hold')return {action:'hold',reason:plan.reason};
       const method=plan.action==='publish_candidate'?'publish_observation':
         plan.action==='publish_recovery_candidate'?'publish_recovery_observation':'invalidate_observation';
-      const prepared=await transport.prepare(method,plan.candidate);
+      const prepared=await depthStage(emit,'prepare',()=>transport.prepare(method,plan.candidate));
       // No cached policy, observation or pool quote is sufficient for signing.
-      await transport.verify();
-      const fresh=await decision(input);
+      await depthStage(emit,'pre_sign_verify',()=>transport.verify());
+      const fresh=await depthStage(emit,'pre_sign_decision',()=>decision(input));
       if(fresh.action!==plan.action||canonical(fresh.previous)!==canonical(plan.previous)
         ||canonical(fresh.recovery)!==canonical(plan.recovery)
         ||canonical(fresh.candidate)!==canonical(plan.candidate)||now()>=prepared.until)
         return {action:'hold',reason:'state_or_freshness_changed_before_signing'};
-      await journal.intent(prepared.hash,method); // durable BEFORE any signature/send
-      await prepared.send();
+      await depthStage(emit,'journal_intent',()=>journal.intent(prepared.hash,method,prepared.intentDetails));
+      await depthStage(emit,'send',()=>prepared.send());
       emit({kind:'depth_submitted',method,hash:prepared.hash,network:'testnet'});
-      const result=await confirmation(prepared.hash);
+      const result=await depthStage(emit,'confirm',()=>confirmation(prepared.hash));
       await journal.resolve(prepared.hash,result.status);
       assert(result.status==='SUCCESS','publication failed');
       emit({kind:'depth_confirmed',method,hash:prepared.hash,ledger:result.ledger,network:'testnet'});

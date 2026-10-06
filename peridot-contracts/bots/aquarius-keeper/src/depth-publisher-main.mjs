@@ -24,7 +24,7 @@ try {
   assert((await server.getNetwork()).passphrase===manifest.network,'Testnet endpoint mismatch');
   const key=Keypair.fromSecret(process.env.DEPTH_TESTNET_REPORTER_SECRET??'');
   const now=()=>Math.floor(Date.now()/1000);
-  const transport=createDepthTransport({manifest,server,key,now});
+  const transport=createDepthTransport({manifest,server,key,now,emit});
   journal=await openPublicationJournal(process.env.DEPTH_TESTNET_JOURNAL,depthJournalScope(manifest));
   const publisher=createDepthPublisher({transport,journal,now,sleep,emit});
   await publisher.reconcile();
