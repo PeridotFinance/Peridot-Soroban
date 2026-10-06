@@ -17,10 +17,13 @@ Deployed September26,2026 using DigitalOcean context `peridot2`. Never use the
   `target/depth-droplet-20260926/ssh_ed25519`. SSH host key was pinned on first
   connection (TOFU); subsequent connections require an exact match. Fingerprint
   `SHA256:0hMg5wtCjzc0TgHwY8dgr+oJLcPvMhYLAckDqD8D3YA`.
-- Image `sha256:cba821e46cb1300e5729a632e0b10f9d6317e2a964ccd4d193677e391d0d0383`,
-  local tag `peridot-depth-testnet:reviewed`. Dockerfile pins its Node22 base;
-  package lock pins JS dependencies. Source runtime is unchanged from scanned
-  `85789496eb498f1c8cb53ca0a02d551ea4e1aef6`.
+- Current image `sha256:005b236f564042c71307c2d2223ba3aa6a9a1bb589325b1c3f76d3505ed68208`,
+  local tag `peridot-depth-testnet:reviewed`, runtime commit
+  `57d4c11df1c246bbfeac91c5b86ded15c15e4f1b`. Original image
+  `sha256:cba821e46cb1300e5729a632e0b10f9d6317e2a964ccd4d193677e391d0d0383`
+  retained as `peridot-depth-testnet:pre-recovery-20261006` for evidence, not a
+  blind rollback (old parser cannot read the new recovery journal records).
+  Dockerfile pins its Node22 base; package lock pins JS dependencies.
 
 ## Keys, state and execution
 
@@ -54,10 +57,21 @@ is not proof that an unresolved old journal can resume. Public logs are in
 
 ## Verified result and limits
 
-October6: service inspection confirmed a stopped process with an unresolved
-publication intent, not continuous operation. SSH now also allows the approved
-operator80.138.100.7/32. See `DEPTH_INTENT_RECOVERY.md` for the reviewed recovery
-design; implementation is not evidence of deployment or completed recovery.
+October6: the reviewed recovery is now executed and the reporter restarted.
+Almanax `5de30b6f-52d4-45b1-9506-23a91ee578a8` completed with zero findings;
+141local keeper tests and26offline tests inside the deployed image pass. Only
+the dedicated Testnet reporter sequence was advanced to20594093306413069:
+fence `f4819b095d6654774c2ddb78faf51e99eef210ace22d82d67e1216a0b9c2e9a7`
+SUCCESS5054598 at14:22:57UTC, independently verified via Horizon/RPC, fee100stroops.
+The original unknown intent remains in the journal with an appended RETIRED
+record, not a fabricated SUCCESS. Pre-recovery backup is
+`/var/lib/peridot-depth-testnet/publisher.before-recovery-20261006.jsonl`.
+
+One service started14:24:03UTC on the exact reviewed image. Fresh30-minute window
+and new publication still require verification; do not infer continuous health
+or timely lost-response restart from startup. No Mainnet action. SSH now also
+allows the user-approved operator80.138.100.7/32; service/price guards unchanged.
+See `DEPTH_INTENT_RECOVERY.md`. Do NOT rerun completed recovery.
 
 Service began September26 19:47:14UTC, run `21de8877-cbb2-4635-a3d9-f0f9d33648f8`.
 First sample collected/agreed with unchanged guards; no missed slot or failure.

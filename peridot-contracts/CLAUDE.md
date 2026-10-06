@@ -60,6 +60,18 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- October6 Testnet-only reporter repair: committed/pushed runtime57d4c11,
+  Almanax5de30b6f-52d4-45b1-9506-23a91ee578a8 COMPLETE0findings;141keeper tests,
+  26offline image tests pass. Legacy unknown intentf24bf11b...eca5a remains in
+  append-only journal, retired only after explicit sequence-only fence
+  f4819b095d6654774c2ddb78faf51e99eef210ace22d82d67e1216a0b9c2e9a7
+  SUCCESS5054598/100stroops. No asset transfer/Mainnet action. Futureintents
+  record source/sequence/expiry; safe diagnostic stages added. One Testnet
+  reporter restarted14:24:03UTC on image005b236f...68208; freshwindow/publication
+  pending, NOT continuous availability or Mainnet readiness. Do not repeat
+  recovery or overwrite canonical remotejournal. See DEPTH_DROPLET.md and
+  DEPTH_INTENT_RECOVERY.md under bots/aquarius-keeper. New oracle/uncapped lending
+  and migration remain separately gated;400XLM Mainnet ceiling untouched.
 - September29 optional keeper economics implementation: only successful
   strategy-emitted reward-conversion proceeds count, excluding idle/principal
   and LP trading fees. 5% proceeds haircut must exceed full prepared maxfee+25%.
