@@ -1,8 +1,13 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, String, Vec};
+use soroban_sdk::{
+    contract, contractevent, contractimpl, contracttype, Address, BytesN, Env, String, Vec,
+};
 
 pub const DEFAULT_INIT_ADMIN: &str = "GATFXAP3AVUYRJJCXZ65EPVJEWRW6QYE3WOAFEXAIASFGZV7V7HMABPJ";
 pub const MAX_DEADLINE_SECONDS: u64 = 86_400; // 24h
+pub const MAX_ALLOWED_POOLS: u32 = 64;
+pub const MAX_ALLOWED_POOL_BINDINGS: u32 = 128;
+pub const MAX_ROUTE_TTL_BUMP_PER_CALL: u32 = 16;
 
 #[soroban_sdk::contractclient(name = "SoroswapRouterClient")]
 pub trait SoroswapRouter {
@@ -18,6 +23,17 @@ pub trait SoroswapRouter {
 
 #[soroban_sdk::contractclient(name = "AquariusRouterClient")]
 pub trait AquariusRouter {
+    fn swap(
+        env: Env,
+        user: Address,
+        tokens: Vec<Address>,
+        token_in: Address,
+        token_out: Address,
+        pool_index: BytesN<32>,
+        in_amount: u128,
+        out_min: u128,
+    ) -> u128;
+
     fn swap_chained(
         env: Env,
         user: Address,
@@ -44,15 +60,33 @@ pub trait AquariusPool {
 #[contracttype]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     Router,
     AllowedPool(Address),
     Initialized,
     PendingUpgradeHash,
     PendingUpgradeEta,
+    AllowedPoolBinding(BytesN<32>, Address),
+    AllowedPoolsList,
+    AllowedPoolBindingsList,
 }
 
 #[contract]
 pub struct SwapAdapter;
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdminTransferProposed {
+    pub current_admin: Address,
+    pub pending_admin: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdminTransferred {
+    pub previous_admin: Address,
+    pub new_admin: Address,
+}
 
 #[contractimpl]
 impl SwapAdapter {
@@ -80,6 +114,54 @@ impl SwapAdapter {
         bump_critical_ttl(&env);
     }
 
+    pub fn get_admin(env: Env) -> Address {
+        bump_critical_ttl(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set")
+    }
+
+    pub fn set_admin(env: Env, admin: Address, new_admin: Address) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        if admin == new_admin {
+            panic!("admin unchanged");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingAdmin, &new_admin);
+        bump_pending_admin_ttl(&env);
+        AdminTransferProposed {
+            current_admin: admin,
+            pending_admin: new_admin,
+        }
+        .publish(&env);
+    }
+
+    pub fn accept_admin(env: Env) {
+        bump_critical_ttl(&env);
+        bump_pending_admin_ttl(&env);
+        let new_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingAdmin)
+            .expect("pending admin not set");
+        new_admin.require_auth();
+        let previous_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.storage().persistent().remove(&DataKey::PendingAdmin);
+        AdminTransferred {
+            previous_admin,
+            new_admin,
+        }
+        .publish(&env);
+    }
+
     pub fn set_router(env: Env, admin: Address, router: Address) {
         bump_critical_ttl(&env);
         require_admin(&env, &admin);
@@ -92,18 +174,51 @@ impl SwapAdapter {
         let key = DataKey::AllowedPool(pool.clone());
         if allowed {
             env.storage().persistent().set(&key, &true);
+            add_allowed_pool_to_list(&env, &pool);
             bump_pool_ttl(&env, &pool);
         } else {
             env.storage().persistent().remove(&key);
+            remove_allowed_pool_from_list(&env, &pool);
         }
     }
 
     pub fn is_pool_allowed(env: Env, pool: Address) -> bool {
         bump_critical_ttl(&env);
-        bump_pool_ttl(&env, &pool);
+        pool_allowed(&env, &pool)
+    }
+
+    pub fn set_pool_binding(
+        env: Env,
+        admin: Address,
+        pool_id: BytesN<32>,
+        pool: Address,
+        allowed: bool,
+    ) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        if pool_id.to_array() == [0u8; 32] {
+            panic!("bad pool id");
+        }
+        let key = DataKey::AllowedPoolBinding(pool_id.clone(), pool.clone());
+        if allowed {
+            env.storage().persistent().set(&key, &true);
+            add_allowed_binding_to_list(&env, &pool_id, &pool);
+            bump_pool_binding_ttl(&env, &pool_id, &pool);
+        } else {
+            env.storage().persistent().remove(&key);
+            remove_allowed_binding_from_list(&env, &pool_id, &pool);
+        }
+    }
+
+    pub fn is_pool_binding_allowed(env: Env, pool_id: BytesN<32>, pool: Address) -> bool {
+        bump_critical_ttl(&env);
+        if !pool_allowed(&env, &pool) {
+            return false;
+        }
+        bump_pool_binding_ttl(&env, &pool_id, &pool);
         env.storage()
             .persistent()
-            .get(&DataKey::AllowedPool(pool))
+            .get(&DataKey::AllowedPoolBinding(pool_id, pool))
             .unwrap_or(false)
     }
 
@@ -172,25 +287,47 @@ impl SwapAdapter {
         if swaps_chain.len() == 0 {
             panic!("bad swaps");
         }
+        if amount == 0 || amount_with_slippage == 0 {
+            panic!("bad amount");
+        }
         for i in 0..swaps_chain.len() {
-            let (path, _, pool) = swaps_chain.get(i).unwrap();
-            if path.len() < 2 {
+            let (pool_tokens, pool_id, pool) = swaps_chain.get(i).unwrap();
+            if pool_tokens.len() != 2 {
                 panic!("bad swaps");
             }
+            ensure_pool_binding_allowed(&env, &pool_id, &pool);
             ensure_pool_allowed(&env, &pool);
         }
-        let router: Address = env
+        let _router: Address = env
             .storage()
             .persistent()
             .get(&DataKey::Router)
             .expect("router not set");
-        AquariusRouterClient::new(&env, &router).swap_chained(
-            &user,
-            &swaps_chain,
-            &token_in,
-            &amount,
-            &amount_with_slippage,
-        )
+        let mut current_token = token_in;
+        let mut current_amount = amount;
+        for i in 0..swaps_chain.len() {
+            let (pool_tokens, _pool_id, pool) = swaps_chain.get(i).unwrap();
+            // Custom low-budget route format: two pool tokens plus the direct pool address.
+            // The output token is inferred as the other token in the pool.
+            let (hop_out, in_idx, out_idx) = infer_two_token_hop(&pool_tokens, &current_token);
+            let min_out = if i == swaps_chain.len() - 1 {
+                amount_with_slippage
+            } else {
+                1u128
+            };
+            current_amount = AquariusPoolClient::new(&env, &pool).swap(
+                &user,
+                &in_idx,
+                &out_idx,
+                &current_amount,
+                &min_out,
+            );
+            if current_amount == 0 {
+                panic!("swap failed");
+            }
+            current_token = hop_out;
+        }
+        current_amount
     }
 
     pub fn estimate_pool_swap(
@@ -228,6 +365,26 @@ impl SwapAdapter {
 
     pub fn bump_ttl(env: Env) {
         bump_critical_ttl(&env);
+        bump_route_list_ttl(&env);
+    }
+
+    pub fn bump_route_ttl_batch(
+        env: Env,
+        admin: Address,
+        pools_start: u32,
+        bindings_start: u32,
+        limit: u32,
+    ) -> (u32, u32) {
+        bump_critical_ttl(&env);
+        require_admin(&env, &admin);
+        let bounded_limit = if limit == 0 || limit > MAX_ROUTE_TTL_BUMP_PER_CALL {
+            MAX_ROUTE_TTL_BUMP_PER_CALL
+        } else {
+            limit
+        };
+        let next_pools = bump_pool_route_ttl_range(&env, pools_start, bounded_limit);
+        let next_bindings = bump_binding_route_ttl_range(&env, bindings_start, bounded_limit);
+        (next_pools, next_bindings)
     }
 
     pub fn propose_upgrade_wasm(env: Env, admin: Address, new_wasm_hash: BytesN<32>) {
@@ -289,6 +446,21 @@ fn require_admin(env: &Env, admin: &Address) {
     admin.require_auth();
 }
 
+fn infer_two_token_hop(pool_tokens: &Vec<Address>, current_token: &Address) -> (Address, u32, u32) {
+    if pool_tokens.len() != 2 {
+        panic!("bad swaps");
+    }
+    let token_0 = pool_tokens.get(0).unwrap();
+    let token_1 = pool_tokens.get(1).unwrap();
+    if token_0 == current_token.clone() {
+        (token_1, 0u32, 1u32)
+    } else if token_1 == current_token.clone() {
+        (token_0, 1u32, 0u32)
+    } else {
+        panic!("bad swaps");
+    }
+}
+
 fn expected_admin_config() -> &'static str {
     if cfg!(any(test, feature = "test-default-admin")) {
         option_env!("SWAP_ADAPTER_INIT_ADMIN").unwrap_or(DEFAULT_INIT_ADMIN)
@@ -330,6 +502,157 @@ fn bump_pending_upgrade_ttl(env: &Env) {
     }
 }
 
+fn bump_pending_admin_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::PendingAdmin) {
+        persistent.extend_ttl(&DataKey::PendingAdmin, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn add_allowed_pool_to_list(env: &Env, pool: &Address) {
+    let key = DataKey::AllowedPoolsList;
+    let mut pools: Vec<Address> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
+    for existing in pools.iter() {
+        if existing == *pool {
+            env.storage()
+                .persistent()
+                .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+            return;
+        }
+    }
+    pools.push_back(pool.clone());
+    if pools.len() > MAX_ALLOWED_POOLS {
+        panic!("too many pools");
+    }
+    env.storage().persistent().set(&key, &pools);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn remove_allowed_pool_from_list(env: &Env, pool: &Address) {
+    let key = DataKey::AllowedPoolsList;
+    let pools: Vec<Address> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
+    let mut out = Vec::new(env);
+    for existing in pools.iter() {
+        if existing != *pool {
+            out.push_back(existing);
+        }
+    }
+    env.storage().persistent().set(&key, &out);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn add_allowed_binding_to_list(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
+    let key = DataKey::AllowedPoolBindingsList;
+    let mut bindings: Vec<(BytesN<32>, Address)> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
+    for (existing_id, existing_pool) in bindings.iter() {
+        if existing_id == *pool_id && existing_pool == *pool {
+            env.storage()
+                .persistent()
+                .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+            return;
+        }
+    }
+    bindings.push_back((pool_id.clone(), pool.clone()));
+    if bindings.len() > MAX_ALLOWED_POOL_BINDINGS {
+        panic!("too many pool bindings");
+    }
+    env.storage().persistent().set(&key, &bindings);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn remove_allowed_binding_from_list(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
+    let key = DataKey::AllowedPoolBindingsList;
+    let bindings: Vec<(BytesN<32>, Address)> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
+    let mut out = Vec::new(env);
+    for (existing_id, existing_pool) in bindings.iter() {
+        if !(existing_id == *pool_id && existing_pool == *pool) {
+            out.push_back((existing_id, existing_pool));
+        }
+    }
+    env.storage().persistent().set(&key, &out);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn bump_route_list_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    let pool_list_key = DataKey::AllowedPoolsList;
+    if persistent.has(&pool_list_key) {
+        persistent.extend_ttl(&pool_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+
+    let binding_list_key = DataKey::AllowedPoolBindingsList;
+    if persistent.has(&binding_list_key) {
+        persistent.extend_ttl(&binding_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+fn bump_pool_route_ttl_range(env: &Env, start: u32, limit: u32) -> u32 {
+    let persistent = env.storage().persistent();
+    let pool_list_key = DataKey::AllowedPoolsList;
+    if persistent.has(&pool_list_key) {
+        persistent.extend_ttl(&pool_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let pools: Vec<Address> = persistent.get(&pool_list_key).unwrap_or(Vec::new(env));
+    let len = pools.len();
+    if start >= len {
+        return len;
+    }
+    let end = start.saturating_add(limit).min(len);
+    let mut i = start;
+    while i < end {
+        let pool = pools.get(i).expect("pool missing");
+        bump_pool_ttl(env, &pool);
+        i += 1;
+    }
+    end
+}
+
+fn bump_binding_route_ttl_range(env: &Env, start: u32, limit: u32) -> u32 {
+    let persistent = env.storage().persistent();
+    let binding_list_key = DataKey::AllowedPoolBindingsList;
+    if persistent.has(&binding_list_key) {
+        persistent.extend_ttl(&binding_list_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    let bindings: Vec<(BytesN<32>, Address)> =
+        persistent.get(&binding_list_key).unwrap_or(Vec::new(env));
+    let len = bindings.len();
+    if start >= len {
+        return len;
+    }
+    let end = start.saturating_add(limit).min(len);
+    let mut i = start;
+    while i < end {
+        let (pool_id, pool) = bindings.get(i).expect("binding missing");
+        bump_pool_binding_ttl(env, &pool_id, &pool);
+        i += 1;
+    }
+    end
+}
+
 fn bump_pool_ttl(env: &Env, pool: &Address) {
     let persistent = env.storage().persistent();
     let key = DataKey::AllowedPool(pool.clone());
@@ -338,14 +661,39 @@ fn bump_pool_ttl(env: &Env, pool: &Address) {
     }
 }
 
+fn bump_pool_binding_ttl(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
+    let persistent = env.storage().persistent();
+    let key = DataKey::AllowedPoolBinding(pool_id.clone(), pool.clone());
+    if persistent.has(&key) {
+        persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
 fn ensure_pool_allowed(env: &Env, pool: &Address) {
+    if !pool_allowed(env, pool) {
+        panic!("pool not allowed");
+    }
+}
+
+fn pool_allowed(env: &Env, pool: &Address) -> bool {
     bump_pool_ttl(env, pool);
+    env.storage()
+        .persistent()
+        .get(&DataKey::AllowedPool(pool.clone()))
+        .unwrap_or(false)
+}
+
+fn ensure_pool_binding_allowed(env: &Env, pool_id: &BytesN<32>, pool: &Address) {
+    if pool_id.to_array() == [0u8; 32] {
+        panic!("bad swaps");
+    }
+    bump_pool_binding_ttl(env, pool_id, pool);
     let allowed: bool = env
         .storage()
         .persistent()
-        .get(&DataKey::AllowedPool(pool.clone()))
+        .get(&DataKey::AllowedPoolBinding(pool_id.clone(), pool.clone()))
         .unwrap_or(false);
     if !allowed {
-        panic!("pool not allowed");
+        panic!("pool binding not allowed");
     }
 }
