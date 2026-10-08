@@ -57,17 +57,35 @@ is not proof that an unresolved old journal can resume. Public logs are in
 
 ## Verified result and limits
 
-October8 update supersedes startup status: the resumed process stopped October6
+October8 14:03UTC: user-approved one-time restoration is COMPLETE. Transaction
+`fe41d398e44663adb78736412ab9b23115fe9d5bd9fbdc8eada2c488ecffe386` succeeded at
+ledger5088907 (14:02:02UTC), independently verified via RPC and Horizon. Exactly
+the mock pool instance, mock asset instance and their shared mock code were
+restored. Actual fee2.7664861faucet XLM, below approved5; no asset transfer.
+All three have `liveUntilLedgerSeq=5209866`; code hashes are unchanged.
+Public intent/result are `/var/lib/peridot-depth-testnet/restore-20261008-intent.json`
+and `restore-20261008-result.json`. Do NOT repeat this restoration or the fence.
+
+Unsigned publication preflight now passes at0.0119385XLM, with ordinary0.1XLM
+cap unchanged. Hypothetical retimed diagnostic data was NEVER published.
+Single existing service restarted14:02:58UTC on unchanged reviewed image/unit;
+run `cab34d7e-7fe4-4ac1-aa96-f4b8f6012487` started14:03:03UTC. First real sample
+agrees, no misses/failures; holding `fresh_window_required`. Fresh publication
+is still pending, earliest roughly14:35UTC if guards hold. Startup does NOT
+prove continuous health or Mainnet readiness. Plan fixture TTL maintenance
+before ledger5209866 to avoid re-archival; no automatic TTL job was added.
+
+Historical October8 diagnosis: the resumed process stopped October6
 14:55:13UTC at `prepare`, after32valid samples and no collection failures. The
 completed journal recovery remains valid; no new pending transaction exists.
 Current unsigned diagnostics identify archived mock pool/asset instances and
 shared mock code (`liveUntil=0`). Automatic restoration makes publication exceed
 the unchanged0.1faucet-XLM cap. A separate unsigned restoreFootprint estimate for
-these three fixture entries is3.1343864faucet XLM. One-time restoration approval
-is requested, not executed. The precise historic prepare assertion was not
+these three fixture entries was3.1343864faucet XLM before execution above.
+The precise historic prepare assertion was not
 logged; current reproduction must not be described as the captured original cause.
 Retimed single-snapshot diagnostic data was never published or used as a window.
-Do not repeat the completed sequence fence or claim the reporter is running.
+Do not repeat the completed sequence fence. Current restart status is above.
 
 October6: the reviewed recovery is now executed and the reporter restarted.
 Almanax `5de30b6f-52d4-45b1-9506-23a91ee578a8` completed with zero findings;

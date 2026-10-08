@@ -60,13 +60,17 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
-- October8 reporter check supersedes Oct6warming note:32healthy collectedsamples
-  then preparefailure Oct6 14:55:13UTC; servicefailed, journalclean/no newintent.
-  Currentunsigned simulation reveals archived Testnetmock dependencies whose
-  automaticrestoration makespublication exceed0.1faucetXLM fee cap. Separate
-  three-entry restoreestimate3.1343864faucetXLM; one-time<=5approval requested,
-  not executed. Completedsequencefence mustNOTrepeat. Runtime/priceguards and
-  Mainnetunchanged; hypotheticalretimed diagnosticquotes were NEVER published.
+- October8 Testnet fixture restoration COMPLETE under explicit 5 faucet-XLM
+  ceiling: fe41d398e44663adb78736412ab9b23115fe9d5bd9fbdc8eada2c488ecffe386
+  SUCCESS5088907, independently RPC/Horizon verified, actual fee 2.7664861 XLM.
+  Exactly mock pool/asset instances and shared mock code restored; liveUntil
+  5209866, code unchanged. Do NOT repeat restoration or completed sequence fence.
+  Unsigned publication preflight now costs 0.0119385 XLM, below unchanged 0.1
+  cap. Diagnostic retimed snapshot NEVER published. Existing reviewed reporter
+  restarted 14:02:58 UTC, collecting a NEW30m window; first sample agrees.
+  New publication/continuous health still pending, not Mainnet readiness.
+  Plan fixture TTL maintenance before re-archival; no automatic TTL job added.
+  Runtime/price guards, Mainnet and conditional 400XLM ceiling unchanged.
 - October6 Testnet-only reporter repair: committed/pushed runtime57d4c11,
   Almanax5de30b6f-52d4-45b1-9506-23a91ee578a8 COMPLETE0findings;141keeper tests,
   26offline image tests pass. Legacy unknown intentf24bf11b...eca5a remains in
