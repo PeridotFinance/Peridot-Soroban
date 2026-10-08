@@ -57,6 +57,18 @@ is not proof that an unresolved old journal can resume. Public logs are in
 
 ## Verified result and limits
 
+October8 update supersedes startup status: the resumed process stopped October6
+14:55:13UTC at `prepare`, after32valid samples and no collection failures. The
+completed journal recovery remains valid; no new pending transaction exists.
+Current unsigned diagnostics identify archived mock pool/asset instances and
+shared mock code (`liveUntil=0`). Automatic restoration makes publication exceed
+the unchanged0.1faucet-XLM cap. A separate unsigned restoreFootprint estimate for
+these three fixture entries is3.1343864faucet XLM. One-time restoration approval
+is requested, not executed. The precise historic prepare assertion was not
+logged; current reproduction must not be described as the captured original cause.
+Retimed single-snapshot diagnostic data was never published or used as a window.
+Do not repeat the completed sequence fence or claim the reporter is running.
+
 October6: the reviewed recovery is now executed and the reporter restarted.
 Almanax `5de30b6f-52d4-45b1-9506-23a91ee578a8` completed with zero findings;
 141local keeper tests and26offline tests inside the deployed image pass. Only

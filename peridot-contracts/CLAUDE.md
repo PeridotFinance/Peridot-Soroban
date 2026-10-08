@@ -60,6 +60,13 @@ MarginController (leveraged trading, optional)
 
 ### Aquarius LP Rollout Invariants
 
+- October8 reporter check supersedes Oct6warming note:32healthy collectedsamples
+  then preparefailure Oct6 14:55:13UTC; servicefailed, journalclean/no newintent.
+  Currentunsigned simulation reveals archived Testnetmock dependencies whose
+  automaticrestoration makespublication exceed0.1faucetXLM fee cap. Separate
+  three-entry restoreestimate3.1343864faucetXLM; one-time<=5approval requested,
+  not executed. Completedsequencefence mustNOTrepeat. Runtime/priceguards and
+  Mainnetunchanged; hypotheticalretimed diagnosticquotes were NEVER published.
 - October6 Testnet-only reporter repair: committed/pushed runtime57d4c11,
   Almanax5de30b6f-52d4-45b1-9506-23a91ee578a8 COMPLETE0findings;141keeper tests,
   26offline image tests pass. Legacy unknown intentf24bf11b...eca5a remains in
