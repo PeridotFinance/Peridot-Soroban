@@ -5,18 +5,19 @@ set -euo pipefail
 # Prereqs:
 # - stellar-cli configured with a funded identity on testnet
 #   e.g. stellar keys generate --global dev --network testnet --fund
-# - Build WASMs first: bash scripts/build_wasm.sh (produces wasm32v1-none artifacts)
+# - Build WASMs first with the target admin baked into init guards:
+#     ADMIN=$(stellar keys public-key "${IDENTITY:-dev}")
+#     INIT_ADMIN=$ADMIN bash scripts/build_wasm.sh
 
 IDENTITY=${IDENTITY:-dev}
 NETWORK="--network testnet"
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
-WASM_CONTROLLER="$ROOT_DIR/target/wasm32v1-none/release/simple_peridottroller.wasm"
-WASM_VAULT="$ROOT_DIR/target/wasm32v1-none/release/receipt_vault.wasm"
-WASM_JRM="$ROOT_DIR/target/wasm32v1-none/release/jump_rate_model.wasm"
-WASM_PERI="$ROOT_DIR/target/wasm32v1-none/release/peridot_token.wasm"
-WASM_MOCK="$ROOT_DIR/target/wasm32v1-none/release/mock_token.wasm"
+WASM_CONTROLLER="$ROOT_DIR/target/wasm32v1-none/release/simple_peridottroller.optimized.wasm"
+WASM_VAULT="$ROOT_DIR/target/wasm32v1-none/release/receipt_vault.optimized.wasm"
+WASM_JRM="$ROOT_DIR/target/wasm32v1-none/release/jump_rate_model.optimized.wasm"
+WASM_MOCK="$ROOT_DIR/target/wasm32v1-none/release/mock_token.optimized.wasm"
 
 echo "Using identity: $IDENTITY (testnet)"
 ADMIN=$(stellar keys public-key "$IDENTITY")
@@ -52,38 +53,6 @@ stellar contract invoke \
   -- \
   initialize --base 20000 --multiplier 180000 --jump 4000000 --kink 800000 --admin "$ADMIN"
 
-echo "Deploying Peridot Token..."
-PERI_ID=$(stellar contract deploy \
-  --wasm "$WASM_PERI" \
-  --source-account "$IDENTITY" \
-  $NETWORK)
-echo "PERI: $PERI_ID"
-
-PERI_MAX_SUPPLY=${PERI_MAX_SUPPLY:-1000000000000}
-echo "Initialize Peridot Token (admin=$ADMIN, max_supply=$PERI_MAX_SUPPLY)..."
-stellar contract invoke \
-  --id "$PERI_ID" \
-  --source-account "$IDENTITY" \
-  $NETWORK \
-  -- \
-  initialize --name Peridot --symbol P --decimals 6 --admin "$ADMIN" --max_supply "$PERI_MAX_SUPPLY"
-
-echo "Set PERI admin to controller..."
-stellar contract invoke \
-  --id "$PERI_ID" \
-  --source-account "$IDENTITY" \
-  $NETWORK \
-  -- \
-  set_admin --new_admin "$CTRL_ID"
-
-echo "Point controller to PERI..."
-stellar contract invoke \
-  --id "$CTRL_ID" \
-  --source-account "$IDENTITY" \
-  $NETWORK \
-  -- \
-  set_peridot_token --token "$PERI_ID"
-
 echo "Deploying Mock USDT Token..."
 USDT_ID=$(stellar contract deploy \
   --wasm "$WASM_MOCK" \
@@ -97,7 +66,7 @@ stellar contract invoke \
   --source-account "$IDENTITY" \
   $NETWORK \
   -- \
-  initialize --name "Mock USDT" --symbol USDT --decimals 6
+  initialize --name "Mock USDT" --symbol USDT --decimals 7
 
 echo "Deploying two ReceiptVault markets..."
 VA_ID=$(stellar contract deploy \
@@ -139,6 +108,20 @@ stellar contract invoke \
   $NETWORK \
   -- \
   set_flash_loan_fee --fee_scaled "$FLASH_FEE"
+
+echo "Enable static-rate borrowing mode on both vaults..."
+stellar contract invoke \
+  --id "$VA_ID" \
+  --source-account "$IDENTITY" \
+  $NETWORK \
+  -- \
+  enable_static_rates --admin "$ADMIN"
+stellar contract invoke \
+  --id "$VB_ID" \
+  --source-account "$IDENTITY" \
+  $NETWORK \
+  -- \
+  enable_static_rates --admin "$ADMIN"
 stellar contract invoke \
   --id "$VB_ID" \
   --source-account "$IDENTITY" \
@@ -147,19 +130,8 @@ stellar contract invoke \
   set_flash_loan_fee --fee_scaled "$FLASH_FEE"
 
 echo "Wire controller + markets..."
-stellar contract invoke \
-  --id "$VA_ID" \
-  --source-account "$IDENTITY" \
-  $NETWORK \
-  -- \
-  set_peridottroller --peridottroller "$CTRL_ID"
-stellar contract invoke \
-  --id "$VB_ID" \
-  --source-account "$IDENTITY" \
-  $NETWORK \
-  -- \
-  set_peridottroller --peridottroller "$CTRL_ID"
-
+# add_market must precede set_peridottroller because the vault's set_peridottroller
+# smoke-tests the controller's accrue_user_market, which requires the market to be supported.
 stellar contract invoke \
   --id "$CTRL_ID" \
   --source-account "$IDENTITY" \
@@ -173,24 +145,33 @@ stellar contract invoke \
   -- \
   add_market --market "$VB_ID"
 
-echo "Set market CF and reward speeds..."
 stellar contract invoke \
-  --id "$CTRL_ID" \
+  --id "$VA_ID" \
   --source-account "$IDENTITY" \
   $NETWORK \
   -- \
-  set_market_cf --market "$VB_ID" --cf_scaled 1000000
+  set_peridottroller --peridottroller "$CTRL_ID"
 stellar contract invoke \
-  --id "$CTRL_ID" \
+  --id "$VB_ID" \
   --source-account "$IDENTITY" \
   $NETWORK \
   -- \
-  set_supply_speed --market "$VA_ID" --speed_per_sec 5
-stellar contract invoke \
-  --id "$CTRL_ID" \
-  --source-account "$IDENTITY" \
-  $NETWORK \
-  -- \
-  set_borrow_speed --market "$VA_ID" --speed_per_sec 3
+  set_peridottroller --peridottroller "$CTRL_ID"
 
-echo "Done. Controller=$CTRL_ID VA=$VA_ID VB=$VB_ID JRM=$JRM_ID PERI=$PERI_ID"
+echo "Set market CF..."
+CF_A=${CF_A:-700000}
+CF_B=${CF_B:-900000}
+stellar contract invoke \
+  --id "$CTRL_ID" \
+  --source-account "$IDENTITY" \
+  $NETWORK \
+  -- \
+  set_market_cf --market "$VA_ID" --cf_scaled "$CF_A"
+stellar contract invoke \
+  --id "$CTRL_ID" \
+  --source-account "$IDENTITY" \
+  $NETWORK \
+  -- \
+  set_market_cf --market "$VB_ID" --cf_scaled "$CF_B"
+
+echo "Done. Controller=$CTRL_ID VA=$VA_ID VB=$VB_ID JRM=$JRM_ID USDT=$USDT_ID"

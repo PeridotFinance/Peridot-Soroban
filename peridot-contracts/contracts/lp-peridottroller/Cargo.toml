@@ -1,0 +1,20 @@
+[package]
+name = "lp-peridottroller"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["lib", "cdylib"]
+doctest = false
+
+[features]
+default = ["lp-zero-peri"]
+lp-zero-peri = []
+test-default-admin = []
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }

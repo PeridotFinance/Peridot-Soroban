@@ -7,6 +7,9 @@ edition = "2021"
 soroban-sdk = { workspace = true }
 stellar-tokens = { workspace = true }
 
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 

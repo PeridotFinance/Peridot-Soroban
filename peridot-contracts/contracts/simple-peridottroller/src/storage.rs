@@ -160,6 +160,54 @@ pub fn bump_core_ttl(env: &Env) {
             .instance()
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
     }
+    // Pause maps are bumped lazily inside is_pause_active (called on every
+    // borrow/deposit/redeem/liquidation check) rather than here, so that
+    // bump_core_ttl doesn't add 8 footprint entries to every operation.
+}
+
+pub fn bump_supported_markets_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::SupportedMarkets) {
+        persistent.extend_ttl(&DataKey::SupportedMarkets, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_close_factor_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::CloseFactorScaled) {
+        persistent.extend_ttl(&DataKey::CloseFactorScaled, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+}
+
+pub fn bump_oracle_max_age_multiplier_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    if persistent.has(&DataKey::OracleMaxAgeMultiplier) {
+        persistent.extend_ttl(
+            &DataKey::OracleMaxAgeMultiplier,
+            TTL_THRESHOLD,
+            TTL_EXTEND_TO,
+        );
+    }
+}
+
+/// Extend TTL for all eight pause persistent keys.
+pub fn bump_pause_maps_ttl(env: &Env) {
+    let persistent = env.storage().persistent();
+    let pause_keys = [
+        DataKey::PauseBorrow,
+        DataKey::PauseBorrowUntil,
+        DataKey::PauseRedeem,
+        DataKey::PauseRedeemUntil,
+        DataKey::PauseLiquidation,
+        DataKey::PauseLiquidationUntil,
+        DataKey::PauseDeposit,
+        DataKey::PauseDepositUntil,
+    ];
+    for key in pause_keys {
+        if persistent.has(&key) {
+            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        }
+    }
 }
 
 pub fn bump_pending_upgrade_ttl(env: &Env) {
@@ -366,9 +414,9 @@ pub fn bump_reward_user_ttl(env: &Env, user: &Address, market: &Address) {
     }
 }
 
-pub fn pow10_u128(decimals: u32) -> u128 {
+pub fn pow10_u128(decimals: u32) -> Option<u128> {
     if decimals > MAX_DECIMALS {
-        panic!("decimals too large");
+        return None;
     }
     let mut result: u128 = 1;
     let mut i = 0u32;
@@ -376,5 +424,5 @@ pub fn pow10_u128(decimals: u32) -> u128 {
         result = result.saturating_mul(10);
         i += 1;
     }
-    result
+    Some(result)
 }

@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Peridot margin keeper every minute
+
+[Timer]
+OnBootSec=90s
+OnUnitInactiveSec=60s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

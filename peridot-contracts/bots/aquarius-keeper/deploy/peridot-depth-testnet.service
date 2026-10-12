@@ -1,0 +1,23 @@
+[Unit]
+Description=Peridot isolated Testnet depth reporter (never Mainnet)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Root-only file containing ONLY the dedicated Testnet reporter secret.
+# docker receives the variable by name; the value is never a command argument.
+EnvironmentFile=/etc/peridot-depth-testnet/reporter.env
+ExecStart=/usr/bin/docker run --rm --name peridot-depth-testnet --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges --pids-limit 64 --memory 384m --cpus 0.75 --log-driver none --tmpfs /tmp:rw,noexec,nosuid,size=16m --mount type=bind,src=/var/lib/peridot-depth-testnet,dst=/state --mount type=bind,src=/etc/peridot-depth-testnet/manifest.json,dst=/manifest.json,readonly --env CONFIRM_DEPTH_TESTNET=ISOLATED_DEPTH_REPLAY --env DEPTH_TESTNET_MANIFEST=/manifest.json --env DEPTH_TESTNET_JOURNAL=/state/publisher.jsonl --env DEPTH_TESTNET_REPORTER_SECRET peridot-depth-testnet:reviewed
+ExecStop=/usr/bin/docker stop --time 50 peridot-depth-testnet
+TimeoutStopSec=70
+# Unknown hashes, corrupt journals and stale locks need operator reconciliation.
+# Boot starts a fresh window; never remove a lock or reset history automatically.
+Restart=no
+UMask=0077
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
