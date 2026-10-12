@@ -32,6 +32,21 @@ export function loadConfig() {
   if (!publicKey) {
     throw new Error("LIQUIDATOR_PUBLIC_KEY is required for a dry run without a secret");
   }
+  if (!StrKey.isValidEd25519PublicKey(publicKey)) throw new Error("invalid keeper public key");
+  if (configuredPublicKey && configuredPublicKey !== publicKey) throw new Error("keeper secret/public key mismatch");
+  const databaseUrl = process.env.DATABASE_URL;
+  const expectedControllerHash = process.env.EXPECTED_CONTROLLER_WASM_HASH;
+  if (!dryRun && (!databaseUrl || !/^[a-f0-9]{64}$/.test(expectedControllerHash ?? ""))) {
+    throw new Error("Live signing requires DATABASE_URL and EXPECTED_CONTROLLER_WASM_HASH");
+  }
+  const networkPassphrase = process.env.NETWORK_PASSPHRASE ?? Networks.TESTNET;
+  if (!dryRun && networkPassphrase === Networks.PUBLIC && [
+    "GDYDTMY46RNAUIIUVG6RPD2D3I3ES4J2SSXGCKIQP2OET4Q5PV75LSPL",
+    "GDM5XP4ACJPXPYP5G2UYGB6WC3G2MUBCYI2ZUCYWVB5CL2JWGCFWNWA3",
+  ].includes(publicKey)) throw new Error("Use a dedicated keeper key, not the deployer or treasury");
+  const maxTransactionFeeStroops = BigInt(integer("MAX_TRANSACTION_FEE_STROOPS", 1_000_000, { min: 100 }));
+  const maxFee24hStroops = BigInt(integer("MAX_FEE_24H_STROOPS", 10_000_000, { min: 100 }));
+  if (maxFee24hStroops < maxTransactionFeeStroops) throw new Error("24-hour fee cap is below transaction cap");
 
   const feeDistributionVaults = [...new Set((process.env.FEE_DISTRIBUTION_VAULTS ?? "")
     .split(",").map((value) => value.trim()).filter(Boolean))];
@@ -42,7 +57,14 @@ export function loadConfig() {
   return {
     rpcUrl: process.env.RPC_URL ?? "https://soroban-testnet.stellar.org",
     horizonUrl: process.env.HORIZON_URL ?? "https://horizon-testnet.stellar.org",
-    networkPassphrase: process.env.NETWORK_PASSPHRASE ?? Networks.TESTNET,
+    networkPassphrase,
+    databaseUrl,
+    databaseCaFile: process.env.DATABASE_CA_FILE,
+    databaseCaPem: process.env.DATABASE_CA_PEM,
+    expectedControllerHash,
+    maxTransactionFeeStroops,
+    maxFee24hStroops,
+    minFeeBalanceStroops: BigInt(integer("MIN_FEE_BALANCE_STROOPS", 20_000_000, { min: 1 })),
     controllerId: process.env.MARGIN_CONTROLLER_ID ?? DEFAULT_TESTNET_CONTROLLER,
     keypair,
     publicKey,

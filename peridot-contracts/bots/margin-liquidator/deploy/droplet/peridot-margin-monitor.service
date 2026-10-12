@@ -1,0 +1,20 @@
+[Unit]
+Description=Peridot margin keeper host health monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/etc/peridot-stellar-margin/monitor.env
+ExecStart=/bin/bash /opt/peridot-stellar-margin/monitor.sh
+TimeoutStartSec=100
+UMask=0077
+StateDirectory=peridot-stellar-margin-monitor
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/peridot-stellar-margin-monitor
+StandardOutput=journal
+StandardError=journal

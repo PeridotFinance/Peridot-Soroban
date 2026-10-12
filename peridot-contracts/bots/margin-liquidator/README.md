@@ -20,9 +20,9 @@ The controller must expose:
 - `preview_liquidation_v3`
 - `position_created` and `position_removed` contract events
 
-The keeper bootstraps all existing IDs from `1..=get_position_counter`, then
-uses events to maintain its active set. Persist `STATE_FILE`; deleting it causes
-a safe but RPC-heavy full rescan.
+The keeper bootstraps all existing IDs from `1..=get_position_counter` on every
+restart, then uses events to maintain its active set. `STATE_FILE` is a disposable
+index, not the transaction journal. PostgreSQL retains signing intents separately.
 
 ## Testnet Setup
 
@@ -50,6 +50,11 @@ pool quote.
 
 ## Docker
 
+For the lower-cost Mainnet pilot candidate, see the
+[single-droplet deployment package](deploy/droplet/README.md). It keeps PostgreSQL
+on persistent disk with verified TLS, starts keyless/dry-run, and does not
+provision a server or enable signing automatically.
+
 ```bash
 docker build -t peridot-margin-liquidator .
 docker run -d \
@@ -62,7 +67,7 @@ docker run -d \
 
 ## systemd
 
-Install Node.js 20 or newer, create an unprivileged `peridot` user, put secrets
+Install Node.js 22 or newer, create an unprivileged `peridot` user, put secrets
 in `/etc/peridot/margin-liquidator.env` with mode `0600`, and install
 `margin-liquidator.service.example` as
 `/etc/systemd/system/peridot-margin-liquidator.service`.
@@ -74,6 +79,74 @@ sudo journalctl -u peridot-margin-liquidator -f
 ```
 
 ## Operations
+
+### Live Signing Gate
+
+Both Mainnet and Testnet live signing require a dedicated funded key,
+`EXPECTED_CONTROLLER_WASM_HASH` and `DATABASE_URL`. The deployed Mainnet worker
+is still keyless/dry-run; this code is not evidence of live liquidation readiness.
+
+- Use a dedicated PostgreSQL database/user and the direct database endpoint,
+  not a transaction-pooling proxy. One persistent connection holds a PostgreSQL
+  session advisory lock scoped to network + signing account. Another process
+  using that account cannot acquire the lock, even for a different controller.
+- TLS certificate verification is mandatory. `DATABASE_CA_FILE` optionally
+  supplies a provider CA PEM (`DATABASE_CA_PEM` can supply it directly on App
+  Platform instead); URL query parameters that could override TLS are
+  rejected. Never use `sslmode=no-verify` or disable certificate verification.
+- Default maximum total fee: `MAX_TRANSACTION_FEE_STROOPS=1000000` (0.1 XLM).
+  Default rolling 24-hour fee reservation: `MAX_FEE_24H_STROOPS=10000000` (1 XLM).
+  Each recorded intent counts its full padded maximum, including failed or
+  uncertain transactions. Actual fee refunds do not immediately replenish it.
+- The resource-fee allowance is padded by 25% + 10,000 stroops before caps are
+  checked. `MIN_FEE_BALANCE_STROOPS=20000000` keeps 2 XLM spendable after the
+  maximum fee, in addition to reserve and native selling liabilities.
+- Network, controller WASM hash, method/arguments, source authorization root,
+  source sequence and fee-account freshness are checked before signing. Admin
+  calls, other beneficiaries, unconfigured fee vaults and separate restoration
+  preambles are rejected. Deployer/treasury keys must not be used on Mainnet.
+
+These pilot defaults deliberately stop signing when exhausted. Operators must
+size the approved daily budget and alerting for expected liquidation traffic;
+the defaults are not a promise of unlimited liquidation capacity.
+
+### Uncertain Transactions and Recovery
+
+The keeper commits the unsigned transaction hash, source sequence, deadline,
+method and full fee reservation before signing. Neither secret keys nor signed
+XDRs are stored in the journal. It sends once and confirms the exact envelope.
+Lost responses, timeouts, rejected submissions, changed code/network, unavailable
+database and on-chain failures stop signing; fatal errors escape the position
+and fee loops. An error is not interpreted as permission to submit a replacement.
+
+On restart, unresolved hashes are queried before position processing. A matching
+successful RPC or historical Horizon envelope resolves the intent. `NOT_FOUND`,
+expired time bounds or a consumed sequence alone do not clear it. A confirmed
+failure remains an operator-review stop. There is no automatic failed/expired
+intent retirement in this release: inspect the exact hash and independently
+reconcile inclusion and sequence before designing an explicit recovery action.
+Never delete rows, switch to an empty database, or reset its contents to restart.
+Back up the journal; restoration from an older backup requires reconciliation
+against account history before signing can be re-enabled.
+
+Database loss releases the session lock, but any committed pending intent blocks
+a replacement worker. Use the same canonical database for all instances and
+retain it across releases. A single-node database can cause signing downtime;
+continuous liquidation availability needs an appropriate HA/standby strategy.
+
+Tests:
+
+```bash
+npm test
+# Requires local initdb/pg_ctl. Creates and removes an isolated Unix-socket DB.
+PG_INTEGRATION_TEST=true npm test
+```
+
+Unit tests cover fee/reserve limits, altered auth/body/network/code, wrong
+sequence, lost responses, confirmation mismatch, history fallback, no replay and
+fatal propagation. Real PostgreSQL tests cover lock exclusion, durable restart,
+rolling fee caps and connection loss. These do not substitute for isolated
+Testnet transaction testing and security scan clearance before Mainnet signing.
 
 ### Optional V3 Fee Distribution
 
@@ -96,8 +169,9 @@ limits, not estimates of income versus transaction fees. The existing submission
 client simulates only in dry-run mode. No account other than the keeper needs to
 sign; it cannot choose reward recipients.
 
-Position processing runs first. Fee failures are logged separately and retried no
-sooner than the next configured interval, never on every position polling cycle.
+Position processing runs first. Pre-submission simulation failures are logged
+separately and retried no sooner than the next configured interval. Fatal signing
+or journal failures stop the process instead of retrying.
 Free-margin providers participate at distribution time, not at the original trade
 time. A keeper outage delays rewards but does not hold up user closes. Fees are
 reserved on-chain, so restarting does not require reconstructing fee events.

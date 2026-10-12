@@ -1,0 +1,79 @@
+name: peridot-stellar-margin
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?Set an approved postgres 16 bookworm image digest}
+    restart: unless-stopped
+    mem_limit: 256m
+    pids_limit: 100
+    environment:
+      POSTGRES_DB: margin_keeper
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/run/tls/server.crt
+      - -c
+      - ssl_key_file=/run/tls/server.key
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - max_connections=15
+    volumes:
+      - journal:/var/lib/postgresql/data
+      - /etc/peridot-stellar-margin/postgres-password:/run/secrets/postgres-password:ro
+      - /etc/peridot-stellar-margin/keeper-db-password:/run/secrets/keeper-db-password:ro
+      - /etc/peridot-stellar-margin/server.crt:/run/tls/server.crt:ro
+      - /etc/peridot-stellar-margin/server.key:/run/tls/server.key:ro
+      - ./init-db.sh:/docker-entrypoint-initdb.d/10-keeper.sh:ro
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d margin_keeper"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  keeper:
+    image: ${KEEPER_IMAGE:?Set the reviewed keeper image digest or local sha256 image ID}
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 384m
+    pids_limit: 100
+    stop_grace_period: 90s
+    environment:
+      NODE_OPTIONS: --max-old-space-size=256
+      STATE_FILE: /app/data/state.json
+      DATABASE_CA_FILE: /run/tls/server.crt
+    env_file: /etc/peridot-stellar-margin/keeper.env
+    volumes:
+      - index:/app/data
+      - /etc/peridot-stellar-margin/server.crt:/run/tls/server.crt:ro
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    networks: [database, outbound]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+networks:
+  database:
+    internal: true
+  outbound: {}
+
+volumes:
+  journal:
+    name: peridot-stellar-margin-journal
+  index:
+    name: peridot-stellar-margin-index

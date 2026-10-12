@@ -66,7 +66,7 @@ export class MarginLiquidationKeeper {
         if (position !== null && position !== undefined) active.add(id.toString());
       } catch (error) {
         failed.push(id.toString());
-        this.logger.warn("position bootstrap read failed", { positionId: id.toString(), error: error.message });
+        this.logger.warn("position bootstrap read failed", { positionId: id.toString() });
       }
     }
     if (failed.length > 0) {
@@ -132,7 +132,8 @@ export class MarginLiquidationKeeper {
       try {
         await this.processPosition(BigInt(id));
       } catch (error) {
-        this.logger.error("position processing failed", { positionId: id, error: error.message });
+        if (error.fatal) throw error;
+        this.logger.error("position processing failed", { positionId: id, error: "read or simulation failed" });
       }
     }
     const stillActive = new Set(this.state.activePositionIds);
@@ -162,7 +163,8 @@ export class MarginLiquidationKeeper {
           vault, underlying: underlying.toString(), ptokens: ptokens.toString(), dryRun: this.config.dryRun,
         });
       } catch (error) {
-        this.logger.error("margin fee distribution failed", { vault, error: error.message });
+        if (error.fatal) throw error;
+        this.logger.error("margin fee distribution failed", { vault, error: "read or simulation failed" });
       }
     }
   }
