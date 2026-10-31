@@ -1,0 +1,9 @@
+[package]
+name = "cl-share-vault"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+# Accounting kernel only. Deliberately no cdylib or contract entrypoints yet.
+[lib]
+crate-type = ["rlib"]
