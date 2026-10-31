@@ -98,6 +98,10 @@ Only if handoff 03 says go. Same external ABI and the same internal model as `aq
 
 Verify each id and asset coverage on chain before use. A DEX-sourced AQUA price is partly derived from the same pools we LP in; cap AQUA-paired strategies accordingly and use the existing `max_pool_divergence_bps` and staleness `k` settings.
 
+### 4d. Lending liquidity and redemption
+
+For every receipt market allocating into these strategies, implement 00 section 6a: available local cash can fund ordinary and margin loans above the borrowing reserve; supplier redemptions use cash first and attempt a synchronous strategy unwind for the shortfall. Measure capacity separately in each underlying token. Aquarius/Sushi LP removal returns an inventory of both tokens; it only satisfies a single-token redemption when that token is available or an authorized conversion succeeds within its limits. With swaps killed, use the explicit in-kind recovery route where supported; do not silently substitute it for a standard redemption. Preserve Aquarius's all-accrued-fees accounting on partial removal and the reward-outage rules. Add the section 6a liquidity cases to the compiled receipt-vault/strategy tests and measure their Soroban resources. This does not accelerate Sushi or other deferred pools past their research gates.
+
 ## 5. Range economics: decide from a backtest, not from defaults
 
 Deliver `research/cl-backtest/` with a reproducible script that, per candidate pool:

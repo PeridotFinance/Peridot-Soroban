@@ -153,6 +153,8 @@ As borrows grow, the keeper recalls from Upshift toward the target over time. Bo
 
 This is new receipt-vault logic (small reviewed change). Set the existing idle-cash buffer equal to `target_cash_bps` so there is one allocation knob, and add the three worked examples as tests.
 
+**Redemptions and margin use the shared policy in 00 section 6a.** Borrowing consumes local cash above the 10% floor; it never treats Upshift shares as cash. A supplier redemption may consume that floor, then asks Upshift for the shortfall within its current `max_withdraw` / `max_redeem` and checks the actual balance delta. If Upshift cannot return enough in the same transaction, the standard redemption reverts atomically with the supplier's shares intact. Its off-chain withdrawal service level is not a queue or a guaranteed on-chain exit. Keep the existing 40% target; do not replace it with the illustrative 50/40/10 split. A full margin-open test includes redemption of the user's margin before checking the final cash floor, with Upshift withdrawals disabled. Recovery under section 5 is separately authorized and must not be blocked merely because cash is below the borrowing reserve.
+
 ## 3. Group configuration (proposals; the operator decides)
 
 | Setting | XLM | USDC |
@@ -199,6 +201,7 @@ Use the existing `margin-controller` (V3 perps entrypoints only; legacy V1 is di
 | Account-wide validity | The cross-market test in 2a; liquidation under `Untrusted` reverts until the recovery rate is set; confirmed loss marks down while the breaker trips |
 | Cash parameters | All three worked examples in 2c; allocator never deploys below the reserve; borrowing stops at the reserve without calling Upshift; no deployments while valuation is not `Valid` |
 | Integration (`receipt-vault` + strategy) | Deposit leaves exactly the idle target; withdraw within buffer never calls Upshift; withdraw beyond buffer redeems; withdraw beyond Upshift idle fails atomically with the standard shortfall and changes nothing; NAV loss marks the exchange rate down; zero-share probe returns `[0]` |
+| Shared liquidity policy | 00 section 6a cases in both XLM and USDC; supplier withdrawals may consume the borrowing reserve; full margin opens leave it intact without an Upshift withdrawal; no loan or strategy value counted as local cash; no implicit asynchronous queue |
 | Footprint | `scripts/check_budget.sh`: deposit, withdraw-with-redeem, borrow, liquidation, margin open/close all fit Soroban limits, measured on a mainnet-state simulation |
 | Margin | Open/close long and short, liquidation at the boundary, the three historical bugs above as regression tests |
 | Mainnet | Upload + deploy + verify script; group live with **cash held locally** and strategies unbound; operator signs. Upshift binding only after every row above is green, with tiny `max_deploy`; keeper monitor-only for 24h before `recall` is enabled |

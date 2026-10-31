@@ -15,6 +15,8 @@ Stages:
 4. Optional capped Upshift allocation in the funding group (handoff 02 protections complete).
 5. Second stable pair, then XLM/yXLM.
 
+**Funding and withdrawals:** apply 00 section 6a and 02 section 2c to the funding markets. Their local cash above the borrowing reserve funds actual loans; lender redemptions consume cash first and attempt an Upshift recall only after that optional strategy is enabled and only within its synchronous exit capacity. The 1x CL share vault is a separate product: its LP capital is not simultaneously available as funding-market cash, and it does not inherit a 50/40/10 lending allocation. Share redemption follows the vault/facade and in-kind recovery rules below. The harness must distinguish a lending-market liquidity shortfall from a share-vault unwind failure and exercise recovery with the funding strategy paying zero. Keep stage 1 at 1x and all margin activation gates intact.
+
 ## 1. Candidates
 
 The rule from the shared model applies: concentration and leverage multiply the net; they do not create it. LVR grows with the volatility of the price ratio between the two tokens, so stable pairs come first.
