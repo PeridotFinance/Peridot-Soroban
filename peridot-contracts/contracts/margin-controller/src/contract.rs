@@ -865,6 +865,27 @@ impl MarginController {
         Self::liquidate_position_v3_impl(&env, liquidator, position_id);
     }
 
+    /// Native-only funded liquidation checkpoint. It delivers receipt pTokens,
+    /// not LP underlying, and does not implement LP reward pass-through.
+    #[cfg(any(test, feature = "funded-liquidation-prototype"))]
+    pub fn liquidate_funded_v3(
+        env: Env,
+        liquidator: Address,
+        position_id: u64,
+        max_repay: u128,
+        min_seize_ptokens: u128,
+    ) -> (u128, u128) {
+        bump_instance_ttl(&env);
+        liquidator.require_auth();
+        Self::liquidate_funded_v3_impl(
+            &env,
+            liquidator,
+            position_id,
+            max_repay,
+            min_seize_ptokens,
+        )
+    }
+
     pub fn begin_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
         bump_instance_ttl(&env);
         liquidator.require_auth();

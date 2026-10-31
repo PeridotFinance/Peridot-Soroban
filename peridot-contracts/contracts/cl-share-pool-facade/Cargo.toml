@@ -1,0 +1,18 @@
+[package]
+name = "cl-share-pool-facade"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[features]
+# Explicit local/Testnet principal-routing research. Constructor rejects Mainnet.
+validation-harness = []
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }

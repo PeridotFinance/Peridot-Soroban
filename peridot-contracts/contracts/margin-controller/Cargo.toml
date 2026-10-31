@@ -6,6 +6,11 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+# Native integration only. Reward ownership and underlying-share delivery must
+# be integrated before this can become a deployable liquidation route.
+funded-liquidation-prototype = []
+
 [dependencies]
 soroban-sdk = { workspace = true }
 receipt-vault = { path = "../receipt-vault" }
