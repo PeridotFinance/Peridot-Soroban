@@ -100,7 +100,8 @@ impl ClSharePoolFacade {
         let c = cfg(&e);
         assert_eq!(user, c.controller, "wrong controller");
         user.require_auth();
-        assert!(in_idx < 2 && out_idx == 1 - in_idx && amount_in > 0);
+        assert!(in_idx < 2 && out_idx == 1 - in_idx && amount_in > 0 && amount_out_min > 0);
+        assert!(Self::estimate_swap(e.clone(),in_idx,out_idx,amount_in)>0,"quote unavailable");
         assert!(
             !c.paused && !(in_idx == 0 && c.deposits_paused),
             "direction paused"
@@ -122,6 +123,7 @@ impl ClSharePoolFacade {
         let before_out = tout.balance(&me);
         // First state-changing external call consumes V3's exact nested transfer.
         tin.transfer(&user, &me, &amount(amount_in));
+        assert_eq!(tin.balance(&me),before_in.checked_add(amount(amount_in)).unwrap(),"input mismatch");
         let vault = ShareClient::new(&e, &c.share);
         if in_idx == 0 {
             let transfer = InvokerContractAuthEntry::Contract(SubContractInvocation {
@@ -134,7 +136,12 @@ impl ClSharePoolFacade {
             });
             // Vault require_auth is immediate-invoker auth; the deeper token
             // transfer requires its own authorization from the facade.
-            e.authorize_as_current_contract(soroban_sdk::vec![&e, transfer]);
+            e.authorize_as_current_contract(soroban_sdk::vec![&e, transfer.clone(),
+                InvokerContractAuthEntry::Contract(SubContractInvocation {
+                    context: ContractContext {contract:c.share.clone(),fn_name:Symbol::new(&e,"deposit_underlying"),args:(me.clone(),amount(amount_in),amount(amount_out_min)).into_val(&e)},
+                    sub_invocations:soroban_sdk::vec![&e,transfer]
+                })
+            ]);
             vault.deposit_underlying(&me, &amount(amount_in), &amount(amount_out_min));
         } else {
             vault.redeem(&me, &amount(amount_in), &amount(amount_out_min));
@@ -193,3 +200,6 @@ impl ClSharePoolFacade {
 extern crate std;
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod pr74_auth_tests;

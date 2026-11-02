@@ -1,0 +1,87 @@
+ℹ️  CARGO_BUILD_RUSTFLAGS=--remap-path-prefix=/Users/joshua/.cargo/registry/src= SOROBAN_SDK_BUILD_SYSTEM_SUPPORTS_SPEC_SHAKING_V2=1 cargo rustc --manifest-path=contracts/simple-peridottroller/Cargo.toml --crate-type=cdylib --target=wasm32v1-none --release
+   Compiling simple-peridottroller v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/simple-peridottroller)
+    Finished `release` profile [optimized] target(s) in 7.48s
+ℹ️  Build Summary:
+    Wasm File: target/cl-share-checkpoint/artifacts/simple_peridottroller.wasm (63289 bytes optimized (original size was 77490 bytes))
+    Wasm Hash: d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2
+    Wasm Size: 63289 bytes optimized (original size was 77490 bytes)
+    Exported Functions: 78 found
+      • accept_admin
+      • account_liquidity
+      • accrue_user_market
+      • add_market
+      • backfill_fallback_price_set_at
+      • bind_boosted_vault
+      • cache_price
+      • claim
+      • claim_all
+      • claim_self
+      • emergency_disable_collateral
+      • enter_market
+      • exit_market
+      • exit_unsupported_market
+      • force_remove_market
+      • get_accrued
+      • get_admin
+      • get_boosted_vault_owner
+      • get_borrows_excl
+      • get_close_factor_scaled
+      • get_collateral_excl
+      • get_collateral_excl_usd
+      • get_liquidation_fee_scaled
+      • get_liquidation_incentive_scaled
+      • get_market_cf
+      • get_oracle
+      • get_price_usd
+      • get_reserve_recipient
+      • get_user_markets
+      • get_user_total_borrows
+      • get_user_total_collateral
+      • hypothetical_liquidity
+      • hypothetical_liquidity_with_hint
+      • initialize
+      • is_borrow_paused
+      • is_deposit_paused
+      • is_liquidation_paused
+      • is_margin_liquidation_ctrl
+      • is_market_supported
+      • is_redeem_paused
+      • liquidate
+      • liquidate_for_margin
+      • lp_reward_policy
+      • migrate_legacy_pause_expiries
+      • pause_borrow_g
+      • pause_deposit_g
+      • pause_liquidation_g
+      • pause_redeem_g
+      • portfolio
+      • preview_borrow_max
+      • preview_redeem_max
+      • preview_repay_cap
+      • preview_seize_ptokens
+      • propose_upgrade_wasm
+      • remove_market
+      • repay_on_behalf_for_liquidator
+      • set_admin
+      • set_borrow_speed
+      • set_close_factor
+      • set_liquidation_fee
+      • set_liquidation_incentive
+      • set_margin_liquidation_ctrl
+      • set_market_cf
+      • set_oracle
+      • set_oracle_asset_symbol
+      • set_oracle_max_age_multiplier
+      • set_pause_borrow
+      • set_pause_deposit
+      • set_pause_guardian
+      • set_pause_liquidation
+      • set_pause_redeem
+      • set_peridot_token
+      • set_price_fallback
+      • set_reserve_recipient
+      • set_supply_speed
+      • track_borrow_market
+      • upgrade_wasm
+      • verify_market_zero_totals
+✅ Build Complete

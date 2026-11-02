@@ -1,0 +1,369 @@
+warning: trait `Share` is never used
+  --> contracts/cl-share-pool-facade/src/lib.rs:26:7
+   |
+26 | trait Share {
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `paired` is never read
+   --> contracts/cl-share-pool-facade/src/test.rs:134:5
+    |
+129 | struct F {
+    |        - field in this struct
+...
+134 |     paired: Address,
+    |     ^^^^^^
+
+warning: `cl-share-pool-facade` (lib test) generated 2 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running unittests src/lib.rs (target/debug/deps/cl_share_pool_facade-353d546159467f04)
+
+running 5 tests
+test test::compiled_authorization_rejections_after_setup ... EXPECTED_REJECTION wrong_caller: Err(Ok(Error(Context, InvalidAction)))
+{"flow":"wrong_caller","ok":true,"instructions":532134,"memory_bytes":1272231,"read_entries":2,"write_entries":0,"read_bytes":0,"write_bytes":0,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-local-controlled-state"}
+
+EXPECTED_REJECTION controller_impersonation: Err(Ok(Error(Context, InvalidAction)))
+{"flow":"controller_impersonation","ok":true,"instructions":536683,"memory_bytes":1272287,"read_entries":2,"write_entries":0,"read_bytes":0,"write_bytes":0,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-local-controlled-state"}
+
+EXPECTED_REJECTION unauthorized_vault_recovery: Err(Ok(Error(Context, InvalidAction)))
+{"flow":"unauthorized_vault_recovery","ok":true,"instructions":863329,"memory_bytes":1308686,"read_entries":3,"write_entries":0,"read_bytes":0,"write_bytes":0,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-local-controlled-state"}
+
+EXPECTED_REJECTION unauthorized_receipt_recovery: Err(Ok(Error(Context, InvalidAction)))
+{"flow":"unauthorized_receipt_recovery","ok":true,"instructions":3177028,"memory_bytes":1326449,"read_entries":32,"write_entries":0,"read_bytes":0,"write_bytes":0,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-local-controlled-state"}
+
+{"flow":"transfer_spot_to_margin","ok":true,"instructions":26352243,"memory_bytes":11212216,"read_entries":69,"write_entries":9,"read_bytes":0,"write_bytes":1148,"disk_read_entries":0,"contract_events_size_bytes":388,"persistent_rent_ledger_bytes":1376709520,"persistent_entry_rent_bumps":6,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"begin_open_position_v3","ok":true,"instructions":26364225,"memory_bytes":20901084,"read_entries":84,"write_entries":15,"read_bytes":0,"write_bytes":3656,"disk_read_entries":0,"contract_events_size_bytes":228,"persistent_rent_ledger_bytes":209632751055,"persistent_entry_rent_bumps":12,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+EXPECTED_REJECTION unauthorized_pending_recovery: Err(Ok(Error(Context, InvalidAction)))
+{"flow":"unauthorized_pending_recovery","ok":true,"instructions":765984,"memory_bytes":1313119,"read_entries":2,"write_entries":0,"read_bytes":0,"write_bytes":0,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-local-controlled-state"}
+
+{"flow":"cancel_pending_open_v3","ok":true,"instructions":10342633,"memory_bytes":3161519,"read_entries":70,"write_entries":17,"read_bytes":0,"write_bytes":764,"disk_read_entries":0,"contract_events_size_bytes":172,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"cancel_before_execute","ok":true,"instructions":10342633,"memory_bytes":3161519,"read_entries":70,"write_entries":17,"read_bytes":0,"write_bytes":764,"disk_read_entries":0,"contract_events_size_bytes":172,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+Writing test snapshot file for test "test::compiled_authorization_rejections_after_setup" to "test_snapshots/test/compiled_authorization_rejections_after_setup.1.json".
+ok
+test test::compiled_receipt_margin_reward_custody ... {"flow":"deposit_underlying","ok":true,"instructions":104001811,"memory_bytes":15040651,"read_entries":41,"write_entries":20,"read_bytes":276,"write_bytes":12328,"disk_read_entries":3,"contract_events_size_bytes":3076,"persistent_rent_ledger_bytes":19271097600,"persistent_entry_rent_bumps":14,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"deposit","ok":true,"instructions":29125896,"memory_bytes":14003924,"read_entries":68,"write_entries":20,"read_bytes":92,"write_bytes":8052,"disk_read_entries":1,"contract_events_size_bytes":1408,"persistent_rent_ledger_bytes":2220802620,"persistent_entry_rent_bumps":9,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"receipt_custody_deposit","ok":true,"instructions":29125896,"memory_bytes":14003924,"read_entries":68,"write_entries":20,"read_bytes":92,"write_bytes":8052,"disk_read_entries":1,"contract_events_size_bytes":1408,"persistent_rent_ledger_bytes":2220802620,"persistent_entry_rent_bumps":9,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"transfer","ok":true,"instructions":391160,"memory_bytes":157044,"read_entries":5,"write_entries":3,"read_bytes":92,"write_bytes":520,"disk_read_entries":1,"contract_events_size_bytes":236,"persistent_rent_ledger_bytes":116121600,"persistent_entry_rent_bumps":1,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"set_rewards_config","ok":true,"instructions":3153228,"memory_bytes":1813395,"read_entries":8,"write_entries":4,"read_bytes":0,"write_bytes":4864,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":7402752000,"persistent_entry_rent_bumps":3,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+Invocation exceeded the transaction resource limits, it's likely going to fail when executed in a real network. The following limits are exceeded:
+total footprint ledger entries: 114 > 100
+See diagnostic events for invocation trace.
+
+thread 'test::compiled_receipt_margin_reward_custody' (999357) panicked at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-25.0.1/src/host/invocation_metering.rs:518:13:
+HostError: Error(Budget, ExceededLimit)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Budget, ExceededLimit)], data:"invocation resource limits are exceeded: total footprint ledger entries: 114 > 100"
+   1: [Diagnostic Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[fn_return, transfer], data:Void
+   2: [Diagnostic Event] contract:CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, topics:[fn_return, accrue_user_market], data:Void
+   3: [Diagnostic Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[fn_call, CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, accrue_user_market], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABDWC6, CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, {total_borrowed: 0, total_ptokens: 99947625, user_borrowed: 0, user_ptokens: 49973812}]
+   4: [Diagnostic Event] contract:CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, topics:[fn_return, accrue_user_market], data:Void
+   5: [Diagnostic Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[fn_call, CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, accrue_user_market], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, {total_borrowed: 0, total_ptokens: 99947625, user_borrowed: 0, user_ptokens: 49973813}]
+   6: [Contract Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[transfer, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABDWC6], data:49973812
+   7: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, topics:[fn_return, __check_auth], data:Void
+   8: [Diagnostic Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, __check_auth], data:[Bytes(0626afa86e64050dbe2822f73cb663cf800efe5a31c9fa734c1f8c7b2aba3d88), Void, [[Contract, {args: [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABDWC6, 49973812], contract: CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, fn_name: transfer}]]]
+   9: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, custody_reassign], data:Void
+   10: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:22732
+   11: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   12: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, claim], data:22732
+   13: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[claim_reward, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE], data:[22732]
+   14: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, transfer], data:Void
+   15: [Contract Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[transfer, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL7NV"], data:22732
+   16: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, transfer], data:[CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 22732]
+   17: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, total_supply], data:0
+   18: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, total_supply], data:Void
+   19: [Diagnostic Event] contract:CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, topics:[fn_return, balance], data:0
+   20: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   21: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, claim], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   22: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:0
+   23: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   24: [Diagnostic Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, custody_reassign], data:[CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABDWC6, 49973812]
+   25: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_return, locked_ptokens_in_market], data:0
+   26: [Diagnostic Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[fn_call, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, locked_ptokens_in_market], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7]
+   27: [Diagnostic Event] contract:CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, topics:[fn_return, get_borrows_excl], data:0
+   28: [Diagnostic Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[fn_call, CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, get_borrows_excl], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7]
+   29: [Diagnostic Event] contract:CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, topics:[fn_return, is_redeem_paused], data:false
+   30: [Diagnostic Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[fn_call, CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, is_redeem_paused], data:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7
+   31: [Contract Event] contract:CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, topics:[accrue_interest], data:{borrow_index: 1000000000000000000, interest_accumulated: 0, total_borrows: 0}
+   32: [Diagnostic Event] topics:[fn_call, CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7, transfer], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABDWC6, 49973812]
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+{"flow":"transfer","ok":false,"instructions":31259126,"memory_bytes":12389605,"read_entries":93,"write_entries":21,"read_bytes":0,"write_bytes":10356,"disk_read_entries":0,"contract_events_size_bytes":808,"persistent_rent_ledger_bytes":1404712400,"persistent_entry_rent_bumps":6,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+Writing test snapshot file for test "test::compiled_receipt_margin_reward_custody" to "test_snapshots/test/compiled_receipt_margin_reward_custody.1.json".
+FAILED
+test test::compiled_v3_checkpoint ... {"flow":"transfer","ok":true,"instructions":399718,"memory_bytes":162500,"read_entries":5,"write_entries":3,"read_bytes":92,"write_bytes":520,"disk_read_entries":1,"contract_events_size_bytes":236,"persistent_rent_ledger_bytes":116121600,"persistent_entry_rent_bumps":1,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"transfer_spot_to_margin","ok":true,"instructions":26350581,"memory_bytes":11217248,"read_entries":69,"write_entries":9,"read_bytes":0,"write_bytes":1148,"disk_read_entries":0,"contract_events_size_bytes":388,"persistent_rent_ledger_bytes":1376709520,"persistent_entry_rent_bumps":6,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"begin_open_position_v3","ok":true,"instructions":26383896,"memory_bytes":20910740,"read_entries":84,"write_entries":15,"read_bytes":0,"write_bytes":3656,"disk_read_entries":0,"contract_events_size_bytes":228,"persistent_rent_ledger_bytes":209632751055,"persistent_entry_rent_bumps":12,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"begin_open","ok":true,"instructions":26383896,"memory_bytes":20910740,"read_entries":84,"write_entries":15,"read_bytes":0,"write_bytes":3656,"disk_read_entries":0,"contract_events_size_bytes":228,"persistent_rent_ledger_bytes":209632751055,"persistent_entry_rent_bumps":12,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+Invocation exceeded the transaction resource limits, it's likely going to fail when executed in a real network. The following limits are exceeded:
+memory bytes: 47596008 > 41943040
+total footprint ledger entries: 159 > 100
+See diagnostic events for invocation trace.
+
+thread 'test::compiled_v3_checkpoint' (999475) panicked at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-25.0.1/src/host/invocation_metering.rs:518:13:
+HostError: Error(Budget, ExceededLimit)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Budget, ExceededLimit)], data:"invocation resource limits are exceeded: memory bytes: 47596008 > 41943040, total footprint ledger entries: 159 > 100"
+   1: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_return, swap_open_position_v3], data:Void
+   2: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, custody_assign], data:Void
+   3: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:0
+   4: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   5: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, claim], data:0
+   6: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[claim_reward, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE], data:[0]
+   7: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, transfer], data:Void
+   8: [Contract Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[transfer, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL7NV"], data:0
+   9: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, transfer], data:[CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 0]
+   10: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, total_supply], data:0
+   11: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, total_supply], data:Void
+   12: [Diagnostic Event] contract:CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, topics:[fn_return, balance], data:0
+   13: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   14: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, claim], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   15: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:0
+   16: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   17: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, custody_assign], data:[CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, 199890504]
+   18: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, balance], data:199890504
+   19: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, balance], data:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55
+   20: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_return, swap], data:199890504
+   21: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, balance], data:0
+   22: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, balance], data:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF
+   23: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:777
+   24: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF
+   25: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, transfer], data:Void
+   26: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:0
+   27: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   28: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, claim], data:0
+   29: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[claim_reward, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE], data:[0]
+   30: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, transfer], data:Void
+   31: [Contract Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[transfer, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL7NV"], data:0
+   32: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, transfer], data:[CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 0]
+   33: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, total_supply], data:0
+   34: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, total_supply], data:Void
+   35: [Diagnostic Event] contract:CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, topics:[fn_return, balance], data:0
+   36: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   37: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, claim], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   38: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:0
+   39: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   40: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, transfer], data:[CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, 199890504]
+   41: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, balance], data:199890504
+   42: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, balance], data:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF
+   43: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, deposit_underlying], data:199890504
+   44: [Contract Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[deposited], data:{from: CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, liquidity_minted: 47779120433, shares_minted: 199890504, underlying_in: 200000000}
+   45: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:8974115
+   46: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   47: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:0
+   48: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   49: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:8974115
+   50: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   51: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:0
+   52: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   53: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, deposit_position], data:[[100000000, 90916389], 47779120433]
+   54: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[pool_state], data:[79220631571286612509940397312, -2, 1098662272434]
+   55: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[position_update, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE], data:[-40, 40, 47779120433]
+   56: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[update_reserves], data:[100200000000, 99991025885]
+   57: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[deposit_liquidity, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN], data:[47779120433, 100000000, 90916389]
+   58: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, update], data:Void
+   59: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, update], data:[CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, concentrated, [1, 10, 20, 8], [100200000000, 99991025885, 0, 0, 2094971235, 2090586950, 2012135153, 2000099087, 3025757928, 2992658625, 4048489319, 3976272027, 5083436480, 4948026721, 6133768014, 5905069062, 7202730151, 6844618284, 8293663457, 7763979959, 1203588897, 1202500271, 2153717341, 2145167785, 3166710490, 3138339374, 4237085021, 4169834461, 5320244383, 5188893566, 6419504789, 6192524129, 7538263689, 7177810019, 8680017268, 8141925645]]
+   60: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, total_supply], data:0
+   61: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, total_supply], data:Void
+   62: [Diagnostic Event] contract:CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, topics:[fn_return, balance], data:0
+   63: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   64: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, transfer], data:Void
+   65: [Contract Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[transfer, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJXFF"], data:90916389
+   66: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, transfer], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, 90916389]
+   67: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, transfer], data:Void
+   68: [Contract Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[transfer, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGO6V"], data:100000000
+   69: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, transfer], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, 100000000]
+   70: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, total_supply], data:0
+   71: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, total_supply], data:Void
+   72: [Diagnostic Event] contract:CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, topics:[fn_return, balance], data:0
+   73: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   74: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, deposit_position], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, -40, 40, [100000000, 90916389], 47301329228]
+   75: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, estimate_deposit_position], data:[[100000000, 90916389], 47779120433]
+   76: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, estimate_deposit_position], data:[-40, 40, [100000000, 99890504]]
+   77: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:99890504
+   78: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   79: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:100000000
+   80: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   81: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:99890504
+   82: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   83: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:100000000
+   84: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   85: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, swap], data:99890504
+   86: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[pool_state], data:[79220631571286612509940397312, -2, 1050883152001]
+   87: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[update_reserves], data:[100100000000, 99900109496]
+   88: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[trade, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE], data:[100000000, 99890504, 100000]
+   89: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, transfer], data:Void
+   90: [Contract Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[transfer, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJXFF"], data:99890504
+   91: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, transfer], data:[CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 99890504]
+   92: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, transfer], data:Void
+   93: [Contract Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[transfer, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGO6V"], data:100000000
+   94: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, transfer], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, 100000000]
+   95: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, swap], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 0, 1, 100000000, 98891598]
+   96: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:0
+   97: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   98: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, estimate_swap], data:99890504
+   99: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, estimate_swap], data:[0, 1, 100000000]
+   100: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, get_is_killed_deposit], data:false
+   101: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, get_is_killed_deposit], data:Void
+   102: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:200000000
+   103: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   104: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, transfer], data:Void
+   105: [Contract Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[transfer, CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGO6V"], data:200000000
+   106: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, transfer], data:[CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 200000000]
+   107: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:0
+   108: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   109: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:0
+   110: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   111: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:0
+   112: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   113: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, claim], data:0
+   114: [Contract Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[claim_reward, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE], data:[0]
+   115: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, transfer], data:Void
+   116: [Contract Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[transfer, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL7NV"], data:0
+   117: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, transfer], data:[CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 0]
+   118: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, total_supply], data:0
+   119: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, total_supply], data:Void
+   120: [Diagnostic Event] contract:CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, topics:[fn_return, balance], data:0
+   121: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   122: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, claim], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   123: [Diagnostic Event] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:0
+   124: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   125: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:0
+   126: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   127: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:0
+   128: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   129: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, deposit_underlying], data:[CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, 200000000, 194040000]
+   130: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:200000777
+   131: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF
+   132: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, transfer], data:Void
+   133: [Contract Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[transfer, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGO6V"], data:200000000
+   134: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, transfer], data:[CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, 200000000]
+   135: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, balance], data:0
+   136: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, balance], data:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF
+   137: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:777
+   138: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF
+   139: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, quote], data:194040000
+   140: [Diagnostic Event] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:0
+   141: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   142: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:0
+   143: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   144: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, get_is_killed_deposit], data:false
+   145: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, get_is_killed_deposit], data:Void
+   146: [Diagnostic Event] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, get_is_killed_swap], data:false
+   147: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, get_is_killed_swap], data:Void
+   148: [Diagnostic Event] contract:CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, quote], data:[true, 200000000]
+   149: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF, swap], data:[CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, 0, 1, 200000000, 194040000]
+   150: [Diagnostic Event] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_return, balance], data:0
+   151: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, balance], data:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55
+   152: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_return, borrow_for_margin_to_controller], data:Void
+   153: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:800000000
+   154: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2
+   155: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, transfer], data:Void
+   156: [Contract Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[transfer, CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGO6V"], data:100000000
+   157: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, transfer], data:[CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, 100000000]
+   158: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:900000000
+   159: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2
+   160: [Diagnostic Event] contract:CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, topics:[fn_return, is_borrow_paused], data:false
+   161: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, is_borrow_paused], data:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2
+   162: [Contract Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[accrue_interest], data:{borrow_index: 1000000000000000000, interest_accumulated: 0, total_borrows: 0}
+   163: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, borrow_for_margin_to_controller], data:[1, 100000000]
+   164: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:100000000
+   165: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55
+   166: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_return, withdraw], data:Void
+   167: [Contract Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[redeem, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55], data:{redeem_amount: 100000000, redeem_tokens: 100000000}
+   168: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:900000000
+   169: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2
+   170: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, transfer], data:Void
+   171: [Contract Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[transfer, CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGO6V"], data:100000000
+   172: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, transfer], data:[CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, 100000000]
+   173: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:1000000000
+   174: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2
+   175: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:1000000000
+   176: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2
+   177: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:1000000000
+   178: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2
+   179: [Contract Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[burn, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55], data:{amount: 100000000}
+   180: [Diagnostic Event] contract:CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, topics:[fn_return, get_borrows_excl], data:0
+   181: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, get_borrows_excl], data:[CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2]
+   182: [Diagnostic Event] contract:CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, topics:[fn_return, is_redeem_paused], data:false
+   183: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, is_redeem_paused], data:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2
+   184: [Diagnostic Event] contract:CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, topics:[fn_return, accrue_user_market], data:Void
+   185: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_call, CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V, accrue_user_market], data:[CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, {total_borrowed: 0, total_ptokens: 1000000000, user_borrowed: 0, user_ptokens: 100000000}]
+   186: [Contract Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[accrue_interest], data:{borrow_index: 1000000000000000000, interest_accumulated: 0, total_borrows: 0}
+   187: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, withdraw], data:[CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, 100000000]
+   188: [Diagnostic Event] contract:CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, topics:[fn_return, begin_margin_withdraw], data:Void
+   189: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2, begin_margin_withdraw], data:[CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, 100000000]
+   190: [Diagnostic Event] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:0
+   191: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55
+   192: [Diagnostic Event] contract:CBJPUABS5H6EDPZ7AGJYOEWEDQ5HWMZDJNJYFGTTHDEI5FHONNL2BQN5, topics:[fn_return, is_pool_binding_allowed], data:true
+   193: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CBJPUABS5H6EDPZ7AGJYOEWEDQ5HWMZDJNJYFGTTHDEI5FHONNL2BQN5, is_pool_binding_allowed], data:[Bytes(1111111111111111111111111111111111111111111111111111111111111111), CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF]
+   194: [Diagnostic Event] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, topics:[fn_return, __check_auth], data:Void
+   195: [Diagnostic Event] contract:CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, __check_auth], data:[Bytes(723f3b67941f0aa0f7fb2ce8c5d1037812e8659e270fac7dd575d5f9440a53b9), Void, [[Contract, {args: [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, 1], contract: CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, fn_name: swap_open_position_v3}]]]
+   196: [Diagnostic Event] topics:[fn_call, CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55, swap_open_position_v3], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, 1]
+
+{"flow":"swap_open_position_v3","ok":false,"instructions":165700047,"memory_bytes":47596008,"read_entries":116,"write_entries":40,"read_bytes":276,"write_bytes":15988,"disk_read_entries":3,"contract_events_size_bytes":5424,"persistent_rent_ledger_bytes":22395219200,"persistent_entry_rent_bumps":24,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+Writing test snapshot file for test "test::compiled_v3_checkpoint" to "test_snapshots/test/compiled_v3_checkpoint.1.json".
+FAILED
+test test::compiled_vault_core_flows ... {"flow":"deposit_underlying","ok":true,"instructions":104001811,"memory_bytes":15040651,"read_entries":41,"write_entries":20,"read_bytes":276,"write_bytes":12328,"disk_read_entries":3,"contract_events_size_bytes":3076,"persistent_rent_ledger_bytes":19271097600,"persistent_entry_rent_bumps":14,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"deposit","ok":true,"instructions":104001811,"memory_bytes":15040651,"read_entries":41,"write_entries":20,"read_bytes":276,"write_bytes":12328,"disk_read_entries":3,"contract_events_size_bytes":3076,"persistent_rent_ledger_bytes":19271097600,"persistent_entry_rent_bumps":14,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"transfer","ok":true,"instructions":7596981,"memory_bytes":3604560,"read_entries":25,"write_entries":11,"read_bytes":92,"write_bytes":6644,"disk_read_entries":1,"contract_events_size_bytes":420,"persistent_rent_ledger_bytes":1008000000,"persistent_entry_rent_bumps":3,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"claim_rewards","ok":true,"instructions":6491685,"memory_bytes":3397650,"read_entries":21,"write_entries":8,"read_bytes":92,"write_bytes":6116,"disk_read_entries":1,"contract_events_size_bytes":420,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"redeem","ok":true,"instructions":139904484,"memory_bytes":14150763,"read_entries":40,"write_entries":17,"read_bytes":184,"write_bytes":11852,"disk_read_entries":2,"contract_events_size_bytes":3204,"persistent_rent_ledger_bytes":116121600,"persistent_entry_rent_bumps":1,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"emergency_redeem","ok":true,"instructions":123678340,"memory_bytes":10757854,"read_entries":41,"write_entries":20,"read_bytes":92,"write_bytes":11840,"disk_read_entries":1,"contract_events_size_bytes":2644,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+Writing test snapshot file for test "test::compiled_vault_core_flows" to "test_snapshots/test/compiled_vault_core_flows.1.json".
+ok
+test test::compiled_venue_rewards_and_claim_failure ... {"flow":"deposit_underlying","ok":true,"instructions":104001811,"memory_bytes":15040651,"read_entries":41,"write_entries":20,"read_bytes":276,"write_bytes":12328,"disk_read_entries":3,"contract_events_size_bytes":3076,"persistent_rent_ledger_bytes":19271097600,"persistent_entry_rent_bumps":14,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"transfer","ok":true,"instructions":388238,"memory_bytes":152760,"read_entries":5,"write_entries":3,"read_bytes":92,"write_bytes":520,"disk_read_entries":1,"contract_events_size_bytes":236,"persistent_rent_ledger_bytes":116121600,"persistent_entry_rent_bumps":1,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"set_rewards_config","ok":true,"instructions":3143233,"memory_bytes":1805439,"read_entries":8,"write_entries":4,"read_bytes":0,"write_bytes":4864,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":7402752000,"persistent_entry_rent_bumps":3,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+PINNED_POOL_SAME_STATE in-range pending=22732 actual_claim_delta=22732; one controlled state only, not universal equality proof
+{"flow":"claim_rewards","ok":true,"instructions":7738105,"memory_bytes":3606306,"read_entries":24,"write_entries":12,"read_bytes":0,"write_bytes":8944,"disk_read_entries":0,"contract_events_size_bytes":656,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"kill_claim","ok":true,"instructions":1452473,"memory_bytes":1495446,"read_entries":4,"write_entries":2,"read_bytes":0,"write_bytes":2596,"disk_read_entries":0,"contract_events_size_bytes":76,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"normal_transfer_claim_failure_rejected","ok":true,"instructions":2339165,"memory_bytes":2799442,"read_entries":10,"write_entries":1,"read_bytes":0,"write_bytes":0,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-local-controlled-state"}
+
+{"flow":"waiver_false_rejected_named_error","ok":true,"instructions":7084492,"memory_bytes":4669276,"read_entries":23,"write_entries":7,"read_bytes":0,"write_bytes":5524,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-local-controlled-state"}
+
+{"flow":"emergency_redeem","ok":true,"instructions":125669900,"memory_bytes":12196163,"read_entries":43,"write_entries":22,"read_bytes":0,"write_bytes":14416,"disk_read_entries":0,"contract_events_size_bytes":1744,"persistent_rent_ledger_bytes":419998400,"persistent_entry_rent_bumps":2,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+{"flow":"claim_failure_recovery","ok":true,"instructions":125669900,"memory_bytes":12196163,"read_entries":43,"write_entries":22,"read_bytes":0,"write_bytes":14416,"disk_read_entries":0,"contract_events_size_bytes":1744,"persistent_rent_ledger_bytes":419998400,"persistent_entry_rent_bumps":2,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"compiled-local-controlled-state"}
+
+REWARD_CONSERVATION actual_pool_received=22732 actual_holder_paid=22731 rounding_backing=1; remaining failed-claim interval quarantined/unproven; no reallocation clearance
+Writing test snapshot file for test "test::compiled_venue_rewards_and_claim_failure" to "test_snapshots/test/compiled_venue_rewards_and_claim_failure.1.json".
+ok
+
+failures:
+
+failures:
+    test::compiled_receipt_margin_reward_custody
+    test::compiled_v3_checkpoint
+
+test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 10 filtered out; finished in 31.50s
+
+error: test failed, to rerun pass `-p cl-share-pool-facade --lib`

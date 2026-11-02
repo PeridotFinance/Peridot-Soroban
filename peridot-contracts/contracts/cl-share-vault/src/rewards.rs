@@ -1,7 +1,7 @@
 //! Claim-first index. Missing boundaries are quarantined, never inferred from time.
 use crate::{
     math::mul_div,
-    storage::{config, primary_reward_token, shares_of, state},
+    storage::{config, primary_reward_token, state},
 };
 use soroban_sdk::{
     contracterror, contracttype, panic_with_error, token, Address, BytesN, Env, IntoVal, Symbol,
@@ -55,6 +55,25 @@ enum Key {
     Bucket(u64),
     Totals,
     Evidence(u64, Address),
+    Proposal(u64),
+}
+#[contracttype]
+#[derive(Clone)]
+struct Attribution {
+    amount: u128,
+    evidence: BytesN<32>,
+    execute_after: u64,
+}
+const ATTRIBUTION_DELAY_SECONDS: u64 = 86_400;
+fn quarantine(e: &Env, interval: u64, amount: u128) {
+    let key = Key::Bucket(interval);
+    let old: u128 = e.storage().persistent().get(&key).unwrap_or(0);
+    e.storage()
+        .persistent()
+        .set(&key, &old.checked_add(amount).unwrap());
+    e.storage()
+        .persistent()
+        .extend_ttl(&key, 500_000, 1_000_000);
 }
 fn index(e: &Env) -> u128 {
     e.storage().instance().get(&Key::Index).unwrap_or(0)
@@ -88,7 +107,9 @@ fn save(e: &Env, t: &Totals) {
 }
 pub fn settle(e: &Env, a: &Address) {
     let mut h = holder(e, a);
-    let earned = shares_of(e, a).checked_mul(index(e)).unwrap();
+    let earned = crate::custody::effective(e, a)
+        .checked_mul(index(e))
+        .unwrap();
     let scaled = earned
         .checked_sub(h.debt)
         .unwrap()
@@ -101,7 +122,9 @@ pub fn settle(e: &Env, a: &Address) {
 }
 pub fn reset_debt(e: &Env, a: &Address) {
     let mut h = holder(e, a);
-    h.debt = shares_of(e, a).checked_mul(index(e)).unwrap();
+    h.debt = crate::custody::effective(e, a)
+        .checked_mul(index(e))
+        .unwrap();
     put(e, a, &h);
 }
 fn reward(e: &Env) -> Address {
@@ -130,17 +153,7 @@ pub fn checkpoint(e: &Env) -> bool {
     t.received = t.received.checked_add(delta).unwrap();
     let interval: u64 = e.storage().instance().get(&Key::Interval).unwrap_or(0);
     if e.storage().instance().get(&Key::Open).unwrap_or(false) || state(e).total_shares == 0 {
-        let old: u128 = e
-            .storage()
-            .persistent()
-            .get(&Key::Bucket(interval))
-            .unwrap_or(0);
-        e.storage()
-            .persistent()
-            .set(&Key::Bucket(interval), &old.checked_add(delta).unwrap());
-        e.storage()
-            .persistent()
-            .extend_ttl(&Key::Bucket(interval), 500_000, 1_000_000);
+        quarantine(e, interval, delta);
         t.quarantine = t.quarantine.checked_add(delta).unwrap();
         // End at an actual claim. A later pending read cannot repair old boundaries.
         e.storage()
@@ -153,10 +166,22 @@ pub fn checkpoint(e: &Env) -> bool {
         e.storage()
             .instance()
             .set(&Key::Index, &index(e).checked_add(increment).unwrap());
-        // Do not carry global rounding across ownership boundaries.
+        // Physical shares in custody do not acquire a beneficiary until the
+        // custodian assigns them. This includes unsolicited donated dust.
+        let unowned = increment
+            .checked_mul(crate::custody::unassigned(e))
+            .unwrap();
+        let unowned_whole = unowned / SCALE;
+        if unowned_whole > 0 {
+            quarantine(e, interval, unowned_whole);
+        }
+        t.quarantine = t.quarantine.checked_add(unowned_whole).unwrap();
+        // Neither division dust nor unowned fractional rewards move to later owners.
         t.rounding_scaled = t
             .rounding_scaled
             .checked_add(delta.checked_mul(SCALE).unwrap() - increment.checked_mul(supply).unwrap())
+            .unwrap()
+            .checked_add(unowned % SCALE)
             .unwrap();
     }
     save(e, &t);
@@ -189,7 +214,7 @@ pub fn recovery(e: &Env, a: &Address, forced: bool, waiver: bool) {
     let id: u64 = e.storage().instance().get(&Key::Count).unwrap_or(0);
     let b = Boundary {
         holder: a.clone(),
-        shares: shares_of(e, a),
+        shares: crate::custody::effective(e, a),
         index: index(e),
         reading,
         timestamp: e.ledger().timestamp(),
@@ -207,10 +232,17 @@ pub fn recovery(e: &Env, a: &Address, forced: bool, waiver: bool) {
     e.storage().instance().set(&Key::Open, &true);
 }
 pub fn boundary(e: &Env, id: u64) -> Option<Boundary> {
+    if e.storage().persistent().has(&Key::Boundary(id)) {
+        e.storage()
+            .persistent()
+            .extend_ttl(&Key::Boundary(id), 500_000, 1_000_000);
+    }
     e.storage().persistent().get(&Key::Boundary(id))
 }
 pub fn claim(e: &Env, a: &Address) -> u128 {
     a.require_auth();
+    // A failed upstream claim must not freeze already-booked personal rewards.
+    let _ = checkpoint(e);
     settle(e, a);
     let mut h = holder(e, a);
     let amount = h.pending;
@@ -231,11 +263,48 @@ pub fn claim(e: &Env, a: &Address) -> u128 {
 }
 // Governance cannot turn a late estimate into proof. An evidence digest is
 // persisted for independently reviewed attribution; no automatic release exists.
+pub fn propose_attribute(e: &Env, id: u64, amount: u128, evidence: BytesN<32>) {
+    crate::storage::admin(e).require_auth();
+    assert!(amount > 0, "zero attribution");
+    assert_ne!(evidence, BytesN::from_array(e, &[0; 32]));
+    let b = boundary(e, id).expect("unknown boundary");
+    assert!(!b.waived && b.shares > 0, "ineligible boundary");
+    assert!(
+        !e.storage().persistent().has(&Key::Evidence(id, b.holder)),
+        "already attributed"
+    );
+    let proposal = Attribution {
+        amount,
+        evidence,
+        execute_after: e
+            .ledger()
+            .timestamp()
+            .checked_add(ATTRIBUTION_DELAY_SECONDS)
+            .unwrap(),
+    };
+    e.storage().persistent().set(&Key::Proposal(id), &proposal);
+    e.storage()
+        .persistent()
+        .extend_ttl(&Key::Proposal(id), 500_000, 1_000_000);
+}
 pub fn attribute(e: &Env, id: u64, amount: u128, evidence: BytesN<32>) {
     crate::storage::admin(e).require_auth();
     assert_ne!(evidence, BytesN::from_array(e, &[0; 32]));
     let b = boundary(e, id).expect("unknown boundary");
-    assert!(!b.waived, "waived boundary");
+    assert!(!b.waived && b.shares > 0, "ineligible boundary");
+    let proposal: Attribution = e
+        .storage()
+        .persistent()
+        .get(&Key::Proposal(id))
+        .expect("proposal required");
+    assert!(
+        proposal.amount == amount && proposal.evidence == evidence,
+        "proposal mismatch"
+    );
+    assert!(
+        e.ledger().timestamp() >= proposal.execute_after,
+        "proposal timelock"
+    );
     let k = Key::Evidence(id, b.holder.clone());
     assert!(!e.storage().persistent().has(&k), "already attributed");
     let bucket: u128 = e
@@ -253,6 +322,7 @@ pub fn attribute(e: &Env, id: u64, amount: u128, evidence: BytesN<32>) {
     let mut t = totals(e);
     t.quarantine -= amount;
     save(e, &t);
+    e.storage().persistent().remove(&Key::Proposal(id));
     e.storage().persistent().set(&k, &evidence);
     e.storage().persistent().extend_ttl(&k, 500_000, 1_000_000);
 }

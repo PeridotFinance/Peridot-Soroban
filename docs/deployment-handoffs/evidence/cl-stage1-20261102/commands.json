@@ -1,0 +1,28 @@
+{
+  "main": {
+    "command": "bash scripts/run_cl_share_checkpoint.sh",
+    "exit": 1,
+    "compiled_tests": "3 passed, 2 failed",
+    "budget_exit": 1
+  },
+  "funded": {
+    "command": "CL_RESOURCE_REPORT=\"$PWD/target/cl-share-checkpoint/funded-resources-final.jsonl\" cargo test -p margin-controller --features funded-liquidation-validation funded_prototype -- --nocapture",
+    "exit": 101,
+    "result": "5 passed, 4 failed",
+    "budget_exit": 1
+  },
+  "reserve": {
+    "command": "RESERVE_RESOURCE_REPORT=\"$PWD/target/cl-share-checkpoint/reserve-resources-final.jsonl\" cargo test -p receipt-vault reserve_test -- --nocapture",
+    "exit": 0,
+    "result": "10 passed",
+    "budget_exit": 1
+  },
+  "scope": "local test execution only; no signing or broadcasting",
+  "sha256": {
+    "network-config.json": "c60e59fc151f20ace98dddee77b648e50642e8b48fe0da91b870435b4af3aea1",
+    "pool-code-source.json": "cff30c39e162748648068c90dacfb3b382fed9f984797c8ae80b59e9f35f0a11",
+    "resources.jsonl": "eb81b80252831873ffd0de87af1e883d5d1f446f1a48c8cd0b80f1536429b8bc",
+    "funded-resources-final.jsonl": "4c745418abfd40baf9c147e3ded642b9c3121f5da041cc80b28f83618bd32e0d",
+    "reserve-resources-final.jsonl": "7c21392d159fae014a544b53c3cdd8a580580f189b0bc5b7422f7d27eecc9545"
+  }
+}

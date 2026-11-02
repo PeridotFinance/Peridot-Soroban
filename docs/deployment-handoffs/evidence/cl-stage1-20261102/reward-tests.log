@@ -1,0 +1,174 @@
+   Compiling cl-share-vault v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-vault)
+warning: unused variable: `reward_token`
+    --> contracts/cl-share-vault/src/contract.rs:2149:52
+     |
+2149 |     pub fn sweep_reward(env: Env, caller: Address, reward_token: Address) -> i128 {
+     |                                                    ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_reward_token`
+     |
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `caller`
+    --> contracts/cl-share-vault/src/contract.rs:2672:32
+     |
+2672 |     pub fn rebalance(env: Env, caller: Address) -> bool {
+     |                                ^^^^^^ help: if this is intentional, prefix it with an underscore: `_caller`
+
+warning: constant `MAX_REBALANCE_IDLE_BPS` is never used
+  --> contracts/cl-share-vault/src/constants.rs:29:11
+   |
+29 | pub const MAX_REBALANCE_IDLE_BPS: u128 = 500;
+   |           ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `MAX_REBALANCE_QUOTE_SHARE_DEVIATION_BPS` is never used
+  --> contracts/cl-share-vault/src/constants.rs:33:11
+   |
+33 | pub const MAX_REBALANCE_QUOTE_SHARE_DEVIATION_BPS: u128 = 500;
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `REWARD_RATE_SCALE` is never used
+  --> contracts/cl-share-vault/src/constants.rs:47:11
+   |
+47 | pub const REWARD_RATE_SCALE: u128 = 10_000_000u128;
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: multiple associated functions are never used
+    --> contracts/cl-share-vault/src/contract.rs:185:8
+     |
+ 124 | impl ClShareVault {
+     | ----------------- associated functions in this implementation
+...
+ 185 |     fn receipt_vault(env: &Env) -> Address {
+     |        ^^^^^^^^^^^^^
+...
+ 540 |     fn total_underlying_full_at_root(env: &Env, root: u128) -> u128 {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 801 |     fn withdraw_all_for_rebalance(env: &Env) -> Option<u128> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 873 |     fn balance_pair_for_centered_range(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1395 |     fn raise_underlying(env: &Env, needed: u128, exit_root: u128) -> bool {
+     |        ^^^^^^^^^^^^^^^^
+...
+1433 |     fn redeem_for(env: &Env, needed: u128, exit_root: u128) -> bool {
+     |        ^^^^^^^^^^
+...
+2013 |     pub(crate) fn swap_reward(env: &Env, reward_token: &Address, amount: u128) -> u128 {
+     |                   ^^^^^^^^^^^
+
+warning: struct `Harvested` is never constructed
+  --> contracts/cl-share-vault/src/events.rs:33:12
+   |
+33 | pub struct Harvested {
+   |            ^^^^^^^^^
+
+warning: struct `HarvestSkipped` is never constructed
+  --> contracts/cl-share-vault/src/events.rs:44:12
+   |
+44 | pub struct HarvestSkipped {
+   |            ^^^^^^^^^^^^^^
+
+warning: struct `RedeemZeroReturn` is never constructed
+  --> contracts/cl-share-vault/src/events.rs:64:12
+   |
+64 | pub struct RedeemZeroReturn {
+   |            ^^^^^^^^^^^^^^^^
+
+warning: struct `PositionRebalanced` is never constructed
+   --> contracts/cl-share-vault/src/events.rs:120:12
+    |
+120 | pub struct PositionRebalanced {
+    |            ^^^^^^^^^^^^^^^^^^
+
+warning: function `seize_shares` is never used
+ --> contracts/cl-share-vault/src/funded.rs:5:15
+  |
+5 | pub(crate) fn seize_shares(
+  |               ^^^^^^^^^^^^
+
+warning: function `mul_div_ceil` is never used
+  --> contracts/cl-share-vault/src/math.rs:41:8
+   |
+41 | pub fn mul_div_ceil(env: &Env, a: u128, b: u128, denom: u128) -> u128 {
+   |        ^^^^^^^^^^^^
+
+warning: `cl-share-vault` (lib) generated 12 warnings (run `cargo fix --lib -p cl-share-vault` to apply 2 suggestions)
+warning: `cl-share-vault` (lib test) generated 11 warnings (11 duplicates)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.33s
+     Running unittests src/lib.rs (target/debug/deps/cl_share_vault-12bf58293298c703)
+
+running 39 tests
+
+thread 'funded::tests::no_zero_price_seizure' (999038) panicked at contracts/cl-share-vault/src/funded.rs:13:5:
+trusted positive valuation required
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test proof_model_tests::a_backwards_read_is_rejected_without_mutating_the_tracker ... ok
+test proof_model_tests::a_new_claim_interval_resets_cumulative_measurement_only ... ok
+test funded::tests::funded_bonus_uses_value_not_cf ... ok
+test funded::tests::no_zero_price_seizure - should panic ... ok
+test proof_model_tests::a_later_reading_does_not_reconstruct_a_missing_boundary ... ok
+test proof_model_tests::alice_rewards_are_settled_before_bob_mints ... ok
+test proof_model_tests::an_unknown_size_claim_is_entirely_quarantined ... ok
+test proof_model_tests::an_unverified_estimate_is_not_a_proven_boundary ... ok
+test proof_model_tests::donations_do_not_subsidize_outputs_or_change_booked_nav ... ok
+test proof_model_tests::emission_change_produces_five_and_ninety_five ... ok
+test proof_model_tests::excess_has_no_implicit_current_holder ... ok
+test proof_model_tests::exited_alice_takes_her_shortfall_without_touching_bob ... ok
+test proof_model_tests::fee_rounding_does_not_overpay_the_first_exiter ... ok
+test proof_model_tests::forced_liquidation_has_no_waiver_and_preserves_unknown_rewards ... ok
+test proof_model_tests::invalid_amounts_and_overflow_fail_closed ... ok
+test proof_model_tests::no_supply_cannot_assign_rewards_or_inherit_unowned_nav ... ok
+test proof_model_tests::normal_operations_never_use_receivables ... ok
+test proof_model_tests::only_voluntary_unproven_redemption_requires_the_holders_waiver ... ok
+test proof_model_tests::partial_withdrawal_keeps_other_holders_fees ... ok
+test proof_model_tests::pending_totals_are_differenced_instead_of_counted_twice ... ok
+test proof_model_tests::proven_allocation_cannot_spend_the_quarantine_budget ... ok
+test proof_model_tests::repeated_failed_reads_preserve_the_gap ... ok
+test proof_model_tests::rounding_is_conserved_in_the_original_interval ... ok
+test proof_model_tests::shortfall_is_proportional_between_original_owners ... ok
+test proof_model_tests::successful_claim_after_a_missing_boundary_still_requires_quarantine ... ok
+test proof_model_tests::successful_zero_claims_allow_repeated_normal_movements ... ok
+test proof_model_tests::the_depositor_bears_zap_cost ... ok
+test proof_model_tests::unresolved_units_keep_backing_during_a_shortfall ... ok
+test proof_model_tests::settlement_conservation_holds_over_bounded_adversarial_inputs ... ok
+CUSTODY_REGISTRATION: G-account, undeployed C-address and SAC rejected; deployed native fixture accepted; G-address never mocked
+Writing test snapshot file for test "test::custody_registration_requires_deployed_wasm_not_account_or_asset" to "test_snapshots/test/custody_registration_requires_deployed_wasm_not_account_or_asset.1.json".
+test test::custody_registration_requires_deployed_wasm_not_account_or_asset ... ok
+REWARD_CONSERVATION: upstream=100 Alice=5 Bob=95; Alice-only pre-deposit=10 Bob=0
+Writing test snapshot file for test "test::alice_bob_unclaimed_and_emission_change_conserve" to "test_snapshots/test/alice_bob_unclaimed_and_emission_change_conserve.2.json".
+CUSTODY_AUTH: unauthorized prepare/assign/reassign rejected; missing context, wrong amount, wrong recipient rejected AFTER setup; real contract invoker positive succeeds
+Writing test snapshot file for test "test::custody_exact_context_and_actual_invoker_authorization_are_required" to "test_snapshots/test/custody_exact_context_and_actual_invoker_authorization_are_required.1.json".
+Writing test snapshot file for test "test::alice_bob_unclaimed_and_emission_change_conserve" to "test_snapshots/test/alice_bob_unclaimed_and_emission_change_conserve.1.json".
+PERSONAL_CLAIMS: received=100 paid=100 Alice55 Bob45; existing booked rewards payable during upstream claim/view failure; repeat pays0
+Writing test snapshot file for test "test::personal_claims_pay_only_owner_and_booked_rewards_survive_upstream_failure" to "test_snapshots/test/personal_claims_pay_only_owner_and_booked_rewards_survive_upstream_failure.1.json".
+REWARD_CONSERVATION: unresolved received=100 quarantine=100 distributed=0; waiver false rejects, true records waiver; late reading remains unproven
+Writing test snapshot file for test "test::outage_waiver_and_missing_boundary_stay_quarantined" to "test_snapshots/test/outage_waiver_and_missing_boundary_stay_quarantined.2.json".
+Writing test snapshot file for test "test::outage_waiver_and_missing_boundary_stay_quarantined" to "test_snapshots/test/outage_waiver_and_missing_boundary_stay_quarantined.1.json".
+test test::custody_exact_context_and_actual_invoker_authorization_are_required ... ok
+test test::personal_claims_pay_only_owner_and_booked_rewards_survive_upstream_failure ... ok
+Writing test snapshot file for test "test::quarantine_attribution_requires_delayed_exact_governance_evidence" to "test_snapshots/test/quarantine_attribution_requires_delayed_exact_governance_evidence.1.json".
+CUSTODY_CONSERVATION: received=250 original_owner=175 new_owner=25 quarantine=50; forced failed-claim transfer preserves historical rewards; custodian=0
+Writing test snapshot file for test "test::custody_rewards_follow_beneficial_owner_and_forced_seizure_preserves_history" to "test_snapshots/test/custody_rewards_follow_beneficial_owner_and_forced_seizure_preserves_history.1.json".
+test test::alice_bob_unclaimed_and_emission_change_conserve ... ok
+Writing test snapshot file for test "test::transfers_checkpoint_at_old_balances_zero_claims_do_not_duplicate" to "test_snapshots/test/transfers_checkpoint_at_old_balances_zero_claims_do_not_duplicate.1.json".
+test test::outage_waiver_and_missing_boundary_stay_quarantined ... ok
+Writing test snapshot file for test "test::unassigned_donation_rewards_are_quarantined_without_blocking_other_holders" to "test_snapshots/test/unassigned_donation_rewards_are_quarantined_without_blocking_other_holders.1.json".
+test test::quarantine_attribution_requires_delayed_exact_governance_evidence ... ok
+test test::transfers_checkpoint_at_old_balances_zero_claims_do_not_duplicate ... ok
+PRINCIPAL_CONSERVATION: both reward calls unavailable; A=700/1300 B=700/1300 fees=100/200 split equally; excluded donations=50/60; total_supply=0
+Writing test snapshot file for test "principal_tests::actual_emergency_entrypoint_excludes_donations_and_splits_all_fees" to "test_snapshots/principal_tests/actual_emergency_entrypoint_excludes_donations_and_splits_all_fees.1.json".
+test test::unassigned_donation_rewards_are_quarantined_without_blocking_other_holders ... ok
+test test::custody_rewards_follow_beneficial_owner_and_forced_seizure_preserves_history ... ok
+test principal_tests::actual_emergency_entrypoint_excludes_donations_and_splits_all_fees ... ok
+
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.97s
+
+   Doc-tests cl_share_vault
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

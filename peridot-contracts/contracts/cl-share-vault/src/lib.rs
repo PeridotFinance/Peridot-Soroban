@@ -2,11 +2,14 @@
 mod accounting;
 mod constants;
 mod contract;
+mod custody;
 mod events;
 mod funded;
 mod math;
 mod oracle;
 mod pool;
+#[cfg(test)]
+mod proof_model;
 mod rewards;
 mod storage;
 pub use contract::{ClShareVault, ClShareVaultClient};
@@ -25,4 +28,9 @@ pub(crate) fn require_validation_network(env: &soroban_sdk::Env) {
 #[cfg(test)]
 extern crate std;
 #[cfg(test)]
+mod proof_model_tests;
+#[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod principal_tests;

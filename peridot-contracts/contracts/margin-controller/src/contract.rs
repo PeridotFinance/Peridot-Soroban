@@ -22,6 +22,8 @@ impl MarginController {
         swap_adapter: Address,
         max_leverage: u128,
     ) {
+        #[cfg(feature = "funded-liquidation-validation")]
+        crate::funded_liquidation::require_validation_network(&env);
         let persistent = env.storage().persistent();
         let already_initialized = persistent.has(&DataKey::Initialized)
             || persistent.has(&DataKey::Admin)
@@ -559,6 +561,8 @@ impl MarginController {
         let amount_i128: i128 = ptoken_amount.try_into().expect("amount too large");
         // Set the vault's margin-withdraw bypass for the controller (the `from`
         // address) so the vault's transfer skips preview_redeem_max re-entry.
+        #[cfg(feature = "funded-liquidation-validation")]
+        Self::cl_receipt_reassign(&env, &asset, &vault, &user, &user, ptoken_amount, true);
         Self::begin_margin_withdraw_if_supported(&env, &vault, &controller, &user, ptoken_amount);
         let transfer_args: Vec<Val> =
             (controller.clone(), user.clone(), amount_i128).into_val(&env);
@@ -641,7 +645,9 @@ impl MarginController {
         pool: Address,
         amount_with_slippage: u128,
     ) -> u64 {
-        bump_core_ttl(&env);
+        // Refresh only live configuration used by this stage. Broad admin /
+        // pending-governance TTL reads inflate the open transaction footprint.
+        bump_instance_ttl(&env);
         user.require_auth();
         Self::begin_open_position_v3_impl(
             &env,
@@ -865,6 +871,8 @@ impl MarginController {
         Self::liquidate_position_v3_impl(&env, liquidator, position_id);
     }
 
+    /// Validation-only funded settlement. No swap/flash loan; delivers receipt
+    /// pTokens. Beneficial reward ownership remains a separate activation gate.
     pub fn begin_liquidation_v3(env: Env, liquidator: Address, position_id: u64) {
         bump_instance_ttl(&env);
         liquidator.require_auth();
@@ -1187,5 +1195,58 @@ fn assert_expected_admin(env: &Env, admin: &Address) {
         if admin != &expected_admin {
             panic!("unexpected admin");
         }
+    }
+}
+
+#[cfg(feature = "funded-liquidation-validation")]
+#[contractimpl]
+impl MarginController {
+    pub fn set_cl_share_asset(env: Env, admin: Address, asset: Address) {
+        crate::funded_liquidation::require_validation_network(&env);
+        let expected: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin missing");
+        assert!(admin == expected, "not admin");
+        admin.require_auth();
+        let controller = env.current_contract_address();
+        let registered: bool = env.invoke_contract(
+            &asset,
+            &Symbol::new(&env, "is_custodian"),
+            (controller,).into_val(&env),
+        );
+        assert!(registered, "controller not registered custodian");
+        env.storage()
+            .instance()
+            .set(&DataKey::ClShareAsset(asset), &true);
+    }
+
+    pub fn recover_pending_open_funded(
+        env: Env,
+        user: Address,
+        position_id: u64,
+        max_repay: u128,
+    ) -> u128 {
+        crate::funded_liquidation::require_validation_network(&env);
+        user.require_auth();
+        Self::recover_pending_open_funded_impl(&env, user, position_id, max_repay)
+    }
+}
+
+#[cfg(any(test, feature = "funded-liquidation-prototype"))]
+#[contractimpl]
+impl MarginController {
+    pub fn liquidate_funded_v3(
+        env: Env,
+        liquidator: Address,
+        position_id: u64,
+        max_repay: u128,
+        min_seize_ptokens: u128,
+    ) -> (u128, u128) {
+        crate::funded_liquidation::require_validation_network(&env);
+        bump_instance_ttl(&env);
+        liquidator.require_auth();
+        Self::liquidate_funded_v3_impl(&env, liquidator, position_id, max_repay, min_seize_ptokens)
     }
 }

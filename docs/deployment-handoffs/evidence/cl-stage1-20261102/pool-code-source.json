@@ -1,0 +1,10 @@
+{
+  "scope": "public code only; no live pool state imported",
+  "hash": "12fca5a7a96577273b6d4184cf9c984036cda0e8f0594747e7b2933dced37ee6",
+  "bytes": 90057,
+  "ledger": 65264579,
+  "network": {
+    "passphrase": "Public Global Stellar Network ; September 2015",
+    "protocolVersion": 29
+  }
+}

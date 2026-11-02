@@ -1,0 +1,38 @@
+warning: trait `Share` is never used
+  --> contracts/cl-share-pool-facade/src/lib.rs:26:7
+   |
+26 | trait Share {
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `paired` is never read
+   --> contracts/cl-share-pool-facade/src/test.rs:134:5
+    |
+129 | struct F {
+    |        - field in this struct
+...
+134 |     paired: Address,
+    |     ^^^^^^
+
+warning: `cl-share-pool-facade` (lib test) generated 2 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.30s
+     Running unittests src/lib.rs (target/debug/deps/cl_share_pool_facade-353d546159467f04)
+
+running 1 test
+{"flow":"facade_fixture_open","ok":true,"instructions":1494253,"memory_bytes":1352858,"read_entries":10,"write_entries":6,"read_bytes":0,"write_bytes":1484,"disk_read_entries":0,"contract_events_size_bytes":472,"persistent_rent_ledger_bytes":206527109775,"persistent_entry_rent_bumps":4,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-facade-native-synthetic-fixtures"}
+
+compiled facade / native fixtures opening: InvocationResources { instructions: 1494253, mem_bytes: 1352858, disk_read_entries: 0, memory_read_entries: 10, write_entries: 6, disk_read_bytes: 0, write_bytes: 1484, contract_events_size_bytes: 472, persistent_rent_ledger_bytes: 206527109775, persistent_entry_rent_bumps: 4, temporary_rent_ledger_bytes: 0, temporary_entry_rent_bumps: 0 }
+{"flow":"facade_fixture_close","ok":true,"instructions":1412072,"memory_bytes":1346611,"read_entries":10,"write_entries":6,"read_bytes":0,"write_bytes":1484,"disk_read_entries":0,"contract_events_size_bytes":472,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-facade-native-synthetic-fixtures"}
+
+compiled facade / native fixtures closing: InvocationResources { instructions: 1412072, mem_bytes: 1346611, disk_read_entries: 0, memory_read_entries: 10, write_entries: 6, disk_read_bytes: 0, write_bytes: 1484, contract_events_size_bytes: 472, persistent_rent_ledger_bytes: 0, persistent_entry_rent_bumps: 0, temporary_rent_ledger_bytes: 0, temporary_entry_rent_bumps: 0 }
+{"flow":"missing_nested_auth","ok":true,"instructions":704198,"memory_bytes":1252826,"read_entries":7,"write_entries":0,"read_bytes":0,"write_bytes":0,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-facade-native-synthetic-fixtures"}
+
+{"flow":"wrong_amount_auth","ok":true,"instructions":745053,"memory_bytes":1257015,"read_entries":7,"write_entries":0,"read_bytes":0,"write_bytes":0,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-facade-native-synthetic-fixtures"}
+
+{"flow":"wrong_recipient_auth","ok":true,"instructions":745053,"memory_bytes":1257015,"read_entries":7,"write_entries":0,"read_bytes":0,"write_bytes":0,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"compiled-facade-native-synthetic-fixtures"}
+
+Writing test snapshot file for test "pr74_auth_tests::compiled_facade_roundtrip_with_native_auth_and_vault_fixtures" to "test_snapshots/pr74_auth_tests/compiled_facade_roundtrip_with_native_auth_and_vault_fixtures.1.json".
+test pr74_auth_tests::compiled_facade_roundtrip_with_native_auth_and_vault_fixtures ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.19s

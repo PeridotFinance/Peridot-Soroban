@@ -1,0 +1,188 @@
+ℹ️  CARGO_BUILD_RUSTFLAGS=--remap-path-prefix=/Users/joshua/.cargo/registry/src= SOROBAN_SDK_BUILD_SYSTEM_SUPPORTS_SPEC_SHAKING_V2=1 cargo rustc --manifest-path=contracts/cl-share-vault/Cargo.toml --crate-type=cdylib --target=wasm32v1-none --release
+   Compiling cl-share-vault v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-vault)
+warning: unused variable: `reward_token`
+    --> contracts/cl-share-vault/src/contract.rs:2149:52
+     |
+2149 |     pub fn sweep_reward(env: Env, caller: Address, reward_token: Address) -> i128 {
+     |                                                    ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_reward_token`
+     |
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `caller`
+    --> contracts/cl-share-vault/src/contract.rs:2672:32
+     |
+2672 |     pub fn rebalance(env: Env, caller: Address) -> bool {
+     |                                ^^^^^^ help: if this is intentional, prefix it with an underscore: `_caller`
+
+warning: constant `MAX_REBALANCE_IDLE_BPS` is never used
+  --> contracts/cl-share-vault/src/constants.rs:29:11
+   |
+29 | pub const MAX_REBALANCE_IDLE_BPS: u128 = 500;
+   |           ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `MAX_REBALANCE_QUOTE_SHARE_DEVIATION_BPS` is never used
+  --> contracts/cl-share-vault/src/constants.rs:33:11
+   |
+33 | pub const MAX_REBALANCE_QUOTE_SHARE_DEVIATION_BPS: u128 = 500;
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `REWARD_RATE_SCALE` is never used
+  --> contracts/cl-share-vault/src/constants.rs:47:11
+   |
+47 | pub const REWARD_RATE_SCALE: u128 = 10_000_000u128;
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: multiple associated functions are never used
+    --> contracts/cl-share-vault/src/contract.rs:185:8
+     |
+ 124 | impl ClShareVault {
+     | ----------------- associated functions in this implementation
+...
+ 185 |     fn receipt_vault(env: &Env) -> Address {
+     |        ^^^^^^^^^^^^^
+...
+ 540 |     fn total_underlying_full_at_root(env: &Env, root: u128) -> u128 {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 801 |     fn withdraw_all_for_rebalance(env: &Env) -> Option<u128> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 873 |     fn balance_pair_for_centered_range(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1395 |     fn raise_underlying(env: &Env, needed: u128, exit_root: u128) -> bool {
+     |        ^^^^^^^^^^^^^^^^
+...
+1433 |     fn redeem_for(env: &Env, needed: u128, exit_root: u128) -> bool {
+     |        ^^^^^^^^^^
+...
+2013 |     pub(crate) fn swap_reward(env: &Env, reward_token: &Address, amount: u128) -> u128 {
+     |                   ^^^^^^^^^^^
+
+warning: struct `Harvested` is never constructed
+  --> contracts/cl-share-vault/src/events.rs:33:12
+   |
+33 | pub struct Harvested {
+   |            ^^^^^^^^^
+
+warning: struct `HarvestSkipped` is never constructed
+  --> contracts/cl-share-vault/src/events.rs:44:12
+   |
+44 | pub struct HarvestSkipped {
+   |            ^^^^^^^^^^^^^^
+
+warning: struct `RedeemZeroReturn` is never constructed
+  --> contracts/cl-share-vault/src/events.rs:64:12
+   |
+64 | pub struct RedeemZeroReturn {
+   |            ^^^^^^^^^^^^^^^^
+
+warning: struct `PositionRebalanced` is never constructed
+   --> contracts/cl-share-vault/src/events.rs:120:12
+    |
+120 | pub struct PositionRebalanced {
+    |            ^^^^^^^^^^^^^^^^^^
+
+warning: function `seize_shares` is never used
+ --> contracts/cl-share-vault/src/funded.rs:5:15
+  |
+5 | pub(crate) fn seize_shares(
+  |               ^^^^^^^^^^^^
+
+warning: function `mul_div_ceil` is never used
+  --> contracts/cl-share-vault/src/math.rs:41:8
+   |
+41 | pub fn mul_div_ceil(env: &Env, a: u128, b: u128, denom: u128) -> u128 {
+   |        ^^^^^^^^^^^^
+
+warning: `cl-share-vault` (lib) generated 12 warnings (run `cargo fix --lib -p cl-share-vault` to apply 2 suggestions)
+    Finished `release` profile [optimized] target(s) in 3.18s
+ℹ️  Build Summary:
+    Wasm File: target/cl-share-checkpoint/artifacts/cl_share_vault.wasm (65883 bytes optimized (original size was 77011 bytes))
+    Wasm Hash: 4bb6f8753f9aafbea021c808ff079395e811222fb4f10b5afa60fded15e27640
+    Wasm Size: 65883 bytes optimized (original size was 77011 bytes)
+    Exported Functions: 81 found
+      • accept_admin
+      • attribute_rewards
+      • balance
+      • bump_config_mapping_ttl
+      • bump_shares_ttl
+      • checkpoint_rewards
+      • claim_rewards
+      • custody_allocation
+      • custody_assign
+      • custody_prepare_transfer
+      • custody_reassign
+      • custody_recover_assign
+      • custody_recover_reassign
+      • decimals
+      • deploy
+      • deposit
+      • deposit_underlying
+      • emergency_redeem
+      • get_admin
+      • get_asset_amounts_per_shares
+      • get_config
+      • get_idle
+      • get_last_harvest
+      • get_last_nav_root_at
+      • get_last_rebalance_at
+      • get_max_deploy
+      • get_other_idle_value
+      • get_params
+      • get_pool
+      • get_position_amounts
+      • get_position_liquidity
+      • get_primary_reward_token
+      • get_range_policy
+      • get_receipt_vault
+      • get_reward_min_rate
+      • get_reward_route
+      • get_slippage_bps
+      • get_ticks
+      • get_tokens
+      • get_total_underlying
+      • get_underlying
+      • harvest
+      • initialize
+      • is_custodian
+      • is_paused
+      • name
+      • needs_rebalance
+      • propose_reward_attribution
+      • propose_upgrade_wasm
+      • quote
+      • rebalance
+      • redeem
+      • refresh_nav_root
+      • refresh_position_amounts
+      • register_custodian
+      • reward_account
+      • reward_boundary
+      • reward_totals
+      • set_admin
+      • set_harvest_cooldown
+      • set_max_deploy
+      • set_max_pool_divergence_bps
+      • set_nav_root_max_age
+      • set_nav_root_max_stale
+      • set_oracle
+      • set_oracle_max_age_mult
+      • set_oracle_symbol
+      • set_paused
+      • set_primary_reward_token
+      • set_range_policy
+      • set_receipt_vault
+      • set_reward_min_rate
+      • set_reward_route
+      • set_slippage_bps
+      • sweep_reward
+      • symbol
+      • sync_liquidity
+      • total_supply
+      • transfer
+      • upgrade_wasm
+      • withdraw
+✅ Build Complete

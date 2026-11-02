@@ -1,0 +1,40 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.43s
+     Running unittests src/lib.rs (target/debug/deps/receipt_vault-ee6ae612f2829aed)
+
+running 10 tests
+Writing test snapshot file for test "reserve_test::cl_custody_controller_is_immutable_even_for_admin" to "test_snapshots/reserve_test/cl_custody_controller_is_immutable_even_for_admin.1.json".
+Writing test snapshot file for test "reserve_test::cl_custody_orphan_context_replace_requires_controller_and_later_ledger" to "test_snapshots/reserve_test/cl_custody_orphan_context_replace_requires_controller_and_later_ledger.1.json".
+Writing test snapshot file for test "reserve_test::reserve_cash_donations_and_protocol_claims_are_not_lendable" to "test_snapshots/reserve_test/reserve_cash_donations_and_protocol_claims_are_not_lendable.2.json".
+{"flow":"reserve_native_margin_borrow","ok":true,"instructions":2442334,"memory_bytes":264161,"read_entries":39,"write_entries":8,"read_bytes":92,"write_bytes":1228,"disk_read_entries":1,"contract_events_size_bytes":456,"persistent_rent_ledger_bytes":2527106040,"persistent_entry_rent_bumps":5,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"native-synthetic-reserve-fixture"}
+
+Writing test snapshot file for test "reserve_test::reserve_margin_uses_same_floor_and_controller_auth" to "test_snapshots/reserve_test/reserve_margin_uses_same_floor_and_controller_auth.1.json".
+test reserve_test::cl_custody_controller_is_immutable_even_for_admin ... ok
+test reserve_test::cl_custody_orphan_context_replace_requires_controller_and_later_ledger ... ok
+Writing test snapshot file for test "reserve_test::reserve_debt_examples_and_rounding" to "test_snapshots/reserve_test/reserve_debt_examples_and_rounding.3.json".
+Writing test snapshot file for test "reserve_test::reserve_cash_donations_and_protocol_claims_are_not_lendable" to "test_snapshots/reserve_test/reserve_cash_donations_and_protocol_claims_are_not_lendable.1.json".
+test reserve_test::reserve_margin_uses_same_floor_and_controller_auth ... ok
+Writing test snapshot file for test "reserve_test::reserve_debt_examples_and_rounding" to "test_snapshots/reserve_test/reserve_debt_examples_and_rounding.2.json".
+Writing test snapshot file for test "reserve_test::reserve_optional_bounded_and_authorized" to "test_snapshots/reserve_test/reserve_optional_bounded_and_authorized.1.json".
+test reserve_test::reserve_optional_bounded_and_authorized ... ok
+test reserve_test::reserve_cash_donations_and_protocol_claims_are_not_lendable ... ok
+{"flow":"reserve_native_borrow","ok":true,"instructions":3063343,"memory_bytes":322223,"read_entries":41,"write_entries":9,"read_bytes":92,"write_bytes":1360,"disk_read_entries":1,"contract_events_size_bytes":712,"persistent_rent_ledger_bytes":2769624600,"persistent_entry_rent_bumps":5,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"native-synthetic-reserve-fixture"}
+
+Writing test snapshot file for test "reserve_test::reserve_debt_examples_and_rounding" to "test_snapshots/reserve_test/reserve_debt_examples_and_rounding.1.json".
+test reserve_test::reserve_debt_examples_and_rounding ... ok
+Writing test snapshot file for test "reserve_test::reserve_ordinary_borrow_and_durable_pause" to "test_snapshots/reserve_test/reserve_ordinary_borrow_and_durable_pause.1.json".
+{"flow":"reserve_native_rebalance","ok":true,"instructions":1142803,"memory_bytes":135210,"read_entries":37,"write_entries":1,"read_bytes":0,"write_bytes":72,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"native-synthetic-reserve-fixture"}
+
+Writing test snapshot file for test "reserve_test::reserve_new_borrow_never_unwinds_strategy_and_deployment_obeys_floor" to "test_snapshots/reserve_test/reserve_new_borrow_never_unwinds_strategy_and_deployment_obeys_floor.1.json".
+{"flow":"reserve_native_withdraw","ok":true,"instructions":4931932,"memory_bytes":656320,"read_entries":53,"write_entries":18,"read_bytes":0,"write_bytes":2796,"disk_read_entries":0,"contract_events_size_bytes":1052,"persistent_rent_ledger_bytes":74059920,"persistent_entry_rent_bumps":1,"temporary_rent_ledger_bytes":454463928,"temporary_entry_rent_bumps":1,"scope":"native-synthetic-reserve-fixture"}
+
+Writing test snapshot file for test "reserve_test::reserve_cash_first_withdrawal_worked_example_and_shortfall_rollback" to "test_snapshots/reserve_test/reserve_cash_first_withdrawal_worked_example_and_shortfall_rollback.1.json".
+test reserve_test::reserve_ordinary_borrow_and_durable_pause ... ok
+Writing test snapshot file for test "reserve_test::reserve_withdrawal_can_cross_floor_then_complete_open_check_fails" to "test_snapshots/reserve_test/reserve_withdrawal_can_cross_floor_then_complete_open_check_fails.1.json".
+test reserve_test::reserve_new_borrow_never_unwinds_strategy_and_deployment_obeys_floor ... ok
+test reserve_test::reserve_withdrawal_can_cross_floor_then_complete_open_check_fails ... ok
+{"flow":"reserve_native_withdraw_shortfall_expected_rejection","ok":false,"instructions":4067194,"memory_bytes":493598,"read_entries":52,"write_entries":10,"read_bytes":0,"write_bytes":1108,"disk_read_entries":0,"contract_events_size_bytes":0,"persistent_rent_ledger_bytes":0,"persistent_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"temporary_entry_rent_bumps":0,"scope":"native-synthetic-reserve-fixture"}
+
+Writing test snapshot file for test "reserve_test::reserve_cash_first_withdrawal_worked_example_and_shortfall_rollback" to "test_snapshots/reserve_test/reserve_cash_first_withdrawal_worked_example_and_shortfall_rollback.2.json".
+test reserve_test::reserve_cash_first_withdrawal_worked_example_and_shortfall_rollback ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 183 filtered out; finished in 0.76s

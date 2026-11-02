@@ -6,6 +6,13 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+# Preserve the reviewed native prototype; standalone WASM builds are rejected.
+funded-liquidation-prototype = []
+# Explicit local WASM integration only; initialization and every funded entrypoint
+# reject the Public-network ID. This is not a production release feature.
+funded-liquidation-validation = ["funded-liquidation-prototype"]
+
 [dependencies]
 soroban-sdk = { workspace = true }
 receipt-vault = { path = "../receipt-vault" }

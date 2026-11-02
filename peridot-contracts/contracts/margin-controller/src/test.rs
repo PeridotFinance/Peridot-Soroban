@@ -1,5 +1,8 @@
 extern crate std;
 
+#[path = "funded_liquidation_test.rs"]
+mod funded_liquidation_test;
+
 use super::*;
 use mock_token::{MockToken, MockTokenClient};
 use receipt_vault::ReceiptVault;

@@ -144,6 +144,7 @@ pub enum DataKey {
     MarginFeeEpoch(Address),
     ClosedMarginFeeEpoch(Address, u64),
     UserMarginFeeEpoch(Address, Address),
+    ClShareAsset(Address), // validation-only instance opt-in, immutable
 }
 
 #[contracttype]

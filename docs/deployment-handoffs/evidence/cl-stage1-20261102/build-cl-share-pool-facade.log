@@ -1,0 +1,25 @@
+ℹ️  CARGO_BUILD_RUSTFLAGS=--remap-path-prefix=/Users/joshua/.cargo/registry/src= SOROBAN_SDK_BUILD_SYSTEM_SUPPORTS_SPEC_SHAKING_V2=1 cargo rustc --manifest-path=contracts/cl-share-pool-facade/Cargo.toml --crate-type=cdylib --target=wasm32v1-none --release
+warning: trait `Share` is never used
+  --> contracts/cl-share-pool-facade/src/lib.rs:26:7
+   |
+26 | trait Share {
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cl-share-pool-facade` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 0.17s
+ℹ️  Build Summary:
+    Wasm File: target/cl-share-checkpoint/artifacts/cl_share_pool_facade.wasm (7298 bytes optimized (original size was 8977 bytes))
+    Wasm Hash: 3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5
+    Wasm Size: 7298 bytes optimized (original size was 8977 bytes)
+    Exported Functions: 8 found
+      • accept_controller
+      • estimate_swap
+      • get_tokens
+      • initialize
+      • propose_controller
+      • set_paused
+      • swap
+      • sweep
+✅ Build Complete

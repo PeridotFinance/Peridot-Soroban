@@ -1,0 +1,200 @@
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.87s
+     Running unittests src/lib.rs (target/debug/deps/receipt_vault-ee6ae612f2829aed)
+
+running 193 tests
+test contract::init_admin_guard_tests::expected_admin_guard_accepts_configured_admin ... ok
+test contract::init_admin_guard_tests::expected_admin_guard_rejects_mismatch - should panic ... ok
+test lp_lending_test::lp_lending_finish_rejects_omitted_recipient_and_rolls_back_shares ... ok
+test lp_lending_test::lp_lending_exact_borrower_auth_and_unauthorized_seizure ... ok
+test lp_lending_test::lp_lending_interest_changes_nav_not_reward_weights ... ok
+test lp_lending_test::lp_lending_identical_underlying_in_another_group_is_not_collateral ... ok
+test lp_lending_test::lp_lending_delegated_transfer_and_self_transfer_keep_old_rewards ... ok
+test lp_lending_test::lp_lending_missing_stream_and_escrow_target_fail_closed ... ok
+test reserve_test::cl_custody_controller_is_immutable_even_for_admin ... ok
+test reserve_test::cl_custody_orphan_context_replace_requires_controller_and_later_ledger ... ok
+test reserve_test::reserve_cash_donations_and_protocol_claims_are_not_lendable ... ok
+test lp_lending_test::lp_lending_liquidation_moves_shares_not_previously_earned_rewards ... ok
+test lp_lending_test::lp_lending_share_hooks_checkpoint_four_retained_streams ... ok
+test lp_lending_test::lp_lending_unsafe_delegated_transfer_rolls_back_allowance_and_rewards ... ok
+test reserve_test::reserve_margin_uses_same_floor_and_controller_auth ... ok
+test reserve_test::reserve_optional_bounded_and_authorized ... ok
+test reserve_test::reserve_debt_examples_and_rounding ... ok
+test reserve_test::reserve_withdrawal_can_cross_floor_then_complete_open_check_fails ... ok
+test reward_accounting_model::blocked_partial_exit_reserves_only_its_portion ... ok
+test reward_accounting_model::closed_rewards_are_not_paid_again_on_withdrawal ... ok
+test reward_accounting_model::compounding_overflow_and_zero_output_do_not_consume_rewards ... ok
+test reward_accounting_model::deferred_final_exit_survives_zero_supply_and_reentry ... ok
+test reserve_test::reserve_ordinary_borrow_and_durable_pause ... ok
+test reserve_test::reserve_new_borrow_never_unwinds_strategy_and_deployment_obeys_floor ... ok
+test reward_accounting_model::failed_boundary_and_overflow_roll_back_recognition ... ok
+test reward_accounting_model::four_holder_timeline_has_exact_expected_ownership_across_epochs ... ok
+test reward_accounting_model::fractional_exit_claim_stays_with_old_holder ... ok
+test reward_accounting_model::independently_versioned_reward_stream_retains_old_claims ... ok
+test reward_accounting_model::late_deposit_cannot_capture_unclaimed_rewards ... ok
+test reward_accounting_model::missing_epoch_fails_closed_without_erasing_claims ... ok
+test reward_accounting_model::repeated_withdrawals_cannot_round_up_or_spend_another_holders_rewards ... ok
+test reward_accounting_model::transfer_keeps_historical_claims_with_earner ... ok
+test reward_accounting_model::zero_and_self_transfers_do_not_create_claims ... ok
+test reward_accounting_model::zero_supply_rewards_cannot_be_assigned_to_next_depositor ... ok
+test reward_accounting_model::deterministic_mixed_timelines_never_exceed_actual_backing ... ok
+test lp_lending_test::lp_lending_liquidation_fee_recipient_can_equal_liquidator ... ok
+test reserve_test::reserve_cash_first_withdrawal_worked_example_and_shortfall_rollback ... ok
+test reward_backing_test::authentication_is_required_for_funding_claims_and_coordinator_hooks ... ok
+test reward_accounting_model::dormant_holder_catches_up_across_many_epochs_without_replay ... ok
+test reward_backing_test::failed_funding_rolls_back_source_cash_and_supply ... ok
+test lp_lending_test::lp_lending_xlm_collateral_supports_both_stables_and_repayment_preserves_nav ... ok
+test reward_backing_test::exact_source_and_owner_auth_trees_succeed_without_blanket_auth ... ok
+test reward_backing_test::donation_is_not_minted_or_deployed_as_new_reward_backing ... ok
+test reward_backing_test::fractional_units_leave_dust_with_old_backing_and_last_claim_collects_it ... ok
+test reward_backing_test::invested_strategy_cannot_be_used_as_a_new_funding_source ... ok
+test reward_backing_test::funding_rejects_strategy_value_changes_during_conversion ... ok
+test reward_backing_test::failed_strategy_quote_with_expired_cache_preserves_every_claim_and_token ... ok
+test reward_backing_test::pending_recycle_snapshot_cannot_issue_units_or_clear_other_pending_streams ... ok
+test reward_backing_test::pending_backing_rewards_gate_claim_changes_but_not_principal_exit ... ok
+test reward_backing_test::pure_recycled_yield_mints_no_new_claim_units ... ok
+test reward_backing_test::principal_exit_then_new_deposit_cannot_capture_existing_reward_backing ... ok
+test reward_backing_test::short_token_transfer_cannot_create_unbacked_units ... ok
+test test::exact_mainnet_wasm_upgrade_allows_the_final_holder_to_exit ... ignored, requires RECEIPT_LIVE_WASM and RECEIPT_NEW_WASM
+test reward_backing_test::failed_minimum_rolls_back_tokens_claims_and_strategy_unwind ... ok
+test reward_backing_test::funding_at_increased_nav_mints_fewer_real_receipts ... ok
+test test::test_absorb_margin_bad_debt_uses_reserves_and_records_remainder ... ok
+test test::test_account_snapshot_migrates_legacy_cache_when_live_quote_fails ... ok
+test test::test_account_snapshot_rejects_stale_boosted_cache - should panic ... ok
+test test::test_account_snapshot_migrates_missing_boosted_health_cache_from_live_quote ... ok
+test reward_backing_test::recycled_yield_belongs_to_old_units_before_new_units_are_issued ... ok
+test test::test_account_snapshot_uses_fresh_boosted_cache_when_live_quote_fails ... ok
+test reward_backing_test::real_receipts_back_reward_claims_without_diluting_principal ... ok
+test test::test_admin_setters_guarded ... ok
+test test::test_boosted_fallback_prefers_cached_value_when_stale_and_quote_fails ... ok
+test test::test_admin_recovers_missing_margin_principal_without_rewriting_snapshot ... ok
+test test::test_boosted_redemption_preserves_health_cache_without_renewing_it - should panic ... ok
+test test::test_admin_recovers_missing_user_principal_without_rewriting_snapshot ... ok
+test test::test_boosted_deposit_preserves_health_cache_without_renewing_it - should panic ... ok
+test test::test_borrow_and_repay_flow ... ok
+test test::test_borrow_cap_enforced_on_borrow - should panic ... ok
+test reward_backing_test::reward_backing_reinvests_and_redeems_real_strategy_yield ... ok
+test test::test_borrow_for_margin_requires_init_margin_borrow_state - should panic ... ok
+test test::test_borrow_budget_peridottroller_same_market ... ok
+test test::test_borrow_insufficient_collateral - should panic ... ok
+test test::test_borrow_insufficient_liquidity - should panic ... ok
+test test::test_borrow_cap_not_released_by_capitalized_interest_repay - should panic ... ok
+test test::test_borrow_cap_uses_principal_not_interest ... ok
+test test::test_borrow_cap_not_released_by_interest_only_repay - should panic ... ok
+test test::test_borrow_rejected_until_interest_mode_ready - should panic ... ok
+test test::test_borrow_interest_accrues_and_index_updates ... ok
+test test::test_borrow_for_margin_respects_peridottroller_pause - should panic ... ok
+test test::test_borrow_uses_donated_cash_without_managed_cash_underflow ... ok
+test test::test_borrow_redeems_boosted_liquidity_on_demand ... ok
+test test::test_borrow_with_peridottroller_same_market_exceeds_threshold - should panic ... ok
+test test::test_bump_user_borrow_ttl_permissionless ... ok
+test test::test_bump_margin_borrow_ttl_permissionless ... ok
+test test::test_borrow_with_peridottroller_same_market_exact_threshold ... ok
+test test::test_borrow_with_peridottroller_same_market_hint ... ok
+test test::test_collateral_only_missing_borrow_state_recovers_when_no_global_debt ... ok
+test test::test_deposit_uninitialized_vault - should panic ... ok
+test test::test_deposit_receives_ptokens ... ok
+test test::test_deposit_reverts_when_reward_accrual_fails - should panic ... ok
+test test::test_exchange_rate_accrues_with_interest ... ok
+test test::test_exchange_rate_reverts_on_zero_supply_with_residual_underlying - should panic ... ok
+test test::test_deposit_respects_idle_cash_buffer ... ok
+test test::test_direct_donation_does_not_inflate_exchange_rate ... ok
+test test::test_dust_positive_boosted_quote_cannot_force_full_unwind ... ok
+test test::test_failed_refresh_preserves_health_cache_without_renewing_it - should panic ... ok
+test test::test_core_ttl_bumps_all_critical_config_keys ... ok
+test test::test_flash_loan_fee_rounds_up_for_small_amounts ... ok
+test test::test_flash_loan_contract_receiver_without_receiver_auth ... ok
+test test::test_failed_boosted_quote_uses_conservative_redemption_value ... ok
+test test::test_flash_loan_missing_fee_panics - should panic ... ok
+test test::test_flash_loan_requires_initiator_auth - should panic ... ok
+test test::test_final_holder_redeems_all_boosted_shares_and_rounding_dust ... ok
+test test::test_flash_loan_boosted_redemption_tolerates_small_rounding_delta ... ok
+test test::test_get_margin_borrow_balance_missing_state_panics - should panic ... ok
+test test::test_flash_loan_successfully_repaid ... ok
+test test::test_initialize ... ok
+test test::test_initialize_rejects_large_supply_rate - should panic ... ok
+test test::test_initialize_rejects_supply_rate_above_borrow_rate - should panic ... ok
+test test::test_get_user_borrow_balance_fails_closed_when_all_borrow_markers_expire - should panic ... ok
+test test::test_initialize_rejects_when_core_keys_exist_even_if_flag_missing - should panic ... ok
+test test::test_flash_loan_redeems_boosted_liquidity_on_demand ... ok
+test test::test_get_user_borrow_balance_fails_closed_without_snapshot_or_flag - should panic ... ok
+test test::test_borrow_budget_with_two_cross_market_collateral_positions ... ok
+test test::test_flash_loan_redeposits_large_idle_cash_after_repayment ... ok
+test test::test_interest_model_supply_accrual ... ok
+test test::test_interest_model_borrow_accrual_and_reserves ... ok
+test test::test_interest_model_accrual_does_not_credit_accumulated_interest ... ok
+test test::test_margin_borrow_balance_read_bumps_borrow_principal_ttl ... ok
+test test::test_margin_transfer_bypass_does_not_skip_debt_collateral_check - should panic ... ok
+test test::test_jump_model_dynamic_borrow_apr_accrual ... ok
+test test::test_jump_model_dynamic_supply_apr_accrual ... ok
+test test::test_margin_borrow_repay_happy_path ... ok
+test test::test_margin_borrow_cap_not_released_by_capitalized_interest_repay - should panic ... ok
+test test::test_migrate_margin_state_batch_does_not_seed_missing_borrow_principal ... ok
+test test::test_migrate_borrow_state_batch_does_not_seed_missing_borrow_principal ... ok
+test test::test_missing_boosted_health_cache_migration_fails_closed_without_live_quote - should panic ... ok
+test test::test_permissionless_recover_borrow_snapshot_is_disabled - should panic ... ok
+test test::test_nonpositive_refresh_preserves_health_cache_without_renewing_it - should panic ... ok
+test test::test_migrate_borrow_state_batch_does_not_overwrite_borrow_principal - should panic ... ok
+test test::test_preview_flash_loan_fee_matches_runtime_rounding ... ok
+test test::test_ptoken_balance_read_does_not_create_false_borrow_marker ... ok
+test test::test_ptoken_approve_rejects_without_owner_auth - should panic ... ok
+test test::test_ptoken_approve_uses_single_owner_auth ... ok
+test test::test_multiple_users_with_ptokens ... ok
+test test::test_migrate_margin_state_batch_does_not_overwrite_borrow_principal - should panic ... ok
+test test::test_prepare_liquidity_then_withdraw ... ok
+test test::test_ptoken_transfer_to_fresh_recipient_initializes_borrow_marker ... ok
+test test::test_ptoken_transfer_to_fresh_recipient_with_debt_initializes_borrow_marker ... ok
+test test::test_ptoken_transfer_with_peridottroller_does_not_reenter_vault ... ok
+test test::test_ptoken_transfer_to_existing_ambiguous_recipient_rejects - should panic ... ok
+test test::test_ptoken_transfer_and_approve_with_gating - should panic ... ok
+test test::test_rebalance_idle_cash_deploys_excess ... ok
+test test::test_rebalance_idle_cash_skips_boosted_dust ... ok
+test test::test_recover_margin_borrow_snapshot_restores_missing_state ... ok
+test test::test_recover_user_borrow_snapshot_restores_missing_state ... ok
+test test::test_repay_max_no_op_without_debt ... ok
+test test::test_repay_for_margin_rejects_under_delivered_transfer - should panic ... ok
+test test::test_real_boosted_loss_marks_down_nav_and_redeems_with_bounded_retry ... ok
+test test::test_repay_full_for_margin_overpay_refunds_and_clears_debt ... ok
+test test::test_repay_max_zeroes_post_accrual_debt ... ok
+test test::test_repay_overpay_after_interest_accrual_uses_pre_accrual_cap ... ok
+test test::test_repay_rejects_under_delivered_transfer - should panic ... ok
+test test::test_reserve_and_admin_fee_combined_cap_allows_exact_100_percent ... ok
+test test::test_reserve_accrual_and_reduce ... ok
+test test::test_set_admin_fee_rejects_combined_fee_over_cap - should panic ... ok
+test test::test_repay_on_behalf_overpay_after_interest_accrual_uses_pre_accrual_cap ... ok
+test test::test_set_boosted_vault_rejects_unquotable_existing_shares - should panic ... ok
+test test::test_repay_on_behalf_rejects_under_delivered_transfer - should panic ... ok
+test test::test_set_borrow_rate_rejects_large_value - should panic ... ok
+test test::test_set_reserve_factor_rejects_combined_fee_over_cap - should panic ... ok
+test test::test_set_idle_cash_buffer_bps ... ok
+test test::test_repay_on_behalf_via_peridottroller_auth ... ok
+test test::test_supply_cap_enforced_on_deposit - should panic ... ok
+test test::test_set_boosted_vault_rejects_duplicate_assignment_across_markets - should panic ... ok
+test test::test_transfer_accrues_interest_before_collateral_check - should panic ... ok
+test test::test_update_interest_does_not_advance_time_when_rounds_to_zero ... ok
+test test::test_two_asset_boosted_quote_outage_recovers_missing_asset_count ... ok
+test test::test_seize_initializes_fresh_recipient_borrow_state ... ok
+test test::test_track_borrow_market_entrypoint_records_market ... ok
+test test::test_update_interest_rejects_legacy_combined_fee_over_cap - should panic ... ok
+test test::test_update_interest_reverts_on_borrow_index_overflow - should panic ... ok
+test test::test_update_interest_same_ledger_prepares_full_accrual_footprint ... ok
+test test::test_update_interest_zero_rate_prepares_positive_rate_writes ... ok
+test test::test_vault_upgrade_requires_admin - should panic ... ok
+test test::test_vault_set_admin_transfers_admin ... ok
+test test::test_user_borrow_balance_read_bumps_borrow_principal_ttl ... ok
+test test::test_update_interest_clamps_inflated_boosted_quote_for_model_cash ... ok
+test test::test_update_interest_ignores_boosted_quote_when_baseline_missing_with_debt ... ok
+test test::test_withdraw_insufficient_ptokens - should panic ... ok
+test test::test_withdraw_local_only_unrestricted_with_no_debt ... ok
+test test::test_withdraw_rejects_margin_locked_ptokens - should panic ... ok
+test test::test_withdraw_local_only_allows_healthy_position ... ok
+test test::test_withdraw_local_only_blocks_undercollateralized_position - should panic ... ok
+test test::test_update_interest_uses_gross_cash_for_model_with_boosted_assets ... ok
+test test::test_zero_balance_users ... ok
+test test::test_withdraw_gives_clear_error_when_boosted_haircut_causes_shortfall - should panic ... ok
+test test::test_withdraw_with_ptokens ... ok
+test test::test_withdraw_succeeds_with_two_asset_boosted_vault ... ok
+test test::test_withdraw_with_peridottroller_same_market_blocks_undercollateralized - should panic ... ok
+test test::test_withdraw_succeeds_despite_boosted_haircut ... ok
+
+test result: ok. 192 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 31.08s

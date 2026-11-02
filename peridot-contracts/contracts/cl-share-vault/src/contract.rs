@@ -586,6 +586,64 @@ impl ClShareVault {
         );
     }
 
+    /// Extract exactly the exiting share fraction. Aquarius pays all outstanding
+    /// fees on a partial withdrawal, so checkpoint them BEFORE measuring idle.
+    /// No oracle or reward call is needed here; emergency exits return both legs.
+    fn extract_fraction(env: &Env, shares: u128) -> (u128, u128, u128) {
+        let supply = Self::total_shares(env);
+        assert!(shares > 0 && shares <= supply, "invalid share fraction");
+        let liquidity = Self::position_liquidity(env);
+        if liquidity > 0 {
+            let _: Vec<u128> = try_call(
+                env,
+                &Self::pool(env),
+                "claim_all_position_fees",
+                (env.current_contract_address(),),
+            )
+            .unwrap_or_else(|_| panic!("fee checkpoint unavailable"));
+        }
+        let t0 = Self::token(env, 0);
+        let t1 = Self::token(env, 1);
+        let idle0 = Self::balance_of_token(env, &t0);
+        let idle1 = Self::balance_of_token(env, &t1);
+        let burn = mul_div(env, liquidity, shares, supply);
+        if burn > 0 {
+            let (lo, hi) = Self::ticks(env);
+            let _: Vec<u128> = try_call(
+                env,
+                &Self::pool(env),
+                "withdraw_position",
+                (
+                    env.current_contract_address(),
+                    lo,
+                    hi,
+                    burn,
+                    soroban_sdk::vec![env, 0u128, 0u128],
+                ),
+            )
+            .unwrap_or_else(|_| panic!("principal withdrawal failed"));
+        }
+        let principal0 = Self::balance_of_token(env, &t0).checked_sub(idle0).unwrap();
+        let principal1 = Self::balance_of_token(env, &t1).checked_sub(idle1).unwrap();
+        if let Some(mut snapshot) = position_amounts(env) {
+            snapshot.liquidity = liquidity - burn;
+            snapshot.amount0 = mul_div(env, snapshot.amount0, liquidity - burn, liquidity.max(1));
+            snapshot.amount1 = mul_div(env, snapshot.amount1, liquidity - burn, liquidity.max(1));
+            set_position_amounts(env, &snapshot);
+        } else {
+            Self::set_position_liquidity(env, liquidity - burn);
+        }
+        (
+            principal0
+                .checked_add(mul_div(env, idle0, shares, supply))
+                .unwrap(),
+            principal1
+                .checked_add(mul_div(env, idle1, shares, supply))
+                .unwrap(),
+            burn,
+        )
+    }
+
     fn total_shares(env: &Env) -> u128 {
         state(env).total_shares
     }
@@ -595,9 +653,10 @@ impl ClShareVault {
     }
 
     fn mint_shares(env: &Env, to: &Address, amount: u128) {
-        set_shares(env, to, shares_of(env, to).saturating_add(amount));
+        set_shares(env, to, shares_of(env, to).checked_add(amount).unwrap());
+        crate::custody::received(env, to, amount);
         let mut st = state(env);
-        st.total_shares = st.total_shares.saturating_add(amount);
+        st.total_shares = st.total_shares.checked_add(amount).unwrap();
         set_state(env, &st);
     }
 
@@ -1589,10 +1648,7 @@ impl ClShareVault {
         bump_critical_ttl(&env);
         Self::require_not_paused(&env);
 
-        // The ReceiptVault's supply cap is the product-level capacity limit.
-        // Letting arbitrary accounts mint pCL shares here would bypass that
-        // cap and dilute the yield of market suppliers, so capital may enter
-        // through the one bound market only.
+        // Fresh share vault accepts direct holders and the configured facade.
         from.require_auth();
         crate::accounting::begin(&env);
         crate::rewards::normal(&env, &from);
@@ -1650,9 +1706,11 @@ impl ClShareVault {
             panic!("deposit added no value");
         }
 
-        let shares = if supply == 0 || nav_before == 0 {
+        let shares = if supply == 0 {
+            assert_eq!(nav_before, 0, "unowned NAV");
             value_added
         } else {
+            assert!(nav_before > 0, "insolvent share supply");
             mul_div(&env, value_added, supply, nav_before)
         };
         if shares == 0 {
@@ -1675,10 +1733,7 @@ impl ClShareVault {
 
     /// Burns shares and returns underlying.
     ///
-    /// Unlike `deposit`, this *does* require auth from `from`, because
-    /// `receipt-vault` authorizes this exact invocation before calling it
-    /// (contract.rs:420-437). Requiring it closes the forced-redemption
-    /// griefing vector that the bare DeFindex shape leaves open.
+    /// The holder authorizes the exact withdrawal, including its output floor.
     pub fn withdraw(
         env: Env,
         withdraw_shares: i128,
@@ -1689,8 +1744,8 @@ impl ClShareVault {
         from.require_auth();
         crate::accounting::begin(&env);
         crate::rewards::normal(&env, &from);
-        Self::collect_fees(&env);
 
+        crate::custody::require_direct_holder(&env, &from);
         let shares = to_u128(withdraw_shares);
         let mut out: Vec<i128> = Vec::new(&env);
         assert!(shares > 0, "zero burn");
@@ -1702,50 +1757,39 @@ impl ClShareVault {
         let min_out = to_u128(min_amounts_out.get(0).unwrap_or(0));
         let exit_root = Self::exit_nav_root(&env, min_out);
 
-        // Value the same asset set deposits do. `redeem_for` sells the vault's
-        // *entire* paired balance including residue, so pricing the exit
-        // against a residue-excluding NAV would hand a partial exiter less
-        // than their pro-rata claim and leave the difference to whoever stays.
-        // Costs no extra ledger entry on any path that actually redeems —
-        // `redeem_for` already has the paired token in footprint.
-        let owed = mul_div(
-            &env,
-            shares,
-            Self::total_underlying_full_at_root(&env, exit_root),
-            supply,
-        );
+        assert!(shares <= shares_of(&env, &from), "insufficient shares");
         let underlying = Self::underlying(&env);
         let liquidity_before = Self::position_liquidity(&env);
-
-        let redeemed_ok = Self::raise_underlying(&env, owed, exit_root);
-
-        // Pay what was actually realised, never more. Over-redemption stays as
-        // idle and accrues to the remaining holders rather than being paid out
-        // to whoever happened to exit during a price dislocation.
-        //
-        // Unless this is the last holder leaving: there is nobody left to
-        // accrue to, so anything held back would sit unowned until the next
-        // depositor captured it. Observed on testnet — a full exit stranded
-        // 10.3 XLM behind a zero share supply.
-        let available = Self::balance_of_token(&env, &underlying);
-        let payout = if shares == supply {
-            available
+        let (amount0, amount1, _) = Self::extract_fraction(&env, shares);
+        let (principal, paired) = if Self::underlying_index(&env) == 0 {
+            (amount0, amount1)
         } else {
-            owed.min(available)
+            (amount1, amount0)
         };
-
-        if payout < min_out {
-            panic!("withdraw below minimum");
-        }
-
-        // A shortfall because exiting costs swap fees is the exiting holder's
-        // own cost — burn their full stake, exactly as a depositor pays their
-        // own entry cost. A shortfall because the pool refused to release
-        // liquidity is different: burning there would destroy an unredeemed
-        // claim permanently, so refuse and let them retry once it recovers.
-        if !redeemed_ok && payout < owed {
-            panic!("could not raise underlying; shares preserved");
-        }
+        let output = if paired == 0 {
+            0
+        } else {
+            let before = Self::balance_of_token(&env, &Self::other_token(&env));
+            let output = Self::swap_exact_in(
+                &env,
+                Self::other_index(&env),
+                Self::underlying_index(&env),
+                paired,
+                Some(SwapGuard {
+                    max_divergence_bps: params(&env).max_pool_divergence_bps,
+                    two_sided: false,
+                    exit_root: Some(exit_root),
+                }),
+                Some(before),
+            );
+            assert!(
+                output > 0,
+                "paired conversion unavailable; shares preserved"
+            );
+            output
+        };
+        let payout = principal.checked_add(output).unwrap();
+        assert!(payout >= min_out, "withdraw below minimum");
         let shares_to_burn = shares;
 
         Self::burn_shares(&env, &from, shares_to_burn);
@@ -1775,10 +1819,8 @@ impl ClShareVault {
     // Single-asset convenience entrypoints
     // ─────────────────────────────────────────────────────────────────────
 
-    /// Single-sided deposit wrapper for the bound ReceiptVault. The vault
-    /// handles the split; direct user calls are rejected by `deposit`.
+    /// Single-sided deposit wrapper; the vault handles the paired asset split.
     pub fn deposit_underlying(env: Env, from: Address, amount: i128, min_shares: i128) -> i128 {
-        from.require_auth();
         let mut desired: Vec<i128> = Vec::new(&env);
         desired.push_back(amount);
         let mut mins: Vec<i128> = Vec::new(&env);
@@ -1815,6 +1857,9 @@ impl ClShareVault {
     pub fn claim_rewards(env: Env, holder: Address) -> u128 {
         crate::rewards::claim(&env, &holder)
     }
+    pub fn propose_reward_attribution(env: Env, id: u64, amount: u128, evidence: BytesN<32>) {
+        crate::rewards::propose_attribute(&env, id, amount, evidence)
+    }
     pub fn attribute_rewards(env: Env, id: u64, amount: u128, evidence: BytesN<32>) {
         crate::rewards::attribute(&env, id, amount, evidence)
     }
@@ -1826,66 +1871,27 @@ impl ClShareVault {
         accept_reward_waiver: bool,
     ) -> Vec<u128> {
         holder.require_auth();
+        crate::custody::require_direct_holder(&env, &holder);
         crate::accounting::begin(&env);
         crate::rewards::recovery(&env, &holder, false, accept_reward_waiver);
-        let supply = state(&env).total_shares;
         assert!(
             shares > 0 && shares <= shares_of(&env, &holder),
             "invalid shares"
         );
-        // Collect fees separately: Aquarius pays ALL fees on a partial burn.
-        // If fee collection itself fails, do not silently give all fees to the exiter.
-        if Self::position_liquidity(&env) > 0 {
-            let _: Vec<u128> = try_call(
-                &env,
-                &Self::pool(&env),
-                "claim_all_position_fees",
-                (env.current_contract_address(),),
-            )
-            .unwrap_or_else(|_| panic!("fee checkpoint unavailable"));
-        }
-        let t0 = Self::token(&env, 0);
-        let t1 = Self::token(&env, 1);
-        let idle0 = Self::balance_of_token(&env, &t0);
-        let idle1 = Self::balance_of_token(&env, &t1);
-        let liq = Self::position_liquidity(&env);
-        let burn = mul_div(&env, liq, shares, supply);
-        if burn > 0 {
-            let (lo, hi) = Self::ticks(&env);
-            let _: Vec<u128> = try_call(
-                &env,
-                &Self::pool(&env),
-                "withdraw_position",
-                (
-                    env.current_contract_address(),
-                    lo,
-                    hi,
-                    burn,
-                    soroban_sdk::vec![&env, 0u128, 0u128],
-                ),
-            )
-            .unwrap_or_else(|_| panic!("principal withdrawal failed"));
-        }
+        let (amount0, amount1, _) = Self::extract_fraction(&env, shares);
         let mut out = Vec::new(&env);
-        for (t, idle) in [(t0, idle0), (t1, idle1)] {
-            let principal = Self::balance_of_token(&env, &t).checked_sub(idle).unwrap();
-            let amount = principal
-                .checked_add(mul_div(&env, idle, shares, supply))
-                .unwrap();
+        for (token_address, amount) in [
+            (Self::token(&env, 0), amount0),
+            (Self::token(&env, 1), amount1),
+        ] {
             if amount > 0 {
-                token::Client::new(&env, &t).transfer(
+                token::Client::new(&env, &token_address).transfer(
                     &env.current_contract_address(),
                     &holder,
                     &to_i128(amount),
                 );
             }
             out.push_back(amount);
-        }
-        if let Some(mut p) = position_amounts(&env) {
-            p.liquidity = liq - burn;
-            p.amount0 = mul_div(&env, p.amount0, liq - burn, liq.max(1));
-            p.amount1 = mul_div(&env, p.amount1, liq - burn, liq.max(1));
-            set_position_amounts(&env, &p);
         }
         Self::burn_shares(&env, &holder, shares);
         crate::rewards::reset_debt(&env, &holder);
@@ -1926,23 +1932,75 @@ impl ClShareVault {
         Self::receipt_quote_value(&env, gross)
     }
 
-    /// Strategy shares are deliberately non-transferable. Users hold the
-    /// bound ReceiptVault's pTokens instead; keeping this selector as a
-    /// fail-closed stub preserves ABI compatibility without allowing dust
-    /// holders to create unbounded persistent share entries.
+    /// Transferable shares; registered custody moves preserve beneficial rewards.
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         from.require_auth();
         assert!(amount > 0, "zero transfer");
-        crate::rewards::normal(&env, &from);
-        crate::rewards::settle(&env, &to);
         let amount = to_u128(amount);
         assert!(shares_of(&env, &from) >= amount, "insufficient shares");
-        if from != to {
-            set_shares(&env, &from, shares_of(&env, &from) - amount);
-            set_shares(&env, &to, shares_of(&env, &to).checked_add(amount).unwrap());
+        // Self-transfers neither consume custody allocations nor change ownership.
+        if from == to {
+            crate::rewards::normal(&env, &from);
+            return;
         }
-        crate::rewards::reset_debt(&env, &from);
+        let owner = match crate::custody::outgoing(&env, &from, &to, amount) {
+            Some(owner) => owner,
+            None => {
+                crate::rewards::normal(&env, &from);
+                crate::rewards::settle(&env, &to);
+                from.clone()
+            }
+        };
+        set_shares(&env, &from, shares_of(&env, &from) - amount);
+        set_shares(&env, &to, shares_of(&env, &to).checked_add(amount).unwrap());
+        crate::custody::received(&env, &to, amount);
+        crate::rewards::reset_debt(&env, &owner);
         crate::rewards::reset_debt(&env, &to);
+    }
+
+    pub fn register_custodian(env: Env, custodian: Address) {
+        crate::custody::register(&env, &custodian);
+    }
+    pub fn is_custodian(env: Env, custodian: Address) -> bool {
+        crate::custody::registered(&env, &custodian)
+    }
+    pub fn custody_allocation(env: Env, custodian: Address, owner: Address) -> u128 {
+        crate::custody::allocation(&env, &custodian, &owner)
+    }
+    pub fn custody_assign(env: Env, custodian: Address, owner: Address, amount: u128) {
+        crate::custody::assign(&env, &custodian, &owner, amount, false);
+    }
+    pub fn custody_recover_assign(env: Env, custodian: Address, owner: Address, amount: u128) {
+        crate::custody::assign(&env, &custodian, &owner, amount, true);
+    }
+    pub fn custody_reassign(
+        env: Env,
+        custodian: Address,
+        from_owner: Address,
+        to_owner: Address,
+        amount: u128,
+    ) {
+        crate::custody::reassign(&env, &custodian, &from_owner, &to_owner, amount, false);
+    }
+    pub fn custody_recover_reassign(
+        env: Env,
+        custodian: Address,
+        from_owner: Address,
+        to_owner: Address,
+        amount: u128,
+    ) {
+        crate::custody::reassign(&env, &custodian, &from_owner, &to_owner, amount, true);
+    }
+    /// Registered contracts must enforce their position/receipt recovery lifecycle.
+    pub fn custody_prepare_transfer(
+        env: Env,
+        custodian: Address,
+        owner: Address,
+        recipient: Address,
+        amount: u128,
+        recovery: bool,
+    ) {
+        crate::custody::prepare(&env, &custodian, &owner, &recipient, amount, recovery);
     }
 
     // ─────────────────────────────────────────────────────────────────────

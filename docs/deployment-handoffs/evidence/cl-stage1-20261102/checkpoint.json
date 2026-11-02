@@ -1,0 +1,1722 @@
+{
+  "status": "INCOMPLETE_RESOURCE_BLOCKED_VALIDATION_ONLY",
+  "branch": "feat/cl-share-stage1-checkpoint",
+  "base_commit": "47858c1a13c2588970395faa2212e7b68bd33060",
+  "preserved_wip_commit": "2d92318d9af7d60e8dde7986edfa4b8a07f233d4",
+  "reviewed_pr": {
+    "url": "https://github.com/PeridotFinance/Peridot-Soroban/pull/74",
+    "sha": "8375723a38c2f21b044f080e73c0f60944a5ee31",
+    "reused": [
+      "27 accounting model tests",
+      "facade exact authorization fixture",
+      "native funded settlement prototype"
+    ]
+  },
+  "authoritative_policy_source": "PR74@8375723a38c2f21b044f080e73c0f60944a5ee31:docs/deployment-handoffs/00-shared-risk-model-and-rollout.md; reviewed read-only, shared policy not overwritten",
+  "fixture": {
+    "sdk": "25.3.1",
+    "host": "25.0.1",
+    "protocol": 25,
+    "network_id": "0000000000000000000000000000000000000000000000000000000000000000",
+    "initial_ledger": 100,
+    "initial_timestamp": 1000,
+    "min_persistent_ttl": 4096,
+    "min_temporary_ttl": 16,
+    "max_entry_ttl": 6312000,
+    "host_platform": "Darwin arm64",
+    "rustc": "1.96.0",
+    "stellar_cli": "26.1.0",
+    "admin": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+    "admin_label": "Address::generate synthetic contract administrator; no real account signatures",
+    "tokens": "local SAC fixtures for PYUSD/USDC/reward roles, not actual issuer assets",
+    "oracle": "native fixed USD1 synthetic; no production ShareNav/depeg proof",
+    "pool": "real pinned Aquarius WASM initialized in controlled local state; live pool state not imported",
+    "vault_leverage": 1,
+    "v3_diagnostic_leverage": 2,
+    "maintenance_margin": {
+      "value_scaled": 250000,
+      "label": "HARNESS ONLY; production unset"
+    },
+    "margin_feature": "funded-liquidation-validation, Mainnet rejected; default build omits funded and custody configuration ABI"
+  },
+  "validation": {
+    "compiled_actual_venue": {
+      "passed": 3,
+      "failed": 2,
+      "passes": [
+        "authorization negatives and cancel before execution",
+        "1x core deposit/transfer/redeem/emergency behaviors",
+        "nonzero venue rewards, killed claims and explicit waiver recovery"
+      ],
+      "failures": [
+        "receipt ownership transfer: footprint114>100",
+        "swap_open_position_v3: footprint159>100 and memory47596008>41943040"
+      ]
+    },
+    "compiled_facade_synthetic": {
+      "passed": 1,
+      "failed": 0
+    },
+    "native_facade_synthetic": {
+      "passed": 8,
+      "ignored": 1
+    },
+    "native_vault": {
+      "passed": 39,
+      "includes_pr74_model_tests": 27
+    },
+    "native_receipt": {
+      "passed": 192,
+      "ignored": 1
+    },
+    "native_margin_regression_excluding_funded": {
+      "passed": 110,
+      "ignored": 2
+    },
+    "native_funded_synthetic_prestate": {
+      "passed": 5,
+      "failed": 4
+    },
+    "native_reserve": {
+      "passed": 10
+    },
+    "funding_plan_tests": {
+      "passed": 2
+    },
+    "budget": "FAIL; limits unchanged, missing flows remain failures"
+  },
+  "reward_results": {
+    "actual_pool_same_state_in_range": {
+      "pending": 22732,
+      "claimed": 22732,
+      "paid": 22731,
+      "backing_for_exact_scaled_rounding": 1
+    },
+    "native_custody": {
+      "received": 250,
+      "alice": 175,
+      "bob": 25,
+      "quarantine": 50
+    },
+    "claim_failure": "actual pinned pool kill_claim rejects normal transfer with801 and waiver=false with802; waiver=true exits principal",
+    "proven_boundaries_enabled": false,
+    "waiver_redistribution_implemented": false
+  },
+  "implementation_status": {
+    "share_vault": "incomplete validation candidate; Mainnet initialization disabled",
+    "facade": "exact auth, delta settlement, synthetic compiled roundtrip passes; full V3 roundtrip blocked",
+    "funded_liquidation": "validation prototype integrates principal repayment/seizure and ownership context; positive settlement exceeds footprint",
+    "reserve": "implemented append-only optional cash reserve API, local cash enforcement, durable borrowing disabled in preparation",
+    "funding_script": "build/unsigned plan only; real ABI; no deployment or activation"
+  },
+  "resource_gate": {
+    "cpu": 100000000,
+    "memory": 41943040,
+    "footprint": 100,
+    "writes": 50,
+    "disk_read_bytes": 200000,
+    "write_bytes": 132096,
+    "scope": "existing conservative local checker, not captured current-network limits"
+  },
+  "network_config": {
+    "scope": "read-only Mainnet fee/limit settings; test execution remains local controlled state",
+    "rpc": "https://rpc.lightsail.network/",
+    "network": {
+      "passphrase": "Public Global Stellar Network ; September 2015",
+      "protocolVersion": 29
+    },
+    "ledger": 65264375,
+    "settings": {
+      "configSettingContractComputeV0": {
+        "values": {
+          "ledgerMaxInstructions": 580000000,
+          "txMaxInstructions": 400000000,
+          "feeRatePerInstructionsIncrement": 3,
+          "txMemoryLimit": 41943040
+        },
+        "xdr": "AAAACAAAAAEAAAAAIpIZAAAAAAAX14QAAAAAAAAAAAMCgAAA",
+        "lastModifiedLedger": 65080525
+      },
+      "configSettingContractLedgerCostV0": {
+        "values": {
+          "ledgerMaxDiskReadEntries": 2000,
+          "ledgerMaxDiskReadBytes": 400000,
+          "ledgerMaxWriteLedgerEntries": 2000,
+          "ledgerMaxWriteBytes": 297000,
+          "txMaxDiskReadEntries": 200,
+          "txMaxDiskReadBytes": 200000,
+          "txMaxWriteLedgerEntries": 200,
+          "txMaxWriteBytes": 132096,
+          "feeDiskReadLedgerEntry": 781,
+          "feeWriteLedgerEntry": 1250,
+          "feeDiskRead1Kb": 223,
+          "sorobanStateTargetSizeBytes": 3000000000,
+          "rentFee1KbSorobanStateSizeLow": -17000,
+          "rentFee1KbSorobanStateSizeHigh": 10000,
+          "sorobanStateRentFeeGrowthFactor": 5000
+        },
+        "xdr": "AAAACAAAAAIAAAfQAAYagAAAB9AABIgoAAAAyAADDUAAAADIAAIEAAAAAAAAAAMNAAAAAAAABOIAAAAAAAAA3wAAAACy0F4A////////vZgAAAAAAAAnEAAAE4g=",
+        "lastModifiedLedger": 65080525
+      },
+      "configSettingContractLedgerCostExtV0": {
+        "values": {
+          "txMaxFootprintEntries": 400,
+          "feeWrite1Kb": 437
+        },
+        "xdr": "AAAACAAAAA8AAAGQAAAAAAAAAbU=",
+        "lastModifiedLedger": 65080525
+      },
+      "configSettingContractHistoricalDataV0": {
+        "values": {
+          "feeHistorical1Kb": 2029
+        },
+        "xdr": "AAAACAAAAAMAAAAAAAAH7Q==",
+        "lastModifiedLedger": 65080525
+      },
+      "configSettingContractEventsV0": {
+        "values": {
+          "txMaxContractEventsSizeBytes": 16384,
+          "feeContractEvents1Kb": 2500
+        },
+        "xdr": "AAAACAAAAAQAAEAAAAAAAAAACcQ=",
+        "lastModifiedLedger": 65080525
+      },
+      "configSettingContractBandwidthV0": {
+        "values": {
+          "ledgerMaxTxsSizeBytes": 864000,
+          "txMaxSizeBytes": 132096,
+          "feeTxSize1Kb": 203
+        },
+        "xdr": "AAAACAAAAAUADS8AAAIEAAAAAAAAAADL",
+        "lastModifiedLedger": 65080525
+      },
+      "configSettingStateArchival": {
+        "values": {
+          "maxEntryTtl": 3110400,
+          "minTemporaryTtl": 17280,
+          "minPersistentTtl": 2073600,
+          "persistentRentRateDenominator": 1215,
+          "tempRentRateDenominator": 2430,
+          "maxEntriesToArchive": 1000,
+          "liveSorobanStateSizeWindowSampleSize": 30,
+          "liveSorobanStateSizeWindowSamplePeriod": 64,
+          "evictionScanSize": 500000,
+          "startingEvictionScanLevel": 7
+        },
+        "xdr": "AAAACAAAAAoAL3YAAABDgAAfpAAAAAAAAAAEvwAAAAAAAAl+AAAD6AAAAB4AAABAAAehIAAAAAc=",
+        "lastModifiedLedger": 59516381
+      },
+      "configSettingLiveSorobanStateSizeWindow": {
+        "values": {
+          "0": 1729777397,
+          "1": 1730263389,
+          "2": 1730684441,
+          "3": 1731034025,
+          "4": 1731356245,
+          "5": 1731867249,
+          "6": 1732355689,
+          "7": 1732965185,
+          "8": 1733350557,
+          "9": 1733850609,
+          "10": 1734407153,
+          "11": 1734980393,
+          "12": 1735534001,
+          "13": 1736091133,
+          "14": 1736752889,
+          "15": 1737034333,
+          "16": 1737558865,
+          "17": 1737911797,
+          "18": 1738247485,
+          "19": 1738569789,
+          "20": 1739044109,
+          "21": 1739502573,
+          "22": 1739934313,
+          "23": 1740448153,
+          "24": 1740837329,
+          "25": 1741277953,
+          "26": 1741802433,
+          "27": 1742339389,
+          "28": 1742839085,
+          "29": 1743181617
+        },
+        "xdr": "AAAACAAAAAwAAAAeAAAAAGcaTvUAAAAAZyG5XQAAAABnKCYZAAAAAGcte6kAAAAAZzJmVQAAAABnOjJxAAAAAGdBpmkAAAAAZ0rzQQAAAABnUNSdAAAAAGdYdfEAAAAAZ2Dz8QAAAABnabMpAAAAAGdyJbEAAAAAZ3ql/QAAAABnhL75AAAAAGeJCl0AAAAAZ5ELUQAAAABnlm31AAAAAGebjT0AAAAAZ6B4PQAAAABnp7UNAAAAAGeus+0AAAAAZ7VKaQAAAABnvSGZAAAAAGfDEdEAAAAAZ8nLAQAAAABn0cvBAAAAAGfZ/T0AAAAAZ+GdLQAAAABn5tcx",
+        "lastModifiedLedger": 65264320
+      }
+    }
+  },
+  "fee_model": "host25 quantities repriced at public protocol29 ledger65264375; includes modeled rent, excludes envelope/history/base/return-size; no RPC transaction simulation",
+  "artifacts": {
+    "margin_controller.wasm": {
+      "bytes": 91503,
+      "sha256": "157d0d86121843598e146ef6061d25eae2fc265c2ef34902cb6d2be87dfcaf29"
+    },
+    "swap_adapter.wasm": {
+      "bytes": 10876,
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d"
+    },
+    "receipt_vault.wasm": {
+      "bytes": 87197,
+      "sha256": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e"
+    },
+    "jump_rate_model.wasm": {
+      "bytes": 7644,
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800"
+    },
+    "simple_peridottroller.wasm": {
+      "bytes": 63289,
+      "sha256": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2"
+    },
+    "cl_share_vault.wasm": {
+      "bytes": 65883,
+      "sha256": "4bb6f8753f9aafbea021c808ff079395e811222fb4f10b5afa60fded15e27640"
+    },
+    "cl_share_pool_facade.wasm": {
+      "bytes": 7298,
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5"
+    }
+  },
+  "pool_source": {
+    "scope": "public code only; no live pool state imported",
+    "hash": "12fca5a7a96577273b6d4184cf9c984036cda0e8f0594747e7b2933dced37ee6",
+    "bytes": 90057,
+    "ledger": 65264579,
+    "network": {
+      "passphrase": "Public Global Stellar Network ; September 2015",
+      "protocolVersion": 29
+    }
+  },
+  "measured_flows": [
+    {
+      "flow": "wrong_caller",
+      "ok": true,
+      "instructions": 532134,
+      "memory_bytes": 1272231,
+      "read_entries": 2,
+      "write_entries": 0,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 160,
+        "components": {
+          "cpu": 160,
+          "disk_entry_reads": 0,
+          "entry_writes": 0,
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "controller_impersonation",
+      "ok": true,
+      "instructions": 536683,
+      "memory_bytes": 1272287,
+      "read_entries": 2,
+      "write_entries": 0,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 162,
+        "components": {
+          "cpu": 162,
+          "disk_entry_reads": 0,
+          "entry_writes": 0,
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "unauthorized_vault_recovery",
+      "ok": true,
+      "instructions": 863329,
+      "memory_bytes": 1308686,
+      "read_entries": 3,
+      "write_entries": 0,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 259,
+        "components": {
+          "cpu": 259,
+          "disk_entry_reads": 0,
+          "entry_writes": 0,
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "unauthorized_receipt_recovery",
+      "ok": true,
+      "instructions": 3177028,
+      "memory_bytes": 1326449,
+      "read_entries": 32,
+      "write_entries": 0,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 954,
+        "components": {
+          "cpu": 954,
+          "disk_entry_reads": 0,
+          "entry_writes": 0,
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "transfer_spot_to_margin",
+      "ok": true,
+      "instructions": 26352243,
+      "memory_bytes": 11212216,
+      "read_entries": 69,
+      "write_entries": 9,
+      "read_bytes": 0,
+      "write_bytes": 1148,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 388,
+      "persistent_rent_ledger_bytes": 1376709520,
+      "persistent_entry_rent_bumps": 6,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 1325694,
+        "components": {
+          "cpu": 7906,
+          "disk_entry_reads": 7029,
+          "entry_writes": 11250,
+          "read_bytes": 0,
+          "write_bytes": 490,
+          "events": 948,
+          "persistent_rent": 1114161,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "begin_open_position_v3",
+      "ok": true,
+      "instructions": 26364225,
+      "memory_bytes": 20901084,
+      "read_entries": 84,
+      "write_entries": 15,
+      "read_bytes": 0,
+      "write_bytes": 3656,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 228,
+      "persistent_rent_ledger_bytes": 209632751055,
+      "persistent_entry_rent_bumps": 12,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 168733052,
+        "components": {
+          "cpu": 7910,
+          "disk_entry_reads": 11715,
+          "entry_writes": 18750,
+          "read_bytes": 0,
+          "write_bytes": 1561,
+          "events": 557,
+          "persistent_rent": 168508649,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "unauthorized_pending_recovery",
+      "ok": true,
+      "instructions": 765984,
+      "memory_bytes": 1313119,
+      "read_entries": 2,
+      "write_entries": 0,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 230,
+        "components": {
+          "cpu": 230,
+          "disk_entry_reads": 0,
+          "entry_writes": 0,
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "cancel_pending_open_v3",
+      "ok": true,
+      "instructions": 10342633,
+      "memory_bytes": 3161519,
+      "read_entries": 70,
+      "write_entries": 17,
+      "read_bytes": 0,
+      "write_bytes": 764,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 172,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 222287,
+        "components": {
+          "cpu": 3103,
+          "disk_entry_reads": 13277,
+          "entry_writes": 21250,
+          "read_bytes": 0,
+          "write_bytes": 327,
+          "events": 420,
+          "persistent_rent": 0,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "cancel_before_execute",
+      "ok": true,
+      "instructions": 10342633,
+      "memory_bytes": 3161519,
+      "read_entries": 70,
+      "write_entries": 17,
+      "read_bytes": 0,
+      "write_bytes": 764,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 172,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 222287,
+        "components": {
+          "cpu": 3103,
+          "disk_entry_reads": 13277,
+          "entry_writes": 21250,
+          "read_bytes": 0,
+          "write_bytes": 327,
+          "events": 420,
+          "persistent_rent": 0,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "deposit_underlying",
+      "ok": true,
+      "instructions": 104001811,
+      "memory_bytes": 15040651,
+      "read_entries": 41,
+      "write_entries": 20,
+      "read_bytes": 276,
+      "write_bytes": 12328,
+      "disk_read_entries": 3,
+      "contract_events_size_bytes": 3076,
+      "persistent_rent_ledger_bytes": 19271097600,
+      "persistent_entry_rent_bumps": 14,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 15777938,
+        "components": {
+          "cpu": 31201,
+          "disk_entry_reads": 17963,
+          "entry_writes": 25000,
+          "read_bytes": 61,
+          "write_bytes": 5262,
+          "events": 7510,
+          "persistent_rent": 15507031,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "deposit",
+      "ok": true,
+      "instructions": 29125896,
+      "memory_bytes": 14003924,
+      "read_entries": 68,
+      "write_entries": 20,
+      "read_bytes": 92,
+      "write_bytes": 8052,
+      "disk_read_entries": 1,
+      "contract_events_size_bytes": 1408,
+      "persistent_rent_ledger_bytes": 2220802620,
+      "persistent_entry_rent_bumps": 9,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 2037362,
+        "components": {
+          "cpu": 8738,
+          "disk_entry_reads": 16401,
+          "entry_writes": 25000,
+          "read_bytes": 21,
+          "write_bytes": 3437,
+          "events": 3438,
+          "persistent_rent": 1796417,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "receipt_custody_deposit",
+      "ok": true,
+      "instructions": 29125896,
+      "memory_bytes": 14003924,
+      "read_entries": 68,
+      "write_entries": 20,
+      "read_bytes": 92,
+      "write_bytes": 8052,
+      "disk_read_entries": 1,
+      "contract_events_size_bytes": 1408,
+      "persistent_rent_ledger_bytes": 2220802620,
+      "persistent_entry_rent_bumps": 9,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 2037362,
+        "components": {
+          "cpu": 8738,
+          "disk_entry_reads": 16401,
+          "entry_writes": 25000,
+          "read_bytes": 21,
+          "write_bytes": 3437,
+          "events": 3438,
+          "persistent_rent": 1796417,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "transfer",
+      "ok": true,
+      "instructions": 391160,
+      "memory_bytes": 157044,
+      "read_entries": 5,
+      "write_entries": 3,
+      "read_bytes": 92,
+      "write_bytes": 520,
+      "disk_read_entries": 1,
+      "contract_events_size_bytes": 236,
+      "persistent_rent_ledger_bytes": 116121600,
+      "persistent_entry_rent_bumps": 1,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 286327,
+        "components": {
+          "cpu": 118,
+          "disk_entry_reads": 3124,
+          "entry_writes": 3750,
+          "read_bytes": 21,
+          "write_bytes": 222,
+          "events": 577,
+          "persistent_rent": 94605,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "set_rewards_config",
+      "ok": true,
+      "instructions": 3153228,
+      "memory_bytes": 1813395,
+      "read_entries": 8,
+      "write_entries": 4,
+      "read_bytes": 0,
+      "write_bytes": 4864,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 7402752000,
+      "persistent_entry_rent_bumps": 3,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 6148868,
+        "components": {
+          "cpu": 946,
+          "disk_entry_reads": 3124,
+          "entry_writes": 5000,
+          "read_bytes": 0,
+          "write_bytes": 2076,
+          "events": 0,
+          "persistent_rent": 5953812,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "transfer",
+      "ok": false,
+      "instructions": 31259126,
+      "memory_bytes": 12389605,
+      "read_entries": 93,
+      "write_entries": 21,
+      "read_bytes": 0,
+      "write_bytes": 10356,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 808,
+      "persistent_rent_ledger_bytes": 1404712400,
+      "persistent_entry_rent_bumps": 6,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 1379000,
+        "components": {
+          "cpu": 9378,
+          "disk_entry_reads": 16401,
+          "entry_writes": 26250,
+          "read_bytes": 0,
+          "write_bytes": 4420,
+          "events": 1973,
+          "persistent_rent": 1136668,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "transfer",
+      "ok": true,
+      "instructions": 399718,
+      "memory_bytes": 162500,
+      "read_entries": 5,
+      "write_entries": 3,
+      "read_bytes": 92,
+      "write_bytes": 520,
+      "disk_read_entries": 1,
+      "contract_events_size_bytes": 236,
+      "persistent_rent_ledger_bytes": 116121600,
+      "persistent_entry_rent_bumps": 1,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 286329,
+        "components": {
+          "cpu": 120,
+          "disk_entry_reads": 3124,
+          "entry_writes": 3750,
+          "read_bytes": 21,
+          "write_bytes": 222,
+          "events": 577,
+          "persistent_rent": 94605,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "transfer_spot_to_margin",
+      "ok": true,
+      "instructions": 26350581,
+      "memory_bytes": 11217248,
+      "read_entries": 69,
+      "write_entries": 9,
+      "read_bytes": 0,
+      "write_bytes": 1148,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 388,
+      "persistent_rent_ledger_bytes": 1376709520,
+      "persistent_entry_rent_bumps": 6,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 1325694,
+        "components": {
+          "cpu": 7906,
+          "disk_entry_reads": 7029,
+          "entry_writes": 11250,
+          "read_bytes": 0,
+          "write_bytes": 490,
+          "events": 948,
+          "persistent_rent": 1114161,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "begin_open_position_v3",
+      "ok": true,
+      "instructions": 26383896,
+      "memory_bytes": 20910740,
+      "read_entries": 84,
+      "write_entries": 15,
+      "read_bytes": 0,
+      "write_bytes": 3656,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 228,
+      "persistent_rent_ledger_bytes": 209632751055,
+      "persistent_entry_rent_bumps": 12,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 168733058,
+        "components": {
+          "cpu": 7916,
+          "disk_entry_reads": 11715,
+          "entry_writes": 18750,
+          "read_bytes": 0,
+          "write_bytes": 1561,
+          "events": 557,
+          "persistent_rent": 168508649,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "begin_open",
+      "ok": true,
+      "instructions": 26383896,
+      "memory_bytes": 20910740,
+      "read_entries": 84,
+      "write_entries": 15,
+      "read_bytes": 0,
+      "write_bytes": 3656,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 228,
+      "persistent_rent_ledger_bytes": 209632751055,
+      "persistent_entry_rent_bumps": 12,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 168733058,
+        "components": {
+          "cpu": 7916,
+          "disk_entry_reads": 11715,
+          "entry_writes": 18750,
+          "read_bytes": 0,
+          "write_bytes": 1561,
+          "events": 557,
+          "persistent_rent": 168508649,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "swap_open_position_v3",
+      "ok": false,
+      "instructions": 165700047,
+      "memory_bytes": 47596008,
+      "read_entries": 116,
+      "write_entries": 40,
+      "read_bytes": 276,
+      "write_bytes": 15988,
+      "disk_read_entries": 3,
+      "contract_events_size_bytes": 5424,
+      "persistent_rent_ledger_bytes": 22395219200,
+      "persistent_entry_rent_bumps": 24,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 18368097,
+        "components": {
+          "cpu": 49711,
+          "disk_entry_reads": 33583,
+          "entry_writes": 50000,
+          "read_bytes": 61,
+          "write_bytes": 6824,
+          "events": 13243,
+          "persistent_rent": 18030765,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "deposit_underlying",
+      "ok": true,
+      "instructions": 104001811,
+      "memory_bytes": 15040651,
+      "read_entries": 41,
+      "write_entries": 20,
+      "read_bytes": 276,
+      "write_bytes": 12328,
+      "disk_read_entries": 3,
+      "contract_events_size_bytes": 3076,
+      "persistent_rent_ledger_bytes": 19271097600,
+      "persistent_entry_rent_bumps": 14,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 15777938,
+        "components": {
+          "cpu": 31201,
+          "disk_entry_reads": 17963,
+          "entry_writes": 25000,
+          "read_bytes": 61,
+          "write_bytes": 5262,
+          "events": 7510,
+          "persistent_rent": 15507031,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "deposit",
+      "ok": true,
+      "instructions": 104001811,
+      "memory_bytes": 15040651,
+      "read_entries": 41,
+      "write_entries": 20,
+      "read_bytes": 276,
+      "write_bytes": 12328,
+      "disk_read_entries": 3,
+      "contract_events_size_bytes": 3076,
+      "persistent_rent_ledger_bytes": 19271097600,
+      "persistent_entry_rent_bumps": 14,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 15777938,
+        "components": {
+          "cpu": 31201,
+          "disk_entry_reads": 17963,
+          "entry_writes": 25000,
+          "read_bytes": 61,
+          "write_bytes": 5262,
+          "events": 7510,
+          "persistent_rent": 15507031,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "transfer",
+      "ok": true,
+      "instructions": 7596981,
+      "memory_bytes": 3604560,
+      "read_entries": 25,
+      "write_entries": 11,
+      "read_bytes": 92,
+      "write_bytes": 6644,
+      "disk_read_entries": 1,
+      "contract_events_size_bytes": 420,
+      "persistent_rent_ledger_bytes": 1008000000,
+      "persistent_entry_rent_bumps": 3,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 1027193,
+        "components": {
+          "cpu": 2280,
+          "disk_entry_reads": 9372,
+          "entry_writes": 13750,
+          "read_bytes": 21,
+          "write_bytes": 2836,
+          "events": 1026,
+          "persistent_rent": 813998,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "claim_rewards",
+      "ok": true,
+      "instructions": 6491685,
+      "memory_bytes": 3397650,
+      "read_entries": 21,
+      "write_entries": 8,
+      "read_bytes": 92,
+      "write_bytes": 6116,
+      "disk_read_entries": 1,
+      "contract_events_size_bytes": 420,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 206545,
+        "components": {
+          "cpu": 1948,
+          "disk_entry_reads": 7029,
+          "entry_writes": 10000,
+          "read_bytes": 21,
+          "write_bytes": 2611,
+          "events": 1026,
+          "persistent_rent": 0,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "redeem",
+      "ok": true,
+      "instructions": 139904484,
+      "memory_bytes": 14150763,
+      "read_entries": 40,
+      "write_entries": 17,
+      "read_bytes": 184,
+      "write_bytes": 11852,
+      "disk_read_entries": 2,
+      "contract_events_size_bytes": 3204,
+      "persistent_rent_ledger_bytes": 116121600,
+      "persistent_entry_rent_bumps": 1,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 369498,
+        "components": {
+          "cpu": 41972,
+          "disk_entry_reads": 14839,
+          "entry_writes": 21250,
+          "read_bytes": 41,
+          "write_bytes": 5058,
+          "events": 7823,
+          "persistent_rent": 94605,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "emergency_redeem",
+      "ok": true,
+      "instructions": 123678340,
+      "memory_bytes": 10757854,
+      "read_entries": 41,
+      "write_entries": 20,
+      "read_bytes": 92,
+      "write_bytes": 11840,
+      "disk_read_entries": 1,
+      "contract_events_size_bytes": 2644,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 273945,
+        "components": {
+          "cpu": 37104,
+          "disk_entry_reads": 16401,
+          "entry_writes": 25000,
+          "read_bytes": 21,
+          "write_bytes": 5053,
+          "events": 6456,
+          "persistent_rent": 0,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "deposit_underlying",
+      "ok": true,
+      "instructions": 104001811,
+      "memory_bytes": 15040651,
+      "read_entries": 41,
+      "write_entries": 20,
+      "read_bytes": 276,
+      "write_bytes": 12328,
+      "disk_read_entries": 3,
+      "contract_events_size_bytes": 3076,
+      "persistent_rent_ledger_bytes": 19271097600,
+      "persistent_entry_rent_bumps": 14,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 15777938,
+        "components": {
+          "cpu": 31201,
+          "disk_entry_reads": 17963,
+          "entry_writes": 25000,
+          "read_bytes": 61,
+          "write_bytes": 5262,
+          "events": 7510,
+          "persistent_rent": 15507031,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "transfer",
+      "ok": true,
+      "instructions": 388238,
+      "memory_bytes": 152760,
+      "read_entries": 5,
+      "write_entries": 3,
+      "read_bytes": 92,
+      "write_bytes": 520,
+      "disk_read_entries": 1,
+      "contract_events_size_bytes": 236,
+      "persistent_rent_ledger_bytes": 116121600,
+      "persistent_entry_rent_bumps": 1,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 286326,
+        "components": {
+          "cpu": 117,
+          "disk_entry_reads": 3124,
+          "entry_writes": 3750,
+          "read_bytes": 21,
+          "write_bytes": 222,
+          "events": 577,
+          "persistent_rent": 94605,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "set_rewards_config",
+      "ok": true,
+      "instructions": 3143233,
+      "memory_bytes": 1805439,
+      "read_entries": 8,
+      "write_entries": 4,
+      "read_bytes": 0,
+      "write_bytes": 4864,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 7402752000,
+      "persistent_entry_rent_bumps": 3,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 6148865,
+        "components": {
+          "cpu": 943,
+          "disk_entry_reads": 3124,
+          "entry_writes": 5000,
+          "read_bytes": 0,
+          "write_bytes": 2076,
+          "events": 0,
+          "persistent_rent": 5953812,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "claim_rewards",
+      "ok": true,
+      "instructions": 7738105,
+      "memory_bytes": 3606306,
+      "read_entries": 24,
+      "write_entries": 12,
+      "read_bytes": 0,
+      "write_bytes": 8944,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 656,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 216023,
+        "components": {
+          "cpu": 2322,
+          "disk_entry_reads": 9372,
+          "entry_writes": 15000,
+          "read_bytes": 0,
+          "write_bytes": 3817,
+          "events": 1602,
+          "persistent_rent": 0,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "kill_claim",
+      "ok": true,
+      "instructions": 1452473,
+      "memory_bytes": 1495446,
+      "read_entries": 4,
+      "write_entries": 2,
+      "read_bytes": 0,
+      "write_bytes": 2596,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 76,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 189702,
+        "components": {
+          "cpu": 436,
+          "disk_entry_reads": 1562,
+          "entry_writes": 2500,
+          "read_bytes": 0,
+          "write_bytes": 1108,
+          "events": 186,
+          "persistent_rent": 0,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "normal_transfer_claim_failure_rejected",
+      "ok": true,
+      "instructions": 2339165,
+      "memory_bytes": 2799442,
+      "read_entries": 10,
+      "write_entries": 1,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 2733,
+        "components": {
+          "cpu": 702,
+          "disk_entry_reads": 781,
+          "entry_writes": 1250,
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "waiver_false_rejected_named_error",
+      "ok": true,
+      "instructions": 7084492,
+      "memory_bytes": 4669276,
+      "read_entries": 23,
+      "write_entries": 7,
+      "read_bytes": 0,
+      "write_bytes": 5524,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 18701,
+        "components": {
+          "cpu": 2126,
+          "disk_entry_reads": 5467,
+          "entry_writes": 8750,
+          "read_bytes": 0,
+          "write_bytes": 2358,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "emergency_redeem",
+      "ok": true,
+      "instructions": 125669900,
+      "memory_bytes": 12196163,
+      "read_entries": 43,
+      "write_entries": 22,
+      "read_bytes": 0,
+      "write_bytes": 14416,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 1744,
+      "persistent_rent_ledger_bytes": 419998400,
+      "persistent_entry_rent_bumps": 2,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 616821,
+        "components": {
+          "cpu": 37701,
+          "disk_entry_reads": 17182,
+          "entry_writes": 27500,
+          "read_bytes": 0,
+          "write_bytes": 6153,
+          "events": 4258,
+          "persistent_rent": 340117,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "claim_failure_recovery",
+      "ok": true,
+      "instructions": 125669900,
+      "memory_bytes": 12196163,
+      "read_entries": 43,
+      "write_entries": 22,
+      "read_bytes": 0,
+      "write_bytes": 14416,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 1744,
+      "persistent_rent_ledger_bytes": 419998400,
+      "persistent_entry_rent_bumps": 2,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "compiled-local-controlled-state",
+      "fee_estimate": {
+        "resource_fee_stroops": 616821,
+        "components": {
+          "cpu": 37701,
+          "disk_entry_reads": 17182,
+          "entry_writes": 27500,
+          "read_bytes": 0,
+          "write_bytes": 6153,
+          "events": 4258,
+          "persistent_rent": 340117,
+          "temporary_rent": 183910
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "facade_fixture_open",
+      "ok": true,
+      "instructions": 1494253,
+      "memory_bytes": 1352858,
+      "read_entries": 10,
+      "write_entries": 6,
+      "read_bytes": 0,
+      "write_bytes": 1484,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 472,
+      "persistent_rent_ledger_bytes": 206527109775,
+      "persistent_entry_rent_bumps": 4,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-facade-native-synthetic-fixtures",
+      "fee_estimate": {
+        "resource_fee_stroops": 166016731,
+        "components": {
+          "cpu": 449,
+          "disk_entry_reads": 4686,
+          "entry_writes": 7500,
+          "read_bytes": 0,
+          "write_bytes": 634,
+          "events": 1153,
+          "persistent_rent": 166002309,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "facade_fixture_close",
+      "ok": true,
+      "instructions": 1412072,
+      "memory_bytes": 1346611,
+      "read_entries": 10,
+      "write_entries": 6,
+      "read_bytes": 0,
+      "write_bytes": 1484,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 472,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-facade-native-synthetic-fixtures",
+      "fee_estimate": {
+        "resource_fee_stroops": 14397,
+        "components": {
+          "cpu": 424,
+          "disk_entry_reads": 4686,
+          "entry_writes": 7500,
+          "read_bytes": 0,
+          "write_bytes": 634,
+          "events": 1153,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "missing_nested_auth",
+      "ok": true,
+      "instructions": 704198,
+      "memory_bytes": 1252826,
+      "read_entries": 7,
+      "write_entries": 0,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-facade-native-synthetic-fixtures",
+      "fee_estimate": {
+        "resource_fee_stroops": 212,
+        "components": {
+          "cpu": 212,
+          "disk_entry_reads": 0,
+          "entry_writes": 0,
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "wrong_amount_auth",
+      "ok": true,
+      "instructions": 745053,
+      "memory_bytes": 1257015,
+      "read_entries": 7,
+      "write_entries": 0,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-facade-native-synthetic-fixtures",
+      "fee_estimate": {
+        "resource_fee_stroops": 224,
+        "components": {
+          "cpu": 224,
+          "disk_entry_reads": 0,
+          "entry_writes": 0,
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    },
+    {
+      "flow": "wrong_recipient_auth",
+      "ok": true,
+      "instructions": 745053,
+      "memory_bytes": 1257015,
+      "read_entries": 7,
+      "write_entries": 0,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "disk_read_entries": 0,
+      "contract_events_size_bytes": 0,
+      "persistent_rent_ledger_bytes": 0,
+      "persistent_entry_rent_bumps": 0,
+      "temporary_rent_ledger_bytes": 0,
+      "temporary_entry_rent_bumps": 0,
+      "scope": "compiled-facade-native-synthetic-fixtures",
+      "fee_estimate": {
+        "resource_fee_stroops": 224,
+        "components": {
+          "cpu": 224,
+          "disk_entry_reads": 0,
+          "entry_writes": 0,
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "events": 0,
+          "persistent_rent": 0,
+          "temporary_rent": 0
+        },
+        "captured_ledger": 65264375,
+        "network_protocol": 29,
+        "local_host_protocol": 25,
+        "rent_rate_per_1kb": 1000,
+        "scope": "local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation"
+      }
+    }
+  ],
+  "remaining_proofs": [
+    "V3 swap/activation/close roundtrip under all limits",
+    "post-execution/post-swap cancellation and positive interrupted-open funded recovery",
+    "compiled receipt/margin beneficial ownership changes and forced liquidation reward preservation",
+    "positive funded atomic settlement, seizure rollback, repay-release",
+    "range/rounding/emission-change pending-view equality across pinned pool states",
+    "runtime proven shortfall/excess reconciliation and waiver redistribution to original interval owners",
+    "complete SEP41 allowance/transfer_from reward boundaries, TTL/archive and capacity/range proofs",
+    "actual PYUSD/USDC assets, live-state/oracle/depeg and account-wide collateral validity",
+    "complete-open reserve enforcement in compiled integration, fresh funding deployment/readbacks and deployment flow budgets",
+    "full transaction fee/network state simulation and production re-audit"
+  ],
+  "safety": {
+    "network_transactions": 0,
+    "keys_or_secrets_read": false,
+    "signatures_or_broadcasts": 0,
+    "upshift_bound": false,
+    "production_maintenance_margin": null,
+    "local_existing_contract_sources_modified": [
+      "receipt-vault",
+      "margin-controller"
+    ],
+    "no_production_approval": true
+  },
+  "evidence_directory": "docs/deployment-handoffs/evidence/cl-stage1-20261102",
+  "reproduce": [
+    "node scripts/fetch_cl_pool_fixture.cjs",
+    "node scripts/capture_cl_network_config.cjs",
+    "bash scripts/run_cl_share_checkpoint.sh",
+    "CL_RESOURCE_REPORT=\"$PWD/target/cl-share-checkpoint/funded-resources-final.jsonl\" cargo test -p margin-controller --features funded-liquidation-validation funded_prototype -- --nocapture",
+    "bash scripts/check_budget.sh --local-report target/cl-share-checkpoint/funded-resources-final.jsonl"
+  ]
+}
