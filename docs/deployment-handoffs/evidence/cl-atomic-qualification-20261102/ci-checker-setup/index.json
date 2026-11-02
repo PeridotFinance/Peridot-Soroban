@@ -1,0 +1,32 @@
+{
+  "schema": "cl-atomic-ci-checker-setup-v1",
+  "release_approval": false,
+  "failing_commit": "c80a1da30be2fce7004e9e9c1c3d038aa1665d24",
+  "run_url": "https://github.com/PeridotFinance/Peridot-Soroban/actions/runs/41511526331",
+  "checker_job": 125504273263,
+  "cause": "Required new XDR regression tests could not load the locked Stellar SDK; checker job lacked dependency installation.",
+  "fix": "Add same pinned setup-node action/Node22 and npm ci --ignore-scripts used by evidence job. Keep all tests and failure propagation.",
+  "local_clean_dependency_rehearsal": "10 real-XDR regressions PASS after offline lockfile installation in a fresh tree; no existing node_modules reused.",
+  "local_install_first_attempt": "Both empty config paths were /dev/null, rejected by npm; retried with distinct empty local configs. No network or keys used.",
+  "local_yaml_parser": "Python YAML parser unavailable; no parser pass claimed. Six-line workflow change reviewed; GitHub parser/next checker result separate.",
+  "files": {
+    "clean-install.log": {
+      "sha256": "250e369d730a46c4d41df37449a5c58c169b4b1d2ab546951a8bed0285805a95",
+      "bytes": 117
+    },
+    "clean-install-retry.log": {
+      "sha256": "aa826634366c63961808146ea48f03eee9dc39968bfa9e19d91e4d903a080f25",
+      "bytes": 94
+    },
+    "clean-tests.log": {
+      "sha256": "c45e9ae5992ded68aa00034dd87e43090082402a32bc21fc5840637bcd0868c7",
+      "bytes": 975
+    },
+    "failed-checker-job.log.gz": {
+      "sha256": "2892c909eaeee77420796c1fbdb62d5ee7386b1ef8c2c3e031d756325f082e2d",
+      "bytes": 8683,
+      "uncompressed_sha256": "2c72a6e5865506ebb3ffcb2b13cd702d8f5b4ce32309603e3e4255f7dd25842d",
+      "uncompressed_bytes": 72604
+    }
+  }
+}

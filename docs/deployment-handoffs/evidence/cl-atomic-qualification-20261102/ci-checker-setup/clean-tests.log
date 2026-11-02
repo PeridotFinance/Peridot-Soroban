@@ -1,0 +1,15 @@
+test_after_entry_cannot_be_overridden (__main__.RecordingProjectionTests) ... ok
+test_duplicate_missing_unknown_marker_fields_reject (__main__.RecordingProjectionTests) ... ok
+test_missing_marker_does_not_silently_repair_legacy_rw (__main__.RecordingProjectionTests) ... ok
+test_mutated_initial_entry_rejects (__main__.RecordingProjectionTests) ... ok
+test_mutated_key_rejects (__main__.RecordingProjectionTests) ... ok
+test_mutated_rent_sizes_ttl_and_new_value_reject (__main__.RecordingProjectionTests) ... ok
+test_mutated_restoration_index_and_access_reject (__main__.RecordingProjectionTests) ... ok
+test_unknown_null_or_malformed_repair_rejects (__main__.RecordingProjectionTests) ... ok
+test_v3_live_real_xdr_keeps_legacy_projection (__main__.RecordingProjectionTests) ... ok
+test_v4_archived_real_xdr_retains_exact_prior_data (__main__.RecordingProjectionTests) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.868s
+
+OK
