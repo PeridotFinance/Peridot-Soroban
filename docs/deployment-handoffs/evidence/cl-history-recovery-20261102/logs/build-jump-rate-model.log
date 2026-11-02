@@ -1,0 +1,15 @@
+ℹ️  CARGO_BUILD_RUSTFLAGS=--remap-path-prefix=/Users/joshua/.cargo/registry/src= SOROBAN_SDK_BUILD_SYSTEM_SUPPORTS_SPEC_SHAKING_V2=1 cargo rustc --manifest-path=contracts/jump-rate-model/Cargo.toml --crate-type=cdylib --target=wasm32v1-none --release
+    Finished `release` profile [optimized] target(s) in 0.15s
+ℹ️  Build Summary:
+    Wasm File: target/cl-stage1-history-final/artifacts/jump_rate_model.wasm (7644 bytes optimized (original size was 9215 bytes))
+    Wasm Hash: b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800
+    Wasm Size: 7644 bytes optimized (original size was 9215 bytes)
+    Exported Functions: 6 found
+      • get_borrow_rate
+      • get_supply_rate
+      • initialize
+      • propose_upgrade_wasm
+      • set_params
+      • upgrade_wasm
+✅ Build Complete
+

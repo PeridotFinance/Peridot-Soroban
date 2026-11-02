@@ -126,11 +126,16 @@ pub fn reset_debt(e: &Env, a: &Address) {
         .checked_mul(index(e))
         .unwrap();
     put(e, a, &h);
+    crate::reward_history::record_weight(e, a);
 }
 fn reward(e: &Env) -> Address {
     primary_reward_token(e).unwrap_or_else(|| panic_with_error!(e, RewardError::MissingRewardToken))
 }
 pub fn checkpoint(e: &Env) -> bool {
+    let interval: u64 = e.storage().instance().get(&Key::Interval).unwrap_or(0);
+    let open: bool = e.storage().instance().get(&Key::Open).unwrap_or(false);
+    let pending = if open { pending_reading(e) } else { None };
+    let trusted = open && crate::reward_history::verified(e);
     let r = reward(e);
     let me = e.current_contract_address();
     let tok = token::Client::new(e, &r);
@@ -151,8 +156,10 @@ pub fn checkpoint(e: &Env) -> bool {
         .unwrap();
     let mut t = totals(e);
     t.received = t.received.checked_add(delta).unwrap();
-    let interval: u64 = e.storage().instance().get(&Key::Interval).unwrap_or(0);
-    if e.storage().instance().get(&Key::Open).unwrap_or(false) || state(e).total_shares == 0 {
+    if open || state(e).total_shares == 0 {
+        if open {
+            crate::reward_history::seal(e, interval, pending, trusted, delta);
+        }
         quarantine(e, interval, delta);
         t.quarantine = t.quarantine.checked_add(delta).unwrap();
         // End at an actual claim. A later pending read cannot repair old boundaries.
@@ -198,18 +205,21 @@ pub fn recovery(e: &Env, a: &Address, forced: bool, waiver: bool) {
         settle(e, a);
         return;
     }
-    let reading = e
-        .try_invoke_contract::<u128, soroban_sdk::InvokeError>(
-            &config(e).pool,
-            &Symbol::new(e, "get_user_reward"),
-            (e.current_contract_address(),).into_val(e),
-        )
-        .ok()
-        .and_then(Result::ok);
-    // A readable estimate is recorded, but is NOT proof (00 overrides 07).
-    if !forced && !waiver {
+    let reading = pending_reading(e);
+    let interval: u64 = e.storage().instance().get(&Key::Interval).unwrap_or(0);
+    let trusted = crate::reward_history::verified(e);
+    let proven = crate::reward_history::boundary_proven(e, interval, reading, trusted);
+    if !forced && !waiver && !proven {
         panic_with_error!(e, RewardError::RewardWaiverRequired);
     }
+    let waived = !forced && waiver && !proven;
+    crate::reward_history::observe(
+        e,
+        interval,
+        reading,
+        trusted,
+        if waived { Some(a.clone()) } else { None },
+    );
     settle(e, a);
     let id: u64 = e.storage().instance().get(&Key::Count).unwrap_or(0);
     let b = Boundary {
@@ -219,8 +229,8 @@ pub fn recovery(e: &Env, a: &Address, forced: bool, waiver: bool) {
         reading,
         timestamp: e.ledger().timestamp(),
         interval: e.storage().instance().get(&Key::Interval).unwrap_or(0),
-        waived: !forced && waiver,
-        proven: false,
+        waived,
+        proven,
     };
     e.storage().persistent().set(&Key::Boundary(id), &b);
     e.storage()
@@ -316,13 +326,66 @@ pub fn attribute(e: &Env, id: u64, amount: u128, evidence: BytesN<32>) {
     e.storage()
         .persistent()
         .set(&Key::Bucket(b.interval), &(bucket - amount));
-    let mut h = holder(e, &b.holder);
-    h.pending = h.pending.checked_add(amount).unwrap();
-    put(e, &b.holder, &h);
-    let mut t = totals(e);
-    t.quarantine -= amount;
-    save(e, &t);
+    if !crate::reward_history::direct_release(e, b.interval, &b.holder, amount) {
+        let mut h = holder(e, &b.holder);
+        h.pending = h.pending.checked_add(amount).unwrap();
+        put(e, &b.holder, &h);
+        let mut t = totals(e);
+        t.quarantine -= amount;
+        save(e, &t);
+    }
     e.storage().persistent().remove(&Key::Proposal(id));
     e.storage().persistent().set(&k, &evidence);
     e.storage().persistent().extend_ttl(&k, 500_000, 1_000_000);
+}
+
+fn pending_reading(e: &Env) -> Option<u128> {
+    e.try_invoke_contract::<u128, soroban_sdk::InvokeError>(
+        &config(e).pool,
+        &Symbol::new(e, "get_user_reward"),
+        (e.current_contract_address(),).into_val(e),
+    )
+    .ok()
+    .and_then(Result::ok)
+}
+/// Keep fractional historical backing explicit, separate from entitlement credit.
+pub(crate) fn credit_history(
+    e: &Env,
+    a: &Address,
+    scaled: u128,
+    reserve_before: u128,
+    reserve_after: u128,
+    interval: u64,
+    remaining: u128,
+) {
+    let mut h = holder(e, a);
+    let value = h.fraction.checked_add(scaled).unwrap();
+    h.pending = h.pending.checked_add(value / SCALE).unwrap();
+    h.fraction = value % SCALE;
+    put(e, a, &h);
+    let mut t = totals(e);
+    t.quarantine = t
+        .quarantine
+        .checked_sub(reserve_before / SCALE)
+        .unwrap()
+        .checked_add(reserve_after / SCALE)
+        .unwrap();
+    t.rounding_scaled = t
+        .rounding_scaled
+        .checked_sub(reserve_before % SCALE)
+        .unwrap()
+        .checked_add(reserve_after % SCALE)
+        .unwrap();
+    save(e, &t);
+    e.storage()
+        .persistent()
+        .set(&Key::Bucket(interval), &(remaining / SCALE));
+}
+
+#[cfg(test)]
+pub(crate) fn test_history_receipt(e: &Env, amount: u128) {
+    let mut t = totals(e);
+    t.received = t.received.checked_add(amount).unwrap();
+    t.quarantine = t.quarantine.checked_add(amount).unwrap();
+    save(e, &t);
 }

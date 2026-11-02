@@ -1,7 +1,7 @@
 //! Compiled lifecycle with actual Aquarius bytecode and controlled prices/state.
 use super::*;
 
-fn open(f: &F) -> u64 {
+pub(super) fn open(f: &F) -> u64 {
     let id = begin(f);
     auth::<()>(
         &f.e,
@@ -292,7 +292,7 @@ struct RecoveryBoundary {
     waived: bool,
     proven: bool,
 }
-fn schedule_rewards(f: &F) {
+pub(super) fn schedule_rewards(f: &F) {
     let e = &f.e;
     auth::<()>(
         e,
@@ -311,7 +311,7 @@ fn schedule_rewards(f: &F) {
         &[],
     );
 }
-fn advance_rewards(e: &Env, timestamp: u64) {
+pub(super) fn advance_rewards(e: &Env, timestamp: u64) {
     e.ledger().with_mut(|l| {
         l.timestamp = timestamp;
         l.sequence_number += 20;

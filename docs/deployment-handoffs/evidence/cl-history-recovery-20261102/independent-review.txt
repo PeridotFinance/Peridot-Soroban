@@ -1,0 +1,1 @@
+Independent evidence review: 602 invocation rows, 34 proof mappings, 24 distinct compiled tests, all29 rejected transactions, exact wrong-recipient tree and required history/restoration marker keys verified. Aggregate1478 transactions/1449 success/29 rejection/297restores and resource maxima reconcile. Captured four gates PASS; internal four gates FAIL; no production approval.

@@ -12,6 +12,11 @@ soroban-sdk = { version = "=29.0.1", features = ["testutils"] }
 soroban-env-host = { version = "=29.0.1", features = ["testutils"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
+
+[features]
+default = ["transaction-evidence"]
+transaction-evidence = []
 
 [profile.dev]
 overflow-checks = true

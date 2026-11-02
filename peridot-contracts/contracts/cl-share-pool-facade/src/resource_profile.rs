@@ -39,6 +39,16 @@ pub(super) fn register_contracts(_env: &Env, contracts: &[(&str, &Address)]) {
     CONTRACTS.with(|c| *c.borrow_mut() = labels);
 }
 
+pub(super) fn contract_address(role: &str) -> Option<String> {
+    CONTRACTS.with(|c| c.borrow().iter().find(|(r,_,_)|r==role).map(|(_,_,a)|a.clone()))
+}
+
+/// Resolve the same fixture role for unsigned transaction evidence.
+pub(super) fn contract_role(address: &Address) -> Option<String> {
+    let key=address.to_string().to_string();
+    CONTRACTS.with(|c| c.borrow().iter().find(|(_,_,a)|a==&key).map(|(role,_,_)|role.clone()))
+}
+
 /// Append a full invocation tree as one JSON line when explicitly requested.
 /// `run_mode` must distinguish enforced acceptance/diagnostics from profiling.
 pub(super) fn capture(env: &Env, flow: &str, ok: bool, profile: &str, run_mode: &str) {

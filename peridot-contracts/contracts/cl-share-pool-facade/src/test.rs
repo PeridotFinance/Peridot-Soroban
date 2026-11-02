@@ -71,6 +71,8 @@ fn call<T: soroban_sdk::TryFromVal<Env, Val>>(
     args: Vec<Val>,
 ) -> T {
     e.mock_auths(&[]);
+    #[cfg(feature = "transaction-evidence")]
+    if MEASURE.with(|m|m.get()) { crate::transaction_evidence::capture_before(e,to,name,&args,None); }
     crate::cl_resource_limits::reset(e);
     e.invoke_contract(to, &Symbol::new(e, name), args)
 }
@@ -91,6 +93,8 @@ fn auth<T: soroban_sdk::TryFromVal<Env, Val>>(
             sub_invokes: subs,
         },
     }]);
+    #[cfg(feature = "transaction-evidence")]
+    if MEASURE.with(|m|m.get()) { crate::transaction_evidence::capture_before(e,to,name,&args,Some(who)); }
     crate::cl_resource_limits::reset(e);
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         e.invoke_contract(to, &Symbol::new(e, name), args)
@@ -152,6 +156,7 @@ struct F {
     receipt: Address,
     binding: soroban_sdk::BytesN<32>,
     oracle: Address,
+    controller: Address,
 }
 impl F {
     fn new() -> Self {
@@ -190,7 +195,7 @@ impl F {
             "12fca5a7a96577273b6d4184cf9c984036cda0e8f0594747e7b2933dced37ee6"
         );
         let pool = e.register(bytes.as_slice(), ());
-        let plane = e.register(TestPlane, ());
+        let plane = wasm(&e, "cl_integration_fixtures");
         let roles = (
             admin.clone(),
             admin.clone(),
@@ -254,7 +259,7 @@ impl F {
         p1.args = (user.clone(), pool.clone(), amount(actual.get(1).unwrap())).into_val(&e);
         let _: (Vec<u128>, u128) = auth(&e,&user,&pool,"deposit_position",
             (user.clone(), -2000i32, 2000i32, actual, 0u128).into_val(&e), &[p0,p1]);
-        let oracle = e.register(TestOracle, ());
+        let oracle = wasm(&e, "cl_integration_fixtures");
         let share = wasm(&e, "cl_share_vault");
         let facade = wasm(&e, "cl_share_pool_facade");
         let margin = wasm(&e, "margin_controller");
@@ -445,6 +450,7 @@ impl F {
             receipt,
             binding,
             oracle,
+            controller,
         };
         f.deposit_cash(1_000_000_000);
         // Test-only maintenance margin: 25%; it is NOT an approved deployment value.
@@ -603,6 +609,8 @@ fn compiled_vault_core_flows() {
 
 fn rejection(e:&Env,to:&Address,name:&str,args:Vec<Val>,label:&str,auth_error:bool) {
     e.mock_auths(&[]);
+    #[cfg(feature="transaction-evidence")]
+    crate::transaction_evidence::capture_rejection_before(e,to,name,&args,None,true,label);
     crate::cl_resource_limits::reset(e);
     let result=e.try_invoke_contract::<Val,soroban_sdk::Error>(to,&Symbol::new(e,name),args);
     assert!(result.is_err(),"negative case unexpectedly succeeded");
@@ -719,3 +727,17 @@ mod lifecycle_tests;
 mod stress_tests;
 #[path = "funded_tests.rs"]
 mod funded_tests;
+
+#[path = "venue_boundary_tests.rs"]
+mod venue_boundary_tests;
+#[path = "recovery_state_tests.rs"]
+mod recovery_state_tests;
+
+#[path = "adversarial_tests.rs"]
+mod adversarial_tests;
+#[path = "historical_tests.rs"]
+mod historical_tests;
+#[path = "historical_shortfall_tests.rs"]
+mod historical_shortfall_tests;
+#[path = "unresolved_stress_tests.rs"]
+mod unresolved_stress_tests;

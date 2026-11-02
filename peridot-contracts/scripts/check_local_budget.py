@@ -6,6 +6,8 @@ from pathlib import Path
 
 from cl_fee_estimate import estimate
 from cl_resource_profiles import create
+from cl_proof_evidence import validate_manifest
+from cl_transaction_evidence import validate_transactions
 
 REQUIRED = {
     'deposit', 'redeem', 'transfer', 'emergency_redeem', 'claim_rewards',
@@ -15,6 +17,14 @@ REQUIRED = {
     'claim_failure_recovery', 'cancel_before_execute', 'cancel_after_execute',
     'cancel_after_swap', 'receipt_custody_ownership_change',
     'allowance_transfer_from', 'waiver_redistribution', 'quarantine_reconciliation',
+    'pending_claim_boundary_matrix', 'failed_activation_recovery',
+    'expired_pending_before_swap', 'expired_pending_resolution',
+    'both_reward_calls_failed_funded_liquidation',
+    'funded_insufficient_liquidator_rollback', 'funded_invalid_valuation_rollback',
+    'funded_failed_collateral_transfer_rollback', 'funded_unauthorized_rollback',
+    'funded_repeated_execution_rollback', 'historical_multiple_intervals',
+    'historical_unresolved_intervals',
+    'historical_shortfall',
 }
 MEASUREMENTS = {
     'instructions': 'instructions', 'memory_bytes': 'mem_bytes',
@@ -78,6 +88,13 @@ def main(argv=None):
     parser.add_argument('report', type=Path)
     parser.add_argument('--profile', required=True, type=Path,
                         help='validated profile manifest, never an implicit limit switch')
+    parser.add_argument('--proof-manifest', type=Path,
+                        help='explicit proof-to-test/source/log mapping; invocation rows alone are not lifecycle proofs')
+    parser.add_argument('--transaction-evidence', type=Path,
+                        help='unsigned target-runtime e2e simulation JSONL with serialized XDR and complete fees')
+    parser.add_argument('--gate', choices=['invocation', 'lifecycle', 'transaction', 'checkpoint'],
+                        default='checkpoint', help='independent evidence gate, never release approval')
+    parser.add_argument('--summary-json', type=Path, help='write all gate outcomes without suppressing failures')
     args = parser.parse_args(argv)
     try:
         profile = load_profile(args.profile)
@@ -90,6 +107,7 @@ def main(argv=None):
     if failed:
         print('FAIL: profiling-only execution is not acceptance evidence')
     seen = set()
+    valid_flows = set()
     for index, row in enumerate(rows):
         if not isinstance(row, dict) or not isinstance(row.get('flow'), str):
             print(f'ROW {index}: FAIL malformed flow')
@@ -112,18 +130,49 @@ def main(argv=None):
             print(f'  FEE UNMEASURED: {error}')
             errors.append('fee unmeasured')
         failed |= bool(errors)
-    missing = REQUIRED - seen
+        if not errors:
+            valid_flows.add(row['flow'])
+    mapped_labels = seen
+    if args.proof_manifest:
+        try:
+            mapped_labels = {p['label'] for p in json.loads(args.proof_manifest.read_text())['proofs']}
+        except (OSError, KeyError, TypeError, ValueError):
+            mapped_labels = set()
+    missing = REQUIRED - mapped_labels
     if missing:
         print('UNMEASURED: ' + ', '.join(sorted(missing)))
-        failed = True
+    # Coverage belongs to lifecycle completeness, not numerical invocation limits.
+    # Empty or profiling-only reports nevertheless cannot pass invocation checks.
+    invocation_ok = not failed and bool(rows)
+    proof_errors = validate_manifest(args.proof_manifest, args.report, profile, valid_flows, REQUIRED)
+    if missing:
+        proof_errors.append('required invocation coverage missing: ' + ', '.join(sorted(missing)))
+    lifecycle_ok = not proof_errors and profile['mode'] == 'acceptance'
+    transaction_errors = validate_transactions(args.transaction_evidence, profile, REQUIRED, args.proof_manifest)
+    transaction_ok = not transaction_errors and profile['mode'] == 'acceptance'
+    gates = {'invocation': invocation_ok, 'lifecycle': lifecycle_ok, 'transaction': transaction_ok}
+    gates['checkpoint'] = all(gates.values())
     label = 'INTERNAL-POLICY' if profile['name'] == 'internal-policy' else 'CAPTURED-NETWORK-DIAGNOSTIC'
-    print(f"{label}: {'FAIL' if failed else 'PASS'}")
-    print('RELEASE GATE: FAIL — full transaction envelope/return/history/base fee evidence is unmeasured; '
-          'release_approval=false. Diagnostic profile selection cannot grant release approval.')
-    print('Scope: per-row fixture classification. Matching target runtime and captured cost model required. '
-          'SDK key/entry/code size checks remain enforced; no live-state RPC simulation claim.')
-    # This local checker cannot supply the absent full-transaction execution proof.
-    return 1
+    print(f"{label}: {'PASS' if gates['checkpoint'] else 'FAIL'}")
+    for gate, ok in gates.items():
+        print(f"{gate.upper()} GATE: {'PASS' if ok else 'FAIL'}")
+    for error in proof_errors:
+        print('  LIFECYCLE: ' + error)
+    for error in transaction_errors:
+        print('  TRANSACTION: ' + error)
+    print('RELEASE APPROVAL: NOT GRANTED — resource profiles and controlled-state evidence do not authorize release.')
+    print('Scope: matching target runtime/cost model and SDK invocation limits remain required. '
+          'Unsigned transaction evidence uses recording-only external authorization, not real account signatures. '
+          'Controlled-state execution is not live-state validation.')
+    if args.summary_json:
+        args.summary_json.write_text(json.dumps({
+            'schema': 'cl-verification-gates-v1', 'profile': profile['name'],
+            'config_sha256': profile['network_sha256'], 'gates': gates,
+            'selected_gate': args.gate, 'release_approval': False,
+            'missing_required_flows': sorted(missing), 'lifecycle_errors': proof_errors,
+            'transaction_errors': transaction_errors,
+        }, indent=2) + '\n')
+    return 0 if gates[args.gate] else 1
 
 
 if __name__ == '__main__':

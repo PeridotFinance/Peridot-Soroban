@@ -94,6 +94,8 @@ fn compiled_allowance_reward_boundary_and_claim_rollback() {
     // Exact spender signature is required, including the recipient and amount.
     let args: Vec<Val> = (spender.clone(), f.user.clone(), other.clone(), half).into_val(e);
     e.mock_auths(&[]);
+    #[cfg(feature="transaction-evidence")]
+    crate::transaction_evidence::capture_rejection_before(e,&f.share,"transfer_from",&args,None,true,"allowance_missing_spender_auth");
     crate::cl_resource_limits::reset(e);
     assert!(e
         .try_invoke_contract::<(), soroban_sdk::Error>(
@@ -106,6 +108,9 @@ fn compiled_allowance_reward_boundary_and_claim_rollback() {
     measure(e, "allowance_missing_spender_auth", true);
     let wrong_args: Vec<Val> = (spender.clone(), f.user.clone(), spender.clone(), half).into_val(e);
     exact(e, &spender, &f.share, "transfer_from", &wrong_args);
+    #[cfg(feature="transaction-evidence")]
+    crate::transaction_evidence::capture_mismatched_root_rejection(e,&f.share,"transfer_from",&args,&spender,&wrong_args,"allowance_wrong_recipient_auth");
+    crate::cl_resource_limits::reset(e);
     assert!(e
         .try_invoke_contract::<(), soroban_sdk::Error>(
             &f.share,
@@ -142,6 +147,9 @@ fn compiled_allowance_reward_boundary_and_claim_rollback() {
     let before: RewardTotals = call(e, &f.share, "reward_totals", ().into_val(e));
     let args: Vec<Val> = (spender.clone(), f.user.clone(), other.clone(), remaining).into_val(e);
     exact(e, &spender, &f.share, "transfer_from", &args);
+    #[cfg(feature="transaction-evidence")]
+    crate::transaction_evidence::capture_rejection_before(e,&f.share,"transfer_from",&args,Some(&spender),false,"allowance_failed_claim_rollback");
+    crate::cl_resource_limits::reset(e);
     assert_eq!(
         e.try_invoke_contract::<(), soroban_sdk::Error>(
             &f.share,
@@ -282,6 +290,6 @@ fn compiled_waived_interval_remains_unresolved_and_quarantined() {
     std::println!("COMPILED_UNRESOLVED_INTERVAL received={} quarantined={} waived_owner=0 original_coowner_credit=0 proven=false", totals.received, totals.quarantine);
     // These are explicit missing acceptance proofs, not passing reconciliation.
     // Keep their required flow names absent from successful resource records.
-    std::println!("REQUIRED_PROOF_MISSING quarantine_reconciliation: pending estimate remains unproven; no interval attribution completed");
-    std::println!("REQUIRED_PROOF_MISSING waiver_redistribution: original coowner has not received verified waived-interval entitlement");
+    std::println!("UNVERIFIED_CASE_QUARANTINE: this default-unverified interval has no completed attribution");
+    std::println!("UNVERIFIED_CASE_NO_REDISTRIBUTION: original coowner is not credited without verified/governed attribution");
 }

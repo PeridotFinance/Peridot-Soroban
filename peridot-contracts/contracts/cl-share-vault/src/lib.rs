@@ -12,6 +12,7 @@ mod pool;
 #[cfg(test)]
 mod proof_model;
 mod rewards;
+mod reward_history;
 mod storage;
 pub use contract::{ClShareVault, ClShareVaultClient};
 // This candidate is local validation only. Mainnet deployment is not authorized.

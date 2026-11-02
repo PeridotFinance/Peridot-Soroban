@@ -21,3 +21,7 @@ fn runtime_integrity_and_captured_cost_models() {
     cl_resource_limits::configure(&env);
     println!("RUNTIME_INTEGRITY {:?}", soroban_env_host::VERSION);
 }
+
+#[cfg(feature = "transaction-evidence")]
+#[path = "transaction_evidence.rs"]
+mod transaction_evidence;

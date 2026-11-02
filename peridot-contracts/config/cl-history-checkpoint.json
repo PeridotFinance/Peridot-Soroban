@@ -1,0 +1,196 @@
+{
+  "status": "STAGE1_INCOMPLETE_POLICY_FAILED_NO_RELEASE_APPROVAL",
+  "parent_checkpoint": "14ef4d813b476a0c06bd9a9f9792834b29b3f03a",
+  "preserved_checkpoint": "64093aa3c0f77ab510ebf110138195405bb0d430",
+  "prior_machine_checkpoints": [
+    "config/cl-share-checkpoint.json",
+    "config/cl-resource-checkpoint.json"
+  ],
+  "pr": "https://github.com/PeridotFinance/Peridot-Soroban/pull/75",
+  "runtime": {
+    "sdk": "29.0.1",
+    "host": "29.0.1",
+    "protocol": 29,
+    "host_revision": "ff6ae01b3465ac44185d2824876491e62c9a4cc4",
+    "cost_model": "all 86 CPU and 86 memory coefficients equal captured config",
+    "source_ledger": 65264920,
+    "source_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+    "min_persistent_ttl": 2073600,
+    "min_temporary_ttl": 17280,
+    "max_entry_ttl": 3110400,
+    "network_id": "local all-zero synthetic; not Public network",
+    "fixture_ledger": 100,
+    "fixture_timestamp": 1000,
+    "memory_semantics": "protocol29 refunded transient memory / peak high-water",
+    "production_workspace_sdk": "25.3.1; unchanged"
+  },
+  "safety": {
+    "borrowing_preparation_enabled": false,
+    "mainnet_transactions": 0,
+    "keys_secrets_read": false,
+    "signing_broadcasting": false,
+    "upshift_binding": false,
+    "production_maintenance_margin": null,
+    "release_approval": false
+  },
+  "fixtures": {
+    "vault_leverage": 1,
+    "margin_leverage": 2,
+    "maintenance_margin": "HARNESS ONLY 250000 scaled; production unset",
+    "identities": "Address::generate contract admins; narrowly mocked account-side auth, no real signature proof",
+    "venue": "pinned actual Aquarius bytecode / controlled initialized state / synthetic SAC and oracle; not live-state",
+    "oracle_plane": "compiled synthetic WASM (Mainnet disabled)"
+  },
+  "execution": {
+    "compiled_distinct_captured": {
+      "passed": 24,
+      "failed": 0
+    },
+    "compiled_main_captured": {
+      "passed": 23,
+      "failed": 0
+    },
+    "compiled_archival_reruns": {
+      "passed": 3,
+      "failed": 0
+    },
+    "supplemental_unresolved": {
+      "passed": 1,
+      "failed": 0
+    },
+    "supplemental_allowance": {
+      "passed": 1,
+      "failed": 0
+    },
+    "compiled_distinct_internal": {
+      "passed": 2,
+      "failed": 22
+    },
+    "internal_archive_reruns": {
+      "passed": 0,
+      "failed": 3
+    },
+    "native_vault": {
+      "passed": 53,
+      "failed": 0
+    },
+    "native_funded_host25_captured": {
+      "passed": 9,
+      "failed": 0,
+      "protocol29_evidence": false
+    },
+    "native_funded_host25_internal": {
+      "passed": 5,
+      "failed": 4,
+      "protocol29_evidence": false
+    },
+    "checker_regressions": {
+      "passed": 13,
+      "failed": 0
+    },
+    "gates": {
+      "internal-policy": {
+        "invocation": false,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "captured-network-diagnostic": {
+        "invocation": true,
+        "lifecycle": true,
+        "transaction": true,
+        "checkpoint": true
+      }
+    }
+  },
+  "metrics": {
+    "internal-policy": {
+      "rows": 68,
+      "cpu_max": 100004098,
+      "memory_max": 16797614,
+      "sdk_entry_total_max": 136,
+      "write_entries_max": 30,
+      "failed_rows": 25
+    },
+    "captured-network-diagnostic": {
+      "rows": 602,
+      "cpu_max": 235455376,
+      "memory_max": 24514438,
+      "sdk_entry_total_max": 213,
+      "write_entries_max": 56,
+      "failed_rows": 0
+    },
+    "unsigned_transactions": {
+      "rows": 1478,
+      "success": 1449,
+      "rejections": 29,
+      "cpu_max": 236694470,
+      "memory_max": 21678403,
+      "unique_footprint_max": 158,
+      "restored_rows": 297,
+      "archive_baseline_matches": true
+    }
+  },
+  "artifacts": {
+    "margin_controller.wasm": {
+      "bytes": 91503,
+      "sha256": "157d0d86121843598e146ef6061d25eae2fc265c2ef34902cb6d2be87dfcaf29"
+    },
+    "swap_adapter.wasm": {
+      "bytes": 10876,
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d"
+    },
+    "receipt_vault.wasm": {
+      "bytes": 87197,
+      "sha256": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e"
+    },
+    "jump_rate_model.wasm": {
+      "bytes": 7644,
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800"
+    },
+    "simple_peridottroller.wasm": {
+      "bytes": 63289,
+      "sha256": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2"
+    },
+    "cl_share_vault.wasm": {
+      "bytes": 85750,
+      "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f"
+    },
+    "cl_share_pool_facade.wasm": {
+      "bytes": 7298,
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5"
+    },
+    "cl_integration_fixtures.wasm": {
+      "bytes": 3168,
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f"
+    }
+  },
+  "accounting": {
+    "scale": 1000000000000000000,
+    "bounded_waivers_per_prepare": 4,
+    "max_weight_search_steps_per_waiver": 32,
+    "enumerates_holders_in_recovery": false,
+    "persistent_history_gc": false,
+    "missing_boundary_preserves_quarantine": true,
+    "governed_attribution_is_automatic": false,
+    "automatic_shortfall_observed": false,
+    "governed_synthetic_shortfall_test": true,
+    "forced_liquidation_waives": false
+  },
+  "remaining_proofs": [
+    "Internal resource policy still fails; no implicit cap relaxation",
+    "Real PYUSD/USDC assets and live pool/oracle/depeg/capacity states",
+    "Real account signatures and signed-envelope overhead; unsigned external auth recording is not signature proof",
+    "Production reserve integration, deployment/readbacks and cash-funding lifecycle budgets",
+    "Broad state-size/archival retention and legitimate automatic-shortfall generalization beyond controlled samples",
+    "Coordinated reconciliation of shared00 outdated begin/execute/swap/activate order",
+    "Production security audit and release approval"
+  ],
+  "ci": {
+    "workflow": ".github/workflows/cl-stage1.yml",
+    "local_checker": "13 PASS",
+    "remote": "Observe PR checks for publishing commit; not asserted at commit construction",
+    "expected_checkpoint_result": "FAIL: internal policy remains failed; no continue-on-error"
+  },
+  "evidence_directory": "docs/deployment-handoffs/evidence/cl-history-recovery-20261102"
+}

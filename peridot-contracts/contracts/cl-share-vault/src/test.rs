@@ -359,6 +359,18 @@ fn custody_rewards_follow_beneficial_owner_and_forced_seizure_preserves_history(
     assert_eq!(f.c().pending(&f.a), 100);
     assert!(!f.c().boundary(&0).unwrap().waived);
     assert_eq!(f.c().boundary(&1).unwrap().shares, 0);
+    f.e.as_contract(&f.l, || {
+        let segment=crate::reward_history::segment(&f.e,0).unwrap();
+        let count=crate::reward_history::count(&f.e,&f.a);
+        let mut historical=0;
+        for n in 0..count {
+            let w=crate::reward_history::weight(&f.e,&f.a,n).unwrap();
+            if w.revision<=segment.revision {historical=w.weight;}
+        }
+        assert_eq!(historical,2000); // direct1000 + custody1000 before seizure
+        assert_eq!(crate::reward_history::count(&f.e,&c),0); // custodian never beneficiary
+        assert_eq!(crate::reward_history::weight(&f.e,&f.b,0).unwrap().weight,500);
+    });
     let evidence = soroban_sdk::BytesN::from_array(&f.e, &[8; 32]);
     auth(
         &f,

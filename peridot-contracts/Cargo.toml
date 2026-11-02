@@ -11,6 +11,7 @@ members = [
   "contracts/swap-adapter",
   "contracts/aquarius-lp-vault",
   "contracts/cl-share-vault",
+  "contracts/cl-integration-fixtures",
   "contracts/cl-share-pool-facade",
   "contracts/price-router",
   "contracts/margin-controller",

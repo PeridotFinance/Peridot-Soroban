@@ -1,0 +1,18 @@
+ℹ️  CARGO_BUILD_RUSTFLAGS=--remap-path-prefix=/Users/joshua/.cargo/registry/src= SOROBAN_SDK_BUILD_SYSTEM_SUPPORTS_SPEC_SHAKING_V2=1 cargo rustc --manifest-path=contracts/cl-integration-fixtures/Cargo.toml --crate-type=cdylib --target=wasm32v1-none --release
+   Compiling cl-integration-fixtures v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-integration-fixtures)
+    Finished `release` profile [optimized] target(s) in 1.37s
+ℹ️  Build Summary:
+    Wasm File: target/cl-stage1-history-final/artifacts/cl_integration_fixtures.wasm (3168 bytes optimized (original size was 3683 bytes))
+    Wasm Hash: bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f
+    Wasm Size: 3168 bytes optimized (original size was 3683 bytes)
+    Exported Functions: 8 found
+      • __constructor
+      • base
+      • decimals
+      • lastprice
+      • resolution
+      • set_test_price
+      • total_supply
+      • update
+✅ Build Complete
+

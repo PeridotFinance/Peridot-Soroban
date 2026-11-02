@@ -1841,6 +1841,17 @@ impl ClShareVault {
         out.get(0).unwrap_or(0)
     }
 
+    /// Validation-only, pinned bytecode view support. Default is unresolved.
+    pub fn enable_verified_reward_view(env: Env) { crate::reward_history::enable(&env); }
+    pub fn reward_history_count(env: Env, holder: Address) -> u32 { crate::reward_history::count(&env,&holder) }
+    pub fn reward_weight(env: Env, holder: Address, checkpoint: u32) -> Option<crate::reward_history::Weight> { crate::reward_history::weight(&env,&holder,checkpoint) }
+    pub fn reward_interval(env: Env, id: u64) -> Option<crate::reward_history::Interval> { crate::reward_history::interval(&env,id) }
+    pub fn reward_segment(env: Env, id: u64) -> Option<crate::reward_history::Segment> { crate::reward_history::segment(&env,id) }
+    pub fn reward_history_totals(env: Env) -> crate::reward_history::HistoryTotals { crate::reward_history::totals(&env) }
+    pub fn prepare_reward_segment(env: Env, id: u64, limit: u32) -> bool { crate::reward_history::prepare(&env,id,limit) }
+    pub fn settle_reward_segment(env: Env, holder: Address, id: u64, checkpoint: u32) -> u128 { crate::reward_history::settle(&env,&holder,id,checkpoint) }
+    pub fn propose_reward_segment(env: Env, id: u64, amount: u128, evidence: BytesN<32>) { crate::reward_history::propose(&env,id,amount,evidence); }
+    pub fn attribute_reward_segment(env: Env, id: u64, amount: u128, evidence: BytesN<32>) { crate::reward_history::attribute(&env,id,amount,evidence); }
     pub fn checkpoint_rewards(env: Env) -> bool {
         crate::rewards::checkpoint(&env)
     }
