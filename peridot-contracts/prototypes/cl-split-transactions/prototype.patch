@@ -1,0 +1,947 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -3,0 +4 @@
++  "contracts/cl-split-escrow",
+--- a/contracts/cl-share-vault/src/contract.rs
++++ b/contracts/cl-share-vault/src/contract.rs
+@@ -2898,0 +2899,215 @@
++
++// ISOLATED SPLIT EXPERIMENT ONLY. This source lives in target/cl-split-workspace;
++// it is not a production ABI and deliberately preserves conservative failures.
++#[soroban_sdk::contracttype]
++#[derive(Clone)]
++enum SplitKey {
++    Prepared(Address, u64),
++    Consumed(Address, u64),
++}
++#[soroban_sdk::contracttype]
++#[derive(Clone)]
++struct SplitPrepared {
++    fence: BytesN<32>,
++    deadline: u64,
++}
++
++impl ClShareVault {
++    fn split_validation_only(env: &Env) {
++        let public = env.crypto().sha256(&soroban_sdk::Bytes::from_slice(
++            env, b"Public Global Stellar Network ; September 2015",
++        ));
++        assert_ne!(env.ledger().network_id(), public.to_bytes(), "split prototype: Mainnet disabled");
++    }
++
++    fn split_state_fence(env: &Env) -> BytesN<32> {
++        use soroban_sdk::xdr::ToXdr;
++        Self::split_validation_only(env);
++        Self::require_not_paused(env);
++        let cfg = config(env);
++        let pool = ConcentratedPoolClient::new(env, &cfg.pool);
++        assert!(!pool.get_is_killed_deposit() && !pool.get_is_killed_swap(), "split pool paused");
++        let me = env.current_contract_address();
++        let owned = pool.get_user_position_snapshot(&me);
++        assert!(owned.ranges.len() <= 1, "split unknown extra ranges");
++        if let Some(range) = owned.ranges.get(0) {
++            assert!(range.tick_lower == cfg.tick_lower && range.tick_upper == cfg.tick_upper, "split wrong owned range");
++        }
++        let position = pool.get_position(&me, &cfg.tick_lower, &cfg.tick_upper);
++        assert_eq!(position.liquidity, Self::position_liquidity(env), "split liquidity cache mismatch");
++        assert_eq!(owned.raw_liquidity, position.liquidity, "split unaccounted position");
++        let fees = pool.get_all_position_fees(&me);
++        assert!(fees.len() == 2 && fees.get(0) == Some(0) && fees.get(1) == Some(0), "split uncollected fees");
++        assert!(position.tokens_owed_0 == 0 && position.tokens_owed_1 == 0, "split owed fees");
++        let code = match cfg.pool.executable() {
++            Some(soroban_sdk::Executable::Wasm(hash)) => hash,
++            _ => panic!("split pool must be WASM"),
++        };
++        let mut parts: Vec<Val> = Vec::new(env);
++        parts.push_back(cfg.clone().into_val(env));
++        parts.push_back(params(env).into_val(env));
++        parts.push_back(range_params(env).into_val(env));
++        parts.push_back(code.into_val(env));
++        parts.push_back(pool.get_fee_fraction().into_val(env));
++        parts.push_back(pool.get_protocol_fee_fraction().into_val(env));
++        parts.push_back(pool.get_tick_spacing().into_val(env));
++        let tokens = pool.get_tokens();
++        assert!(tokens.len() == 2 && tokens.get(0) == Some(cfg.token0.clone())
++            && tokens.get(1) == Some(cfg.token1.clone()), "split token config changed");
++        parts.push_back(tokens.into_val(env));
++        parts.push_back(oracle_symbol(env, &cfg.token0).into_val(env));
++        parts.push_back(oracle_symbol(env, &cfg.token1).into_val(env));
++        parts.push_back(pool.get_fee_growth_global_0_x128().into_val(env));
++        parts.push_back(pool.get_fee_growth_global_1_x128().into_val(env));
++        parts.push_back(pool.get_tick(&cfg.tick_lower).into_val(env));
++        parts.push_back(pool.get_tick(&cfg.tick_upper).into_val(env));
++        parts.push_back(pool.get_slot0().into_val(env));
++        parts.push_back(pool.get_active_liquidity().into_val(env));
++        parts.push_back(position.into_val(env));
++        parts.push_back(owned.into_val(env));
++        // Ownership may change between stages; fresh NAV/supply and claims below
++        // handle it. Fee growth, actual position, pool code/config may not change.
++        env.crypto().sha256(&parts.to_xdr(env)).to_bytes()
++    }
++
++    fn split_fresh_root(env: &Env) -> u128 {
++        let cfg = config(env);
++        let prm = params(env);
++        let pu = Self::read_price(env, &cfg.oracle, &Self::underlying(env), prm.oracle_max_age_mult)
++            .expect("split underlying oracle unavailable");
++        let po = Self::read_price(env, &cfg.oracle, &Self::other_token(env), prm.oracle_max_age_mult)
++            .expect("split paired oracle unavailable");
++        assert!(pu > 0 && po > 0, "split zero oracle");
++        let ratio = try_mul_div(env, po, NAV_RATIO_SCALE, pu).and_then(|v|
++            try_mul_div(env, v, pow10(Self::decimals_at(&cfg, cfg.underlying_index)),
++                pow10(Self::decimals_at(&cfg, 1-cfg.underlying_index))))
++            .expect("split oracle ratio overflow");
++        let root = isqrt(ratio);
++        assert!(root > 0, "split zero root");
++        let mut st = state(env);
++        st.last_nav_root = root;
++        st.last_nav_root_at = env.ledger().timestamp();
++        set_state(env, &st);
++        root
++    }
++}
++
++#[contractimpl]
++impl ClShareVault {
++    pub fn split_assets(env: Env) -> (Address, Address, Address, u32) {
++        Self::split_validation_only(&env);
++        (Self::pool(&env), Self::underlying(&env), Self::other_token(&env), Self::underlying_index(&env))
++    }
++
++    pub fn split_fence(env: Env) -> BytesN<32> {
++        Self::split_state_fence(&env)
++    }
++
++    /// Fresh same-transaction conversion floor for the external escrow. Its
++    /// subsequent pool swap must execute in the same transaction and enforce
++    /// this floor along with the user's own (possibly stricter) minimum.
++    pub fn split_quote_convert(env: Env, amount_u: u128) -> u128 {
++        Self::split_validation_only(&env);
++        Self::require_not_paused(&env);
++        assert!(amount_u > 0 && amount_u <= i128::MAX as u128, "split conversion amount");
++        let root = Self::split_fresh_root(&env);
++        let pool = ConcentratedPoolClient::new(&env, &Self::pool(&env));
++        assert!(!pool.get_is_killed_swap() && !pool.get_is_killed_deposit(), "split pool paused");
++        let u = Self::underlying_index(&env);
++        let estimate = pool.estimate_swap(&u, &(1-u), &amount_u);
++        assert!(estimate > 0, "split conversion unavailable");
++        Self::require_quote_near_oracle(&env, u, amount_u, estimate, Some(root),
++            params(&env).max_pool_divergence_bps, false);
++        apply_slippage_floor(&env, estimate, Self::slippage_bps(&env))
++    }
++
++    /// Must follow conversion in the same escrow preparation transaction.
++    /// Repreparing this same job can refresh the fence but never extend its deadline.
++    pub fn split_prepare(env: Env, escrow: Address, job: u64, deadline: u64) -> BytesN<32> {
++        Self::split_validation_only(&env);
++        Self::require_not_paused(&env);
++        escrow.require_auth();
++        assert!(crate::custody::registered(&env, &escrow), "split escrow not registered");
++        assert!(!env.storage().persistent().has(&SplitKey::Consumed(escrow.clone(), job)), "split job consumed");
++        assert!(deadline > env.ledger().timestamp() && deadline <= env.ledger().timestamp().checked_add(86400).unwrap(), "split deadline invalid");
++        let key = SplitKey::Prepared(escrow.clone(), job);
++        if let Some(old) = env.storage().persistent().get::<_, SplitPrepared>(&key) {
++            assert_eq!(old.deadline, deadline, "split deadline immutable");
++        }
++        crate::accounting::begin(&env);
++        Self::collect_fees(&env);
++        let fence = Self::split_state_fence(&env);
++        env.storage().persistent().set(&key, &SplitPrepared { fence: fence.clone(), deadline });
++        env.storage().persistent().extend_ttl(&key, 500_000, 1_000_000);
++        crate::accounting::end(&env);
++        fence
++    }
++
++    /// Isolated pair deposit; no pre-existing vault balances are offered to the
++    /// pool. Registered escrow owns the lifecycle and authenticates its job.
++    pub fn split_deposit_pair(env: Env, escrow: Address, owner: Address, job: u64,
++        amount_u: u128, amount_o: u128, min_shares: u128, fence: BytesN<32>) -> i128 {
++        Self::split_validation_only(&env);
++        Self::require_not_paused(&env);
++        escrow.require_auth();
++        assert!(crate::custody::registered(&env, &escrow), "split escrow not registered");
++        assert!(!crate::custody::registered(&env, &owner), "split beneficiary is custodian");
++        let used = SplitKey::Consumed(escrow.clone(), job);
++        assert!(!env.storage().persistent().has(&used), "split job consumed");
++        let key = SplitKey::Prepared(escrow.clone(), job);
++        let prepared: SplitPrepared = env.storage().persistent().get(&key).expect("split not prepared");
++        assert!(env.ledger().timestamp() < prepared.deadline, "split expired");
++        assert_eq!(prepared.fence, fence, "split wrong job fence");
++        assert_eq!(Self::split_state_fence(&env), fence, "split fee/config fence changed");
++        assert!(amount_u > 0 && amount_o > 0 && min_shares > 0, "split invalid pair/minimum");
++        crate::accounting::begin(&env);
++        // Original mint-boundary actual claim retained. Beneficiary allocation
++        // below performs an additional actual claim rather than bypassing it.
++        crate::rewards::normal(&env, &owner);
++        let root = Self::split_fresh_root(&env);
++        assert!(Self::refresh_position_amounts_inner(&env), "split composition unavailable");
++        let underlying = Self::underlying(&env);
++        let other = Self::other_token(&env);
++        let pool = ConcentratedPoolClient::new(&env, &Self::pool(&env));
++        let estimate = pool.estimate_swap(&Self::underlying_index(&env), &(1-Self::underlying_index(&env)), &amount_u);
++        Self::require_quote_near_oracle(&env, Self::underlying_index(&env), amount_u,
++            estimate, Some(root), params(&env).max_pool_divergence_bps, true);
++        let nav_before = Self::total_underlying_full_at_root(&env, root);
++        let supply = Self::total_shares(&env);
++        let u_before = Self::balance_of_token(&env, &underlying);
++        let o_before = Self::balance_of_token(&env, &other);
++        let max_deploy = params(&env).max_deploy;
++        if max_deploy > 0 {
++            let offered_value = amount_u.checked_add(Self::other_amount_value_at_root(&env, amount_o, root)).unwrap();
++            assert!(Self::position_value_at_root(&env, root, true).checked_add(offered_value).unwrap() <= max_deploy, "split deployment cap");
++        }
++        let me = env.current_contract_address();
++        token::Client::new(&env, &underlying).transfer(&escrow, &me, &to_i128(amount_u));
++        token::Client::new(&env, &other).transfer(&escrow, &me, &to_i128(amount_o));
++        let u_after = Self::balance_of_token(&env, &underlying);
++        let o_after = Self::balance_of_token(&env, &other);
++        assert_eq!(u_after, u_before.checked_add(amount_u).unwrap(), "split underlying receipt mismatch");
++        assert_eq!(o_after, o_before.checked_add(amount_o).unwrap(), "split paired receipt mismatch");
++        let result = Self::deposit_balances(&env, amount_u, amount_o, u_after, o_after);
++        assert!(result.minted > 0, "split position not minted");
++        let nav_after = Self::total_underlying_full_from_balances(&env, result.idle_underlying, result.idle_other);
++        let added = nav_after.checked_sub(nav_before).expect("split negative added value");
++        assert!(added > 0, "split zero added value");
++        let minted = if supply == 0 {
++            assert_eq!(nav_before, 0, "split unowned NAV");
++            added
++        } else {
++            assert!(nav_before > 0, "split insolvent supply");
++            mul_div(&env, added, supply, nav_before)
++        };
++        assert!(minted >= min_shares && minted > 0, "split minimum shares");
++        Self::mint_shares(&env, &escrow, minted);
++        crate::custody::assign(&env, &escrow, &owner, minted, false);
++        crate::rewards::reset_debt(&env, &owner);
++        env.storage().persistent().set(&used, &true);
++        env.storage().persistent().extend_ttl(&used, 500_000, 1_000_000);
++        env.storage().persistent().remove(&key);
++        crate::accounting::end(&env);
++        to_i128(minted)
++    }
++}
+--- a/contracts/cl-share-vault/src/pool.rs
++++ b/contracts/cl-share-vault/src/pool.rs
+@@ -39,0 +40,9 @@
++}
++
++#[contracttype]
++#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
++pub struct TickInfo {
++    pub fee_growth_outside_0_x128: U256,
++    pub fee_growth_outside_1_x128: U256,
++    pub liquidity_gross: u128,
++    pub liquidity_net: i128,
+@@ -105,0 +115,7 @@
++    fn get_position(env: Env, owner: Address, tick_lower: i32, tick_upper: i32) -> PositionData;
++    fn get_tick(env: Env, tick: i32) -> TickInfo;
++    fn get_fee_growth_global_0_x128(env: Env) -> U256;
++    fn get_fee_growth_global_1_x128(env: Env) -> U256;
++    fn get_active_liquidity(env: Env) -> u128;
++    fn get_fee_fraction(env: Env) -> u32;
++    fn get_protocol_fee_fraction(env: Env) -> u32;
+--- a/contracts/margin-controller/src/lib.rs
++++ b/contracts/margin-controller/src/lib.rs
+@@ -35,0 +36,3 @@
++
++#[cfg(feature = "funded-liquidation-validation")]
++mod split_open;
+--- a/contracts/margin-controller/src/perps.rs
++++ b/contracts/margin-controller/src/perps.rs
+@@ -224,0 +225,2 @@
++        #[cfg(feature = "funded-liquidation-validation")]
++        Self::split_assert_unfunded(env, position_id);
+@@ -340,0 +343,2 @@
++        #[cfg(feature = "funded-liquidation-validation")]
++        Self::split_assert_delivered_or_absent(env, position_id);
+@@ -456 +460 @@
+-    fn load_pending_perps_open(
++    pub(crate) fn load_pending_perps_open(
+@@ -500,0 +505,2 @@
++        #[cfg(feature = "funded-liquidation-validation")]
++        Self::split_assert_unfunded(env, position_id);
+@@ -519,0 +526,2 @@
++        #[cfg(feature = "funded-liquidation-validation")]
++        Self::split_assert_unfunded(env, position_id);
+--- a/contracts/margin-controller/src/pending_recovery.rs
++++ b/contracts/margin-controller/src/pending_recovery.rs
+@@ -14,0 +15,2 @@
++        #[cfg(feature = "funded-liquidation-validation")]
++        Self::split_assert_delivered_or_absent(env, position_id);
+--- /dev/null
++++ b/contracts/margin-controller/src/split_open.rs
+@@ -0,0 +1,308 @@
++//! ISOLATED LOCAL PROTOTYPE ONLY: explicit owner-funded escrow stages.
++use crate::{
++    contract::MarginController, fees::get_fee_terms, helpers::*, storage::*, MarginControllerArgs,
++    MarginControllerClient,
++};
++use soroban_sdk::{
++    contractimpl, contracttype, token, Address, BytesN, Env, IntoVal, Symbol, Val, Vec,
++};
++#[contracttype]
++#[derive(Clone)]
++pub struct SplitEscrowConfig {
++    pub controller: Address,
++    pub share: Address,
++    pub pool: Address,
++    pub underlying: Address,
++    pub other: Address,
++    pub u_idx: u32,
++}
++#[contracttype]
++#[derive(Clone)]
++pub struct SplitOpen {
++    pub owner: Address,
++    pub escrow: Address,
++    pub margin_received: u128,
++    pub phase: u32,
++    pub deadline: u64,
++}
++#[contracttype]
++#[derive(Clone)]
++enum Key {
++    Escrow,
++    Job(u64),
++}
++fn invoke<T: soroban_sdk::TryFromVal<Env, Val>>(
++    e: &Env,
++    to: &Address,
++    name: &str,
++    args: Vec<Val>,
++) -> T {
++    e.invoke_contract(to, &Symbol::new(e, name), args)
++}
++fn guard(e: &Env) {
++    crate::funded_liquidation::require_validation_network(e);
++}
++fn record(e: &Env, id: u64) -> SplitOpen {
++    let k = Key::Job(id);
++    assert!(e.storage().persistent().has(&k), "split missing");
++    e.storage().persistent().extend_ttl(&k, 500_000, 1_000_000);
++    e.storage().persistent().get(&k).unwrap()
++}
++fn save(e: &Env, id: u64, j: &SplitOpen) {
++    e.storage().persistent().set(&Key::Job(id), j);
++    e.storage()
++        .persistent()
++        .extend_ttl(&Key::Job(id), 500_000, 1_000_000);
++}
++fn owned(e: &Env, owner: &Address, id: u64) -> SplitOpen {
++    guard(e);
++    owner.require_auth();
++    let j = record(e, id);
++    assert_eq!(j.owner, *owner, "not owner");
++    let p = get_position_record_or_panic(e, id);
++    assert_eq!(p.owner, *owner);
++    assert_eq!(p.status, PositionStatus::PendingOpen, "not pending");
++    j
++}
++// These helpers accept a job only after the public root authenticates its
++// owner. Combined execution authenticates once; all phase/deadline checks stay.
++fn convert_job(e: &Env, j: &mut SplitOpen, id: u64, input: u128, min_out: u128) -> u128 {
++    assert_eq!(j.phase, 1);
++    assert!(e.ledger().timestamp() <= j.deadline, "expired");
++    let out: u128 = invoke(e, &j.escrow, "convert", (id, input, min_out).into_val(e));
++    j.phase = 2;
++    save(e, id, j);
++    out
++}
++fn prepare_job(e: &Env, j: &mut SplitOpen, id: u64) -> BytesN<32> {
++    assert!(j.phase == 2 || j.phase == 3, "wrong phase");
++    let fence: BytesN<32> = invoke(e, &j.escrow, "prepare", (id,).into_val(e));
++    j.phase = 3;
++    save(e, id, j);
++    fence
++}
++impl MarginController {
++    pub(crate) fn split_assert_delivered_or_absent(e: &Env, id: u64) {
++        if e.storage().persistent().has(&Key::Job(id)) {
++            assert_eq!(record(e, id).phase, 5, "split collateral not delivered");
++        }
++    }
++    pub(crate) fn split_assert_unfunded(e: &Env, id: u64) {
++        assert!(
++            !e.storage().persistent().has(&Key::Job(id)),
++            "split escrow active"
++        );
++    }
++}
++#[contractimpl]
++impl MarginController {
++    pub fn set_split_escrow(e: Env, admin: Address, escrow: Address) {
++        guard(&e);
++        let expected: Address = e.storage().persistent().get(&DataKey::Admin).unwrap();
++        assert_eq!(admin, expected);
++        admin.require_auth();
++        assert!(!e.storage().instance().has(&Key::Escrow), "escrow fixed");
++        let c: SplitEscrowConfig = invoke(&e, &escrow, "config", ().into_val(&e));
++        assert_eq!(c.controller, e.current_contract_address());
++        assert!(Self::cl_enabled(&e, &c.share));
++        let registered: bool = invoke(&e, &c.share, "is_custodian", (escrow.clone(),).into_val(&e));
++        assert!(registered);
++        e.storage().instance().set(&Key::Escrow, &escrow);
++    }
++    pub fn get_split_open(e: Env, id: u64) -> SplitOpen {
++        guard(&e);
++        record(&e, id)
++    }
++    pub fn split_fund(e: Env, user: Address, id: u64, max_borrow: u128, max_input: u128) {
++        guard(&e);
++        user.require_auth();
++        Self::split_assert_unfunded(&e, id);
++        let (_, pending, vaults) = Self::load_pending_perps_open(&e, &user, id, true);
++        assert!(
++            get_pending_perps_open_execution(&e, id).is_none(),
++            "already swapped"
++        );
++        assert_eq!(pending.side, PositionSide::Long, "prototype long only");
++        let escrow: Address = e
++            .storage()
++            .instance()
++            .get(&Key::Escrow)
++            .expect("escrow missing");
++        let c: SplitEscrowConfig = invoke(&e, &escrow, "config", ().into_val(&e));
++        assert_eq!(c.underlying, pending.margin_asset);
++        assert_eq!(c.share, pending.base_asset);
++        assert!(
++            pending.borrow_amount > 0 && pending.borrow_amount <= max_borrow,
++            "borrow bound"
++        );
++        Self::assert_market_not_borrow_paused(&e, &vaults.debt_vault);
++        let reserve: Option<u32> = invoke(
++            &e,
++            &vaults.debt_vault,
++            "get_min_cash_reserve_bps",
++            ().into_val(&e),
++        );
++        assert!(reserve.is_some(), "prototype reserve required");
++        assert!(
++            invoke::<bool>(
++                &e,
++                &vaults.debt_vault,
++                "get_cash_borrowing_enabled",
++                ().into_val(&e)
++            ),
++            "cash borrowing disabled"
++        );
++        let me = e.current_contract_address();
++        let token = token::Client::new(&e, &pending.margin_asset);
++        let before = token.balance(&me);
++        Self::authorize_controller_subcall(
++            &e,
++            &pending.margin_vault,
++            "withdraw",
++            (me.clone(), pending.margin_ptokens).into_val(&e),
++        );
++        Self::begin_margin_withdraw_if_supported(
++            &e,
++            &pending.margin_vault,
++            &me,
++            &me,
++            pending.margin_ptokens,
++        );
++        ReceiptVaultClient::new(&e, &pending.margin_vault).withdraw(&me, &pending.margin_ptokens);
++        let margin = token
++            .balance(&me)
++            .checked_sub(before)
++            .expect("margin decrease");
++        assert!(margin > 0, "margin missing");
++        Self::authorize_controller_subcall(
++            &e,
++            &vaults.debt_vault,
++            "borrow_for_margin_to_controller",
++            (id, pending.borrow_amount).into_val(&e),
++        );
++        ReceiptVaultClient::new(&e, &vaults.debt_vault)
++            .borrow_for_margin_to_controller(&id, &pending.borrow_amount);
++        let total = (margin as u128).checked_add(pending.borrow_amount).unwrap();
++        assert!(total <= max_input, "input bound");
++        let total_i: i128 = total.try_into().unwrap();
++        assert_eq!(token.balance(&me) - before, total_i, "borrow cash delta");
++        Self::authorize_controller_subcall(
++            &e,
++            &pending.margin_asset,
++            "transfer",
++            (me.clone(), escrow.clone(), total_i).into_val(&e),
++        );
++        invoke::<()>(
++            &e,
++            &escrow,
++            "fund",
++            (id, user.clone(), total, pending.expires_at).into_val(&e),
++        );
++        assert_eq!(token.balance(&me), before, "controller dust changed");
++        invoke::<()>(
++            &e,
++            &vaults.debt_vault,
++            "assert_borrowing_reserve",
++            ().into_val(&e),
++        );
++        save(
++            &e,
++            id,
++            &SplitOpen {
++                owner: user,
++                escrow,
++                margin_received: margin as u128,
++                phase: 1,
++                deadline: pending.expires_at,
++            },
++        );
++    }
++    pub fn split_convert(e: Env, user: Address, id: u64, input: u128, min_out: u128) -> u128 {
++        let mut j = owned(&e, &user, id);
++        convert_job(&e, &mut j, id, input, min_out)
++    }
++    /// Combined candidate: conversion then incumbent fee checkpoint atomically.
++    pub fn split_convert_prepare(
++        e: Env,
++        user: Address,
++        id: u64,
++        input: u128,
++        min_out: u128,
++    ) -> BytesN<32> {
++        let mut j = owned(&e, &user, id);
++        convert_job(&e, &mut j, id, input, min_out);
++        prepare_job(&e, &mut j, id)
++    }
++    pub fn split_prepare(e: Env, user: Address, id: u64) -> BytesN<32> {
++        let mut j = owned(&e, &user, id);
++        prepare_job(&e, &mut j, id)
++    }
++    pub fn split_mint(e: Env, user: Address, id: u64, min_shares: u128) -> u128 {
++        let mut j = owned(&e, &user, id);
++        assert_eq!(j.phase, 3);
++        let pending = get_pending_perps_open_position_or_panic(&e, id);
++        assert!(
++            min_shares >= pending.min_position_amount,
++            "share floor weakened"
++        );
++        let out: u128 = invoke(&e, &j.escrow, "mint", (id, min_shares).into_val(&e));
++        j.phase = 4;
++        save(&e, id, &j);
++        out
++    }
++    pub fn split_deliver(e: Env, user: Address, id: u64) -> u128 {
++        let mut j = owned(&e, &user, id);
++        assert_eq!(j.phase, 4);
++        let pending = get_pending_perps_open_position_or_panic(&e, id);
++        let me = e.current_contract_address();
++        let token = token::Client::new(&e, &pending.base_asset);
++        let before = token.balance(&me);
++        let amount: u128 = invoke(&e, &j.escrow, "deliver", (id,).into_val(&e));
++        assert_eq!(token.balance(&me) - before, i128::try_from(amount).unwrap());
++        Self::cl_assign(&e, &pending.base_asset, &user, amount, false);
++        set_pending_perps_open_execution(
++            &e,
++            id,
++            &PendingPerpsOpenExecution {
++                margin_received: j.margin_received,
++                position_amount: amount,
++            },
++        );
++        j.phase = 5;
++        save(&e, id, &j);
++        amount
++    }
++    pub fn split_recover(e: Env, user: Address, id: u64, max_repay: u128) -> u128 {
++        let mut j = owned(&e, &user, id);
++        assert!(j.phase >= 1 && j.phase <= 5, "not recoverable");
++        let paid = if j.phase == 5 {
++            Self::recover_pending_open_funded_impl(&e, user.clone(), id, max_repay)
++        } else {
++            let pending = get_pending_perps_open_position_or_panic(&e, id);
++            let debt = ReceiptVaultClient::new(&e, &pending.debt_vault);
++            let paid = debt.repay_full_for_margin(&id, &user, &max_repay);
++            assert_eq!(debt.get_margin_borrow_balance(&id), 0, "debt remains");
++            let _: Vec<u128> = invoke(&e, &j.escrow, "release", (id, user.clone()).into_val(&e));
++            let refund = get_fee_terms(&e, id)
++                .map(|f| f.open_fee_ptokens)
++                .unwrap_or(0);
++            if refund > 0 {
++                accrue_user_fee(&e, &user, &pending.margin_vault);
++                let free = get_margin_balance_ptokens(&e, &user, &pending.margin_vault);
++                set_margin_balance_ptokens(
++                    &e,
++                    &user,
++                    &pending.margin_vault,
++                    free.checked_add(refund).unwrap(),
++                );
++                update_total_margin_ptokens(&e, &pending.margin_vault, refund, true);
++            }
++            clear_perps_v3_position_storage(&e, id);
++            remove_user_position(&e, &user, id);
++            paid
++        };
++        j.phase = 6;
++        save(&e, id, &j);
++        paid
++    }
++}
+--- /dev/null
++++ b/contracts/cl-split-escrow/Cargo.toml
+@@ -0,0 +1,9 @@
++[package]
++name = "cl-split-escrow"
++version = "0.1.0"
++edition = "2021"
++publish = false
++[lib]
++crate-type = ["cdylib"]
++[dependencies]
++soroban-sdk = { workspace = true }
+--- /dev/null
++++ b/contracts/cl-split-escrow/src/lib.rs
+@@ -0,0 +1,351 @@
++#![no_std]
++//! ISOLATED LOCAL PROTOTYPE. Never a production escrow or deployment candidate.
++use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
++use soroban_sdk::{
++    contract, contractimpl, contracttype, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Val,
++    Vec,
++};
++#[contracttype]
++#[derive(Clone)]
++pub struct Config {
++    pub controller: Address,
++    pub share: Address,
++    pub pool: Address,
++    pub underlying: Address,
++    pub other: Address,
++    pub u_idx: u32,
++}
++#[contracttype]
++#[derive(Clone)]
++pub struct Job {
++    pub owner: Address,
++    pub underlying: u128,
++    pub other: u128,
++    pub shares: u128,
++    pub deadline: u64,
++    pub phase: u32,
++    pub fence: Option<BytesN<32>>,
++}
++#[contracttype]
++#[derive(Clone)]
++enum Key {
++    Config,
++    Job(u64),
++}
++fn guard(e: &Env) {
++    assert_ne!(
++        e.ledger().network_id(),
++        e.crypto()
++            .sha256(&Bytes::from_slice(
++                e,
++                b"Public Global Stellar Network ; September 2015"
++            ))
++            .to_bytes(),
++        "prototype Mainnet disabled"
++    );
++}
++fn cfg(e: &Env) -> Config {
++    guard(e);
++    e.storage()
++        .instance()
++        .get(&Key::Config)
++        .expect("uninitialized")
++}
++fn job(e: &Env, id: u64) -> Job {
++    e.storage()
++        .persistent()
++        .extend_ttl(&Key::Job(id), 500_000, 1_000_000);
++    e.storage()
++        .persistent()
++        .get(&Key::Job(id))
++        .expect("job missing")
++}
++fn save(e: &Env, id: u64, j: &Job) {
++    e.storage().persistent().set(&Key::Job(id), j);
++    e.storage()
++        .persistent()
++        .extend_ttl(&Key::Job(id), 500_000, 1_000_000);
++}
++fn amount(v: u128) -> i128 {
++    v.try_into().expect("amount overflow")
++}
++fn invoke<T: soroban_sdk::TryFromVal<Env, Val>>(
++    e: &Env,
++    to: &Address,
++    name: &str,
++    args: Vec<Val>,
++) -> T {
++    e.invoke_contract(to, &Symbol::new(e, name), args)
++}
++fn auth(e: &Env, to: &Address, name: &str, args: Vec<Val>) -> InvokerContractAuthEntry {
++    InvokerContractAuthEntry::Contract(SubContractInvocation {
++        context: ContractContext {
++            contract: to.clone(),
++            fn_name: Symbol::new(e, name),
++            args,
++        },
++        sub_invocations: Vec::new(e),
++    })
++}
++fn access(e: &Env, c: &Config, id: u64, phase: u32, live: bool) -> Job {
++    c.controller.require_auth();
++    let j = job(e, id);
++    assert_eq!(j.phase, phase, "wrong phase");
++    if live {
++        assert!(e.ledger().timestamp() <= j.deadline, "job expired");
++    }
++    j
++}
++#[contract]
++pub struct SplitEscrow;
++#[contractimpl]
++impl SplitEscrow {
++    pub fn initialize(e: Env, admin: Address, controller: Address, share: Address) {
++        guard(&e);
++        assert!(
++            !e.storage().instance().has(&Key::Config),
++            "already initialized"
++        );
++        admin.require_auth();
++        let (pool, underlying, other, u_idx): (Address, Address, Address, u32) =
++            invoke(&e, &share, "split_assets", ().into_val(&e));
++        assert!(u_idx < 2);
++        e.storage().instance().set(
++            &Key::Config,
++            &Config {
++                controller,
++                share,
++                pool,
++                underlying,
++                other,
++                u_idx,
++            },
++        );
++    }
++    pub fn config(e: Env) -> Config {
++        cfg(&e)
++    }
++    pub fn get_job(e: Env, id: u64) -> Job {
++        guard(&e);
++        job(&e, id)
++    }
++    pub fn fund(e: Env, id: u64, owner: Address, underlying: u128, deadline: u64) {
++        let c = cfg(&e);
++        c.controller.require_auth();
++        assert!(!e.storage().persistent().has(&Key::Job(id)), "job exists");
++        assert!(underlying > 0 && e.ledger().timestamp() <= deadline);
++        let t = token::Client::new(&e, &c.underlying);
++        let me = e.current_contract_address();
++        let before = t.balance(&me);
++        t.transfer(&c.controller, &me, &amount(underlying));
++        assert_eq!(
++            t.balance(&me) - before,
++            amount(underlying),
++            "funding mismatch"
++        );
++        save(
++            &e,
++            id,
++            &Job {
++                owner,
++                underlying,
++                other: 0,
++                shares: 0,
++                deadline,
++                phase: 1,
++                fence: None,
++            },
++        );
++    }
++    pub fn convert(e: Env, id: u64, input: u128, min_out: u128) -> u128 {
++        let c = cfg(&e);
++        let mut j = access(&e, &c, id, 1, true);
++        assert!(
++            input > 0 && input < j.underlying && min_out > 0,
++            "invalid conversion"
++        );
++        let guarded: u128 = invoke(&e, &c.share, "split_quote_convert", (input,).into_val(&e));
++        assert!(guarded > 0, "conversion floor unavailable");
++        let min_out = min_out.max(guarded);
++        let me = e.current_contract_address();
++        let tu = token::Client::new(&e, &c.underlying);
++        let to = token::Client::new(&e, &c.other);
++        let bu = tu.balance(&me);
++        let bo = to.balance(&me);
++        e.authorize_as_current_contract(soroban_sdk::vec![
++            &e,
++            auth(
++                &e,
++                &c.underlying,
++                "transfer",
++                (me.clone(), c.pool.clone(), amount(input)).into_val(&e)
++            )
++        ]);
++        let out: u128 = invoke(
++            &e,
++            &c.pool,
++            "swap",
++            (me.clone(), c.u_idx, 1 - c.u_idx, input, min_out).into_val(&e),
++        );
++        assert_eq!(bu - tu.balance(&me), amount(input));
++        assert_eq!(to.balance(&me) - bo, amount(out));
++        assert!(out >= min_out);
++        j.underlying -= input;
++        j.other = out;
++        j.phase = 2;
++        save(&e, id, &j);
++        out
++    }
++    pub fn prepare(e: Env, id: u64) -> BytesN<32> {
++        let c = cfg(&e);
++        c.controller.require_auth();
++        let mut j = job(&e, id);
++        assert!(j.phase == 2 || j.phase == 3, "wrong phase");
++        assert!(e.ledger().timestamp() <= j.deadline, "job expired");
++        let fence: BytesN<32> = invoke(
++            &e,
++            &c.share,
++            "split_prepare",
++            (e.current_contract_address(), id, j.deadline).into_val(&e),
++        );
++        j.fence = Some(fence.clone());
++        j.phase = 3;
++        save(&e, id, &j);
++        fence
++    }
++    pub fn mint(e: Env, id: u64, min_shares: u128) -> u128 {
++        let c = cfg(&e);
++        let mut j = access(&e, &c, id, 3, true);
++        assert!(min_shares > 0);
++        let me = e.current_contract_address();
++        let au = j.underlying;
++        let ao = j.other;
++        let bu = token::Client::new(&e, &c.underlying).balance(&me);
++        let bo = token::Client::new(&e, &c.other).balance(&me);
++        let bs = token::Client::new(&e, &c.share).balance(&me);
++        let assigned_before: u128 = invoke(
++            &e,
++            &c.share,
++            "custody_allocation",
++            (me.clone(), j.owner.clone()).into_val(&e),
++        );
++        let tu = auth(
++            &e,
++            &c.underlying,
++            "transfer",
++            (me.clone(), c.share.clone(), amount(au)).into_val(&e),
++        );
++        let to = auth(
++            &e,
++            &c.other,
++            "transfer",
++            (me.clone(), c.share.clone(), amount(ao)).into_val(&e),
++        );
++        let args: Vec<Val> = (
++            me.clone(),
++            j.owner.clone(),
++            id,
++            au,
++            ao,
++            min_shares,
++            j.fence.clone().unwrap(),
++        )
++            .into_val(&e);
++        e.authorize_as_current_contract(soroban_sdk::vec![
++            &e,
++            tu.clone(),
++            to.clone(),
++            InvokerContractAuthEntry::Contract(SubContractInvocation {
++                context: ContractContext {
++                    contract: c.share.clone(),
++                    fn_name: Symbol::new(&e, "split_deposit_pair"),
++                    args: args.clone()
++                },
++                sub_invocations: soroban_sdk::vec![&e, tu, to]
++            })
++        ]);
++        let minted: i128 = invoke(&e, &c.share, "split_deposit_pair", args);
++        assert!(minted > 0 && minted >= amount(min_shares));
++        assert_eq!(
++            bu - token::Client::new(&e, &c.underlying).balance(&me),
++            amount(au)
++        );
++        assert_eq!(
++            bo - token::Client::new(&e, &c.other).balance(&me),
++            amount(ao)
++        );
++        assert_eq!(token::Client::new(&e, &c.share).balance(&me) - bs, minted);
++        let assigned: u128 = invoke(
++            &e,
++            &c.share,
++            "custody_allocation",
++            (me, j.owner.clone()).into_val(&e),
++        );
++        assert_eq!(
++            assigned,
++            assigned_before.checked_add(minted as u128).unwrap(),
++            "beneficiary assignment delta mismatch"
++        );
++        j.underlying = 0;
++        j.other = 0;
++        j.shares = minted as u128;
++        j.phase = 4;
++        save(&e, id, &j);
++        minted as u128
++    }
++    pub fn deliver(e: Env, id: u64) -> u128 {
++        let c = cfg(&e);
++        let mut j = access(&e, &c, id, 4, false);
++        let me = e.current_contract_address();
++        invoke::<()>(
++            &e,
++            &c.share,
++            "custody_prepare_transfer",
++            (
++                me.clone(),
++                j.owner.clone(),
++                c.controller.clone(),
++                j.shares,
++                false,
++            )
++                .into_val(&e),
++        );
++        token::Client::new(&e, &c.share).transfer(&me, &c.controller, &amount(j.shares));
++        let out = j.shares;
++        j.shares = 0;
++        j.phase = 5;
++        save(&e, id, &j);
++        out
++    }
++    /// Only the controller can authorize this AFTER atomic full debt repayment.
++    pub fn release(e: Env, id: u64, owner: Address) -> Vec<u128> {
++        let c = cfg(&e);
++        c.controller.require_auth();
++        let mut j = job(&e, id);
++        assert!(j.phase >= 1 && j.phase <= 4, "job not recoverable");
++        assert_eq!(j.owner, owner, "wrong beneficiary");
++        let me = e.current_contract_address();
++        if j.shares > 0 {
++            invoke::<()>(
++                &e,
++                &c.share,
++                "custody_prepare_transfer",
++                (me.clone(), owner.clone(), owner.clone(), j.shares, true).into_val(&e),
++            );
++            token::Client::new(&e, &c.share).transfer(&me, &owner, &amount(j.shares));
++        }
++        if j.underlying > 0 {
++            token::Client::new(&e, &c.underlying).transfer(&me, &owner, &amount(j.underlying));
++        }
++        if j.other > 0 {
++            token::Client::new(&e, &c.other).transfer(&me, &owner, &amount(j.other));
++        }
++        let out = soroban_sdk::vec![&e, j.underlying, j.other, j.shares];
++        j.underlying = 0;
++        j.other = 0;
++        j.shares = 0;
++        j.phase = 6;
++        save(&e, id, &j);
++        out
++    }
++}

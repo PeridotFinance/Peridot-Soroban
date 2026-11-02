@@ -1,0 +1,26 @@
+{
+  "internal-policy": {
+    "gates_and_errors_match": true,
+    "invocation_rows_match": true,
+    "completed_tests_match": true,
+    "gates": {
+      "invocation": false,
+      "lifecycle": false,
+      "transaction": false,
+      "checkpoint": false
+    },
+    "release_approval": false
+  },
+  "captured-network-diagnostic": {
+    "gates_and_errors_match": true,
+    "invocation_rows_match": true,
+    "completed_tests_match": true,
+    "gates": {
+      "invocation": true,
+      "lifecycle": false,
+      "transaction": false,
+      "checkpoint": false
+    },
+    "release_approval": false
+  }
+}
