@@ -419,12 +419,14 @@ impl MarginController {
         }
 
         collect_open_fee(env, position_id, &pending.margin_vault);
-        #[cfg(feature = "funded-liquidation-validation")]
         if enforce_open_health {
             // Origination must use the current policy after every cash cost,
             // including a governance pause or supplier exit between stages.
             // The false branch is an atomic liquidation conversion, not a new
             // open: the borrowing floor must never prevent risk-reducing exits.
+            // Required receipt ABI: a missing entrypoint must trap atomically.
+            // Only a successfully decoded None denotes an unconfigured legacy
+            // market; invocation/decoding failures never opt out of enforcement.
             let reserve_bps: Option<u32> = env.invoke_contract(
                 &vaults.debt_vault,
                 &Symbol::new(env, "get_min_cash_reserve_bps"),

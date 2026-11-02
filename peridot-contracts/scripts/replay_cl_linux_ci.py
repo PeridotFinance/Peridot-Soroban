@@ -5,7 +5,7 @@ Never grants release approval. No network, signing, or contract execution.
 """
 import argparse, hashlib, json, subprocess, sys, tarfile
 from pathlib import Path
-from archive_cl_ci_evidence import COMMIT, ZIP_SHA
+from cl_ci_captures import validate_identity
 
 def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 def main():
@@ -13,7 +13,7 @@ def main():
     root=a.evidence.resolve();out=a.output.resolve()
     if out.exists(): raise ValueError('output must be new')
     index=json.loads((root/'index.json').read_text());archive=root/'linux-ci-payload.tar.xz'
-    if (index['schema'] != 'cl-linux-ci-archive-v1' or index['commit'] != COMMIT or index['original_zip_sha256'] != ZIP_SHA or index['release_approval'] is not False or set(index['profiles']) != {'internal-policy','captured-network-diagnostic'}): raise ValueError('historical index identity differs')
+    validate_identity(index)
     if archive.stat().st_size != index['archive_bytes']: raise ValueError('archive size differs')
     if sha(archive)!=index['archive_sha256']: raise ValueError('archive hash differs')
     out.mkdir(parents=True)

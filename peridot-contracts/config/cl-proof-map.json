@@ -27,7 +27,13 @@
     "test::reserve_open_tests::compiled_reserve_complete_open_positive": "contracts/cl-share-pool-facade/src/reserve_open_tests.rs",
     "test::reserve_open_tests::compiled_reserve_swap_rejects_floor_and_disabled_borrowing": "contracts/cl-share-pool-facade/src/reserve_open_tests.rs",
     "test::reserve_open_tests::compiled_reserve_all_finalizers_reject_interstage_exit_or_pause_then_recover": "contracts/cl-share-pool-facade/src/reserve_open_tests.rs",
-    "test::reserve_open_tests::compiled_reserve_liquidation_conversion_cannot_activate_healthy_pending": "contracts/cl-share-pool-facade/src/reserve_open_tests.rs"
+    "test::reserve_open_tests::compiled_reserve_liquidation_conversion_cannot_activate_healthy_pending": "contracts/cl-share-pool-facade/src/reserve_open_tests.rs",
+    "test::default_reserve_tests::compiled_default_reserve_active_repay_release": "contracts/cl-share-pool-facade/src/default_reserve_tests.rs",
+    "test::default_reserve_tests::compiled_default_reserve_post_cost_finalizers_rollback_recover": "contracts/cl-share-pool-facade/src/default_reserve_tests.rs",
+    "test::default_reserve_tests::compiled_default_pending_recovery_adversarial": "contracts/cl-share-pool-facade/src/default_reserve_tests.rs",
+    "test::default_reserve_tests::compiled_default_short_pending_recovery_paused_shortfall": "contracts/cl-share-pool-facade/src/default_reserve_tests.rs",
+    "test::default_reserve_tests::compiled_default_missing_receipt_abi_fails_closed": "contracts/cl-share-pool-facade/src/default_reserve_tests.rs",
+    "test::default_reserve_tests::compiled_default_pending_fee_refund_preserves_historical_fee_owner": "contracts/cl-share-pool-facade/src/default_reserve_tests.rs"
   },
   "proofs": [
     {
@@ -1003,6 +1009,212 @@
           "contract_role": "v3",
           "outcome": "rejected",
           "proof_case": "reserve_healthy_liquidation_conversion_rejected"
+        }
+      ]
+    },
+    {
+      "label": "default_reserve_active_repay_release",
+      "tests": [
+        "test::default_reserve_tests::compiled_default_reserve_active_repay_release"
+      ],
+      "assertions": [
+        "Actual default compiled V3 activates a configured ordinary-token market; full repayment and release remain available with borrowing paused and reserve100%; zero debt, absent position, backed free-margin receipt claims. Controlled Aquarius state; HARNESS ONLY risk configuration."
+      ],
+      "resource_flows": [
+        "default_activate_open_position_v3",
+        "default_active_full_repayment_paused_shortfall",
+        "default_release_debt_free_position_v3"
+      ],
+      "transactions": [
+        {
+          "function": "activate_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "repay_margin_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "release_debt_free_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "default_reserve_finalization_rollback",
+      "tests": [
+        "test::default_reserve_tests::compiled_default_reserve_post_cost_finalizers_rollback_recover"
+      ],
+      "assertions": [
+        "Each activate/execute/expired resolve rejects a pause and reserve floor after costs; exact complete-ledger rollback. Funded recovery repays fully, refunds200000 reserved fee pTokens and removes position; repeated execution rejects. Fee reservation is not receipt cash withdrawal."
+      ],
+      "resource_flows": [
+        "default_post_cost_reserve_reject",
+        "default_pending_funded_recovery",
+        "default_pending_recovery_repeat_reject"
+      ],
+      "transactions": [
+        {
+          "function": "activate_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_post_cost_reserve_reject"
+        },
+        {
+          "function": "execute_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_post_cost_reserve_reject"
+        },
+        {
+          "function": "resolve_pending_open_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_post_cost_reserve_reject"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_pending_recovery_repeat_reject"
+        }
+      ]
+    },
+    {
+      "label": "default_pending_recovery_rollback",
+      "tests": [
+        "test::default_reserve_tests::compiled_default_pending_recovery_adversarial"
+      ],
+      "assertions": [
+        "Wrong owner, insufficient maximum/funds, persisted validation custody marker and actual SAC collateral-transfer failure reject with full ledger rollback; authorized recovery subsequently succeeds. Missing nested external authorization rejects in scoped SDK invocation with full rollback; unsigned recording-mode companion measures positive costs only and is NOT a transaction authorization-rejection proof."
+      ],
+      "resource_flows": [
+        "default_pending_wrong_owner_reject",
+        "default_pending_insufficient_max_reject",
+        "default_validation_custody_downgrade_reject",
+        "default_pending_insufficient_wallet_rollback",
+        "default_pending_collateral_transfer_failure_rollback",
+        "default_pending_missing_nested_auth_reject",
+        "default_pending_funded_recovery"
+      ],
+      "transactions": [
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_pending_wrong_owner_reject"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_pending_insufficient_max_reject"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_validation_custody_downgrade_reject"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_pending_insufficient_wallet_rollback"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_pending_collateral_transfer_failure_rollback"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "default_short_pending_recovery",
+      "tests": [
+        "test::default_reserve_tests::compiled_default_short_pending_recovery_paused_shortfall"
+      ],
+      "assertions": [
+        "Default Short recovery with paused borrowing and100% reserve fully repays debt and atomically returns original margin plus sale proceeds; debt zero and position absent."
+      ],
+      "resource_flows": [
+        "default_pending_funded_recovery"
+      ],
+      "transactions": [
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "default_missing_reserve_abi",
+      "tests": [
+        "test::default_reserve_tests::compiled_default_missing_receipt_abi_fails_closed"
+      ],
+      "assertions": [
+        "Controlled substitution of compiled47858c1 receipt source: missing reserve getter rejects finalization atomically; historical repay_full_for_margin ABI still supports authorized owner-funded recovery. Not deployed historical binary or storage migration approval."
+      ],
+      "resource_flows": [
+        "default_missing_reserve_abi_reject",
+        "default_pending_funded_recovery"
+      ],
+      "transactions": [
+        {
+          "function": "activate_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "default_missing_reserve_abi_reject"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "default_pending_fee_refund_conservation",
+      "tests": [
+        "test::default_reserve_tests::compiled_default_pending_fee_refund_preserves_historical_fee_owner"
+      ],
+      "assertions": [
+        "A second position charges/distributes200000 fee pTokens while the pending fee is reserved. Recovery checkpoints fee entitlement before refunding200000 shares: recovering Alice receives zero historical fee, original free-margin provider Bob receives200000, repeat claim zero. Actual default compiled calls; no fabricated fee index."
+      ],
+      "resource_flows": [
+        "default_intervening_fee_epoch_distribution",
+        "default_pending_funded_recovery"
+      ],
+      "transactions": [
+        {
+          "function": "distribute_margin_fees",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "claim_margin_fees",
+          "contract_role": "v3",
+          "outcome": "success"
         }
       ]
     }

@@ -1221,14 +1221,20 @@ impl MarginController {
             .instance()
             .set(&DataKey::ClShareAsset(asset), &true);
     }
+}
 
+// Production ordinary-token pending recovery; CL custody remains validation-only.
+#[contractimpl]
+impl MarginController {
     pub fn recover_pending_open_funded(
         env: Env,
         user: Address,
         position_id: u64,
         max_repay: u128,
     ) -> u128 {
+        #[cfg(feature = "funded-liquidation-validation")]
         crate::funded_liquidation::require_validation_network(&env);
+        bump_instance_ttl(&env);
         user.require_auth();
         Self::recover_pending_open_funded_impl(&env, user, position_id, max_repay)
     }

@@ -15,6 +15,7 @@ mod funded_liquidation;
 compile_error!("funded-liquidation-prototype is native-only; use guarded funded-liquidation-validation for local WASM integration");
 mod helpers;
 mod perps;
+mod pending_recovery;
 mod storage;
 
 pub use constants::*;

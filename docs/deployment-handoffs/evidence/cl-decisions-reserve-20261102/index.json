@@ -1,0 +1,904 @@
+{
+  "schema": "cl-local-checkpoint-archive-v1",
+  "source_parent": "ac6325589a0095084c2df641d9b743860b4795f8",
+  "stage1_complete": false,
+  "release_approval": false,
+  "scope": "Compiled controlled state; synthetic external authorization; unsigned target-runtime simulation. Not live state, real signatures or release approval.",
+  "archive_sha256": "b1b1017bf87ec095061846c81acc913a2b4bc57bbc918034dacc4f3056152fb0",
+  "archive_bytes": 2162364,
+  "summary_sha256": "8aacff336d4774b14410a92ac67cd19df74957572e4a0036e536bb0ebe086a64",
+  "summary_xz_sha256": "394123f2f7f32903b64795ec239dab2376e2523b0ccb53bbb119b201938de6dd",
+  "files": {
+    "checkpoint/artifacts/cl_integration_fixtures.wasm": {
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+      "bytes": 3168
+    },
+    "checkpoint/artifacts/cl_share_pool_facade.wasm": {
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5",
+      "bytes": 7298
+    },
+    "checkpoint/artifacts/cl_share_vault.wasm": {
+      "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f",
+      "bytes": 85750
+    },
+    "checkpoint/artifacts/jump_rate_model.wasm": {
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+      "bytes": 7644
+    },
+    "checkpoint/artifacts/margin_controller.wasm": {
+      "sha256": "f59f592b1013d4e1ec49975f0cb2bb0ff81e9ab0f88f92bd76c3b7a1d6de7a36",
+      "bytes": 91657
+    },
+    "checkpoint/artifacts/receipt_vault.wasm": {
+      "sha256": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e",
+      "bytes": 87197
+    },
+    "checkpoint/artifacts/simple_peridottroller.wasm": {
+      "sha256": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2",
+      "bytes": 63289
+    },
+    "checkpoint/artifacts/swap_adapter.wasm": {
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d",
+      "bytes": 10876
+    },
+    "checkpoint/captured-network-diagnostic-calls.jsonl": {
+      "sha256": "59e29e73a35c5200d1b27bf4343fb5a8e9de40146a3987bd24f204a07c308eb4",
+      "bytes": 15320348
+    },
+    "checkpoint/captured-network-diagnostic-checkpoint-summary.json": {
+      "sha256": "3f3ed8fcdf49bed9b06da9418fd212b5155e0ae7529bca93d3f686cbf7c42094",
+      "bytes": 435
+    },
+    "checkpoint/captured-network-diagnostic-governed/history-scale-interval-1.json": {
+      "sha256": "145b552e091cd9c8accac3f1c9ee34a4ed2a3943bc25bc6e2f684002596bafd3",
+      "bytes": 610
+    },
+    "checkpoint/captured-network-diagnostic-governed/synthetic-shortfall-1.json": {
+      "sha256": "acacf81af004f7f0946e6fa5cdf388c04138b2c9c24c82f2f6b1165b7c0ac8e8",
+      "bytes": 410
+    },
+    "checkpoint/captured-network-diagnostic-governed/waiver-custody-interval-1.json": {
+      "sha256": "701fb5471aec15088c0261db2e3b50d0fe2e50a957ffbcda3773aaa406f10fce",
+      "bytes": 270
+    },
+    "checkpoint/captured-network-diagnostic-native-funded.jsonl": {
+      "sha256": "f3c6538362a0e874d8baa3cdf4de0e56d206a3236ae2c14424f8a218c9054aac",
+      "bytes": 11613
+    },
+    "checkpoint/captured-network-diagnostic-proof-manifest.json": {
+      "sha256": "6e012e268bc678f691ae5ed7f23779117a21801672846aafcd239a22a0bcbb3a",
+      "bytes": 51785
+    },
+    "checkpoint/captured-network-diagnostic-resources.jsonl": {
+      "sha256": "a2a6715172585e1ca46f1c0f719306be44e872a4260406b74f4d4d3c0794bc43",
+      "bytes": 1380360
+    },
+    "checkpoint/captured-network-diagnostic-summary.json": {
+      "sha256": "3f3ed8fcdf49bed9b06da9418fd212b5155e0ae7529bca93d3f686cbf7c42094",
+      "bytes": 435
+    },
+    "checkpoint/captured-network-diagnostic-transactions.jsonl": {
+      "sha256": "34e5973a4d798993e31b7868d0bf443ff4b77ebafcbcf695a127d8b5a927df9b",
+      "bytes": 530583965
+    },
+    "checkpoint/captured-network-diagnostic.json": {
+      "sha256": "64d2f07d4f5886b8979271bc09e90370c5c1fec825ce9306cc3968db7eaf95f5",
+      "bytes": 853
+    },
+    "checkpoint/default-artifacts/margin_controller.wasm": {
+      "sha256": "3ff76a19dabcd20e5c432aee6757e4561537f991dfcdd4d81926691c34cf4bb9",
+      "bytes": 87123
+    },
+    "checkpoint/internal-policy-calls.jsonl": {
+      "sha256": "0491413edbaddd9043a40036cfa38f967016a5cdde4554fc5d4eb72ad7e4995a",
+      "bytes": 2699717
+    },
+    "checkpoint/internal-policy-checkpoint-summary.json": {
+      "sha256": "4915c98f4c790b6184f47a6e7f20f263686ed1bae76be2828889716b433e2a5f",
+      "bytes": 41739
+    },
+    "checkpoint/internal-policy-native-funded.jsonl": {
+      "sha256": "d893c346610f3f1839a9ce4a02effdc185f04d7db9a563b527dce29d74b2f7ab",
+      "bytes": 11447
+    },
+    "checkpoint/internal-policy-proof-manifest.json": {
+      "sha256": "c28cd5da20a0ea0e650b44fadc15470f6f7e3d0285fa19826c6231de06d9da7c",
+      "bytes": 51731
+    },
+    "checkpoint/internal-policy-resources.jsonl": {
+      "sha256": "35ec706945e8938f2429d1fd0a15eca85506b754d5273e150e89f197c7cd2854",
+      "bytes": 133394
+    },
+    "checkpoint/internal-policy-summary.json": {
+      "sha256": "4915c98f4c790b6184f47a6e7f20f263686ed1bae76be2828889716b433e2a5f",
+      "bytes": 41739
+    },
+    "checkpoint/internal-policy-transactions.jsonl": {
+      "sha256": "80ce5d081dd9eecd8163d27d5bf16ecbbe42b49fbe7f53cf2082f15ebec45f9e",
+      "bytes": 55226721
+    },
+    "checkpoint/internal-policy.json": {
+      "sha256": "0a21c17ca4eecbf57e247f10f0ac093fc363a822db9ae820b6b467a8973f4443",
+      "bytes": 840
+    },
+    "checkpoint/legacy-receipt/artifacts/receipt_vault_legacy_abi.wasm": {
+      "sha256": "dddbadfc2bfa8d8dd24867e9b8e1db138506eeb7225f1301c9b68135948d3264",
+      "bytes": 80262
+    },
+    "checkpoint/legacy-receipt/build.log": {
+      "sha256": "36d03a85b57e472931abfc6b1fdb33f0ec2ef71e3484aef408815d7c0c05c7b6",
+      "bytes": 3203
+    },
+    "checkpoint/legacy-receipt/manifest.json": {
+      "sha256": "9fc3352a5b75794cc9acd91e18a44297888862c1d80b15ccc9759b8e4b1d6ec7",
+      "bytes": 2876
+    },
+    "checkpoint/legacy-receipt/source/Cargo.lock": {
+      "sha256": "c150ac6add01216c3f8ddfb0b17bad58dbe9f278fc6bbf13e2b4dbc1bdf5ee3d",
+      "bytes": 42753
+    },
+    "checkpoint/legacy-receipt/source/Cargo.toml": {
+      "sha256": "e95ed2b3def7017882167465018e539c42868a313832fece8b2180c23d7bb172",
+      "bytes": 839
+    },
+    "checkpoint/legacy-receipt/source/src/constants.rs": {
+      "sha256": "301e390d4284e77420fd32512484994f756f7e3f940f79a55bbc0415c961d6b4",
+      "bytes": 510
+    },
+    "checkpoint/legacy-receipt/source/src/contract.rs": {
+      "sha256": "8a5ec71f16398b0102538586d4d495c55ed6075ab7ff42882c049fc4a571637f",
+      "bytes": 181638
+    },
+    "checkpoint/legacy-receipt/source/src/events.rs": {
+      "sha256": "7d8eac0ad86ac1bfb33cd3571763d883b990ecdfb178938e724c16d97ade2c2f",
+      "bytes": 6510
+    },
+    "checkpoint/legacy-receipt/source/src/helpers.rs": {
+      "sha256": "430f682bde2beef454f8a598175e698fa80fbfd2fe5591fd29a93c12f0c1c386",
+      "bytes": 3727
+    },
+    "checkpoint/legacy-receipt/source/src/lib.rs": {
+      "sha256": "bc34a874b65bfdcbf4d23d7f208f5a8b156f7b657ba3b9c24fc15620c4ed6abe",
+      "bytes": 1167
+    },
+    "checkpoint/legacy-receipt/source/src/lp_lending_test.rs": {
+      "sha256": "19629e05dbbc4c0f80edc715002daeaac8b248a39580b77a1f8818dd5654c152",
+      "bytes": 22122
+    },
+    "checkpoint/legacy-receipt/source/src/reward_accounting_model.rs": {
+      "sha256": "8d3d20b790e687e76b37c40cc2c362226bef40c22dea532af5ccda6e31a4c2c8",
+      "bytes": 20874
+    },
+    "checkpoint/legacy-receipt/source/src/reward_backing.rs": {
+      "sha256": "110da521652d4bae3f6865934f0de451649a7a2f34d0ef4ca96c7339bdd61280",
+      "bytes": 19324
+    },
+    "checkpoint/legacy-receipt/source/src/reward_backing_test.rs": {
+      "sha256": "58db226f4eafc47a81b7f8054728b18c67ea626d93a0dabd30a12d92bce1cc47",
+      "bytes": 18232
+    },
+    "checkpoint/legacy-receipt/source/src/reward_claims.rs": {
+      "sha256": "29932d8151c4e8e6349876af4557fc518667b4bde9cf266708fba754ff9480ca",
+      "bytes": 8997
+    },
+    "checkpoint/legacy-receipt/source/src/reward_ledger.rs": {
+      "sha256": "e79af88a10bf0c09b95f728a6dc4d03059d4605ae61ed9fcec498b5e6585b707",
+      "bytes": 14478
+    },
+    "checkpoint/legacy-receipt/source/src/reward_lending.rs": {
+      "sha256": "31acbaaa7c1ce554859b25f3218f3dfa2592ab4758f12c2015702432fc784677",
+      "bytes": 6008
+    },
+    "checkpoint/legacy-receipt/source/src/reward_settlement.rs": {
+      "sha256": "3e829e0b46ca3ab17dff0e72123cf037fd29fe866ca063e4ac2da84ca61ef34a",
+      "bytes": 5818
+    },
+    "checkpoint/legacy-receipt/source/src/reward_share_hooks.rs": {
+      "sha256": "4d4cfd2ac30f77e4f120d75c27e99509bda40f57b34e4b75481e35ceaf9c0528",
+      "bytes": 4414
+    },
+    "checkpoint/legacy-receipt/source/src/storage.rs": {
+      "sha256": "573ca0e193fad06ca227d77a02508341c74e545012d6a8f6ca52469d507229a7",
+      "bytes": 18808
+    },
+    "checkpoint/legacy-receipt/source/src/test.rs": {
+      "sha256": "0e37a64e714f749077822826c221f5c6a4dc981f4daa97de04053422b6ff4278",
+      "bytes": 225613
+    },
+    "checkpoint/logs/build-cl-integration-fixtures.log": {
+      "sha256": "71bc4994bf30eb4241d07834c97ce088b60663cdfbc9d8714952885253fe2e70",
+      "bytes": 849
+    },
+    "checkpoint/logs/build-cl-share-pool-facade.log": {
+      "sha256": "ab302893e6724b20c9a87cb28308fcb77099a85cc07d1d4be6f4b8d38c7db32a",
+      "bytes": 1123
+    },
+    "checkpoint/logs/build-cl-share-vault.log": {
+      "sha256": "2cb734e1f9a4c66ef779f027c6566399e2db35d395ef7b49484bc27b8c3c0240",
+      "bytes": 6801
+    },
+    "checkpoint/logs/build-jump-rate-model.log": {
+      "sha256": "370fb63578251727d71b5c9a8cd3097a0d6aee843f9006e81889df9944bdcd53",
+      "bytes": 817
+    },
+    "checkpoint/logs/build-legacy-receipt-driver.log": {
+      "sha256": "96235265de4293254a44cde9213345b631c1356ccff02ffb23e09f0cea7292fc",
+      "bytes": 141
+    },
+    "checkpoint/logs/build-margin-controller-default.log": {
+      "sha256": "0669e74e33ea101b516e24f28b152f17d069b73d10ccd7d39ff30eab5837491a",
+      "bytes": 3547
+    },
+    "checkpoint/logs/build-margin-controller.log": {
+      "sha256": "cf60470f4a2309bd3bc74718321149b4f99b1fc3c989fb46af63dfae4d553017",
+      "bytes": 3277
+    },
+    "checkpoint/logs/build-receipt-vault.log": {
+      "sha256": "e8bfd5f8c8a29e15d565be34e63cd644824338aec033acf8c92d07b8149a9595",
+      "bytes": 3623
+    },
+    "checkpoint/logs/build-simple-peridottroller.log": {
+      "sha256": "ec0b955997125fd02ba3f1e2c6800aa797b19733ee8a856ef3085e16c603b080",
+      "bytes": 3075
+    },
+    "checkpoint/logs/build-swap-adapter.log": {
+      "sha256": "7ab21e414fdc19812235d61a1cd06584ab29390197926d07c7525612bcbdae87",
+      "bytes": 1216
+    },
+    "checkpoint/logs/captured-network-diagnostic-archive.log": {
+      "sha256": "2119311a4199567cbdababb34d6bf328f8818b67c4ba85626289ad134d8402d3",
+      "bytes": 129895
+    },
+    "checkpoint/logs/captured-network-diagnostic-checkpoint.log": {
+      "sha256": "5021566186d6523ab413bb14ff52c8ba3146580a8010fd4849830aea896ad2c9",
+      "bytes": 1240929
+    },
+    "checkpoint/logs/captured-network-diagnostic-harness.log": {
+      "sha256": "4ba4c31aa87a4f78f5bce825c70e36fbcefb24645007bb78483ce554aefa4d26",
+      "bytes": 967592
+    },
+    "checkpoint/logs/captured-network-diagnostic-history-scale-archive.log": {
+      "sha256": "e900350d35e89b920a1e258500f587ed8d291c888ba776717782e8dd807af397",
+      "bytes": 348972
+    },
+    "checkpoint/logs/captured-network-diagnostic-integrity.log": {
+      "sha256": "3bfb9558a63d73125709f1ad7f9c76769ae04e3ac1842de75729434019e78926",
+      "bytes": 2259
+    },
+    "checkpoint/logs/captured-network-diagnostic-native-funded-budget.log": {
+      "sha256": "711454cf32286a501acd51670096ec420b8d78e96aff2054f617267e37daf1c6",
+      "bytes": 15099
+    },
+    "checkpoint/logs/captured-network-diagnostic-native-funded.log": {
+      "sha256": "4c009f5fc631af37ae5a9a3301d5ffbde33be8a5d1b1fa35f2755773b7451d12",
+      "bytes": 27603
+    },
+    "checkpoint/logs/default-margin-tests.log": {
+      "sha256": "af6e67f5d993ff310bbde7f9507098804ed78a1f27da06895081c7b02b3b5b81",
+      "bytes": 9621
+    },
+    "checkpoint/logs/internal-policy-archive.log": {
+      "sha256": "8da7a84b927e88f33568b531609f6d229db7944e28f51d66fc682a893c71f949",
+      "bytes": 78828
+    },
+    "checkpoint/logs/internal-policy-checkpoint.log": {
+      "sha256": "256a20b3605915d272a877f35383da647ebb2f490847e4148d35b6e0f2dfaa86",
+      "bytes": 165466
+    },
+    "checkpoint/logs/internal-policy-harness.log": {
+      "sha256": "5fc5512c119ec3d7c0a7cb8f5eccf571f0cf24e876cfd22794c547bb8ff87680",
+      "bytes": 975204
+    },
+    "checkpoint/logs/internal-policy-history-scale-archive.log": {
+      "sha256": "9e632cc125d990ec2315eacdc1b61b92f8414e031a90026242c2d3f56307cb18",
+      "bytes": 55213
+    },
+    "checkpoint/logs/internal-policy-integrity.log": {
+      "sha256": "c61197d84bf0e594cacfadb82b4a4a44fda1bf4d1340b58f426c0c4b433b9c28",
+      "bytes": 2246
+    },
+    "checkpoint/logs/internal-policy-native-funded-budget.log": {
+      "sha256": "ed4e524aa294cc07b9e6e0840c12a8368318dcf95a3c69bfec3a189c3567099a",
+      "bytes": 14959
+    },
+    "checkpoint/logs/internal-policy-native-funded.log": {
+      "sha256": "f8fb592cd249792e5a82ebb9143e8a24da011c486fb5dd515578aa066d0b67fb",
+      "bytes": 77028
+    },
+    "checkpoint/logs/reward-tests.log": {
+      "sha256": "492f0dbbf793dd81eba1051287f3109d7ad1551a41a2bde6baf6bbe1b76c53f9",
+      "bytes": 17369
+    },
+    "checkpoint/network-config.json": {
+      "sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+      "bytes": 32384
+    },
+    "checkpoint/package-checksums.json": {
+      "sha256": "eff1f93ca4c42c617431557e75a8b2f9dd062b3daaea3bc0d7c233c895f77530",
+      "bytes": 8632
+    },
+    "checkpoint/proof-map.json": {
+      "sha256": "eb060c29a8d33c83523c5935f72b18193d17ef3c3751f79b5debf3ed2f4d01b1",
+      "bytes": 43327
+    },
+    "diagnostic-only/interrupted/INTERRUPTED.txt": {
+      "sha256": "95f83f04c85185e804a5b64aa45cb8a6191ba18e67570d3a2e145555089efcba",
+      "bytes": 263
+    },
+    "diagnostic-only/interrupted/runner.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "diagnostic-only/reserve/adversarial-corrected-budget.log": {
+      "sha256": "9c414646a5bffe69c477b2b89c3244b23c5afe69a8f7678d7939fba1e9648df4",
+      "bytes": 17766
+    },
+    "diagnostic-only/reserve/adversarial-corrected.log": {
+      "sha256": "3aa23ae1643be3fbc5231eeb82a85cf6b68c55fdf32bb3775fc0a9adddfc645c",
+      "bytes": 19701
+    },
+    "diagnostic-only/reserve/captured-first.log": {
+      "sha256": "e76a6390a139713fac0db94175a933d6718568cf3513265398c198785629c2f6",
+      "bytes": 82632
+    },
+    "diagnostic-only/reserve/captured-network-diagnostic-final.log": {
+      "sha256": "4d1184f1eec4b3f16c1598634fcb17d1e065abef85267a3868f87e18b5f3bb43",
+      "bytes": 127755
+    },
+    "diagnostic-only/reserve/captured-second.log": {
+      "sha256": "a9649cc6665069d398e74c91cc966bb36645329db5500c5262e7e26132c28551",
+      "bytes": 90946
+    },
+    "diagnostic-only/reserve/captured-third.log": {
+      "sha256": "ebbd83cf4b8c3255c8329cb4e41e05bea062ca723c6027b2197ef70aa9a8826b",
+      "bytes": 98457
+    },
+    "diagnostic-only/reserve/default-native-funded-corrected.log": {
+      "sha256": "7e97416c0fd28bb21ee1bbd0901b8cfd59f069b2ab0b772e712a0e2d0817a2bd",
+      "bytes": 23550
+    },
+    "diagnostic-only/reserve/default-native-margin.log": {
+      "sha256": "9a946474f2b914beeae7738c7dab7a17d5b60faa8478ef961af468d4652eee0d",
+      "bytes": 15290
+    },
+    "diagnostic-only/reserve/fee-before-fix-budget.log": {
+      "sha256": "ef527d4ac57764c6c14388300f112580a7e2afd1f50a73e9e0beb65390c57812",
+      "bytes": 21258
+    },
+    "diagnostic-only/reserve/fee-before-fix.log": {
+      "sha256": "9804ecb1cea7f6c6f67fe54d281b861640ca4cb88875f67cfca5697176c708ff",
+      "bytes": 22967
+    },
+    "diagnostic-only/reserve/fee-fixed-budget.log": {
+      "sha256": "648b8b5101d01cc1b837937d40e96fe8136787bd4d5f62b4523561e279b5f446",
+      "bytes": 21995
+    },
+    "diagnostic-only/reserve/fee-fixed.log": {
+      "sha256": "568ebb923093591e097183e3688b12eeac58c4499b5f102b39eb1f0872270d46",
+      "bytes": 23337
+    },
+    "diagnostic-only/reserve/internal-policy-final.log": {
+      "sha256": "c254ecb2514409bf9933077187e7fff81650f2811b5e2298c8bc483fd8e3080f",
+      "bytes": 98109
+    },
+    "diagnostic-only/reserve/summary.json": {
+      "sha256": "b1d5b49f20241576ea2b7ed7dece2227d3923d7cebc8e994733aa11b531dcd4e",
+      "bytes": 5128
+    },
+    "diagnostic-only/reserve/summary.md": {
+      "sha256": "dabe03154b59a1f4394d0fe1ffb4aa854b9adef019b9bba602f1ae0958b18950",
+      "bytes": 9551
+    },
+    "fixture/aquarius-pool.wasm": {
+      "sha256": "12fca5a7a96577273b6d4184cf9c984036cda0e8f0594747e7b2933dced37ee6",
+      "bytes": 90057
+    },
+    "supplemental/checker-tests.log": {
+      "sha256": "68ff2ccd27ca6d306cc1e03bde9498cd73995665a6a1b0447a34cdb2aa63ceff",
+      "bytes": 3194
+    },
+    "supplemental/environment.json": {
+      "sha256": "ca33026a15c1cf41bdbc4aa59d41a315979a4706f0e89b59731a23f7826432b8",
+      "bytes": 691
+    },
+    "supplemental/full-runner.log": {
+      "sha256": "7b7fc2e351fcbde379b74c31c9f3e46e01db2df8e28adf971c0eb8678bd34fa9",
+      "bytes": 141
+    },
+    "supplemental/independent-review.txt": {
+      "sha256": "a8d5a35f596c010636f99d976fc8e1b624de5d6a89f4636c94cf7df9aa5344c0",
+      "bytes": 568
+    }
+  },
+  "profiles": {
+    "internal-policy": {
+      "schema": "cl-verification-gates-v1",
+      "profile": "internal-policy",
+      "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+      "gates": {
+        "invocation": false,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "selected_gate": "checkpoint",
+      "release_approval": false,
+      "missing_required_flows": [],
+      "lifecycle_errors": [
+        "test process did not succeed: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-decisions-corrected/logs/internal-policy-harness.log",
+        "successful Cargo suite summary missing: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-decisions-corrected/logs/internal-policy-harness.log",
+        "test process did not succeed: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-decisions-corrected/logs/internal-policy-archive.log",
+        "successful Cargo suite summary missing: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-decisions-corrected/logs/internal-policy-archive.log",
+        "test process did not succeed: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-decisions-corrected/logs/internal-policy-history-scale-archive.log",
+        "successful Cargo suite summary missing: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-decisions-corrected/logs/internal-policy-history-scale-archive.log",
+        "proof test not completed successfully: deposit -> test::compiled_vault_core_flows",
+        "proof has no successful measured invocation: redeem -> redeem",
+        "proof test not completed successfully: redeem -> test::compiled_vault_core_flows",
+        "proof test not completed successfully: transfer -> test::compiled_vault_core_flows",
+        "proof has no successful measured invocation: emergency_redeem -> emergency_redeem",
+        "proof test not completed successfully: emergency_redeem -> test::compiled_vault_core_flows",
+        "proof has no successful measured invocation: claim_rewards -> claim_rewards",
+        "proof test not completed successfully: claim_rewards -> test::compiled_vault_core_flows",
+        "proof test not completed successfully: begin_open -> test::compiled_v3_checkpoint",
+        "proof test not completed successfully: swap_open_position_v3 -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: activate_open_position_v3 -> activate_open_position_v3",
+        "proof test not completed successfully: activate_open_position_v3 -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: prepare_close_position_v3 -> prepare_close_position_v3",
+        "proof test not completed successfully: prepare_close_position_v3 -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: swap_close -> swap_close",
+        "proof test not completed successfully: swap_close -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: finish_close -> finish_close",
+        "proof test not completed successfully: finish_close -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: funded_liquidation -> funded_liquidation",
+        "proof test not completed successfully: funded_liquidation -> test::funded_tests::compiled_funded_liquidation",
+        "proof has no successful measured invocation: repay_release -> repay_release",
+        "proof test not completed successfully: repay_release -> test::funded_tests::compiled_repay_release",
+        "proof has no successful measured invocation: claim_failure_recovery -> claim_failure_recovery",
+        "proof test not completed successfully: claim_failure_recovery -> test::compiled_venue_rewards_and_claim_failure",
+        "proof has no successful measured invocation: cancel_after_execute -> cancel_after_execute_rejection",
+        "proof has no successful measured invocation: cancel_after_execute -> execute_open_position_v3",
+        "proof test not completed successfully: cancel_after_execute -> test::recovery_state_tests::compiled_cancel_after_execute_is_rejection_then_repay_release",
+        "proof has no successful measured invocation: cancel_after_swap -> cancel_after_swap",
+        "proof test not completed successfully: cancel_after_swap -> test::funded_tests::compiled_interrupted_open_recovery_claim_outage",
+        "proof has no successful measured invocation: receipt_custody_ownership_change -> receipt_custody_ownership_change",
+        "proof test not completed successfully: receipt_custody_ownership_change -> test::compiled_receipt_margin_reward_custody",
+        "proof has no successful measured invocation: allowance_transfer_from -> allowance_transfer_from",
+        "proof test not completed successfully: allowance_transfer_from -> test::lifecycle_tests::compiled_allowance_reward_boundary_and_claim_rollback",
+        "proof has no successful measured invocation: quarantine_reconciliation -> quarantine_reconciliation",
+        "proof test not completed successfully: quarantine_reconciliation -> test::historical_tests::compiled_automatic_history_exited_owner_and_later_accrual",
+        "proof has no successful measured invocation: waiver_redistribution -> waiver_redistribution",
+        "proof test not completed successfully: waiver_redistribution -> test::historical_tests::compiled_governed_waiver_original_custody_coowner_exits_before_receipt",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_fractional_first_transfer",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_emission_change",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_shifted_range",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_returned_range",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_partial_exit",
+        "proof test not completed successfully: pending_claim_boundary_matrix -> test::venue_boundary_tests::compiled_pending_claim_boundary_matrix",
+        "proof has no successful measured invocation: failed_activation_recovery -> failed_activation_atomic",
+        "proof test not completed successfully: failed_activation_recovery -> test::recovery_state_tests::compiled_failed_activation_preserves_pending_recovery",
+        "proof has no successful measured invocation: expired_pending_resolution -> expired_pending_resolution",
+        "proof test not completed successfully: expired_pending_resolution -> test::recovery_state_tests::compiled_expired_swapped_permissionless_resolution",
+        "proof has no successful measured invocation: both_reward_calls_failed_funded_liquidation -> both_reward_calls_failed_funded_liquidation",
+        "proof test not completed successfully: both_reward_calls_failed_funded_liquidation -> test::adversarial_tests::compiled_both_reward_calls_fail_forced_settlement_preserves_history",
+        "proof has no successful measured invocation: funded_insufficient_liquidator_rollback -> funded_insufficient_liquidator_rollback",
+        "proof test not completed successfully: funded_insufficient_liquidator_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: funded_invalid_valuation_rollback -> funded_invalid_valuation_rollback",
+        "proof test not completed successfully: funded_invalid_valuation_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: funded_failed_collateral_transfer_rollback -> funded_failed_collateral_transfer_rollback",
+        "proof test not completed successfully: funded_failed_collateral_transfer_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: funded_unauthorized_rollback -> funded_unauthorized_rollback",
+        "proof test not completed successfully: funded_unauthorized_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: funded_repeated_execution_rollback -> funded_repeated_execution_rollback",
+        "proof test not completed successfully: funded_repeated_execution_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: historical_multiple_intervals -> historical_multiple_intervals",
+        "proof test not completed successfully: historical_multiple_intervals -> test::historical_tests::compiled_multiple_unsettled_intervals_exited_beneficiary",
+        "proof has no successful measured invocation: historical_shortfall -> governed_proportional_shortfall",
+        "proof test not completed successfully: historical_shortfall -> test::historical_shortfall_tests::compiled_governed_shortfall_proportional_exited_custody_owner",
+        "proof has no successful measured invocation: historical_unresolved_intervals -> historical_unresolved_intervals",
+        "proof test not completed successfully: historical_unresolved_intervals -> test::unresolved_stress_tests::compiled_multiple_unresolved_intervals_after_funded_exits",
+        "proof has no successful measured invocation: history_scale_64_owners -> history_scale_64_owner_exit",
+        "proof has no successful measured invocation: history_scale_64_owners -> history_scale_64_owner_settle",
+        "proof has no successful measured invocation: history_scale_64_owners -> history_scale_8_outages_claim",
+        "proof test not completed successfully: history_scale_64_owners -> test::history_scale_tests::compiled_history_scale_64_owners_128_changes_8_outages",
+        "proof has no successful measured invocation: history_scale_8_unresolved -> history_scale_8_funded_fault_exit",
+        "proof has no successful measured invocation: history_scale_8_unresolved -> history_scale_governed_attribute",
+        "proof has no successful measured invocation: history_scale_8_unresolved -> history_scale_governed_exited_settle",
+        "proof test not completed successfully: history_scale_8_unresolved -> test::history_scale_tests::compiled_history_scale_8_unresolved_custody_outages_governed_one",
+        "proof has no successful measured invocation: reserve_complete_open -> reserve_configured_swap",
+        "proof has no successful measured invocation: reserve_complete_open -> reserve_configured_activate",
+        "proof has no successful measured invocation: reserve_complete_open -> reserve_blocked_active_repayment",
+        "proof has no successful measured invocation: reserve_complete_open -> reserve_blocked_active_release",
+        "proof test not completed successfully: reserve_complete_open -> test::reserve_open_tests::compiled_reserve_complete_open_positive",
+        "proof has no successful measured invocation: reserve_complete_open_rollback -> reserve_floor_activate_open_position_v3_rollback",
+        "proof has no successful measured invocation: reserve_complete_open_rollback -> reserve_floor_execute_open_position_v3_rollback",
+        "proof has no successful measured invocation: reserve_complete_open_rollback -> reserve_floor_resolve_pending_open_v3_rollback",
+        "proof has no successful measured invocation: reserve_complete_open_rollback -> reserve_disabled_activate_open_position_v3_rollback",
+        "proof has no successful measured invocation: reserve_complete_open_rollback -> reserve_disabled_execute_open_position_v3_rollback",
+        "proof has no successful measured invocation: reserve_complete_open_rollback -> reserve_disabled_resolve_pending_open_v3_rollback",
+        "proof has no successful measured invocation: reserve_complete_open_rollback -> reserve_blocked_pending_funded_recovery",
+        "proof test not completed successfully: reserve_complete_open_rollback -> test::reserve_open_tests::compiled_reserve_all_finalizers_reject_interstage_exit_or_pause_then_recover",
+        "proof has no successful measured invocation: reserve_no_liquidation_bypass -> reserve_healthy_liquidation_conversion_rejected",
+        "proof test not completed successfully: reserve_no_liquidation_bypass -> test::reserve_open_tests::compiled_reserve_liquidation_conversion_cannot_activate_healthy_pending",
+        "proof has no successful measured invocation: default_reserve_active_repay_release -> default_activate_open_position_v3",
+        "proof has no successful measured invocation: default_reserve_active_repay_release -> default_active_full_repayment_paused_shortfall",
+        "proof has no successful measured invocation: default_reserve_active_repay_release -> default_release_debt_free_position_v3",
+        "proof test not completed successfully: default_reserve_active_repay_release -> test::default_reserve_tests::compiled_default_reserve_active_repay_release",
+        "proof has no successful measured invocation: default_reserve_finalization_rollback -> default_post_cost_reserve_reject",
+        "proof has no successful measured invocation: default_reserve_finalization_rollback -> default_pending_recovery_repeat_reject",
+        "proof test not completed successfully: default_reserve_finalization_rollback -> test::default_reserve_tests::compiled_default_reserve_post_cost_finalizers_rollback_recover",
+        "proof test not completed successfully: default_short_pending_recovery -> test::default_reserve_tests::compiled_default_short_pending_recovery_paused_shortfall",
+        "proof has no successful measured invocation: default_missing_reserve_abi -> default_missing_reserve_abi_reject",
+        "proof test not completed successfully: default_missing_reserve_abi -> test::default_reserve_tests::compiled_default_missing_receipt_abi_fails_closed",
+        "proof has no successful measured invocation: default_pending_fee_refund_conservation -> default_intervening_fee_epoch_distribution",
+        "proof test not completed successfully: default_pending_fee_refund_conservation -> test::default_reserve_tests::compiled_default_pending_fee_refund_preserves_historical_fee_owner"
+      ],
+      "transaction_errors": [
+        "transaction row 2: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 2: transaction evidence mismatch: base_fee_source",
+        "transaction row 2: transaction evidence mismatch: limits_pass",
+        "transaction row 2: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 2: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 2: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 2: transaction evidence mismatch: live_state_validation",
+        "transaction row 2: transaction outcome/success classification mismatch",
+        "transaction row 5: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 5: transaction evidence mismatch: base_fee_source",
+        "transaction row 5: transaction evidence mismatch: limits_pass",
+        "transaction row 5: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 5: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 5: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 5: transaction evidence mismatch: live_state_validation",
+        "transaction row 5: transaction outcome/success classification mismatch",
+        "transaction row 14: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 14: transaction evidence mismatch: base_fee_source",
+        "transaction row 14: transaction evidence mismatch: limits_pass",
+        "transaction row 14: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 14: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 14: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 14: transaction evidence mismatch: live_state_validation",
+        "transaction row 14: transaction outcome/success classification mismatch",
+        "transaction row 18: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 18: transaction evidence mismatch: base_fee_source",
+        "transaction row 18: transaction evidence mismatch: limits_pass",
+        "transaction row 18: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 18: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 18: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 18: transaction evidence mismatch: live_state_validation",
+        "transaction row 18: transaction outcome/success classification mismatch",
+        "transaction row 19: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 19: transaction evidence mismatch: base_fee_source",
+        "transaction row 19: transaction evidence mismatch: limits_pass",
+        "transaction row 19: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 19: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 19: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 19: transaction evidence mismatch: live_state_validation",
+        "transaction row 19: transaction outcome/success classification mismatch",
+        "transaction row 20: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 20: transaction evidence mismatch: base_fee_source",
+        "transaction row 20: transaction evidence mismatch: limits_pass",
+        "transaction row 20: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 20: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 20: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 20: transaction evidence mismatch: live_state_validation",
+        "transaction row 20: transaction outcome/success classification mismatch",
+        "transaction row 25: transaction evidence mismatch: limits_pass",
+        "transaction row 40: transaction evidence mismatch: limits_pass",
+        "transaction row 66: transaction evidence mismatch: limits_pass",
+        "transaction row 77: transaction evidence mismatch: limits_pass",
+        "transaction row 84: transaction evidence mismatch: limits_pass",
+        "transaction row 87: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 87: transaction evidence mismatch: base_fee_source",
+        "transaction row 87: transaction evidence mismatch: limits_pass",
+        "transaction row 87: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 87: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 87: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 87: transaction evidence mismatch: live_state_validation",
+        "transaction row 87: transaction outcome/success classification mismatch",
+        "transaction row 90: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 90: transaction evidence mismatch: base_fee_source",
+        "transaction row 90: transaction evidence mismatch: limits_pass",
+        "transaction row 90: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 90: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 90: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 90: transaction evidence mismatch: live_state_validation",
+        "transaction row 90: transaction outcome/success classification mismatch",
+        "transaction row 93: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 93: transaction evidence mismatch: base_fee_source",
+        "transaction row 93: transaction evidence mismatch: limits_pass",
+        "transaction row 93: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 93: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 93: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 93: transaction evidence mismatch: live_state_validation",
+        "transaction row 93: transaction outcome/success classification mismatch",
+        "transaction row 96: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 96: transaction evidence mismatch: base_fee_source",
+        "transaction row 96: transaction evidence mismatch: limits_pass",
+        "transaction row 96: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 96: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 96: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 96: transaction evidence mismatch: live_state_validation",
+        "transaction row 96: transaction outcome/success classification mismatch",
+        "transaction row 97: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 97: transaction evidence mismatch: base_fee_source",
+        "transaction row 97: transaction evidence mismatch: limits_pass",
+        "transaction row 97: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 97: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 97: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 97: transaction evidence mismatch: live_state_validation",
+        "transaction row 97: transaction outcome/success classification mismatch",
+        "transaction row 100: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 100: transaction evidence mismatch: base_fee_source",
+        "transaction row 100: transaction evidence mismatch: limits_pass",
+        "transaction row 100: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 100: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 100: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 100: transaction evidence mismatch: live_state_validation",
+        "transaction row 100: transaction outcome/success classification mismatch",
+        "transaction row 101: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 101: transaction evidence mismatch: base_fee_source",
+        "transaction row 101: transaction evidence mismatch: limits_pass",
+        "transaction row 101: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 101: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 101: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 101: transaction evidence mismatch: live_state_validation",
+        "transaction row 101: transaction outcome/success classification mismatch",
+        "transaction row 102: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 102: transaction evidence mismatch: base_fee_source",
+        "transaction row 102: transaction evidence mismatch: limits_pass",
+        "transaction row 102: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 102: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 102: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 102: transaction evidence mismatch: live_state_validation",
+        "transaction row 102: transaction outcome/success classification mismatch",
+        "transaction row 103: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 103: transaction evidence mismatch: base_fee_source",
+        "transaction row 103: transaction evidence mismatch: limits_pass",
+        "transaction row 103: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 103: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 103: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 103: transaction evidence mismatch: live_state_validation",
+        "transaction row 103: transaction outcome/success classification mismatch",
+        "transaction row 139: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 139: transaction evidence mismatch: base_fee_source",
+        "transaction row 139: transaction evidence mismatch: limits_pass",
+        "transaction row 139: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 139: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 139: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 139: transaction evidence mismatch: live_state_validation",
+        "transaction row 139: transaction outcome/success classification mismatch",
+        "transaction row 142: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 142: transaction evidence mismatch: base_fee_source",
+        "transaction row 142: transaction evidence mismatch: limits_pass",
+        "transaction row 142: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 142: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 142: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 142: transaction evidence mismatch: live_state_validation",
+        "transaction row 142: transaction outcome/success classification mismatch",
+        "transaction row 145: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 145: transaction evidence mismatch: base_fee_source",
+        "transaction row 145: transaction evidence mismatch: limits_pass",
+        "transaction row 145: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 145: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 145: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 145: transaction evidence mismatch: live_state_validation",
+        "transaction row 145: transaction outcome/success classification mismatch",
+        "transaction row 221: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 221: transaction evidence mismatch: base_fee_source",
+        "transaction row 221: transaction evidence mismatch: limits_pass",
+        "transaction row 221: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 221: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 221: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 221: transaction evidence mismatch: live_state_validation",
+        "transaction row 221: transaction outcome/success classification mismatch",
+        "transaction row 226: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 226: transaction evidence mismatch: base_fee_source",
+        "transaction row 226: transaction evidence mismatch: limits_pass",
+        "transaction row 226: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 226: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 226: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 226: transaction evidence mismatch: live_state_validation",
+        "transaction row 226: transaction outcome/success classification mismatch",
+        "transaction row 231: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 231: transaction evidence mismatch: base_fee_source",
+        "transaction row 231: transaction evidence mismatch: limits_pass",
+        "transaction row 231: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 231: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 231: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 231: transaction evidence mismatch: live_state_validation",
+        "transaction row 231: transaction outcome/success classification mismatch",
+        "transaction row 248: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 248: transaction evidence mismatch: base_fee_source",
+        "transaction row 248: transaction evidence mismatch: limits_pass",
+        "transaction row 248: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 248: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 248: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 248: transaction evidence mismatch: live_state_validation",
+        "transaction row 248: transaction outcome/success classification mismatch",
+        "transaction row 249: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 249: transaction evidence mismatch: base_fee_source",
+        "transaction row 249: transaction evidence mismatch: limits_pass",
+        "transaction row 249: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 249: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 249: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 249: transaction evidence mismatch: live_state_validation",
+        "transaction row 249: transaction outcome/success classification mismatch",
+        "transaction row 252: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 252: transaction evidence mismatch: base_fee_source",
+        "transaction row 252: transaction evidence mismatch: limits_pass",
+        "transaction row 252: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 252: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 252: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 252: transaction evidence mismatch: live_state_validation",
+        "transaction row 252: transaction outcome/success classification mismatch",
+        "transaction row 253: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 253: transaction evidence mismatch: base_fee_source",
+        "transaction row 253: transaction evidence mismatch: limits_pass",
+        "transaction row 253: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 253: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 253: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 253: transaction evidence mismatch: live_state_validation",
+        "transaction row 253: transaction outcome/success classification mismatch",
+        "transaction row 254: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 254: transaction evidence mismatch: base_fee_source",
+        "transaction row 254: transaction evidence mismatch: limits_pass",
+        "transaction row 254: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 254: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 254: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 254: transaction evidence mismatch: live_state_validation",
+        "transaction row 254: transaction outcome/success classification mismatch",
+        "transaction row 257: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 257: transaction evidence mismatch: base_fee_source",
+        "transaction row 257: transaction evidence mismatch: limits_pass",
+        "transaction row 257: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 257: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 257: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 257: transaction evidence mismatch: live_state_validation",
+        "transaction row 257: transaction outcome/success classification mismatch",
+        "transaction row 258: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 258: transaction evidence mismatch: base_fee_source",
+        "transaction row 258: transaction evidence mismatch: limits_pass",
+        "transaction row 258: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 258: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 258: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 258: transaction evidence mismatch: live_state_validation",
+        "transaction row 258: transaction outcome/success classification mismatch",
+        "unsigned transaction proof missing: activate_open_position_v3 -> v3.activate_open_position_v3 (success)",
+        "unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (success)",
+        "unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (rejected, proof_case=allowance_missing_spender_auth)",
+        "unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (rejected, proof_case=allowance_wrong_recipient_auth, auth_mode=enforcing-mismatched-root, mismatched_argument_indices=[2])",
+        "unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (rejected, proof_case=allowance_failed_claim_rollback)",
+        "unsigned transaction proof missing: both_reward_calls_failed_funded_liquidation -> v3.liquidate_funded_v3 (success)",
+        "unsigned transaction proof missing: cancel_after_execute -> v3.execute_open_position_v3 (success)",
+        "unsigned transaction proof missing: cancel_after_execute -> v3.repay_margin_position_v3 (success)",
+        "unsigned transaction proof missing: cancel_after_execute -> v3.release_debt_free_position_v3 (success)",
+        "unsigned transaction proof missing: cancel_after_execute -> v3.cancel_pending_open_v3 (rejected, proof_case=cancel_after_execute_rejection)",
+        "unsigned transaction proof missing: cancel_after_swap -> v3.recover_pending_open_funded (success)",
+        "unsigned transaction proof missing: claim_failure_recovery -> vault.emergency_redeem (success)",
+        "unsigned transaction proof missing: claim_rewards -> vault.claim_rewards (success)",
+        "unsigned transaction proof missing: default_missing_reserve_abi -> v3.activate_open_position_v3 (rejected, proof_case=default_missing_reserve_abi_reject)",
+        "unsigned transaction proof missing: default_missing_reserve_abi -> v3.recover_pending_open_funded (success)",
+        "unsigned transaction proof missing: default_pending_fee_refund_conservation -> v3.distribute_margin_fees (success)",
+        "unsigned transaction proof missing: default_pending_fee_refund_conservation -> v3.recover_pending_open_funded (success)",
+        "unsigned transaction proof missing: default_pending_fee_refund_conservation -> v3.claim_margin_fees (success)",
+        "unsigned transaction proof missing: default_reserve_active_repay_release -> v3.activate_open_position_v3 (success)",
+        "unsigned transaction proof missing: default_reserve_active_repay_release -> v3.repay_margin_position_v3 (success)",
+        "unsigned transaction proof missing: default_reserve_active_repay_release -> v3.release_debt_free_position_v3 (success)",
+        "unsigned transaction proof missing: default_reserve_finalization_rollback -> v3.activate_open_position_v3 (rejected, proof_case=default_post_cost_reserve_reject)",
+        "unsigned transaction proof missing: default_reserve_finalization_rollback -> v3.execute_open_position_v3 (rejected, proof_case=default_post_cost_reserve_reject)",
+        "unsigned transaction proof missing: default_reserve_finalization_rollback -> v3.resolve_pending_open_v3 (rejected, proof_case=default_post_cost_reserve_reject)",
+        "unsigned transaction proof missing: default_reserve_finalization_rollback -> v3.recover_pending_open_funded (success)",
+        "unsigned transaction proof missing: default_reserve_finalization_rollback -> v3.recover_pending_open_funded (rejected, proof_case=default_pending_recovery_repeat_reject)",
+        "unsigned transaction proof missing: default_short_pending_recovery -> v3.recover_pending_open_funded (success)",
+        "unsigned transaction proof missing: deposit -> vault.deposit_underlying (success)",
+        "unsigned transaction proof missing: emergency_redeem -> vault.emergency_redeem (success)",
+        "unsigned transaction proof missing: expired_pending_resolution -> v3.resolve_pending_open_v3 (success)",
+        "unsigned transaction proof missing: expired_pending_resolution -> v3.release_debt_free_position_v3 (success)",
+        "unsigned transaction proof missing: failed_activation_recovery -> v3.recover_pending_open_funded (success)",
+        "unsigned transaction proof missing: failed_activation_recovery -> v3.activate_open_position_v3 (rejected, proof_case=failed_activation_atomic)",
+        "unsigned transaction proof missing: finish_close -> v3.finish_close_position_v3 (success)",
+        "unsigned transaction proof missing: funded_failed_collateral_transfer_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_failed_collateral_transfer_rollback)",
+        "unsigned transaction proof missing: funded_insufficient_liquidator_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_insufficient_liquidator_rollback)",
+        "unsigned transaction proof missing: funded_invalid_valuation_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_invalid_valuation_rollback)",
+        "unsigned transaction proof missing: funded_liquidation -> v3.liquidate_funded_v3 (success)",
+        "unsigned transaction proof missing: funded_repeated_execution_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_repeated_execution_rollback)",
+        "unsigned transaction proof missing: funded_unauthorized_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_unauthorized_rollback)",
+        "unsigned transaction proof missing: historical_multiple_intervals -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: historical_shortfall -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: historical_unresolved_intervals -> v3.liquidate_funded_v3 (success)",
+        "unsigned transaction proof missing: history_scale_64_owners -> vault.emergency_redeem (success)",
+        "unsigned transaction proof missing: history_scale_64_owners -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: history_scale_8_unresolved -> v3.liquidate_funded_v3 (success)",
+        "unsigned transaction proof missing: history_scale_8_unresolved -> vault.attribute_reward_segment (success)",
+        "unsigned transaction proof missing: history_scale_8_unresolved -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: pending_claim_boundary_matrix -> vault.transfer (success)",
+        "unsigned transaction proof missing: pending_claim_boundary_matrix -> vault.emergency_redeem (success)",
+        "unsigned transaction proof missing: prepare_close_position_v3 -> v3.prepare_close_position_v3 (success)",
+        "unsigned transaction proof missing: quarantine_reconciliation -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: quarantine_reconciliation -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: receipt_custody_ownership_change -> share_receipt.transfer (success)",
+        "unsigned transaction proof missing: redeem -> vault.redeem (success)",
+        "unsigned transaction proof missing: repay_release -> v3.repay_margin_position_v3 (success)",
+        "unsigned transaction proof missing: repay_release -> v3.release_debt_free_position_v3 (success)",
+        "unsigned transaction proof missing: reserve_complete_open -> v3.swap_open_position_v3 (success)",
+        "unsigned transaction proof missing: reserve_complete_open -> v3.activate_open_position_v3 (success)",
+        "unsigned transaction proof missing: reserve_complete_open -> v3.repay_margin_position_v3 (success)",
+        "unsigned transaction proof missing: reserve_complete_open -> v3.release_debt_free_position_v3 (success)",
+        "unsigned transaction proof missing: reserve_complete_open_rollback -> v3.activate_open_position_v3 (rejected, proof_case=reserve_floor_activate_open_position_v3_rollback)",
+        "unsigned transaction proof missing: reserve_complete_open_rollback -> v3.execute_open_position_v3 (rejected, proof_case=reserve_floor_execute_open_position_v3_rollback)",
+        "unsigned transaction proof missing: reserve_complete_open_rollback -> v3.resolve_pending_open_v3 (rejected, proof_case=reserve_floor_resolve_pending_open_v3_rollback)",
+        "unsigned transaction proof missing: reserve_complete_open_rollback -> v3.activate_open_position_v3 (rejected, proof_case=reserve_disabled_activate_open_position_v3_rollback)",
+        "unsigned transaction proof missing: reserve_complete_open_rollback -> v3.execute_open_position_v3 (rejected, proof_case=reserve_disabled_execute_open_position_v3_rollback)",
+        "unsigned transaction proof missing: reserve_complete_open_rollback -> v3.resolve_pending_open_v3 (rejected, proof_case=reserve_disabled_resolve_pending_open_v3_rollback)",
+        "unsigned transaction proof missing: reserve_complete_open_rollback -> v3.recover_pending_open_funded (success)",
+        "unsigned transaction proof missing: reserve_no_liquidation_bypass -> v3.liquidate_position_v3 (rejected, proof_case=reserve_healthy_liquidation_conversion_rejected)",
+        "unsigned transaction proof missing: swap_close -> v3.swap_close_position_v3 (success)",
+        "unsigned transaction proof missing: swap_open_position_v3 -> v3.swap_open_position_v3 (success)",
+        "unsigned transaction proof missing: transfer -> vault.transfer (success)",
+        "unsigned transaction proof missing: waiver_redistribution -> vault.attribute_reward_segment (success)",
+        "unsigned transaction proof missing: waiver_redistribution -> vault.settle_reward_segment (success)"
+      ]
+    },
+    "captured-network-diagnostic": {
+      "schema": "cl-verification-gates-v1",
+      "profile": "captured-network-diagnostic",
+      "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+      "gates": {
+        "invocation": true,
+        "lifecycle": true,
+        "transaction": true,
+        "checkpoint": true
+      },
+      "selected_gate": "checkpoint",
+      "release_approval": false,
+      "missing_required_flows": [],
+      "lifecycle_errors": [],
+      "transaction_errors": []
+    }
+  },
+  "wasm": {
+    "cl_integration_fixtures.wasm": {
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+      "bytes": 3168
+    },
+    "cl_share_vault.wasm": {
+      "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f",
+      "bytes": 85750
+    },
+    "cl_share_pool_facade.wasm": {
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5",
+      "bytes": 7298
+    },
+    "margin_controller.wasm": {
+      "sha256": "f59f592b1013d4e1ec49975f0cb2bb0ff81e9ab0f88f92bd76c3b7a1d6de7a36",
+      "bytes": 91657
+    },
+    "swap_adapter.wasm": {
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d",
+      "bytes": 10876
+    },
+    "receipt_vault.wasm": {
+      "sha256": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e",
+      "bytes": 87197
+    },
+    "simple_peridottroller.wasm": {
+      "sha256": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2",
+      "bytes": 63289
+    },
+    "jump_rate_model.wasm": {
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+      "bytes": 7644
+    }
+  },
+  "additional_fixture_artifacts": {
+    "default_margin": {
+      "path": "default-artifacts/margin_controller.wasm",
+      "sha256": "3ff76a19dabcd20e5c432aee6757e4561537f991dfcdd4d81926691c34cf4bb9",
+      "bytes": 87123
+    },
+    "legacy_receipt": {
+      "path": "legacy-receipt/artifacts/receipt_vault_legacy_abi.wasm",
+      "sha256": "dddbadfc2bfa8d8dd24867e9b8e1db138506eeb7225f1301c9b68135948d3264",
+      "bytes": 80262
+    }
+  }
+}

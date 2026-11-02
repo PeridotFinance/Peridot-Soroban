@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 export AQUARIUS_CONCENTRATED_WASM="$(python3 -c 'import os,sys; print(os.path.abspath(sys.argv[1]))' "$AQUARIUS_CONCENTRATED_WASM")"
 run_dir="${CL_CHECKPOINT_DIR:-$PWD/target/cl-resource-checkpoint}"
 [[ ! -e "$run_dir" ]] || { echo "Refusing to overwrite checkpoint: $run_dir" >&2; exit 1; }
-mkdir -p "$run_dir/artifacts" "$run_dir/logs"
+mkdir -p "$run_dir/artifacts" "$run_dir/default-artifacts" "$run_dir/logs"
 run_dir="$(cd "$run_dir" && pwd)"
 cp "$CL_CAPTURED_CONFIG" "$run_dir/network-config.json"
 export CL_ARTIFACTS="$run_dir/artifacts"
@@ -23,7 +23,14 @@ for package in cl-integration-fixtures cl-share-vault cl-share-pool-facade margi
   if [[ "$package" == margin-controller ]]; then flags=(--features funded-liquidation-validation); fi
   stellar contract build --package "$package" ${flags[@]+"${flags[@]}"} --out-dir "$CL_ARTIFACTS" > "$run_dir/logs/build-$package.log" 2>&1
 done
+# Same synthetic admin identities, but the controller is compiled with its
+# default production ABI. It is a separate test artifact, never installed.
+stellar contract build --package margin-controller --out-dir "$run_dir/default-artifacts" > "$run_dir/logs/build-margin-controller-default.log" 2>&1
+export CL_DEFAULT_MARGIN_WASM="$run_dir/default-artifacts/margin_controller.wasm"
+python3 scripts/build_cl_legacy_receipt.py --output-dir "$run_dir/legacy-receipt" > "$run_dir/logs/build-legacy-receipt-driver.log" 2>&1
+export CL_LEGACY_RECEIPT_WASM="$run_dir/legacy-receipt/artifacts/receipt_vault_legacy_abi.wasm"
 status=0
+cargo test -p margin-controller --lib -- --skip funded_prototype > "$run_dir/logs/default-margin-tests.log" 2>&1 || status=1
 cargo test -p cl-share-vault -- --nocapture > "$run_dir/logs/reward-tests.log" 2>&1 || status=1
 for profile in internal-policy captured-network-diagnostic; do
   export CL_RESOURCE_PROFILE="$run_dir/$profile.json"

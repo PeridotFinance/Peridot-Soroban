@@ -203,10 +203,26 @@ def summarize(run, runner_log):
         build = run / 'logs' / ('build-' + name.replace('_', '-') + '.log')
         require('Build Complete' in read(build).decode(), f'incomplete build: {build}')
         artifacts[path.name] = {'sha256': digest(path), 'bytes': path.stat().st_size}
+    # Default and historical receipt fixtures are separate executable identities.
+    additional = {}
+    for role, relative, log in [
+        ('default_margin', 'default-artifacts/margin_controller.wasm', 'logs/build-margin-controller-default.log'),
+        ('legacy_receipt', 'legacy-receipt/artifacts/receipt_vault_legacy_abi.wasm', 'legacy-receipt/build.log'),
+    ]:
+        path = run / relative
+        require(read(path).startswith(b'\0asm\1\0\0\0'), f'invalid WASM header: {path}')
+        require('Build Complete' in read(run / log).decode(), f'incomplete build: {log}')
+        additional[role] = {'path': relative, 'sha256': digest(path), 'bytes': path.stat().st_size}
+    legacy = document(run / 'legacy-receipt/manifest.json')
+    require(legacy['source_commit'] == '47858c1a13c2588970395faa2212e7b68bd33060', 'historical receipt source mismatch')
+    require(legacy['wasm_sha256'] == additional['legacy_receipt']['sha256'] and
+            legacy['wasm_bytes'] == additional['legacy_receipt']['bytes'], 'historical receipt artifact mismatch')
     result = {'schema': 'cl-completed-execution-summary-v1', 'run_directory': str(run),
               'runner_log_sha256': digest(runner_log), 'runner_exit_status': int(match[2]),
               'scope': 'Compiled controlled state; synthetic external authorization; unsigned target-runtime simulation. Not live state, real signatures or release approval.',
               'release_approval': False, 'artifacts': artifacts,
+              'additional_fixture_artifacts': additional, 'legacy_receipt_build': legacy,
+              'native_default_margin_tests': counts(run / 'logs/default-margin-tests.log'),
               'network_config_sha256': digest(run / 'network-config.json'),
               'native_reward_tests': counts(run / 'logs/reward-tests.log'), 'profiles': {}}
     for profile in PROFILES:
@@ -280,6 +296,8 @@ def markdown(summary):
     out += ['', '## Separate WASM hashes', '', '| Artifact | Bytes | SHA256 |', '|---|---:|---|']
     for name, data in summary['artifacts'].items():
         out.append(f"| {name} | {data['bytes']} | `{data['sha256']}` |")
+    for name, data in summary['additional_fixture_artifacts'].items():
+        out.append(f"| {name} (separate fixture) | {data['bytes']} | `{data['sha256']}` |")
     return '\n'.join(out) + '\n'
 
 

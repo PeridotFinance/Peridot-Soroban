@@ -28,6 +28,9 @@ REQUIRED = {
     'history_scale_64_owners', 'history_scale_8_unresolved',
     'reserve_complete_open', 'reserve_swap_rejections',
     'reserve_complete_open_rollback', 'reserve_no_liquidation_bypass',
+    'default_reserve_active_repay_release', 'default_reserve_finalization_rollback',
+    'default_pending_recovery_rollback', 'default_short_pending_recovery',
+    'default_missing_reserve_abi', 'default_pending_fee_refund_conservation',
 }
 MEASUREMENTS = {
     'instructions': 'instructions', 'memory_bytes': 'mem_bytes',

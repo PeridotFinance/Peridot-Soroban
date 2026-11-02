@@ -780,6 +780,12 @@ impl MockPeridottroller {
 
 #[contractimpl]
 impl MockVault {
+    // ABI-capable legacy market fixture. Reserve-policy behavior is covered by
+    // compiled default-build tests against the actual receipt implementation.
+    pub fn get_min_cash_reserve_bps(_env: Env) -> Option<u32> { None }
+    pub fn get_cash_borrowing_enabled(_env: Env) -> bool { false }
+    pub fn assert_borrowing_reserve(_env: Env) {}
+
     pub fn set_underlying_token(env: Env, token: Address) {
         env.storage()
             .persistent()

@@ -46,6 +46,12 @@ class SummaryTests(unittest.TestCase):
    (self.run/'logs'/f'build-{a.replace("_","-")}.log').write_text('Build Complete\n')
   log='test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1s\n'
   (self.run/'logs/reward-tests.log').write_text(log)
+  (self.run/'logs/default-margin-tests.log').write_text(log)
+  for rel in ['default-artifacts/margin_controller.wasm','legacy-receipt/artifacts/receipt_vault_legacy_abi.wasm']:
+   path=self.run/rel;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'\0asm\1\0\0\0')
+  (self.run/'logs/build-margin-controller-default.log').write_text('Build Complete\n')
+  (self.run/'legacy-receipt/build.log').write_text('Build Complete\n')
+  (self.run/'legacy-receipt/manifest.json').write_text(json.dumps({'source_commit':'47858c1a13c2588970395faa2212e7b68bd33060','wasm_sha256':s.digest(self.run/'legacy-receipt/artifacts/receipt_vault_legacy_abi.wasm'),'wasm_bytes':8}))
   for p in s.PROFILES:
    for suite in s.SUITES: (self.run/'logs'/f'{p}-{suite}.log').write_text(log)
    gate={'profile':p,'config_sha256':digest,'gates':{g:False for g in s.GATES},'release_approval':False,'missing_required_flows':['synthetic-missing-flow'],'lifecycle_errors':['synthetic failed test'],'transaction_errors':['synthetic unavailable live state']}
@@ -70,7 +76,7 @@ class SummaryTests(unittest.TestCase):
   self.runner.write_text('Checkpoint: /wrong\nStatus: 1 (missing proofs remain failures)\n')
   with self.assertRaises(ValueError): s.summarize(self.run,self.runner)
  def test_missing_required_files(self):
-  for relative in ['logs/captured-network-diagnostic-harness.log','logs/captured-network-diagnostic-archive.log','logs/captured-network-diagnostic-history-scale-archive.log','captured-network-diagnostic-checkpoint-summary.json','artifacts/margin_controller.wasm']:
+  for relative in ['logs/captured-network-diagnostic-harness.log','logs/captured-network-diagnostic-archive.log','logs/captured-network-diagnostic-history-scale-archive.log','captured-network-diagnostic-checkpoint-summary.json','artifacts/margin_controller.wasm','default-artifacts/margin_controller.wasm','legacy-receipt/manifest.json','logs/default-margin-tests.log']:
    p=self.run/relative;data=p.read_bytes();p.unlink()
    with self.subTest(relative=relative), self.assertRaises((ValueError,KeyError)): s.summarize(self.run,self.runner)
    p.write_bytes(data)
