@@ -1,0 +1,23 @@
+{
+  "artifacts": [
+    {
+      "id": 13163838118,
+      "name": "cl-stage1-evidence-966d39f6771473a3e724524beed5d65f8e1deee7",
+      "size_in_bytes": 200952619,
+      "url": "https://api.github.com/repos/PeridotFinance/Peridot-Soroban/actions/artifacts/13163838118",
+      "archive_download_url": "https://api.github.com/repos/PeridotFinance/Peridot-Soroban/actions/artifacts/13163838118/zip",
+      "expired": false,
+      "created_at": "2026-11-02T17:25:54Z",
+      "expires_at": "2026-11-16T17:25:37Z",
+      "updated_at": "2026-11-02T17:25:54Z",
+      "digest": "sha256:5299122088d4efa52194de035aac76b6bedc6f9801a03c5c73694af71e200a43",
+      "workflow_run": {
+        "id": 41484260698,
+        "repository_id": 1001707821,
+        "head_repository_id": 1001707821,
+        "head_branch": "feat/cl-share-stage1-checkpoint",
+        "head_sha": "bb154ec8f03889aabfdb8dd5ea120f22c46a47f5"
+      }
+    }
+  ]
+}

@@ -24,6 +24,14 @@ CAPTURES = {
         'original_expiry': '2026-11-16T16:18:07Z',
         'original_zip_sha256': 'a9fdb21a4c0327609a09f162859ce31259d64b54905c06948588fe8e711b2d83',
     },
+    'bb154ec': {
+        'commit': 'bb154ec8f03889aabfdb8dd5ea120f22c46a47f5',
+        'merge_commit': '966d39f6771473a3e724524beed5d65f8e1deee7',
+        'run_url': 'https://github.com/PeridotFinance/Peridot-Soroban/actions/runs/41484260698',
+        'artifact_id': 13163838118,
+        'original_expiry': '2026-11-16T17:25:37Z',
+        'original_zip_sha256': '5299122088d4efa52194de035aac76b6bedc6f9801a03c5c73694af71e200a43',
+    },
 }
 
 

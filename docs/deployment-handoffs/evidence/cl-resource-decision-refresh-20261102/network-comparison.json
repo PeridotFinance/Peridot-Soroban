@@ -1,0 +1,51 @@
+{
+  "ledger": 65270655,
+  "protocol": 29,
+  "capture_sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+  "prior_ledger": 65264920,
+  "prior_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+  "limits": {
+    "instructions": 400000000,
+    "mem_bytes": 41943040,
+    "disk_read_entries": 200,
+    "write_entries": 200,
+    "ledger_entries": 400,
+    "disk_read_bytes": 200000,
+    "write_bytes": 132096,
+    "contract_events_size_bytes": 16384,
+    "max_contract_data_key_size_bytes": 250,
+    "max_contract_data_entry_size_bytes": 65536,
+    "max_contract_code_entry_size_bytes": 131072,
+    "transaction_size_bytes": 132096
+  },
+  "ceilings_unchanged": true,
+  "changed_settings": [
+    "configSettingLiveSorobanStateSizeWindow"
+  ],
+  "cost_models_unchanged": true,
+  "cost_model_terms": {
+    "configSettingContractCostParamsCpuInstructions": 86,
+    "configSettingContractCostParamsMemoryBytes": 86
+  },
+  "fee_inputs_unchanged": true,
+  "current_fee_inputs": [
+    {
+      "fee_per_instruction_increment": 3,
+      "fee_per_disk_read_entry": 781,
+      "fee_per_write_entry": 1250,
+      "fee_per_disk_read_1kb": 223,
+      "fee_per_write_1kb": 437,
+      "fee_per_historical_1kb": 2029,
+      "fee_per_contract_event_1kb": 2500,
+      "fee_per_transaction_size_1kb": 203
+    },
+    {
+      "fee_per_write_1kb": 437,
+      "fee_per_rent_1kb": 1000,
+      "fee_per_write_entry": 1250,
+      "persistent_rent_rate_denominator": 1215,
+      "temporary_rent_rate_denominator": 2430
+    }
+  ],
+  "raw_xdr_verification": "All 13 setting XDR values independently decoded"
+}
