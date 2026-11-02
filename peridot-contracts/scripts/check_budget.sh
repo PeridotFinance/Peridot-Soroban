@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+# Offline compiled-harness measurements. No CLI identity/key access or network.
+# This mode is explicitly NOT a Mainnet-state simulation.
+if [[ "${1:-}" == "--local-report" ]]; then
+  exec python3 "$(dirname "$0")/check_local_budget.py" "${2:?report JSONL required}"
+fi
+
 # Simulate Perps V3 calls against a deployed MarginController and print costs.
 # Simulations do not mutate state, so select follow-up stages that match the
 # current on-chain state of POSITION_ID.

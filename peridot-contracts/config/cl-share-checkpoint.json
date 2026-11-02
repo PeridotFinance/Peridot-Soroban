@@ -1,0 +1,124 @@
+{
+  "status": "FAILED_STOPPED_AT_FIRST_COMPILED_HARNESS_RUN",
+  "branch": "feat/cl-share-stage1-checkpoint",
+  "base_commit": "47858c1a13c2588970395faa2212e7b68bd33060",
+  "authoritative_handoff": "docs/handoffs/00-shared-risk-model-and-rollout-2.md",
+  "failure": {
+    "stage": "fixture setup before pool initialization",
+    "error": "HostError: Error(Object, InvalidInput): not a contract address",
+    "cause": "The fixed G-address fixture admin is passed to SDK 25.3.1 mock_auths, which registers MockAuthContract at that address. register_at requires a contract address.",
+    "contract_authorization_verdict": "NOT_REACHED",
+    "next_step": "Use a separately labelled contract-address test administrator (and compile all fixture artifacts with that pin), or an explicit real account-auth fixture, then rerun. Do not enable blanket auth mocking."
+  },
+  "validation": {
+    "contract_builds": "7 packages built using stellar contract build only",
+    "unit_tests": {
+      "passed": 5,
+      "failed": 0,
+      "scope": "3 reward-ledger unit tests plus 2 funded-seizure-math tests; not full vault or end-to-end liquidation proofs"
+    },
+    "harness": {
+      "passed": 0,
+      "failed": 1
+    },
+    "budget_check": "FAILED; all required transaction flows unmeasured",
+    "mainnet_state_simulation": false,
+    "runtime_resource_numbers": null,
+    "resource_fee_numbers": null,
+    "artifacts": {
+      "margin_controller.wasm": {
+        "bytes": 85833,
+        "sha256": "d68aeca1e6680d9919ed2524acdc377c9ded073933dcb0ad9961ce73aba6d5e6"
+      },
+      "swap_adapter.wasm": {
+        "bytes": 10876,
+        "sha256": "89688ce66412cdf09626bf4e5a314360e50a0642b40e07beb42d62fda9161d52"
+      },
+      "receipt_vault.wasm": {
+        "bytes": 80262,
+        "sha256": "d6e9219f66b543bc11755dd89321c636d8c49e1abf84d54b8e5394eb37168a7f"
+      },
+      "jump_rate_model.wasm": {
+        "bytes": 7644,
+        "sha256": "9c1c8f7f5deba555d4314b613482345a238f07f19055b0087a6b01852f285ef2"
+      },
+      "simple_peridottroller.wasm": {
+        "bytes": 63289,
+        "sha256": "208dd4be477ef925f98e109c21c2afb2303c2d632ac534a29d09957f507ac2f7"
+      },
+      "cl_share_vault.wasm": {
+        "bytes": 61672,
+        "sha256": "661eacaea355c4dc2f93f4d9785aa5689a8e77e587cf0689092442a3a22e923f"
+      },
+      "cl_share_pool_facade.wasm": {
+        "bytes": 6131,
+        "sha256": "c8a4b861738994bde2dc2dbaf345eb2312cb333b29ee87d28f338c47d13baf23"
+      }
+    }
+  },
+  "reward_results": {
+    "alice_only_before_bob": {
+      "received": 10,
+      "alice": 10,
+      "bob": 0
+    },
+    "emission_change": {
+      "received": 100,
+      "alice": 5,
+      "bob": 95
+    },
+    "mid_accrual_transfer": {
+      "received": 100,
+      "alice": 55,
+      "bob": 45
+    },
+    "missing_boundary": {
+      "received": 100,
+      "quarantined": 100,
+      "distributed": 0,
+      "later_read_proves_earlier_boundary": false
+    },
+    "voluntary_waiver_false": "named error tested",
+    "voluntary_waiver_true": "boundary flag tested; disposition to other owners remains unimplemented"
+  },
+  "implementation_status": {
+    "share_vault": "LOCAL VALIDATION CANDIDATE ONLY; incomplete stage 1",
+    "facade": "compiled, authorization and round trip not yet exercised",
+    "funded_liquidation": "seizure sizing math started and unit tested; atomic funded repayment/seizure and borrower reward pass-through not implemented",
+    "funding_group_script": "build/plan-only preparation; no executable deployment; blocked by absent minimum-cash-reserve ABI, remaining deployment/readback validation",
+    "production_maintenance_margin": null,
+    "harness_maintenance_margin": {
+      "value_scaled": 250000,
+      "label": "TEST ONLY, not reached in failed run"
+    }
+  },
+  "outstanding_proofs": [
+    "Full SEP-41 surface, including allowances/transfer_from and their reward hooks",
+    "Actual principal deposit/redeem, depositor execution costs, donation exclusion, fee collection and partial exits against the pinned pool",
+    "Emergency principal exit with swaps/claims/oracle unavailable",
+    "Pinned pending-view equality with actual claims including rounding/range changes; proven-entry shortfall/excess reconciliation",
+    "Timelocked/evidenced quarantine release, waiver disposition to interval owners, entitlement TTL/archive behavior",
+    "Receipt-market and margin-position owner reward pass-through; forced liquidation and repay-release with both reward calls failing",
+    "Facade two-direction round trip, donation dust in both tokens, wrong caller/auth shape, sweeps and directional pause tests",
+    "Conservative quote vs execution, stale NAV/killed pools, interruption/expiry/cancel coverage",
+    "Funded atomic liquidation execution, trusted valuation, funded capacity and bonus economics",
+    "Stage-1 capacity and active liquidity share caps, keeper range/recenter validation (maintenance mutation entrypoints are blocked in candidate)",
+    "Account-wide validity, 1% ordinary-borrow bound and ordinary-path exclusion for margin positions",
+    "All per-flow CPU/memory/footprint/resource fees and Mainnet-state unsigned simulations",
+    "Cash-reserve implementation plus cash-only executable deployment and readback verification"
+  ],
+  "safety": {
+    "mainnet_transactions": 0,
+    "keys_or_secrets_read": false,
+    "signatures_or_submissions": 0,
+    "upshift_bound": false,
+    "existing_live_contract_sources_modified": false,
+    "commit_or_push": false
+  },
+  "evidence": {
+    "harness_log": "target/cl-share-checkpoint/logs/harness.log",
+    "reward_log": "target/cl-share-checkpoint/logs/reward-tests.log",
+    "budget_log": "target/cl-share-checkpoint/logs/budget.log",
+    "reproduce": "bash scripts/run_cl_share_checkpoint.sh"
+  }
+}

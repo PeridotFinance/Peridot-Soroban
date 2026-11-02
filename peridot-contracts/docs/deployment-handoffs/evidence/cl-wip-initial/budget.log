@@ -1,0 +1,2 @@
+UNMEASURED: activate_open_position_v3, begin_open, cancel_after_execute, cancel_after_swap, cancel_before_execute, claim_failure_recovery, claim_rewards, deposit, emergency_redeem, finish_close, funded_liquidation, prepare_close_position_v3, redeem, repay_release, swap_close, swap_open_position_v3, transfer
+Scope: compiled local controlled state; Mainnet-state simulation and resource fees NOT measured.
