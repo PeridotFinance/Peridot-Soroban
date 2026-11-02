@@ -85,6 +85,7 @@ try {
   const postState = {};
   const keyNames = {};
   const phases = new Set();
+  const beforeEntries = new Map();
   for (const item of evidence.entry_size_checks) {
     if (!['before', 'after'].includes(item.phase)) throw Error('entry phase missing');
     if (rejected && item.phase === 'after') throw Error('rejected invocation exported a changed entry');
@@ -96,6 +97,7 @@ try {
     const entry = decode(xdr.LedgerEntry, item.entry_xdr);
     const encoded = entry.toXDR();
     if (item.entry_size_bytes !== encoded.length || item.entry_sha256 !== hash(encoded)) throw Error('entry size/hash mismatch');
+    if (item.phase === 'before') beforeEntries.set(item.key_xdr, item.entry_xdr);
     if (key.switch().name === 'contractData') {
       maxima.max_contract_data_key_size_bytes = Math.max(maxima.max_contract_data_key_size_bytes, key.toXDR().length);
       if (entry.data().switch().name !== 'contractData') throw Error('contract data entry/key type mismatch');
@@ -114,6 +116,59 @@ try {
     if (!rejected && ['contractData', 'contractCode'].includes(key.switch().name) &&
         (item.phase === 'after' || (readOnly.includes(item.key_xdr) && !(item.key_xdr in postState)))) {
       postState[item.key_xdr] = entry.data().toXDR('base64');
+    }
+  }
+  // Only the explicit host29 repair schema can reinterpret an absent RW output
+  // as a handled-failure footprint placeholder. Legacy evidence is unchanged.
+  if (Object.hasOwn(evidence, 'recording_projection_repair')) {
+    const repair = evidence.recording_projection_repair;
+    if (!repair || repair.schema !== 'host29-contract-footprint-placeholder-projection-v1' ||
+        repair.signature_verification_proof !== false || !Array.isArray(repair.placeholders) ||
+        repair.scope !== 'logical-state projection only; no resource, fee, footprint, TTL or restoration-index changes' ||
+        repair.effective_restored_ttl_gate !== 'unresolved for handled-failure placeholders without independent full-transaction runtime evidence' ||
+        JSON.stringify(Object.keys(repair).sort()) !== JSON.stringify([
+          'effective_restored_ttl_gate', 'placeholders', 'schema', 'scope', 'signature_verification_proof'])) {
+      throw Error('invalid recording projection repair schema');
+    }
+    const seen = new Set();
+    const markerFields = ['key_xdr', 'classification', 'read_only', 'encoded_new_value',
+      'old_entry_size_bytes_for_rent', 'new_entry_size_bytes_for_rent', 'ttl_change',
+      'initial_entry_exists', 'initial_entry_xdr', 'logical_action', 'read_write_footprint_index',
+      'listed_as_restored', 'effective_restored_ttl_established', 'ttl_scope', 'source_proof'].sort();
+    for (const marker of repair.placeholders) {
+      if (!marker || JSON.stringify(Object.keys(marker).sort()) !== JSON.stringify(markerFields) ||
+          marker.classification !== 'host29-recording-footprint-only-contract-placeholder' ||
+          marker.encoded_new_value !== null || marker.old_entry_size_bytes_for_rent !== 0 ||
+          marker.new_entry_size_bytes_for_rent !== 0 || marker.ttl_change !== null ||
+          marker.effective_restored_ttl_established !== false ||
+          marker.logical_action !== 'retain-initial-data-or-absence' ||
+          marker.source_proof !== 'soroban-env-host-29.0.1/src/e2e_invoke.rs:add_footprint_only_ledger_changes; ordinary ContractData/Code changes initialize ttl_change' ||
+          marker.ttl_scope !== 'No effective TTL inferred from placeholder; restored TTL requires independent full-transaction runtime evidence') {
+        throw Error('invalid recording projection placeholder');
+      }
+      const key = decode(xdr.LedgerKey, marker.key_xdr);
+      if (!['contractData', 'contractCode'].includes(key.switch().name) || rejected ||
+          seen.has(marker.key_xdr) || phases.has(marker.key_xdr + ':after')) {
+        throw Error('invalid placeholder key, duplicate, rejection or after entry');
+      }
+      seen.add(marker.key_xdr);
+      const ro = readOnly.includes(marker.key_xdr);
+      const rw = readWrite.indexOf(marker.key_xdr);
+      if ((!ro && rw < 0) || marker.read_only !== ro ||
+          marker.read_write_footprint_index !== (rw < 0 ? null : rw) ||
+          marker.listed_as_restored !== (rw >= 0 && restored.includes(rw))) {
+        throw Error('placeholder footprint/restoration mismatch');
+      }
+      const before = beforeEntries.get(marker.key_xdr);
+      if (marker.initial_entry_exists !== (before !== undefined) ||
+          marker.initial_entry_xdr !== (before === undefined ? null : before)) {
+        throw Error('placeholder initial entry mismatch');
+      }
+      if (before !== undefined) {
+        // The normal entry loop already checked canonical XDR, key derivation,
+        // entry bytes/hash and footprint membership for this exact before value.
+        postState[marker.key_xdr] = decode(xdr.LedgerEntry, before).data().toXDR('base64');
+      }
     }
   }
   // A deleted entry may have no output bytes but its key still consumes space.

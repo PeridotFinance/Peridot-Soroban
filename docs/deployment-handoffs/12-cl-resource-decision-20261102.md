@@ -1,10 +1,20 @@
 # Resource decision memo — refreshed decision, 2026-11-02
 
-**Recommendation: preserve the existing atomic baseline as the reference architecture and evaluate it against a separately proposed bounded internal policy. Do not adopt the split prototype or add stages.** This is an architecture recommendation, not permission to change limits. Stage 1 remains incomplete; PR #75 remains draft; borrowing stays disabled. If 100M/100 SDK entries/50 writes remains mandatory, the next feasibility dependency is a measured venue/accounting ABI redesign plus narrower receipt/controller key access, not more transaction splitting.
+**Recommendation: preserve the atomic reference, but require narrower storage access/restoration costs before an Option1 qualification decision. Do not adopt the isolated optimization, proposed policy, split prototype or additional stages.** This is an architecture recommendation, not permission to change limits. Stage 1 remains incomplete; PR #75 remains draft; borrowing stays disabled. If 100M/100 SDK entries/50 writes remains mandatory, the next feasibility dependency is a measured venue/accounting ABI redesign plus narrower receipt/controller key access, not more transaction splitting.
 
 “Atomic baseline” means the existing V3 transaction stages with atomic conversion, fee-inclusive share mint and custody changes inside swap-open, and atomic funded repayment/seizure. It does not mean the entire open/close lifecycle is a single transaction. Its preserved source is `9cf43082bfb57334d57dbc58cfa90ccad4d98078`. The isolated prototype at `bb154ec8f03889aabfdb8dd5ea120f22c46a47f5` remains a **negative feasibility result**. All historical artifacts and checkpoints remain intact.
 
 No active profile, ceiling, production contract, stage, claim-first boundary, maintenance-margin setting or shared handoff 00 changes in this update. No signing, broadcasting, deployment, secret access or Upshift binding. This memo reuses measured executions; it does not expand the contract test suite or substitute a different profile to make a release gate green.
+
+## Focused qualification now completed
+
+[Handoff16](16-cl-atomic-qualification-20261102.md) supersedes the earlier observed-headroom figures below. Combined-history atomic swap-open costs242,307,129 unsigned CPU live and244,149,068 with restored persistent state, exceeding the proposed240M workload boundary. An isolated receipt TTL optimization saves4,660,696 instructions:237,646,433 live/239,488,372 restored, leaving only511,628 before real authorization in the restored case. All three claims, valuation, reserve checks and atomic funded repayment/seizure remain; no patch or policy is adopted.
+
+Restored writes remain81 for swap-open,98 activation,89 swap-close and104 funded liquidation.104 exceeds both the80-write workload boundary and the proposed100-write ceiling. Require at least24 fewer touched/restored liquidation write keys, plus real-auth overhead; narrower receipt/controller configuration access or measured compact versioned storage is the concrete next dependency. This result does not yet prove that venue redesign is necessary under Option1. Under100M/100/50, Option2's larger venue/accounting dependency remains.
+
+Four targeted compiled cases pass captured limits in each baseline/candidate live/restored variant; internal limits fail all four.151 live pairs,151 restored pairs and17 former-peak pairs preserve logical state, events, authorization and reported TTL changes. These samples do not qualify signed execution, full restored TTL/rent, code archival, all registry/tick/history bounds or production admission. Existing failing gates and negative experiments are preserved. The Option1 table later in this memo remains the **earlier comparison population**, not the new qualification result.
+
+Completed baseline CI at90111e2 is separately [preserved and verified](evidence/cl-linux-ci-90111e2-20261102/README.md): run41492773441 FAILURE, checker32 PASS, captured four gates PASS/internal four FAIL,106 lifecycle/303 transaction errors. It executes neither isolated prototype. See handoff16 for current local proof mapping, measurements and exact remaining authorization experiment.
 
 ## Refreshed network settings — read-only
 
@@ -154,7 +164,7 @@ A no-debt-until-final-transition design might remove some intermediate liquidati
 
 ## Concrete next decision
 
-Prefer the atomic baseline for the next resource decision because it already executes the required controlled-state lifecycle with the exact target runtime and avoids new escrow liveness/liquidation obligations. The next focused work, if separately authorized, is to quantify the missing signed/stressed envelope and determine whether measured same-transaction optimization can cover those missing costs while preserving proposed headroom. No broad rerun is warranted merely because this memo changed.
+Prefer the atomic baseline for the next resource decision because it already executes the required controlled-state lifecycle with the exact target runtime and avoids new escrow liveness/liquidation obligations. The focused unsigned qualification has now identified concrete CPU and restored-write failures; use handoff16 for the measured next dependency. Complete the required storage/restoration optimization and its migration/recovery proof before deciding whether to authorize real signature qualification. No broad rerun is warranted merely because this memo changed.
 
 If 100M/100/50 is a firm product constraint, prioritize a venue ABI feasibility specification and receipt key-access plan with measurable targets from the table above. Do not promise a wrapper-only fix or start another staged candidate first. Neither option is presently release-ready; the choice is whether to fund constrained atomic-path work for a separately considered policy, or accept the larger venue/accounting dependency needed to keep today's caps.
 
