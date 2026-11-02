@@ -42,7 +42,10 @@ for profile in internal-policy captured-network-diagnostic; do
   archive_exit=0
   CL_TRANSACTION_ARCHIVE_ROLE=vault cargo test --manifest-path harness/cl-runtime29/Cargo.toml historical_tests:: -- --nocapture --test-threads=1 > "$run_dir/logs/$profile-archive.log" 2>&1 || archive_exit=$?
   [[ "$archive_exit" == 0 ]] || status=1
-  python3 scripts/make_cl_proof_manifest.py --map config/cl-proof-map.json --profile "$CL_RESOURCE_PROFILE" --report "$CL_RESOURCE_REPORT" --test-log "$run_dir/logs/$profile-harness.log" --test-exit-code "$harness_exit" --test-log "$run_dir/logs/$profile-archive.log" --test-exit-code "$archive_exit" --call-profile "$CL_CALL_PROFILE_REPORT" --output "$run_dir/$profile-proof-manifest.json"
+  history_archive_exit=0
+  CL_TRANSACTION_ARCHIVE_ROLE=vault cargo test --manifest-path harness/cl-runtime29/Cargo.toml history_scale_tests:: -- --nocapture --test-threads=1 > "$run_dir/logs/$profile-history-scale-archive.log" 2>&1 || history_archive_exit=$?
+  [[ "$history_archive_exit" == 0 ]] || status=1
+  python3 scripts/make_cl_proof_manifest.py --map config/cl-proof-map.json --profile "$CL_RESOURCE_PROFILE" --report "$CL_RESOURCE_REPORT" --test-log "$run_dir/logs/$profile-harness.log" --test-exit-code "$harness_exit" --test-log "$run_dir/logs/$profile-archive.log" --test-exit-code "$archive_exit" --test-log "$run_dir/logs/$profile-history-scale-archive.log" --test-exit-code "$history_archive_exit" --call-profile "$CL_CALL_PROFILE_REPORT" --output "$run_dir/$profile-proof-manifest.json"
   # One validation pass computes and reports every independent gate. Selecting
   # checkpoint requires all of them; do not decode the same XDR four times.
   bash scripts/check_budget.sh --local-report "$CL_RESOURCE_REPORT" --profile "$CL_RESOURCE_PROFILE" --proof-manifest "$run_dir/$profile-proof-manifest.json" --transaction-evidence "$CL_TRANSACTION_REPORT" --gate checkpoint --summary-json "$run_dir/$profile-checkpoint-summary.json" > "$run_dir/logs/$profile-checkpoint.log" 2>&1 || status=1

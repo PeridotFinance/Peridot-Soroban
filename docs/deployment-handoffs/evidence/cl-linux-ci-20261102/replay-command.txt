@@ -1,0 +1,4 @@
+python3 scripts/replay_cl_linux_ci.py ../docs/deployment-handoffs/evidence/cl-linux-ci-20261102 --output target/cl-next-linux-replay-final
+process_exit=1
+both_profile_gates_errors_and_invocation_blocks_verified=true
+release_approval=false

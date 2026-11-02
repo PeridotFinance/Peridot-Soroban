@@ -1,0 +1,4529 @@
+{
+  "schema": "cl-resource-feasibility-v1",
+  "artifact": null,
+  "artifact_sha256": "9b01db8227a07f0b8a4bc13dfbf9b043002df79f0c6de068d126e3dd74d87d03",
+  "durable_evidence": "target/cl-next-linux-v2",
+  "durable_index_sha256": "3e6a67e3ace6e5be061246f49032074c78bb8b20f802ed2ad347705ae185e382",
+  "durable_archive_sha256": "b61dc396f71d7d94b8647c7e45a4236aa0d9946576c6a3aabe45412297fcce2d",
+  "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+  "protocol": 29,
+  "profiles": {
+    "internal-policy": {
+      "limits": {
+        "instructions": 100000000,
+        "mem_bytes": 41943040,
+        "disk_read_entries": 100,
+        "write_entries": 50,
+        "ledger_entries": 100,
+        "disk_read_bytes": 200000,
+        "write_bytes": 132096,
+        "contract_events_size_bytes": 16384,
+        "max_contract_data_key_size_bytes": 250,
+        "max_contract_data_entry_size_bytes": 65536,
+        "max_contract_code_entry_size_bytes": 131072,
+        "transaction_size_bytes": 132096
+      },
+      "gates": {
+        "invocation": false,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "missing_required_flows": [],
+      "lifecycle_errors": [
+        "test process did not succeed: /home/runner/work/Peridot-Soroban/Peridot-Soroban/peridot-contracts/target/cl-ci-checkpoint/logs/internal-policy-harness.log",
+        "successful Cargo suite summary missing: /home/runner/work/Peridot-Soroban/Peridot-Soroban/peridot-contracts/target/cl-ci-checkpoint/logs/internal-policy-harness.log",
+        "test process did not succeed: /home/runner/work/Peridot-Soroban/Peridot-Soroban/peridot-contracts/target/cl-ci-checkpoint/logs/internal-policy-archive.log",
+        "successful Cargo suite summary missing: /home/runner/work/Peridot-Soroban/Peridot-Soroban/peridot-contracts/target/cl-ci-checkpoint/logs/internal-policy-archive.log",
+        "proof has no successful measured invocation: deposit -> deposit",
+        "proof test not completed successfully: deposit -> test::compiled_vault_core_flows",
+        "proof has no successful measured invocation: redeem -> redeem",
+        "proof test not completed successfully: redeem -> test::compiled_vault_core_flows",
+        "proof test not completed successfully: transfer -> test::compiled_vault_core_flows",
+        "proof has no successful measured invocation: emergency_redeem -> emergency_redeem",
+        "proof test not completed successfully: emergency_redeem -> test::compiled_vault_core_flows",
+        "proof has no successful measured invocation: claim_rewards -> claim_rewards",
+        "proof test not completed successfully: claim_rewards -> test::compiled_vault_core_flows",
+        "proof test not completed successfully: begin_open -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: swap_open_position_v3 -> swap_open_position_v3",
+        "proof test not completed successfully: swap_open_position_v3 -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: activate_open_position_v3 -> activate_open_position_v3",
+        "proof test not completed successfully: activate_open_position_v3 -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: prepare_close_position_v3 -> prepare_close_position_v3",
+        "proof test not completed successfully: prepare_close_position_v3 -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: swap_close -> swap_close",
+        "proof test not completed successfully: swap_close -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: finish_close -> finish_close",
+        "proof test not completed successfully: finish_close -> test::compiled_v3_checkpoint",
+        "proof has no successful measured invocation: funded_liquidation -> funded_liquidation",
+        "proof test not completed successfully: funded_liquidation -> test::funded_tests::compiled_funded_liquidation",
+        "proof has no successful measured invocation: repay_release -> repay_release",
+        "proof test not completed successfully: repay_release -> test::funded_tests::compiled_repay_release",
+        "proof has no successful measured invocation: claim_failure_recovery -> claim_failure_recovery",
+        "proof test not completed successfully: claim_failure_recovery -> test::compiled_venue_rewards_and_claim_failure",
+        "proof has no successful measured invocation: cancel_after_execute -> cancel_after_execute_rejection",
+        "proof has no successful measured invocation: cancel_after_execute -> execute_open_position_v3",
+        "proof test not completed successfully: cancel_after_execute -> test::recovery_state_tests::compiled_cancel_after_execute_is_rejection_then_repay_release",
+        "proof has no successful measured invocation: cancel_after_swap -> cancel_after_swap",
+        "proof test not completed successfully: cancel_after_swap -> test::funded_tests::compiled_interrupted_open_recovery_claim_outage",
+        "proof has no successful measured invocation: receipt_custody_ownership_change -> receipt_custody_ownership_change",
+        "proof test not completed successfully: receipt_custody_ownership_change -> test::compiled_receipt_margin_reward_custody",
+        "proof has no successful measured invocation: allowance_transfer_from -> allowance_transfer_from",
+        "proof test not completed successfully: allowance_transfer_from -> test::lifecycle_tests::compiled_allowance_reward_boundary_and_claim_rollback",
+        "proof has no successful measured invocation: quarantine_reconciliation -> quarantine_reconciliation",
+        "proof test not completed successfully: quarantine_reconciliation -> test::historical_tests::compiled_automatic_history_exited_owner_and_later_accrual",
+        "proof has no successful measured invocation: waiver_redistribution -> waiver_redistribution",
+        "proof test not completed successfully: waiver_redistribution -> test::historical_tests::compiled_governed_waiver_original_custody_coowner_exits_before_receipt",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_fractional_first_transfer",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_emission_change",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_shifted_range",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_returned_range",
+        "proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_partial_exit",
+        "proof test not completed successfully: pending_claim_boundary_matrix -> test::venue_boundary_tests::compiled_pending_claim_boundary_matrix",
+        "proof has no successful measured invocation: failed_activation_recovery -> failed_activation_atomic",
+        "proof has no successful measured invocation: failed_activation_recovery -> recover_pending_open_funded",
+        "proof test not completed successfully: failed_activation_recovery -> test::recovery_state_tests::compiled_failed_activation_preserves_pending_recovery",
+        "proof has no successful measured invocation: expired_pending_resolution -> expired_pending_resolution",
+        "proof test not completed successfully: expired_pending_resolution -> test::recovery_state_tests::compiled_expired_swapped_permissionless_resolution",
+        "proof has no successful measured invocation: both_reward_calls_failed_funded_liquidation -> both_reward_calls_failed_funded_liquidation",
+        "proof test not completed successfully: both_reward_calls_failed_funded_liquidation -> test::adversarial_tests::compiled_both_reward_calls_fail_forced_settlement_preserves_history",
+        "proof has no successful measured invocation: funded_insufficient_liquidator_rollback -> funded_insufficient_liquidator_rollback",
+        "proof test not completed successfully: funded_insufficient_liquidator_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: funded_invalid_valuation_rollback -> funded_invalid_valuation_rollback",
+        "proof test not completed successfully: funded_invalid_valuation_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: funded_failed_collateral_transfer_rollback -> funded_failed_collateral_transfer_rollback",
+        "proof test not completed successfully: funded_failed_collateral_transfer_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: funded_unauthorized_rollback -> funded_unauthorized_rollback",
+        "proof test not completed successfully: funded_unauthorized_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: funded_repeated_execution_rollback -> funded_repeated_execution_rollback",
+        "proof test not completed successfully: funded_repeated_execution_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity",
+        "proof has no successful measured invocation: historical_multiple_intervals -> historical_multiple_intervals",
+        "proof test not completed successfully: historical_multiple_intervals -> test::historical_tests::compiled_multiple_unsettled_intervals_exited_beneficiary",
+        "proof has no successful measured invocation: historical_shortfall -> governed_proportional_shortfall",
+        "proof test not completed successfully: historical_shortfall -> test::historical_shortfall_tests::compiled_governed_shortfall_proportional_exited_custody_owner",
+        "proof has no successful measured invocation: historical_unresolved_intervals -> historical_unresolved_intervals",
+        "proof test not completed successfully: historical_unresolved_intervals -> test::unresolved_stress_tests::compiled_multiple_unresolved_intervals_after_funded_exits"
+      ],
+      "transaction_errors": [
+        "transaction row 2: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 2: transaction evidence mismatch: base_fee_source",
+        "transaction row 2: transaction evidence mismatch: limits_pass",
+        "transaction row 2: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 2: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 2: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 2: transaction evidence mismatch: live_state_validation",
+        "transaction row 2: transaction outcome/success classification mismatch",
+        "transaction row 5: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 5: transaction evidence mismatch: base_fee_source",
+        "transaction row 5: transaction evidence mismatch: limits_pass",
+        "transaction row 5: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 5: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 5: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 5: transaction evidence mismatch: live_state_validation",
+        "transaction row 5: transaction outcome/success classification mismatch",
+        "transaction row 14: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 14: transaction evidence mismatch: base_fee_source",
+        "transaction row 14: transaction evidence mismatch: limits_pass",
+        "transaction row 14: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 14: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 14: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 14: transaction evidence mismatch: live_state_validation",
+        "transaction row 14: transaction outcome/success classification mismatch",
+        "transaction row 18: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 18: transaction evidence mismatch: base_fee_source",
+        "transaction row 18: transaction evidence mismatch: limits_pass",
+        "transaction row 18: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 18: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 18: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 18: transaction evidence mismatch: live_state_validation",
+        "transaction row 18: transaction outcome/success classification mismatch",
+        "transaction row 19: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 19: transaction evidence mismatch: base_fee_source",
+        "transaction row 19: transaction evidence mismatch: limits_pass",
+        "transaction row 19: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 19: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 19: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 19: transaction evidence mismatch: live_state_validation",
+        "transaction row 19: transaction outcome/success classification mismatch",
+        "transaction row 20: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 20: transaction evidence mismatch: base_fee_source",
+        "transaction row 20: transaction evidence mismatch: limits_pass",
+        "transaction row 20: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 20: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 20: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 20: transaction evidence mismatch: live_state_validation",
+        "transaction row 20: transaction outcome/success classification mismatch",
+        "transaction row 23: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 23: transaction evidence mismatch: base_fee_source",
+        "transaction row 23: transaction evidence mismatch: limits_pass",
+        "transaction row 23: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 23: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 23: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 23: transaction evidence mismatch: live_state_validation",
+        "transaction row 23: transaction outcome/success classification mismatch",
+        "transaction row 26: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 26: transaction evidence mismatch: base_fee_source",
+        "transaction row 26: transaction evidence mismatch: limits_pass",
+        "transaction row 26: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 26: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 26: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 26: transaction evidence mismatch: live_state_validation",
+        "transaction row 26: transaction outcome/success classification mismatch",
+        "transaction row 29: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 29: transaction evidence mismatch: base_fee_source",
+        "transaction row 29: transaction evidence mismatch: limits_pass",
+        "transaction row 29: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 29: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 29: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 29: transaction evidence mismatch: live_state_validation",
+        "transaction row 29: transaction outcome/success classification mismatch",
+        "transaction row 32: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 32: transaction evidence mismatch: base_fee_source",
+        "transaction row 32: transaction evidence mismatch: limits_pass",
+        "transaction row 32: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 32: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 32: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 32: transaction evidence mismatch: live_state_validation",
+        "transaction row 32: transaction outcome/success classification mismatch",
+        "transaction row 33: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 33: transaction evidence mismatch: base_fee_source",
+        "transaction row 33: transaction evidence mismatch: limits_pass",
+        "transaction row 33: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 33: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 33: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 33: transaction evidence mismatch: live_state_validation",
+        "transaction row 33: transaction outcome/success classification mismatch",
+        "transaction row 36: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 36: transaction evidence mismatch: base_fee_source",
+        "transaction row 36: transaction evidence mismatch: limits_pass",
+        "transaction row 36: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 36: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 36: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 36: transaction evidence mismatch: live_state_validation",
+        "transaction row 36: transaction outcome/success classification mismatch",
+        "transaction row 37: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 37: transaction evidence mismatch: base_fee_source",
+        "transaction row 37: transaction evidence mismatch: limits_pass",
+        "transaction row 37: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 37: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 37: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 37: transaction evidence mismatch: live_state_validation",
+        "transaction row 37: transaction outcome/success classification mismatch",
+        "transaction row 38: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 38: transaction evidence mismatch: base_fee_source",
+        "transaction row 38: transaction evidence mismatch: limits_pass",
+        "transaction row 38: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 38: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 38: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 38: transaction evidence mismatch: live_state_validation",
+        "transaction row 38: transaction outcome/success classification mismatch",
+        "transaction row 39: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 39: transaction evidence mismatch: base_fee_source",
+        "transaction row 39: transaction evidence mismatch: limits_pass",
+        "transaction row 39: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 39: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 39: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 39: transaction evidence mismatch: live_state_validation",
+        "transaction row 39: transaction outcome/success classification mismatch",
+        "transaction row 75: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 75: transaction evidence mismatch: base_fee_source",
+        "transaction row 75: transaction evidence mismatch: limits_pass",
+        "transaction row 75: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 75: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 75: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 75: transaction evidence mismatch: live_state_validation",
+        "transaction row 75: transaction outcome/success classification mismatch",
+        "transaction row 78: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 78: transaction evidence mismatch: base_fee_source",
+        "transaction row 78: transaction evidence mismatch: limits_pass",
+        "transaction row 78: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 78: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 78: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 78: transaction evidence mismatch: live_state_validation",
+        "transaction row 78: transaction outcome/success classification mismatch",
+        "transaction row 81: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 81: transaction evidence mismatch: base_fee_source",
+        "transaction row 81: transaction evidence mismatch: limits_pass",
+        "transaction row 81: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 81: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 81: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 81: transaction evidence mismatch: live_state_validation",
+        "transaction row 81: transaction outcome/success classification mismatch",
+        "transaction row 153: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 153: transaction evidence mismatch: base_fee_source",
+        "transaction row 153: transaction evidence mismatch: limits_pass",
+        "transaction row 153: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 153: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 153: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 153: transaction evidence mismatch: live_state_validation",
+        "transaction row 153: transaction outcome/success classification mismatch",
+        "transaction row 154: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 154: transaction evidence mismatch: base_fee_source",
+        "transaction row 154: transaction evidence mismatch: limits_pass",
+        "transaction row 154: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 154: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 154: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 154: transaction evidence mismatch: live_state_validation",
+        "transaction row 154: transaction outcome/success classification mismatch",
+        "transaction row 157: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 157: transaction evidence mismatch: base_fee_source",
+        "transaction row 157: transaction evidence mismatch: limits_pass",
+        "transaction row 157: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 157: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 157: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 157: transaction evidence mismatch: live_state_validation",
+        "transaction row 157: transaction outcome/success classification mismatch",
+        "transaction row 158: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 158: transaction evidence mismatch: base_fee_source",
+        "transaction row 158: transaction evidence mismatch: limits_pass",
+        "transaction row 158: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 158: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 158: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 158: transaction evidence mismatch: live_state_validation",
+        "transaction row 158: transaction outcome/success classification mismatch",
+        "transaction row 159: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 159: transaction evidence mismatch: base_fee_source",
+        "transaction row 159: transaction evidence mismatch: limits_pass",
+        "transaction row 159: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 159: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 159: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 159: transaction evidence mismatch: live_state_validation",
+        "transaction row 159: transaction outcome/success classification mismatch",
+        "transaction row 162: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 162: transaction evidence mismatch: base_fee_source",
+        "transaction row 162: transaction evidence mismatch: limits_pass",
+        "transaction row 162: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 162: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 162: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 162: transaction evidence mismatch: live_state_validation",
+        "transaction row 162: transaction outcome/success classification mismatch",
+        "transaction row 163: transaction evidence mismatch: contract_authorization_enforced",
+        "transaction row 163: transaction evidence mismatch: base_fee_source",
+        "transaction row 163: transaction evidence mismatch: limits_pass",
+        "transaction row 163: transaction evidence mismatch: diagnostic_shadow_ok",
+        "transaction row 163: transaction evidence mismatch: exact_captured_cost_model",
+        "transaction row 163: transaction evidence mismatch: signature_verification_measured",
+        "transaction row 163: transaction evidence mismatch: live_state_validation",
+        "transaction row 163: transaction outcome/success classification mismatch",
+        "unsigned transaction proof missing: activate_open_position_v3 -> v3.activate_open_position_v3 (success)",
+        "unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (success)",
+        "unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (rejected, proof_case=allowance_missing_spender_auth)",
+        "unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (rejected, proof_case=allowance_wrong_recipient_auth, auth_mode=enforcing-mismatched-root, mismatched_argument_indices=[2])",
+        "unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (rejected, proof_case=allowance_failed_claim_rollback)",
+        "unsigned transaction proof missing: both_reward_calls_failed_funded_liquidation -> v3.liquidate_funded_v3 (success)",
+        "unsigned transaction proof missing: cancel_after_execute -> v3.execute_open_position_v3 (success)",
+        "unsigned transaction proof missing: cancel_after_execute -> v3.repay_margin_position_v3 (success)",
+        "unsigned transaction proof missing: cancel_after_execute -> v3.release_debt_free_position_v3 (success)",
+        "unsigned transaction proof missing: cancel_after_execute -> v3.cancel_pending_open_v3 (rejected, proof_case=cancel_after_execute_rejection)",
+        "unsigned transaction proof missing: cancel_after_swap -> v3.recover_pending_open_funded (success)",
+        "unsigned transaction proof missing: claim_failure_recovery -> vault.emergency_redeem (success)",
+        "unsigned transaction proof missing: claim_rewards -> vault.claim_rewards (success)",
+        "unsigned transaction proof missing: deposit -> vault.deposit_underlying (success)",
+        "unsigned transaction proof missing: emergency_redeem -> vault.emergency_redeem (success)",
+        "unsigned transaction proof missing: expired_pending_resolution -> v3.resolve_pending_open_v3 (success)",
+        "unsigned transaction proof missing: expired_pending_resolution -> v3.release_debt_free_position_v3 (success)",
+        "unsigned transaction proof missing: failed_activation_recovery -> v3.recover_pending_open_funded (success)",
+        "unsigned transaction proof missing: failed_activation_recovery -> v3.activate_open_position_v3 (rejected, proof_case=failed_activation_atomic)",
+        "unsigned transaction proof missing: finish_close -> v3.finish_close_position_v3 (success)",
+        "unsigned transaction proof missing: funded_failed_collateral_transfer_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_failed_collateral_transfer_rollback)",
+        "unsigned transaction proof missing: funded_insufficient_liquidator_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_insufficient_liquidator_rollback)",
+        "unsigned transaction proof missing: funded_invalid_valuation_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_invalid_valuation_rollback)",
+        "unsigned transaction proof missing: funded_liquidation -> v3.liquidate_funded_v3 (success)",
+        "unsigned transaction proof missing: funded_repeated_execution_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_repeated_execution_rollback)",
+        "unsigned transaction proof missing: funded_unauthorized_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_unauthorized_rollback)",
+        "unsigned transaction proof missing: historical_multiple_intervals -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: historical_shortfall -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: historical_unresolved_intervals -> v3.liquidate_funded_v3 (success)",
+        "unsigned transaction proof missing: pending_claim_boundary_matrix -> vault.transfer (success)",
+        "unsigned transaction proof missing: pending_claim_boundary_matrix -> vault.emergency_redeem (success)",
+        "unsigned transaction proof missing: prepare_close_position_v3 -> v3.prepare_close_position_v3 (success)",
+        "unsigned transaction proof missing: quarantine_reconciliation -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: quarantine_reconciliation -> vault.settle_reward_segment (success)",
+        "unsigned transaction proof missing: receipt_custody_ownership_change -> share_receipt.transfer (success)",
+        "unsigned transaction proof missing: redeem -> vault.redeem (success)",
+        "unsigned transaction proof missing: repay_release -> v3.repay_margin_position_v3 (success)",
+        "unsigned transaction proof missing: repay_release -> v3.release_debt_free_position_v3 (success)",
+        "unsigned transaction proof missing: swap_close -> v3.swap_close_position_v3 (success)",
+        "unsigned transaction proof missing: swap_open_position_v3 -> v3.swap_open_position_v3 (success)",
+        "unsigned transaction proof missing: transfer -> vault.transfer (success)",
+        "unsigned transaction proof missing: waiver_redistribution -> vault.attribute_reward_segment (success)",
+        "unsigned transaction proof missing: waiver_redistribution -> vault.settle_reward_segment (success)"
+      ]
+    },
+    "captured-network-diagnostic": {
+      "limits": {
+        "instructions": 400000000,
+        "mem_bytes": 41943040,
+        "disk_read_entries": 200,
+        "write_entries": 200,
+        "ledger_entries": 400,
+        "disk_read_bytes": 200000,
+        "write_bytes": 132096,
+        "contract_events_size_bytes": 16384,
+        "max_contract_data_key_size_bytes": 250,
+        "max_contract_data_entry_size_bytes": 65536,
+        "max_contract_code_entry_size_bytes": 131072,
+        "transaction_size_bytes": 132096
+      },
+      "gates": {
+        "invocation": true,
+        "lifecycle": true,
+        "transaction": true,
+        "checkpoint": true
+      },
+      "missing_required_flows": [],
+      "lifecycle_errors": [],
+      "transaction_errors": []
+    }
+  },
+  "wasm_sha256": {
+    "artifacts/cl_integration_fixtures.wasm": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+    "artifacts/cl_share_pool_facade.wasm": "d3c10c9b2d6e29a66b3b3e2c9ad7077b1dcea7268d284e1da3e306548217a093",
+    "artifacts/cl_share_vault.wasm": "65e239b6ddb13a395e98ccfb8f04fa46c858b632c42943df78612efd9e13cb63",
+    "artifacts/jump_rate_model.wasm": "1416b1f0bc441ddcda230d9e18759ffa0d3f24b7fe0b70172ca01bb3aaa3312a",
+    "artifacts/margin_controller.wasm": "a4ac0b60f96fa9283085a0315a6620c21e19b9ee27aa1a700e9089249e7777ec",
+    "artifacts/receipt_vault.wasm": "510481f6ab76f8a7eac3f18cc7fb7ff1583e3c8a40d5f333f18e855ff2bf50dc",
+    "artifacts/simple_peridottroller.wasm": "4d40bddeda038fa189b6d667861a4690b1a47cb6b8fdfb64eeff41ac8a63ce96",
+    "artifacts/swap_adapter.wasm": "28816ff4592011626b7b77ae24bde23de1763c13d7e5f14ecc178c163b53ac82"
+  },
+  "sdk_rows": 590,
+  "unsigned_transaction_rows": 1459,
+  "restoration_rows": 297,
+  "archive_summary": {
+    "roles": {
+      "vault": 297
+    },
+    "test_names": [
+      "test::historical_tests::compiled_automatic_history_exited_owner_and_later_accrual",
+      "test::historical_tests::compiled_governed_waiver_original_custody_coowner_exits_before_receipt",
+      "test::historical_tests::compiled_multiple_unsettled_intervals_exited_beneficiary"
+    ],
+    "max_instructions": 171514028,
+    "max_disk_read_bytes": 2580,
+    "max_fees_stroops": {
+      "inclusion": 100,
+      "non_refundable": 151343,
+      "refundable": 13663,
+      "rent": 22686852,
+      "total": 22845643
+    }
+  },
+  "flows": {
+    "deposit_underlying": {
+      "sample_count": 18,
+      "maxima": {
+        "instructions": 166914792,
+        "mem_bytes": 14418955,
+        "ledger_entries": 70,
+        "write_entries": 22
+      },
+      "required_reduction": {
+        "instructions": 66914792,
+        "mem_bytes": 0,
+        "ledger_entries": 0,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "vault": 10629118,
+        "unlabelled": 160017,
+        "underlying": 1353276,
+        "paired": 1047711,
+        "reward": 424575,
+        "aquarius": 149975219,
+        "plane": 1827480,
+        "oracle": 1497396
+      },
+      "peak_memory_counter_growth_roles": {
+        "vault": 1442974,
+        "unlabelled": 81270,
+        "underlying": 117903,
+        "paired": 119219,
+        "reward": 30123,
+        "aquarius": 6458805,
+        "plane": 6168661,
+        "oracle": 0
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 134354879,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.4",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 5913137,
+            "memory_bytes": 2900490,
+            "memory_read_entries_delta": 14,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 5972,
+            "write_entries_delta": 8
+          }
+        },
+        {
+          "path": "0.6",
+          "function": "claim_all_position_fees",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 128,
+            "instructions": 52970285,
+            "memory_bytes": 2682765,
+            "memory_read_entries_delta": 12,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 432,
+            "write_entries_delta": 1
+          }
+        },
+        {
+          "path": "0.19",
+          "function": "swap",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 1008,
+            "instructions": 10820323,
+            "memory_bytes": 1058392,
+            "memory_read_entries_delta": 2,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 672,
+            "write_entries_delta": 3
+          }
+        },
+        {
+          "path": "0.25",
+          "function": "deposit_position",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 1144,
+            "instructions": 64651134,
+            "memory_bytes": 4690148,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 4184,
+            "write_entries_delta": 2
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 928553,
+      "repeated_getter_calls": [
+        {
+          "path": "0.5",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63977,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.12",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63721,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.13",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 64821,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.15",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 64021,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.18",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 64821,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.20",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63721,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.21",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 65481,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.22",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63721,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.23",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 65481,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.25.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 48378,
+            "memory_bytes": 28926,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.25.4",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 48378,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.26",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63721,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.27",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 65481,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.28",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 61415,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.29",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 61415,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 165986239,
+      "finding": "infeasible for wrapper-only optimization with these venue subcalls preserved"
+    },
+    "redeem": {
+      "sample_count": 1,
+      "maxima": {
+        "instructions": 139752097,
+        "mem_bytes": 10640393,
+        "ledger_entries": 65,
+        "write_entries": 19
+      },
+      "required_reduction": {
+        "instructions": 39752097,
+        "mem_bytes": 0,
+        "ledger_entries": 0,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "vault": 6973742,
+        "unlabelled": 150662,
+        "underlying": 1266246,
+        "paired": 880159,
+        "reward": 316432,
+        "aquarius": 128351071,
+        "plane": 1813785
+      },
+      "peak_memory_counter_growth_roles": {
+        "vault": 1423369,
+        "unlabelled": 47520,
+        "underlying": 105157,
+        "paired": 105257,
+        "reward": 27679,
+        "aquarius": 3627005,
+        "plane": 5304406
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 126765769,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.4",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 92,
+            "disk_read_entries_delta": 1,
+            "event_bytes_delta": 420,
+            "instructions": 4825964,
+            "memory_bytes": 2878533,
+            "memory_read_entries_delta": 12,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 3368,
+            "write_entries_delta": 5
+          }
+        },
+        {
+          "path": "0.6",
+          "function": "claim_all_position_fees",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 128,
+            "instructions": 52903433,
+            "memory_bytes": 2405409,
+            "memory_read_entries_delta": 12,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 432,
+            "write_entries_delta": 1
+          }
+        },
+        {
+          "path": "0.9",
+          "function": "withdraw_position",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 1144,
+            "instructions": 62219427,
+            "memory_bytes": 3399457,
+            "memory_read_entries_delta": 2,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 5080,
+            "write_entries_delta": 6
+          }
+        },
+        {
+          "path": "0.15",
+          "function": "swap",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 1008,
+            "instructions": 6816945,
+            "memory_bytes": 430309,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 713898,
+      "repeated_getter_calls": [
+        {
+          "path": "0.5",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62086,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.7",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63422,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62822,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 45113,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.2",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 45113,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.10",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62522,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.11",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62222,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.12",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62222,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.14",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62522,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62522,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.18",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 59216,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.19",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 64116,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 139038199,
+      "finding": "infeasible for wrapper-only optimization with these venue subcalls preserved"
+    },
+    "receipt_custody_ownership_change": {
+      "sample_count": 1,
+      "maxima": {
+        "instructions": 34389776,
+        "mem_bytes": 6595716,
+        "ledger_entries": 124,
+        "write_entries": 25
+      },
+      "required_reduction": {
+        "instructions": 0,
+        "mem_bytes": 0,
+        "ledger_entries": 24,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "share_receipt": 16451797,
+        "lending_controller": 3205061,
+        "v3": 2060200,
+        "vault": 6031527,
+        "reward": 459343,
+        "aquarius": 5704818,
+        "unlabelled": 93503,
+        "plane": 383527
+      },
+      "peak_memory_counter_growth_roles": {
+        "share_receipt": 1529464,
+        "lending_controller": 1588246,
+        "v3": 277098,
+        "vault": 260171,
+        "reward": 31295,
+        "aquarius": 1643588,
+        "unlabelled": 30557,
+        "plane": 1235297
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 6467527,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.3.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 6467527,
+            "memory_bytes": 2909442,
+            "memory_read_entries_delta": 14,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 5972,
+            "write_entries_delta": 8
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 62774,
+      "repeated_getter_calls": [
+        {
+          "path": "0.3.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62774,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 34327002,
+      "finding": "currently fails internal limits; feasibility after optimization unknown"
+    },
+    "swap_open_position_v3": {
+      "sample_count": 18,
+      "maxima": {
+        "instructions": 235455712,
+        "mem_bytes": 24514438,
+        "ledger_entries": 171,
+        "write_entries": 45
+      },
+      "required_reduction": {
+        "instructions": 135455712,
+        "mem_bytes": 0,
+        "ledger_entries": 71,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "v3": 3199719,
+        "unlabelled": 299085,
+        "adapter": 680799,
+        "underlying": 3620620,
+        "cash_receipt": 28738480,
+        "lending_controller": 3327873,
+        "vault": 25794262,
+        "facade": 789722,
+        "aquarius": 163797778,
+        "paired": 1244132,
+        "reward": 1361280,
+        "plane": 2601962
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1415777,
+        "unlabelled": 171475,
+        "adapter": 1268053,
+        "underlying": 190629,
+        "cash_receipt": 714925,
+        "lending_controller": 2739783,
+        "vault": 1027528,
+        "facade": 0,
+        "aquarius": 8231801,
+        "paired": 99920,
+        "reward": 0,
+        "plane": 8654547
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 147933713,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.8.5.3",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 6598979,
+            "memory_bytes": 2754147,
+            "memory_read_entries_delta": 12,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 5972,
+            "write_entries_delta": 8
+          }
+        },
+        {
+          "path": "0.8.5.5",
+          "function": "claim_all_position_fees",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 608,
+            "instructions": 53570569,
+            "memory_bytes": 2885131,
+            "memory_read_entries_delta": 13,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 880,
+            "write_entries_delta": 3
+          }
+        },
+        {
+          "path": "0.8.5.14",
+          "function": "swap",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 1008,
+            "instructions": 10955817,
+            "memory_bytes": 1081892,
+            "memory_read_entries_delta": 1,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 448,
+            "write_entries_delta": 2
+          }
+        },
+        {
+          "path": "0.8.5.20",
+          "function": "deposit_position",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 1144,
+            "instructions": 64865976,
+            "memory_bytes": 4744847,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 4184,
+            "write_entries_delta": 2
+          }
+        },
+        {
+          "path": "0.8.7.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 5973639,
+            "memory_bytes": 1727679,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.10.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 5968733,
+            "memory_bytes": 1380573,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 7033065,
+      "repeated_getter_calls": [
+        {
+          "path": "0.4.3",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 74303,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 1,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.4",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 65320,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.5",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 65320,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.7",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 65320,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.5",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 59860,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.6.1",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 64566,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.6.3",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 64566,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.0.2",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 75634,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 1,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.1",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 119258,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 1,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.2",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 952716,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 1,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.4",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66913,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.0",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 68844,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.1",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66144,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.4",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 70344,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.7",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 70654,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.8",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 68794,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.10",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 70654,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.11",
+          "role": "aquarius",
+          "function": "get_is_killed_deposit",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1071300,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.13",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 68794,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.15",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 73174,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.16",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 70054,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.17",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 73174,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.18",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 70054,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.20.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 55385,
+            "memory_bytes": 31178,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.20.4",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 55385,
+            "memory_bytes": 18791,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.21",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 73174,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.22",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 70054,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.23",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 70528,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.5.24",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 70388,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.6",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 914272,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.7.0",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62577,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.7.1.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 50652,
+            "memory_bytes": 30898,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.7.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62577,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.8",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66449,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8.9",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 881968,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 907889,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.10.0",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 64394,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.10.1.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 47219,
+            "memory_bytes": 30930,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.10.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 64394,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 228422647,
+      "finding": "infeasible for wrapper-only optimization with these venue subcalls preserved"
+    },
+    "activate_open_position_v3": {
+      "sample_count": 14,
+      "maxima": {
+        "instructions": 78076392,
+        "mem_bytes": 13326592,
+        "ledger_entries": 182,
+        "write_entries": 40
+      },
+      "required_reduction": {
+        "instructions": 0,
+        "mem_bytes": 0,
+        "ledger_entries": 82,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "v3": 5678656,
+        "unlabelled": 137346,
+        "share_receipt": 23124901,
+        "vault": 12509394,
+        "lending_controller": 6185492,
+        "reward": 1049973,
+        "aquarius": 10992197,
+        "plane": 752284,
+        "cash_receipt": 15394213,
+        "oracle": 2251936
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1449774,
+        "unlabelled": 112452,
+        "share_receipt": 1931394,
+        "vault": 887201,
+        "lending_controller": 1555609,
+        "reward": 82053,
+        "aquarius": 3320022,
+        "plane": 2489557,
+        "cash_receipt": 0,
+        "oracle": 1498530
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 12620023,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.3.3.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 6419835,
+            "memory_bytes": 2953771,
+            "memory_read_entries_delta": 14,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 5972,
+            "write_entries_delta": 8
+          }
+        },
+        {
+          "path": "0.4.0.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 6200188,
+            "memory_bytes": 2935985,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 8022445,
+      "repeated_getter_calls": [
+        {
+          "path": "0.3.3.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 71391,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.3.4",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 920840,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.0.0",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 68824,
+            "memory_bytes": 39548,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.0.1.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 50219,
+            "memory_bytes": 38410,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.0.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 68824,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.5",
+          "role": "share_receipt",
+          "function": "get_ptoken_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3279156,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8",
+          "role": "cash_receipt",
+          "function": "get_margin_borrow_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3563191,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 70053947,
+      "finding": "currently fails internal limits; feasibility after optimization unknown"
+    },
+    "prepare_close_position_v3": {
+      "sample_count": 2,
+      "maxima": {
+        "instructions": 53764953,
+        "mem_bytes": 11093592,
+        "ledger_entries": 120,
+        "write_entries": 28
+      },
+      "required_reduction": {
+        "instructions": 0,
+        "mem_bytes": 0,
+        "ledger_entries": 20,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "v3": 5063312,
+        "unlabelled": 129206,
+        "vault": 14808005,
+        "share_receipt": 21252413,
+        "lending_controller": 2413626,
+        "reward": 674812,
+        "aquarius": 8677342,
+        "plane": 746237
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1457073,
+        "unlabelled": 56884,
+        "vault": 2709403,
+        "share_receipt": 925315,
+        "lending_controller": 1824606,
+        "reward": 33779,
+        "aquarius": 1636161,
+        "plane": 2450371
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 9953507,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.4.7.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 92,
+            "disk_read_entries_delta": 1,
+            "event_bytes_delta": 420,
+            "instructions": 5067748,
+            "memory_bytes": 2906983,
+            "memory_read_entries_delta": 12,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 3368,
+            "write_entries_delta": 5
+          }
+        },
+        {
+          "path": "0.6.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 4885759,
+            "memory_bytes": 1212590,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 4778709,
+      "repeated_getter_calls": [
+        {
+          "path": "0.4.3",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 925388,
+            "memory_bytes": 269833,
+            "memory_read_entries_delta": 1,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.4",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 916185,
+            "memory_bytes": 244136,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.5",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 916185,
+            "memory_bytes": 265790,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.7.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 61180,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.8",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 877795,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.5",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 912287,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.6.0",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 60898,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.6.1.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 47893,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.6.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 60898,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 48986244,
+      "finding": "currently fails internal limits; feasibility after optimization unknown"
+    },
+    "swap_close": {
+      "sample_count": 1,
+      "maxima": {
+        "instructions": 184218244,
+        "mem_bytes": 19900855,
+        "ledger_entries": 175,
+        "write_entries": 41
+      },
+      "required_reduction": {
+        "instructions": 84218244,
+        "mem_bytes": 0,
+        "ledger_entries": 75,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "v3": 4769259,
+        "unlabelled": 243631,
+        "adapter": 682457,
+        "cash_receipt": 8149604,
+        "facade": 1173120,
+        "vault": 22099624,
+        "aquarius": 134173014,
+        "underlying": 2242619,
+        "paired": 1133532,
+        "lending_controller": 4361038,
+        "oracle": 2236391,
+        "reward": 745478,
+        "plane": 2208477
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1415323,
+        "unlabelled": 89132,
+        "adapter": 1267863,
+        "cash_receipt": 649724,
+        "facade": 144431,
+        "vault": 2102135,
+        "aquarius": 7046757,
+        "underlying": 89138,
+        "paired": 89138,
+        "lending_controller": 0,
+        "oracle": 256521,
+        "reward": 0,
+        "plane": 6750693
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 130981925,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.9.3.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 92,
+            "disk_read_entries_delta": 1,
+            "event_bytes_delta": 420,
+            "instructions": 5126975,
+            "memory_bytes": 2504897,
+            "memory_read_entries_delta": 9,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 3368,
+            "write_entries_delta": 5
+          }
+        },
+        {
+          "path": "0.9.5.3",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 4916474,
+            "memory_bytes": 2223748,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.5",
+          "function": "claim_all_position_fees",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 128,
+            "instructions": 53109544,
+            "memory_bytes": 2466425,
+            "memory_read_entries_delta": 12,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 432,
+            "write_entries_delta": 1
+          }
+        },
+        {
+          "path": "0.9.5.8",
+          "function": "withdraw_position",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 1144,
+            "instructions": 60562999,
+            "memory_bytes": 3558757,
+            "memory_read_entries_delta": 2,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 4844,
+            "write_entries_delta": 8
+          }
+        },
+        {
+          "path": "0.9.5.14",
+          "function": "swap",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 1008,
+            "instructions": 7265933,
+            "memory_bytes": 484729,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 4455353,
+      "repeated_getter_calls": [
+        {
+          "path": "0.8",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 74532,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 1,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.0.0",
+          "role": "aquarius",
+          "function": "get_is_killed_swap",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1063075,
+            "memory_bytes": 1399626,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.0.1",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 68523,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.0.2",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66523,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.2",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 80290,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 1,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.3.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 68583,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.4",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 920142,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.0",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66717,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.1",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66557,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66157,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.3.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 50712,
+            "memory_bytes": 30014,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.4",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66157,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.6",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 67053,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.7",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66593,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.8.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 50336,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.8.2",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 50336,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.9",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66753,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.10",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 67853,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.11",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 67853,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.13",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66753,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.15",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66753,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.17",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 68329,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.5.18",
+          "role": "paired",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 64769,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.6",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 71269,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.8",
+          "role": "vault",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 883688,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.9",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 71269,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.10",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 67778,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 179762891,
+      "finding": "infeasible for wrapper-only optimization with these venue subcalls preserved"
+    },
+    "finish_close": {
+      "sample_count": 1,
+      "maxima": {
+        "instructions": 58855788,
+        "mem_bytes": 6824581,
+        "ledger_entries": 97,
+        "write_entries": 30
+      },
+      "required_reduction": {
+        "instructions": 0,
+        "mem_bytes": 0,
+        "ledger_entries": 0,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "v3": 6705472,
+        "cash_receipt": 49489806,
+        "underlying": 1039566,
+        "lending_controller": 1620944
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1357237,
+        "cash_receipt": 3773669,
+        "underlying": 154910,
+        "lending_controller": 1538765
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 0,
+      "mandatory_venue_subtrees": [],
+      "repeated_getter_unrealistic_deletion_ceiling": 10240917,
+      "repeated_getter_calls": [
+        {
+          "path": "0.4.0",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 74266,
+            "memory_bytes": 32292,
+            "memory_read_entries_delta": 1,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.2",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66513,
+            "memory_bytes": 31076,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.5",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62602,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.6",
+          "role": "cash_receipt",
+          "function": "get_margin_borrow_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3481912,
+            "memory_bytes": 268234,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.8",
+          "role": "cash_receipt",
+          "function": "get_underlying_token",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3147776,
+            "memory_bytes": 231466,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.2",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 67413,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.9.4",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 67413,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.10",
+          "role": "cash_receipt",
+          "function": "get_ptoken_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3273022,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 48614871,
+      "finding": "observed invocation fits these four limits; stress/release sufficiency unknown"
+    },
+    "funded_liquidation": {
+      "sample_count": 1,
+      "maxima": {
+        "instructions": 100065588,
+        "mem_bytes": 14591272,
+        "ledger_entries": 213,
+        "write_entries": 56
+      },
+      "required_reduction": {
+        "instructions": 65588,
+        "mem_bytes": 0,
+        "ledger_entries": 113,
+        "write_entries": 6
+      },
+      "peak_cpu_roles": {
+        "v3": 7057502,
+        "unlabelled": 150667,
+        "share_receipt": 36273444,
+        "cash_receipt": 24483946,
+        "lending_controller": 9250061,
+        "oracle": 2266274,
+        "underlying": 930362,
+        "vault": 6876334,
+        "reward": 930364,
+        "aquarius": 11097976,
+        "plane": 748658
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1428690,
+        "unlabelled": 91898,
+        "share_receipt": 2889424,
+        "cash_receipt": 1245856,
+        "lending_controller": 2254586,
+        "oracle": 2117843,
+        "underlying": 0,
+        "vault": 271977,
+        "reward": 37579,
+        "aquarius": 1779880,
+        "plane": 2473539
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 12629062,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.16.2.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 6701399,
+            "memory_bytes": 2935046,
+            "memory_read_entries_delta": 13,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 5972,
+            "write_entries_delta": 8
+          }
+        },
+        {
+          "path": "0.16.2.4",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 420,
+            "instructions": 5927663,
+            "memory_bytes": 1385748,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 7221872,
+      "repeated_getter_calls": [
+        {
+          "path": "0.11.2",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63426,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.11.3",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63426,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.11.5",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63426,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.12",
+          "role": "cash_receipt",
+          "function": "get_margin_borrow_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3501885,
+            "memory_bytes": 237678,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.2",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 61206,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.3",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63366,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.4.0",
+          "role": "unlabelled",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 50169,
+            "memory_bytes": 30534,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.5",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63366,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.17",
+          "role": "share_receipt",
+          "function": "get_ptoken_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3291602,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 92843716,
+      "finding": "currently fails internal limits; feasibility after optimization unknown"
+    },
+    "both_reward_calls_failed_funded_liquidation": {
+      "sample_count": 1,
+      "maxima": {
+        "instructions": 95508559,
+        "mem_bytes": 13603697,
+        "ledger_entries": 205,
+        "write_entries": 53
+      },
+      "required_reduction": {
+        "instructions": 0,
+        "mem_bytes": 0,
+        "ledger_entries": 105,
+        "write_entries": 3
+      },
+      "peak_cpu_roles": {
+        "v3": 7069597,
+        "unlabelled": 13566,
+        "share_receipt": 36315056,
+        "cash_receipt": 24486536,
+        "lending_controller": 9241849,
+        "oracle": 2266382,
+        "underlying": 930970,
+        "vault": 9185186,
+        "reward": 171305,
+        "aquarius": 5828112
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1428894,
+        "unlabelled": 24591,
+        "share_receipt": 2890580,
+        "cash_receipt": 1248372,
+        "lending_controller": 2675647,
+        "oracle": 2118387,
+        "underlying": 0,
+        "vault": 272633,
+        "reward": 37647,
+        "aquarius": 2906946
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 2474125,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.16.2.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1264105,
+            "memory_bytes": 1426943,
+            "memory_read_entries_delta": 3,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.5",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1210020,
+            "memory_bytes": 352073,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 9290427,
+      "repeated_getter_calls": [
+        {
+          "path": "0.11.2",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63444,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.11.3",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63444,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.11.5",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 63444,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.12",
+          "role": "cash_receipt",
+          "function": "get_margin_borrow_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3501903,
+            "memory_bytes": 237746,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.3",
+          "role": "aquarius",
+          "function": "get_user_reward",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1117863,
+            "memory_bytes": 547956,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.4",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 67874,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.6",
+          "role": "aquarius",
+          "function": "get_user_reward",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1117863,
+            "memory_bytes": 290089,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.17",
+          "role": "share_receipt",
+          "function": "get_ptoken_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3294592,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 86218132,
+      "finding": "currently fails internal limits; feasibility after optimization unknown"
+    },
+    "historical_unresolved_intervals": {
+      "sample_count": 3,
+      "maxima": {
+        "instructions": 94903802,
+        "mem_bytes": 13992113,
+        "ledger_entries": 197,
+        "write_entries": 50
+      },
+      "required_reduction": {
+        "instructions": 0,
+        "mem_bytes": 0,
+        "ledger_entries": 97,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "v3": 5625909,
+        "unlabelled": 14232,
+        "share_receipt": 36441201,
+        "cash_receipt": 24714773,
+        "lending_controller": 9266963,
+        "oracle": 2272142,
+        "underlying": 1010978,
+        "vault": 9563483,
+        "reward": 166937,
+        "aquarius": 5827184
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1438686,
+        "unlabelled": 27855,
+        "share_receipt": 2946068,
+        "cash_receipt": 1354113,
+        "lending_controller": 2799679,
+        "oracle": 2144499,
+        "underlying": 15027,
+        "vault": 275897,
+        "reward": 40911,
+        "aquarius": 2949378
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 2473605,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.16.2.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1263845,
+            "memory_bytes": 1430207,
+            "memory_read_entries_delta": 3,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.5",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1209760,
+            "memory_bytes": 358601,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 9304923,
+      "repeated_getter_calls": [
+        {
+          "path": "0.11.2",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66860,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.11.3",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66860,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.11.5",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66860,
+            "memory_bytes": 15027,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.12",
+          "role": "cash_receipt",
+          "function": "get_margin_borrow_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3498929,
+            "memory_bytes": 241010,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.3",
+          "role": "aquarius",
+          "function": "get_user_reward",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1117727,
+            "memory_bytes": 574068,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.4",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 65690,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.16.2.6",
+          "role": "aquarius",
+          "function": "get_user_reward",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1117727,
+            "memory_bytes": 293353,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.17",
+          "role": "share_receipt",
+          "function": "get_ptoken_balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 3304270,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 85598879,
+      "finding": "currently fails internal limits; feasibility after optimization unknown"
+    },
+    "repay_release": {
+      "sample_count": 1,
+      "maxima": {
+        "instructions": 13741095,
+        "mem_bytes": 3099213,
+        "ledger_entries": 88,
+        "write_entries": 18
+      },
+      "required_reduction": {
+        "instructions": 0,
+        "mem_bytes": 0,
+        "ledger_entries": 0,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "v3": 6414283,
+        "unlabelled": 15782,
+        "cash_receipt": 7311030
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1424355,
+        "unlabelled": 24644,
+        "cash_receipt": 1650214
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 0,
+      "mandatory_venue_subtrees": [],
+      "repeated_getter_unrealistic_deletion_ceiling": 0,
+      "repeated_getter_calls": [],
+      "cpu_after_unrealistic_getter_deletion": 13741095,
+      "finding": "observed invocation fits these four limits; stress/release sufficiency unknown"
+    },
+    "cancel_after_swap": {
+      "sample_count": 1,
+      "maxima": {
+        "instructions": 44999508,
+        "mem_bytes": 9896063,
+        "ledger_entries": 132,
+        "write_entries": 44
+      },
+      "required_reduction": {
+        "instructions": 0,
+        "mem_bytes": 0,
+        "ledger_entries": 32,
+        "write_entries": 0
+      },
+      "peak_cpu_roles": {
+        "v3": 4734650,
+        "unlabelled": 177066,
+        "cash_receipt": 15237358,
+        "underlying": 894899,
+        "vault": 7857942,
+        "reward": 140683,
+        "aquarius": 14845199,
+        "plane": 1111711
+      },
+      "peak_memory_counter_growth_roles": {
+        "v3": 1424444,
+        "unlabelled": 55902,
+        "cash_receipt": 1999071,
+        "underlying": 299756,
+        "vault": 579381,
+        "reward": 33137,
+        "aquarius": 1919334,
+        "plane": 3585038
+      },
+      "mandatory_unchanged_venue_subtree_cpu": 2160121,
+      "mandatory_venue_subtrees": [
+        {
+          "path": "0.4.1",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1088173,
+            "memory_bytes": 1403970,
+            "memory_read_entries_delta": 2,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.5",
+          "function": "claim",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 1071948,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "repeated_getter_unrealistic_deletion_ceiling": 9242596,
+      "repeated_getter_calls": [
+        {
+          "path": "0.1.2",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66224,
+            "memory_bytes": 30224,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.1.3",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66224,
+            "memory_bytes": 30224,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.1.5",
+          "role": "underlying",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 66224,
+            "memory_bytes": 30224,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.3",
+          "role": "aquarius",
+          "function": "get_user_reward",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 4490872,
+            "memory_bytes": 1135054,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.4",
+          "role": "reward",
+          "function": "balance",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 62180,
+            "memory_bytes": 0,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        },
+        {
+          "path": "0.4.6",
+          "role": "aquarius",
+          "function": "get_user_reward",
+          "inclusive": {
+            "disk_read_bytes_delta": 0,
+            "disk_read_entries_delta": 0,
+            "event_bytes_delta": 0,
+            "instructions": 4490872,
+            "memory_bytes": 1212845,
+            "memory_read_entries_delta": 0,
+            "persistent_entry_rent_bumps_delta": 0,
+            "persistent_rent_ledger_bytes_delta": 0,
+            "temporary_entry_rent_bumps_delta": 0,
+            "temporary_rent_ledger_bytes_delta": 0,
+            "write_bytes_delta": 0,
+            "write_entries_delta": 0
+          }
+        }
+      ],
+      "cpu_after_unrealistic_getter_deletion": 35756912,
+      "finding": "currently fails internal limits; feasibility after optimization unknown"
+    }
+  },
+  "transactions": {
+    "swap_open_position_v3": {
+      "samples": 17,
+      "max_instructions": 236694758,
+      "max_unique_footprint": 128,
+      "max_write_entries": 46,
+      "peak_cpu_row_footprint_roles": {
+        "read_only_xdr": {
+          "account": 1,
+          "unlabelled_contract": 3,
+          "lending_controller": 5,
+          "adapter": 5,
+          "cash_receipt": 30,
+          "underlying": 1,
+          "vault": 8,
+          "paired": 1,
+          "plane": 1,
+          "reward": 1,
+          "v3": 6,
+          "aquarius": 11,
+          "contract_code": 9
+        },
+        "read_write_xdr": {
+          "unlabelled_contract": 1,
+          "cash_receipt": 10,
+          "underlying": 5,
+          "vault": 14,
+          "paired": 2,
+          "facade": 1,
+          "reward": 2,
+          "v3": 1,
+          "aquarius": 9
+        }
+      }
+    },
+    "activate_open_position_v3": {
+      "samples": 13,
+      "max_instructions": 80777680,
+      "max_unique_footprint": 143,
+      "max_write_entries": 40,
+      "peak_cpu_row_footprint_roles": {
+        "read_only_xdr": {
+          "unlabelled_contract": 3,
+          "share_receipt": 30,
+          "lending_controller": 15,
+          "cash_receipt": 29,
+          "vault": 7,
+          "plane": 1,
+          "oracle": 1,
+          "reward": 1,
+          "v3": 7,
+          "aquarius": 2,
+          "contract_code": 7
+        },
+        "read_write_xdr": {
+          "unlabelled_contract": 1,
+          "share_receipt": 6,
+          "lending_controller": 2,
+          "cash_receipt": 5,
+          "vault": 14,
+          "reward": 2,
+          "v3": 4,
+          "aquarius": 6
+        }
+      }
+    },
+    "liquidate_funded_v3": {
+      "samples": 9,
+      "max_instructions": 112983269,
+      "max_unique_footprint": 158,
+      "max_write_entries": 57,
+      "peak_cpu_row_footprint_roles": {
+        "read_only_xdr": {
+          "unlabelled_contract": 3,
+          "share_receipt": 34,
+          "lending_controller": 17,
+          "cash_receipt": 25,
+          "underlying": 1,
+          "vault": 4,
+          "plane": 1,
+          "oracle": 1,
+          "reward": 2,
+          "v3": 2,
+          "aquarius": 3,
+          "contract_code": 7
+        },
+        "read_write_xdr": {
+          "unlabelled_contract": 1,
+          "share_receipt": 6,
+          "lending_controller": 2,
+          "cash_receipt": 9,
+          "underlying": 2,
+          "vault": 19,
+          "v3": 13,
+          "aquarius": 5
+        }
+      }
+    },
+    "swap_close_position_v3": {
+      "samples": 1,
+      "max_instructions": 188845767,
+      "max_unique_footprint": 135,
+      "max_write_entries": 41,
+      "peak_cpu_row_footprint_roles": {
+        "read_only_xdr": {
+          "account": 1,
+          "unlabelled_contract": 3,
+          "lending_controller": 14,
+          "adapter": 5,
+          "cash_receipt": 29,
+          "underlying": 1,
+          "vault": 7,
+          "paired": 1,
+          "plane": 1,
+          "oracle": 1,
+          "reward": 2,
+          "v3": 11,
+          "aquarius": 9,
+          "contract_code": 9
+        },
+        "read_write_xdr": {
+          "unlabelled_contract": 1,
+          "lending_controller": 2,
+          "cash_receipt": 5,
+          "underlying": 4,
+          "vault": 14,
+          "paired": 2,
+          "facade": 1,
+          "reward": 1,
+          "v3": 2,
+          "aquarius": 9
+        }
+      }
+    }
+  },
+  "release_approval": false,
+  "new_execution_performed": false
+}

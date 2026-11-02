@@ -21,7 +21,13 @@
     "test::adversarial_tests::compiled_funded_adversarial_atomicity": "contracts/cl-share-pool-facade/src/adversarial_tests.rs",
     "test::historical_tests::compiled_multiple_unsettled_intervals_exited_beneficiary": "contracts/cl-share-pool-facade/src/historical_tests.rs",
     "test::historical_shortfall_tests::compiled_governed_shortfall_proportional_exited_custody_owner": "contracts/cl-share-pool-facade/src/historical_shortfall_tests.rs",
-    "test::unresolved_stress_tests::compiled_multiple_unresolved_intervals_after_funded_exits": "contracts/cl-share-pool-facade/src/unresolved_stress_tests.rs"
+    "test::unresolved_stress_tests::compiled_multiple_unresolved_intervals_after_funded_exits": "contracts/cl-share-pool-facade/src/unresolved_stress_tests.rs",
+    "test::history_scale_tests::compiled_history_scale_64_owners_128_changes_8_outages": "contracts/cl-share-pool-facade/src/history_scale_tests.rs",
+    "test::history_scale_tests::compiled_history_scale_8_unresolved_custody_outages_governed_one": "contracts/cl-share-pool-facade/src/history_scale_tests.rs",
+    "test::reserve_open_tests::compiled_reserve_complete_open_positive": "contracts/cl-share-pool-facade/src/reserve_open_tests.rs",
+    "test::reserve_open_tests::compiled_reserve_swap_rejects_floor_and_disabled_borrowing": "contracts/cl-share-pool-facade/src/reserve_open_tests.rs",
+    "test::reserve_open_tests::compiled_reserve_all_finalizers_reject_interstage_exit_or_pause_then_recover": "contracts/cl-share-pool-facade/src/reserve_open_tests.rs",
+    "test::reserve_open_tests::compiled_reserve_liquidation_conversion_cannot_activate_healthy_pending": "contracts/cl-share-pool-facade/src/reserve_open_tests.rs"
   },
   "proofs": [
     {
@@ -788,6 +794,215 @@
           "function": "liquidate_funded_v3",
           "contract_role": "v3",
           "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "history_scale_64_owners",
+      "tests": [
+        "test::history_scale_tests::compiled_history_scale_64_owners_128_changes_8_outages"
+      ],
+      "assertions": [
+        "64 historical beneficiaries, at least383 weight checkpoints, eight outages/exits; bounded incremental settlement, original and exited entitlements, exact scaled conservation and repeated idempotence. Fixture construction explicitly separate."
+      ],
+      "resource_flows": [
+        "history_scale_64_owner_exit",
+        "history_scale_64_owner_settle",
+        "history_scale_8_outages_claim"
+      ],
+      "transactions": [
+        {
+          "function": "emergency_redeem",
+          "contract_role": "vault",
+          "outcome": "success"
+        },
+        {
+          "function": "settle_reward_segment",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "history_scale_8_unresolved",
+      "tests": [
+        "test::history_scale_tests::compiled_history_scale_8_unresolved_custody_outages_governed_one"
+      ],
+      "assertions": [
+        "Eight forced custody exits with both reward calls failing preserve historical beneficiary and16 missing boundaries; one interval governed using published controlled replay evidence; seven remain quarantined; no borrower waiver."
+      ],
+      "resource_flows": [
+        "history_scale_8_funded_fault_exit",
+        "history_scale_governed_attribute",
+        "history_scale_governed_exited_settle"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_funded_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "attribute_reward_segment",
+          "contract_role": "vault",
+          "outcome": "success"
+        },
+        {
+          "function": "settle_reward_segment",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "reserve_complete_open",
+      "tests": [
+        "test::reserve_open_tests::compiled_reserve_complete_open_positive"
+      ],
+      "assertions": [
+        "HARNESS ONLY configured cash reserve and borrowing flag allow swap and complete-open; final reserve assertion succeeds after cash costs.",
+        "After activation, full repayment and debt-free release remain available under100% reserve, borrowing disabled and claim outage; zero debt, removed position, released free-margin receipt claim and preserved rewards. This is not direct wallet redemption."
+      ],
+      "resource_flows": [
+        "reserve_configured_swap",
+        "reserve_configured_activate",
+        "reserve_blocked_active_repayment",
+        "reserve_blocked_active_release"
+      ],
+      "transactions": [
+        {
+          "function": "swap_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "activate_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "repay_margin_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "release_debt_free_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "reserve_swap_rejections",
+      "tests": [
+        "test::reserve_open_tests::compiled_reserve_swap_rejects_floor_and_disabled_borrowing"
+      ],
+      "assertions": [
+        "Both floor and paused borrowing reject swap with full ledger rollback and zero debt; authorized unswapped cancel succeeds."
+      ],
+      "resource_flows": [
+        "reserve_swap_floor_rejected",
+        "reserve_swap_disabled_rejected",
+        "reserve_unswapped_cancel"
+      ],
+      "transactions": [
+        {
+          "function": "swap_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "reserve_swap_floor_rejected"
+        },
+        {
+          "function": "swap_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "reserve_swap_disabled_rejected"
+        },
+        {
+          "function": "cancel_pending_open_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "reserve_complete_open_rollback",
+      "tests": [
+        "test::reserve_open_tests::compiled_reserve_all_finalizers_reject_interstage_exit_or_pause_then_recover"
+      ],
+      "assertions": [
+        "Real interstage supplier exit or admin pause rejects activate/execute/expired resolve atomically; funded pending recovery with reserve floor100% and borrowing disabled succeeds during claim outage, preserving rewards and exact scaled conservation."
+      ],
+      "resource_flows": [
+        "reserve_floor_activate_open_position_v3_rollback",
+        "reserve_floor_execute_open_position_v3_rollback",
+        "reserve_floor_resolve_pending_open_v3_rollback",
+        "reserve_disabled_activate_open_position_v3_rollback",
+        "reserve_disabled_execute_open_position_v3_rollback",
+        "reserve_disabled_resolve_pending_open_v3_rollback",
+        "reserve_blocked_pending_funded_recovery"
+      ],
+      "transactions": [
+        {
+          "function": "activate_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "reserve_floor_activate_open_position_v3_rollback"
+        },
+        {
+          "function": "execute_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "reserve_floor_execute_open_position_v3_rollback"
+        },
+        {
+          "function": "resolve_pending_open_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "reserve_floor_resolve_pending_open_v3_rollback"
+        },
+        {
+          "function": "activate_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "reserve_disabled_activate_open_position_v3_rollback"
+        },
+        {
+          "function": "execute_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "reserve_disabled_execute_open_position_v3_rollback"
+        },
+        {
+          "function": "resolve_pending_open_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "reserve_disabled_resolve_pending_open_v3_rollback"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "reserve_no_liquidation_bypass",
+      "tests": [
+        "test::reserve_open_tests::compiled_reserve_liquidation_conversion_cannot_activate_healthy_pending"
+      ],
+      "assertions": [
+        "Healthy expired pending position cannot bypass origination policy by legacy liquidation; fresh liquidation eligibility rejects with full ledger rollback."
+      ],
+      "resource_flows": [
+        "reserve_healthy_liquidation_conversion_rejected"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "reserve_healthy_liquidation_conversion_rejected"
         }
       ]
     }

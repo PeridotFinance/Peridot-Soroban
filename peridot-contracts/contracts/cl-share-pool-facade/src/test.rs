@@ -741,3 +741,7 @@ mod historical_tests;
 mod historical_shortfall_tests;
 #[path = "unresolved_stress_tests.rs"]
 mod unresolved_stress_tests;
+#[path = "history_scale_tests.rs"]
+mod history_scale_tests;
+#[path = "reserve_open_tests.rs"]
+mod reserve_open_tests;

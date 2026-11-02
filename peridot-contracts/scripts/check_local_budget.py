@@ -25,6 +25,9 @@ REQUIRED = {
     'funded_repeated_execution_rollback', 'historical_multiple_intervals',
     'historical_unresolved_intervals',
     'historical_shortfall',
+    'history_scale_64_owners', 'history_scale_8_unresolved',
+    'reserve_complete_open', 'reserve_swap_rejections',
+    'reserve_complete_open_rollback', 'reserve_no_liquidation_bypass',
 }
 MEASUREMENTS = {
     'instructions': 'instructions', 'memory_bytes': 'mem_bytes',

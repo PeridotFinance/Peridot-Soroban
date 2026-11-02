@@ -420,11 +420,30 @@ impl MarginController {
 
         collect_open_fee(env, position_id, &pending.margin_vault);
         #[cfg(feature = "funded-liquidation-validation")]
-        env.invoke_contract::<()>(
-            &vaults.debt_vault,
-            &Symbol::new(env, "assert_borrowing_reserve"),
-            ().into_val(env),
-        );
+        if enforce_open_health {
+            // Origination must use the current policy after every cash cost,
+            // including a governance pause or supplier exit between stages.
+            // The false branch is an atomic liquidation conversion, not a new
+            // open: the borrowing floor must never prevent risk-reducing exits.
+            let reserve_bps: Option<u32> = env.invoke_contract(
+                &vaults.debt_vault,
+                &Symbol::new(env, "get_min_cash_reserve_bps"),
+                ().into_val(env),
+            );
+            if reserve_bps.is_some() {
+                let enabled: bool = env.invoke_contract(
+                    &vaults.debt_vault,
+                    &Symbol::new(env, "get_cash_borrowing_enabled"),
+                    ().into_val(env),
+                );
+                assert!(enabled, "cash borrowing disabled");
+            }
+            env.invoke_contract::<()>(
+                &vaults.debt_vault,
+                &Symbol::new(env, "assert_borrowing_reserve"),
+                ().into_val(env),
+            );
+        }
         let activated = position.clone();
         clear_pending_perps_open_position(env, position_id);
         clear_pending_perps_open_execution(env, position_id);
