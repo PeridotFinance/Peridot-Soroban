@@ -1,0 +1,30 @@
+Run directory: peridot-contracts. No network transaction commands.
+
+# New capture: public network settings/cost tables only, no account/key access.
+node scripts/capture_cl_network_config.cjs target/cl-next/network-config.json
+python3 scripts/cl_resource_profiles.py target/cl-next/network-config.json target/cl-next/internal-policy.json --profile internal-policy
+python3 scripts/cl_resource_profiles.py target/cl-next/network-config.json target/cl-next/captured-network-diagnostic.json --profile captured-network-diagnostic
+
+# Preserve old artifacts; only changed vault rebuilt using the synthetic admin.
+mkdir -p target/cl-next/artifacts
+cp target/cl-share-checkpoint/artifacts/*.wasm target/cl-next/artifacts/
+AQUARIUS_LP_VAULT_INIT_ADMIN=CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM stellar contract build --package cl-share-vault --out-dir target/cl-next/artifacts
+
+CL_RESOURCE_PROFILE="$PWD/target/cl-next/captured-network-diagnostic.json" CL_ARTIFACTS="$PWD/target/cl-next/artifacts" AQUARIUS_CONCENTRATED_WASM="$PWD/target/cl-share-checkpoint/aquarius-pool.wasm" CL_RESOURCE_REPORT="$PWD/target/cl-next/network29-archival.jsonl" CL_CALL_PROFILE_REPORT="$PWD/target/cl-next/calls-network29-archival.jsonl" cargo test --manifest-path harness/cl-runtime29/Cargo.toml compiled -- --nocapture --test-threads=1
+# Exit0:12PASS.
+CL_RESOURCE_PROFILE="$PWD/target/cl-next/internal-policy.json" CL_ARTIFACTS="$PWD/target/cl-next/artifacts" AQUARIUS_CONCENTRATED_WASM="$PWD/target/cl-share-checkpoint/aquarius-pool.wasm" CL_RESOURCE_REPORT="$PWD/target/cl-next/policy29-archival.jsonl" CL_CALL_PROFILE_REPORT="$PWD/target/cl-next/calls-policy29-archival.jsonl" cargo test --manifest-path harness/cl-runtime29/Cargo.toml compiled -- --nocapture --test-threads=1
+# Exit101:1PASS11FAIL.
+CL_RESOURCE_PROFILE="$PWD/target/cl-next/captured-network-diagnostic.json" cargo test --manifest-path harness/cl-runtime29/Cargo.toml runtime_integrity -- --nocapture
+CL_RESOURCE_PROFILE="$PWD/target/cl-next/captured-network-diagnostic.json" CL_RESOURCE_REPORT="$PWD/target/cl-next/funded25-archival.jsonl" cargo test -p margin-controller --features funded-liquidation-validation funded_prototype -- --nocapture --test-threads=1
+cargo test -p cl-share-vault -- --nocapture
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p test_cl_resource_profiles.py -v
+bash scripts/check_budget.sh --local-report target/cl-next/network29-archival.jsonl --profile target/cl-next/captured-network-diagnostic.json
+bash scripts/check_budget.sh --local-report target/cl-next/policy29-archival.jsonl --profile target/cl-next/internal-policy.json
+bash scripts/check_budget.sh --local-report target/cl-next/funded25-archival.jsonl --profile target/cl-next/captured-network-diagnostic.json
+# All3check_budget exit1; no placeholder/disabled requiredflow.
+
+Historical failed attempts retained:
+- baseline29-valid.log: samecompiledcommand with oldartifacts, diagnosticshadow2B/512MiB (beforefix), outputbaseline29-valid.jsonl.4PASS1FAIL; swapreturned then authsnapshot failed.
+- network29.log: firstnewvaultbuild omitted AQUARIUS_LP_VAULT_INIT_ADMIN, samefulltestcommand filtertest::; setup rejected syntheticadmin. Latercorrectbuildabove passes.
+- policy29.log: enforcedinternalCPU rejects at100000291, then optionalEnvDrop eventsnapshot doublepanic. capture_snapshot_at_dropfalse fixes onlydiskdump, notrejection.
+- baseline29-complete.log: originalartifactbaseline aftershadowfix,5PASS, beforeallowanceartifact andarchivalsettings reconciliation; notfinalresourcevalues.

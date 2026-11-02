@@ -1,4 +1,4 @@
-"""Local host-25 resource estimates at captured public-network fee rates.
+"""Local measured resource estimates at captured public-network fee rates.
 
 Not an RPC transaction simulation: envelope/history/base fees and return-value
 bytes are excluded. Resource quantities come from execution, not WASM size.
@@ -14,7 +14,10 @@ def estimate(row, config_path):
     s = {key: value['values'] for key, value in cfg['settings'].items()}
     c, l = s['configSettingContractComputeV0'], s['configSettingContractLedgerCostV0']
     ext, a = s['configSettingContractLedgerCostExtV0'], s['configSettingStateArchival']
-    sizes = list(s['configSettingLiveSorobanStateSizeWindow'].values())
+    window = s['configSettingLiveSorobanStateSizeWindow']
+    sizes = list(window.values()) if isinstance(window, dict) else window
+    if not isinstance(sizes, list) or not sizes or any(type(n) is not int or n < 0 for n in sizes):
+        raise ValueError('missing or invalid live-state size window')
     state_size = sum(sizes) // len(sizes)
     target = l['sorobanStateTargetSizeBytes']
     multiplier = l['rentFee1KbSorobanStateSizeHigh'] - l['rentFee1KbSorobanStateSizeLow']
@@ -36,5 +39,8 @@ def estimate(row, config_path):
         components[kind + '_rent'] = ceil(row[f'{kind}_rent_ledger_bytes'] * rent_rate, 1024 * denom) + bumps * l['feeWriteLedgerEntry'] + ceil(48 * bumps * ext['feeWrite1Kb'], 1024)
     return {'resource_fee_stroops': sum(components.values()), 'components': components,
             'captured_ledger': cfg['ledger'], 'network_protocol': cfg['network']['protocolVersion'],
-            'local_host_protocol': 25, 'rent_rate_per_1kb': rent_rate,
-            'scope': 'local resource model; excludes envelope/history/base fees, return bytes; not RPC simulation'}
+            'local_host_protocol': row['runtime_protocol'], 'rent_rate_per_1kb': rent_rate,
+            'runtime_matches_network': row['runtime_protocol'] == cfg['network']['protocolVersion'],
+            'profile': row['profile'], 'run_mode': row['run_mode'],
+            'full_transaction_fee': False,
+            'scope': 'partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation'}

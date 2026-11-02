@@ -30,11 +30,15 @@ pub struct Price {
 struct TestOracle;
 #[contractimpl]
 impl TestOracle {
-    pub fn lastprice(e: Env, _asset: Asset) -> Option<Price> {
+    pub fn lastprice(e: Env, asset: Asset) -> Option<Price> {
         Some(Price {
-            price: 100_000_000_000_000,
+            price: e.storage().instance().get(&asset).unwrap_or(100_000_000_000_000),
             timestamp: e.ledger().timestamp(),
         })
+    }
+    pub fn set_test_price(e: Env, admin: Address, asset: Asset, price: i128) {
+        admin.require_auth(); // Synthetic oracle only; never a deployment oracle.
+        e.storage().instance().set(&asset, &price);
     }
     pub fn decimals(_e: Env) -> u32 {
         14
@@ -67,6 +71,7 @@ fn call<T: soroban_sdk::TryFromVal<Env, Val>>(
     args: Vec<Val>,
 ) -> T {
     e.mock_auths(&[]);
+    crate::cl_resource_limits::reset(e);
     e.invoke_contract(to, &Symbol::new(e, name), args)
 }
 fn auth<T: soroban_sdk::TryFromVal<Env, Val>>(
@@ -86,7 +91,7 @@ fn auth<T: soroban_sdk::TryFromVal<Env, Val>>(
             sub_invokes: subs,
         },
     }]);
-    e.cost_estimate().budget().reset_unlimited();
+    crate::cl_resource_limits::reset(e);
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         e.invoke_contract(to, &Symbol::new(e, name), args)
     }));
@@ -101,6 +106,8 @@ fn measure(e: &Env, label: &str, ok: bool) {
     measure_scope(e,label,ok,"compiled-local-controlled-state");
 }
 pub(super) fn measure_scope(e:&Env,label:&str,ok:bool,scope:&str) {
+    let profile=crate::cl_resource_limits::metadata();
+    crate::resource_profile::capture(e,label,ok,profile["profile"].as_str().unwrap(),profile["run_mode"].as_str().unwrap());
     let r = e.cost_estimate().resources();
     let memory = r.mem_bytes;
     let line = format!(concat!(
@@ -114,6 +121,10 @@ pub(super) fn measure_scope(e:&Env,label:&str,ok:bool,scope:&str) {
         r.disk_read_entries,r.contract_events_size_bytes,r.persistent_rent_ledger_bytes,
         r.persistent_entry_rent_bumps,r.temporary_rent_ledger_bytes,r.temporary_entry_rent_bumps,
         label=label,ok=ok,memory=memory,scope=scope);
+    let mut record:serde_json::Value=serde_json::from_str(&line).unwrap();
+    for (key,value) in profile.as_object().unwrap() {record[key]=value.clone();}
+    for (key,value) in crate::cl_resource_limits::diagnostics(e).as_object().unwrap(){record[key]=value.clone();}
+    let line=format!("{}\n",serde_json::to_string(&record).unwrap());
     std::println!("{line}");
     if let Ok(path) = std::env::var("CL_RESOURCE_REPORT") {
         use std::io::Write;
@@ -140,16 +151,20 @@ struct F {
     cash: Address,
     receipt: Address,
     binding: soroban_sdk::BytesN<32>,
+    oracle: Address,
 }
 impl F {
     fn new() -> Self {
         MEASURE.with(|m|m.set(false));
-        let e = Env::default();
+        let mut e = Env::default();
+        // Optional file snapshot at Drop reuses an exhausted execution meter and
+        // can double-panic after a policy rejection. Resource/auth checks stay on.
+        e.set_config(soroban_sdk::testutils::EnvTestConfig { capture_snapshot_at_drop: false, ..Default::default() });
         e.ledger().with_mut(|l| {
             l.timestamp = 1000;
             l.sequence_number = 100;
         });
-        e.cost_estimate().budget().reset_unlimited();
+        crate::cl_resource_limits::configure(&e);
         // Explicit synthetic contract-admin fixture, not a production identity.
         let admin = Address::generate(&e);
         assert_eq!(admin, Address::from_str(&e,"CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"));
@@ -198,7 +213,7 @@ impl F {
                 20i32,
                 0u32,
                 (reward.clone(), boost, plane.clone()),
-                plane,
+                plane.clone(),
             )
                 .into_val(&e),
             &[],
@@ -414,6 +429,7 @@ impl F {
             (admin.clone(), binding.clone(), facade.clone(), true).into_val(&e),
             &[],
         );
+        crate::resource_profile::register_contracts(&e,&[("v3",&margin),("facade",&facade),("vault",&share),("aquarius",&pool),("cash_receipt",&cash),("share_receipt",&receipt),("adapter",&adapter),("lending_controller",&controller),("oracle",&oracle),("plane",&plane),("underlying",&under),("paired",&paired),("reward",&reward)]);
         let f = Self {
             e,
             admin,
@@ -428,6 +444,7 @@ impl F {
             cash,
             receipt,
             binding,
+            oracle,
         };
         f.deposit_cash(1_000_000_000);
         // Test-only maintenance margin: 25%; it is NOT an approved deployment value.
@@ -488,7 +505,7 @@ fn compiled_v3_checkpoint() {
         "activate_open_position_v3",
         "prepare_close_position_v3",
     ] {
-        e.cost_estimate().budget().reset_unlimited();
+        crate::cl_resource_limits::reset(e);
         let _: () = auth(e,&f.user,&f.margin,name,(f.user.clone(), id).into_val(e),&[]);
         measure(e,name,true);
     }
@@ -532,7 +549,7 @@ fn begin(f:&F)->u64 {
         194_040_000u128,
     )
         .into_val(e);
-    e.cost_estimate().budget().reset_unlimited();
+    crate::cl_resource_limits::reset(e);
     let id: u64 = auth(e, &f.user, &f.margin, "begin_open_position_v3", args, &[]);
     id
 }
@@ -559,7 +576,8 @@ fn sdk_25_3_1_g_admin_mock_setup_regression() {
     let e=Env::default();let admin=Address::generate(&e);
     std::println!("SYNTHETIC_TEST_ADMIN={admin:?}");
     let target=e.register(AdminSetupFixture,());
-    auth::<()>(&e,&admin,&target,"protected",(admin.clone(),).into_val(&e),&[]);
+    e.mock_auths(&[MockAuth {address:&admin,invoke:&MockAuthInvoke{contract:&target,fn_name:"protected",args:(admin.clone(),).into_val(&e),sub_invokes:&[]}}]);
+    AdminSetupFixtureClient::new(&e,&target).protected(&admin);
     e.mock_auths(&[]);
     assert!(AdminSetupFixtureClient::new(&e,&target).try_protected(&admin).is_err());
     std::println!("PASS: generated synthetic admin exact auth accepted; no-auth invocation rejected. No real account-signature proof.");
@@ -585,7 +603,7 @@ fn compiled_vault_core_flows() {
 
 fn rejection(e:&Env,to:&Address,name:&str,args:Vec<Val>,label:&str,auth_error:bool) {
     e.mock_auths(&[]);
-    e.cost_estimate().budget().reset_unlimited();
+    crate::cl_resource_limits::reset(e);
     let result=e.try_invoke_contract::<Val,soroban_sdk::Error>(to,&Symbol::new(e,name),args);
     assert!(result.is_err(),"negative case unexpectedly succeeded");
     let detail=format!("{result:?}");
@@ -693,3 +711,11 @@ fn compiled_receipt_margin_reward_custody() {
     assert_eq!(totals.received,totals.paid+token::Client::new(e,&f.reward).balance(&f.share)as u128);
     std::println!("COMPILED_CUSTODY_CONSERVATION received={} old_owner={paid_old} new_owner={paid_other} custody_owners=0 backing={}; free margin custody only, not activated position proof",totals.received,totals.received-totals.paid);
 }
+
+#[path = "lifecycle_tests.rs"]
+mod lifecycle_tests;
+
+#[path = "stress_tests.rs"]
+mod stress_tests;
+#[path = "funded_tests.rs"]
+mod funded_tests;

@@ -21,10 +21,12 @@ fn auth_call<T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>>(
             sub_invokes: children,
         },
     }]);
+    crate::cl_resource_limits::reset(env);
     env.invoke_contract(contract, &Symbol::new(env, name), args)
 }
 
 fn measure<T>(env: &Env, label: &str, succeeds: bool, invoke: impl FnOnce() -> T) -> T {
+    crate::cl_resource_limits::reset(env);
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(invoke));
     let r = env.cost_estimate().resources();
     let line = std::format!(
@@ -51,6 +53,10 @@ fn measure<T>(env: &Env, label: &str, succeeds: bool, invoke: impl FnOnce() -> T
         label = label,
         ok = result.is_ok() && succeeds
     );
+    let mut record:serde_json::Value=serde_json::from_str(&line).unwrap();
+    for (key,value) in crate::cl_resource_limits::metadata().as_object().unwrap(){record[key]=value.clone();}
+    for (key,value) in crate::cl_resource_limits::diagnostics(env).as_object().unwrap(){record[key]=value.clone();}
+    let line=std::format!("{}\n",record);
     std::println!("{line}");
     if let Ok(path) = std::env::var("CL_RESOURCE_REPORT") {
         use std::io::Write;
@@ -85,7 +91,7 @@ impl Fixture {
     fn new() -> Self {
         let env = Env::default();
         env.ledger().with_mut(|l| l.timestamp = 1);
-        env.cost_estimate().budget().reset_unlimited();
+        crate::cl_resource_limits::configure(&env);
         let admin = Address::generate(&env);
         let owner = Address::generate(&env);
         let debt_token = env.register(MockToken, ());

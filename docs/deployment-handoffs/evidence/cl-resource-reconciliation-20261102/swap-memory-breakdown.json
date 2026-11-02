@@ -1,0 +1,2408 @@
+[
+  {
+    "flow": "swap_open_position_v3",
+    "profile": "captured-network-diagnostic",
+    "run_mode": "acceptance",
+    "invocation_ok": true,
+    "runtime_protocol": 29,
+    "memory_semantics": "global_high_water_mark_growth_with_refunds",
+    "shadow_instrumentation": {
+      "cpu_limit_exceeded": false,
+      "instructions": 344327138,
+      "memory_bytes": 625455747,
+      "memory_limit_exceeded": false,
+      "semantics": "optional SDK diagnostics/auth/storage snapshots only; excluded from execution ceilings"
+    },
+    "root_instructions": 165103823,
+    "root_memory_bytes": 19370578,
+    "attribution_by_role": {
+      "aquarius": {
+        "calls": 10,
+        "instructions": 103668639,
+        "memory_counter_contribution_bytes": 11566627
+      },
+      "lending_controller": {
+        "calls": 4,
+        "instructions": 3309836,
+        "memory_counter_contribution_bytes": 2663623
+      },
+      "v3": {
+        "calls": 1,
+        "instructions": 3147898,
+        "memory_counter_contribution_bytes": 1404353
+      },
+      "adapter": {
+        "calls": 1,
+        "instructions": 676091,
+        "memory_counter_contribution_bytes": 1264245
+      },
+      "vault": {
+        "calls": 9,
+        "instructions": 19306448,
+        "memory_counter_contribution_bytes": 929120
+      },
+      "cash_receipt": {
+        "calls": 3,
+        "instructions": 28558427,
+        "memory_counter_contribution_bytes": 688269
+      },
+      "reward": {
+        "calls": 9,
+        "instructions": 1076469,
+        "memory_counter_contribution_bytes": 195239
+      },
+      "unlabelled": {
+        "calls": 6,
+        "instructions": 337306,
+        "memory_counter_contribution_bytes": 183148
+      },
+      "paired": {
+        "calls": 10,
+        "instructions": 1087858,
+        "memory_counter_contribution_bytes": 172175
+      },
+      "underlying": {
+        "calls": 25,
+        "instructions": 3034858,
+        "memory_counter_contribution_bytes": 168372
+      },
+      "plane": {
+        "calls": 6,
+        "instructions": 128212,
+        "memory_counter_contribution_bytes": 135407
+      },
+      "facade": {
+        "calls": 1,
+        "instructions": 771781,
+        "memory_counter_contribution_bytes": 0
+      }
+    },
+    "repeated_calls": [
+      {
+        "role": "underlying",
+        "function": "balance",
+        "count": 19
+      },
+      {
+        "role": "paired",
+        "function": "balance",
+        "count": 8
+      },
+      {
+        "role": "underlying",
+        "function": "transfer",
+        "count": 6
+      },
+      {
+        "role": "reward",
+        "function": "balance",
+        "count": 6
+      },
+      {
+        "role": "vault",
+        "function": "balance",
+        "count": 5
+      },
+      {
+        "role": "unlabelled",
+        "function": "balance",
+        "count": 5
+      },
+      {
+        "role": "plane",
+        "function": "total_supply",
+        "count": 5
+      },
+      {
+        "role": "aquarius",
+        "function": "claim",
+        "count": 3
+      },
+      {
+        "role": "reward",
+        "function": "transfer",
+        "count": 3
+      },
+      {
+        "role": "aquarius",
+        "function": "get_is_killed_deposit",
+        "count": 2
+      },
+      {
+        "role": "paired",
+        "function": "transfer",
+        "count": 2
+      }
+    ],
+    "largest_inclusive_calls": [
+      {
+        "address": "CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55",
+        "depth": 0,
+        "direct_child_count": 11,
+        "exclusive": {
+          "instructions": 3147898,
+          "memory_counter_contribution_bytes": 1404353
+        },
+        "function": "swap_open_position_v3",
+        "inclusive": {
+          "disk_read_bytes_delta": 276,
+          "disk_read_entries_delta": 3,
+          "event_bytes_delta": 5592,
+          "instructions": 165103823,
+          "memory_bytes": 19370578,
+          "memory_read_entries_delta": 116,
+          "persistent_entry_rent_bumps_delta": 24,
+          "persistent_rent_ledger_bytes_delta": 25198377984,
+          "temporary_entry_rent_bumps_delta": 1,
+          "temporary_rent_ledger_bytes_delta": 223948728,
+          "write_bytes_delta": 15988,
+          "write_entries_delta": 40
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(e0b80120c7613964879264622a827c2bbfd7dac93ab25295db4565c8bc010236))), ScSymbol(StringM(swap_open_position_v3)))",
+        "path": "0",
+        "role": "v3"
+      },
+      {
+        "address": "CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF",
+        "depth": 1,
+        "direct_child_count": 10,
+        "exclusive": {
+          "instructions": 771781,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 184,
+          "disk_read_entries_delta": 2,
+          "event_bytes_delta": 3900,
+          "instructions": 118896807,
+          "memory_bytes": 12475975,
+          "memory_read_entries_delta": 41,
+          "persistent_entry_rent_bumps_delta": 16,
+          "persistent_rent_ledger_bytes_delta": 21735467484,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 13120,
+          "write_entries_delta": 22
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(c63f6a915dcf9d488ccef36b2a20d0c4aff5e45be35582dc7bddd7c57a3a6dae))), ScSymbol(StringM(swap)))",
+        "path": "0.8",
+        "role": "facade"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 2,
+        "direct_child_count": 23,
+        "exclusive": {
+          "instructions": 6824668,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "deposit_underlying",
+        "inclusive": {
+          "disk_read_bytes_delta": 184,
+          "disk_read_entries_delta": 2,
+          "event_bytes_delta": 3076,
+          "instructions": 103037911,
+          "memory_bytes": 8241272,
+          "memory_read_entries_delta": 29,
+          "persistent_entry_rent_bumps_delta": 14,
+          "persistent_rent_ledger_bytes_delta": 20964088656,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 12032,
+          "write_entries_delta": 18
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(deposit_underlying)))",
+        "path": "0.8.5",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 7,
+        "exclusive": {
+          "instructions": 63367874,
+          "memory_counter_contribution_bytes": 3250956
+        },
+        "function": "deposit_position",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 1144,
+          "instructions": 64121031,
+          "memory_bytes": 3537544,
+          "memory_read_entries_delta": 8,
+          "persistent_entry_rent_bumps_delta": 3,
+          "persistent_rent_ledger_bytes_delta": 14569108916,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 4948,
+          "write_entries_delta": 5
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(deposit_position)))",
+        "path": "0.8.5.18",
+        "role": "aquarius"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 2,
+        "direct_child_count": 4,
+        "exclusive": {
+          "instructions": 2051789,
+          "memory_counter_contribution_bytes": 929120
+        },
+        "function": "quote",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 4296806,
+          "memory_bytes": 2605549,
+          "memory_read_entries_delta": 5,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(quote)))",
+        "path": "0.8.0",
+        "role": "vault"
+      },
+      {
+        "address": "CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2",
+        "depth": 1,
+        "direct_child_count": 8,
+        "exclusive": {
+          "instructions": 13812812,
+          "memory_counter_contribution_bytes": 336423
+        },
+        "function": "withdraw",
+        "inclusive": {
+          "disk_read_bytes_delta": 92,
+          "disk_read_entries_delta": 1,
+          "event_bytes_delta": 816,
+          "instructions": 16821958,
+          "memory_bytes": 2168911,
+          "memory_read_entries_delta": 10,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": -124415940,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 1008,
+          "write_entries_delta": 7
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(5505aa2c8df2172c10bfc3e62edfec55029b70205228916d95479a084aea9d4f))), ScSymbol(StringM(withdraw)))",
+        "path": "0.4",
+        "role": "cash_receipt"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 4430054,
+          "memory_counter_contribution_bytes": 1748231
+        },
+        "function": "claim",
+        "inclusive": {
+          "disk_read_bytes_delta": 92,
+          "disk_read_entries_delta": 1,
+          "event_bytes_delta": 420,
+          "instructions": 4848574,
+          "memory_bytes": 1905956,
+          "memory_read_entries_delta": 8,
+          "persistent_entry_rent_bumps_delta": 5,
+          "persistent_rent_ledger_bytes_delta": 3102104528,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 3300,
+          "write_entries_delta": 5
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim)))",
+        "path": "0.8.5.3",
+        "role": "aquarius"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 2,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 3027439,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "transfer",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 588,
+          "instructions": 7666775,
+          "memory_bytes": 1629154,
+          "memory_read_entries_delta": 3,
+          "persistent_entry_rent_bumps_delta": 1,
+          "persistent_rent_ledger_bytes_delta": 705023660,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 340,
+          "write_entries_delta": 2
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(transfer)))",
+        "path": "0.8.7",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 4248173,
+          "memory_counter_contribution_bytes": 1522969
+        },
+        "function": "claim",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 4506562,
+          "memory_bytes": 1629154,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim)))",
+        "path": "0.8.7.1",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 1068488,
+          "memory_counter_contribution_bytes": 1397008
+        },
+        "function": "get_is_killed_swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 1068488,
+          "memory_bytes": 1397008,
+          "memory_read_entries_delta": 2,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(get_is_killed_swap)))",
+        "path": "0.8.0.0",
+        "role": "aquarius"
+      },
+      {
+        "address": "CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V",
+        "depth": 2,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 766096,
+          "memory_counter_contribution_bytes": 1322949
+        },
+        "function": "accrue_user_market",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 766096,
+          "memory_bytes": 1322949,
+          "memory_read_entries_delta": 3,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(21da1de84434bbd9b572d792920ea611633cc3231a7e593015f62e2dee4788a8))), ScSymbol(StringM(accrue_user_market)))",
+        "path": "0.4.0",
+        "role": "lending_controller"
+      },
+      {
+        "address": "CBJPUABS5H6EDPZ7AGJYOEWEDQ5HWMZDJNJYFGTTHDEI5FHONNL2BQN5",
+        "depth": 1,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 676091,
+          "memory_counter_contribution_bytes": 1264245
+        },
+        "function": "is_pool_binding_allowed",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 676091,
+          "memory_bytes": 1264245,
+          "memory_read_entries_delta": 6,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(52fa0032e9fc41bf3f01938712c41c3a7b33234b53829a7338c88e94ee6b57a0))), ScSymbol(StringM(is_pool_binding_allowed)))",
+        "path": "0.1",
+        "role": "adapter"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 2,
+        "exclusive": {
+          "instructions": 10511104,
+          "memory_counter_contribution_bytes": 868586
+        },
+        "function": "swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 92,
+          "disk_read_entries_delta": 1,
+          "event_bytes_delta": 1008,
+          "instructions": 11157377,
+          "memory_bytes": 1045705,
+          "memory_read_entries_delta": 2,
+          "persistent_entry_rent_bumps_delta": 1,
+          "persistent_rent_ledger_bytes_delta": 464486176,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 672,
+          "write_entries_delta": 3
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(swap)))",
+        "path": "0.8.5.12",
+        "role": "aquarius"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 1,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 3035083,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "custody_assign",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 7654569,
+          "memory_bytes": 853398,
+          "memory_read_entries_delta": 6,
+          "persistent_entry_rent_bumps_delta": 4,
+          "persistent_rent_ledger_bytes_delta": 1492991280,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 720,
+          "write_entries_delta": 4
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(custody_assign)))",
+        "path": "0.10",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 2,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 4259247,
+          "memory_counter_contribution_bytes": 747389
+        },
+        "function": "claim",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 4501866,
+          "memory_bytes": 853398,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim)))",
+        "path": "0.10.1",
+        "role": "aquarius"
+      },
+      {
+        "address": "CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2",
+        "depth": 1,
+        "direct_child_count": 4,
+        "exclusive": {
+          "instructions": 11280973,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "borrow_for_margin_to_controller",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 456,
+          "instructions": 12529323,
+          "memory_bytes": 831135,
+          "memory_read_entries_delta": 5,
+          "persistent_entry_rent_bumps_delta": 2,
+          "persistent_rent_ledger_bytes_delta": 1057535660,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 568,
+          "write_entries_delta": 4
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(5505aa2c8df2172c10bfc3e62edfec55029b70205228916d95479a084aea9d4f))), ScSymbol(StringM(borrow_for_margin_to_controller)))",
+        "path": "0.6",
+        "role": "cash_receipt"
+      },
+      {
+        "address": "CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V",
+        "depth": 2,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 849579,
+          "memory_counter_contribution_bytes": 831135
+        },
+        "function": "is_borrow_paused",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 849579,
+          "memory_bytes": 831135,
+          "memory_read_entries_delta": 1,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(21da1de84434bbd9b572d792920ea611633cc3231a7e593015f62e2dee4788a8))), ScSymbol(StringM(is_borrow_paused)))",
+        "path": "0.6.0",
+        "role": "lending_controller"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 1059990,
+          "memory_counter_contribution_bytes": 634679
+        },
+        "function": "get_is_killed_deposit",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 1059990,
+          "memory_bytes": 634679,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(get_is_killed_deposit)))",
+        "path": "0.8.5.9",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 9157175,
+          "memory_counter_contribution_bytes": 583722
+        },
+        "function": "estimate_swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 9157175,
+          "memory_bytes": 583722,
+          "memory_read_entries_delta": 5,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(estimate_swap)))",
+        "path": "0.8.5.10",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 4521571,
+          "memory_counter_contribution_bytes": 533666
+        },
+        "function": "estimate_deposit_position",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 4521571,
+          "memory_bytes": 533666,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(estimate_deposit_position)))",
+        "path": "0.8.5.17",
+        "role": "aquarius"
+      }
+    ],
+    "largest_memory_cost_types": [
+      {
+        "cost_type": "MemAlloc",
+        "inputs": 41225895,
+        "instructions": 29208746,
+        "iterations": 55445,
+        "memory_bytes": 42113015
+      },
+      {
+        "cost_type": "ValSer",
+        "inputs": 458396,
+        "instructions": 1389954,
+        "iterations": 5887,
+        "memory_bytes": 2799842
+      },
+      {
+        "cost_type": "InstantiateWasmInstructions",
+        "inputs": null,
+        "instructions": 1247870,
+        "iterations": 29,
+        "memory_bytes": 2050416
+      },
+      {
+        "cost_type": "InstantiateWasmImports",
+        "inputs": 1445,
+        "instructions": 9358332,
+        "iterations": 29,
+        "memory_bytes": 1102219
+      },
+      {
+        "cost_type": "InstantiateWasmFunctions",
+        "inputs": 8496,
+        "instructions": 501516,
+        "iterations": 29,
+        "memory_bytes": 969922
+      },
+      {
+        "cost_type": "InstantiateWasmDataSegments",
+        "inputs": 688,
+        "instructions": 123811,
+        "iterations": 29,
+        "memory_bytes": 696755
+      },
+      {
+        "cost_type": "InstantiateWasmDataSegmentBytes",
+        "inputs": 504054,
+        "instructions": 55113,
+        "iterations": 29,
+        "memory_bytes": 496159
+      },
+      {
+        "cost_type": "Int256Shift",
+        "inputs": null,
+        "instructions": 3378648,
+        "iterations": 3822,
+        "memory_bytes": 378378
+      },
+      {
+        "cost_type": "Int256AddSub",
+        "inputs": null,
+        "instructions": 14975136,
+        "iterations": 3586,
+        "memory_bytes": 355014
+      },
+      {
+        "cost_type": "Int256Div",
+        "inputs": null,
+        "instructions": 16122600,
+        "iterations": 3445,
+        "memory_bytes": 341055
+      },
+      {
+        "cost_type": "InstantiateWasmExports",
+        "inputs": 2532,
+        "instructions": 5876998,
+        "iterations": 29,
+        "memory_bytes": 181496
+      },
+      {
+        "cost_type": "Int256Mul",
+        "inputs": null,
+        "instructions": 1202580,
+        "iterations": 255,
+        "memory_bytes": 25245
+      }
+    ],
+    "cpu_headroom_instructions": 234896177,
+    "memory_headroom_bytes": 22572462,
+    "resource_record": {
+      "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+      "contract_events_size_bytes": 5592,
+      "diagnostic_shadow_cpu_limit": 20000000000,
+      "diagnostic_shadow_cpu_used": 344327138,
+      "diagnostic_shadow_memory_limit": 4294967296,
+      "diagnostic_shadow_memory_used": 625455747,
+      "diagnostic_shadow_ok": true,
+      "disk_read_entries": 3,
+      "exact_captured_cost_model": true,
+      "flow": "swap_open_position_v3",
+      "instructions": 165103823,
+      "memory_bytes": 19370578,
+      "ok": true,
+      "persistent_entry_rent_bumps": 24,
+      "persistent_rent_ledger_bytes": 25198377984,
+      "profile": "captured-network-diagnostic",
+      "read_bytes": 276,
+      "read_entries": 116,
+      "run_mode": "acceptance",
+      "runtime_protocol": 29,
+      "scope": "compiled-local-controlled-state",
+      "sdk_limits_enforced": true,
+      "target_protocol": 29,
+      "temporary_entry_rent_bumps": 1,
+      "temporary_rent_ledger_bytes": 223948728,
+      "write_bytes": 15988,
+      "write_entries": 40
+    },
+    "source_call_report": "calls-network29-archival.jsonl",
+    "source_resource_report": "network29-archival.jsonl",
+    "state_archival_settings": {
+      "min_persistent_ttl": 2073600,
+      "min_temporary_ttl": 17280,
+      "max_entry_ttl": 3110400
+    }
+  },
+  {
+    "flow": "stress_4_holders_1pct_reserve_trade_swap_open",
+    "profile": "captured-network-diagnostic",
+    "run_mode": "acceptance",
+    "invocation_ok": true,
+    "runtime_protocol": 29,
+    "memory_semantics": "global_high_water_mark_growth_with_refunds",
+    "shadow_instrumentation": {
+      "cpu_limit_exceeded": false,
+      "instructions": 437327970,
+      "memory_bytes": 736041697,
+      "memory_limit_exceeded": false,
+      "semantics": "optional SDK diagnostics/auth/storage snapshots only; excluded from execution ceilings"
+    },
+    "root_instructions": 229779425,
+    "root_memory_bytes": 22629185,
+    "attribution_by_role": {
+      "aquarius": {
+        "calls": 12,
+        "instructions": 163732444,
+        "memory_counter_contribution_bytes": 14471023
+      },
+      "lending_controller": {
+        "calls": 4,
+        "instructions": 3321891,
+        "memory_counter_contribution_bytes": 2716663
+      },
+      "v3": {
+        "calls": 1,
+        "instructions": 3187444,
+        "memory_counter_contribution_bytes": 1412309
+      },
+      "adapter": {
+        "calls": 1,
+        "instructions": 684561,
+        "memory_counter_contribution_bytes": 1266897
+      },
+      "vault": {
+        "calls": 9,
+        "instructions": 22754801,
+        "memory_counter_contribution_bytes": 979357
+      },
+      "cash_receipt": {
+        "calls": 3,
+        "instructions": 28820823,
+        "memory_counter_contribution_bytes": 706833
+      },
+      "underlying": {
+        "calls": 26,
+        "instructions": 3522364,
+        "memory_counter_contribution_bytes": 271860
+      },
+      "reward": {
+        "calls": 9,
+        "instructions": 1310697,
+        "memory_counter_contribution_bytes": 270222
+      },
+      "paired": {
+        "calls": 10,
+        "instructions": 1217807,
+        "memory_counter_contribution_bytes": 184619
+      },
+      "unlabelled": {
+        "calls": 6,
+        "instructions": 293641,
+        "memory_counter_contribution_bytes": 176518
+      },
+      "plane": {
+        "calls": 7,
+        "instructions": 150157,
+        "memory_counter_contribution_bytes": 172884
+      },
+      "facade": {
+        "calls": 1,
+        "instructions": 782795,
+        "memory_counter_contribution_bytes": 0
+      }
+    },
+    "repeated_calls": [
+      {
+        "role": "underlying",
+        "function": "balance",
+        "count": 19
+      },
+      {
+        "role": "paired",
+        "function": "balance",
+        "count": 8
+      },
+      {
+        "role": "underlying",
+        "function": "transfer",
+        "count": 7
+      },
+      {
+        "role": "reward",
+        "function": "balance",
+        "count": 6
+      },
+      {
+        "role": "vault",
+        "function": "balance",
+        "count": 5
+      },
+      {
+        "role": "unlabelled",
+        "function": "balance",
+        "count": 5
+      },
+      {
+        "role": "plane",
+        "function": "total_supply",
+        "count": 5
+      },
+      {
+        "role": "aquarius",
+        "function": "claim",
+        "count": 3
+      },
+      {
+        "role": "reward",
+        "function": "transfer",
+        "count": 3
+      },
+      {
+        "role": "aquarius",
+        "function": "get_is_killed_deposit",
+        "count": 2
+      },
+      {
+        "role": "plane",
+        "function": "update",
+        "count": 2
+      },
+      {
+        "role": "paired",
+        "function": "transfer",
+        "count": 2
+      }
+    ],
+    "largest_inclusive_calls": [
+      {
+        "address": "CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55",
+        "depth": 0,
+        "direct_child_count": 11,
+        "exclusive": {
+          "instructions": 3187444,
+          "memory_counter_contribution_bytes": 1412309
+        },
+        "function": "swap_open_position_v3",
+        "inclusive": {
+          "disk_read_bytes_delta": 92,
+          "disk_read_entries_delta": 1,
+          "event_bytes_delta": 6200,
+          "instructions": 229779425,
+          "memory_bytes": 22629185,
+          "memory_read_entries_delta": 117,
+          "persistent_entry_rent_bumps_delta": 13,
+          "persistent_rent_ledger_bytes_delta": 4897839328,
+          "temporary_entry_rent_bumps_delta": 1,
+          "temporary_rent_ledger_bytes_delta": 223948728,
+          "write_bytes_delta": 18212,
+          "write_entries_delta": 40
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(e0b80120c7613964879264622a827c2bbfd7dac93ab25295db4565c8bc010236))), ScSymbol(StringM(swap_open_position_v3)))",
+        "path": "0",
+        "role": "v3"
+      },
+      {
+        "address": "CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF",
+        "depth": 1,
+        "direct_child_count": 10,
+        "exclusive": {
+          "instructions": 782795,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 4508,
+          "instructions": 182186902,
+          "memory_bytes": 15430257,
+          "memory_read_entries_delta": 42,
+          "persistent_entry_rent_bumps_delta": 6,
+          "persistent_rent_ledger_bytes_delta": 1932592588,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 15344,
+          "write_entries_delta": 22
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(c63f6a915dcf9d488ccef36b2a20d0c4aff5e45be35582dc7bddd7c57a3a6dae))), ScSymbol(StringM(swap)))",
+        "path": "0.8",
+        "role": "facade"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 2,
+        "direct_child_count": 25,
+        "exclusive": {
+          "instructions": 9037063,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "deposit_underlying",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 3684,
+          "instructions": 163828432,
+          "memory_bytes": 10907643,
+          "memory_read_entries_delta": 30,
+          "persistent_entry_rent_bumps_delta": 2,
+          "persistent_rent_ledger_bytes_delta": 796262016,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 14304,
+          "write_entries_delta": 18
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(deposit_underlying)))",
+        "path": "0.8.5",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 7,
+        "exclusive": {
+          "instructions": 63028107,
+          "memory_counter_contribution_bytes": 3119503
+        },
+        "function": "deposit_position",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 1144,
+          "instructions": 63810382,
+          "memory_bytes": 3429823,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 4184,
+          "write_entries_delta": 2
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(deposit_position)))",
+        "path": "0.8.5.20",
+        "role": "aquarius"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 2,
+        "direct_child_count": 4,
+        "exclusive": {
+          "instructions": 3245356,
+          "memory_counter_contribution_bytes": 979357
+        },
+        "function": "quote",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 5561683,
+          "memory_bytes": 2671348,
+          "memory_read_entries_delta": 5,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(quote)))",
+        "path": "0.8.0",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 2,
+        "exclusive": {
+          "instructions": 52874111,
+          "memory_counter_contribution_bytes": 2136237
+        },
+        "function": "claim_all_position_fees",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 608,
+          "instructions": 53238488,
+          "memory_bytes": 2256165,
+          "memory_read_entries_delta": 13,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 880,
+          "write_entries_delta": 3
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim_all_position_fees)))",
+        "path": "0.8.5.5",
+        "role": "aquarius"
+      },
+      {
+        "address": "CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2",
+        "depth": 1,
+        "direct_child_count": 8,
+        "exclusive": {
+          "instructions": 13901268,
+          "memory_counter_contribution_bytes": 341727
+        },
+        "function": "withdraw",
+        "inclusive": {
+          "disk_read_bytes_delta": 92,
+          "disk_read_entries_delta": 1,
+          "event_bytes_delta": 816,
+          "instructions": 16943576,
+          "memory_bytes": 2187475,
+          "memory_read_entries_delta": 10,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": -124415940,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 1008,
+          "write_entries_delta": 7
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(5505aa2c8df2172c10bfc3e62edfec55029b70205228916d95479a084aea9d4f))), ScSymbol(StringM(withdraw)))",
+        "path": "0.4",
+        "role": "cash_receipt"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 5746394,
+          "memory_counter_contribution_bytes": 1894467
+        },
+        "function": "claim",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 6182231,
+          "memory_bytes": 2049280,
+          "memory_read_entries_delta": 11,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 5972,
+          "write_entries_delta": 8
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim)))",
+        "path": "0.8.5.3",
+        "role": "aquarius"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 2,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 3106575,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "transfer",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 588,
+          "instructions": 8813040,
+          "memory_bytes": 1851266,
+          "memory_read_entries_delta": 3,
+          "persistent_entry_rent_bumps_delta": 2,
+          "persistent_rent_ledger_bytes_delta": 605489868,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 292,
+          "write_entries_delta": 2
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(transfer)))",
+        "path": "0.8.7",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 5224323,
+          "memory_counter_contribution_bytes": 1709674
+        },
+        "function": "claim",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 5580955,
+          "memory_bytes": 1851266,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim)))",
+        "path": "0.8.7.1",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 1092854,
+          "memory_counter_contribution_bytes": 1404789
+        },
+        "function": "get_is_killed_swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 1092854,
+          "memory_bytes": 1404789,
+          "memory_read_entries_delta": 2,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(get_is_killed_swap)))",
+        "path": "0.8.0.0",
+        "role": "aquarius"
+      },
+      {
+        "address": "CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V",
+        "depth": 2,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 767645,
+          "memory_counter_contribution_bytes": 1325601
+        },
+        "function": "accrue_user_market",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 767645,
+          "memory_bytes": 1325601,
+          "memory_read_entries_delta": 3,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(21da1de84434bbd9b572d792920ea611633cc3231a7e593015f62e2dee4788a8))), ScSymbol(StringM(accrue_user_market)))",
+        "path": "0.4.0",
+        "role": "lending_controller"
+      },
+      {
+        "address": "CBJPUABS5H6EDPZ7AGJYOEWEDQ5HWMZDJNJYFGTTHDEI5FHONNL2BQN5",
+        "depth": 1,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 684561,
+          "memory_counter_contribution_bytes": 1266897
+        },
+        "function": "is_pool_binding_allowed",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 684561,
+          "memory_bytes": 1266897,
+          "memory_read_entries_delta": 6,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(52fa0032e9fc41bf3f01938712c41c3a7b33234b53829a7338c88e94ee6b57a0))), ScSymbol(StringM(is_pool_binding_allowed)))",
+        "path": "0.1",
+        "role": "adapter"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 1,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 2953966,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "custody_assign",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 8648786,
+          "memory_bytes": 1072859,
+          "memory_read_entries_delta": 6,
+          "persistent_entry_rent_bumps_delta": 3,
+          "persistent_rent_ledger_bytes_delta": 995327520,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 720,
+          "write_entries_delta": 4
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(custody_assign)))",
+        "path": "0.10",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 2,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 5222851,
+          "memory_counter_contribution_bytes": 931307
+        },
+        "function": "claim",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 5572624,
+          "memory_bytes": 1072859,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim)))",
+        "path": "0.10.1",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 2,
+        "exclusive": {
+          "instructions": 10277540,
+          "memory_counter_contribution_bytes": 886882
+        },
+        "function": "swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 1008,
+          "instructions": 10928463,
+          "memory_bytes": 1071413,
+          "memory_read_entries_delta": 1,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 448,
+          "write_entries_delta": 2
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(swap)))",
+        "path": "0.8.5.14",
+        "role": "aquarius"
+      },
+      {
+        "address": "CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2",
+        "depth": 1,
+        "direct_child_count": 4,
+        "exclusive": {
+          "instructions": 11418183,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "borrow_for_margin_to_controller",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 456,
+          "instructions": 12687180,
+          "memory_bytes": 870915,
+          "memory_read_entries_delta": 5,
+          "persistent_entry_rent_bumps_delta": 2,
+          "persistent_rent_ledger_bytes_delta": 1057535660,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 568,
+          "write_entries_delta": 4
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(5505aa2c8df2172c10bfc3e62edfec55029b70205228916d95479a084aea9d4f))), ScSymbol(StringM(borrow_for_margin_to_controller)))",
+        "path": "0.6",
+        "role": "cash_receipt"
+      },
+      {
+        "address": "CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V",
+        "depth": 2,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 849786,
+          "memory_counter_contribution_bytes": 870915
+        },
+        "function": "is_borrow_paused",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 849786,
+          "memory_bytes": 870915,
+          "memory_read_entries_delta": 1,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(21da1de84434bbd9b572d792920ea611633cc3231a7e593015f62e2dee4788a8))), ScSymbol(StringM(is_borrow_paused)))",
+        "path": "0.6.0",
+        "role": "lending_controller"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 8808585,
+          "memory_counter_contribution_bytes": 572459
+        },
+        "function": "estimate_swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 8808585,
+          "memory_bytes": 572459,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(estimate_swap)))",
+        "path": "0.8.5.12",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 4542877,
+          "memory_counter_contribution_bytes": 548957
+        },
+        "function": "estimate_deposit_position",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 4542877,
+          "memory_bytes": 548957,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(estimate_deposit_position)))",
+        "path": "0.8.5.19",
+        "role": "aquarius"
+      }
+    ],
+    "largest_memory_cost_types": [
+      {
+        "cost_type": "MemAlloc",
+        "inputs": 45085491,
+        "instructions": 38541088,
+        "iterations": 75841,
+        "memory_bytes": 46298947
+      },
+      {
+        "cost_type": "ValSer",
+        "inputs": 460880,
+        "instructions": 1476161,
+        "iterations": 6276,
+        "memory_bytes": 2901432
+      },
+      {
+        "cost_type": "InstantiateWasmInstructions",
+        "inputs": null,
+        "instructions": 1333930,
+        "iterations": 31,
+        "memory_bytes": 2191824
+      },
+      {
+        "cost_type": "InstantiateWasmImports",
+        "inputs": 1563,
+        "instructions": 10122542,
+        "iterations": 31,
+        "memory_bytes": 1192227
+      },
+      {
+        "cost_type": "InstantiateWasmFunctions",
+        "inputs": 9284,
+        "instructions": 548032,
+        "iterations": 31,
+        "memory_bytes": 1059882
+      },
+      {
+        "cost_type": "InstantiateWasmDataSegments",
+        "inputs": 764,
+        "instructions": 137489,
+        "iterations": 31,
+        "memory_bytes": 773723
+      },
+      {
+        "cost_type": "Int256Shift",
+        "inputs": null,
+        "instructions": 5804344,
+        "iterations": 6566,
+        "memory_bytes": 650034
+      },
+      {
+        "cost_type": "Int256AddSub",
+        "inputs": null,
+        "instructions": 25749216,
+        "iterations": 6166,
+        "memory_bytes": 610434
+      },
+      {
+        "cost_type": "Int256Div",
+        "inputs": null,
+        "instructions": 27771120,
+        "iterations": 5934,
+        "memory_bytes": 587466
+      },
+      {
+        "cost_type": "InstantiateWasmDataSegmentBytes",
+        "inputs": 535422,
+        "instructions": 58543,
+        "iterations": 31,
+        "memory_bytes": 527035
+      },
+      {
+        "cost_type": "InstantiateWasmExports",
+        "inputs": 2732,
+        "instructions": 6341216,
+        "iterations": 31,
+        "memory_bytes": 195832
+      },
+      {
+        "cost_type": "Int256Mul",
+        "inputs": null,
+        "instructions": 2103336,
+        "iterations": 446,
+        "memory_bytes": 44154
+      }
+    ],
+    "cpu_headroom_instructions": 170220575,
+    "memory_headroom_bytes": 19313855,
+    "resource_record": {
+      "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+      "contract_events_size_bytes": 6200,
+      "diagnostic_shadow_cpu_limit": 20000000000,
+      "diagnostic_shadow_cpu_used": 437327970,
+      "diagnostic_shadow_memory_limit": 4294967296,
+      "diagnostic_shadow_memory_used": 736041697,
+      "diagnostic_shadow_ok": true,
+      "disk_read_entries": 1,
+      "exact_captured_cost_model": true,
+      "flow": "stress_4_holders_1pct_reserve_trade_swap_open",
+      "instructions": 229779425,
+      "memory_bytes": 22629185,
+      "ok": true,
+      "persistent_entry_rent_bumps": 13,
+      "persistent_rent_ledger_bytes": 4897839328,
+      "profile": "captured-network-diagnostic",
+      "read_bytes": 92,
+      "read_entries": 117,
+      "run_mode": "acceptance",
+      "runtime_protocol": 29,
+      "scope": "compiled-local-controlled-state",
+      "sdk_limits_enforced": true,
+      "target_protocol": 29,
+      "temporary_entry_rent_bumps": 1,
+      "temporary_rent_ledger_bytes": 223948728,
+      "write_bytes": 18212,
+      "write_entries": 40
+    },
+    "source_call_report": "calls-network29-archival.jsonl",
+    "source_resource_report": "network29-archival.jsonl",
+    "state_archival_settings": {
+      "min_persistent_ttl": 2073600,
+      "min_temporary_ttl": 17280,
+      "max_entry_ttl": 3110400
+    }
+  },
+  {
+    "flow": "stress_16_holders_5pct_reserve_trade_swap_open",
+    "profile": "captured-network-diagnostic",
+    "run_mode": "acceptance",
+    "invocation_ok": true,
+    "runtime_protocol": 29,
+    "memory_semantics": "global_high_water_mark_growth_with_refunds",
+    "shadow_instrumentation": {
+      "cpu_limit_exceeded": false,
+      "instructions": 367426278,
+      "memory_bytes": 630222321,
+      "memory_limit_exceeded": false,
+      "semantics": "optional SDK diagnostics/auth/storage snapshots only; excluded from execution ceilings"
+    },
+    "root_instructions": 165546631,
+    "root_memory_bytes": 19790712,
+    "attribution_by_role": {
+      "aquarius": {
+        "calls": 11,
+        "instructions": 101444269,
+        "memory_counter_contribution_bytes": 11647879
+      },
+      "lending_controller": {
+        "calls": 4,
+        "instructions": 3333682,
+        "memory_counter_contribution_bytes": 2798263
+      },
+      "v3": {
+        "calls": 1,
+        "instructions": 3228352,
+        "memory_counter_contribution_bytes": 1424549
+      },
+      "adapter": {
+        "calls": 1,
+        "instructions": 681176,
+        "memory_counter_contribution_bytes": 1270977
+      },
+      "vault": {
+        "calls": 9,
+        "instructions": 21057303,
+        "memory_counter_contribution_bytes": 1040557
+      },
+      "cash_receipt": {
+        "calls": 3,
+        "instructions": 28964099,
+        "memory_counter_contribution_bytes": 735393
+      },
+      "reward": {
+        "calls": 9,
+        "instructions": 1436859,
+        "memory_counter_contribution_bytes": 307350
+      },
+      "underlying": {
+        "calls": 24,
+        "instructions": 3444917,
+        "memory_counter_contribution_bytes": 208302
+      },
+      "unlabelled": {
+        "calls": 4,
+        "instructions": 192119,
+        "memory_counter_contribution_bytes": 132930
+      },
+      "plane": {
+        "calls": 4,
+        "instructions": 88658,
+        "memory_counter_contribution_bytes": 115616
+      },
+      "paired": {
+        "calls": 8,
+        "instructions": 878660,
+        "memory_counter_contribution_bytes": 108896
+      },
+      "facade": {
+        "calls": 1,
+        "instructions": 796537,
+        "memory_counter_contribution_bytes": 0
+      }
+    },
+    "repeated_calls": [
+      {
+        "role": "underlying",
+        "function": "balance",
+        "count": 18
+      },
+      {
+        "role": "paired",
+        "function": "balance",
+        "count": 7
+      },
+      {
+        "role": "underlying",
+        "function": "transfer",
+        "count": 6
+      },
+      {
+        "role": "reward",
+        "function": "balance",
+        "count": 6
+      },
+      {
+        "role": "vault",
+        "function": "balance",
+        "count": 5
+      },
+      {
+        "role": "aquarius",
+        "function": "claim",
+        "count": 3
+      },
+      {
+        "role": "unlabelled",
+        "function": "balance",
+        "count": 3
+      },
+      {
+        "role": "plane",
+        "function": "total_supply",
+        "count": 3
+      },
+      {
+        "role": "reward",
+        "function": "transfer",
+        "count": 3
+      },
+      {
+        "role": "aquarius",
+        "function": "get_is_killed_deposit",
+        "count": 2
+      }
+    ],
+    "largest_inclusive_calls": [
+      {
+        "address": "CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55",
+        "depth": 0,
+        "direct_child_count": 11,
+        "exclusive": {
+          "instructions": 3228352,
+          "memory_counter_contribution_bytes": 1424549
+        },
+        "function": "swap_open_position_v3",
+        "inclusive": {
+          "disk_read_bytes_delta": 92,
+          "disk_read_entries_delta": 1,
+          "event_bytes_delta": 5056,
+          "instructions": 165546631,
+          "memory_bytes": 19790712,
+          "memory_read_entries_delta": 118,
+          "persistent_entry_rent_bumps_delta": 13,
+          "persistent_rent_ledger_bytes_delta": 4897839328,
+          "temporary_entry_rent_bumps_delta": 1,
+          "temporary_rent_ledger_bytes_delta": 223948728,
+          "write_bytes_delta": 14028,
+          "write_entries_delta": 38
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(e0b80120c7613964879264622a827c2bbfd7dac93ab25295db4565c8bc010236))), ScSymbol(StringM(swap_open_position_v3)))",
+        "path": "0",
+        "role": "v3"
+      },
+      {
+        "address": "CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF",
+        "depth": 1,
+        "direct_child_count": 10,
+        "exclusive": {
+          "instructions": 796537,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 3364,
+          "instructions": 117335552,
+          "memory_bytes": 12344905,
+          "memory_read_entries_delta": 43,
+          "persistent_entry_rent_bumps_delta": 6,
+          "persistent_rent_ledger_bytes_delta": 1932592588,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 11160,
+          "write_entries_delta": 20
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(c63f6a915dcf9d488ccef36b2a20d0c4aff5e45be35582dc7bddd7c57a3a6dae))), ScSymbol(StringM(swap)))",
+        "path": "0.8",
+        "role": "facade"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 2,
+        "direct_child_count": 22,
+        "exclusive": {
+          "instructions": 7319617,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "deposit_underlying",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 2540,
+          "instructions": 98861071,
+          "memory_bytes": 7746576,
+          "memory_read_entries_delta": 31,
+          "persistent_entry_rent_bumps_delta": 2,
+          "persistent_rent_ledger_bytes_delta": 796262016,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 10120,
+          "write_entries_delta": 16
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(deposit_underlying)))",
+        "path": "0.8.5",
+        "role": "vault"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 2,
+        "direct_child_count": 4,
+        "exclusive": {
+          "instructions": 2891224,
+          "memory_counter_contribution_bytes": 1040557
+        },
+        "function": "quote",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 5221775,
+          "memory_bytes": 2740708,
+          "memory_read_entries_delta": 5,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(quote)))",
+        "path": "0.8.0",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 2,
+        "exclusive": {
+          "instructions": 53132104,
+          "memory_counter_contribution_bytes": 2211055
+        },
+        "function": "claim_all_position_fees",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 608,
+          "instructions": 53540127,
+          "memory_bytes": 2347371,
+          "memory_read_entries_delta": 14,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 880,
+          "write_entries_delta": 3
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim_all_position_fees)))",
+        "path": "0.8.5.5",
+        "role": "aquarius"
+      },
+      {
+        "address": "CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2",
+        "depth": 1,
+        "direct_child_count": 8,
+        "exclusive": {
+          "instructions": 13977392,
+          "memory_counter_contribution_bytes": 349887
+        },
+        "function": "withdraw",
+        "inclusive": {
+          "disk_read_bytes_delta": 92,
+          "disk_read_entries_delta": 1,
+          "event_bytes_delta": 816,
+          "instructions": 17079809,
+          "memory_bytes": 2216035,
+          "memory_read_entries_delta": 10,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": -124415940,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 1008,
+          "write_entries_delta": 7
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(5505aa2c8df2172c10bfc3e62edfec55029b70205228916d95479a084aea9d4f))), ScSymbol(StringM(withdraw)))",
+        "path": "0.4",
+        "role": "cash_receipt"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 5854153,
+          "memory_counter_contribution_bytes": 1973338
+        },
+        "function": "claim",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 6329380,
+          "memory_bytes": 2148551,
+          "memory_read_entries_delta": 11,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 5972,
+          "write_entries_delta": 8
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim)))",
+        "path": "0.8.5.3",
+        "role": "aquarius"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 2,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 3294122,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "transfer",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 588,
+          "instructions": 9170103,
+          "memory_bytes": 1857621,
+          "memory_read_entries_delta": 3,
+          "persistent_entry_rent_bumps_delta": 2,
+          "persistent_rent_ledger_bytes_delta": 605489868,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 292,
+          "write_entries_delta": 2
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(transfer)))",
+        "path": "0.8.7",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 5339561,
+          "memory_counter_contribution_bytes": 1695289
+        },
+        "function": "claim",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 5736279,
+          "memory_bytes": 1857621,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim)))",
+        "path": "0.8.7.1",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 1094046,
+          "memory_counter_contribution_bytes": 1408869
+        },
+        "function": "get_is_killed_swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 1094046,
+          "memory_bytes": 1408869,
+          "memory_read_entries_delta": 2,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(get_is_killed_swap)))",
+        "path": "0.8.0.0",
+        "role": "aquarius"
+      },
+      {
+        "address": "CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V",
+        "depth": 2,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 768377,
+          "memory_counter_contribution_bytes": 1329681
+        },
+        "function": "accrue_user_market",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 768377,
+          "memory_bytes": 1329681,
+          "memory_read_entries_delta": 3,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(21da1de84434bbd9b572d792920ea611633cc3231a7e593015f62e2dee4788a8))), ScSymbol(StringM(accrue_user_market)))",
+        "path": "0.4.0",
+        "role": "lending_controller"
+      },
+      {
+        "address": "CBJPUABS5H6EDPZ7AGJYOEWEDQ5HWMZDJNJYFGTTHDEI5FHONNL2BQN5",
+        "depth": 1,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 681176,
+          "memory_counter_contribution_bytes": 1270977
+        },
+        "function": "is_pool_binding_allowed",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 681176,
+          "memory_bytes": 1270977,
+          "memory_read_entries_delta": 6,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(52fa0032e9fc41bf3f01938712c41c3a7b33234b53829a7338c88e94ee6b57a0))), ScSymbol(StringM(is_pool_binding_allowed)))",
+        "path": "0.1",
+        "role": "adapter"
+      },
+      {
+        "address": "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE",
+        "depth": 1,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 3114057,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "custody_assign",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 8972196,
+          "memory_bytes": 1189178,
+          "memory_read_entries_delta": 6,
+          "persistent_entry_rent_bumps_delta": 3,
+          "persistent_rent_ledger_bytes_delta": 995327520,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 720,
+          "write_entries_delta": 4
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(79dfcd8a96da17a5313b4514b240b3f58609a8746c7397cc6e53081b308be406))), ScSymbol(StringM(custody_assign)))",
+        "path": "0.10",
+        "role": "vault"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 2,
+        "direct_child_count": 3,
+        "exclusive": {
+          "instructions": 5349262,
+          "memory_counter_contribution_bytes": 1026886
+        },
+        "function": "claim",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 420,
+          "instructions": 5729591,
+          "memory_bytes": 1189178,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(claim)))",
+        "path": "0.10.1",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 2,
+        "exclusive": {
+          "instructions": 10657871,
+          "memory_counter_contribution_bytes": 910569
+        },
+        "function": "swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 1008,
+          "instructions": 11369964,
+          "memory_bytes": 1120063,
+          "memory_read_entries_delta": 1,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 448,
+          "write_entries_delta": 2
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(swap)))",
+        "path": "0.8.5.14",
+        "role": "aquarius"
+      },
+      {
+        "address": "CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2",
+        "depth": 1,
+        "direct_child_count": 4,
+        "exclusive": {
+          "instructions": 11466912,
+          "memory_counter_contribution_bytes": 0
+        },
+        "function": "borrow_for_margin_to_controller",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 456,
+          "instructions": 12772621,
+          "memory_bytes": 932115,
+          "memory_read_entries_delta": 5,
+          "persistent_entry_rent_bumps_delta": 2,
+          "persistent_rent_ledger_bytes_delta": 1057535660,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 568,
+          "write_entries_delta": 4
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(5505aa2c8df2172c10bfc3e62edfec55029b70205228916d95479a084aea9d4f))), ScSymbol(StringM(borrow_for_margin_to_controller)))",
+        "path": "0.6",
+        "role": "cash_receipt"
+      },
+      {
+        "address": "CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V",
+        "depth": 2,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 851318,
+          "memory_counter_contribution_bytes": 932115
+        },
+        "function": "is_borrow_paused",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 851318,
+          "memory_bytes": 932115,
+          "memory_read_entries_delta": 1,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(21da1de84434bbd9b572d792920ea611633cc3231a7e593015f62e2dee4788a8))), ScSymbol(StringM(is_borrow_paused)))",
+        "path": "0.6.0",
+        "role": "lending_controller"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 9175835,
+          "memory_counter_contribution_bytes": 587850
+        },
+        "function": "estimate_swap",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 9175835,
+          "memory_bytes": 587850,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(estimate_swap)))",
+        "path": "0.8.5.12",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 4122748,
+          "memory_counter_contribution_bytes": 557524
+        },
+        "function": "estimate_deposit_position",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 4122748,
+          "memory_bytes": 557524,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(estimate_deposit_position)))",
+        "path": "0.8.5.19",
+        "role": "aquarius"
+      },
+      {
+        "address": "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O",
+        "depth": 3,
+        "direct_child_count": 0,
+        "exclusive": {
+          "instructions": 1072156,
+          "memory_counter_contribution_bytes": 519208
+        },
+        "function": "get_is_killed_deposit",
+        "inclusive": {
+          "disk_read_bytes_delta": 0,
+          "disk_read_entries_delta": 0,
+          "event_bytes_delta": 0,
+          "instructions": 1072156,
+          "memory_bytes": 519208,
+          "memory_read_entries_delta": 0,
+          "persistent_entry_rent_bumps_delta": 0,
+          "persistent_rent_ledger_bytes_delta": 0,
+          "temporary_entry_rent_bumps_delta": 0,
+          "temporary_rent_ledger_bytes_delta": 0,
+          "write_bytes_delta": 0,
+          "write_entries_delta": 0
+        },
+        "invocation": "InvokeContract(Contract(ContractId(Hash(eea84deb18cbc8858910a66aeaf0e70624bb1fbe72a790692aa1320a53c1c2e4))), ScSymbol(StringM(get_is_killed_deposit)))",
+        "path": "0.8.5.11",
+        "role": "aquarius"
+      }
+    ],
+    "largest_memory_cost_types": [
+      {
+        "cost_type": "MemAlloc",
+        "inputs": 42542211,
+        "instructions": 28570529,
+        "iterations": 53594,
+        "memory_bytes": 43399715
+      },
+      {
+        "cost_type": "ValSer",
+        "inputs": 460964,
+        "instructions": 1479041,
+        "iterations": 6289,
+        "memory_bytes": 2904830
+      },
+      {
+        "cost_type": "InstantiateWasmInstructions",
+        "inputs": null,
+        "instructions": 1290900,
+        "iterations": 30,
+        "memory_bytes": 2121120
+      },
+      {
+        "cost_type": "InstantiateWasmImports",
+        "inputs": 1504,
+        "instructions": 9740437,
+        "iterations": 30,
+        "memory_bytes": 1147223
+      },
+      {
+        "cost_type": "InstantiateWasmFunctions",
+        "inputs": 8890,
+        "instructions": 524774,
+        "iterations": 30,
+        "memory_bytes": 1014902
+      },
+      {
+        "cost_type": "InstantiateWasmDataSegments",
+        "inputs": 726,
+        "instructions": 130650,
+        "iterations": 30,
+        "memory_bytes": 735239
+      },
+      {
+        "cost_type": "InstantiateWasmDataSegmentBytes",
+        "inputs": 519738,
+        "instructions": 56828,
+        "iterations": 30,
+        "memory_bytes": 511597
+      },
+      {
+        "cost_type": "Int256Shift",
+        "inputs": null,
+        "instructions": 3362736,
+        "iterations": 3804,
+        "memory_bytes": 376596
+      },
+      {
+        "cost_type": "Int256AddSub",
+        "inputs": null,
+        "instructions": 14970960,
+        "iterations": 3585,
+        "memory_bytes": 354915
+      },
+      {
+        "cost_type": "Int256Div",
+        "inputs": null,
+        "instructions": 16117920,
+        "iterations": 3444,
+        "memory_bytes": 340956
+      },
+      {
+        "cost_type": "InstantiateWasmExports",
+        "inputs": 2632,
+        "instructions": 6109107,
+        "iterations": 30,
+        "memory_bytes": 188664
+      },
+      {
+        "cost_type": "Int256Mul",
+        "inputs": null,
+        "instructions": 1230876,
+        "iterations": 261,
+        "memory_bytes": 25839
+      }
+    ],
+    "cpu_headroom_instructions": 234453369,
+    "memory_headroom_bytes": 22152328,
+    "resource_record": {
+      "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+      "contract_events_size_bytes": 5056,
+      "diagnostic_shadow_cpu_limit": 20000000000,
+      "diagnostic_shadow_cpu_used": 367426278,
+      "diagnostic_shadow_memory_limit": 4294967296,
+      "diagnostic_shadow_memory_used": 630222321,
+      "diagnostic_shadow_ok": true,
+      "disk_read_entries": 1,
+      "exact_captured_cost_model": true,
+      "flow": "stress_16_holders_5pct_reserve_trade_swap_open",
+      "instructions": 165546631,
+      "memory_bytes": 19790712,
+      "ok": true,
+      "persistent_entry_rent_bumps": 13,
+      "persistent_rent_ledger_bytes": 4897839328,
+      "profile": "captured-network-diagnostic",
+      "read_bytes": 92,
+      "read_entries": 118,
+      "run_mode": "acceptance",
+      "runtime_protocol": 29,
+      "scope": "compiled-local-controlled-state",
+      "sdk_limits_enforced": true,
+      "target_protocol": 29,
+      "temporary_entry_rent_bumps": 1,
+      "temporary_rent_ledger_bytes": 223948728,
+      "write_bytes": 14028,
+      "write_entries": 38
+    },
+    "source_call_report": "calls-network29-archival.jsonl",
+    "source_resource_report": "network29-archival.jsonl",
+    "state_archival_settings": {
+      "min_persistent_ttl": 2073600,
+      "min_temporary_ttl": 17280,
+      "max_entry_ttl": 3110400
+    }
+  }
+]

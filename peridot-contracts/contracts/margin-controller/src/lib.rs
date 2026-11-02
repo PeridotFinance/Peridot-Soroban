@@ -28,3 +28,7 @@ mod test;
 
 #[cfg(feature = "funded-liquidation-validation")]
 mod cl_custody;
+
+#[cfg(test)]
+#[path="../../../test-support/cl_resource_limits.rs"]
+mod cl_resource_limits;

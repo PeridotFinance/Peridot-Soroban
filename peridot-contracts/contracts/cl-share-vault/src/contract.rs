@@ -1935,27 +1935,55 @@ impl ClShareVault {
     /// Transferable shares; registered custody moves preserve beneficial rewards.
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         from.require_auth();
-        assert!(amount > 0, "zero transfer");
-        let amount = to_u128(amount);
-        assert!(shares_of(&env, &from) >= amount, "insufficient shares");
-        // Self-transfers neither consume custody allocations nor change ownership.
-        if from == to {
-            crate::rewards::normal(&env, &from);
+        Self::transfer_shares(&env, &from, &to, amount);
+    }
+
+    /// SEP-41 spender authorization replaces the owner signature only; reward
+    /// checkpointing and all share/custody invariants use the same move routine.
+    pub fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
+        spender.require_auth();
+        crate::allowances::spend(&env, &from, &spender, amount);
+        Self::transfer_shares(&env, &from, &to, amount);
+    }
+
+    pub fn allowance(env: Env, from: Address, spender: Address) -> i128 {
+        crate::allowances::allowance(&env, &from, &spender)
+    }
+
+    pub fn approve(env: Env, from: Address, spender: Address, amount: i128, expiration_ledger: u32) {
+        from.require_auth();
+        crate::allowances::approve(&env, &from, &spender, amount, expiration_ledger);
+        ShareApproval { from, spender, amount, expiration_ledger }.publish(&env);
+    }
+
+    fn transfer_shares(env: &Env, from: &Address, to: &Address, amount: i128) {
+        assert!(amount >= 0, "negative transfer");
+        if amount == 0 {
+            ShareTransfer { from: from.clone(), to: to.clone(), amount }.publish(env);
             return;
         }
-        let owner = match crate::custody::outgoing(&env, &from, &to, amount) {
+        let amount = to_u128(amount);
+        assert!(shares_of(env, from) >= amount, "insufficient shares");
+        // Self-transfers neither consume custody allocations nor change ownership.
+        if from == to {
+            crate::rewards::normal(env, from);
+            ShareTransfer { from: from.clone(), to: to.clone(), amount: to_i128(amount) }.publish(env);
+            return;
+        }
+        let owner = match crate::custody::outgoing(env, from, to, amount) {
             Some(owner) => owner,
             None => {
-                crate::rewards::normal(&env, &from);
-                crate::rewards::settle(&env, &to);
+                crate::rewards::normal(env, from);
+                crate::rewards::settle(env, to);
                 from.clone()
             }
         };
-        set_shares(&env, &from, shares_of(&env, &from) - amount);
-        set_shares(&env, &to, shares_of(&env, &to).checked_add(amount).unwrap());
-        crate::custody::received(&env, &to, amount);
-        crate::rewards::reset_debt(&env, &owner);
-        crate::rewards::reset_debt(&env, &to);
+        set_shares(env, from, shares_of(env, from) - amount);
+        set_shares(env, to, shares_of(env, to).checked_add(amount).unwrap());
+        crate::custody::received(env, to, amount);
+        crate::rewards::reset_debt(env, &owner);
+        crate::rewards::reset_debt(env, to);
+        ShareTransfer { from: from.clone(), to: to.clone(), amount: to_i128(amount) }.publish(env);
     }
 
     pub fn register_custodian(env: Env, custodian: Address) {

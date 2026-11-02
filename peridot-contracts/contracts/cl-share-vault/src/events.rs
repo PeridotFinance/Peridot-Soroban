@@ -126,3 +126,26 @@ pub struct PositionRebalanced {
     pub liquidity_burned: u128,
     pub liquidity_minted: u128,
 }
+
+/// SEP-41 approval event. Approvals do not checkpoint or transfer rewards.
+#[contractevent(topics = ["approve"], data_format = "vec")]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ShareApproval {
+    #[topic]
+    pub from: Address,
+    #[topic]
+    pub spender: Address,
+    pub amount: i128,
+    pub expiration_ledger: u32,
+}
+
+/// The legacy scalar SEP-41 transfer event is accepted by existing consumers.
+#[contractevent(topics = ["transfer"], data_format = "single-value")]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ShareTransfer {
+    #[topic]
+    pub from: Address,
+    #[topic]
+    pub to: Address,
+    pub amount: i128,
+}

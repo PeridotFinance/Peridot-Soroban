@@ -25,3 +25,6 @@ mock-token = { path = "../mocks/mock-token" }
 receipt-vault = { path = "../receipt-vault", features = ["test-default-admin"] }
 simple-peridottroller = { path = "../simple-peridottroller", features = ["test-default-admin"] }
 swap-adapter = { path = "../swap-adapter", features = ["test-default-admin"] }
+
+serde_json = "1"
+soroban-env-host = { version = "=25.0.1", features = ["testutils"] }

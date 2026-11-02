@@ -1,5 +1,6 @@
 #![no_std]
 mod accounting;
+mod allowances;
 mod constants;
 mod contract;
 mod custody;
@@ -34,3 +35,6 @@ mod test;
 
 #[cfg(test)]
 mod principal_tests;
+
+#[cfg(test)]
+mod allowance_tests;

@@ -203,3 +203,9 @@ mod test;
 
 #[cfg(test)]
 mod pr74_auth_tests;
+
+#[cfg(test)]
+#[path="../../../test-support/cl_resource_limits.rs"]
+mod cl_resource_limits;
+#[cfg(test)]
+mod resource_profile;

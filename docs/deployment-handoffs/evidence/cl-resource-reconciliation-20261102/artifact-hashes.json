@@ -1,0 +1,9 @@
+{
+  "cl_share_pool_facade.wasm": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5",
+  "cl_share_vault.wasm": "e4e758c33bba33019eae717c1d3067a37510bead3886f63ecb4bd6bf5789590b",
+  "jump_rate_model.wasm": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+  "margin_controller.wasm": "157d0d86121843598e146ef6061d25eae2fc265c2ef34902cb6d2be87dfcaf29",
+  "receipt_vault.wasm": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e",
+  "simple_peridottroller.wasm": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2",
+  "swap_adapter.wasm": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d"
+}

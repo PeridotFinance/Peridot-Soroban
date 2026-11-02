@@ -275,6 +275,8 @@ dependencies = [
 name = "cl-share-pool-facade"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
+ "soroban-env-host",
  "soroban-sdk",
 ]
 
@@ -903,7 +905,9 @@ version = "0.1.0"
 dependencies = [
  "mock-token",
  "receipt-vault",
+ "serde_json",
  "simple-peridottroller",
+ "soroban-env-host",
  "soroban-sdk",
  "swap-adapter",
 ]
