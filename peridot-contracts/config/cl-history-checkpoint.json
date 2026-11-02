@@ -190,7 +190,19 @@
     "workflow": ".github/workflows/cl-stage1.yml",
     "local_checker": "13 PASS",
     "remote": "Observe PR checks for publishing commit; not asserted at commit construction",
-    "expected_checkpoint_result": "FAIL: internal policy remains failed; no continue-on-error"
+    "expected_checkpoint_result": "FAIL: internal policy remains failed; no continue-on-error",
+    "first_remote_run": {
+      "commit": "8f3e5fd66d4dc2d126c4a1fbd1419b872933e550",
+      "url": "https://github.com/PeridotFinance/Peridot-Soroban/actions/runs/41434002559",
+      "checker_tests": "PASS",
+      "checkpoint_gates": "FAIL bootstrap: missing rg; contract execution not reached",
+      "followup": "Python discovery and bootstrap-log artifacts; remote follow-up status must be checked"
+    }
   },
-  "evidence_directory": "docs/deployment-handoffs/evidence/cl-history-recovery-20261102"
+  "evidence_directory": "docs/deployment-handoffs/evidence/cl-history-recovery-20261102",
+  "evidence_relocation_replay": {
+    "captured_gates": "PASS",
+    "internal_gates": "FAIL",
+    "aggregate_exit": 1
+  }
 }

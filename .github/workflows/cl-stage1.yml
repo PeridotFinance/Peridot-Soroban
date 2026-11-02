@@ -36,15 +36,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p peridot-contracts/target/cl-ci-bootstrap
+          {
           rustup toolchain install 1.96.0 --profile minimal --target wasm32v1-none
           rustup default 1.96.0
           curl -fsSL --retry 3 https://github.com/stellar/stellar-cli/releases/download/v26.1.0/stellar-cli-26.1.0-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/stellar.tar.gz"
           echo "e18d5a7629102e1ccc07241acbcbebfc05b1c02476ce7d3204ba2d7418be5c0c  $RUNNER_TEMP/stellar.tar.gz" | sha256sum -c -
           mkdir "$RUNNER_TEMP/stellar-cli"
           tar -xzf "$RUNNER_TEMP/stellar.tar.gz" -C "$RUNNER_TEMP/stellar-cli"
-          stellar_binary="$(rg --files "$RUNNER_TEMP/stellar-cli" | rg '/stellar$')"
-          test -n "$stellar_binary"
+          stellar_binary="$(python3 -c 'import pathlib,sys; files=[p for p in pathlib.Path(sys.argv[1]).rglob("stellar") if p.is_file()]; assert len(files)==1, files; print(files[0])' "$RUNNER_TEMP/stellar-cli")"
+          test -x "$stellar_binary"
           dirname "$stellar_binary" >> "$GITHUB_PATH"
+          } 2>&1 | tee peridot-contracts/target/cl-ci-bootstrap/install.log
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
@@ -67,6 +70,8 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cl-stage1-evidence-${{ github.sha }}
-          path: peridot-contracts/target/cl-ci-checkpoint/
+          path: |
+            peridot-contracts/target/cl-ci-checkpoint/
+            peridot-contracts/target/cl-ci-bootstrap/
           if-no-files-found: error
           retention-days: 14

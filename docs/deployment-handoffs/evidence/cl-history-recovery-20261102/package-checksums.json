@@ -1,5 +1,5 @@
 {
-  "README.md": "f47d724853f9592f6a9ba9e7c411f301415e7ebdc8dd455ca5b7982c87f3591c",
+  "README.md": "0fcd6ae20377506e01ccc793a5fead3f1331f9f753119d2a216ab7f29e4576a8",
   "artifacts.json": "7838f16fa68b3c115ebbf91b97f851de038bb7a44ce2278962c163f16ce88e1a",
   "captured-network-diagnostic-calls.jsonl": "f576323876b4ca747da2a8ccd650d8a6673e5b03a40b7891f1724d0e04e04207",
   "captured-network-diagnostic-governed/synthetic-shortfall-1.json": "acacf81af004f7f0946e6fa5cdf388c04138b2c9c24c82f2f6b1165b7c0ac8e8",
@@ -32,6 +32,7 @@
   "logs/captured-network-diagnostic-harness.log": "8e18b8a18a7b7135e541b813152d3cc29258cdeb0abbd0c686fd8cfd7023fab6",
   "logs/captured-network-diagnostic-integrity.log": "67256c06b72d9c8aeea46182c945610f839fc938f353bc0d305e5fa474989da7",
   "logs/checker-tests.log": "470c1bd08ac6d1e85694c7ef930f953f1f09721b2a053b36d8d7c8e292b0393e",
+  "logs/ci-initial-job.log": "481b7ae88c608ad6d0291b40079379b95542f019f4ed89eac62fa1c60fb58b9d",
   "logs/initial-wrapper-failure.log": "73c00a1429549971f3066cfb579ecfced7ce1b970abf7fb1352c6e5c97113066",
   "logs/internal-policy-archive.log": "8725fcd48c0081b633b21b4ab7e465d4bf2113f49826aa9e332d38f340ee44a3",
   "logs/internal-policy-budget.log": "11245b39ef838e0d6d8b6b146f6ba0064c6402d486d9edfabfba6166fb64df97",
