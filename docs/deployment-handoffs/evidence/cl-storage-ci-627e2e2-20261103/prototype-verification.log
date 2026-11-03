@@ -1,0 +1,262 @@
+{
+  "captured-network-diagnostic": {
+    "errors": [
+      "baseline-cold-checkpoint: process exit 1",
+      "baseline: required tests/gates incomplete or failed",
+      "candidate-cold-checkpoint: process exit 1",
+      "candidate: required tests/gates incomplete or failed",
+      "cold-comparison: process exit 1",
+      "cold: logical comparison missing or failed"
+    ],
+    "views": {
+      "baseline-cold": {
+        "tests": {
+          "ok": 4,
+          "FAILED": 0,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": true,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 2,
+          "transaction_errors": 379
+        },
+        "missing_resources": 28
+      },
+      "baseline-live": {
+        "tests": {
+          "ok": 4,
+          "FAILED": 0,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": true,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 2,
+          "transaction_errors": 46
+        },
+        "missing_resources": 0
+      },
+      "baseline-data": {
+        "tests": {
+          "ok": 4,
+          "FAILED": 0,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": true,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 2,
+          "transaction_errors": 46
+        },
+        "missing_resources": 0
+      },
+      "candidate-cold": {
+        "tests": {
+          "ok": 4,
+          "FAILED": 0,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": true,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 2,
+          "transaction_errors": 379
+        },
+        "missing_resources": 28
+      },
+      "candidate-live": {
+        "tests": {
+          "ok": 4,
+          "FAILED": 0,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": true,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 2,
+          "transaction_errors": 46
+        },
+        "missing_resources": 0
+      },
+      "candidate-data": {
+        "tests": {
+          "ok": 4,
+          "FAILED": 0,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": true,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 2,
+          "transaction_errors": 46
+        },
+        "missing_resources": 0
+      }
+    }
+  },
+  "internal-policy": {
+    "errors": [
+      "baseline-run: process exit 1",
+      "baseline: fixture tests failed",
+      "baseline-cold-checkpoint: process exit 1",
+      "baseline: required tests/gates incomplete or failed",
+      "candidate-run: process exit 1",
+      "candidate: fixture tests failed",
+      "candidate-cold-checkpoint: process exit 1",
+      "candidate: required tests/gates incomplete or failed",
+      "live-comparison: process exit 1",
+      "live: logical comparison missing or failed",
+      "data-comparison: process exit 1",
+      "data: logical comparison missing or failed",
+      "cold-comparison: process exit 1",
+      "cold: logical comparison missing or failed"
+    ],
+    "views": {
+      "baseline-cold": {
+        "tests": {
+          "ok": 0,
+          "FAILED": 4,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": false,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 18,
+          "transaction_errors": 92
+        },
+        "missing_resources": 5
+      },
+      "baseline-live": {
+        "tests": {
+          "ok": 0,
+          "FAILED": 4,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": false,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 18,
+          "transaction_errors": 62
+        },
+        "missing_resources": 2
+      },
+      "baseline-data": {
+        "tests": {
+          "ok": 0,
+          "FAILED": 4,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": false,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 18,
+          "transaction_errors": 64
+        },
+        "missing_resources": 2
+      },
+      "candidate-cold": {
+        "tests": {
+          "ok": 0,
+          "FAILED": 4,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": false,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 18,
+          "transaction_errors": 249
+        },
+        "missing_resources": 21
+      },
+      "candidate-live": {
+        "tests": {
+          "ok": 0,
+          "FAILED": 4,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": false,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 18,
+          "transaction_errors": 63
+        },
+        "missing_resources": 2
+      },
+      "candidate-data": {
+        "tests": {
+          "ok": 0,
+          "FAILED": 4,
+          "ignored": 0
+        },
+        "gates": {
+          "invocation": false,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "error_counts": {
+          "missing_required_flows": 46,
+          "lifecycle_errors": 18,
+          "transaction_errors": 64
+        },
+        "missing_resources": 2
+      }
+    }
+  }
+}

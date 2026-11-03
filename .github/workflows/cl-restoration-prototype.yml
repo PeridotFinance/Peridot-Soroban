@@ -1,0 +1,92 @@
+name: CL restoration preparation (draft evidence)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'peridot-contracts/prototypes/cl-restoration-preparation/**'
+      - 'peridot-contracts/prototypes/cl-storage-qualification/**'
+      - 'peridot-contracts/prototypes/cl-atomic-qualification/**'
+      - 'peridot-contracts/contracts/**'
+      - 'peridot-contracts/test-support/**'
+      - 'peridot-contracts/harness/cl-runtime29/**'
+      - 'peridot-contracts/Cargo.toml'
+      - 'peridot-contracts/Cargo.lock'
+      - 'peridot-contracts/scripts/check_budget.sh'
+      - 'peridot-contracts/scripts/check_local_budget.py'
+      - 'peridot-contracts/scripts/cl_*.py'
+      - 'peridot-contracts/scripts/decode_cl_transaction_evidence.cjs'
+      - 'peridot-contracts/scripts/make_cl_proof_manifest.py'
+      - 'peridot-contracts/scripts/fetch_cl_pool_fixture.cjs'
+      - 'peridot-contracts/bots/margin-liquidator/package*.json'
+      - 'docs/deployment-handoffs/evidence/cl-resource-decision-refresh-20261102/network-config.json'
+      - '.github/workflows/cl-restoration-prototype.yml'
+permissions:
+  contents: read
+concurrency:
+  group: cl-restoration-prototype-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  qualification:
+    name: Combined restoration and recovery evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: peridot-contracts
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install pinned Rust and Stellar build CLI
+        run: |
+          set -euo pipefail
+          mkdir -p target/cl-restoration-ci-bootstrap
+          {
+          rustup toolchain install 1.96.0 --profile minimal --target wasm32v1-none
+          rustup default 1.96.0
+          curl -fsSL --retry 3 https://github.com/stellar/stellar-cli/releases/download/v26.1.0/stellar-cli-26.1.0-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/stellar.tar.gz"
+          echo "e18d5a7629102e1ccc07241acbcbebfc05b1c02476ce7d3204ba2d7418be5c0c  $RUNNER_TEMP/stellar.tar.gz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/stellar-cli"
+          tar -xzf "$RUNNER_TEMP/stellar.tar.gz" -C "$RUNNER_TEMP/stellar-cli"
+          stellar_binary="$(python3 -c 'import pathlib,sys; files=[p for p in pathlib.Path(sys.argv[1]).rglob("stellar") if p.is_file()]; assert len(files)==1, files; print(files[0])' "$RUNNER_TEMP/stellar-cli")"
+          test -x "$stellar_binary"
+          dirname "$stellar_binary" >> "$GITHUB_PATH"
+          rustc --version
+          } 2>&1 | tee target/cl-restoration-ci-bootstrap/install.log
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Fetch locked dependencies and public pinned venue bytecode
+        run: |
+          set -euo pipefail
+          {
+          npm ci --prefix bots/margin-liquidator --ignore-scripts
+          cargo fetch --locked --manifest-path Cargo.toml
+          cargo fetch --locked --manifest-path harness/cl-runtime29/Cargo.toml
+          node scripts/fetch_cl_pool_fixture.cjs
+          } 2>&1 | tee target/cl-restoration-ci-bootstrap/dependencies.log
+      - name: Validate restoration envelopes, fees and journey gates
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s prototypes/cl-restoration-preparation -p 'test_*.py' -v 2>&1 | tee target/cl-restoration-ci-bootstrap/checker-tests.log
+      - name: Execute focused combined candidate with both profiles
+        run: |
+          set -euo pipefail
+          python3 prototypes/cl-restoration-preparation/ci.py --output target/cl-restoration-ci
+      - name: Preserve prototype evidence, including failed gates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cl-restoration-prototype-${{ github.sha }}
+          path: |
+            peridot-contracts/target/cl-restoration-ci/
+            peridot-contracts/target/cl-restoration-ci-bootstrap/
+          if-no-files-found: error
+          retention-days: 14

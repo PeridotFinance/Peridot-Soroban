@@ -1,0 +1,34 @@
+{
+  "README.md": {
+    "bytes": 5141,
+    "sha256": "c47f910d12c6a84b5685325bf4a53a6afc7ca868c890ad381e45c231c4548e04"
+  },
+  "github-1.json": {
+    "bytes": 1847,
+    "sha256": "3872da412f2648379cf9004081b329eb0f074889546f087d8f0c51a4e169ae7f"
+  },
+  "github-2.json": {
+    "bytes": 4517,
+    "sha256": "21f19eb3810db9d67eb74091b609405c8308f09476f05a75a73d19437b1c94cf"
+  },
+  "preserve.py": {
+    "bytes": 5658,
+    "sha256": "1bb66e633dc392fc74d98bac2a627ec436dd0598306afd8608ddb2962c310cf6"
+  },
+  "prototype-verification.log": {
+    "bytes": 6641,
+    "sha256": "79057fae851cff1c558dee042b0e9bdf8c418d3f381800fbf58af0a52cf1d967"
+  },
+  "prototype-verified-summary.json": {
+    "bytes": 513178,
+    "sha256": "4eacb2e6382c73a11b721c54917303082a159d8ee22db60f7f897eecf95e97e4"
+  },
+  "verify-archive.py": {
+    "bytes": 1396,
+    "sha256": "9373e22ac043e6955f1d3d526026009aa345f45dadfcbacf5eea83905c08ed4a"
+  },
+  "verify-prototype.py": {
+    "bytes": 5789,
+    "sha256": "432b9a00027b7546e56e45f8884c07b03ebffddc96d54f934be8c63622870874"
+  }
+}

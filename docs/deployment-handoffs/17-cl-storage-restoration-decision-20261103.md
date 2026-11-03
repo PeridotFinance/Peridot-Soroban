@@ -1,5 +1,8 @@
 # Stellar storage/restoration decision — 2026-11-03
 
+Later evidence: [handoff21](21-cl-restoration-preparation-20261103.md) measures explicit restoration preparation with the combined full-repayment candidate. It also identifies that the older local candidate-v2 retained the88,231-byte receipt despite corrected source intent. The figures below remain evidence for their exact preserved WASM; they do not retrospectively prove the corrected receipt source. Fresh Linux and Mac88,329-byte builds are separately identified in handoff21. Both627e2e2 CI runs have completed with failed qualification gates; their final artifacts are now separately archived.
+
+
 Stage 1 remains incomplete and PR #75 remains draft. **Do not adopt this candidate or Option 1.** Narrowing storage access produces measured savings, but restored liquidation still exceeds the proposed write workload, and restoring the required code exceeds the captured network disk-read ceiling. Further qualification requires an architecture decision, not more small TTL changes.
 
 The atomic baseline `9cf43082`, prior TTL candidate, negative split `bb154ec8`, checkpoints `c80a1da3` and `11980783`, both resource profiles, transaction artifacts and shared handoff 00 are preserved. Production contract sources, limits, stages, caps and configuration are unchanged. Borrowing remains disabled; production maintenance margin remains unset. No signing, broadcasting, deployment, secrets or Upshift binding occurred.

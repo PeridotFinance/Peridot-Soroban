@@ -6,6 +6,10 @@
 
 No active profile, ceiling, production contract, stage, claim-first boundary, maintenance-margin setting or shared handoff 00 changes in this update. No signing, broadcasting, deployment, secret access or Upshift binding. This memo reuses measured executions; it does not expand the contract test suite or substitute a different profile to make a release gate green.
 
+## November3 explicit restoration checkpoint
+
+[Handoff21](21-cl-restoration-preparation-20261103.md) adds measured RestoreFootprint preparation without adopting a financial split or policy. Both unchanged profiles fit140 bounded preparation batches/30 prefixes each; captured execution passes30 prepared roots, internal execution only eight full-repayment/release calls. Open/close remain227.9M/189.7M host CPU and required Aquarius-exclusive work alone exceeds100M. Liquidation still uses170 SDK entries despite only50 writes after preparation. Thus preparation conditionally removes the cold-footprint barrier, while native Core application/signatures/live state and internal CPU/entry limits remain blockers. The separately proposed Option1 is still unadopted. Handoff21 also corrects the earlier local receipt build-cache/source binding and preserves completed627e2e2 baseline/prototype CI separately.
+
 ## Focused qualification now completed
 
 [Handoff16](16-cl-atomic-qualification-20261102.md) supersedes the earlier observed-headroom figures below. Combined-history atomic swap-open costs242,307,129 unsigned CPU live and244,149,068 with restored persistent state, exceeding the proposed240M workload boundary. An isolated receipt TTL optimization saves4,660,696 instructions:237,646,433 live/239,488,372 restored, leaving only511,628 before real authorization in the restored case. All three claims, valuation, reserve checks and atomic funded repayment/seizure remain; no patch or policy is adopted.
