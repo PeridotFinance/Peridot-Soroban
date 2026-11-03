@@ -1,0 +1,98 @@
+# Isolated storage/restoration experiment
+
+Stage 1 is incomplete; PR #75 stays draft. This directory neither changes the
+production contracts nor adopts Option 1. The original atomic implementation,
+prior duplicate-TTL candidate, negative split and their evidence remain intact.
+The internal-policy and captured-network profiles are unchanged. No signing,
+broadcasting, deployment, secrets, Upshift binding, production maintenance-margin
+configuration or borrowing enablement is part of this experiment.
+
+`storage.patch` layers on the prior atomic `optimization.patch`. It narrows
+operation-specific initialization/TTL maintenance in the two receipts and
+lending controller. There is no storage migration, history packing/pruning,
+new transaction stage, skipped claim boundary or change to debt/seizure atomicity.
+See `storage-review.md` for required versus omitted keys and intentional TTL
+differences. `repayment.patch` is a **separate behavioral experiment**, using the
+existing receipt full-repayment helper through a new explicit V3 entrypoint;
+it is not included in the storage comparison.
+
+The contract workspace resolves SDK 25.3.1. WASM is built only with
+`stellar contract build`. Compiled measurements use host/SDK 29.0.1 and the
+hash-pinned protocol29 cost coefficients and network settings at ledger65270655.
+Native SDK25 compatibility tests are labelled separately; they are not resource
+or real-account-signature evidence.
+
+## Reproduce the storage comparison
+
+Use fresh output directories. Keep dependency caches separate from evidence.
+The repository's normal pinned Aquarius bootstrap must already have placed the
+verified bytecode in `target/cl-share-checkpoint/aquarius-pool.wasm`.
+
+```sh
+cat prototypes/cl-atomic-qualification/optimization.patch \
+  prototypes/cl-storage-qualification/storage.patch > /tmp/cl-storage-layered.patch
+PYTHONDONTWRITEBYTECODE=1 CARGO_BUILD_JOBS=1 python3 \
+  prototypes/cl-storage-qualification/prepare_variant.py \
+  --output target/storage-repro-baseline
+PYTHONDONTWRITEBYTECODE=1 CARGO_BUILD_JOBS=1 python3 \
+  prototypes/cl-storage-qualification/prepare_variant.py \
+  --output target/storage-repro-candidate --optimization /tmp/cl-storage-layered.patch
+```
+
+For each build, use `add_companions.py --build BUILD --output FRESH_BUILD`, then
+`identify_build.py --build FRESH_BUILD` **before** execution. The content-specific
+Cargo package identity prevents copied isolated harnesses from reusing a stale
+same-name test executable. Do not change a prepared build during execution.
+
+```sh
+CL_ATOMIC_BUILD_DIR=target/storage-repro-candidate-companions \
+CL_TRANSACTION_ARCHIVE_ROLE=vault,cash_receipt,share_receipt,v3,aquarius,lending_controller \
+CL_STORAGE_ARCHIVE_CODE_INSTANCE=1 CARGO_BUILD_JOBS=1 \
+  bash prototypes/cl-storage-qualification/run_variant.sh \
+  captured-network-diagnostic compiled_atomic_qualification target/storage-repro-candidate-run
+
+python3 prototypes/cl-storage-qualification/extract.py \
+  --run target/storage-repro-candidate-run --view data --output target/storage-repro-candidate-data
+python3 prototypes/cl-storage-qualification/extract.py \
+  --run target/storage-repro-candidate-run --view live --output target/storage-repro-candidate-live
+```
+
+Repeat for baseline and `internal-policy`. Each transaction variant executes in
+a fresh independent official-host invocation from the same fixture prestate:
+live, archived persistent data, and archived data+instances+code. The live
+execution does not warm the archived invocation. Cold failures have partial
+quantities and are never described as completed transaction costs.
+
+`run_variant.sh` runs `check_budget.sh` and records all gate summaries; its shell
+exit selects the invocation gate. `extract.py` records the **checkpoint** gate's
+exit separately; extraction success does not mean qualification. Inspect every
+profile's gates and error lists. Missing required Stage1 flows remain failures.
+`ci.py` performs that separation and propagates incomplete qualification as a
+failed job while preserving artifacts.
+
+Use `keys.cjs RUN FRESH_JSON` for the exact maximum-write root key inventories,
+`compare.cjs BASELINE CANDIDATE FRESH_JSON` for logical state/events/auth and
+separate TTL/footprint differences, and `assess.py --run RUN ... --output FILE`
+for analysis-only distances to the proposed workload boundaries. SDK entry
+totals and unique transaction keys are distinct fields.
+
+## Repayment and compatibility
+
+Prepare a separate build with `prepare_variant.py --optimization
+prototypes/cl-storage-qualification/repayment.patch --repayment-tests`, assign
+its content-specific identity, and run `run_variant.sh` with filter
+`repayment_cases`. The V3 build retains `funded-liquidation-validation` and its
+Mainnet restriction. The existing partial-repayment entrypoint is unchanged.
+See `repayment-review.md` and `repayment-proof-map.json` for assertions and
+limitations. No signature is generated by these tests.
+
+For native storage compatibility, append the test module from
+`receipt_storage_tests.rs` only to the isolated receipt contract module, then run
+the `storage_scoped_` filter with one Cargo build job. Exact commands and logs are
+in `storage-review.md`. These tests intentionally exercise near-expiry data,
+nonzero accrual, missing optional values, rollback and custom-account callbacks;
+synthetic account authorization is not real account-signature qualification.
+
+Signed authorization and signed-envelope overhead, live-state qualification,
+effective restoration TTL/rent after handled failing subcalls, and release
+approval remain separate gates. No result here authorizes production adoption.

@@ -1,5 +1,13 @@
 """Explicit identities of reviewed CI captures; no inferred/latest artifact selection."""
 CAPTURES = {
+    '1198078': {
+        'commit': '11980783cd0da692dee97394a21c949757a6e910',
+        'merge_commit': '025782585be9abfe88722303058b460a19807604',
+        'run_url': 'https://github.com/PeridotFinance/Peridot-Soroban/actions/runs/41512536485',
+        'artifact_id': 13176432381,
+        'original_expiry': '2026-11-16T20:27:22Z',
+        'original_zip_sha256': 'ef03eac5e1f67f3fdb470f5e5b4366d8af06e51fb9773a1d5dd4ba89827660c7',
+    },
     '90111e2': {
         'commit': '90111e2dc1a3cc9ffd941eb3661459e6441e1280',
         'merge_commit': '57d27fb5abd6244e67a8f74a1dc0f1e5b79fc044',
