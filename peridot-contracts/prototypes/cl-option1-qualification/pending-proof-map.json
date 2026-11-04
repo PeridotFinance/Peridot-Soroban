@@ -1,0 +1,30 @@
+{
+  "schema": "cl-proof-map-v1",
+  "sources": {
+    "test::pending_qualification::pending_cases::compiled_option1_expired_pending_independent_funding_outage_trade_and_rollback": "prototypes/cl-option1-qualification/pending-recovery-tests.rs"
+  },
+  "proofs": [
+    {
+      "label": "option1_pending_open_independent_funded_recovery",
+      "tests": [
+        "test::pending_qualification::pending_cases::compiled_option1_expired_pending_independent_funding_outage_trade_and_rollback"
+      ],
+      "assertions": [
+        "Strict timeout, distinct independent payer, fresh synthetic price reads, accrued debt fully repaid with exact max/refund, zero bonus bounded seizure and residual return, real nested authorization, both upstream reward failures, historical rewards preserved, replay rollback and late quarantine. No Closing/Liquidated or live valuation qualification."
+      ],
+      "resource_flows": [
+        "option1_pending_live_reject",
+        "option1_pending_exact_deadline_reject",
+        "option1_pending_intervening_actual_trade",
+        "option1_pending_disable_test_borrowing",
+        "option1_pending_max_too_small",
+        "option1_pending_min_seize_reject",
+        "option1_pending_missing_auth",
+        "option1_pending_missing_nested_auth",
+        "option1_pending_independent_full_recovery",
+        "option1_pending_repeated_recovery",
+        "option1_pending_late_reward_quarantine"
+      ]
+    }
+  ]
+}

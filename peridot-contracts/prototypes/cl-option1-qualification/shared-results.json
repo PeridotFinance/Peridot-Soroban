@@ -1,0 +1,2562 @@
+{
+  "schema": "cl-option1-shared-results-v1",
+  "fixture": {
+    "holders": 64,
+    "extra_transfers": 128,
+    "initial_history_checkpoints": 391,
+    "pending_borrowers": 8,
+    "distinct_funders": 8,
+    "continuous_reward_outages": 1
+  },
+  "runtime": {
+    "protocol": 29,
+    "host_sdk": "29.0.1",
+    "network_capture_sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+    "ledger": 65270655,
+    "actual_aquarius_controlled_state": true,
+    "oracle": "compiled synthetic trusted-price fixture",
+    "core_application": false,
+    "real_signatures": false
+  },
+  "source": {
+    "build": "target/cl-option1-shared-build-v2",
+    "run": "target/cl-option1-shared-v2",
+    "test": "test::shared_qualification::compiled_shared_eight_pending_recovery_joint_state",
+    "margin_wasm_sha256": "ad9fbb7669ff126ff54e8d9b021d610b9313cb5f3dc595df6e9d7dabc3d7d482",
+    "margin_wasm_bytes": 100419,
+    "shared_source_sha256": "c5f8a00b21ecfe0cc52e368dc354721cf270ce6cdc076f76322670fb2f0d6c01",
+    "durable_helpers": {
+      "shared-verify.py": "04f6c57202413101cdd30f62f641338cd0b57506158db8e91b5d02f89d0ce719",
+      "run-shared.sh": "2b026dd944cbc8e383e8162c38a029bddddeaa92e37ba78d39d66f8c40abdb76",
+      "prepare-shared.py": "502f4c5cfad5d1ffaeaddc15d1055b910479a7cf42cacb3fe580552177314f9b",
+      "shared-recovery.rs": "c5f8a00b21ecfe0cc52e368dc354721cf270ce6cdc076f76322670fb2f0d6c01"
+    }
+  },
+  "results": {
+    "compiled_tests_passed": 1,
+    "compiled_tests_failed": 0,
+    "elapsed_seconds": 582.55,
+    "elapsed_is_network_latency": false,
+    "captured_roots_passed": 8,
+    "internal_roots_completed": 0,
+    "independent_batch_link_reward_checker_exit": 0,
+    "captured_gates": {
+      "invocation": true,
+      "lifecycle": false,
+      "transaction": false,
+      "checkpoint": false
+    },
+    "internal_gates": {
+      "invocation": false,
+      "lifecycle": false,
+      "transaction": false,
+      "checkpoint": false
+    },
+    "missing_required_flows": 46
+  },
+  "dependencies": {
+    "union_keys": 214,
+    "summed_memberships": 592,
+    "common_to_all_eight": 54,
+    "used_by_one_root": 160,
+    "sdk_observed_additional_keys": 0,
+    "sdk_key_scope": "observed storage-map keys, not exact access-mode footprint; both observed and host footprint keys included",
+    "cost_categories": {
+      "per_position_instance": {
+        "keys": 8,
+        "entry_bytes": 832,
+        "rent_size_bytes": 832,
+        "entry_rent_plus_ttl_entry_write": 1396672,
+        "marker_keys": 8
+      },
+      "shared_data": {
+        "keys": 37,
+        "entry_bytes": 4944,
+        "rent_size_bytes": 4944,
+        "entry_rent_plus_ttl_entry_write": 8286261,
+        "marker_keys": 0
+      },
+      "shared_instance": {
+        "keys": 10,
+        "entry_bytes": 7948,
+        "rent_size_bytes": 7948,
+        "entry_rent_plus_ttl_entry_write": 13259170,
+        "marker_keys": 0
+      },
+      "per_position_data": {
+        "keys": 144,
+        "entry_bytes": 33920,
+        "rent_size_bytes": 33920,
+        "entry_rent_plus_ttl_entry_write": 56713376,
+        "marker_keys": 0
+      },
+      "shared_code": {
+        "keys": 7,
+        "entry_bytes": 439488,
+        "rent_size_bytes": 9678636,
+        "entry_rent_plus_ttl_entry_write": 5377028753,
+        "marker_keys": 0
+      },
+      "per_position_code": {
+        "keys": 8,
+        "entry_bytes": 1120,
+        "rent_size_bytes": 1089656,
+        "entry_rent_plus_ttl_entry_write": 605374448,
+        "marker_keys": 8
+      }
+    },
+    "per_key": [
+      {
+        "key_xdr": "AAAABgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUQAAABQAAAAB",
+        "category": "per_position_instance",
+        "membership_count": 1,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": true,
+        "native_external_marker_kind": "instance"
+      },
+      {
+        "key_xdr": "AAAABgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUgAAABQAAAAB",
+        "category": "per_position_instance",
+        "membership_count": 1,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": true,
+        "native_external_marker_kind": "instance"
+      },
+      {
+        "key_xdr": "AAAABgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUwAAABQAAAAB",
+        "category": "per_position_instance",
+        "membership_count": 1,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": true,
+        "native_external_marker_kind": "instance"
+      },
+      {
+        "key_xdr": "AAAABgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVAAAABQAAAAB",
+        "category": "per_position_instance",
+        "membership_count": 1,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": true,
+        "native_external_marker_kind": "instance"
+      },
+      {
+        "key_xdr": "AAAABgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVQAAABQAAAAB",
+        "category": "per_position_instance",
+        "membership_count": 1,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": true,
+        "native_external_marker_kind": "instance"
+      },
+      {
+        "key_xdr": "AAAABgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVgAAABQAAAAB",
+        "category": "per_position_instance",
+        "membership_count": 1,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": true,
+        "native_external_marker_kind": "instance"
+      },
+      {
+        "key_xdr": "AAAABgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVwAAABQAAAAB",
+        "category": "per_position_instance",
+        "membership_count": 1,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": true,
+        "native_external_marker_kind": "instance"
+      },
+      {
+        "key_xdr": "AAAABgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAAABQAAAAB",
+        "category": "per_position_instance",
+        "membership_count": 1,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": true,
+        "native_external_marker_kind": "instance"
+      },
+      {
+        "key_xdr": "AAAABgAAAAEQCQFjCyxPl+KnZ1aZV0P1pnxTJ2LoOyViMowNGK+xGwAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 96,
+        "rent_size_bytes": 96,
+        "entry_rent_plus_ttl_entry_write": 161250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEQCQFjCyxPl+KnZ1aZV0P1pnxTJ2LoOyViMowNGK+xGwAAABAAAAABAAAAAQAAAA8AAAAQTWFyZ2luQ29udHJvbGxlcgAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEQCQFjCyxPl+KnZ1aZV0P1pnxTJ2LoOyViMowNGK+xGwAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEQCQFjCyxPl+KnZ1aZV0P1pnxTJ2LoOyViMowNGK+xGwAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 364,
+        "rent_size_bytes": 364,
+        "entry_rent_plus_ttl_entry_write": 607917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEh2h3oRDS72bVy15KSDqYRYzzDIxp+WTAV9i4t7keIqAAAABAAAAABAAAAAQAAAA8AAAAGT3JhY2xlAAAAAAAB",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 124,
+        "rent_size_bytes": 124,
+        "entry_rent_plus_ttl_entry_write": 207917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEh2h3oRDS72bVy15KSDqYRYzzDIxp+WTAV9i4t7keIqAAAABAAAAABAAAAAQAAAA8AAAAWT3JhY2xlTWF4QWdlTXVsdGlwbGllcgAAAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 112,
+        "rent_size_bytes": 112,
+        "entry_rent_plus_ttl_entry_write": 187917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEh2h3oRDS72bVy15KSDqYRYzzDIxp+WTAV9i4t7keIqAAAABAAAAABAAAAAQAAAA8AAAAQUGF1c2VMaXF1aWRhdGlvbgAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEh2h3oRDS72bVy15KSDqYRYzzDIxp+WTAV9i4t7keIqAAAABAAAAABAAAAAgAAAA8AAAAKUHJpY2VDYWNoZQAAAAAAEgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 272,
+        "rent_size_bytes": 272,
+        "entry_rent_plus_ttl_entry_write": 454584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEh2h3oRDS72bVy15KSDqYRYzzDIxp+WTAV9i4t7keIqAAAABAAAAABAAAAAgAAAA8AAAAKUHJpY2VDYWNoZQAAAAAAEgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 272,
+        "rent_size_bytes": 272,
+        "entry_rent_plus_ttl_entry_write": 454584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEh2h3oRDS72bVy15KSDqYRYzzDIxp+WTAV9i4t7keIqAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAABaSw2CgSpgtsC2zRqEGy/AIrZ4FjDhL2q93vAxIeZs6QAAAAB",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 140,
+        "rent_size_bytes": 140,
+        "entry_rent_plus_ttl_entry_write": 234584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEh2h3oRDS72bVy15KSDqYRYzzDIxp+WTAV9i4t7keIqAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAABed/NipbaF6UxO0UUskCz9YYJqHRsc5fMblMIGzCL5AYAAAAB",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 140,
+        "rent_size_bytes": 140,
+        "entry_rent_plus_ttl_entry_write": 234584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAEh2h3oRDS72bVy15KSDqYRYzzDIxp+WTAV9i4t7keIqAAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAAOQWRtaW5GZWVTY2FsZWQAAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 112,
+        "rent_size_bytes": 112,
+        "entry_rent_plus_ttl_entry_write": 187917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAAJQm9ycm93Q2FwAAAAAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 108,
+        "rent_size_bytes": 108,
+        "entry_rent_plus_ttl_entry_write": 181250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAALQm9ycm93SW5kZXgAAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 108,
+        "rent_size_bytes": 108,
+        "entry_rent_plus_ttl_entry_write": 181250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAAWQm9ycm93WWVhcmx5UmF0ZVNjYWxlZAAAAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 120,
+        "rent_size_bytes": 120,
+        "entry_rent_plus_ttl_entry_write": 201250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 96,
+        "rent_size_bytes": 96,
+        "entry_rent_plus_ttl_entry_write": 161250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAANSW50ZXJlc3RNb2RlbAAAAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAAOTGFzdFVwZGF0ZVRpbWUAAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAALTWFuYWdlZENhc2gAAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 108,
+        "rent_size_bytes": 108,
+        "entry_rent_plus_ttl_entry_write": 181250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93UHJpbmNpcGFsAAAAAAAABQAAAAAAAAABAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93UHJpbmNpcGFsAAAAAAAABQAAAAAAAAACAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93UHJpbmNpcGFsAAAAAAAABQAAAAAAAAADAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93UHJpbmNpcGFsAAAAAAAABQAAAAAAAAAEAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93UHJpbmNpcGFsAAAAAAAABQAAAAAAAAAFAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93UHJpbmNpcGFsAAAAAAAABQAAAAAAAAAGAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93UHJpbmNpcGFsAAAAAAAABQAAAAAAAAAHAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93UHJpbmNpcGFsAAAAAAAABQAAAAAAAAAIAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93U25hcHNob3RzAAAAAAAABQAAAAAAAAABAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 208,
+        "rent_size_bytes": 208,
+        "entry_rent_plus_ttl_entry_write": 347917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93U25hcHNob3RzAAAAAAAABQAAAAAAAAACAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 208,
+        "rent_size_bytes": 208,
+        "entry_rent_plus_ttl_entry_write": 347917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93U25hcHNob3RzAAAAAAAABQAAAAAAAAADAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 208,
+        "rent_size_bytes": 208,
+        "entry_rent_plus_ttl_entry_write": 347917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93U25hcHNob3RzAAAAAAAABQAAAAAAAAAEAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 208,
+        "rent_size_bytes": 208,
+        "entry_rent_plus_ttl_entry_write": 347917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93U25hcHNob3RzAAAAAAAABQAAAAAAAAAFAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 208,
+        "rent_size_bytes": 208,
+        "entry_rent_plus_ttl_entry_write": 347917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93U25hcHNob3RzAAAAAAAABQAAAAAAAAAGAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 208,
+        "rent_size_bytes": 208,
+        "entry_rent_plus_ttl_entry_write": 347917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93U25hcHNob3RzAAAAAAAABQAAAAAAAAAHAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 208,
+        "rent_size_bytes": 208,
+        "entry_rent_plus_ttl_entry_write": 347917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAAVTWFyZ2luQm9ycm93U25hcHNob3RzAAAAAAAABQAAAAAAAAAIAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 208,
+        "rent_size_bytes": 208,
+        "entry_rent_plus_ttl_entry_write": 347917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAAQTWFyZ2luQ29udHJvbGxlcgAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAARTWFyZ2luSGFzQm9ycm93ZWQAAAAAAAAFAAAAAAAAAAEAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAARTWFyZ2luSGFzQm9ycm93ZWQAAAAAAAAFAAAAAAAAAAIAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAARTWFyZ2luSGFzQm9ycm93ZWQAAAAAAAAFAAAAAAAAAAMAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAARTWFyZ2luSGFzQm9ycm93ZWQAAAAAAAAFAAAAAAAAAAQAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAARTWFyZ2luSGFzQm9ycm93ZWQAAAAAAAAFAAAAAAAAAAUAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAARTWFyZ2luSGFzQm9ycm93ZWQAAAAAAAAFAAAAAAAAAAYAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAARTWFyZ2luSGFzQm9ycm93ZWQAAAAAAAAFAAAAAAAAAAcAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAgAAAA8AAAARTWFyZ2luSGFzQm9ycm93ZWQAAAAAAAAFAAAAAAAAAAgAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAATUmVzZXJ2ZUZhY3RvclNjYWxlZAAAAAAB",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxBZG1pbkZlZXMAAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 112,
+        "rent_size_bytes": 112,
+        "entry_rent_plus_ttl_entry_write": 187917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxCb3Jyb3dlZAAAAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 112,
+        "rent_size_bytes": 112,
+        "entry_rent_plus_ttl_entry_write": 187917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxEZXBvc2l0ZWQAAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 112,
+        "rent_size_bytes": 112,
+        "entry_rent_plus_ttl_entry_write": 187917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxSZXNlcnZlcwAAAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 112,
+        "rent_size_bytes": 112,
+        "entry_rent_plus_ttl_entry_write": 187917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFVBaosjfIXLBC/w+Yu3+xVAptwIFIokW2VR5oISuqdTwAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 472,
+        "rent_size_bytes": 472,
+        "entry_rent_plus_ttl_entry_write": 787917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABRAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABTAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABUAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABWAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABXAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABYAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAVUFqiyN8hcsEL/D5i7f7FUCm3AgUiiRbZVHmghK6p1PAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAFpLDYKBKmC2wLbNGoQbL8AitngWMOEvar3e8DEh5mzpAAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 468,
+        "rent_size_bytes": 468,
+        "entry_rent_plus_ttl_entry_write": 781250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF4qzdm2Ipqg3tgJN/TPZVGqglPUmBryul+QVyptargHgAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 124,
+        "rent_size_bytes": 124,
+        "entry_rent_plus_ttl_entry_write": 207917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF4qzdm2Ipqg3tgJN/TPZVGqglPUmBryul+QVyptargHgAAABAAAAABAAAAAQAAAA8AAAAPQmFzZVJhdGVQZXJZZWFyAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 112,
+        "rent_size_bytes": 112,
+        "entry_rent_plus_ttl_entry_write": 187917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF4qzdm2Ipqg3tgJN/TPZVGqglPUmBryul+QVyptargHgAAABAAAAABAAAAAQAAAA8AAAAVSnVtcE11bHRpcGxpZXJQZXJZZWFyAAAAAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 120,
+        "rent_size_bytes": 120,
+        "entry_rent_plus_ttl_entry_write": 201250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF4qzdm2Ipqg3tgJN/TPZVGqglPUmBryul+QVyptargHgAAABAAAAABAAAAAQAAAA8AAAAES2luawAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 100,
+        "rent_size_bytes": 100,
+        "entry_rent_plus_ttl_entry_write": 167917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF4qzdm2Ipqg3tgJN/TPZVGqglPUmBryul+QVyptargHgAAABAAAAABAAAAAQAAAA8AAAARTXVsdGlwbGllclBlclllYXIAAAAAAAAB",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 116,
+        "rent_size_bytes": 116,
+        "entry_rent_plus_ttl_entry_write": 194584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF4qzdm2Ipqg3tgJN/TPZVGqglPUmBryul+QVyptargHgAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAAKQWxsb2NhdGlvbgAAAAAAEgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 188,
+        "rent_size_bytes": 188,
+        "entry_rent_plus_ttl_entry_write": 314584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAAKQWxsb2NhdGlvbgAAAAAAEgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 188,
+        "rent_size_bytes": 188,
+        "entry_rent_plus_ttl_entry_write": 314584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAAKQWxsb2NhdGlvbgAAAAAAEgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABMAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 188,
+        "rent_size_bytes": 188,
+        "entry_rent_plus_ttl_entry_write": 314584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAAKQWxsb2NhdGlvbgAAAAAAEgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 188,
+        "rent_size_bytes": 188,
+        "entry_rent_plus_ttl_entry_write": 314584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAAKQWxsb2NhdGlvbgAAAAAAEgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABUAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 188,
+        "rent_size_bytes": 188,
+        "entry_rent_plus_ttl_entry_write": 314584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAAKQWxsb2NhdGlvbgAAAAAAEgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABYAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 188,
+        "rent_size_bytes": 188,
+        "entry_rent_plus_ttl_entry_write": 314584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAAKQWxsb2NhdGlvbgAAAAAAEgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABcAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 188,
+        "rent_size_bytes": 188,
+        "entry_rent_plus_ttl_entry_write": 314584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAAKQWxsb2NhdGlvbgAAAAAAEgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 188,
+        "rent_size_bytes": 188,
+        "entry_rent_plus_ttl_entry_write": 314584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAKQmVuZWZpY2lhbAAAAAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAKQmVuZWZpY2lhbAAAAAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEgAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAKQmVuZWZpY2lhbAAAAAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEwAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAKQmVuZWZpY2lhbAAAAAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAKQmVuZWZpY2lhbAAAAAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAKQmVuZWZpY2lhbAAAAAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAKQmVuZWZpY2lhbAAAAAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFwAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAKQmVuZWZpY2lhbAAAAAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAMSGlzdG9yeUNvdW50AAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 136,
+        "rent_size_bytes": 136,
+        "entry_rent_plus_ttl_entry_write": 227917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAMSGlzdG9yeUNvdW50AAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEgAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 136,
+        "rent_size_bytes": 136,
+        "entry_rent_plus_ttl_entry_write": 227917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAMSGlzdG9yeUNvdW50AAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEwAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 136,
+        "rent_size_bytes": 136,
+        "entry_rent_plus_ttl_entry_write": 227917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAMSGlzdG9yeUNvdW50AAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 136,
+        "rent_size_bytes": 136,
+        "entry_rent_plus_ttl_entry_write": 227917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAMSGlzdG9yeUNvdW50AAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 136,
+        "rent_size_bytes": 136,
+        "entry_rent_plus_ttl_entry_write": 227917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAMSGlzdG9yeUNvdW50AAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 136,
+        "rent_size_bytes": 136,
+        "entry_rent_plus_ttl_entry_write": 227917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAMSGlzdG9yeUNvdW50AAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFwAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 136,
+        "rent_size_bytes": 136,
+        "entry_rent_plus_ttl_entry_write": 227917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAMSGlzdG9yeUNvdW50AAAAEgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 136,
+        "rent_size_bytes": 136,
+        "entry_rent_plus_ttl_entry_write": 227917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAANSGlzdG9yeVdlaWdodAAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAADAAAAgQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAANSGlzdG9yeVdlaWdodAAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIAAAADAAAAAQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAANSGlzdG9yeVdlaWdodAAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABMAAAADAAAAAQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAANSGlzdG9yeVdlaWdodAAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAADAAAAAQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAANSGlzdG9yeVdlaWdodAAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABUAAAADAAAAAQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAANSGlzdG9yeVdlaWdodAAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABYAAAADAAAAAQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAANSGlzdG9yeVdlaWdodAAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABcAAAADAAAAAQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAwAAAA8AAAANSGlzdG9yeVdlaWdodAAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAADAAAAAQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGSG9sZGVyAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 240,
+        "rent_size_bytes": 240,
+        "entry_rent_plus_ttl_entry_write": 401250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGSG9sZGVyAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 240,
+        "rent_size_bytes": 240,
+        "entry_rent_plus_ttl_entry_write": 401250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGSG9sZGVyAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 240,
+        "rent_size_bytes": 240,
+        "entry_rent_plus_ttl_entry_write": 401250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGSG9sZGVyAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 240,
+        "rent_size_bytes": 240,
+        "entry_rent_plus_ttl_entry_write": 401250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGSG9sZGVyAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 240,
+        "rent_size_bytes": 240,
+        "entry_rent_plus_ttl_entry_write": 401250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGSG9sZGVyAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 240,
+        "rent_size_bytes": 240,
+        "entry_rent_plus_ttl_entry_write": 401250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGSG9sZGVyAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 240,
+        "rent_size_bytes": 240,
+        "entry_rent_plus_ttl_entry_write": 401250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGSG9sZGVyAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 240,
+        "rent_size_bytes": 240,
+        "entry_rent_plus_ttl_entry_write": 401250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAKUmVnaXN0ZXJlZAAAAAAAEgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 136,
+        "rent_size_bytes": 136,
+        "entry_rent_plus_ttl_entry_write": 227917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGU2hhcmVzAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGU2hhcmVzAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGU2hhcmVzAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGU2hhcmVzAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGU2hhcmVzAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGU2hhcmVzAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGU2hhcmVzAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGU2hhcmVzAAAAAAASAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAGU2hhcmVzAAAAAAASAAAAAeC4ASDHYTlkh5JkYiqCfCu/19rJOrJSldtFZci8AQI2AAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABAAAAABAAAAAgAAAA8AAAAFVG90YWwAAAAAAAASAAAAAeC4ASDHYTlkh5JkYiqCfCu/19rJOrJSldtFZci8AQI2AAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 144,
+        "rent_size_bytes": 144,
+        "entry_rent_plus_ttl_entry_write": 241250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAF5382KltoXpTE7RRSyQLP1hgmodGxzl8xuUwgbMIvkBgAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 2636,
+        "rent_size_bytes": 2636,
+        "entry_rent_plus_ttl_entry_write": 4394584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHC0ZwVnll4MLLRgpVyIUlBGhcQyK2c2wFaTXysPVTI1wAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 104,
+        "rent_size_bytes": 104,
+        "entry_rent_plus_ttl_entry_write": 174584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHWOpVHJnUah203KQByrx7nI9fXYe7Dv0GRhJ0hFqzccwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAXnfzYqW2helMTtFFLJAs/WGCah0bHOXzG5TCBswi+QGAAAAAQ==",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 224,
+        "rent_size_bytes": 224,
+        "entry_rent_plus_ttl_entry_write": 374584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHWOpVHJnUah203KQByrx7nI9fXYe7Dv0GRhJ0hFqzccwAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 468,
+        "rent_size_bytes": 468,
+        "entry_rent_plus_ttl_entry_write": 781250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAZUGVuZGluZ1BlcnBzT3BlbkV4ZWN1dGlvbgAAAAAAAAUAAAAAAAAAAQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAZUGVuZGluZ1BlcnBzT3BlbkV4ZWN1dGlvbgAAAAAAAAUAAAAAAAAAAgAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAZUGVuZGluZ1BlcnBzT3BlbkV4ZWN1dGlvbgAAAAAAAAUAAAAAAAAAAwAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAZUGVuZGluZ1BlcnBzT3BlbkV4ZWN1dGlvbgAAAAAAAAUAAAAAAAAABAAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAZUGVuZGluZ1BlcnBzT3BlbkV4ZWN1dGlvbgAAAAAAAAUAAAAAAAAABQAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAZUGVuZGluZ1BlcnBzT3BlbkV4ZWN1dGlvbgAAAAAAAAUAAAAAAAAABgAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAZUGVuZGluZ1BlcnBzT3BlbkV4ZWN1dGlvbgAAAAAAAAUAAAAAAAAABwAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAZUGVuZGluZ1BlcnBzT3BlbkV4ZWN1dGlvbgAAAAAAAAUAAAAAAAAACAAAAAE=",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 216,
+        "rent_size_bytes": 216,
+        "entry_rent_plus_ttl_entry_write": 361250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAYUGVuZGluZ1BlcnBzT3BlblBvc2l0aW9uAAAABQAAAAAAAAABAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 996,
+        "rent_size_bytes": 996,
+        "entry_rent_plus_ttl_entry_write": 1661250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAYUGVuZGluZ1BlcnBzT3BlblBvc2l0aW9uAAAABQAAAAAAAAACAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 996,
+        "rent_size_bytes": 996,
+        "entry_rent_plus_ttl_entry_write": 1661250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAYUGVuZGluZ1BlcnBzT3BlblBvc2l0aW9uAAAABQAAAAAAAAADAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 996,
+        "rent_size_bytes": 996,
+        "entry_rent_plus_ttl_entry_write": 1661250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAYUGVuZGluZ1BlcnBzT3BlblBvc2l0aW9uAAAABQAAAAAAAAAEAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 996,
+        "rent_size_bytes": 996,
+        "entry_rent_plus_ttl_entry_write": 1661250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAYUGVuZGluZ1BlcnBzT3BlblBvc2l0aW9uAAAABQAAAAAAAAAFAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 996,
+        "rent_size_bytes": 996,
+        "entry_rent_plus_ttl_entry_write": 1661250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAYUGVuZGluZ1BlcnBzT3BlblBvc2l0aW9uAAAABQAAAAAAAAAGAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 996,
+        "rent_size_bytes": 996,
+        "entry_rent_plus_ttl_entry_write": 1661250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAYUGVuZGluZ1BlcnBzT3BlblBvc2l0aW9uAAAABQAAAAAAAAAHAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 996,
+        "rent_size_bytes": 996,
+        "entry_rent_plus_ttl_entry_write": 1661250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAYUGVuZGluZ1BlcnBzT3BlblBvc2l0aW9uAAAABQAAAAAAAAAIAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 996,
+        "rent_size_bytes": 996,
+        "entry_rent_plus_ttl_entry_write": 1661250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAQAAAA8AAAAOUGVyaWRvdHRyb2xsZXIAAAAAAAE=",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 132,
+        "rent_size_bytes": 132,
+        "entry_rent_plus_ttl_entry_write": 221250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAIUG9zaXRpb24AAAAFAAAAAAAAAAEAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 540,
+        "rent_size_bytes": 540,
+        "entry_rent_plus_ttl_entry_write": 901250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAIUG9zaXRpb24AAAAFAAAAAAAAAAIAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 540,
+        "rent_size_bytes": 540,
+        "entry_rent_plus_ttl_entry_write": 901250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAIUG9zaXRpb24AAAAFAAAAAAAAAAMAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 540,
+        "rent_size_bytes": 540,
+        "entry_rent_plus_ttl_entry_write": 901250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAIUG9zaXRpb24AAAAFAAAAAAAAAAQAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 540,
+        "rent_size_bytes": 540,
+        "entry_rent_plus_ttl_entry_write": 901250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAIUG9zaXRpb24AAAAFAAAAAAAAAAUAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 540,
+        "rent_size_bytes": 540,
+        "entry_rent_plus_ttl_entry_write": 901250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAIUG9zaXRpb24AAAAFAAAAAAAAAAYAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 540,
+        "rent_size_bytes": 540,
+        "entry_rent_plus_ttl_entry_write": 901250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAIUG9zaXRpb24AAAAFAAAAAAAAAAcAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 540,
+        "rent_size_bytes": 540,
+        "entry_rent_plus_ttl_entry_write": 901250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAIUG9zaXRpb24AAAAFAAAAAAAAAAgAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 540,
+        "rent_size_bytes": 540,
+        "entry_rent_plus_ttl_entry_write": 901250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAXUG9zaXRpb25Db2xsYXRlcmFsVmF1bHQAAAAABQAAAAAAAAABAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAXUG9zaXRpb25Db2xsYXRlcmFsVmF1bHQAAAAABQAAAAAAAAACAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAXUG9zaXRpb25Db2xsYXRlcmFsVmF1bHQAAAAABQAAAAAAAAADAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAXUG9zaXRpb25Db2xsYXRlcmFsVmF1bHQAAAAABQAAAAAAAAAEAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAXUG9zaXRpb25Db2xsYXRlcmFsVmF1bHQAAAAABQAAAAAAAAAFAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAXUG9zaXRpb25Db2xsYXRlcmFsVmF1bHQAAAAABQAAAAAAAAAGAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAXUG9zaXRpb25Db2xsYXRlcmFsVmF1bHQAAAAABQAAAAAAAAAHAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAXUG9zaXRpb25Db2xsYXRlcmFsVmF1bHQAAAAABQAAAAAAAAAIAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAARUG9zaXRpb25EZWJ0VmF1bHQAAAAAAAAFAAAAAAAAAAEAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAARUG9zaXRpb25EZWJ0VmF1bHQAAAAAAAAFAAAAAAAAAAIAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAARUG9zaXRpb25EZWJ0VmF1bHQAAAAAAAAFAAAAAAAAAAMAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAARUG9zaXRpb25EZWJ0VmF1bHQAAAAAAAAFAAAAAAAAAAQAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAARUG9zaXRpb25EZWJ0VmF1bHQAAAAAAAAFAAAAAAAAAAUAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAARUG9zaXRpb25EZWJ0VmF1bHQAAAAAAAAFAAAAAAAAAAYAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAARUG9zaXRpb25EZWJ0VmF1bHQAAAAAAAAFAAAAAAAAAAcAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAARUG9zaXRpb25EZWJ0VmF1bHQAAAAAAAAFAAAAAAAAAAgAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 148,
+        "rent_size_bytes": 148,
+        "entry_rent_plus_ttl_entry_write": 247917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAMUG9zaXRpb25Nb2RlAAAABQAAAAAAAAABAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 128,
+        "rent_size_bytes": 128,
+        "entry_rent_plus_ttl_entry_write": 214584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAMUG9zaXRpb25Nb2RlAAAABQAAAAAAAAACAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 128,
+        "rent_size_bytes": 128,
+        "entry_rent_plus_ttl_entry_write": 214584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAMUG9zaXRpb25Nb2RlAAAABQAAAAAAAAADAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 128,
+        "rent_size_bytes": 128,
+        "entry_rent_plus_ttl_entry_write": 214584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAMUG9zaXRpb25Nb2RlAAAABQAAAAAAAAAEAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 128,
+        "rent_size_bytes": 128,
+        "entry_rent_plus_ttl_entry_write": 214584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAMUG9zaXRpb25Nb2RlAAAABQAAAAAAAAAFAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 128,
+        "rent_size_bytes": 128,
+        "entry_rent_plus_ttl_entry_write": 214584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAMUG9zaXRpb25Nb2RlAAAABQAAAAAAAAAGAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 128,
+        "rent_size_bytes": 128,
+        "entry_rent_plus_ttl_entry_write": 214584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAMUG9zaXRpb25Nb2RlAAAABQAAAAAAAAAHAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 128,
+        "rent_size_bytes": 128,
+        "entry_rent_plus_ttl_entry_write": 214584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAMUG9zaXRpb25Nb2RlAAAABQAAAAAAAAAIAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 128,
+        "rent_size_bytes": 128,
+        "entry_rent_plus_ttl_entry_write": 214584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAVUG9zaXRpb25Qb3NpdGlvblZhdWx0AAAAAAAABQAAAAAAAAABAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAVUG9zaXRpb25Qb3NpdGlvblZhdWx0AAAAAAAABQAAAAAAAAACAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAVUG9zaXRpb25Qb3NpdGlvblZhdWx0AAAAAAAABQAAAAAAAAADAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAVUG9zaXRpb25Qb3NpdGlvblZhdWx0AAAAAAAABQAAAAAAAAAEAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAVUG9zaXRpb25Qb3NpdGlvblZhdWx0AAAAAAAABQAAAAAAAAAFAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAVUG9zaXRpb25Qb3NpdGlvblZhdWx0AAAAAAAABQAAAAAAAAAGAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAVUG9zaXRpb25Qb3NpdGlvblZhdWx0AAAAAAAABQAAAAAAAAAHAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAAVUG9zaXRpb25Qb3NpdGlvblZhdWx0AAAAAAAABQAAAAAAAAAIAAAAAQ==",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 152,
+        "rent_size_bytes": 152,
+        "entry_rent_plus_ttl_entry_write": 254584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAANVXNlclBvc2l0aW9ucwAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 156,
+        "rent_size_bytes": 156,
+        "entry_rent_plus_ttl_entry_write": 261250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAANVXNlclBvc2l0aW9ucwAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 156,
+        "rent_size_bytes": 156,
+        "entry_rent_plus_ttl_entry_write": 261250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAANVXNlclBvc2l0aW9ucwAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABMAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 156,
+        "rent_size_bytes": 156,
+        "entry_rent_plus_ttl_entry_write": 261250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAANVXNlclBvc2l0aW9ucwAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 156,
+        "rent_size_bytes": 156,
+        "entry_rent_plus_ttl_entry_write": 261250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAANVXNlclBvc2l0aW9ucwAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABUAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 156,
+        "rent_size_bytes": 156,
+        "entry_rent_plus_ttl_entry_write": 261250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAANVXNlclBvc2l0aW9ucwAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABYAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 156,
+        "rent_size_bytes": 156,
+        "entry_rent_plus_ttl_entry_write": 261250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAANVXNlclBvc2l0aW9ucwAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABcAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 156,
+        "rent_size_bytes": 156,
+        "entry_rent_plus_ttl_entry_write": 261250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABAAAAABAAAAAgAAAA8AAAANVXNlclBvc2l0aW9ucwAAAAAAABIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAB",
+        "category": "per_position_data",
+        "membership_count": 1,
+        "entry_bytes": 156,
+        "rent_size_bytes": 156,
+        "entry_rent_plus_ttl_entry_write": 261250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHguAEgx2E5ZIeSZGIqgnwrv9fayTqyUpXbRWXIvAECNgAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 660,
+        "rent_size_bytes": 660,
+        "entry_rent_plus_ttl_entry_write": 1101250,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHuqE3rGMvIhYkQpmrq8OcGJLsfvnKnkGkqoTIKU8HC5AAAABAAAAABAAAAAgAAAA8AAAAEVXNlcgAAABIAAAABed/NipbaF6UxO0UUskCz9YYJqHRsc5fMblMIGzCL5AYAAAAB",
+        "category": "shared_data",
+        "membership_count": 8,
+        "entry_bytes": 128,
+        "rent_size_bytes": 128,
+        "entry_rent_plus_ttl_entry_write": 214584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABgAAAAHuqE3rGMvIhYkQpmrq8OcGJLsfvnKnkGkqoTIKU8HC5AAAABQAAAAB",
+        "category": "shared_instance",
+        "membership_count": 8,
+        "entry_bytes": 2524,
+        "rent_size_bytes": 2524,
+        "entry_rent_plus_ttl_entry_write": 4207917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null
+      },
+      {
+        "key_xdr": "AAAABxL8paepZXcnO21BhM+cmEA2zaDo8FlHR+eykz3O037m",
+        "category": "shared_code",
+        "membership_count": 8,
+        "entry_bytes": 90160,
+        "rent_size_bytes": 2153872,
+        "entry_rent_plus_ttl_entry_write": 1196596806,
+        "native_external_marker": false,
+        "native_external_marker_kind": null,
+        "code_sha256": "12fca5a7a96577273b6d4184cf9c984036cda0e8f0594747e7b2933dced37ee6",
+        "artifact_names": [
+          "pinned_actual_aquarius_pool_wasm"
+        ]
+      },
+      {
+        "key_xdr": "AAAAByfUFyZSWjNFUwRzMRhNqYbvt8zjgoEIss4WDIpKjH7m",
+        "category": "per_position_code",
+        "membership_count": 1,
+        "entry_bytes": 140,
+        "rent_size_bytes": 136207,
+        "entry_rent_plus_ttl_entry_write": 75671806,
+        "native_external_marker": true,
+        "native_external_marker_kind": "code",
+        "code_sha256": "27d41726525a334553047331184da986efb7cce3828108b2ce160c8a4a8c7ee6",
+        "artifact_names": []
+      },
+      {
+        "key_xdr": "AAAAB0PBrc+PyZwDtHtaD8naSTPNvGplUh8J8su7qp25d+0G",
+        "category": "per_position_code",
+        "membership_count": 1,
+        "entry_bytes": 140,
+        "rent_size_bytes": 136207,
+        "entry_rent_plus_ttl_entry_write": 75671806,
+        "native_external_marker": true,
+        "native_external_marker_kind": "code",
+        "code_sha256": "43c1adcf8fc99c03b47b5a0fc9da4933cdbc6a65521f09f2cbbbaa9db977ed06",
+        "artifact_names": []
+      },
+      {
+        "key_xdr": "AAAAB0/KMVMNopoUrRebKxVkFPTrskWqp63uIPg1qSq1wcvX",
+        "category": "per_position_code",
+        "membership_count": 1,
+        "entry_bytes": 140,
+        "rent_size_bytes": 136207,
+        "entry_rent_plus_ttl_entry_write": 75671806,
+        "native_external_marker": true,
+        "native_external_marker_kind": "code",
+        "code_sha256": "4fca31530da29a14ad179b2b156414f4ebb245aaa7adee20f835a92ab5c1cbd7",
+        "artifact_names": []
+      },
+      {
+        "key_xdr": "AAAAB0/L+cNwhAQ625l9P4YagVvy7nn+CfNjvyCN7UPf4q25",
+        "category": "per_position_code",
+        "membership_count": 1,
+        "entry_bytes": 140,
+        "rent_size_bytes": 136207,
+        "entry_rent_plus_ttl_entry_write": 75671806,
+        "native_external_marker": true,
+        "native_external_marker_kind": "code",
+        "code_sha256": "4fcbf9c37084043adb997d3f861a815bf2ee79fe09f363bf208ded43dfe2adb9",
+        "artifact_names": []
+      },
+      {
+        "key_xdr": "AAAAB15S/06Hz8cLjy/1g5p2JbDvUQ0EM4BmYaQbmYgFv04f",
+        "category": "shared_code",
+        "membership_count": 8,
+        "entry_bytes": 85852,
+        "rent_size_bytes": 1778217,
+        "entry_rent_plus_ttl_entry_write": 987899584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null,
+        "code_sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f",
+        "artifact_names": [
+          "cl_share_vault.wasm"
+        ]
+      },
+      {
+        "key_xdr": "AAAAB17v5NssUz1//ZxHUCloTSMC5kPqIcvrwVxn4dE3dHJu",
+        "category": "per_position_code",
+        "membership_count": 1,
+        "entry_bytes": 140,
+        "rent_size_bytes": 136207,
+        "entry_rent_plus_ttl_entry_write": 75671806,
+        "native_external_marker": true,
+        "native_external_marker_kind": "code",
+        "code_sha256": "5eefe4db2c533d7ffd9c475029684d2302e643ea21cbebc15c67e1d13774726e",
+        "artifact_names": []
+      },
+      {
+        "key_xdr": "AAAAB4GuNXGLtaKlY550dEFsKYPX6DPBKFrfbb0oTZAVKuNn",
+        "category": "per_position_code",
+        "membership_count": 1,
+        "entry_bytes": 140,
+        "rent_size_bytes": 136207,
+        "entry_rent_plus_ttl_entry_write": 75671806,
+        "native_external_marker": true,
+        "native_external_marker_kind": "code",
+        "code_sha256": "81ae35718bb5a2a5639e7474416c2983d7e833c1285adf6dbd284d90152ae367",
+        "artifact_names": []
+      },
+      {
+        "key_xdr": "AAAAB6VdV0AAdVPZVcJuCO+tQomwk8DYXDSisOKvcmLqugBS",
+        "category": "shared_code",
+        "membership_count": 8,
+        "entry_bytes": 63512,
+        "rent_size_bytes": 1411927,
+        "entry_rent_plus_ttl_entry_write": 784405139,
+        "native_external_marker": false,
+        "native_external_marker_kind": null,
+        "code_sha256": "a55d5740007553d955c26e08efad4289b093c0d85c34a2b0e2af7262eaba0052",
+        "artifact_names": [
+          "simple_peridottroller.wasm"
+        ]
+      },
+      {
+        "key_xdr": "AAAAB62fu3Zp/xJv9U6NmwIdYQuTE8tfPcWV326dfavD19SC",
+        "category": "shared_code",
+        "membership_count": 8,
+        "entry_bytes": 100520,
+        "rent_size_bytes": 2174757,
+        "entry_rent_plus_ttl_entry_write": 1208199584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null,
+        "code_sha256": "ad9fbb7669ff126ff54e8d9b021d610b9313cb5f3dc595df6e9d7dabc3d7d482",
+        "artifact_names": [
+          "margin_controller.wasm"
+        ]
+      },
+      {
+        "key_xdr": "AAAAB7AMWDZZ68HTMiy1Ks9ezGIKqurMUUGoKczkxg25RMgA",
+        "category": "shared_code",
+        "membership_count": 8,
+        "entry_bytes": 7744,
+        "rent_size_bytes": 216258,
+        "entry_rent_plus_ttl_entry_write": 120144584,
+        "native_external_marker": false,
+        "native_external_marker_kind": null,
+        "code_sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+        "artifact_names": [
+          "jump_rate_model.wasm"
+        ]
+      },
+      {
+        "key_xdr": "AAAAB7fkjNzwXXDqyhBTMB85S5b+XdZ+HWNKr8KhkdexonkQ",
+        "category": "per_position_code",
+        "membership_count": 1,
+        "entry_bytes": 140,
+        "rent_size_bytes": 136207,
+        "entry_rent_plus_ttl_entry_write": 75671806,
+        "native_external_marker": true,
+        "native_external_marker_kind": "code",
+        "code_sha256": "b7e48cdcf05d70eaca1053301f394b96fe5dd67e1d634aafc2a191d7b1a27910",
+        "artifact_names": []
+      },
+      {
+        "key_xdr": "AAAAB7/0toVsAZmJNRXKaIxnSEfCPu3Ql/4UPBt3NGkbzX9/",
+        "category": "shared_code",
+        "membership_count": 8,
+        "entry_bytes": 3268,
+        "rent_size_bytes": 96465,
+        "entry_rent_plus_ttl_entry_write": 53592917,
+        "native_external_marker": false,
+        "native_external_marker_kind": null,
+        "code_sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+        "artifact_names": [
+          "cl_integration_fixtures.wasm"
+        ]
+      },
+      {
+        "key_xdr": "AAAAB+rTkokarAB8B8ZQJ60sZD7f2Ix8Lu1oWUsJf03B+oIk",
+        "category": "per_position_code",
+        "membership_count": 1,
+        "entry_bytes": 140,
+        "rent_size_bytes": 136207,
+        "entry_rent_plus_ttl_entry_write": 75671806,
+        "native_external_marker": true,
+        "native_external_marker_kind": "code",
+        "code_sha256": "ead392891aac007c07c65027ad2c643edfd88c7c2eed68594b097f4dc1fa8224",
+        "artifact_names": []
+      },
+      {
+        "key_xdr": "AAAAB/wax9OXQoQ4xYxQzokwkHxZZVh6rHzA+ZiAJSNdzeNi",
+        "category": "shared_code",
+        "membership_count": 8,
+        "entry_bytes": 88432,
+        "rent_size_bytes": 1847140,
+        "entry_rent_plus_ttl_entry_write": 1026190139,
+        "native_external_marker": false,
+        "native_external_marker_kind": null,
+        "code_sha256": "fc1ac7d397428438c58c50ce8930907c5965587aac7cc0f9988025235dcde362",
+        "artifact_names": [
+          "receipt_vault.wasm"
+        ]
+      }
+    ]
+  },
+  "fees_stroops": {
+    "preparation": 6062864327,
+    "financial": 72397101,
+    "complete": 6135261428,
+    "preparation_transactions": 8,
+    "financial_transactions": 8,
+    "entry_rent_plus_ttl_entry_write": 6062058680,
+    "batched_ttl_write_bytes_fee": 4389,
+    "preparation_non_refundable": 800458,
+    "preparation_inclusion": 800,
+    "native_marker_instance_only_rent_marginal": 1396836,
+    "native_marker_code_and_instance_rent_marginal": 606771448,
+    "native_marker_code_and_instance_scope": "Exact total batch rent minus total batch rent with all16 identified synthetic payer code/instance changes removed; marginal attribution only, gross measured costs remain unchanged."
+  },
+  "conditional_funding": {
+    "measured_estimate_xlm": "613.5261428",
+    "analysis_only_25_percent_operating_fee_contingency_xlm": "766.9076785",
+    "exact_contingency_stroops_decimal": "7669076785",
+    "does_not_include": [
+      "actual source account reserve",
+      "real signature costs",
+      "retries",
+      "actual elapsed-time reexpiry",
+      "live-state changes",
+      "liquidator USDC principal"
+    ],
+    "maximum_is_not_actual_cash_loss": true,
+    "each_payer_independently_prefunded_raw_test_debt_asset": "300000000",
+    "eight_authorized_synthetic_maxima_raw_test_debt_asset": "220000000",
+    "actual_repaid_raw_test_debt_asset": [
+      "25000321",
+      "25000321",
+      "25000321",
+      "25000321",
+      "25000321",
+      "25000321",
+      "25000321",
+      "25000321"
+    ],
+    "actual_repaid_total_raw_test_debt_asset": "200002568",
+    "maximum_refund_total_raw_test_debt_asset": "19997432",
+    "asset_scope": "Synthetic SAC debt asset with 7-decimal arithmetic; not live Circle USDC or a supplier-capital bound."
+  },
+  "reward_conservation": {
+    "exact_scaled": true,
+    "fractions": "38999999999973007512",
+    "holders_including_exited": 74,
+    "paid": "0",
+    "pending": "100632",
+    "quarantine": "0",
+    "received": "100671",
+    "rounding_scaled": "26992488",
+    "scope": "post-execution assertion reads on separate cloned state"
+  },
+  "limitations": [
+    "Unsigned templates retain synthetic sequence1; ledger financial effects and TTLs are projected sequentially, not Core transaction application.",
+    "Native restore declared instructions0 and memory unavailable are not measured Core CPU/memory.",
+    "No delayed reward delivery/reconciliation in this cost fixture; physical quarantine0 does not imply no unobserved owed rewards.",
+    "Eight distinct funders and one continuous outage; not eight separate outage intervals.",
+    "Warm discovery helper retains inherited post-preparation scope string; discovery.jsonl/shared_sdk_discovery are explicitly offchain warm dependency discovery, excluded from accepted financial cost.",
+    "No production fee, maintenance-margin, zero-bonus recovery policy or release approval.",
+    "Initial failed compile attempt v1 preserved; ExternalRef classifier corrected in measured v2.",
+    "Synthetic payer-code restoration rent is separately attributed; subtracting it would not establish production account-signature or alternate-payer costs."
+  ],
+  "release_approval": false,
+  "resources_by_profile": {
+    "internal-policy": {
+      "completed_roots": 0,
+      "sdk_max": {
+        "instructions": 66476858,
+        "memory_bytes": 13250965,
+        "read_entries": 102,
+        "disk_read_entries": 0,
+        "write_entries": 50,
+        "write_bytes": 11400
+      },
+      "sdk_resource_entry_total_max": 152,
+      "host_max": {
+        "instructions": 70778637,
+        "memory_bytes": 13222066,
+        "disk_read_entries": 0,
+        "write_entries": 50,
+        "disk_read_bytes": 0,
+        "write_bytes": 11400,
+        "transaction_size_bytes": 9792,
+        "contract_events_size_bytes": 1808
+      },
+      "host_unique_footprint_max": 103,
+      "roots": [
+        {
+          "id": 1,
+          "accepted": false,
+          "sdk_instructions": 66476858,
+          "sdk_memory_bytes": 13250965,
+          "host_instructions": 70778637,
+          "host_memory_bytes": 13222066,
+          "host_fees": {
+            "inclusion": 100,
+            "non_refundable": 110539,
+            "refundable": 4415,
+            "rent": 9886208,
+            "total": 10001262
+          }
+        }
+      ]
+    },
+    "captured-network-diagnostic": {
+      "completed_roots": 8,
+      "sdk_max": {
+        "instructions": 67797501,
+        "memory_bytes": 13560832,
+        "read_entries": 102,
+        "disk_read_entries": 0,
+        "write_entries": 50,
+        "write_bytes": 11400
+      },
+      "sdk_resource_entry_total_max": 152,
+      "host_max": {
+        "instructions": 72114656,
+        "memory_bytes": 13536835,
+        "disk_read_entries": 0,
+        "write_entries": 50,
+        "disk_read_bytes": 0,
+        "write_bytes": 11400,
+        "transaction_size_bytes": 9792,
+        "contract_events_size_bytes": 1808
+      },
+      "host_unique_footprint_max": 103,
+      "roots": [
+        {
+          "id": 1,
+          "accepted": true,
+          "sdk_instructions": 66476858,
+          "sdk_memory_bytes": 13250965,
+          "host_instructions": 70778637,
+          "host_memory_bytes": 13222066,
+          "host_fees": {
+            "inclusion": 100,
+            "non_refundable": 110539,
+            "refundable": 4415,
+            "rent": 9886208,
+            "total": 10001262
+          }
+        },
+        {
+          "id": 2,
+          "accepted": true,
+          "sdk_instructions": 67797501,
+          "sdk_memory_bytes": 13560832,
+          "host_instructions": 72114656,
+          "host_memory_bytes": 13536835,
+          "host_fees": {
+            "inclusion": 100,
+            "non_refundable": 110933,
+            "refundable": 4415,
+            "rent": 8798271,
+            "total": 8913719
+          }
+        },
+        {
+          "id": 3,
+          "accepted": true,
+          "sdk_instructions": 67796109,
+          "sdk_memory_bytes": 13560832,
+          "host_instructions": 72114416,
+          "host_memory_bytes": 13536835,
+          "host_fees": {
+            "inclusion": 100,
+            "non_refundable": 110933,
+            "refundable": 4415,
+            "rent": 8798271,
+            "total": 8913719
+          }
+        },
+        {
+          "id": 4,
+          "accepted": true,
+          "sdk_instructions": 67781453,
+          "sdk_memory_bytes": 13560832,
+          "host_instructions": 72099760,
+          "host_memory_bytes": 13536835,
+          "host_fees": {
+            "inclusion": 100,
+            "non_refundable": 110928,
+            "refundable": 4415,
+            "rent": 8798271,
+            "total": 8913714
+          }
+        },
+        {
+          "id": 5,
+          "accepted": true,
+          "sdk_instructions": 67781645,
+          "sdk_memory_bytes": 13560832,
+          "host_instructions": 72100432,
+          "host_memory_bytes": 13536835,
+          "host_fees": {
+            "inclusion": 100,
+            "non_refundable": 110929,
+            "refundable": 4415,
+            "rent": 8798271,
+            "total": 8913715
+          }
+        },
+        {
+          "id": 6,
+          "accepted": true,
+          "sdk_instructions": 67772198,
+          "sdk_memory_bytes": 13560312,
+          "host_instructions": 72089353,
+          "host_memory_bytes": 13536315,
+          "host_fees": {
+            "inclusion": 100,
+            "non_refundable": 110925,
+            "refundable": 4415,
+            "rent": 8798271,
+            "total": 8913711
+          }
+        },
+        {
+          "id": 7,
+          "accepted": true,
+          "sdk_instructions": 67783277,
+          "sdk_memory_bytes": 13560832,
+          "host_instructions": 72100144,
+          "host_memory_bytes": 13536835,
+          "host_fees": {
+            "inclusion": 100,
+            "non_refundable": 110929,
+            "refundable": 4415,
+            "rent": 8798271,
+            "total": 8913715
+          }
+        },
+        {
+          "id": 8,
+          "accepted": true,
+          "sdk_instructions": 67635980,
+          "sdk_memory_bytes": 13560832,
+          "host_instructions": 71947987,
+          "host_memory_bytes": 13536835,
+          "host_fees": {
+            "inclusion": 100,
+            "non_refundable": 110760,
+            "refundable": 4415,
+            "rent": 8798271,
+            "total": 8913546
+          }
+        }
+      ]
+    }
+  },
+  "independent_closing_review": {
+    "new_concrete_blocker_found": false,
+    "live_zero_top_up_closing_admission": "corrected root requires timestamp strictly greater than close expiry before using proceeds or leaving contingent fee uncharged",
+    "funding_seizure": "own proceeds first; seizure based only on external contribution; full debt repayment checked before delivery",
+    "unexecuted_scope": [
+      "Short asset-shape coverage",
+      "full pause matrix",
+      "real custom-account authorization and reentry",
+      "collateral-delivery failure after repayment",
+      "exact takeover deadline equality",
+      "target-Core application of the financial snapshot"
+    ],
+    "artificial_time": "30-year timestamp with20 ledger ticks isolates residual-debt semantics, not archival or live keeper economics",
+    "no_new_execution_for_review": true
+  }
+}

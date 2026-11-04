@@ -1,0 +1,90 @@
+--- a/contracts/margin-controller/src/contract.rs
++++ b/contracts/margin-controller/src/contract.rs
+@@ -1296,3 +1296,18 @@
+         )
+     }
+ }
++
++// Additive validation-only early unhealthy PendingOpen recovery. Uses the same
++// current maintenance rule as active V3 liquidation, never a healthy time bypass.
++#[cfg(feature = "funded-liquidation-validation")]
++#[contractimpl]
++impl MarginController {
++    pub fn liquidate_pending_open_funded(
++        env: Env, payer: Address, position_id: u64, max_repay: u128, min_seize_underlying: u128,
++    ) -> (u128, u128) {
++        crate::funded_liquidation::require_validation_network(&env);
++        bump_instance_ttl(&env);
++        payer.require_auth();
++        Self::liquidate_pending_open_funded_impl(&env, payer, position_id, max_repay, min_seize_underlying)
++    }
++}
+--- a/contracts/margin-controller/src/pending_recovery.rs
++++ b/contracts/margin-controller/src/pending_recovery.rs
+@@ -107,11 +107,20 @@
+ #[cfg(feature = "funded-liquidation-validation")]
+ impl MarginController {
+     pub(crate) fn recover_expired_pending_funded_impl(
+-        env: &Env,
+-        payer: Address,
+-        position_id: u64,
+-        max_repay: u128,
+-        min_seize_underlying: u128,
++        env: &Env, payer: Address, position_id: u64, max_repay: u128, min_seize_underlying: u128,
++    ) -> (u128, u128) {
++        Self::settle_pending_open_funded_impl(env, payer, position_id, max_repay, min_seize_underlying, false)
++    }
++
++    pub(crate) fn liquidate_pending_open_funded_impl(
++        env: &Env, payer: Address, position_id: u64, max_repay: u128, min_seize_underlying: u128,
++    ) -> (u128, u128) {
++        Self::settle_pending_open_funded_impl(env, payer, position_id, max_repay, min_seize_underlying, true)
++    }
++
++    fn settle_pending_open_funded_impl(
++        env: &Env, payer: Address, position_id: u64, max_repay: u128, min_seize_underlying: u128,
++        require_unhealthy: bool,
+     ) -> (u128, u128) {
+         use soroban_sdk::token;
+         assert!(
+@@ -131,10 +140,9 @@
+         let pending = get_pending_perps_open_position_or_panic(env, position_id);
+         let execution = get_pending_perps_open_execution_or_panic(env, position_id);
+         assert!(pending.owner == position.owner, "pending owner mismatch");
+-        assert!(
+-            env.ledger().timestamp() > pending.expires_at,
+-            "pending open live"
+-        );
++        if !require_unhealthy {
++            assert!(env.ledger().timestamp() > pending.expires_at, "pending open live");
++        }
+         assert!(
+             execution.position_amount > 0 && execution.margin_received > 0,
+             "pending execution missing"
+@@ -180,6 +188,26 @@
+         let debt_value =
+             debt.checked_mul(debt_price.0).expect("debt value overflow") / debt_price.1;
+         assert!(debt_value > 0, "zero debt value");
++        if require_unhealthy {
++            // Reuse the existing V3 pair's configured maintenance rule, using
++            // actual held underlying instead of receipt pTokens not yet minted.
++            // No new threshold, cached fallback, or forced activation is added.
++            let config = get_perps_pair_config_or_default(env, &pending.margin_asset, &pending.base_asset, &pending.side);
++            assert!(config.maintenance_margin_scaled > 0
++                && config.maintenance_margin_scaled <= crate::constants::SCALE_1E6,
++                "maintenance policy unavailable");
++            let collateral_value = execution.position_amount.checked_mul(collateral_price.0)
++                .expect("collateral value overflow") / collateral_price.1;
++            let notional = match pending.side {
++                PositionSide::Long => collateral_value,
++                PositionSide::Short => debt_value,
++            };
++            let maintenance = notional.checked_mul(config.maintenance_margin_scaled)
++                .expect("maintenance overflow") / crate::constants::SCALE_1E6;
++            assert!(collateral_value.saturating_sub(debt_value) <= maintenance,
++                "not liquidatable");
++        }
++
+         let seize = (debt_value
+             .checked_mul(collateral_price.1)
+             .expect("seizure overflow")

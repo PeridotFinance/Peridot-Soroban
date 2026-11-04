@@ -85,6 +85,23 @@ Exact scaled conservation uses `received*10^18 = (paid + pending + quarantine)*1
 
 Post-execution assertions inspect separate clones; no holder enumeration or settlement is moved out of the measured financial operation. Pending recovery here is owner-funded. Borrower-independent active liquidation is proved; third-party rescue for every debt-bearing pending state is not established by it. Primary freshness/issuer-pause/execution-price checks remain. A stale/unavailable primary price can still block forced liquidation; the secondary oracle remains deferred.
 
+## Subsequent actual Core and completed head CI
+
+[Handoff22](22-cl-option1-qualification-20261104.md) supplies actual controlled
+Core29 native restoration/maintenance application and independent pending/stalled
+recovery research. It does not retroactively upgrade this checkpoint's TTL
+projections, owner-funded pending route or earlier compiled identities.
+
+Completed **9bb51aa** CI is now [durably archived and replayed separately](evidence/cl-ci-9bb51aa-20261103/README.md): baseline41626834491 checker PASS/checkpoint FAIL;
+storage41626834469 both profile jobs FAIL; restoration41626834559 six compiled
+cases PASS/full checkpoint FAIL. All38 per-profile gate summaries and exact errors
+were replayed;829 members and90 WASM files/20 distinct Linux identities are pinned.
+Captured baseline's four gates pass while internal's four fail. Restoration's
+captured post-preparation invocation passes but global proofs stay missing;
+internal open/close journey integrity also fails where CPU rejection omits
+complete financial metadata. Aggregate exit1 is not the verification criterion.
+This CI precedes the new Option1 recovery ABI and supplies no execution claim for it.
+
 ## Gates, CI and reproducibility
 
 Every assessed financial flow runs through unchanged `check_budget.sh`; native preparation has its explicit XDR/rent checker. All16 final per-profile financial/preparation reports replay exactly, not merely as aggregate exit1. Captured invocation and targeted post-preparation execution pass in all four runs. All lifecycle/transaction/checkpoint gates remain failed: each captured run has two lifecycle errors, one missing proof-to-call mapping, and44 or46 missing required labels. Internal invocation fails in every run. Internal open/close complete-journey integrity also fails because three CPU-rejected host calls have no complete fee/footprint evidence. The separate prefix-only verifier proves preparation feasibility without hiding those failures. Core application, signed authentication, live state and release stay false. All four wrappers correctly exit1 despite six functional tests passing.

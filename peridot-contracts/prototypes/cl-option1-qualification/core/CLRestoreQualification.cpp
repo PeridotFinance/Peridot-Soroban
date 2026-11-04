@@ -1,0 +1,408 @@
+// Isolated Core29 qualification fixture. No transaction/SCP signing helpers.
+#include "bucket/test/BucketTestUtils.h"
+#include "crypto/Hex.h"
+#include "crypto/SHA.h"
+#include "herder/LedgerCloseData.h"
+#include "herder/TxSetFrame.h"
+#include "ledger/ImmutableLedgerView.h"
+#include "ledger/LedgerManagerImpl.h"
+#include "ledger/LedgerTxn.h"
+#include "ledger/LedgerTypeUtils.h"
+#include "ledger/NetworkConfig.h"
+#include "overlay/OverlayManager.h"
+#include "test/Catch2.h"
+#include "test/TestUtils.h"
+#include "test/test.h"
+#include "transactions/EventManager.h"
+#include "transactions/MutableTransactionResult.h"
+#include "transactions/TransactionFrameBase.h"
+#include "transactions/TransactionMeta.h"
+#include "transactions/TransactionUtils.h"
+#include "util/Decoder.h"
+#include "util/Logging.h"
+#include "util/XDRCereal.h"
+#include <algorithm>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <optional>
+#include <xdrpp/marshal.h>
+
+using namespace stellar;
+
+namespace
+{
+// Disable only unused network construction through the official application
+// factory seam. Any accidental overlay use fails instead of providing a mock.
+class UnsignedOfflineApplication : public TestApplication
+{
+  public:
+    UnsignedOfflineApplication(VirtualClock& clock, Config const& cfg)
+        : TestApplication(clock, cfg) {}
+    OverlayManager& getOverlayManager() override
+    {
+        throw std::runtime_error("unsigned offline fixture must not use overlay");
+    }
+  private:
+    std::unique_ptr<OverlayManager> createOverlayManager() override
+    {
+        return nullptr;
+    }
+};
+template <typename T> T readXdr(std::istream& input)
+{
+    std::string encoded;
+    REQUIRE(static_cast<bool>(std::getline(input, encoded)));
+    std::vector<uint8_t> bytes;
+    decoder::decode_b64(encoded, bytes);
+    T value;
+    xdr::xdr_from_opaque(bytes, value);
+    return value;
+}
+uint64_t readNumber(std::istream& input)
+{
+    std::string value;
+    REQUIRE(static_cast<bool>(std::getline(input, value)));
+    return std::stoull(value);
+}
+}
+
+TEST_CASE("unsigned Core29 RestoreFootprint preauthorized source", "[cl-option1-restore]")
+{
+    REQUIRE(std::getenv("CL_CORE_FORBID_SIGNING") != nullptr);
+    auto inputPath = std::getenv("CL_CORE_RESTORE_INPUT");
+    REQUIRE(inputPath != nullptr);
+    std::ifstream input(inputPath);
+    REQUIRE(input.good());
+    auto ledger = static_cast<uint32_t>(readNumber(input));
+    auto predictedFee = static_cast<int64_t>(readNumber(input));
+    auto envelope = readXdr<TransactionEnvelope>(input);
+    REQUIRE(envelope.type() == ENVELOPE_TYPE_TX);
+    REQUIRE(envelope.v1().signatures.empty());
+    REQUIRE(envelope.v1().tx.operations.size() == 1);
+    REQUIRE(envelope.v1().tx.operations[0].body.type() == RESTORE_FOOTPRINT);
+    REQUIRE(!envelope.v1().tx.operations[0].sourceAccount);
+    std::vector<LedgerEntry> settings;
+    auto settingCount = readNumber(input);
+    REQUIRE(settingCount == 13);
+    for (size_t i = 0; i < settingCount; ++i)
+    {
+        LedgerEntry entry;
+        entry.lastModifiedLedgerSeq = ledger - 1;
+        entry.data = readXdr<decltype(entry.data)>(input);
+        REQUIRE(entry.data.type() == CONFIG_SETTING);
+        settings.push_back(entry);
+    }
+    std::vector<LedgerEntry> entries;
+    std::vector<LedgerEntry> ttls;
+    std::optional<Hash> actualCodeHash;
+    auto entryCount = readNumber(input);
+    REQUIRE(entryCount > 0);
+    for (size_t i = 0; i < entryCount; ++i)
+    {
+        auto entry = readXdr<LedgerEntry>(input);
+        auto ttl = static_cast<uint32_t>(readNumber(input));
+        REQUIRE((ttl == ledger - 1 || ttl == ledger + 2073600 - 1));
+        if (entry.data.type() == CONTRACT_CODE)
+        {
+            REQUIRE(!actualCodeHash);
+            actualCodeHash = entry.data.contractCode().hash;
+            auto const& wasm = entry.data.contractCode().code;
+            REQUIRE(wasm.size() >= 8);
+            REQUIRE(wasm[0] == 0);
+            REQUIRE(wasm[1] == 'a');
+            REQUIRE(wasm[2] == 's');
+            REQUIRE(wasm[3] == 'm');
+            REQUIRE(sha256(wasm) == *actualCodeHash);
+        }
+        else
+        {
+            REQUIRE(entry.data.type() == CONTRACT_DATA);
+            REQUIRE(entry.data.contractData().durability == PERSISTENT);
+        }
+        // SDK snapshots omit ledger modification metadata. Seed real Core
+        // entries at controlled genesis ledger; preserve every data byte.
+        REQUIRE(entry.lastModifiedLedgerSeq == 0);
+        entry.lastModifiedLedgerSeq = ledger - 1;
+        entries.push_back(entry);
+        auto ttlEntry = getTTLEntryForTTLKey(getTTLKey(entry), ttl);
+        ttlEntry.lastModifiedLedgerSeq = ledger - 1;
+        ttls.push_back(ttlEntry);
+    }
+    REQUIRE(actualCodeHash);
+    std::optional<SCAddress> instanceAddress;
+    for (auto const& entry : entries)
+    {
+        if (entry.data.type() != CONTRACT_DATA) continue;
+        auto const& data = entry.data.contractData();
+        if (data.key.type() == SCV_LEDGER_KEY_CONTRACT_INSTANCE)
+        {
+            REQUIRE(!instanceAddress);
+            REQUIRE(data.val.type() == SCV_CONTRACT_INSTANCE);
+            REQUIRE(data.val.instance().executable.type() == CONTRACT_EXECUTABLE_WASM);
+            REQUIRE(data.val.instance().executable.wasm_hash() == *actualCodeHash);
+            instanceAddress = data.contract;
+        }
+    }
+    for (auto const& entry : entries)
+    {
+        if (entry.data.type() != CONTRACT_DATA) continue;
+        REQUIRE(instanceAddress);
+        REQUIRE(entry.data.contractData().contract == *instanceAddress);
+    }
+    std::vector<TransactionEnvelope> maintenance;
+    std::vector<int64_t> maintenanceFees;
+    std::vector<uint32_t> maintenanceTTLs;
+    if (auto path = std::getenv("CL_CORE_RESTORE_CHAIN_INPUT"))
+    {
+        std::ifstream chain(path);
+        REQUIRE(chain.good());
+        REQUIRE(readNumber(chain) == 2);
+        for (size_t i = 0; i < 2; ++i)
+        {
+            maintenanceFees.push_back(static_cast<int64_t>(readNumber(chain)));
+            auto next = readXdr<TransactionEnvelope>(chain);
+            REQUIRE(next.type() == ENVELOPE_TYPE_TX);
+            REQUIRE(next.v1().signatures.empty());
+            REQUIRE(next.v1().tx.operations.size() == 1);
+            REQUIRE(!next.v1().tx.operations[0].sourceAccount);
+            REQUIRE(next.v1().tx.operations[0].body.type() ==
+                    (i == 0 ? RESTORE_FOOTPRINT : EXTEND_FOOTPRINT_TTL));
+            maintenance.push_back(next);
+            maintenanceTTLs.push_back(static_cast<uint32_t>(readNumber(chain)));
+        }
+    }
+    bool hotArchive = false;
+    bool badPreauth = false;
+    SECTION("expired live-bucket restore") {}
+    SECTION("hot-archive restore") { hotArchive = true; }
+    SECTION("wrong preauthorization rejects without application") { badPreauth = true; }
+
+    auto cfg = getTestConfig(0, Config::TESTDB_BUCKET_DB_VOLATILE);
+    cfg.TESTING_UPGRADE_LEDGER_PROTOCOL_VERSION = 29;
+    cfg.LEDGER_PROTOCOL_VERSION = 29;
+    cfg.USE_CONFIG_FOR_GENESIS = true;
+    cfg.RUN_STANDALONE = true;
+    cfg.FORCE_SCP = false;
+    cfg.NODE_IS_VALIDATOR = false;
+    cfg.PARALLEL_LEDGER_APPLY = false;
+    cfg.PEER_PORT = 0;
+    cfg.HTTP_PORT = 0;
+    cfg.NTP_DRIFT_CHECK_SERVER = "";
+    cfg.NETWORK_PASSPHRASE = "Peridot isolated unsigned Core29 restoration qualification";
+    cfg.KNOWN_PEERS.clear();
+    cfg.PREFERRED_PEERS.clear();
+    VirtualClock clock;
+    // LOG_CHECK must skip the upstream INFO root-seed formatting expression.
+    REQUIRE(!Logging::getLedgerLogPtr()->should_log(spdlog::level::info));
+    REQUIRE(!Logging::getLedgerLogPtr()->should_backtrace());
+    // Do not start overlay/herder or use SorobanTest's signed setup helpers.
+    auto app = createTestApplication<UnsignedOfflineApplication>(clock, cfg, true, false);
+    auto& lm = app->getLedgerManager();
+    // The normal load phase is needed even though network/app startup is skipped.
+    lm.loadLastKnownLedger();
+    auto frame = TransactionFrameBase::makeTransactionFromWire(app->getNetworkID(), envelope);
+    LedgerEntry account;
+    account.data.type(ACCOUNT);
+    account.lastModifiedLedgerSeq = ledger - 1;
+    auto& a = account.data.account();
+    a.accountID = frame->getSourceID();
+    a.balance = 100'000'000'000'000;
+    a.seqNum = frame->getSeqNum() - 1;
+    a.thresholds[0] = 0;
+    a.thresholds[1] = 1;
+    a.thresholds[2] = 1;
+    a.thresholds[3] = 1;
+    a.numSubEntries = 1 + maintenance.size();
+    SignerKey signer(SIGNER_KEY_TYPE_PRE_AUTH_TX);
+    signer.preAuthTx() = frame->getContentsHash();
+    if (badPreauth) signer.preAuthTx()[0] ^= 1;
+    a.signers.emplace_back(signer, 1);
+    for (size_t i = 0; i < maintenance.size(); ++i)
+    {
+        auto next = TransactionFrameBase::makeTransactionFromWire(app->getNetworkID(), maintenance[i]);
+        REQUIRE(next->getSourceID() == frame->getSourceID());
+        REQUIRE(next->getSeqNum() == frame->getSeqNum() + i + 1);
+        SignerKey futureSigner(SIGNER_KEY_TYPE_PRE_AUTH_TX);
+        futureSigner.preAuthTx() = next->getContentsHash();
+        a.signers.emplace_back(futureSigner, 1);
+    }
+    std::sort(a.signers.begin(), a.signers.end(),
+              [](Signer const& x, Signer const& y) { return x.key < y.key; });
+    auto originalBalance = a.balance;
+    auto header = lm.getLastClosedLedgerHeader().header;
+    header.ledgerSeq = ledger - 1;
+    header.ledgerVersion = 29;
+    // Synthetic genesis funding is matched in totalCoins; keep Core invariants enabled.
+    REQUIRE(header.totalCoins <= std::numeric_limits<int64_t>::max() - originalBalance);
+    header.totalCoins += originalBalance;
+    {
+        LedgerTxn ltx(app->getLedgerTxnRoot());
+        ltx.loadHeader().current() = header;
+        ltx.commit();
+    }
+    std::vector<LedgerEntry> initial{account};
+    if (!hotArchive)
+    {
+        initial.insert(initial.end(), entries.begin(), entries.end());
+        initial.insert(initial.end(), ttls.begin(), ttls.end());
+    }
+    BucketTestUtils::addLiveBatchAndUpdateSnapshot(*app, header, initial, settings, {});
+    if (hotArchive)
+    {
+        std::vector<LedgerEntry> archived;
+        std::vector<LedgerEntry> live;
+        for (size_t i = 0; i < entries.size(); ++i)
+        {
+            if (ttls[i].data.ttl().liveUntilLedgerSeq < ledger)
+                archived.push_back(entries[i]);
+            else
+            {
+                live.push_back(entries[i]);
+                live.push_back(ttls[i]);
+            }
+        }
+        if (!live.empty())
+            BucketTestUtils::addLiveBatchAndUpdateSnapshot(*app, header, live, {}, {});
+        BucketTestUtils::addHotArchiveBatchAndUpdateSnapshot(*app, header, archived, {});
+    }
+    lm.rebuildInMemorySorobanStateForTesting(29);
+    auto const& network = lm.getLastClosedSorobanNetworkConfig();
+    REQUIRE(network.txMaxInstructions() == 400'000'000);
+    REQUIRE(network.txMemoryLimit() == 41'943'040);
+    REQUIRE(network.txMaxFootprintEntries() == 400);
+    REQUIRE(network.txMaxWriteLedgerEntries() == 200);
+    REQUIRE(network.txMaxDiskReadBytes() == 200'000);
+    REQUIRE(network.txMaxWriteBytes() == 132'096);
+    auto const minPersistentTTL = network.stateArchivalSettings().minPersistentTTL;
+    auto diagnostics = DiagnosticEventManager::createDisabled();
+    CheckValidLedgerViewWrapper view(*app);
+    auto validation = frame->checkValid(app->getAppConnector(), view, 0, 1, 1, diagnostics);
+    if (badPreauth)
+    {
+        REQUIRE(validation->getXDR().result.code() == txBAD_AUTH);
+        LedgerTxn ltx(app->getLedgerTxnRoot());
+        auto source = loadAccount(ltx, frame->getSourceID());
+        REQUIRE(source.current().data.account().balance == originalBalance);
+        REQUIRE(source.current().data.account().seqNum == frame->getSeqNum() - 1);
+        REQUIRE(source.current().data.account().signers.size() == 1 + maintenance.size());
+        REQUIRE(source.current().data.account().numSubEntries == 1 + maintenance.size());
+        REQUIRE(lm.getLastClosedLedgerHeader().header.feePool == header.feePool);
+        std::cout << "CL_CORE_AUTH_REJECTION " << xdrToCerealString(validation->getXDR(), "result") << std::endl;
+        return;
+    }
+    REQUIRE(validation->isSuccess());
+    PerPhaseTransactionList phases(2);
+    phases[1].push_back(frame);
+    // Default skipValidation=false: use ordinary source/fee/resource checks.
+    auto pair = makeTxSetFromTransactions(phases, *app, 1, 1);
+    REQUIRE(pair.second->checkValid(*app, 1, 1));
+    StellarValue value;
+    value.txSetHash = pair.first->getContentsHash();
+    value.closeTime = header.scpValue.closeTime + 1;
+    value.ext.v(STELLAR_VALUE_BASIC);
+    LedgerCloseData close(ledger, pair.first, value);
+    // Normal parallel Soroban ledger application; no externalize/sign helper.
+    lm.applyLedger(close, false);
+    auto& results = static_cast<LedgerManagerImpl&>(lm).mLatestTxResultSet;
+    REQUIRE(results.results.size() == 1);
+    auto const& result = results.results[0].result;
+    std::cout << "CL_CORE_RESTORE_RESULT " << xdrToCerealString(result, "result") << std::endl;
+    REQUIRE(lm.getLastClosedLedgerTxMeta().size() == 1);
+    std::cout << "CL_CORE_RESTORE_META " << xdrToCerealString(lm.getLastClosedLedgerTxMeta()[0].getXDR(), "meta") << std::endl;
+    REQUIRE(result.result.code() == txSUCCESS);
+    REQUIRE(result.result.results()[0].tr().restoreFootprintResult().code() == RESTORE_FOOTPRINT_SUCCESS);
+    REQUIRE(result.feeCharged == predictedFee);
+    REQUIRE(lm.getLastClosedLedgerHeader().header.totalCoins == header.totalCoins);
+    REQUIRE(lm.getLastClosedLedgerHeader().header.feePool == header.feePool + result.feeCharged);
+    {
+        LedgerTxn ltx(app->getLedgerTxnRoot());
+        auto source = loadAccount(ltx, frame->getSourceID());
+        REQUIRE(source.current().data.account().seqNum == frame->getSeqNum());
+        REQUIRE(source.current().data.account().signers.size() == maintenance.size());
+        REQUIRE(source.current().data.account().numSubEntries == maintenance.size());
+        REQUIRE(source.current().data.account().balance == originalBalance - result.feeCharged);
+        for (auto const& entry : entries)
+        {
+            auto actual = ltx.loadWithoutRecord(LedgerEntryKey(entry));
+            REQUIRE(actual);
+            REQUIRE(actual.current().data == entry.data);
+            auto ttl = ltx.loadWithoutRecord(getTTLKey(entry));
+            REQUIRE(ttl);
+            REQUIRE(ttl.current().data.ttl().liveUntilLedgerSeq == ledger + minPersistentTTL - 1);
+            auto idx = static_cast<size_t>(&entry - entries.data());
+            if (ttls[idx].data.ttl().liveUntilLedgerSeq >= ledger)
+            {
+                REQUIRE(actual.current().lastModifiedLedgerSeq == ledger - 1);
+                REQUIRE(ttl.current().lastModifiedLedgerSeq == ledger - 1);
+            }
+        }
+    }
+    auto again = frame->checkValid(app->getAppConnector(), CheckValidLedgerViewWrapper(*app), 0, 1, 1, diagnostics);
+    REQUIRE(!again->isSuccess());
+    REQUIRE(envelope.v1().signatures.empty());
+    std::cout << "CL_CORE_RESTORE_SUMMARY {\"hot_archive\":" << (hotArchive ? "true" : "false")
+              << ",\"ledger\":" << ledger << ",\"fee_charged\":" << result.feeCharged
+              << ",\"source_sequence\":" << frame->getSeqNum() << ",\"entry_count\":" << entries.size()
+              << ",\"live_until\":" << (ledger + minPersistentTTL - 1)
+              << ",\"envelope_signatures\":0,\"normal_authorization\":true,\"replay_rejected\":true}" << std::endl;
+
+    int64_t cumulativeFee = predictedFee;
+    for (size_t i = 0; i < maintenance.size(); ++i)
+    {
+        auto next = TransactionFrameBase::makeTransactionFromWire(app->getNetworkID(), maintenance[i]);
+        auto before = lm.getLastClosedLedgerHeader().header;
+        auto valid = next->checkValid(app->getAppConnector(), CheckValidLedgerViewWrapper(*app), 0, 1, 1, diagnostics);
+        REQUIRE(valid->isSuccess());
+        PerPhaseTransactionList nextPhases(2);
+        nextPhases[1].push_back(next);
+        auto txset = makeTxSetFromTransactions(nextPhases, *app, 1, 1);
+        REQUIRE(txset.second->checkValid(*app, 1, 1));
+        StellarValue nextValue;
+        nextValue.txSetHash = txset.first->getContentsHash();
+        nextValue.closeTime = before.scpValue.closeTime + 1;
+        nextValue.ext.v(STELLAR_VALUE_BASIC);
+        lm.applyLedger(LedgerCloseData(before.ledgerSeq + 1, txset.first, nextValue), false);
+        auto const& applied = static_cast<LedgerManagerImpl&>(lm).mLatestTxResultSet;
+        REQUIRE(applied.results.size() == 1);
+        auto const& outcome = applied.results[0].result;
+        std::cout << "CL_CORE_MAINTENANCE_RESULT " << xdrToCerealString(outcome, "result") << std::endl;
+        REQUIRE(lm.getLastClosedLedgerTxMeta().size() == 1);
+        std::cout << "CL_CORE_MAINTENANCE_META " << xdrToCerealString(lm.getLastClosedLedgerTxMeta()[0].getXDR(), "meta") << std::endl;
+        REQUIRE(outcome.result.code() == txSUCCESS);
+        if (i == 0)
+            REQUIRE(outcome.result.results()[0].tr().restoreFootprintResult().code() == RESTORE_FOOTPRINT_SUCCESS);
+        else
+            REQUIRE(outcome.result.results()[0].tr().extendFootprintTTLResult().code() == EXTEND_FOOTPRINT_TTL_SUCCESS);
+        REQUIRE(outcome.feeCharged == maintenanceFees[i]);
+        cumulativeFee += outcome.feeCharged;
+        REQUIRE(lm.getLastClosedLedgerHeader().header.totalCoins == header.totalCoins);
+        REQUIRE(lm.getLastClosedLedgerHeader().header.feePool == header.feePool + cumulativeFee);
+        {
+            LedgerTxn ltx(app->getLedgerTxnRoot());
+            auto source = loadAccount(ltx, next->getSourceID());
+            REQUIRE(source.current().data.account().seqNum == next->getSeqNum());
+            REQUIRE(source.current().data.account().balance == originalBalance - cumulativeFee);
+            REQUIRE(source.current().data.account().signers.size() == maintenance.size() - i - 1);
+            REQUIRE(source.current().data.account().numSubEntries == maintenance.size() - i - 1);
+            for (auto const& entry : entries)
+            {
+                auto actual = ltx.loadWithoutRecord(LedgerEntryKey(entry));
+                REQUIRE(actual);
+                REQUIRE(actual.current().data == entry.data);
+                auto ttl = ltx.loadWithoutRecord(getTTLKey(entry));
+                REQUIRE(ttl);
+                REQUIRE(ttl.current().data.ttl().liveUntilLedgerSeq == maintenanceTTLs[i]);
+            }
+        }
+        auto replay = next->checkValid(app->getAppConnector(), CheckValidLedgerViewWrapper(*app), 0, 1, 1, diagnostics);
+        REQUIRE(replay->getXDR().result.code() == txBAD_SEQ);
+        std::cout << "CL_CORE_MAINTENANCE_SUMMARY {\"hot_archive\":" << (hotArchive ? "true" : "false")
+                  << ",\"step\":" << i << ",\"ledger\":" << before.ledgerSeq + 1
+                  << ",\"fee_charged\":" << outcome.feeCharged << ",\"cumulative_fee\":" << cumulativeFee
+                  << ",\"source_sequence\":" << next->getSeqNum() << ",\"entry_count\":" << entries.size()
+                  << ",\"live_until\":" << maintenanceTTLs[i]
+                  << ",\"envelope_signatures\":0,\"normal_authorization\":true,\"replay_rejected_bad_seq\":true}" << std::endl;
+    }
+}

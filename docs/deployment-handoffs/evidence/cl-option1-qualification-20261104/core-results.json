@@ -1,0 +1,227 @@
+{
+  "schema": "cl-core-native-restore-results-v1",
+  "runtime_sha256": "dcbf2fb09e28d777d819b4c2785d7f1758c7e6c8c54649f89bec66df78ca0a47",
+  "native_core_application_verified": true,
+  "release_approval": false,
+  "financial_lifecycle_qualified": false,
+  "signatures": 0,
+  "broadcasts": 0,
+  "input_import_adjustment": "Original SDK LedgerEntry.lastModifiedLedgerSeq=0 and synthesized TTL metadata become synthetic genesis ledger279; complete LedgerEntryData remains unchanged. Raw inputs remain byte-identical.",
+  "runs": {
+    "code": {
+      "log": "restore-code-final.log",
+      "sha256": "229d7ebd482e7daa32f7e133d40a0900133c2f8bb8dbde279798457caef2fcb6",
+      "exit_code": 0,
+      "assertions": 230,
+      "restore_summaries": [
+        {
+          "hot_archive": false,
+          "ledger": 280,
+          "fee_charged": 1026250252,
+          "source_sequence": 6,
+          "entry_count": 1,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected": true
+        },
+        {
+          "hot_archive": true,
+          "ledger": 280,
+          "fee_charged": 1026250252,
+          "source_sequence": 6,
+          "entry_count": 1,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected": true
+        }
+      ],
+      "maintenance_summaries": [],
+      "wrong_preauth": "txBAD_AUTH before application, source balance/sequence/signers/fee pool unchanged",
+      "input": {
+        "path": "receipt-code-input.txt",
+        "sha256": "54b130d5c92db5090f3019fb8cb44722f2e223bb71799165388e06e962cd3312"
+      }
+    },
+    "state": {
+      "log": "restore-state-final.log",
+      "sha256": "054efb4085b35e9e165e79abbaf55a453db124378ecd49e5eaf40764662abf35",
+      "exit_code": 0,
+      "assertions": 946,
+      "restore_summaries": [
+        {
+          "hot_archive": false,
+          "ledger": 280,
+          "fee_charged": 1031215394,
+          "source_sequence": 6,
+          "entry_count": 23,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected": true
+        },
+        {
+          "hot_archive": true,
+          "ledger": 280,
+          "fee_charged": 1031215394,
+          "source_sequence": 6,
+          "entry_count": 23,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected": true
+        }
+      ],
+      "maintenance_summaries": [],
+      "wrong_preauth": "txBAD_AUTH before application, source balance/sequence/signers/fee pool unchanged",
+      "input": {
+        "path": "receipt-state-input.txt",
+        "sha256": "8baf121f4f4f2770e16c9e59305d660b3eb97ab43001b6ae9adbeea523a1d6cd"
+      }
+    },
+    "chain": {
+      "log": "restore-chain-final.log",
+      "sha256": "b8a89de8f492d03ee8cdf33f302d585237abab0ff78ec335c8ae39ea4cdfc064",
+      "exit_code": 0,
+      "assertions": 371,
+      "restore_summaries": [
+        {
+          "hot_archive": false,
+          "ledger": 280,
+          "fee_charged": 1026250252,
+          "source_sequence": 6,
+          "entry_count": 1,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected": true
+        },
+        {
+          "hot_archive": true,
+          "ledger": 280,
+          "fee_charged": 1026250252,
+          "source_sequence": 6,
+          "entry_count": 1,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected": true
+        }
+      ],
+      "maintenance_summaries": [
+        {
+          "hot_archive": false,
+          "step": 0,
+          "ledger": 281,
+          "fee_charged": 60092,
+          "cumulative_fee": 1026310344,
+          "source_sequence": 7,
+          "entry_count": 1,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected_bad_seq": true
+        },
+        {
+          "hot_archive": false,
+          "step": 1,
+          "ledger": 282,
+          "fee_charged": 513117036,
+          "cumulative_fee": 1539427380,
+          "source_sequence": 8,
+          "entry_count": 1,
+          "live_until": 3110681,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected_bad_seq": true
+        },
+        {
+          "hot_archive": true,
+          "step": 0,
+          "ledger": 281,
+          "fee_charged": 60092,
+          "cumulative_fee": 1026310344,
+          "source_sequence": 7,
+          "entry_count": 1,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected_bad_seq": true
+        },
+        {
+          "hot_archive": true,
+          "step": 1,
+          "ledger": 282,
+          "fee_charged": 513117036,
+          "cumulative_fee": 1539427380,
+          "source_sequence": 8,
+          "entry_count": 1,
+          "live_until": 3110681,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected_bad_seq": true
+        }
+      ],
+      "wrong_preauth": "txBAD_AUTH before application, source balance/sequence/signers/fee pool unchanged",
+      "input": {
+        "path": "receipt-code-input.txt",
+        "sha256": "54b130d5c92db5090f3019fb8cb44722f2e223bb71799165388e06e962cd3312"
+      },
+      "maintenance_input_sha256": "37450eb24627a996108c28234ed24a137c4574077fbd268795be5d86b7db8e70"
+    },
+    "partial": {
+      "log": "restore-partial-final.log",
+      "sha256": "71a68de1a1a7bffc146bb58b965321fcbe547d1b313ecd21ce278219dc421544",
+      "exit_code": 0,
+      "assertions": 1034,
+      "restore_summaries": [
+        {
+          "hot_archive": false,
+          "ledger": 280,
+          "fee_charged": 1026300772,
+          "source_sequence": 6,
+          "entry_count": 23,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected": true
+        },
+        {
+          "hot_archive": true,
+          "ledger": 280,
+          "fee_charged": 1026300772,
+          "source_sequence": 6,
+          "entry_count": 23,
+          "live_until": 2073879,
+          "envelope_signatures": 0,
+          "normal_authorization": true,
+          "replay_rejected": true
+        }
+      ],
+      "maintenance_summaries": [],
+      "wrong_preauth": "txBAD_AUTH before application, source balance/sequence/signers/fee pool unchanged",
+      "input": {
+        "path": "partial-input.txt",
+        "sha256": "74c2b31a1ed7f7e7ff8d53bfb0dc5c3a0dd163a63cceaad353677181dbbf8474"
+      }
+    }
+  },
+  "total_applied_operations": 12,
+  "restore_operations": 10,
+  "extend_operations": 2,
+  "normal_authorization_rejections": 4,
+  "assertions": 2581,
+  "mixed_case_scope": "seeded mixed genesis, not an interrupted multi-transaction preparation journey",
+  "remaining": [
+    "actual financial Core invocation and address credentials",
+    "real account signatures",
+    "live-state archive/eviction history",
+    "complete required restored-key journey on Core",
+    "transaction resource policy/release approval",
+    "native CPU/memory/performance qualification"
+  ],
+  "network_config_sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+  "fixture_sha256": "247ba377b3319525f648bdfbbfc9c8159ce8cd80a5e557adca4306be8378a814",
+  "financial_checker_gate": "not replaced: native Core results do not supply SDK invocation or missing financial lifecycle rows"
+}

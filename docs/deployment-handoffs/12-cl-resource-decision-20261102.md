@@ -1,10 +1,34 @@
 # Resource decision memo — refreshed decision, 2026-11-02
 
-**Recommendation: preserve the atomic reference, but require narrower storage access/restoration costs before an Option1 qualification decision. Do not adopt the isolated optimization, proposed policy, split prototype or additional stages.** This is an architecture recommendation, not permission to change limits. Stage 1 remains incomplete; PR #75 remains draft; borrowing stays disabled. If 100M/100 SDK entries/50 writes remains mandatory, the next feasibility dependency is a measured venue/accounting ABI redesign plus narrower receipt/controller key access, not more transaction splitting.
+**Recommendation: continue bounded qualification of the preserved atomic Option1 candidate; do not adopt its policy, isolated patches or additional financial stages.** This is an architecture recommendation, not permission to change limits. Stage 1 remains incomplete; PR #75 remains draft; borrowing stays disabled. If 100M/100 SDK entries/50 writes remains mandatory, the next feasibility dependency is a measured venue/accounting ABI redesign plus narrower receipt/controller key access, not more transaction splitting.
 
 “Atomic baseline” means the existing V3 transaction stages with atomic conversion, fee-inclusive share mint and custody changes inside swap-open, and atomic funded repayment/seizure. It does not mean the entire open/close lifecycle is a single transaction. Its preserved source is `9cf43082bfb57334d57dbc58cfa90ccad4d98078`. The isolated prototype at `bb154ec8f03889aabfdb8dd5ea120f22c46a47f5` remains a **negative feasibility result**. All historical artifacts and checkpoints remain intact.
 
 No active profile, ceiling, production contract, stage, claim-first boundary, maintenance-margin setting or shared handoff 00 changes in this update. No signing, broadcasting, deployment, secret access or Upshift binding. This memo reuses measured executions; it does not expand the contract test suite or substitute a different profile to make a release gate green.
+
+## November4 actual Core and joined recovery checkpoint
+
+[Handoff22](22-cl-option1-qualification-20261104.md) now establishes controlled,
+unsigned native Core29 restoration, source debits/sequences, installed TTLs and
+preauthorization rejection:2,581 assertions,12 native operations. The same-bytecode
+joined financial candidate passes7/7 under captured limits,2/7 under internal;
+a separate mixed-proceeds/externally-funded settlement and reserved-fee companion
+passes1/1 under both. Every full checkpoint remains failed. The
+[current decision table](../../peridot-contracts/prototypes/cl-option1-qualification/decision-joined.md)
+compares unchanged internal limits, proposed ceilings/workload bounds and captured
+network settings with source/identity-bound measurements. It rejects missing,
+relabelled or over-bound evidence rather than widening a boundary.
+
+Joined maxima leave12,314,681 instructions and4,049,755 modeled memory bytes to the
+proposed workload boundaries; real signatures and maximal live workloads must
+still fit. The actual shared eight-borrower conditional journey costs613.5261428XLM,
+including explicitly identified synthetic-authorizer rent. Core's selected receipt
+restoration/maintenance charges are separate scoped application evidence; they do
+not qualify that entire financial journey or establish economic affordability.
+Continue constrained Option1 qualification and a funded operating model. If100M
+remains mandatory, the measured venue/accounting ABI redesign remains necessary;
+stop incremental wrapper tuning. No policy, production cap, borrowing or handoff00
+change follows. Earlier numbers below retain their original comparison populations.
 
 ## November3 explicit restoration checkpoint
 

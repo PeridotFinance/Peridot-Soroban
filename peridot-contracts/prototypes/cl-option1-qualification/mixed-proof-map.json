@@ -1,0 +1,27 @@
+{
+  "schema": "cl-proof-map-v1",
+  "sources": {
+    "test::mixed_qualification::mixed_cases::compiled_option1_mixed_proceeds_and_external_deficit_preserve_reserved_fees": "prototypes/cl-option1-qualification/mixed-funding-tests.rs"
+  },
+  "proofs": [
+    {
+      "label": "option1_mixed_proceeds_external_deficit_and_reserved_fees",
+      "tests": ["test::mixed_qualification::mixed_cases::compiled_option1_mixed_proceeds_and_external_deficit_preserve_reserved_fees"],
+      "assertions": [
+        "Actual converted Closing retains positive debt-token proceeds; artificial elapsed interest makes current debt larger before any finish_close. One atomic root consumes own proceeds first, pulls the authorized external maximum and refunds exactly, reaches zero debt, seizes no nonexistent collateral and preserves historical reward claims.",
+        "Insufficient external maximum rejects after reaching the actual root with complete ledger/TTL rollback. A local Mainnet-network-ID clone rejects at the validation root before nested calls; no Mainnet transaction occurs.",
+        "Public margin funding, a nonzero TEST open fee and ninth actual activation create 500000 reserved cash pTokens owed to a free-margin provider. Existing fee entitlement records, public pending amount and physical controller pToken backing remain unchanged across recovery. Subsequent separate measured public distribution/claim delivers 500000 pTokens and a repeated claim returns zero.",
+        "Warm setup uses finite captured limits; post-root preview assertions use separate clones. Artificial 30-year timestamp with few ledger steps does not prove real archival, Core application, real account authorization or keeper economics. CL Short remains prohibited by existing route guards."
+      ],
+      "resource_flows": [
+        "option1_mixed_insufficient_max_rollback",
+        "option1_mixed_mainnet_validation_reject",
+        "option1_mixed_own_proceeds_external_full_repayment",
+        "option1_mixed_reserved_fee_distribution",
+        "option1_mixed_reserved_fee_claim",
+        "option1_mixed_reserved_fee_repeat_zero",
+        "option1_mixed_late_reward_quarantine"
+      ]
+    }
+  ]
+}
