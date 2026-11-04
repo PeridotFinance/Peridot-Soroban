@@ -1,0 +1,41 @@
+--- a/contracts/receipt-vault/src/contract.rs
++++ b/contracts/receipt-vault/src/contract.rs
+@@ -1781,8 +1781,10 @@
+         Self::ensure_not_in_flash_loan(&env);
+         user.require_auth();
+         Self::ensure_user_borrow_flag(&env, &user);
+-        // Always update interest first
+-        Self::update_interest(env.clone());
++        // The full initialization above already renewed core and global borrow
++        // TTLs in this invocation. Accrue from fresh state without repeating
++        // those same keepalive loops; all interest/model reads remain below.
++        Self::accrue_interest_after_keepalive(env.clone());
+         let current_ptokens = ptoken_balance(&env, &user);
+         // Rewards accrue and fail closed on error.
+         let total_ptokens_before = total_ptokens_supply(&env);
+@@ -2941,6 +2943,14 @@
+         }
+         bump_core_ttl(&env);
+         bump_borrow_state_ttl(&env);
++        Self::accrue_interest_after_keepalive(env);
++    }
++
++    // Private Rust helper, never an ABI entrypoint or a caller-supplied flag.
++    // Callers must already have run the full core/global borrow keepalive in
++    // this SAME invocation. Do not use this for later transactions or cache
++    // interest inputs here: accrual below always reads current state/model.
++    fn accrue_interest_after_keepalive(env: Env) {
+         let last_time: u64 = env
+             .storage()
+             .persistent()
+@@ -4009,7 +4019,9 @@
+     pub fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128) {
+         let token_address = ensure_initialized(&env);
+         Self::ensure_not_in_flash_loan(&env);
+-        Self::update_interest(env.clone());
++        // ensure_initialized just performed the same core/global borrow TTL
++        // maintenance that the public update_interest entrypoint performs.
++        Self::accrue_interest_after_keepalive(env.clone());
+         bump_rates_ready_ttl(&env);
+         let storage = env.storage().persistent();
+         let rates_ready = storage

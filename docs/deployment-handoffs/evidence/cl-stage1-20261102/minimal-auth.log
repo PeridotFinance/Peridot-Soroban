@@ -1,0 +1,38 @@
+warning: trait `Share` is never used
+  --> contracts/cl-share-pool-facade/src/lib.rs:26:7
+   |
+26 | trait Share {
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `paired` is never read
+   --> contracts/cl-share-pool-facade/src/test.rs:134:5
+    |
+129 | struct F {
+    |        - field in this struct
+...
+134 |     paired: Address,
+    |     ^^^^^^
+
+warning: `cl-share-pool-facade` (lib test) generated 2 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running unittests src/lib.rs (target/debug/deps/cl_share_pool_facade-353d546159467f04)
+
+running 1 test
+
+thread 'test::sdk_25_3_1_g_admin_mock_setup_regression' (999866) panicked at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-25.3.1/src/env.rs:987:14:
+called `Result::unwrap()` on an `Err` value: HostError: Error(Object, InvalidInput)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Object, InvalidInput)], data:"not a contract address"
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+REPRODUCED: fixed G-address fails in mock setup, not an authorization rejection
+SYNTHETIC_TEST_ADMIN=Contract(CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM)
+PASS: generated synthetic admin exact auth accepted; no-auth invocation rejected. No real account-signature proof.
+Writing test snapshot file for test "test::sdk_25_3_1_g_admin_mock_setup_regression" to "test_snapshots/test/sdk_25_3_1_g_admin_mock_setup_regression.2.json".
+Writing test snapshot file for test "test::sdk_25_3_1_g_admin_mock_setup_regression" to "test_snapshots/test/sdk_25_3_1_g_admin_mock_setup_regression.1.json".
+test test::sdk_25_3_1_g_admin_mock_setup_regression ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.01s

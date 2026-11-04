@@ -1,0 +1,284 @@
+{
+  "status": "STAGE1_INCOMPLETE_INTERNAL_POLICY_FAILED_DRAFT_NO_RELEASE",
+  "source_parent": "da4e1a598b7c652c79745836417d9943e561c6f2",
+  "preserved_checkpoints": [
+    "64093aa3c0f77ab510ebf110138195405bb0d430",
+    "14ef4d813b476a0c06bd9a9f9792834b29b3f03a",
+    "8f3e5fd66d4dc2d126c4a1fbd1419b872933e550"
+  ],
+  "pr": "https://github.com/PeridotFinance/Peridot-Soroban/pull/75",
+  "draft": true,
+  "safety": {
+    "borrowing_preparation_enabled": false,
+    "production_maintenance_margin": null,
+    "mainnet_transactions": 0,
+    "signing_broadcasting": false,
+    "keys_secrets_read": false,
+    "upshift_binding": false,
+    "validation_guards_preserved": true,
+    "release_approval": false,
+    "limits_changed": false,
+    "transaction_stages_changed": false,
+    "claim_first_boundaries": 3
+  },
+  "runtime": {
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.9.6",
+    "rust": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "stellar": "stellar 26.1.0 (1228cff8022b804659750b94b315932b0e0f3f6a)\nstellar-xdr 26.0.1 (b0436c147ec871e4f4e503e764f4c3944960d858)\nxdr curr (cff714a5ebaaaf2dac343b3546c2df73f0b7a36e)",
+    "node": "v26.4.0",
+    "runtime": "SDK/host29.0.1, all86CPU+86memory captured coefficients verified",
+    "protocol": 29,
+    "scope": "local controlled-state unsigned evidence",
+    "release_approval": false
+  },
+  "network_config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+  "proof_map_sha256": "71f56db3d1f12fe93cdcac8c151eb5335b13b1106ac679b97421d1914b850da1",
+  "required_proofs": 40,
+  "runner_exit": 1,
+  "checker_tests": {
+    "passed": 28,
+    "failed": 0
+  },
+  "native_margin_regression": {
+    "passed": 110,
+    "failed": 0,
+    "ignored": 2
+  },
+  "native_reward_tests": {
+    "passed": 53,
+    "failed": 0
+  },
+  "profiles": {
+    "internal-policy": {
+      "gates": {
+        "invocation": false,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "test_suites": {
+        "integrity": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        },
+        "harness": {
+          "passed": 3,
+          "failed": 27,
+          "ignored": 0
+        },
+        "archive": {
+          "passed": 0,
+          "failed": 3,
+          "ignored": 0
+        },
+        "history-scale-archive": {
+          "passed": 0,
+          "failed": 2,
+          "ignored": 0
+        },
+        "native-funded": {
+          "passed": 5,
+          "failed": 4,
+          "ignored": 0
+        }
+      },
+      "sdk_rows": 97,
+      "sdk_max": {
+        "instructions": 100003827,
+        "memory_bytes": 16847283,
+        "read_entries": 103,
+        "write_entries": 30,
+        "disk_read_entries": 3,
+        "read_bytes": 276,
+        "write_bytes": 4476,
+        "contract_events_size_bytes": 388,
+        "persistent_rent_ledger_bytes": 5072023212,
+        "persistent_entry_rent_bumps": 8,
+        "temporary_rent_ledger_bytes": 223948728,
+        "temporary_entry_rent_bumps": 1
+      },
+      "sdk_entries_max": 136,
+      "unsigned": {
+        "rows": 195,
+        "successful": 157,
+        "expected_rejections": 10,
+        "unexpected_failures": 28,
+        "restored_transactions": 0,
+        "max_resources": {
+          "instructions": 33366306,
+          "memory_bytes": 8084470,
+          "transaction_size_bytes": 8376,
+          "write_entries": 17,
+          "disk_read_entries": 1,
+          "disk_read_bytes": 92,
+          "write_bytes": 3656,
+          "contract_events_size_bytes": 884
+        },
+        "max_unique_footprint_entries": 86,
+        "max_fee_components_stroops": {
+          "inclusion": 100,
+          "non_refundable": 48448,
+          "refundable": 2159,
+          "rent": 4178104,
+          "total": 4227238
+        }
+      },
+      "history_restore_count": 0
+    },
+    "captured-network-diagnostic": {
+      "gates": {
+        "invocation": true,
+        "lifecycle": true,
+        "transaction": true,
+        "checkpoint": true
+      },
+      "test_suites": {
+        "integrity": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        },
+        "harness": {
+          "passed": 30,
+          "failed": 0,
+          "ignored": 0
+        },
+        "archive": {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        "history-scale-archive": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        },
+        "native-funded": {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0
+        }
+      },
+      "sdk_rows": 1490,
+      "sdk_max": {
+        "instructions": 235456785,
+        "memory_bytes": 24514601,
+        "read_entries": 157,
+        "write_entries": 56,
+        "disk_read_entries": 3,
+        "read_bytes": 276,
+        "write_bytes": 19236,
+        "contract_events_size_bytes": 6200,
+        "persistent_rent_ledger_bytes": 27786229536,
+        "persistent_entry_rent_bumps": 30,
+        "temporary_rent_ledger_bytes": 228372152,
+        "temporary_entry_rent_bumps": 2
+      },
+      "sdk_entries_max": 213,
+      "unsigned": {
+        "rows": 2562,
+        "successful": 2494,
+        "expected_rejections": 68,
+        "unexpected_failures": 0,
+        "restored_transactions": 733,
+        "max_resources": {
+          "instructions": 236693997,
+          "memory_bytes": 21678566,
+          "transaction_size_bytes": 15092,
+          "write_entries": 57,
+          "disk_read_entries": 12,
+          "disk_read_bytes": 2580,
+          "write_bytes": 19236,
+          "contract_events_size_bytes": 6204
+        },
+        "max_unique_footprint_entries": 158,
+        "max_fee_components_stroops": {
+          "inclusion": 100,
+          "non_refundable": 162160,
+          "refundable": 15147,
+          "rent": 22686852,
+          "total": 22845642
+        }
+      },
+      "history_restore_count": 436
+    }
+  },
+  "artifacts": {
+    "cl_integration_fixtures.wasm": {
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+      "bytes": 3168
+    },
+    "cl_share_vault.wasm": {
+      "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f",
+      "bytes": 85750
+    },
+    "cl_share_pool_facade.wasm": {
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5",
+      "bytes": 7298
+    },
+    "margin_controller.wasm": {
+      "sha256": "c4ec4c7964e1009ad50e44bf88089742cb411b868bc64c3e166396fd8e351ba5",
+      "bytes": 91655
+    },
+    "swap_adapter.wasm": {
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d",
+      "bytes": 10876
+    },
+    "receipt_vault.wasm": {
+      "sha256": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e",
+      "bytes": 87197
+    },
+    "simple_peridottroller.wasm": {
+      "sha256": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2",
+      "bytes": 63289
+    },
+    "jump_rate_model.wasm": {
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+      "bytes": 7644
+    }
+  },
+  "reserve_scope": "funded-liquidation-validation only; default/deployed controller integration remains a release dependency",
+  "history": {
+    "beneficiaries": 64,
+    "extra_ownership_changes": 128,
+    "initial_weight_checkpoints": 383,
+    "outages": 8,
+    "custody_positions": 8,
+    "custody_borrowers": 1,
+    "missing_boundaries": 16,
+    "governed_interval_units": 192192,
+    "governed_newcomer_units": 0,
+    "remaining_unresolved_intervals": 7,
+    "remaining_quarantine_units": 1076271,
+    "scaled_conservation": true,
+    "forced_waiver": false,
+    "historical_keys_unbounded_retention": true
+  },
+  "evidence": {
+    "directory": "docs/deployment-handoffs/evidence/cl-feasibility-history-reserve-20261102",
+    "archive_sha256": "d7edc70705e23ccd14fd841bf6471c2d8be2f29acb4f41d5517a3e268a53e612",
+    "archive_bytes": 1786760,
+    "summary_xz_sha256": "9b21e1e90671d5d9b59d158958aaf4252255a6c91e82b28b9e0a803bd8d923ac"
+  },
+  "preserved_final_linux_ci": {
+    "run": 41434868065,
+    "artifact_id": 13136354990,
+    "original_expiry": "2026-11-16T11:30:36Z",
+    "original_zip_sha256": "9b01db8227a07f0b8a4bc13dfbf9b043002df79f0c6de068d126e3dd74d87d03",
+    "durable_archive_sha256": "b61dc396f71d7d94b8647c7e45a4236aa0d9946576c6a3aabe45412297fcce2d",
+    "index": "docs/deployment-handoffs/evidence/cl-linux-ci-20261102/index.json",
+    "exact_profile_gate_and_error_replay_verified": true,
+    "separate_linux_wasm_hashes": true
+  },
+  "remaining": [
+    "Internal CPU/entry/write policy failures; architecture alternatives separate from any policy proposal",
+    "Default/deployed reserve/controller ABI integration and funding lifecycle",
+    "Live PYUSD/USDC/oracle/depeg/capacity validation",
+    "Real signatures and signed-envelope overhead",
+    "Broader historical state and retention/archival operational bounds; no automatic inference of missing boundaries",
+    "Final independent release approval; shared00 ordering requires coordinated reconciliation"
+  ]
+}

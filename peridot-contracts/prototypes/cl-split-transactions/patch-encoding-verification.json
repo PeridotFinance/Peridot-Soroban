@@ -1,0 +1,18 @@
+{
+  "schema": "cl-split-patch-encoding-equivalence-v1",
+  "executed_patch_sha256": "548860977bbfd73e86c82dedf1a51531d066fc370c525a05101ee5a185a604a6",
+  "current_patch_sha256": "b9b22bcb02505c07a74b358eacb9c4c6bdd94e1657a5932697856e47bca1260d",
+  "reason": "Remove blank context markers from patch-as-data so Git whitespace checks remain meaningful; no contract source change",
+  "all_overlay_outputs_identical_to_executed_build": true,
+  "overlay_outputs_sha256": {
+    "Cargo.toml": "7dc96d183df3db0f87726c261a3cb78e3d9e8957f2ca147d99cef2988b5609ce",
+    "contracts/cl-share-vault/src/contract.rs": "ca145641a389d0fe6f01267e0f4f4a542d082642c6daf6cbd3b9ec9b77050a37",
+    "contracts/cl-share-vault/src/pool.rs": "a82502330f5fdc55c374f48fb5a0d9d670b072ca34701c098c060044de96754f",
+    "contracts/margin-controller/src/lib.rs": "7ebb1270a6fbf4d513c45e9715f8552132aad5b6ab86d3b492be67b694d903cc",
+    "contracts/margin-controller/src/perps.rs": "bd3534c70b030ce2c6885690d895552b8450f24241dd74465efae71347c5fbf5",
+    "contracts/margin-controller/src/pending_recovery.rs": "9773bc8e710c0cc63551a4ff5f1f781cf04310934aa3d7267cd3ecaf948d7fbf",
+    "contracts/margin-controller/src/split_open.rs": "836f954ef5c4780941fba5fdb861fca269b8763f84c153bed87e071e368aa781",
+    "contracts/cl-split-escrow/Cargo.toml": "765671ae992fa18b52b6b57e6c6b1da0ea417bbc4c802ab721b876f5b11311e1",
+    "contracts/cl-split-escrow/src/lib.rs": "aa4759c31b61fd9dcc85067c079cc1902ef94f23c3a0bbf546affacab1b9d3e0"
+  }
+}

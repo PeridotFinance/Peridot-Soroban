@@ -1,0 +1,18 @@
+test_all_limits_and_evidence_fail_closed (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_checkpoint_gate_can_pass_complete_evidence_without_release_approval (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_complete_fee_formula_includes_return_history_bandwidth_and_per_entry_rent (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_complete_transaction_evidence_is_accepted_and_tampering_rejected (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_independent_invocation_gate_cannot_grant_checkpoint_or_release (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_internal_policy_caps_are_not_network_caps (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_missing_flows_never_pass (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_partial_fees_support_both_window_shapes_and_actual_runtime (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_profiles_keep_distinct_limits (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_proof_mapping_requires_completed_assertions_and_bound_source_log_report (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_rejected_mapping_cannot_reuse_another_case_success_or_another_test (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_rejected_transaction_requires_measured_error_costs_and_complete_rollback (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_tampering_config_and_profile_is_rejected (test_cl_resource_profiles.ResourceProfileTests) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.167s
+
+OK

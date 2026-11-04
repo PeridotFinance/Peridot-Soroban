@@ -1,0 +1,56 @@
+{
+  "schema": "cl-ci-artifact-verification-v1",
+  "run_id": 41484260698,
+  "original_zip_api_digest_verified": true,
+  "zip_member_crc_verified": true,
+  "all_tar_members_and_hashes_verified": true,
+  "proof_source_hashes_verified_against_commit": "bb154ec8f03889aabfdb8dd5ea120f22c46a47f5",
+  "proof_bound_log_hashes_verified": true,
+  "profile_gate_summaries_and_exact_error_lists_match_raw_logs": true,
+  "completed_test_outcomes_match_terminal_counts": true,
+  "wasm_identities_independently_hashed": {
+    "artifacts/cl_integration_fixtures.wasm": {
+      "bytes": 3168,
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f"
+    },
+    "artifacts/cl_share_vault.wasm": {
+      "bytes": 85747,
+      "sha256": "65e239b6ddb13a395e98ccfb8f04fa46c858b632c42943df78612efd9e13cb63"
+    },
+    "artifacts/cl_share_pool_facade.wasm": {
+      "bytes": 7298,
+      "sha256": "d3c10c9b2d6e29a66b3b3e2c9ad7077b1dcea7268d284e1da3e306548217a093"
+    },
+    "artifacts/jump_rate_model.wasm": {
+      "bytes": 7644,
+      "sha256": "1416b1f0bc441ddcda230d9e18759ffa0d3f24b7fe0b70172ca01bb3aaa3312a"
+    },
+    "artifacts/margin_controller.wasm": {
+      "bytes": 91657,
+      "sha256": "8d4d3ae0d645c2da44c6519385b038268258d9bfda1b1caeb68b4c80e8e789e4"
+    },
+    "artifacts/receipt_vault.wasm": {
+      "bytes": 87197,
+      "sha256": "510481f6ab76f8a7eac3f18cc7fb7ff1583e3c8a40d5f333f18e855ff2bf50dc"
+    },
+    "artifacts/simple_peridottroller.wasm": {
+      "bytes": 63289,
+      "sha256": "4d40bddeda038fa189b6d667861a4690b1a47cb6b8fdfb64eeff41ac8a63ce96"
+    },
+    "artifacts/swap_adapter.wasm": {
+      "bytes": 10876,
+      "sha256": "28816ff4592011626b7b77ae24bde23de1763c13d7e5f14ecc178c163b53ac82"
+    },
+    "default-artifacts/margin_controller.wasm": {
+      "bytes": 87123,
+      "sha256": "2e3db3a49bc7ddab576a1f2d9d72e2b938933f9d32daa31df421556173f28d6c"
+    },
+    "legacy-receipt/artifacts/receipt_vault_legacy_abi.wasm": {
+      "bytes": 80262,
+      "sha256": "8cb3797e21d280922f0fc7b8e5f111668951c8429675dbcc5c234c3e760bc439"
+    }
+  },
+  "full_offline_checker_replay_performed": false,
+  "contract_rerun_performed": false,
+  "release_approval": false
+}

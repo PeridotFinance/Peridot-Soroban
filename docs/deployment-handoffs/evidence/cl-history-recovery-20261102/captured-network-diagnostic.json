@@ -1,0 +1,24 @@
+{
+  "schema": "cl-resource-profile-v1",
+  "name": "captured-network-diagnostic",
+  "mode": "acceptance",
+  "network_config_path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/network-config.json",
+  "network_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+  "captured_ledger": 65264920,
+  "target_protocol": 29,
+  "limits": {
+    "instructions": 400000000,
+    "mem_bytes": 41943040,
+    "disk_read_entries": 200,
+    "write_entries": 200,
+    "ledger_entries": 400,
+    "disk_read_bytes": 200000,
+    "write_bytes": 132096,
+    "contract_events_size_bytes": 16384,
+    "max_contract_data_key_size_bytes": 250,
+    "max_contract_data_entry_size_bytes": 65536,
+    "max_contract_code_entry_size_bytes": 131072,
+    "transaction_size_bytes": 132096
+  },
+  "release_approval": false
+}

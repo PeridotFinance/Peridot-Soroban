@@ -1,0 +1,457 @@
+--- a/contracts/receipt-vault/src/contract.rs
++++ b/contracts/receipt-vault/src/contract.rs
+@@ -114,6 +114,7 @@
+     }
+ 
+     fn cached_boosted_underlying(env: &Env) -> u128 {
++        bump_operation_ttl(env, &[DataKey::BoostedUnderlyingCached]);
+         env.storage()
+             .persistent()
+             .get(&DataKey::BoostedUnderlyingCached)
+@@ -157,6 +158,7 @@
+     }
+ 
+     fn estimate_boosted_underlying_from_accounting(env: &Env) -> u128 {
++        bump_operation_ttl(env, &[DataKey::TotalDeposited, DataKey::TotalReserves, DataKey::TotalAdminFees, DataKey::TotalBorrowed]);
+         let storage = env.storage().persistent();
+         let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
+         let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
+@@ -238,6 +240,7 @@
+         let boosted_key = DataKey::BoostedVault;
+         if let Some(boosted) = env.storage().persistent().get::<_, Address>(&boosted_key) {
+             bump_boosted_vault_ttl(env);
++            bump_operation_ttl(env, &[DataKey::BoostedUnderlyingCached, DataKey::BoostedUnderlyingUpdatedAt]);
+             let shares_i =
+                 token::TokenClient::new(env, &boosted).balance(&env.current_contract_address());
+             if shares_i > 0 {
+@@ -396,6 +399,7 @@
+             if total_underlying > 0 {
+                 panic!("non-empty vault at zero supply");
+             }
++            bump_operation_ttl(env, &[DataKey::InitialExchangeRate]);
+             return env
+                 .storage()
+                 .persistent()
+@@ -422,6 +426,7 @@
+     }
+ 
+     fn derive_managed_cash(env: &Env) -> u128 {
++        bump_operation_ttl(env, &[DataKey::TotalDeposited, DataKey::TotalReserves, DataKey::TotalAdminFees, DataKey::TotalBorrowed]);
+         let storage = env.storage().persistent();
+         let total_deposited: u128 = storage.get(&DataKey::TotalDeposited).unwrap_or(0u128);
+         let total_reserves: u128 = storage.get(&DataKey::TotalReserves).unwrap_or(0u128);
+@@ -980,6 +985,7 @@
+     }
+ 
+     fn get_managed_cash(env: &Env) -> u128 {
++        bump_operation_ttl(env, &[DataKey::ManagedCash]);
+         if let Some(cash) = env.storage().persistent().get(&DataKey::ManagedCash) {
+             cash
+         } else {
+@@ -1557,7 +1563,7 @@
+ 
+     pub fn cl_assign_margin_rewards(env: Env, owner: Address, amount_underlying: u128) {
+         if !Self::cl_custody(&env) { return; }
+-        let token = ensure_initialized(&env);
++        let token = ensure_initialized_for_operation(&env, &[DataKey::MarginController]);
+         Self::require_margin_controller_auth(&env);
+         let _: () = call_contract_or_panic(&env,&token,"custody_assign",
+             (env.current_contract_address(),owner,amount_underlying));
+@@ -1565,7 +1571,7 @@
+ 
+     pub fn cl_prepare_margin_rewards(env: Env, owner: Address, ptokens: u128, recovery: bool) {
+         if !Self::cl_custody(&env) { return; }
+-        ensure_initialized(&env);
++        ensure_initialized_for_operation(&env, &[DataKey::MarginController]);
+         let controller = Self::require_margin_controller_auth(&env);
+         if let Some(previous) = env.storage().instance().get::<_, ClCustodyContext>(&DataKey::ClCustodyContext) {
+             assert!(previous.ledger < env.ledger().sequence(), "custody context pending");
+@@ -1576,7 +1582,7 @@
+ 
+     pub fn cl_reassign_margin_rewards(env: Env, owner: Address, newowner: Address, ptokens: u128, recovery: bool) {
+         if !Self::cl_custody(&env) { return; }
+-        ensure_initialized(&env);
++        ensure_initialized_for_operation(&env, &[DataKey::MarginController]);
+         Self::require_margin_controller_auth(&env);
+         if let Some(previous) = env.storage().instance().get::<_, ClCustodyContext>(&DataKey::ClCustodyContext) {
+             assert!(previous.ledger < env.ledger().sequence(), "custody context pending");
+@@ -1607,7 +1613,7 @@
+     }
+ 
+     pub fn get_min_cash_reserve_bps(env: Env) -> Option<u32> {
+-        ensure_initialized(&env);
++        ensure_initialized_for_operation(&env, &[]);
+         Self::minimum_cash_reserve_bps(&env)
+     }
+ 
+@@ -1621,19 +1627,19 @@
+     }
+ 
+     pub fn get_cash_borrowing_enabled(env: Env) -> bool {
+-        ensure_initialized(&env);
++        ensure_initialized_for_operation(&env, &[]);
+         env.storage().instance().get(&DataKey::CashBorrowingEnabled).unwrap_or(false)
+     }
+ 
+     pub fn get_borrowable_cash(env: Env) -> u128 {
+-        let token = ensure_initialized(&env);
++        let token = ensure_initialized_for_operation(&env, &[DataKey::TotalReserves, DataKey::TotalAdminFees]);
+         Self::unencumbered_cash(&env, &token).saturating_sub(Self::borrowing_reserve(&env))
+     }
+ 
+     /// V3 checks the floor again after the complete open and all cash costs.
+     /// Legacy markets without the optional policy retain their existing behavior.
+     pub fn assert_borrowing_reserve(env: Env) {
+-        let token = ensure_initialized(&env);
++        let token = ensure_initialized_for_operation(&env, &[DataKey::TotalReserves, DataKey::TotalAdminFees]);
+         if Self::minimum_cash_reserve_bps(&env).is_some() {
+             assert!(Self::unencumbered_cash(&env, &token) >= Self::borrowing_reserve(&env),
+                 "minimum borrowing reserve");
+@@ -1642,7 +1648,7 @@
+ 
+     /// Deposit tokens into the vault and receive pTokens
+     pub fn deposit(env: Env, user: Address, amount: u128) {
+-        let token_address = ensure_initialized(&env);
++        let token_address = ensure_initialized_for_operation(&env, &[DataKey::Peridottroller, DataKey::MarginController, DataKey::FlashLoanActive, DataKey::SupplyCap, DataKey::TotalDeposited, DataKey::InitialExchangeRate, DataKey::ManagedCash]);
+         Self::ensure_not_in_flash_loan(&env);
+         // Always update interest first
+         Self::update_interest(env.clone());
+@@ -1777,13 +1783,11 @@
+     }
+ 
+     fn withdraw_with_cash_policy(env: Env, user: Address, ptoken_amount: u128, managed_only: bool) {
+-        let token_address = ensure_initialized(&env);
++        let token_address = ensure_initialized_for_operation(&env, &[DataKey::Peridottroller, DataKey::MarginController, DataKey::FlashLoanActive, DataKey::TotalDeposited, DataKey::ManagedCash, DataKey::BorrowCap, DataKey::CollateralFactorScaled]);
+         Self::ensure_not_in_flash_loan(&env);
+         user.require_auth();
+         Self::ensure_user_borrow_flag(&env, &user);
+-        // The full initialization above already renewed core and global borrow
+-        // TTLs in this invocation. Accrue from fresh state without repeating
+-        // those same keepalive loops; all interest/model reads remain below.
++        // Accrue fresh state with operation-scoped interest keepalive.
+         Self::accrue_interest_after_keepalive(env.clone());
+         let current_ptokens = ptoken_balance(&env, &user);
+         // Rewards accrue and fail closed on error.
+@@ -2014,7 +2018,7 @@
+ 
+     /// Get user's balance in the vault in underlying terms (pTokens × exchange rate)
+     pub fn get_user_balance(env: Env, user: Address) -> u128 {
+-        let _ = ensure_initialized(&env);
++        let _ = ensure_initialized_for_operation(&env, &[]);
+         let pbal = Self::read_ptoken_balance_with_borrow_ttl(&env, &user);
+         if pbal == 0 {
+             return 0u128;
+@@ -2025,7 +2029,7 @@
+ 
+     /// Get user's pToken balance
+     pub fn get_ptoken_balance(env: Env, user: Address) -> u128 {
+-        let _ = ensure_initialized(&env);
++        let _ = ensure_initialized_for_operation(&env, &[]);
+         Self::read_ptoken_balance_with_borrow_ttl(&env, &user)
+     }
+ 
+@@ -2088,7 +2092,7 @@
+     }
+ 
+     pub fn balance(env: Env, account: Address) -> i128 {
+-        let _ = ensure_initialized(&env);
++        let _ = ensure_initialized_for_operation(&env, &[]);
+         let balance = TokenBase::balance(&env, &account);
+         if balance > 0 {
+             Self::sync_user_borrow_state_for_ptoken_read(&env, &account, balance as u128);
+@@ -2124,7 +2128,7 @@
+         spender: Option<Address>,
+     ) {
+         let to_address = to.address();
+-        let token_address = ensure_initialized(&env);
++        let token_address = ensure_initialized_for_operation(&env, &[DataKey::Peridottroller, DataKey::MarginController, DataKey::FlashLoanActive]);
+         Self::ensure_not_in_flash_loan(&env);
+         if amount == 0 {
+             return;
+@@ -2215,6 +2219,7 @@
+                 let remaining_ptokens = current_ptokens - amount;
+                 let remaining_underlying =
+                     (remaining_ptokens.saturating_mul(current_rate)) / SCALE_1E6;
++                bump_operation_ttl(&env, &[DataKey::CollateralFactorScaled]);
+                 let local_cf: u128 = env
+                     .storage()
+                     .persistent()
+@@ -2437,6 +2442,7 @@
+             if total_underlying > 0 {
+                 panic!("non-empty vault at zero supply");
+             }
++            bump_operation_ttl(env, &[DataKey::InitialExchangeRate]);
+             return env
+                 .storage()
+                 .persistent()
+@@ -2456,7 +2462,7 @@
+ 
+     /// Get the underlying token address
+     pub fn get_underlying_token(env: Env) -> Address {
+-        let _ = ensure_initialized(&env);
++        let _ = ensure_initialized_for_operation(&env, &[]);
+         env.storage()
+             .persistent()
+             .get(&DataKey::UnderlyingToken)
+@@ -2478,7 +2484,7 @@
+ 
+     /// Get collateral factor (scaled 1e6)
+     pub fn get_collateral_factor(env: Env) -> u128 {
+-        let _ = ensure_initialized(&env);
++        let _ = ensure_initialized_for_operation(&env, &[DataKey::CollateralFactorScaled]);
+         env.storage()
+             .persistent()
+             .get(&DataKey::CollateralFactorScaled)
+@@ -2624,7 +2630,7 @@
+         recipient: Address,
+         max_ptokens: u128,
+     ) {
+-        let _ = ensure_initialized(&env);
++        let _ = ensure_initialized_for_operation(&env, &[DataKey::MarginController]);
+         let configured: Address = env
+             .storage()
+             .persistent()
+@@ -2941,16 +2947,19 @@
+         {
+             return;
+         }
+-        bump_core_ttl(&env);
+-        bump_borrow_state_ttl(&env);
+         Self::accrue_interest_after_keepalive(env);
+     }
+ 
+-    // Private Rust helper, never an ABI entrypoint or a caller-supplied flag.
+-    // Callers must already have run the full core/global borrow keepalive in
+-    // this SAME invocation. Do not use this for later transactions or cache
+-    // interest inputs here: accrual below always reads current state/model.
++    // Private helper, never an ABI flag. The helper itself maintains the exact
++    // interest inputs, so both direct callers and public update_interest get
++    // identical fresh accrual/TTL semantics. No same-ledger early return/cache.
+     fn accrue_interest_after_keepalive(env: Env) {
++        bump_operation_ttl(&env, &[
++            DataKey::UnderlyingToken, DataKey::LastUpdateTime,
++            DataKey::TotalBorrowed, DataKey::BorrowIndex,
++            DataKey::TotalReserves, DataKey::TotalAdminFees,
++            DataKey::InterestModel, DataKey::BorrowYearlyRateScaled,
++        ]);
+         let last_time: u64 = env
+             .storage()
+             .persistent()
+@@ -3002,6 +3011,7 @@
+             // Dynamic rate queries use gross live cash. Cap boosted cash only
+             // when the external/accounting report is implausibly above its
+             // internal baseline.
++            bump_operation_ttl(&env, &[DataKey::BoostedUnderlyingUpdatedAt]);
+             let cached_before = Self::cached_boosted_underlying(&env);
+             let updated_at: u64 = env
+                 .storage()
+@@ -3056,6 +3066,7 @@
+             panic!("interest rate out of bounds");
+         }
+         if tb_prior > 0 {
++            bump_operation_ttl(&env, &[DataKey::ReserveFactorScaled, DataKey::AdminFeeScaled]);
+             let borrow_interest_total = if elapsed == 0 || borrow_yearly_rate_scaled == 0 {
+                 0u128
+             } else {
+@@ -3358,7 +3369,7 @@
+ 
+     /// Get user's current borrow balance (principal adjusted by index)
+     pub fn get_user_borrow_balance(env: Env, user: Address) -> u128 {
+-        let _ = ensure_initialized(&env);
++        let _ = ensure_initialized_for_operation(&env, &[]);
+         Self::get_user_borrow_balance_internal(&env, &user, None)
+     }
+ 
+@@ -3410,7 +3421,7 @@
+ 
+     /// Get current borrow balance for a margin position namespace.
+     pub fn get_margin_borrow_balance(env: Env, position_id: u64) -> u128 {
+-        let _ = ensure_initialized(&env);
++        let _ = ensure_initialized_for_operation(&env, &[]);
+         let persistent = env.storage().persistent();
+         let has_borrowed: Option<bool> = persistent.get(&DataKey::MarginHasBorrowed(position_id));
+         bump_margin_borrow_live_ttl(&env, position_id);
+@@ -3433,6 +3444,7 @@
+         if snapshot.interest_index == 0 {
+             panic!("invalid margin borrower index");
+         }
++        bump_borrow_index_ttl(&env);
+         let current_index: u128 = persistent
+             .get(&DataKey::BorrowIndex)
+             .expect("borrow index missing");
+@@ -3780,7 +3792,7 @@
+     }
+ 
+     fn borrow_with_cash_policy(env: Env, user: Address, amount: u128, managed_only: bool) {
+-        let token_address = ensure_initialized(&env);
++        let token_address = ensure_initialized_for_operation(&env, &[DataKey::Peridottroller, DataKey::MarginController, DataKey::FlashLoanActive, DataKey::BorrowCap, DataKey::CollateralFactorScaled, DataKey::ManagedCash]);
+         Self::ensure_not_in_flash_loan(&env);
+         Self::ensure_user_borrow_flag(&env, &user);
+         Self::update_interest(env.clone());
+@@ -3884,6 +3896,7 @@
+             .get(&DataKey::BorrowCap)
+             .unwrap_or(0u128);
+         if bcap > 0 {
++            bump_operation_ttl(&env, &[DataKey::TotalBorrowPrincipal]);
+             let principal_total: u128 = env
+                 .storage()
+                 .persistent()
+@@ -3933,6 +3946,7 @@
+         );
+ 
+         if bcap > 0 {
++            bump_operation_ttl(&env, &[DataKey::TotalBorrowPrincipal]);
+             let total_principal_before: u128 = env
+                 .storage()
+                 .persistent()
+@@ -4017,10 +4031,9 @@
+     /// Borrow into a margin position namespace.
+     /// Callable only by the configured margin controller.
+     pub fn borrow_for_margin(env: Env, position_id: u64, receiver: Address, amount: u128) {
+-        let token_address = ensure_initialized(&env);
++        let token_address = ensure_initialized_for_operation(&env, &[DataKey::Peridottroller, DataKey::MarginController, DataKey::FlashLoanActive, DataKey::BorrowCap, DataKey::ManagedCash]);
+         Self::ensure_not_in_flash_loan(&env);
+-        // ensure_initialized just performed the same core/global borrow TTL
+-        // maintenance that the public update_interest entrypoint performs.
++        // Same fresh interest helper as the public update_interest endpoint.
+         Self::accrue_interest_after_keepalive(env.clone());
+         bump_rates_ready_ttl(&env);
+         let storage = env.storage().persistent();
+@@ -4070,6 +4083,7 @@
+             .get(&DataKey::BorrowCap)
+             .unwrap_or(0u128);
+         if bcap > 0 {
++            bump_operation_ttl(&env, &[DataKey::TotalBorrowPrincipal]);
+             let principal_total: u128 = env
+                 .storage()
+                 .persistent()
+@@ -4109,6 +4123,7 @@
+         );
+ 
+         if bcap > 0 {
++            bump_operation_ttl(&env, &[DataKey::TotalBorrowPrincipal]);
+             let total_principal_before: u128 = env
+                 .storage()
+                 .persistent()
+@@ -4156,7 +4171,7 @@
+ 
+     /// Repay borrowed tokens
+     pub fn repay(env: Env, user: Address, amount: u128) {
+-        let token_address = ensure_initialized(&env);
++        let token_address = ensure_initialized_for_operation(&env, &[DataKey::Peridottroller, DataKey::FlashLoanActive, DataKey::BorrowCap, DataKey::ManagedCash]);
+         Self::ensure_not_in_flash_loan(&env);
+         Self::ensure_user_borrow_flag(&env, &user);
+         // Compute a deterministic repay cap from pre-accrual state so auth entries
+@@ -4229,6 +4244,7 @@
+             .get(&DataKey::BorrowCap)
+             .unwrap_or(0u128);
+         if bcap > 0 {
++            bump_operation_ttl(&env, &[DataKey::TotalBorrowPrincipal]);
+             let total_principal_before: u128 = env
+                 .storage()
+                 .persistent()
+@@ -4275,7 +4291,7 @@
+     /// units behind. `repay_max` recomputes the debt after accrual and pays
+     /// exactly that, leaving the borrow at zero.
+     pub fn repay_max(env: Env, user: Address) {
+-        let _ = ensure_initialized(&env);
++        let _ = ensure_initialized_for_operation(&env, &[DataKey::FlashLoanActive]);
+         Self::ensure_not_in_flash_loan(&env);
+         Self::ensure_user_borrow_flag(&env, &user);
+         Self::update_interest(env.clone());
+@@ -4289,7 +4305,7 @@
+     /// Repay debt tracked in a margin position namespace.
+     /// Callable only by the configured margin controller.
+     pub fn repay_for_margin(env: Env, position_id: u64, payer: Address, amount: u128) {
+-        let token_address = ensure_initialized(&env);
++        let token_address = ensure_initialized_for_operation(&env, &[DataKey::MarginController, DataKey::FlashLoanActive, DataKey::BorrowCap, DataKey::ManagedCash]);
+         Self::ensure_not_in_flash_loan(&env);
+         let _margin_controller = Self::require_margin_controller_auth(&env);
+         // payer.require_auth() (later in this fn) is the real authorization gate.
+@@ -4345,6 +4361,7 @@
+             .get(&DataKey::BorrowCap)
+             .unwrap_or(0u128);
+         if bcap > 0 {
++            bump_operation_ttl(&env, &[DataKey::TotalBorrowPrincipal]);
+             let total_principal_before: u128 = env
+                 .storage()
+                 .persistent()
+@@ -4384,7 +4401,7 @@
+         payer: Address,
+         max_amount: u128,
+     ) -> u128 {
+-        let token_address = ensure_initialized(&env);
++        let token_address = ensure_initialized_for_operation(&env, &[DataKey::MarginController, DataKey::FlashLoanActive, DataKey::BorrowCap, DataKey::ManagedCash]);
+         Self::ensure_not_in_flash_loan(&env);
+         let _margin_controller = Self::require_margin_controller_auth(&env);
+         Self::ensure_margin_position_borrow_flag(&env, position_id);
+@@ -4432,6 +4449,7 @@
+             .get(&DataKey::BorrowCap)
+             .unwrap_or(0u128);
+         if bcap > 0 {
++            bump_operation_ttl(&env, &[DataKey::TotalBorrowPrincipal]);
+             let total_principal_before: u128 = env
+                 .storage()
+                 .persistent()
+--- a/contracts/receipt-vault/src/storage.rs
++++ b/contracts/receipt-vault/src/storage.rs
+@@ -125,6 +125,24 @@
+     pub expires_at: u64,
+ }
+ 
++/// Operation-scoped keepalive. No schema migration or changed defaults: only
++/// keys consumed by this path are renewed; unrelated governance/rate history is
++/// no longer restored merely because a position is repaid or transferred.
++pub fn bump_operation_ttl(env: &Env, keys: &[DataKey]) {
++    let persistent = env.storage().persistent();
++    for key in keys {
++        if persistent.has(key) {
++            persistent.extend_ttl(key, TTL_THRESHOLD, TTL_EXTEND_TO);
++        }
++    }
++}
++
++pub fn ensure_initialized_for_operation(env: &Env, keys: &[DataKey]) -> Address {
++    let token = ensure_initialized_for_snapshot(env);
++    bump_operation_ttl(env, keys);
++    token
++}
++
+ pub fn ensure_initialized(env: &Env) -> Address {
+     bump_core_ttl(env);
+     bump_borrow_state_ttl(env);
+--- a/contracts/simple-peridottroller/src/contract.rs
++++ b/contracts/simple-peridottroller/src/contract.rs
+@@ -3542,7 +3542,7 @@
+ 
+     // Public helper to pre-warm the price cache (intended for UI/keepers).
+     pub fn cache_price(env: Env, token: Address) -> Option<(u128, u128)> {
+-        bump_core_ttl(&env);
++        storage::bump_price_read_ttl(&env);
+         if !env
+             .storage()
+             .persistent()
+--- a/contracts/simple-peridottroller/src/storage.rs
++++ b/contracts/simple-peridottroller/src/storage.rs
+@@ -118,6 +118,21 @@
+ const TTL_EXTEND_TO: u32 = 1_000_000;
+ const MAX_DECIMALS: u32 = 38;
+ 
++/// Fresh price reads do not consume governance defaults or the market registry.
++/// Per-token support, symbol and cache keys are maintained by their existing
++/// dedicated helpers inside cache_price. All validation/call paths are retained.
++pub fn bump_price_read_ttl(env: &Env) {
++    let persistent = env.storage().persistent();
++    for key in [DataKey::Oracle, DataKey::OracleMaxAgeMultiplier] {
++        if persistent.has(&key) {
++            persistent.extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
++        }
++    }
++    if env.storage().instance().has(&DataKey::Initialized) {
++        env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
++    }
++}
++
+ pub fn bump_core_ttl(env: &Env) {
+     let persistent = env.storage().persistent();
+     if persistent.has(&DataKey::Admin) {

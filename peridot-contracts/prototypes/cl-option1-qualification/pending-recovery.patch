@@ -1,0 +1,214 @@
+--- a/contracts/margin-controller/src/contract.rs
++++ b/contracts/margin-controller/src/contract.rs
+@@ -1256,3 +1256,29 @@
+         Self::liquidate_funded_v3_impl(&env, liquidator, position_id, max_repay, min_seize_ptokens)
+     }
+ }
++
++// Isolated Option1 research only: no production adoption or Mainnet route.
++#[cfg(feature = "funded-liquidation-validation")]
++#[contractimpl]
++impl MarginController {
++    /// Unadopted design: expired swapped pending positions may be settled by an
++    /// independent payer at current value with ZERO incentive. No activation.
++    pub fn recover_expired_pending_funded(
++        env: Env,
++        payer: Address,
++        position_id: u64,
++        max_repay: u128,
++        min_seize_underlying: u128,
++    ) -> (u128, u128) {
++        crate::funded_liquidation::require_validation_network(&env);
++        bump_instance_ttl(&env);
++        payer.require_auth();
++        Self::recover_expired_pending_funded_impl(
++            &env,
++            payer,
++            position_id,
++            max_repay,
++            min_seize_underlying,
++        )
++    }
++}
+--- a/contracts/margin-controller/src/pending_recovery.rs
++++ b/contracts/margin-controller/src/pending_recovery.rs
+@@ -88,3 +88,179 @@
+         paid
+     }
+ }
++
++#[cfg(feature = "funded-liquidation-validation")]
++#[soroban_sdk::contractevent(topics = ["pending_funded_recovery"])]
++#[derive(Clone, Debug, Eq, PartialEq)]
++struct ExpiredPendingFundedRecovery {
++    #[topic]
++    position_id: u64,
++    #[topic]
++    payer: Address,
++    owner: Address,
++    repaid: u128,
++    seized_underlying: u128,
++    returned_underlying: u128,
++}
++
++// Validation-only overlay. This does not change the existing owner-funded route.
++#[cfg(feature = "funded-liquidation-validation")]
++impl MarginController {
++    pub(crate) fn recover_expired_pending_funded_impl(
++        env: &Env,
++        payer: Address,
++        position_id: u64,
++        max_repay: u128,
++        min_seize_underlying: u128,
++    ) -> (u128, u128) {
++        use soroban_sdk::token;
++        assert!(
++            max_repay > 0 && min_seize_underlying > 0,
++            "invalid recovery bounds"
++        );
++        let position = get_position_record_or_panic(env, position_id);
++        assert!(
++            position.status == PositionStatus::PendingOpen,
++            "not pending open"
++        );
++        assert!(
++            get_position_mode(env, position_id) == PositionMode::PerpsV3,
++            "not v3"
++        );
++        assert!(payer != position.owner, "use owner recovery");
++        let pending = get_pending_perps_open_position_or_panic(env, position_id);
++        let execution = get_pending_perps_open_execution_or_panic(env, position_id);
++        assert!(pending.owner == position.owner, "pending owner mismatch");
++        assert!(
++            env.ledger().timestamp() > pending.expires_at,
++            "pending open live"
++        );
++        assert!(
++            execution.position_amount > 0 && execution.margin_received > 0,
++            "pending execution missing"
++        );
++        assert!(
++            position.collateral_ptokens == 0,
++            "pending collateral already deposited"
++        );
++        let vaults = get_position_vaults(env, position_id, &position);
++        assert!(
++            vaults.collateral_vault == pending.margin_vault
++                && vaults.debt_vault == pending.debt_vault
++                && vaults.position_vault == pending.position_vault,
++            "pending vault mismatch"
++        );
++        let (debt_asset, collateral_asset) = match pending.side {
++            PositionSide::Long => (&pending.margin_asset, &pending.base_asset),
++            PositionSide::Short => (&pending.base_asset, &pending.margin_asset),
++        };
++        assert!(
++            position.debt_asset == *debt_asset && position.collateral_asset == *collateral_asset,
++            "pending asset mismatch"
++        );
++        Self::assert_margin_lock_configured(env, &vaults.debt_vault);
++        Self::assert_margin_lock_configured(env, &vaults.position_vault);
++        let policy = get_peridottroller(env);
++        // Preserve the existing explicit liquidation pause. Borrowing pause,
++        // reserve headroom, pool routing and successful activation are not gates.
++        assert!(
++            !policy.is_liquidation_paused(&vaults.debt_vault)
++                && !policy.is_liquidation_paused(&vaults.position_vault),
++            "liquidation paused"
++        );
++        let debt_vault = ReceiptVaultClient::new(env, &vaults.debt_vault);
++        debt_vault.update_interest();
++        let debt = debt_vault.get_margin_borrow_balance(&position_id);
++        assert!(debt > 0 && debt <= max_repay, "invalid repay maximum");
++        let debt_price = refresh_price_usd(env, &position.debt_asset);
++        let collateral_price = refresh_price_usd(env, &position.collateral_asset);
++        // Unadopted timeout-recovery policy: no bonus even if unhealthy. Full
++        // principal+interest repayment can justify at most its fresh value.
++        // Rounding always favors the borrower; a payer can refuse via min_seize.
++        let debt_value =
++            debt.checked_mul(debt_price.0).expect("debt value overflow") / debt_price.1;
++        assert!(debt_value > 0, "zero debt value");
++        let seize = (debt_value
++            .checked_mul(collateral_price.1)
++            .expect("seizure overflow")
++            / collateral_price.0)
++            .min(execution.position_amount);
++        assert!(seize >= min_seize_underlying, "seizure below minimum");
++        let returned = execution.position_amount - seize;
++        let controller = env.current_contract_address();
++        let collateral = token::Client::new(env, &position.collateral_asset);
++        let controller_before = collateral.balance(&controller);
++        assert!(
++            controller_before >= 0 && controller_before as u128 >= execution.position_amount,
++            "position collateral missing"
++        );
++        let paid = debt_vault.repay_full_for_margin(&position_id, &payer, &max_repay);
++        assert!(
++            paid == debt && debt_vault.get_margin_borrow_balance(&position_id) == 0,
++            "debt remains"
++        );
++        // Full repayment precedes recovery-mode claim-first custody changes.
++        // Neither transfer requests a waiver; failed claims retain quarantine.
++        for (recipient, amount) in [(payer.clone(), seize), (position.owner.clone(), returned)] {
++            if amount == 0 {
++                continue;
++            }
++            Self::cl_prepare(
++                env,
++                &position.collateral_asset,
++                &position.owner,
++                &recipient,
++                amount,
++                true,
++            );
++            let before = collateral.balance(&recipient);
++            let signed: i128 = amount.try_into().expect("transfer overflow");
++            Self::authorize_controller_subcall(
++                env,
++                &position.collateral_asset,
++                "transfer",
++                (controller.clone(), recipient.clone(), signed).into_val(env),
++            );
++            collateral.transfer(&controller, &recipient, &signed);
++            assert!(
++                collateral.balance(&recipient).checked_sub(before) == Some(signed),
++                "collateral transfer shortfall"
++            );
++        }
++        let moved: i128 = execution
++            .position_amount
++            .try_into()
++            .expect("amount overflow");
++        assert!(
++            controller_before.checked_sub(collateral.balance(&controller)) == Some(moved),
++            "position collateral accounting mismatch"
++        );
++        let fee_refund = get_fee_terms(env, position_id)
++            .map(|f| f.open_fee_ptokens)
++            .unwrap_or(0);
++        if fee_refund > 0 {
++            accrue_user_fee(env, &position.owner, &pending.margin_vault);
++            let free = get_margin_balance_ptokens(env, &position.owner, &pending.margin_vault);
++            set_margin_balance_ptokens(
++                env,
++                &position.owner,
++                &pending.margin_vault,
++                free.checked_add(fee_refund).expect("refund overflow"),
++            );
++            update_total_margin_ptokens(env, &pending.margin_vault, fee_refund, true);
++        }
++        // No synthetic maintenance margin is introduced by this timeout route.
++        ExpiredPendingFundedRecovery {
++            position_id,
++            payer,
++            owner: position.owner.clone(),
++            repaid: paid,
++            seized_underlying: seize,
++            returned_underlying: returned,
++        }
++        .publish(env);
++        clear_perps_v3_position_storage(env, position_id);
++        remove_user_position(env, &position.owner, position_id);
++        (paid, seize)
++    }
++}

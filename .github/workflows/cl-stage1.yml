@@ -1,0 +1,85 @@
+name: CL Stage 1 evidence
+on:
+  pull_request:
+    paths:
+      - 'peridot-contracts/**'
+      - 'openzeppelin-stellar-contracts'
+      - 'docs/deployment-handoffs/**'
+      - '.github/workflows/cl-stage1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cl-stage1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  checker-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install pinned unsigned XDR decoder dependencies
+        run: npm ci --prefix bots/margin-liquidator --ignore-scripts
+        working-directory: peridot-contracts
+      - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p 'test_cl*py' -v
+        working-directory: peridot-contracts
+  checkpoint-gates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+          # Offline ABI-negative fixture extracts exact historical receipt source.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install pinned Rust and Stellar build CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p peridot-contracts/target/cl-ci-bootstrap
+          {
+          rustup toolchain install 1.96.0 --profile minimal --target wasm32v1-none
+          rustup default 1.96.0
+          curl -fsSL --retry 3 https://github.com/stellar/stellar-cli/releases/download/v26.1.0/stellar-cli-26.1.0-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/stellar.tar.gz"
+          echo "e18d5a7629102e1ccc07241acbcbebfc05b1c02476ce7d3204ba2d7418be5c0c  $RUNNER_TEMP/stellar.tar.gz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/stellar-cli"
+          tar -xzf "$RUNNER_TEMP/stellar.tar.gz" -C "$RUNNER_TEMP/stellar-cli"
+          stellar_binary="$(python3 -c 'import pathlib,sys; files=[p for p in pathlib.Path(sys.argv[1]).rglob("stellar") if p.is_file()]; assert len(files)==1, files; print(files[0])' "$RUNNER_TEMP/stellar-cli")"
+          test -x "$stellar_binary"
+          dirname "$stellar_binary" >> "$GITHUB_PATH"
+          } 2>&1 | tee peridot-contracts/target/cl-ci-bootstrap/install.log
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Fetch hash-pinned public Aquarius bytecode
+        working-directory: peridot-contracts
+        run: |
+          npm ci --prefix bots/margin-liquidator --ignore-scripts
+          node scripts/fetch_cl_pool_fixture.cjs
+      - name: Execute both profiles and every required gate
+        working-directory: peridot-contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CL_CAPTURED_CONFIG="$PWD/../docs/deployment-handoffs/evidence/cl-resource-reconciliation-20261102/network-config.json"
+          export AQUARIUS_CONCENTRATED_WASM="$PWD/target/cl-share-checkpoint/aquarius-pool.wasm"
+          export CL_CHECKPOINT_DIR="$PWD/target/cl-ci-checkpoint"
+          bash scripts/run_cl_share_checkpoint.sh
+      - name: Publish evidence even when a required gate fails
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cl-stage1-evidence-${{ github.sha }}
+          path: |
+            peridot-contracts/target/cl-ci-checkpoint/
+            peridot-contracts/target/cl-ci-bootstrap/
+          if-no-files-found: error
+          retention-days: 14

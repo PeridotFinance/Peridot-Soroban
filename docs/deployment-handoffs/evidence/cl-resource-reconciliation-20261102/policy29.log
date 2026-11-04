@@ -1,0 +1,254 @@
+warning: field `paired` is never read
+   --> src/../../../contracts/cl-share-pool-facade/src/test.rs:145:5
+    |
+140 | struct F {
+    |        - field in this struct
+...
+145 |     paired: Address,
+    |     ^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cl-runtime29-harness` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.64s
+     Running unittests src/lib.rs (harness/cl-runtime29/target/debug/deps/cl_runtime29_harness-a5817dccfaeeef42)
+
+running 12 tests
+test test::compiled_authorization_rejections_after_setup ... RESOURCE_PROFILE {"captured_ledger":65264920,"limits":{"contract_events_size_bytes":16384,"disk_read_bytes":200000,"disk_read_entries":100,"instructions":100000000,"ledger_entries":100,"max_contract_code_entry_size_bytes":131072,"max_contract_data_entry_size_bytes":65536,"max_contract_data_key_size_bytes":250,"mem_bytes":41943040,"transaction_size_bytes":132096,"write_bytes":132096,"write_entries":50},"mode":"acceptance","name":"internal-policy","network_config_path":"/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-next/network-config.json","network_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","release_approval":false,"schema":"cl-resource-profile-v1","target_protocol":29} host_protocol=29 exact_captured_cost_model=true
+EXPECTED_REJECTION wrong_caller: Err(Ok(Error(Context, InvalidAction)))
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":0,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":79746,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":101115,"diagnostic_shadow_ok":true,"disk_read_entries":0,"exact_captured_cost_model":true,"flow":"wrong_caller","instructions":541957,"memory_bytes":1277598,"ok":true,"persistent_entry_rent_bumps":0,"persistent_rent_ledger_bytes":0,"profile":"internal-policy","read_bytes":0,"read_entries":2,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"write_bytes":0,"write_entries":0}
+
+EXPECTED_REJECTION controller_impersonation: Err(Ok(Error(Context, InvalidAction)))
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":0,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":111706,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":111157,"diagnostic_shadow_ok":true,"disk_read_entries":0,"exact_captured_cost_model":true,"flow":"controller_impersonation","instructions":546490,"memory_bytes":1277654,"ok":true,"persistent_entry_rent_bumps":0,"persistent_rent_ledger_bytes":0,"profile":"internal-policy","read_bytes":0,"read_entries":2,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"write_bytes":0,"write_entries":0}
+
+EXPECTED_REJECTION unauthorized_vault_recovery: Err(Ok(Error(Context, InvalidAction)))
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":0,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":257313,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":604425,"diagnostic_shadow_ok":true,"disk_read_entries":0,"exact_captured_cost_model":true,"flow":"unauthorized_vault_recovery","instructions":847252,"memory_bytes":1328896,"ok":true,"persistent_entry_rent_bumps":0,"persistent_rent_ledger_bytes":0,"profile":"internal-policy","read_bytes":0,"read_entries":3,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"write_bytes":0,"write_entries":0}
+
+EXPECTED_REJECTION unauthorized_receipt_recovery: Err(Ok(Error(Context, InvalidAction)))
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":0,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":466266,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":763996,"diagnostic_shadow_ok":true,"disk_read_entries":0,"exact_captured_cost_model":true,"flow":"unauthorized_receipt_recovery","instructions":3256052,"memory_bytes":1354075,"ok":true,"persistent_entry_rent_bumps":0,"persistent_rent_ledger_bytes":0,"profile":"internal-policy","read_bytes":0,"read_entries":32,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"write_bytes":0,"write_entries":0}
+
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":388,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":11346743,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":26059461,"diagnostic_shadow_ok":true,"disk_read_entries":0,"exact_captured_cost_model":true,"flow":"transfer_spot_to_margin","instructions":27363282,"memory_bytes":5606613,"ok":true,"persistent_entry_rent_bumps":6,"persistent_rent_ledger_bytes":1376709520,"profile":"internal-policy","read_bytes":0,"read_entries":69,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":1,"temporary_rent_ledger_bytes":454463928,"write_bytes":1148,"write_entries":9}
+
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":228,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":40402018,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":103324625,"diagnostic_shadow_ok":true,"disk_read_entries":0,"exact_captured_cost_model":true,"flow":"begin_open_position_v3","instructions":27111440,"memory_bytes":7884726,"ok":true,"persistent_entry_rent_bumps":12,"persistent_rent_ledger_bytes":212694163025,"profile":"internal-policy","read_bytes":0,"read_entries":84,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":1,"temporary_rent_ledger_bytes":454463928,"write_bytes":3656,"write_entries":15}
+
+EXPECTED_REJECTION unauthorized_pending_recovery: Err(Ok(Error(Context, InvalidAction)))
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":0,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":160746,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":625654,"diagnostic_shadow_ok":true,"disk_read_entries":0,"exact_captured_cost_model":true,"flow":"unauthorized_pending_recovery","instructions":752376,"memory_bytes":1331367,"ok":true,"persistent_entry_rent_bumps":0,"persistent_rent_ledger_bytes":0,"profile":"internal-policy","read_bytes":0,"read_entries":2,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"write_bytes":0,"write_entries":0}
+
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":172,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":2742736,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":5350000,"diagnostic_shadow_ok":true,"disk_read_entries":0,"exact_captured_cost_model":true,"flow":"cancel_pending_open_v3","instructions":10920400,"memory_bytes":2837618,"ok":true,"persistent_entry_rent_bumps":0,"persistent_rent_ledger_bytes":0,"profile":"internal-policy","read_bytes":0,"read_entries":70,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":1,"temporary_rent_ledger_bytes":454463928,"write_bytes":764,"write_entries":17}
+
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":172,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":2742736,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":5350000,"diagnostic_shadow_ok":true,"disk_read_entries":0,"exact_captured_cost_model":true,"flow":"cancel_before_execute","instructions":10920400,"memory_bytes":2837618,"ok":true,"persistent_entry_rent_bumps":0,"persistent_rent_ledger_bytes":0,"profile":"internal-policy","read_bytes":0,"read_entries":70,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":1,"temporary_rent_ledger_bytes":454463928,"write_bytes":764,"write_entries":17}
+
+Writing test snapshot file for test "test::compiled_authorization_rejections_after_setup" to "test_snapshots/test/compiled_authorization_rejections_after_setup.1.json".
+ok
+test test::compiled_receipt_margin_reward_custody ... RESOURCE_PROFILE {"captured_ledger":65264920,"limits":{"contract_events_size_bytes":16384,"disk_read_bytes":200000,"disk_read_entries":100,"instructions":100000000,"ledger_entries":100,"max_contract_code_entry_size_bytes":131072,"max_contract_data_entry_size_bytes":65536,"max_contract_data_key_size_bytes":250,"mem_bytes":41943040,"transaction_size_bytes":132096,"write_bytes":132096,"write_entries":50},"mode":"acceptance","name":"internal-policy","network_config_path":"/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-next/network-config.json","network_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","release_approval":false,"schema":"cl-resource-profile-v1","target_protocol":29} host_protocol=29 exact_captured_cost_model=true
+Invocation exceeded the transaction resource limits, it's likely going to fail when executed in a real network. The following limits are exceeded:
+instructions: 100000291 > 100000000 
+See diagnostic events for invocation trace.
+
+thread 'test::compiled_receipt_margin_reward_custody' (1095630) panicked at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-29.0.1/src/host/invocation_metering.rs:518:13:
+HostError: Error(Budget, ExceededLimit)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Budget, ExceededLimit)], data:"invocation resource limits are exceeded: instructions: 100000291 > 100000000"
+   1: [Diagnostic Event] topics:[error, Error(Budget, ExceededLimit)], data:["contract call failed", deposit_underlying, [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, 100000000, 1]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[error, Error(Budget, ExceededLimit)], data:"escalating error to VM trap from failed host function call: try_call"
+   3: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[error, Error(Budget, ExceededLimit)], data:["contract try_call failed", deposit_position, [CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, -40, 40, [50000000, 47676271], 24200255037]]
+   4: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[error, Error(Budget, ExceededLimit)], data:"escalating error to VM trap from failed host function call: extend_current_contract_instance_and_code_ttl"
+   5: [Failed Contract Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[position_update, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE], data:[-40, 40, 24444702058]
+   6: [Failed Contract Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[update_reserves], data:[100100000000, 99997728646]
+   7: [Failed Contract Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[deposit_liquidity, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN], data:[24444702058, 50000000, 47676271]
+   8: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, update], data:Void
+   9: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, update], data:[CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, concentrated, [1, 10, 20, 8], [100100000000, 99997728646, 0, 0, 2101588166, 2097289711, 2058941867, 2046625816, 3096143750, 3062274484, 4142666135, 4068768909, 5201688455, 5063128767, 6276453024, 6042434028, 7370281585, 7003839243, 8486592413, 7944587304, 1126921344, 1125848552, 2130349064, 2121869504, 3166710490, 3138339374, 4237085021, 4169834461, 5320244383, 5188893566, 6419504789, 6192524129, 7538263689, 7177810019, 8680017268, 8141925645]]
+   10: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, total_supply], data:0
+   11: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, total_supply], data:Void
+   12: [Failed Diagnostic Event (not emitted)] contract:CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, topics:[fn_return, balance], data:0
+   13: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   14: [Failed Diagnostic Event (not emitted)] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, transfer], data:Void
+   15: [Failed Contract Event (not emitted)] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[transfer, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJXFF"], data:47676271
+   16: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, transfer], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, 47676271]
+   17: [Failed Diagnostic Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, transfer], data:Void
+   18: [Failed Contract Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[transfer, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGO6V"], data:50000000
+   19: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, transfer], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, 50000000]
+   20: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, total_supply], data:0
+   21: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, total_supply], data:Void
+   22: [Failed Diagnostic Event (not emitted)] contract:CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, topics:[fn_return, balance], data:0
+   23: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   24: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, deposit_position], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, -40, 40, [50000000, 47676271], 24200255037]
+   25: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, estimate_deposit_position], data:[[50000000, 47676271], 24444702058]
+   26: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, estimate_deposit_position], data:[-40, 40, [50000000, 49947625]]
+   27: [Failed Diagnostic Event (not emitted)] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:49947625
+   28: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   29: [Failed Diagnostic Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:50000000
+   30: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   31: [Failed Diagnostic Event (not emitted)] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:49947625
+   32: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   33: [Failed Diagnostic Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:50000000
+   34: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   35: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, swap], data:49947625
+   36: [Failed Contract Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[pool_state], data:[79224396863805661929893250290, -1, 1050883152001]
+   37: [Failed Contract Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[update_reserves], data:[100050000000, 99950052375]
+   38: [Failed Contract Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[trade, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE], data:[50000000, 49947625, 50000]
+   39: [Failed Diagnostic Event (not emitted)] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, transfer], data:Void
+   40: [Failed Contract Event (not emitted)] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[transfer, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJXFF"], data:49947625
+   41: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, transfer], data:[CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 49947625]
+   42: [Failed Diagnostic Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, transfer], data:Void
+   43: [Failed Contract Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[transfer, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGO6V"], data:50000000
+   44: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, transfer], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, 50000000]
+   45: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, swap], data:[CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 0, 1, 50000000, 49448148]
+   46: [Failed Diagnostic Event (not emitted)] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:0
+   47: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   48: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, estimate_swap], data:49947625
+   49: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, estimate_swap], data:[0, 1, 50000000]
+   50: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, get_is_killed_deposit], data:false
+   51: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, get_is_killed_deposit], data:Void
+   52: [Failed Diagnostic Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:100000000
+   53: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   54: [Failed Diagnostic Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, transfer], data:Void
+   55: [Failed Contract Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[transfer, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGO6V"], data:100000000
+   56: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, transfer], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 100000000]
+   57: [Failed Diagnostic Event (not emitted)] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:0
+   58: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   59: [Failed Diagnostic Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:0
+   60: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   61: [Failed Diagnostic Event (not emitted)] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:0
+   62: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   63: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_return, claim], data:0
+   64: [Failed Contract Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[claim_reward, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE], data:[0]
+   65: [Failed Diagnostic Event (not emitted)] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, transfer], data:Void
+   66: [Failed Contract Event (not emitted)] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[transfer, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL7NV"], data:0
+   67: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, transfer], data:[CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 0]
+   68: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, topics:[fn_return, total_supply], data:0
+   69: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5, total_supply], data:Void
+   70: [Failed Diagnostic Event (not emitted)] contract:CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, topics:[fn_return, balance], data:0
+   71: [Failed Diagnostic Event (not emitted)] contract:CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, topics:[fn_call, CACMVW2KK4H5FZDFF2AUCAKQTEJMZZWJUIZF23XMRVYQBSXYLHZ6BKWN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   72: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O, claim], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   73: [Failed Diagnostic Event (not emitted)] contract:CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, topics:[fn_return, balance], data:0
+   74: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   75: [Failed Diagnostic Event (not emitted)] contract:CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, topics:[fn_return, balance], data:0
+   76: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   77: [Failed Diagnostic Event (not emitted)] contract:CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, topics:[fn_return, balance], data:0
+   78: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, balance], data:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE
+   79: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, topics:[fn_return, __check_auth], data:Void
+   80: [Failed Diagnostic Event (not emitted)] contract:CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, __check_auth], data:[Bytes(71e716e03607836ce31efdc44886abe7d4f928d4bd0b389b178f4658d6cdaca3), Void, [[Contract, {args: [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, 100000000, 1], contract: CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, fn_name: deposit_underlying}], [Contract, {args: [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, 100000000], contract: CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF, fn_name: transfer}]]]
+   81: [Diagnostic Event] topics:[fn_call, CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE, deposit_underlying], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, 100000000, 1]
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+{"config_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","contract_events_size_bytes":0,"diagnostic_shadow_cpu_limit":20000000000,"diagnostic_shadow_cpu_used":62189137,"diagnostic_shadow_memory_limit":4294967296,"diagnostic_shadow_memory_used":109391372,"diagnostic_shadow_ok":true,"disk_read_entries":3,"exact_captured_cost_model":true,"flow":"deposit_underlying","instructions":100000291,"memory_bytes":9876845,"ok":false,"persistent_entry_rent_bumps":0,"persistent_rent_ledger_bytes":0,"profile":"internal-policy","read_bytes":276,"read_entries":41,"run_mode":"acceptance","runtime_protocol":29,"scope":"compiled-local-controlled-state","sdk_limits_enforced":true,"target_protocol":29,"temporary_entry_rent_bumps":0,"temporary_rent_ledger_bytes":0,"write_bytes":3164,"write_entries":18}
+
+
+thread 'test::compiled_receipt_margin_reward_custody' (1095630) panicked at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-29.0.1/src/env.rs:2082:18:
+called `Result::unwrap()` on an `Err` value: HostError: Error(Budget, ExceededLimit)
+DebugInfo not available
+
+stack backtrace:
+   0:        0x1036e1840 - std[7d7552da0923e8b2]::backtrace_rs::backtrace::libunwind::trace
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/../../backtrace/src/backtrace/libunwind.rs:117:9
+   1:        0x1036e1840 - std[7d7552da0923e8b2]::backtrace_rs::backtrace::trace_unsynchronized::<std[7d7552da0923e8b2]::sys::backtrace::_print_fmt::{closure#1}>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/../../backtrace/src/backtrace/mod.rs:66:14
+   2:        0x1036e1840 - std[7d7552da0923e8b2]::sys::backtrace::_print_fmt
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/sys/backtrace.rs:74:9
+   3:        0x1036e1840 - <<std[7d7552da0923e8b2]::sys::backtrace::BacktraceLock>::print::DisplayBacktrace as core[4b39a0a778b8475a]::fmt::Display>::fmt
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/sys/backtrace.rs:44:26
+   4:        0x1036f2ee8 - <core[4b39a0a778b8475a]::fmt::rt::Argument>::fmt
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/fmt/rt.rs:152:76
+   5:        0x1036f2ee8 - core[4b39a0a778b8475a]::fmt::write
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/fmt/mod.rs:1687:22
+   6:        0x1036e6160 - std[7d7552da0923e8b2]::io::default_write_fmt::<std[7d7552da0923e8b2]::sys::stdio::unix::Stderr>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/io/mod.rs:621:11
+   7:        0x1036e6160 - <std[7d7552da0923e8b2]::sys::stdio::unix::Stderr as std[7d7552da0923e8b2]::io::Write>::write_fmt
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/io/mod.rs:1976:13
+   8:        0x1036c7eac - <std[7d7552da0923e8b2]::sys::backtrace::BacktraceLock>::print
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/sys/backtrace.rs:47:25
+   9:        0x1036c7eac - std[7d7552da0923e8b2]::panicking::default_hook::{closure#0}
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panicking.rs:292:27
+  10:        0x1036db220 - std[7d7552da0923e8b2]::panicking::default_hook
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panicking.rs:319:9
+  11:        0x103086e8c - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h0f802be17affb831
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/alloc/src/boxed.rs:2263:9
+  12:        0x1030fd898 - soroban_env_host::testutils::call_with_suppressed_panic_hook::{{closure}}::{{closure}}::h1e8f926a6026001e
+                               at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-29.0.1/src/testutils.rs:47:17
+  13:        0x1036db584 - <alloc[5fb21198b8c4fd0a]::boxed::Box<dyn for<'a, 'b> core[4b39a0a778b8475a]::ops::function::Fn<(&'a std[7d7552da0923e8b2]::panic::PanicHookInfo<'b>,), Output = ()> + core[4b39a0a778b8475a]::marker::Sync + core[4b39a0a778b8475a]::marker::Send> as core[4b39a0a778b8475a]::ops::function::Fn<(&std[7d7552da0923e8b2]::panic::PanicHookInfo,)>>::call
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/alloc/src/boxed.rs:2263:9
+  14:        0x1036db584 - std[7d7552da0923e8b2]::panicking::panic_with_hook
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panicking.rs:833:13
+  15:        0x1036c7f58 - std[7d7552da0923e8b2]::panicking::panic_handler::{closure#0}
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panicking.rs:698:13
+  16:        0x1036bd514 - std[7d7552da0923e8b2]::sys::backtrace::__rust_end_short_backtrace::<std[7d7552da0923e8b2]::panicking::panic_handler::{closure#0}, !>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/sys/backtrace.rs:182:18
+  17:        0x1036c8630 - __rustc[8068f81614cfe5c]::rust_begin_unwind
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panicking.rs:689:5
+  18:        0x1037036d8 - core[4b39a0a778b8475a]::panicking::panic_fmt
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/panicking.rs:80:14
+  19:        0x10370347c - core[4b39a0a778b8475a]::result::unwrap_failed
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/result.rs:1867:5
+  20:        0x102d8b214 - core::result::Result<T,E>::unwrap::haffe33cfd5ba709d
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/result.rs:1233:23
+  21:        0x102d8b214 - soroban_sdk::env::Env::to_events_snapshot::h12f07f45fa4cb171
+                               at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-29.0.1/src/env.rs:2082:18
+  22:        0x102d8993c - soroban_sdk::env::Env::to_snapshot::he24ae7d97fffec9a
+                               at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-29.0.1/src/env.rs:2018:26
+  23:        0x102d8b8b8 - soroban_sdk::env::Env::to_test_snapshot_file::h407c1b1d39f13e51
+                               at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-29.0.1/src/env.rs:2157:29
+  24:        0x102d93f6c - <soroban_sdk::env::Env as core::ops::drop::Drop>::drop::he650585ccf2a2586
+                               at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-29.0.1/src/env.rs:2120:18
+  25:        0x102d85ca4 - core::ptr::drop_in_place<soroban_sdk::env::Env>::h87641f7d44eb80ca
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/ptr/mod.rs:810:1
+  26:        0x102d85f48 - core::ptr::drop_in_place<soroban_sdk::address::Address>::h5e6e9a8a36a89503
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/ptr/mod.rs:810:1
+  27:        0x102cf2e70 - core::ptr::drop_in_place<cl_runtime29_harness::test::F>::h9ff0c9acd006e26d
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/ptr/mod.rs:810:1
+  28:        0x102d010ec - cl_runtime29_harness::test::compiled_receipt_margin_reward_custody::hf35924c5fb8d951b
+                               at /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/harness/cl-runtime29/src/../../../contracts/cl-share-pool-facade/src/test.rs:710:1
+  29:        0x102ce3eb4 - cl_runtime29_harness::test::compiled_receipt_margin_reward_custody::{{closure}}::h7c703ba187ec93a6
+                               at /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/harness/cl-runtime29/src/../../../contracts/cl-share-pool-facade/src/test.rs:679:44
+  30:        0x102cf14b0 - core::ops::function::FnOnce::call_once::h213a4407be7bf9e7
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/ops/function.rs:250:5
+  31:        0x102d27b0c - <fn() -> core[4b39a0a778b8475a]::result::Result<(), alloc[5fb21198b8c4fd0a]::string::String> as core[4b39a0a778b8475a]::ops::function::FnOnce<()>>::call_once
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/ops/function.rs:250:5
+  32:        0x102d27b0c - test[cab13d442f8e29c8]::__rust_begin_short_backtrace::<core[4b39a0a778b8475a]::result::Result<(), alloc[5fb21198b8c4fd0a]::string::String>, fn() -> core[4b39a0a778b8475a]::result::Result<(), alloc[5fb21198b8c4fd0a]::string::String>>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/test/src/lib.rs:663:18
+  33:        0x102d31d34 - test[cab13d442f8e29c8]::run_test_in_process::{closure#0}
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/test/src/lib.rs:686:74
+  34:        0x102d31d34 - <core[4b39a0a778b8475a]::panic::unwind_safe::AssertUnwindSafe<test[cab13d442f8e29c8]::run_test_in_process::{closure#0}> as core[4b39a0a778b8475a]::ops::function::FnOnce<()>>::call_once
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/panic/unwind_safe.rs:275:9
+  35:        0x102d31d34 - std[7d7552da0923e8b2]::panicking::catch_unwind::do_call::<core[4b39a0a778b8475a]::panic::unwind_safe::AssertUnwindSafe<test[cab13d442f8e29c8]::run_test_in_process::{closure#0}>, core[4b39a0a778b8475a]::result::Result<(), alloc[5fb21198b8c4fd0a]::string::String>>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panicking.rs:581:40
+  36:        0x102d31d34 - std[7d7552da0923e8b2]::panicking::catch_unwind::<core[4b39a0a778b8475a]::result::Result<(), alloc[5fb21198b8c4fd0a]::string::String>, core[4b39a0a778b8475a]::panic::unwind_safe::AssertUnwindSafe<test[cab13d442f8e29c8]::run_test_in_process::{closure#0}>>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panicking.rs:544:19
+  37:        0x102d31d34 - std[7d7552da0923e8b2]::panic::catch_unwind::<core[4b39a0a778b8475a]::panic::unwind_safe::AssertUnwindSafe<test[cab13d442f8e29c8]::run_test_in_process::{closure#0}>, core[4b39a0a778b8475a]::result::Result<(), alloc[5fb21198b8c4fd0a]::string::String>>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panic.rs:359:14
+  38:        0x102d31d34 - test[cab13d442f8e29c8]::run_test_in_process
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/test/src/lib.rs:686:27
+  39:        0x102d31d34 - test[cab13d442f8e29c8]::run_test::{closure#0}
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/test/src/lib.rs:607:43
+  40:        0x102d2e688 - test[cab13d442f8e29c8]::run_test::{closure#1}
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/test/src/lib.rs:637:41
+  41:        0x102d2e688 - std[7d7552da0923e8b2]::sys::backtrace::__rust_begin_short_backtrace::<test[cab13d442f8e29c8]::run_test::{closure#1}, ()>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/sys/backtrace.rs:166:18
+  42:        0x102d3400c - std[7d7552da0923e8b2]::thread::lifecycle::spawn_unchecked::<test[cab13d442f8e29c8]::run_test::{closure#1}, ()>::{closure#1}::{closure#0}
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/thread/lifecycle.rs:91:13
+  43:        0x102d3400c - <core[4b39a0a778b8475a]::panic::unwind_safe::AssertUnwindSafe<std[7d7552da0923e8b2]::thread::lifecycle::spawn_unchecked<test[cab13d442f8e29c8]::run_test::{closure#1}, ()>::{closure#1}::{closure#0}> as core[4b39a0a778b8475a]::ops::function::FnOnce<()>>::call_once
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/panic/unwind_safe.rs:275:9
+  44:        0x102d3400c - std[7d7552da0923e8b2]::panicking::catch_unwind::do_call::<core[4b39a0a778b8475a]::panic::unwind_safe::AssertUnwindSafe<std[7d7552da0923e8b2]::thread::lifecycle::spawn_unchecked<test[cab13d442f8e29c8]::run_test::{closure#1}, ()>::{closure#1}::{closure#0}>, ()>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panicking.rs:581:40
+  45:        0x102d3400c - std[7d7552da0923e8b2]::panicking::catch_unwind::<(), core[4b39a0a778b8475a]::panic::unwind_safe::AssertUnwindSafe<std[7d7552da0923e8b2]::thread::lifecycle::spawn_unchecked<test[cab13d442f8e29c8]::run_test::{closure#1}, ()>::{closure#1}::{closure#0}>>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panicking.rs:544:19
+  46:        0x102d3400c - std[7d7552da0923e8b2]::panic::catch_unwind::<core[4b39a0a778b8475a]::panic::unwind_safe::AssertUnwindSafe<std[7d7552da0923e8b2]::thread::lifecycle::spawn_unchecked<test[cab13d442f8e29c8]::run_test::{closure#1}, ()>::{closure#1}::{closure#0}>, ()>
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/panic.rs:359:14
+  47:        0x102d3400c - std[7d7552da0923e8b2]::thread::lifecycle::spawn_unchecked::<test[cab13d442f8e29c8]::run_test::{closure#1}, ()>::{closure#1}
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/thread/lifecycle.rs:89:26
+  48:        0x102d3400c - <std[7d7552da0923e8b2]::thread::lifecycle::spawn_unchecked<test[cab13d442f8e29c8]::run_test::{closure#1}, ()>::{closure#1} as core[4b39a0a778b8475a]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/ops/function.rs:250:5
+  49:        0x1036e0fb0 - <alloc[5fb21198b8c4fd0a]::boxed::Box<dyn core[4b39a0a778b8475a]::ops::function::FnOnce<(), Output = ()> + core[4b39a0a778b8475a]::marker::Send> as core[4b39a0a778b8475a]::ops::function::FnOnce<()>>::call_once
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/alloc/src/boxed.rs:2249:9
+  50:        0x1036e0fb0 - <std[7d7552da0923e8b2]::sys::thread::unix::Thread>::new::thread_start
+                               at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/sys/thread/unix.rs:118:17
+  51:        0x182ae7c58 - __pthread_cond_wait
+
+thread 'test::compiled_receipt_margin_reward_custody' (1095630) panicked at /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/panicking.rs:233:5:
+panic in a destructor during cleanup
+thread caused non-unwinding panic. aborting.
+error: test failed, to rerun pass `--lib`
+
+Caused by:
+  process didn't exit successfully: `/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/harness/cl-runtime29/target/debug/deps/cl_runtime29_harness-a5817dccfaeeef42 compiled --nocapture --test-threads=1` (signal: 6, SIGABRT: process abort signal)

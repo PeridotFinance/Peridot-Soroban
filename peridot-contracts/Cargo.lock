@@ -272,6 +272,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "cl-integration-fixtures"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
+name = "cl-share-pool-facade"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "soroban-env-host",
+ "soroban-sdk",
+]
+
+[[package]]
+name = "cl-share-vault"
+version = "0.1.0"
+dependencies = [
+ "mock-aquarius-pool",
+ "mock-token",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -887,7 +912,9 @@ version = "0.1.0"
 dependencies = [
  "mock-token",
  "receipt-vault",
+ "serde_json",
  "simple-peridottroller",
+ "soroban-env-host",
  "soroban-sdk",
  "swap-adapter",
 ]

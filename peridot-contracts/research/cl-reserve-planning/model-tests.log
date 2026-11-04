@@ -1,0 +1,16 @@
+test_actual_exit_loss_partitions_survive_multiple_price_changes (test_study.PlanningInvariantTests) ... ok
+test_common_depeg_not_insured_as_original_usdc_principal_guarantee (test_study.PlanningInvariantTests) ... ok
+test_cost_added_once_before_contingency (test_study.PlanningInvariantTests) ... ok
+test_cumulative_paid_loss_survives_recovery (test_study.PlanningInvariantTests) ... ok
+test_full_outage_duration_and_largest_first_exits (test_study.PlanningInvariantTests) ... ok
+test_initial_inventory_and_single_underlying_benchmark (test_study.PlanningInvariantTests) ... ok
+test_linear_exposure_and_concurrent_loss_partition (test_study.PlanningInvariantTests) ... ok
+test_same_supplier_pool_cannot_double_fund_borrowed_capital (test_study.PlanningInvariantTests) ... ok
+test_supplier_allocation_does_not_double_count_borrow (test_study.PlanningInvariantTests) ... ok
+test_unknown_cost_is_not_zero_and_no_income_credit (test_study.PlanningInvariantTests) ... ok
+test_wide_boundaries_and_nonnegative_assets (test_study.PlanningInvariantTests) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.081s
+
+OK

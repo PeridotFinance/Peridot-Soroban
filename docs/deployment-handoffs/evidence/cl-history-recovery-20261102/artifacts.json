@@ -1,0 +1,34 @@
+{
+  "margin_controller.wasm": {
+    "bytes": 91503,
+    "sha256": "157d0d86121843598e146ef6061d25eae2fc265c2ef34902cb6d2be87dfcaf29"
+  },
+  "swap_adapter.wasm": {
+    "bytes": 10876,
+    "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d"
+  },
+  "receipt_vault.wasm": {
+    "bytes": 87197,
+    "sha256": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e"
+  },
+  "jump_rate_model.wasm": {
+    "bytes": 7644,
+    "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800"
+  },
+  "simple_peridottroller.wasm": {
+    "bytes": 63289,
+    "sha256": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2"
+  },
+  "cl_share_vault.wasm": {
+    "bytes": 85750,
+    "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f"
+  },
+  "cl_share_pool_facade.wasm": {
+    "bytes": 7298,
+    "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5"
+  },
+  "cl_integration_fixtures.wasm": {
+    "bytes": 3168,
+    "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f"
+  }
+}

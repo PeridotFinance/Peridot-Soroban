@@ -1,0 +1,49 @@
+   Compiling cl-share-pool-facade v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade)
+warning: trait `Share` is never used
+  --> contracts/cl-share-pool-facade/src/lib.rs:26:7
+   |
+26 | trait Share {
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `paired`, `reward`, `pool`, and `receipt` are never read
+   --> contracts/cl-share-pool-facade/src/test.rs:119:5
+    |
+114 | struct F {
+    |        - fields in this struct
+...
+119 |     paired: Address,
+    |     ^^^^^^
+120 |     reward: Address,
+    |     ^^^^^^
+121 |     pool: Address,
+    |     ^^^^
+...
+126 |     receipt: Address,
+    |     ^^^^^^^
+
+warning: `cl-share-pool-facade` (lib test) generated 2 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.41s
+     Running unittests src/lib.rs (target/debug/deps/cl_share_pool_facade-353d546159467f04)
+
+running 1 test
+
+thread 'test::compiled_v3_checkpoint' (892744) panicked at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-sdk-25.3.1/src/env.rs:987:14:
+called `Result::unwrap()` on an `Err` value: HostError: Error(Object, InvalidInput)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Object, InvalidInput)], data:"not a contract address"
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Writing test snapshot file for test "test::compiled_v3_checkpoint" to "test_snapshots/test/compiled_v3_checkpoint.1.json".
+test test::compiled_v3_checkpoint ... FAILED
+
+failures:
+
+failures:
+    test::compiled_v3_checkpoint
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+
+error: test failed, to rerun pass `-p cl-share-pool-facade --lib`

@@ -1,0 +1,120 @@
+   Compiling receipt-vault v0.2.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/receipt-vault)
+   Compiling margin-controller v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/margin-controller)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.76s
+     Running unittests src/lib.rs (target/debug/deps/margin_controller-837037ed06a63404)
+
+running 112 tests
+test test::fee_tests::conversion_uses_actual_minted_shares_at_the_later_exchange_rate ... ok
+test test::fee_tests::begin_requires_the_extra_fee_without_changing_margin_or_debt_on_failure ... ok
+test test::fee_tests::exact_fee_wasm_long_short_lifecycle_and_resource_limits ... ignored, requires MARGIN_NEW_WASM
+test test::fee_tests::a_fee_created_sub_ptoken_surplus_is_returned_as_wallet_dust ... ok
+test test::fee_tests::aborted_close_is_not_charged_and_zero_debt_release_has_no_swap_fee ... ok
+test test::fee_tests::activation_failure_preserves_reserved_fee_and_success_charges_once ... ok
+test test::fee_tests::fee_math_floors_and_does_not_overflow_at_u128_max ... ok
+test test::fee_tests::fee_history_ttl_is_renewed_and_missing_required_history_fails_closed ... ok
+test test::fee_tests::fee_orphans_are_decided_when_earned_not_when_converted ... ok
+test test::fee_tests::fee_terms_ttl_tracks_position_and_pending_close_reads ... ok
+test test::fee_tests::close_fee_is_capped_to_surplus_in_atomic_and_split_long_closes ... ok
+test test::fee_tests::fees_follow_actual_swap_output_not_the_pools_reported_return ... ok
+test test::fee_tests::fees_without_free_providers_are_backed_orphans ... ok
+test test::fee_tests::fees_snapshot_rates_and_swap_failure_rolls_back_collection ... ok
+test test::fee_tests::fee_terms_public_read_keeps_dependent_position_state_alive ... ok
+test test::fee_tests::late_deposit_cannot_capture_historical_open_or_close_fees ... ok
+test test::fee_tests::legacy_and_zero_fee_positions_stay_free_after_admin_enables_fees ... ok
+test test::fee_tests::old_pending_batches_cannot_be_reinterpreted_with_current_weights ... ok
+test test::fee_tests::no_close_fee_is_charged_on_liquidation ... ok
+test test::fee_tests::ownership_survives_exit_and_only_future_fees_use_new_weights ... ok
+test test::fee_tests::one_batch_distributes_open_shares_and_converts_close_underlying ... ok
+test test::fee_tests::delayed_claim_skips_fifty_batches_with_constant_footprint ... ok
+test test::fee_tests::permissionless_fee_conversion_cannot_spend_unreserved_assets_and_retries_atomically ... ok
+test test::fee_tests::pending_vault_snapshots_are_not_controlled_by_the_caller_or_market_rebinding ... ok
+test test::fee_tests::residual_repayment_never_charges_a_fee_until_debt_is_zero ... ok
+test test::fee_tests::underlying_dust_defers_the_epoch_without_blocking_principal ... ok
+test test::test_accept_admin_requires_pending_admin_auth - should panic ... ok
+test test::fee_tests::unswapped_cancel_and_expiry_refund_all_reserved_shares ... ok
+test test::test_activate_open_position_v3_budget_short_min ... ok
+test test::test_activate_open_position_v3_accrues_interest_before_health_check ... ok
+test test::test_activate_open_position_v3_allows_swapped_pending_after_expiry ... ok
+test test::test_add_position_collateral_v3_rejects_invalid_requests ... ok
+test test::test_add_position_collateral_v3_allocates_free_margin_and_improves_health ... ok
+test test::test_activate_open_position_v3_rejects_under_maintenance_after_price_move ... ok
+test test::test_added_position_collateral_is_included_in_liquidation_quote ... ok
+test test::test_added_position_collateral_is_preserved_by_close_recovery ... ok
+test test::test_admin_transfer_rejects_non_admin_proposer - should panic ... ok
+test test::test_admin_transfer_requires_pending_admin_acceptance ... ok
+test test::test_admin_can_replace_disabled_position_pool_and_close ... ok
+test test::test_bounded_user_position_compaction_removes_only_scanned_stale_ids ... ok
+test test::test_begin_liquidation_v3_recovers_missing_mode_before_mutation ... ok
+test test::test_claim_margin_fees_reverts_on_pending_overflow - should panic ... ok
+test test::test_deposit_and_withdraw_collateral ... ok
+test test::test_exact_live_wasm_upgrade_preserves_v3_positions_and_pending_recovery ... ignored, requires MARGIN_LIVE_WASM and MARGIN_NEW_WASM
+test test::test_cancel_close_position_v3_restores_open_position ... ok
+test test::test_execute_config_updates_after_timelock ... ok
+test test::fee_tests::repeated_balance_changes_and_claims_never_exceed_fee_backing ... ok
+test test::test_execute_open_position_v3_finishes_already_swapped_pending ... ok
+test test::test_execute_open_position_v3_requires_completed_swap - should panic ... ok
+test test::test_execute_peridottroller_update_rejects_before_timelock - should panic ... ok
+test test::fee_tests::fee_enabled_dynamic_rate_stages_do_not_scale_with_sibling_positions ... ok
+test test::test_expire_close_position_v3_restores_abandoned_preswap_close ... ok
+test test::test_get_claimable_margin_fees_reverts_on_pending_overflow - should panic ... ok
+test test::test_expired_swapped_healthy_close_finishes_without_liquidation_incentive ... ok
+test test::test_expired_close_residual_has_permissionless_zero_incentive_recovery ... ok
+test test::test_finish_close_v3_commits_partial_repay_then_owner_can_top_up ... ok
+test test::test_initialize_rejects_when_admin_key_exists_without_initialized - should panic ... ok
+test test::test_initialize_rejects_when_legacy_instance_initialized_exists - should panic ... ok
+test test::test_get_perps_position_bumps_position_mode_ttl ... ok
+test test::test_get_user_positions_filters_missing_entries ... ok
+test test::test_close_position_v3_budget_does_not_scale_with_unrelated_positions ... ok
+test test::test_legacy_perps_pair_migration_is_not_limited_by_new_pair_registry ... ok
+test test::test_legacy_per_pair_configs_remain_in_persistent_storage ... ok
+test test::test_margin_balance_read_bumps_total_margin_ptokens_ttl ... ok
+test test::test_initialize_twice_panics - should panic ... ok
+test test::test_get_position_bumps_pending_liquidation_ttl ... ok
+test test::test_open_position_v3_rejects_zero_cf_market ... ok
+test test::test_open_position_v3_long_uses_full_notional_from_controller_custody ... ok
+test test::test_open_position_v3_short_borrows_base_and_custodies_quote_collateral ... ok
+test test::test_open_position_v3_split_records_swap_before_activation ... ok
+test test::test_liquidation_supersedes_unfunded_close_preparation ... ok
+test test::test_liquidate_position_v3_uses_maintenance_margin_not_lending_cf ... ok
+test test::test_perps_pair_instance_storage_enforces_pair_limit - should panic ... ok
+test test::test_per_pair_execution_config_rejects_open_pool_oracle_divergence ... ok
+test test::test_owner_close_position_v3_reverts_when_collateral_cannot_repay_debt ... ok
+test test::test_partial_short_close_entrypoint_rejects_long_positions ... ok
+test test::test_permissionless_v3_pending_open_expiry_and_resolution ... ok
+test test::test_position_lifecycle_events_and_counter_support_indexer_bootstrap ... ok
+test test::test_position_keepalive_bumps_pending_close_state_ttl ... ok
+test test::test_prepare_close_position_v3_fuses_begin_and_withdraw_under_budget ... ok
+test test::test_prepare_close_short_position_v3_fuses_begin_and_withdraw_under_budget ... ok
+test test::test_previous_admin_loses_access_after_transfer - should panic ... ok
+test test::test_release_debt_free_open_v3_returns_ptokens_to_margin ... ok
+test test::test_release_debt_free_withdrawn_v3_redeposits_collateral ... ok
+test test::test_set_close_fee_bps_over_cap_panics - should panic ... ok
+test test::test_set_market_and_params ... ok
+test test::test_set_market_rejects_unsupported_token_decimals - should panic ... ok
+test test::test_repay_position_v3_reduces_debt_and_improves_health ... ok
+test test::test_set_max_slippage_scaled ... ok
+test test::test_set_open_fee_bps_non_admin_panics - should panic ... ok
+test test::test_set_open_fee_bps_over_cap_panics - should panic ... ok
+test test::test_set_max_slippage_scaled_rejects_zero - should panic ... ok
+test test::test_set_swap_adapter_rejects_invalid_contract - should panic ... ok
+test test::test_set_params_non_admin_panics - should panic ... ok
+test test::test_split_liquidate_position_v3_can_be_taken_over_after_timeout ... ok
+test test::test_short_close_rejects_full_swap_and_unsafe_partial_quotes ... ok
+test test::test_split_liquidate_position_v3_missing_expiry_key_is_upgrade_compatible ... ok
+test test::test_split_liquidate_position_v3_completes_across_stages ... ok
+test test::test_split_short_close_buffer_covers_delayed_max_rate_interest ... ok
+test test::test_swap_open_position_v3_budget_short_min ... ok
+test test::test_transfer_spot_and_margin_ptokens ... ok
+test test::test_split_short_close_returns_unspent_quote_to_wallet ... ok
+test test::test_underwater_owner_close_can_be_superseded_by_liquidation ... ok
+test test::test_undermaintenance_expired_close_residual_keeps_liquidation_incentive ... ok
+test test::test_underwater_split_close_can_be_cancelled_after_swap_reverts ... ok
+test test::test_v3_close_uses_pool_quote_when_pool_is_below_oracle ... ok
+test test::test_perps_v3_2x_to_5x_long_short_liquidation_matrix ... ok
+test test::test_v3_open_rechecks_pool_kill_switch_before_borrowing ... ok
+test test::test_v3_liquidation_uses_pool_quote_and_absorbs_only_real_shortfall ... ok
+test test::test_perps_v3_stress_repeated_open_close_liquidate_and_pending_recovery ... ok
+test test::fee_tests::nonzero_fees_long_short_2_to_5x_amount_matrix ... ok
+test test::test_perps_v3_2x_to_5x_long_short_amount_lifecycle_matrix ... ok
+
+test result: ok. 110 passed; 0 failed; 2 ignored; 0 measured; 8 filtered out; finished in 80.58s

@@ -1,0 +1,933 @@
+{
+  "schema": "cl-lifecycle-proof-v1",
+  "profile": "captured-network-diagnostic",
+  "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+  "resource_report_sha256": "5dc6916eccbd251779fcd5a10a2aef11b1581b98235099831b18559a979775f7",
+  "reviewed_map": {
+    "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/config/cl-proof-map.json",
+    "sha256": "ede4f3d33491901493929552bbe03679a8064d3311dd06b828f7c28f080fae20"
+  },
+  "source_root": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts",
+  "test_runs": [
+    {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/captured-network-diagnostic-harness.log",
+      "sha256": "8e18b8a18a7b7135e541b813152d3cc29258cdeb0abbd0c686fd8cfd7023fab6",
+      "exit_code": 0
+    },
+    {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/captured-network-diagnostic-archive.log",
+      "sha256": "fff097235df0c1eecfbea3568c3470bd9fc8f0ae233f877a94bd62b01f761226",
+      "exit_code": 0
+    },
+    {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/unresolved-final.log",
+      "sha256": "103eba0fee3bacce184f85782ba8243ba2dc641e6261829a9b5b093421ecffad",
+      "exit_code": 0
+    },
+    {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/allowance-final.log",
+      "sha256": "1ca440da475753b47cf7a5a0c4fc19428baa2bffc012bf64126a8b46fd9b963b",
+      "exit_code": 0
+    }
+  ],
+  "sources": {
+    "test::compiled_vault_core_flows": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/test.rs",
+      "sha256": "5a8eb334f7cee206f99f07d748770b067f984600c221265e15b5a3dba56474d6"
+    },
+    "test::compiled_v3_checkpoint": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/test.rs",
+      "sha256": "5a8eb334f7cee206f99f07d748770b067f984600c221265e15b5a3dba56474d6"
+    },
+    "test::funded_tests::compiled_funded_liquidation": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/funded_tests.rs",
+      "sha256": "fe466180c03b1cef43549ea452b8720ca9464a2418879e91d1fb978d2dabec2e"
+    },
+    "test::funded_tests::compiled_repay_release": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/funded_tests.rs",
+      "sha256": "fe466180c03b1cef43549ea452b8720ca9464a2418879e91d1fb978d2dabec2e"
+    },
+    "test::compiled_venue_rewards_and_claim_failure": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/test.rs",
+      "sha256": "5a8eb334f7cee206f99f07d748770b067f984600c221265e15b5a3dba56474d6"
+    },
+    "test::compiled_authorization_rejections_after_setup": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/test.rs",
+      "sha256": "5a8eb334f7cee206f99f07d748770b067f984600c221265e15b5a3dba56474d6"
+    },
+    "test::recovery_state_tests::compiled_cancel_after_execute_is_rejection_then_repay_release": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/recovery_state_tests.rs",
+      "sha256": "0adf80d4432ba567e40283b302f7049a163ed5a49e93b7cbcc1fa86fb1c83644"
+    },
+    "test::funded_tests::compiled_interrupted_open_recovery_claim_outage": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/funded_tests.rs",
+      "sha256": "fe466180c03b1cef43549ea452b8720ca9464a2418879e91d1fb978d2dabec2e"
+    },
+    "test::compiled_receipt_margin_reward_custody": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/test.rs",
+      "sha256": "5a8eb334f7cee206f99f07d748770b067f984600c221265e15b5a3dba56474d6"
+    },
+    "test::lifecycle_tests::compiled_allowance_reward_boundary_and_claim_rollback": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/lifecycle_tests.rs",
+      "sha256": "590407fef8db83365dffca38989ad162366c238436cb91e6613e017e37adb09d"
+    },
+    "test::historical_tests::compiled_automatic_history_exited_owner_and_later_accrual": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/historical_tests.rs",
+      "sha256": "69bc1fc82852b30f1474b9f88a54f05ccb4ed5cac29c076af0f980f490f1652a"
+    },
+    "test::historical_tests::compiled_governed_waiver_original_custody_coowner_exits_before_receipt": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/historical_tests.rs",
+      "sha256": "69bc1fc82852b30f1474b9f88a54f05ccb4ed5cac29c076af0f980f490f1652a"
+    },
+    "test::venue_boundary_tests::compiled_pending_claim_boundary_matrix": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/venue_boundary_tests.rs",
+      "sha256": "b1c49843737ee027de4e4d618bad2f2f6f4bc61e6a8db9024d8d1caca3732bd5"
+    },
+    "test::recovery_state_tests::compiled_failed_activation_preserves_pending_recovery": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/recovery_state_tests.rs",
+      "sha256": "0adf80d4432ba567e40283b302f7049a163ed5a49e93b7cbcc1fa86fb1c83644"
+    },
+    "test::recovery_state_tests::compiled_pending_before_swap_expiry_and_abandonment": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/recovery_state_tests.rs",
+      "sha256": "0adf80d4432ba567e40283b302f7049a163ed5a49e93b7cbcc1fa86fb1c83644"
+    },
+    "test::recovery_state_tests::compiled_expired_swapped_permissionless_resolution": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/recovery_state_tests.rs",
+      "sha256": "0adf80d4432ba567e40283b302f7049a163ed5a49e93b7cbcc1fa86fb1c83644"
+    },
+    "test::adversarial_tests::compiled_both_reward_calls_fail_forced_settlement_preserves_history": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/adversarial_tests.rs",
+      "sha256": "a7fb5a33c04dbe70967605462d9c7f8bea9fb4bf1ccf2346be830bb32f960c13"
+    },
+    "test::adversarial_tests::compiled_funded_adversarial_atomicity": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/adversarial_tests.rs",
+      "sha256": "a7fb5a33c04dbe70967605462d9c7f8bea9fb4bf1ccf2346be830bb32f960c13"
+    },
+    "test::historical_tests::compiled_multiple_unsettled_intervals_exited_beneficiary": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/historical_tests.rs",
+      "sha256": "69bc1fc82852b30f1474b9f88a54f05ccb4ed5cac29c076af0f980f490f1652a"
+    },
+    "test::historical_shortfall_tests::compiled_governed_shortfall_proportional_exited_custody_owner": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/historical_shortfall_tests.rs",
+      "sha256": "11bdb35fd0b1864725fccf0129903fe258a0034c243900732502b7516209aea3"
+    },
+    "test::unresolved_stress_tests::compiled_multiple_unresolved_intervals_after_funded_exits": {
+      "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/cl-share-pool-facade/src/unresolved_stress_tests.rs",
+      "sha256": "f5a698405d6951fc43e206a5915d6adcdc422a3e529a0412b0c4f4af8202e859"
+    }
+  },
+  "proofs": [
+    {
+      "label": "deposit",
+      "tests": [
+        "test::compiled_vault_core_flows"
+      ],
+      "assertions": [
+        "Principal and share balances, donated dust and zero scheduled reward outcomes asserted after actual compiled calls."
+      ],
+      "resource_flows": [
+        "deposit"
+      ],
+      "transactions": [
+        {
+          "function": "deposit_underlying",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "redeem",
+      "tests": [
+        "test::compiled_vault_core_flows"
+      ],
+      "assertions": [
+        "Principal and share balances, donated dust and zero scheduled reward outcomes asserted after actual compiled calls."
+      ],
+      "resource_flows": [
+        "redeem"
+      ],
+      "transactions": [
+        {
+          "function": "redeem",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "transfer",
+      "tests": [
+        "test::compiled_vault_core_flows"
+      ],
+      "assertions": [
+        "Principal and share balances, donated dust and zero scheduled reward outcomes asserted after actual compiled calls."
+      ],
+      "resource_flows": [
+        "transfer"
+      ],
+      "transactions": [
+        {
+          "function": "transfer",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "emergency_redeem",
+      "tests": [
+        "test::compiled_vault_core_flows"
+      ],
+      "assertions": [
+        "Principal and share balances, donated dust and zero scheduled reward outcomes asserted after actual compiled calls."
+      ],
+      "resource_flows": [
+        "emergency_redeem"
+      ],
+      "transactions": [
+        {
+          "function": "emergency_redeem",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "claim_rewards",
+      "tests": [
+        "test::compiled_vault_core_flows"
+      ],
+      "assertions": [
+        "Principal and share balances, donated dust and zero scheduled reward outcomes asserted after actual compiled calls."
+      ],
+      "resource_flows": [
+        "claim_rewards"
+      ],
+      "transactions": [
+        {
+          "function": "claim_rewards",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "begin_open",
+      "tests": [
+        "test::compiled_v3_checkpoint"
+      ],
+      "assertions": [
+        "Actual underlying-to-shares-to-underlying roundtrip reaches full close; donated dust preserved and facade shares zero."
+      ],
+      "resource_flows": [
+        "begin_open"
+      ],
+      "transactions": [
+        {
+          "function": "begin_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "swap_open_position_v3",
+      "tests": [
+        "test::compiled_v3_checkpoint"
+      ],
+      "assertions": [
+        "Actual underlying-to-shares-to-underlying roundtrip reaches full close; donated dust preserved and facade shares zero."
+      ],
+      "resource_flows": [
+        "swap_open_position_v3"
+      ],
+      "transactions": [
+        {
+          "function": "swap_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "activate_open_position_v3",
+      "tests": [
+        "test::compiled_v3_checkpoint"
+      ],
+      "assertions": [
+        "Actual underlying-to-shares-to-underlying roundtrip reaches full close; donated dust preserved and facade shares zero."
+      ],
+      "resource_flows": [
+        "activate_open_position_v3"
+      ],
+      "transactions": [
+        {
+          "function": "activate_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "prepare_close_position_v3",
+      "tests": [
+        "test::compiled_v3_checkpoint"
+      ],
+      "assertions": [
+        "Actual underlying-to-shares-to-underlying roundtrip reaches full close; donated dust preserved and facade shares zero."
+      ],
+      "resource_flows": [
+        "prepare_close_position_v3"
+      ],
+      "transactions": [
+        {
+          "function": "prepare_close_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "swap_close",
+      "tests": [
+        "test::compiled_v3_checkpoint"
+      ],
+      "assertions": [
+        "Actual underlying-to-shares-to-underlying roundtrip reaches full close; donated dust preserved and facade shares zero."
+      ],
+      "resource_flows": [
+        "swap_close"
+      ],
+      "transactions": [
+        {
+          "function": "swap_close_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "finish_close",
+      "tests": [
+        "test::compiled_v3_checkpoint"
+      ],
+      "assertions": [
+        "Actual underlying-to-shares-to-underlying roundtrip reaches full close; donated dust preserved and facade shares zero."
+      ],
+      "resource_flows": [
+        "finish_close"
+      ],
+      "transactions": [
+        {
+          "function": "finish_close_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "funded_liquidation",
+      "tests": [
+        "test::funded_tests::compiled_funded_liquidation"
+      ],
+      "assertions": [
+        "Debt extinguished; exact permitted receipt seizure; borrower receives historical rewards and liquidator later accrual; scaled conservation."
+      ],
+      "resource_flows": [
+        "funded_liquidation"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_funded_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "repay_release",
+      "tests": [
+        "test::funded_tests::compiled_repay_release"
+      ],
+      "assertions": [
+        "Full repayment clears debt before release; booked rewards remain claimable through upstream outage."
+      ],
+      "resource_flows": [
+        "repay_release"
+      ],
+      "transactions": [
+        {
+          "function": "repay_margin_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "release_debt_free_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "claim_failure_recovery",
+      "tests": [
+        "test::compiled_venue_rewards_and_claim_failure"
+      ],
+      "assertions": [
+        "Claim outage rejects ordinary transfer and waiver=false; explicit voluntary waiver allows principal exit and preserves quarantine."
+      ],
+      "resource_flows": [
+        "claim_failure_recovery"
+      ],
+      "transactions": [
+        {
+          "function": "emergency_redeem",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "cancel_before_execute",
+      "tests": [
+        "test::compiled_authorization_rejections_after_setup"
+      ],
+      "assertions": [
+        "Exact authorization negatives checked after successful setup; unswapped pending open cancels without debt."
+      ],
+      "resource_flows": [
+        "cancel_before_execute"
+      ],
+      "transactions": [
+        {
+          "function": "cancel_pending_open_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "swap",
+          "contract_role": "facade",
+          "outcome": "rejected",
+          "proof_case": "controller_impersonation"
+        },
+        {
+          "function": "custody_prepare_transfer",
+          "contract_role": "vault",
+          "outcome": "rejected",
+          "proof_case": "unauthorized_vault_recovery"
+        },
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "unauthorized_pending_recovery"
+        },
+        {
+          "function": "swap",
+          "contract_role": "facade",
+          "outcome": "rejected",
+          "proof_case": "wrong_caller"
+        },
+        {
+          "function": "cl_prepare_margin_rewards",
+          "contract_role": "share_receipt",
+          "outcome": "rejected",
+          "proof_case": "unauthorized_receipt_recovery"
+        }
+      ]
+    },
+    {
+      "label": "cancel_after_execute",
+      "tests": [
+        "test::recovery_state_tests::compiled_cancel_after_execute_is_rejection_then_repay_release"
+      ],
+      "assertions": [
+        "Explicit execute activates after swap; pending cancellation and repeated execution reject with unchanged debt/collateral/rewards; authorized repay-release then succeeds."
+      ],
+      "resource_flows": [
+        "cancel_after_execute_rejection",
+        "execute_open_position_v3"
+      ],
+      "transactions": [
+        {
+          "function": "execute_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "repay_margin_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "release_debt_free_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "cancel_pending_open_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "cancel_after_execute_rejection"
+        }
+      ]
+    },
+    {
+      "label": "cancel_after_swap",
+      "tests": [
+        "test::funded_tests::compiled_interrupted_open_recovery_claim_outage"
+      ],
+      "assertions": [
+        "Underfunded pending recovery rolls back; funded recovery during claim outage extinguishes debt, returns shares and preserves historical borrower entitlement."
+      ],
+      "resource_flows": [
+        "cancel_after_swap"
+      ],
+      "transactions": [
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "receipt_custody_ownership_change",
+      "tests": [
+        "test::compiled_receipt_margin_reward_custody"
+      ],
+      "assertions": [
+        "Receipt ownership transfer and margin custody preserve beneficial owners; custodians receive zero rewards, exact scaled conservation."
+      ],
+      "resource_flows": [
+        "receipt_custody_ownership_change"
+      ],
+      "transactions": [
+        {
+          "function": "transfer",
+          "contract_role": "share_receipt",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "allowance_transfer_from",
+      "tests": [
+        "test::lifecycle_tests::compiled_allowance_reward_boundary_and_claim_rollback"
+      ],
+      "assertions": [
+        "Exact spender auth, wrong recipient rejection, claim-first boundary, allowance and balance rollback during outage, reward conservation."
+      ],
+      "resource_flows": [
+        "allowance_transfer_from"
+      ],
+      "transactions": [
+        {
+          "function": "transfer_from",
+          "contract_role": "vault",
+          "outcome": "success"
+        },
+        {
+          "function": "transfer_from",
+          "contract_role": "vault",
+          "outcome": "rejected",
+          "proof_case": "allowance_missing_spender_auth"
+        },
+        {
+          "function": "transfer_from",
+          "contract_role": "vault",
+          "outcome": "rejected",
+          "proof_case": "allowance_wrong_recipient_auth",
+          "account_authorization_mode": "enforcing-mismatched-root",
+          "mismatched_argument_indices": [
+            2
+          ]
+        },
+        {
+          "function": "transfer_from",
+          "contract_role": "vault",
+          "outcome": "rejected",
+          "proof_case": "allowance_failed_claim_rollback"
+        }
+      ]
+    },
+    {
+      "label": "quarantine_reconciliation",
+      "tests": [
+        "test::historical_tests::compiled_automatic_history_exited_owner_and_later_accrual"
+      ],
+      "assertions": [
+        "Verified actual-boundary readings settle exited owner and original coowner; newcomer excluded; later accrual allocated to its own historical owners; exact scaled conservation and repeat idempotence."
+      ],
+      "resource_flows": [
+        "quarantine_reconciliation"
+      ],
+      "transactions": [
+        {
+          "function": "settle_reward_segment",
+          "contract_role": "vault",
+          "outcome": "success",
+          "requires_archival_restore": true,
+          "required_archived_key_names": [
+            "HistoryCount",
+            "HistoryWeight",
+            "HistorySegment",
+            "HistoryInterval"
+          ]
+        },
+        {
+          "function": "settle_reward_segment",
+          "contract_role": "vault",
+          "outcome": "success",
+          "requires_archival_restore": true,
+          "required_archived_key_names": [
+            "HistorySettled"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "waiver_redistribution",
+      "tests": [
+        "test::historical_tests::compiled_governed_waiver_original_custody_coowner_exits_before_receipt"
+      ],
+      "assertions": [
+        "Explicitly GOVERNED evidence with published digest/timelock: original custody coowner exits by forced liquidation before receipt, retains old redistribution; newcomer gets later accrual only; waiver holder zero; conservation."
+      ],
+      "resource_flows": [
+        "waiver_redistribution"
+      ],
+      "transactions": [
+        {
+          "function": "attribute_reward_segment",
+          "contract_role": "vault",
+          "outcome": "success"
+        },
+        {
+          "function": "settle_reward_segment",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "pending_claim_boundary_matrix",
+      "tests": [
+        "test::venue_boundary_tests::compiled_pending_claim_boundary_matrix"
+      ],
+      "assertions": [
+        "Pending read immediately before each claim-first ownership boundary equals actual claimed amount across emission change, rounding, range crossings, repeated transfers and partial exit; conservation."
+      ],
+      "resource_flows": [
+        "pending_boundary_fractional_first_transfer",
+        "pending_boundary_emission_change",
+        "pending_boundary_shifted_range",
+        "pending_boundary_returned_range",
+        "pending_boundary_partial_exit"
+      ],
+      "transactions": [
+        {
+          "function": "transfer",
+          "contract_role": "vault",
+          "outcome": "success"
+        },
+        {
+          "function": "emergency_redeem",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "failed_activation_recovery",
+      "tests": [
+        "test::recovery_state_tests::compiled_failed_activation_preserves_pending_recovery"
+      ],
+      "assertions": [
+        "Failed activation leaves pending state/debt/collateral/rewards unchanged; expiry cannot abandon swapped debt; funded recovery preserves booked entitlement."
+      ],
+      "resource_flows": [
+        "failed_activation_atomic",
+        "recover_pending_open_funded"
+      ],
+      "transactions": [
+        {
+          "function": "recover_pending_open_funded",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "activate_open_position_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "failed_activation_atomic"
+        }
+      ]
+    },
+    {
+      "label": "expired_pending_before_swap",
+      "tests": [
+        "test::recovery_state_tests::compiled_pending_before_swap_expiry_and_abandonment"
+      ],
+      "assertions": [
+        "Premature expiry rejected, expired unswapped swap rejected, permissionless expiry removes debt-free pending position."
+      ],
+      "resource_flows": [
+        "expired_pending_before_swap"
+      ],
+      "transactions": [
+        {
+          "function": "expire_pending_open_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "expired_pending_resolution",
+      "tests": [
+        "test::recovery_state_tests::compiled_expired_swapped_permissionless_resolution"
+      ],
+      "assertions": [
+        "Premature resolution rejected; expired swapped position resolves, pending cancellation rejects and authorized repay-release succeeds."
+      ],
+      "resource_flows": [
+        "expired_pending_resolution"
+      ],
+      "transactions": [
+        {
+          "function": "resolve_pending_open_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        },
+        {
+          "function": "release_debt_free_position_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "both_reward_calls_failed_funded_liquidation",
+      "tests": [
+        "test::adversarial_tests::compiled_both_reward_calls_fail_forced_settlement_preserves_history"
+      ],
+      "assertions": [
+        "Controlled corruption of Aquarius per-user record makes both real bytecode reward calls fail; funded seizure remains atomic, no borrower waiver, old booked rewards preserved and late receipt quarantined."
+      ],
+      "resource_flows": [
+        "both_reward_calls_failed_funded_liquidation"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_funded_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "funded_insufficient_liquidator_rollback",
+      "tests": [
+        "test::adversarial_tests::compiled_funded_adversarial_atomicity"
+      ],
+      "assertions": [
+        "Entire ledger entries equal pre-call state after expected rejection; collateral-transfer failure occurs after successful debt-repayment return; historical rewards preserved."
+      ],
+      "resource_flows": [
+        "funded_insufficient_liquidator_rollback"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_funded_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "funded_insufficient_liquidator_rollback"
+        }
+      ]
+    },
+    {
+      "label": "funded_invalid_valuation_rollback",
+      "tests": [
+        "test::adversarial_tests::compiled_funded_adversarial_atomicity"
+      ],
+      "assertions": [
+        "Entire ledger entries equal pre-call state after expected rejection; collateral-transfer failure occurs after successful debt-repayment return; historical rewards preserved."
+      ],
+      "resource_flows": [
+        "funded_invalid_valuation_rollback"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_funded_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "funded_invalid_valuation_rollback"
+        }
+      ]
+    },
+    {
+      "label": "funded_failed_collateral_transfer_rollback",
+      "tests": [
+        "test::adversarial_tests::compiled_funded_adversarial_atomicity"
+      ],
+      "assertions": [
+        "Entire ledger entries equal pre-call state after expected rejection; collateral-transfer failure occurs after successful debt-repayment return; historical rewards preserved."
+      ],
+      "resource_flows": [
+        "funded_failed_collateral_transfer_rollback"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_funded_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "funded_failed_collateral_transfer_rollback"
+        }
+      ]
+    },
+    {
+      "label": "funded_unauthorized_rollback",
+      "tests": [
+        "test::adversarial_tests::compiled_funded_adversarial_atomicity"
+      ],
+      "assertions": [
+        "Entire ledger entries equal pre-call state after expected rejection; collateral-transfer failure occurs after successful debt-repayment return; historical rewards preserved."
+      ],
+      "resource_flows": [
+        "funded_unauthorized_rollback"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_funded_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "funded_unauthorized_rollback"
+        }
+      ]
+    },
+    {
+      "label": "funded_repeated_execution_rollback",
+      "tests": [
+        "test::adversarial_tests::compiled_funded_adversarial_atomicity"
+      ],
+      "assertions": [
+        "Entire ledger entries equal pre-call state after expected rejection; collateral-transfer failure occurs after successful debt-repayment return; historical rewards preserved."
+      ],
+      "resource_flows": [
+        "funded_repeated_execution_rollback"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_funded_v3",
+          "contract_role": "v3",
+          "outcome": "rejected",
+          "proof_case": "funded_repeated_execution_rollback"
+        }
+      ]
+    },
+    {
+      "label": "historical_multiple_intervals",
+      "tests": [
+        "test::historical_tests::compiled_multiple_unsettled_intervals_exited_beneficiary"
+      ],
+      "assertions": [
+        "Three independently sealed unsettled intervals; exited beneficiary receives history, newcomer excluded; bounded incremental settlement and exact scaled conservation."
+      ],
+      "resource_flows": [
+        "historical_multiple_intervals"
+      ],
+      "transactions": [
+        {
+          "function": "settle_reward_segment",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "historical_shortfall",
+      "tests": [
+        "test::historical_shortfall_tests::compiled_governed_shortfall_proportional_exited_custody_owner"
+      ],
+      "assertions": [
+        "GOVERNED SYNTHETIC expected table twice the observed receipt exercises proportional shortfall; real Aquarius receipt, exited custody owner and later newcomer retain exactly their historical intervals, repeated settlement zero. This is not an automatically observed venue shortfall."
+      ],
+      "resource_flows": [
+        "governed_proportional_shortfall"
+      ],
+      "transactions": [
+        {
+          "function": "settle_reward_segment",
+          "contract_role": "vault",
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "label": "historical_unresolved_intervals",
+      "tests": [
+        "test::unresolved_stress_tests::compiled_multiple_unresolved_intervals_after_funded_exits"
+      ],
+      "assertions": [
+        "Three missing-boundary intervals after separate funded exits remain unresolved/quarantined after real later claims; original beneficial weights and booked rewards preserved; no waiver and no debt; settlement rejects. Controlled actual-bytecode dependency fault."
+      ],
+      "resource_flows": [
+        "historical_unresolved_intervals"
+      ],
+      "transactions": [
+        {
+          "function": "liquidate_funded_v3",
+          "contract_role": "v3",
+          "outcome": "success"
+        }
+      ]
+    }
+  ],
+  "contracts": {
+    "v3": [
+      "CDQLQAJAY5QTSZEHSJSGEKUCPQV37V62ZE5LEUUV3NCWLSF4AEBDMP55"
+    ],
+    "cash_receipt": [
+      "CBKQLKRMRXZBOLAQX7B6MLW75RKQFG3QEBJCRELNSVDZUCCK5KOU65A2"
+    ],
+    "lending_controller": [
+      "CAQ5UHPIIQ2LXWNVOLLZFEQOUYIWGPGDEMNH4WJQCX3C4LPOI6EKQH5V"
+    ],
+    "share_receipt": [
+      "CAIASALDBMWE7F7CU5TVNGKXIP22M7CTE5ROQOZFMIZIYDIYV6YRW2V7"
+    ],
+    "adapter": [
+      "CBJPUABS5H6EDPZ7AGJYOEWEDQ5HWMZDJNJYFGTTHDEI5FHONNL2BQN5"
+    ],
+    "oracle": [
+      "CDBNDHAVTZMXQMFS2GBJK4RBJFARUFYQZCWZZWYBLJGXZLB5KTENOHZS"
+    ],
+    "facade": [
+      "CDDD62URLXHZ2SEMZ3ZWWKRA2DCK75PELPRVLAW4PPO5PRL2HJW25HLF"
+    ],
+    "vault": [
+      "CB457TMKS3NBPJJRHNCRJMSAWP2YMCNIORWHHF6MNZJQQGZQRPSANQSE"
+    ],
+    "aquarius": [
+      "CDXKQTPLDDF4RBMJCCTGV2XQ44DCJOY7XZZKPEDJFKQTECSTYHBOI42O"
+    ],
+    "underlying": [
+      "CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF"
+    ],
+    "paired": [
+      "CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN"
+    ],
+    "reward": [
+      "CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG"
+    ],
+    "plane": [
+      "CC6YSLPYSKOZZFQSYO3UWY6VG5ZFKBXYOVDLAO7CVS26QZAFFR6AWO5K"
+    ]
+  },
+  "call_profile": {
+    "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/captured-network-diagnostic-calls.jsonl",
+    "sha256": "f576323876b4ca747da2a8ccd650d8a6673e5b03a40b7891f1724d0e04e04207"
+  }
+}

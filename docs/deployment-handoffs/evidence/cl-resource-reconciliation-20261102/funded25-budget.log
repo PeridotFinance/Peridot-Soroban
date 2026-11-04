@@ -1,0 +1,73 @@
+PROFILE captured-network-diagnostic mode=acceptance captured_ledger=65264920
+funded_capped_settlement: FAIL cpu=12029697 memory=1855868 entries=139 writes=34 read_bytes=0 write_bytes=2768 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 3609, "disk_entry_reads": 26554, "entry_writes": 42500, "events": 4590, "persistent_rent": 1676831, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1182}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1846537, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_failed_price: FAIL cpu=3123003 memory=533532 entries=88 writes=7 read_bytes=0 write_bytes=652 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 937, "disk_entry_reads": 5467, "entry_writes": 8750, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 279}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 15433, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_guard_rejection: FAIL cpu=3037428 memory=514543 entries=87 writes=7 read_bytes=0 write_bytes=652 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 912, "disk_entry_reads": 5467, "entry_writes": 8750, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 279}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 15408, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_guard_rejection: FAIL cpu=3714593 memory=679811 entries=98 writes=11 read_bytes=0 write_bytes=996 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 1115, "disk_entry_reads": 8591, "entry_writes": 13750, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 426}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 23882, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_guard_rejection: FAIL cpu=3714593 memory=679811 entries=98 writes=11 read_bytes=0 write_bytes=996 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 1115, "disk_entry_reads": 8591, "entry_writes": 13750, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 426}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 23882, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_guard_rejection: FAIL cpu=716368 memory=154033 entries=23 writes=1 read_bytes=0 write_bytes=0 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 215, "disk_entry_reads": 781, "entry_writes": 1250, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 2246, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_guard_rejection: FAIL cpu=3512798 memory=654423 entries=98 writes=11 read_bytes=0 write_bytes=996 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 1054, "disk_entry_reads": 8591, "entry_writes": 13750, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 426}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 23821, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_missing_nested_auth: FAIL cpu=5602815 memory=893635 entries=101 writes=12 read_bytes=0 write_bytes=1112 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 1681, "disk_entry_reads": 9372, "entry_writes": 15000, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 475}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 26528, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_missing_root_auth: FAIL cpu=34062 memory=12693 entries=2 writes=0 read_bytes=0 write_bytes=0 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 11, "disk_entry_reads": 0, "entry_writes": 0, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 11, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_recovery_lifecycle_rejection: FAIL cpu=184166 memory=68178 entries=6 writes=1 read_bytes=0 write_bytes=0 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 56, "disk_entry_reads": 781, "entry_writes": 1250, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 2087, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_recovery_lifecycle_rejection: FAIL cpu=186833 memory=67838 entries=6 writes=1 read_bytes=0 write_bytes=0 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 57, "disk_entry_reads": 781, "entry_writes": 1250, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 2088, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_mainnet_rejection: FAIL cpu=126037 memory=19727 entries=1 writes=0 read_bytes=0 write_bytes=0 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 38, "disk_entry_reads": 0, "entry_writes": 0, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 38, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_settlement: FAIL cpu=12424660 memory=1962486 entries=147 writes=37 read_bytes=0 write_bytes=3316 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 3728, "disk_entry_reads": 28897, "entry_writes": 46250, "events": 4590, "persistent_rent": 2210163, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1416}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 2386315, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+funded_seizure_rollback: FAIL cpu=9670604 memory=1462502 entries=117 writes=18 read_bytes=0 write_bytes=1848 scope=native-funded-synthetic-prestate runtime_protocol=25
+  missing/mismatched runtime_protocol
+  missing/mismatched exact_captured_cost_model
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 2902, "disk_entry_reads": 14058, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 789}, "full_transaction_fee": false, "local_host_protocol": 25, "network_protocol": 29, "profile": "captured-network-diagnostic", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 40249, "run_mode": "acceptance", "runtime_matches_network": false, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+UNMEASURED: activate_open_position_v3, allowance_transfer_from, begin_open, cancel_after_execute, cancel_after_swap, cancel_before_execute, claim_failure_recovery, claim_rewards, deposit, emergency_redeem, finish_close, funded_liquidation, prepare_close_position_v3, quarantine_reconciliation, receipt_custody_ownership_change, redeem, repay_release, swap_close, swap_open_position_v3, transfer, waiver_redistribution
+CAPTURED-NETWORK-DIAGNOSTIC: FAIL
+RELEASE GATE: FAIL — full transaction envelope/return/history/base fee evidence is unmeasured; release_approval=false. Diagnostic profile selection cannot grant release approval.
+Scope: per-row fixture classification. Matching target runtime and captured cost model required. SDK key/entry/code size checks remain enforced; no live-state RPC simulation claim.

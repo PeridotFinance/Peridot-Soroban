@@ -1,0 +1,8 @@
+{
+  "command": "bash scripts/run_cl_share_checkpoint.sh",
+  "exit_code": 1,
+  "sdk": "25.3.1",
+  "host": "25.0.1",
+  "status": "WIP preserved before fixture repair; setup failure, no V3 execution",
+  "report": "config/cl-share-checkpoint.json"
+}

@@ -1,0 +1,115 @@
+{
+  "internal-policy": {
+    "proof_count": 46,
+    "sdk_rows": 161,
+    "transaction_rows": 259,
+    "transaction_unmeasured": 28,
+    "max_sdk": {
+      "instructions": 100004163,
+      "memory_bytes": 16847283,
+      "write_entries": 30
+    },
+    "max_sdk_entries": 137,
+    "max_unsigned": {
+      "instructions": 61650021,
+      "memory_bytes": 8084470,
+      "transaction_size_bytes": 9960,
+      "write_entries": 27
+    },
+    "max_unique_footprint": 115,
+    "max_unsigned_fee": 4651047,
+    "restoration_rows": 0
+  },
+  "captured-network-diagnostic": {
+    "proof_count": 46,
+    "sdk_rows": 1652,
+    "transaction_rows": 2741,
+    "transaction_unmeasured": 0,
+    "max_sdk": {
+      "instructions": 235456305,
+      "memory_bytes": 24514601,
+      "write_entries": 56
+    },
+    "max_sdk_entries": 213,
+    "max_unsigned": {
+      "instructions": 236694863,
+      "memory_bytes": 21678566,
+      "transaction_size_bytes": 15092,
+      "write_entries": 57
+    },
+    "max_unique_footprint": 158,
+    "max_unsigned_fee": 22845643,
+    "restoration_rows": 733
+  }
+}
+{
+  "internal-policy": {
+    "gates": {
+      "invocation": false,
+      "lifecycle": false,
+      "transaction": false,
+      "checkpoint": false
+    },
+    "errors": {
+      "missing_required_flows": 0,
+      "lifecycle_errors": 106,
+      "transaction_errors": 303
+    },
+    "tests": {
+      "logs/internal-policy-harness.log": [
+        "test result: FAILED. 4 passed; 32 failed; 0 ignored; 0 measured; 2 filtered out; finished in 71.02s"
+      ],
+      "logs/internal-policy-archive.log": [
+        "test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 35 filtered out; finished in 3.80s"
+      ],
+      "logs/internal-policy-history-scale-archive.log": [
+        "test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 36 filtered out; finished in 1.45s"
+      ]
+    }
+  },
+  "captured-network-diagnostic": {
+    "gates": {
+      "invocation": true,
+      "lifecycle": true,
+      "transaction": true,
+      "checkpoint": true
+    },
+    "errors": {
+      "missing_required_flows": 0,
+      "lifecycle_errors": 0,
+      "transaction_errors": 0
+    },
+    "tests": {
+      "logs/captured-network-diagnostic-harness.log": [
+        "test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 407.13s"
+      ],
+      "logs/captured-network-diagnostic-archive.log": [
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 99.96s"
+      ],
+      "logs/captured-network-diagnostic-history-scale-archive.log": [
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 36 filtered out; finished in 235.58s"
+      ]
+    }
+  }
+}
+{
+  "reward-tests.log": [
+    "test result: ok. 53 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+  ],
+  "default-margin-tests.log": [
+    "test result: ok. 110 passed; 0 failed; 2 ignored; 0 measured; 8 filtered out; finished in 31.34s"
+  ],
+  "captured-network-diagnostic-native-funded.log": [
+    "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 112 filtered out; finished in 2.59s"
+  ],
+  "internal-policy-native-funded.log": [
+    "test result: FAILED. 5 passed; 4 failed; 0 ignored; 0 measured; 112 filtered out; finished in 2.49s"
+  ],
+  "captured-network-diagnostic-integrity.log": [
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.00s"
+  ],
+  "internal-policy-integrity.log": [
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.01s"
+  ]
+}

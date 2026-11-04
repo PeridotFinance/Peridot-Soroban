@@ -5,8 +5,17 @@ mod contract;
 mod events;
 mod fee_entitlements;
 mod fees;
+#[cfg(any(test, feature = "funded-liquidation-prototype"))]
+mod funded_liquidation;
+#[cfg(all(
+    feature = "funded-liquidation-prototype",
+    target_arch = "wasm32",
+    not(feature = "funded-liquidation-validation")
+))]
+compile_error!("funded-liquidation-prototype is native-only; use guarded funded-liquidation-validation for local WASM integration");
 mod helpers;
 mod perps;
+mod pending_recovery;
 mod storage;
 
 pub use constants::*;
@@ -17,3 +26,10 @@ pub use storage::*;
 
 #[cfg(test)]
 mod test;
+
+#[cfg(feature = "funded-liquidation-validation")]
+mod cl_custody;
+
+#[cfg(test)]
+#[path="../../../test-support/cl_resource_limits.rs"]
+mod cl_resource_limits;

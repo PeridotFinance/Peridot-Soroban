@@ -1,0 +1,55 @@
+warning: trait `Share` is never used
+  --> contracts/cl-share-pool-facade/src/lib.rs:26:7
+   |
+26 | trait Share {
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `paired` is never read
+   --> contracts/cl-share-pool-facade/src/test.rs:134:5
+    |
+129 | struct F {
+    |        - field in this struct
+...
+134 |     paired: Address,
+    |     ^^^^^^
+
+warning: `cl-share-pool-facade` (lib test) generated 2 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running unittests src/lib.rs (target/debug/deps/cl_share_pool_facade-353d546159467f04)
+
+running 9 tests
+test pr74_auth_tests::compiled_facade_roundtrip_with_native_auth_and_vault_fixtures ... ignored, requires locally compiled FACADE_VALIDATION_WASM; other contracts remain explicit fixtures
+
+thread 'pr74_auth_tests::mainnet_initialization_is_disabled' (999841) panicked at /Users/joshua/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-25.0.1/src/host.rs:907:9:
+HostError: Error(WasmVm, InvalidAction)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(WasmVm, InvalidAction)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(WasmVm, InvalidAction)], data:["contract call failed", initialize, [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, topics:[error, Error(WasmVm, InvalidAction)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, topics:[log], data:["caught panic 'assertion `left != right` failed: CL validation: Mainnet disabled\n  left: BytesN<32>(122, 195, 57, 151, 84, 78, 49, 117, 210, 102, 189, 2, 36, 57, 178, 44, 219, 22, 80, 140, 1, 22, 63, 38, 229, 203, 42, 62, 16, 69, 169, 121)\n right: BytesN<32>(122, 195, 57, 151, 84, 78, 49, 117, 210, 102, 189, 2, 36, 57, 178, 44, 219, 22, 80, 140, 1, 22, 63, 38, 229, 203, 42, 62, 16, 69, 169, 121)' from contract function 'Symbol(obj#17)'", CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM]
+   4: [Diagnostic Event] topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, initialize], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM]
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Writing test snapshot file for test "pr74_auth_tests::mainnet_initialization_is_disabled" to "test_snapshots/pr74_auth_tests/mainnet_initialization_is_disabled.1.json".
+Writing test snapshot file for test "pr74_auth_tests::controller_address_without_real_controller_authorization_fails" to "test_snapshots/pr74_auth_tests/controller_address_without_real_controller_authorization_fails.1.json".
+Writing test snapshot file for test "pr74_auth_tests::donation_sweep_requires_admin_and_has_fixed_recipient" to "test_snapshots/pr74_auth_tests/donation_sweep_requires_admin_and_has_fixed_recipient.1.json".
+Writing test snapshot file for test "pr74_auth_tests::missing_or_wrong_nested_authorization_fails_and_rolls_back" to "test_snapshots/pr74_auth_tests/missing_or_wrong_nested_authorization_fails_and_rolls_back.1.json".
+test pr74_auth_tests::mainnet_initialization_is_disabled - should panic ... ok
+Writing test snapshot file for test "pr74_auth_tests::failed_claim_cannot_consume_input_or_donations" to "test_snapshots/pr74_auth_tests/failed_claim_cannot_consume_input_or_donations.1.json".
+Writing test snapshot file for test "pr74_auth_tests::deposit_pause_preserves_exit_quotes_and_execution" to "test_snapshots/pr74_auth_tests/deposit_pause_preserves_exit_quotes_and_execution.1.json".
+test pr74_auth_tests::controller_address_without_real_controller_authorization_fails ... ok
+Writing test snapshot file for test "pr74_auth_tests::real_contract_auth_roundtrip_preserves_donations_and_pays_full_output" to "test_snapshots/pr74_auth_tests/real_contract_auth_roundtrip_preserves_donations_and_pays_full_output.1.json".
+test pr74_auth_tests::donation_sweep_requires_admin_and_has_fixed_recipient ... ok
+Writing test snapshot file for test "pr74_auth_tests::missing_or_wrong_nested_authorization_fails_and_rolls_back" to "test_snapshots/pr74_auth_tests/missing_or_wrong_nested_authorization_fails_and_rolls_back.2.json".
+test pr74_auth_tests::failed_claim_cannot_consume_input_or_donations ... ok
+Writing test snapshot file for test "pr74_auth_tests::stale_nav_quotes_zero_and_insufficient_output_cannot_use_donations" to "test_snapshots/pr74_auth_tests/stale_nav_quotes_zero_and_insufficient_output_cannot_use_donations.1.json".
+test pr74_auth_tests::deposit_pause_preserves_exit_quotes_and_execution ... ok
+test pr74_auth_tests::real_contract_auth_roundtrip_preserves_donations_and_pays_full_output ... ok
+test pr74_auth_tests::stale_nav_quotes_zero_and_insufficient_output_cannot_use_donations ... ok
+Writing test snapshot file for test "pr74_auth_tests::missing_or_wrong_nested_authorization_fails_and_rolls_back" to "test_snapshots/pr74_auth_tests/missing_or_wrong_nested_authorization_fails_and_rolls_back.3.json".
+test pr74_auth_tests::missing_or_wrong_nested_authorization_fails_and_rolls_back ... ok
+
+test result: ok. 8 passed; 0 failed; 1 ignored; 0 measured; 6 filtered out; finished in 0.25s
