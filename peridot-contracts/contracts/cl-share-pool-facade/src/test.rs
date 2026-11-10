@@ -747,3 +747,8 @@ mod history_scale_tests;
 mod default_reserve_tests;
 #[path = "reserve_open_tests.rs"]
 mod reserve_open_tests;
+
+// Focused Stage 1 venue comparison, opt-in on the existing protocol29 harness.
+#[cfg(feature = "fee-pending-comparison")]
+#[path = "../../../research/cl-fee-pending-20261110/fee_pending.rs"]
+mod fee_pending_tests;

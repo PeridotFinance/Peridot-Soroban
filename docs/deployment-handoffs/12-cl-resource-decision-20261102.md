@@ -1,6 +1,24 @@
 # Resource decision memo — refreshed decision, 2026-11-02
 
-**Recommendation: continue bounded qualification of the preserved atomic Option1 candidate; do not adopt its policy, isolated patches or additional financial stages.** This is an architecture recommendation, not permission to change limits. Stage 1 remains incomplete; PR #75 remains draft; borrowing stays disabled. If 100M/100 SDK entries/50 writes remains mandatory, the next feasibility dependency is a measured venue/accounting ABI redesign plus narrower receipt/controller key access, not more transaction splitting.
+**Current decision — 2026-11-10: Option1 is permanently closed.** Aquarius stays.
+The required gate is 100M CPU, 41,943,040 memory bytes, 100 SDK entries, 100 actual
+transaction footprint keys and 50 writes, with all existing checks. Retain the
+captured settings as historical data; do not relabel SDK totals as network keys.
+All Option1 artifacts below are history, not an active qualification plan.
+
+Stage 1 is the 1x PYUSD/USDC share vault. Approved entrant semantics are cash-first,
+fee-inclusive claim-first minting; later keeper investment; bounded entrant
+execution-cost funding; and in-kind cancellation. Deposit-first is not adopted.
+Work order: (a) the bounded fee-pending/withdrawal/rounding comparison, reported
+in [handoff24](24-cl-stage1-fee-pending-comparison-20261110.md); (b) complete measured
+1x transaction footprints under the required gate; (c) a Stage 1 build plan only
+if every row in (b) passes. The 2x margin delivery/activation/funded-recovery ABI
+and key inventory form a separate later document-only milestone. No signing,
+production limit change, borrowing activation or handoff00 edit is authorized.
+
+The remaining memo preserves the earlier decision history and negative evidence.
+
+**Historical recommendation (superseded 2026-11-10): continue bounded qualification of the preserved atomic Option1 candidate; do not adopt its policy, isolated patches or additional financial stages.** This is an architecture recommendation, not permission to change limits. Stage 1 remains incomplete; PR #75 remains draft; borrowing stays disabled. If 100M/100 SDK entries/50 writes remains mandatory, the next feasibility dependency is a measured venue/accounting ABI redesign plus narrower receipt/controller key access, not more transaction splitting.
 
 “Atomic baseline” means the existing V3 transaction stages with atomic conversion, fee-inclusive share mint and custody changes inside swap-open, and atomic funded repayment/seizure. It does not mean the entire open/close lifecycle is a single transaction. Its preserved source is `9cf43082bfb57334d57dbc58cfa90ccad4d98078`. The isolated prototype at `bb154ec8f03889aabfdb8dd5ea120f22c46a47f5` remains a **negative feasibility result**. All historical artifacts and checkpoints remain intact.
 

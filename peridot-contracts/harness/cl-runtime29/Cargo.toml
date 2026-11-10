@@ -17,6 +17,8 @@ sha2 = "0.10"
 [features]
 default = ["transaction-evidence"]
 transaction-evidence = []
+# Opt-in bounded venue study; baseline CI keeps its existing test population.
+fee-pending-comparison = ["transaction-evidence"]
 
 [profile.dev]
 overflow-checks = true
