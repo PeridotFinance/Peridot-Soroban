@@ -1,0 +1,10 @@
+{
+  "archive": "public-private-ledger-evidence.tar.gz",
+  "members": 549,
+  "bytes": 36848481,
+  "sha256": "a3376b87f0646c5c4396d62acd43a9559145056e8c9f7165af12d436e1aa8e94",
+  "member_hashes_verified": true,
+  "gate_replays": 14,
+  "private_test_signatures_only": true,
+  "release_approval": false
+}
