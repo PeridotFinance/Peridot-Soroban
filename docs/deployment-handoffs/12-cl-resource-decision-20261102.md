@@ -16,6 +16,15 @@ if every row in (b) passes. The 2x margin delivery/activation/funded-recovery AB
 and key inventory form a separate later document-only milestone. No signing,
 production limit change, borrowing activation or handoff00 edit is authorized.
 
+Part (b) is now measured in [handoff25](25-cl-stage1-staged-transaction-footprints-20261110.md):
+all nine complete1× transaction rows pass the required numerical limits on controlled
+unsigned state. Maximum corrected investment CPU95,217,621 leaves4,782,379; SDK52,
+unique53, writes26. Both full close routes and the named allocation-before-burn invariant
+pass. Actual-backing mint pricing was corrected after internal review. Fable review is
+blocked by its CLI usage limit. Signed authorization, cold restoration, bounded histories,
+legacy compatibility and executable outage cancellation remain unqualified. No production
+integration or build-plan execution follows from this measurement alone.
+
 The remaining memo preserves the earlier decision history and negative evidence.
 
 **Historical recommendation (superseded 2026-11-10): continue bounded qualification of the preserved atomic Option1 candidate; do not adopt its policy, isolated patches or additional financial stages.** This is an architecture recommendation, not permission to change limits. Stage 1 remains incomplete; PR #75 remains draft; borrowing stays disabled. If 100M/100 SDK entries/50 writes remains mandatory, the next feasibility dependency is a measured venue/accounting ABI redesign plus narrower receipt/controller key access, not more transaction splitting.

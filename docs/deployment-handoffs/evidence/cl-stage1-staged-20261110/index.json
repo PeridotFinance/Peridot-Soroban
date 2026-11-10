@@ -1,0 +1,1770 @@
+{
+  "schema": "cl-stage1-staged-evidence-v1",
+  "archive": {
+    "file": "stage1-staged-evidence.tar.xz",
+    "bytes": 975356,
+    "sha256": "7842eda4b75d0ebcb9800091e9a1f165d64976d113583fde1cca4d01133ea925"
+  },
+  "members": {
+    "builds/cl-stage1-cash-first-build-v1/artifacts/cl_integration_fixtures.wasm": {
+      "bytes": 3168,
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f"
+    },
+    "builds/cl-stage1-cash-first-build-v1/artifacts/cl_share_pool_facade.wasm": {
+      "bytes": 7298,
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5"
+    },
+    "builds/cl-stage1-cash-first-build-v1/artifacts/cl_share_vault.wasm": {
+      "bytes": 85750,
+      "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f"
+    },
+    "builds/cl-stage1-cash-first-build-v1/artifacts/jump_rate_model.wasm": {
+      "bytes": 7644,
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800"
+    },
+    "builds/cl-stage1-cash-first-build-v1/artifacts/margin_controller.wasm": {
+      "bytes": 92246,
+      "sha256": "46c186e3bb333b929dabb3a4a4bec4376457081f2e1e404a467c8ada62f078c2"
+    },
+    "builds/cl-stage1-cash-first-build-v1/artifacts/receipt_vault.wasm": {
+      "bytes": 88329,
+      "sha256": "fc1ac7d397428438c58c50ce8930907c5965587aac7cc0f9988025235dcde362"
+    },
+    "builds/cl-stage1-cash-first-build-v1/artifacts/simple_peridottroller.wasm": {
+      "bytes": 63411,
+      "sha256": "a55d5740007553d955c26e08efad4289b093c0d85c34a2b0e2af7262eaba0052"
+    },
+    "builds/cl-stage1-cash-first-build-v1/artifacts/swap_adapter.wasm": {
+      "bytes": 10876,
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d"
+    },
+    "builds/cl-stage1-cash-first-build-v1/logs/cl-share-vault.log": {
+      "bytes": 4804,
+      "sha256": "ee6b08a88d87a17275467798679e71151d51ba6ae90e65a2ecc9ab0d790a8ce3"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/accounting.rs": {
+      "bytes": 2108,
+      "sha256": "ace58faa7b2e44fc7b804c82d9a1007bd8f1f4920cebaf39b03af12ba31b53aa"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/allowance_tests.rs": {
+      "bytes": 10289,
+      "sha256": "13a817015de118572e84994eeb3d8dbee858a5cbcbc1aac594f7878ea3b18846"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/allowances.rs": {
+      "bytes": 2546,
+      "sha256": "2b9c31547fe903d668954e7e34aeb80fbae26615bb68492c8aca9e74ec37ec2d"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/constants.rs": {
+      "bytes": 3964,
+      "sha256": "ddef3eb1398636eb90bcf2f49974748cbc252fb43b60740d30e3c30e67535184"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/contract.rs": {
+      "bytes": 128645,
+      "sha256": "3997826a870aab7fd3ec626d4daca7fa18f5addd82d8fb9dddfdb6f64f864c14"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/custody.rs": {
+      "bytes": 6693,
+      "sha256": "3e9fa4127cd02ed849349f0878843e05136de1fd81b98213dbaee93aa6a87dc6"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/events.rs": {
+      "bytes": 3743,
+      "sha256": "effd0d3861686a9bfb1940c06dba1c7e5e261cb631e98c30af5ff5a13322464f"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/funded.rs": {
+      "bytes": 1159,
+      "sha256": "4e54b10e7bc5e5b176abefc4e8d1a6222195dbd977ca8d9d48966ead0ecc363e"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/lib.rs": {
+      "bytes": 879,
+      "sha256": "644ffd76ba7a3e31e9b48b9ff15981a2b80762e6b1f9a1b19ece7dc1635a38d6"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/math.rs": {
+      "bytes": 5460,
+      "sha256": "39b8ae1228bfbf864cf38b6f892df98ca4a086287eb587c430baa25322786c50"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/oracle.rs": {
+      "bytes": 930,
+      "sha256": "32845aa48f81db286b88b9b1fbb30c4cd72e119898d9eeb540656cf9fb1d7a06"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/pool.rs": {
+      "bytes": 4084,
+      "sha256": "f38c741078b5c05cb3fb64bb17fb5e0282008bb78b2a3bf7b45cf2b263e0c906"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/principal_tests.rs": {
+      "bytes": 5545,
+      "sha256": "7f28a6dbd1ff6e9e4bb90edb44e8d920373b6a8569b7c8ff786abf39b4b1a1f6"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/proof_model.rs": {
+      "bytes": 10784,
+      "sha256": "9a0441c2ee2ef1aa9bf9962b5f4ff64479bed2379d8be1573e59a78f63ad04fc"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/proof_model_tests.rs": {
+      "bytes": 12054,
+      "sha256": "f6ee1081372cdd3d0213d6367df4f9eec02c33604059947bfa9dcdba5c0cc3ea"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/reward_history.rs": {
+      "bytes": 30167,
+      "sha256": "d4d067c711bb9ae72e4359639703795573453c3c0148401e2d01fad1e981b535"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/rewards.rs": {
+      "bytes": 12581,
+      "sha256": "c8d96f38041f40386d5f8088695ee4dd481f601d1fa32770a445125b3f323916"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/storage.rs": {
+      "bytes": 11456,
+      "sha256": "51bb49e51204bf631702f7da40a88c0e035b7112bdd5f703656210615782c59d"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/cl-share-vault/src/test.rs": {
+      "bytes": 18305,
+      "sha256": "abb505f30e6d781e60c5cbc7d7027bd5c155606de659e510ab184cb98a8a0983"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/constants.rs": {
+      "bytes": 510,
+      "sha256": "301e390d4284e77420fd32512484994f756f7e3f940f79a55bbc0415c961d6b4"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/contract.rs": {
+      "bytes": 200466,
+      "sha256": "5294907f71cbfd4de1ccac5220a33a964df20780ca3098dd45087225fd3b5162"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/events.rs": {
+      "bytes": 6510,
+      "sha256": "7d8eac0ad86ac1bfb33cd3571763d883b990ecdfb178938e724c16d97ade2c2f"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/helpers.rs": {
+      "bytes": 3727,
+      "sha256": "430f682bde2beef454f8a598175e698fa80fbfd2fe5591fd29a93c12f0c1c386"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/lib.rs": {
+      "bytes": 1199,
+      "sha256": "3cc7288310f51516f89c446bbbf8f7990e9badae97cb8879a844696781d12629"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/lp_lending_test.rs": {
+      "bytes": 22122,
+      "sha256": "19629e05dbbc4c0f80edc715002daeaac8b248a39580b77a1f8818dd5654c152"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/reserve_test.rs": {
+      "bytes": 17397,
+      "sha256": "814428c63b858f058b9162ecb84f2fd93e406d7296def4cff3cc7ae65c79b246"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/reward_accounting_model.rs": {
+      "bytes": 20874,
+      "sha256": "8d3d20b790e687e76b37c40cc2c362226bef40c22dea532af5ccda6e31a4c2c8"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/reward_backing.rs": {
+      "bytes": 19324,
+      "sha256": "110da521652d4bae3f6865934f0de451649a7a2f34d0ef4ca96c7339bdd61280"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/reward_backing_test.rs": {
+      "bytes": 18232,
+      "sha256": "58db226f4eafc47a81b7f8054728b18c67ea626d93a0dabd30a12d92bce1cc47"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/reward_claims.rs": {
+      "bytes": 8997,
+      "sha256": "29932d8151c4e8e6349876af4557fc518667b4bde9cf266708fba754ff9480ca"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/reward_ledger.rs": {
+      "bytes": 14478,
+      "sha256": "e79af88a10bf0c09b95f728a6dc4d03059d4605ae61ed9fcec498b5e6585b707"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/reward_lending.rs": {
+      "bytes": 6008,
+      "sha256": "31acbaaa7c1ce554859b25f3218f3dfa2592ab4758f12c2015702432fc784677"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/reward_settlement.rs": {
+      "bytes": 5818,
+      "sha256": "3e829e0b46ca3ab17dff0e72123cf037fd29fe866ca063e4ac2da84ca61ef34a"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/reward_share_hooks.rs": {
+      "bytes": 4414,
+      "sha256": "4d4cfd2ac30f77e4f120d75c27e99509bda40f57b34e4b75481e35ceaf9c0528"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/storage.rs": {
+      "bytes": 19694,
+      "sha256": "a459cb6509b45aad514b10c1fe3069ec4fadf33c6bd081bffcbccbdf33c6ed34"
+    },
+    "builds/cl-stage1-cash-first-build-v1/workspace/contracts/receipt-vault/src/test.rs": {
+      "bytes": 225613,
+      "sha256": "0e37a64e714f749077822826c221f5c6a4dc981f4daa97de04053422b6ff4278"
+    },
+    "builds/cl-stage1-cash-first-build-v2/artifacts/cl_integration_fixtures.wasm": {
+      "bytes": 3168,
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f"
+    },
+    "builds/cl-stage1-cash-first-build-v2/artifacts/cl_share_pool_facade.wasm": {
+      "bytes": 7298,
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5"
+    },
+    "builds/cl-stage1-cash-first-build-v2/artifacts/cl_share_vault.wasm": {
+      "bytes": 99956,
+      "sha256": "6778a5756c87c55bb47c6622c738dbcc3e38fd93fea8ebd44f9b490606231bce"
+    },
+    "builds/cl-stage1-cash-first-build-v2/artifacts/jump_rate_model.wasm": {
+      "bytes": 7644,
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800"
+    },
+    "builds/cl-stage1-cash-first-build-v2/artifacts/margin_controller.wasm": {
+      "bytes": 92246,
+      "sha256": "46c186e3bb333b929dabb3a4a4bec4376457081f2e1e404a467c8ada62f078c2"
+    },
+    "builds/cl-stage1-cash-first-build-v2/artifacts/receipt_vault.wasm": {
+      "bytes": 92927,
+      "sha256": "a139c2afe910b198f8094d3859c5da6b971f7b08a37145dcee18f4c5f79f8d3f"
+    },
+    "builds/cl-stage1-cash-first-build-v2/artifacts/simple_peridottroller.wasm": {
+      "bytes": 63411,
+      "sha256": "a55d5740007553d955c26e08efad4289b093c0d85c34a2b0e2af7262eaba0052"
+    },
+    "builds/cl-stage1-cash-first-build-v2/artifacts/swap_adapter.wasm": {
+      "bytes": 10876,
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d"
+    },
+    "builds/cl-stage1-cash-first-build-v2/build-manifest.json": {
+      "bytes": 19097,
+      "sha256": "6af3c198583450f4337430c869da7c81316a3929cb3fc2b5585662af5b06e710"
+    },
+    "builds/cl-stage1-cash-first-build-v2/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "builds/cl-stage1-cash-first-build-v2/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "builds/cl-stage1-cash-first-build-v2/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "builds/cl-stage1-cash-first-build-v2/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "builds/cl-stage1-cash-first-build-v2/logs/cl-share-vault.log": {
+      "bytes": 10346,
+      "sha256": "94086f99e9d509f195fa9819534d8f8607325b7fac7e8969dfa347482662d18d"
+    },
+    "builds/cl-stage1-cash-first-build-v2/logs/receipt-vault.log": {
+      "bytes": 4848,
+      "sha256": "e59cc9c4fc67da3dd7b90320e9df34ec3f79a853c3f2db6075a21b262f85b928"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/accounting.rs": {
+      "bytes": 2086,
+      "sha256": "d581a164baff87f72f183301412c5fad633c344f0262d0898cb0490ee85a0ba9"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/allowance_tests.rs": {
+      "bytes": 10289,
+      "sha256": "13a817015de118572e84994eeb3d8dbee858a5cbcbc1aac594f7878ea3b18846"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/allowances.rs": {
+      "bytes": 2546,
+      "sha256": "2b9c31547fe903d668954e7e34aeb80fbae26615bb68492c8aca9e74ec37ec2d"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/constants.rs": {
+      "bytes": 3964,
+      "sha256": "ddef3eb1398636eb90bcf2f49974748cbc252fb43b60740d30e3c30e67535184"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/contract.rs": {
+      "bytes": 129175,
+      "sha256": "bc86055a1132c6ae5aab9544e6bcf87af2a85ec12f0491d16c6169af8310df51"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/custody.rs": {
+      "bytes": 6693,
+      "sha256": "3e9fa4127cd02ed849349f0878843e05136de1fd81b98213dbaee93aa6a87dc6"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/events.rs": {
+      "bytes": 3743,
+      "sha256": "effd0d3861686a9bfb1940c06dba1c7e5e261cb631e98c30af5ff5a13322464f"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/funded.rs": {
+      "bytes": 1159,
+      "sha256": "4e54b10e7bc5e5b176abefc4e8d1a6222195dbd977ca8d9d48966ead0ecc363e"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/lib.rs": {
+      "bytes": 879,
+      "sha256": "644ffd76ba7a3e31e9b48b9ff15981a2b80762e6b1f9a1b19ece7dc1635a38d6"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/math.rs": {
+      "bytes": 5460,
+      "sha256": "39b8ae1228bfbf864cf38b6f892df98ca4a086287eb587c430baa25322786c50"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/oracle.rs": {
+      "bytes": 930,
+      "sha256": "32845aa48f81db286b88b9b1fbb30c4cd72e119898d9eeb540656cf9fb1d7a06"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/pool.rs": {
+      "bytes": 4084,
+      "sha256": "f38c741078b5c05cb3fb64bb17fb5e0282008bb78b2a3bf7b45cf2b263e0c906"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/principal_tests.rs": {
+      "bytes": 5545,
+      "sha256": "7f28a6dbd1ff6e9e4bb90edb44e8d920373b6a8569b7c8ff786abf39b4b1a1f6"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/proof_model.rs": {
+      "bytes": 10784,
+      "sha256": "9a0441c2ee2ef1aa9bf9962b5f4ff64479bed2379d8be1573e59a78f63ad04fc"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/proof_model_tests.rs": {
+      "bytes": 12054,
+      "sha256": "f6ee1081372cdd3d0213d6367df4f9eec02c33604059947bfa9dcdba5c0cc3ea"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/reward_history.rs": {
+      "bytes": 30167,
+      "sha256": "d4d067c711bb9ae72e4359639703795573453c3c0148401e2d01fad1e981b535"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/rewards.rs": {
+      "bytes": 12581,
+      "sha256": "c8d96f38041f40386d5f8088695ee4dd481f601d1fa32770a445125b3f323916"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/storage.rs": {
+      "bytes": 11456,
+      "sha256": "51bb49e51204bf631702f7da40a88c0e035b7112bdd5f703656210615782c59d"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/cl-share-vault/src/test.rs": {
+      "bytes": 18305,
+      "sha256": "abb505f30e6d781e60c5cbc7d7027bd5c155606de659e510ab184cb98a8a0983"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/constants.rs": {
+      "bytes": 510,
+      "sha256": "301e390d4284e77420fd32512484994f756f7e3f940f79a55bbc0415c961d6b4"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/contract.rs": {
+      "bytes": 200516,
+      "sha256": "b4a6c6deddae0ee0ea645dfbe4db03b2b9924a5dffb5f7410f27b454536864af"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/events.rs": {
+      "bytes": 6510,
+      "sha256": "7d8eac0ad86ac1bfb33cd3571763d883b990ecdfb178938e724c16d97ade2c2f"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/helpers.rs": {
+      "bytes": 3727,
+      "sha256": "430f682bde2beef454f8a598175e698fa80fbfd2fe5591fd29a93c12f0c1c386"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/lib.rs": {
+      "bytes": 1199,
+      "sha256": "3cc7288310f51516f89c446bbbf8f7990e9badae97cb8879a844696781d12629"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/lp_lending_test.rs": {
+      "bytes": 22122,
+      "sha256": "19629e05dbbc4c0f80edc715002daeaac8b248a39580b77a1f8818dd5654c152"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/reserve_test.rs": {
+      "bytes": 17397,
+      "sha256": "814428c63b858f058b9162ecb84f2fd93e406d7296def4cff3cc7ae65c79b246"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/reward_accounting_model.rs": {
+      "bytes": 20874,
+      "sha256": "8d3d20b790e687e76b37c40cc2c362226bef40c22dea532af5ccda6e31a4c2c8"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/reward_backing.rs": {
+      "bytes": 19324,
+      "sha256": "110da521652d4bae3f6865934f0de451649a7a2f34d0ef4ca96c7339bdd61280"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/reward_backing_test.rs": {
+      "bytes": 18232,
+      "sha256": "58db226f4eafc47a81b7f8054728b18c67ea626d93a0dabd30a12d92bce1cc47"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/reward_claims.rs": {
+      "bytes": 8997,
+      "sha256": "29932d8151c4e8e6349876af4557fc518667b4bde9cf266708fba754ff9480ca"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/reward_ledger.rs": {
+      "bytes": 14478,
+      "sha256": "e79af88a10bf0c09b95f728a6dc4d03059d4605ae61ed9fcec498b5e6585b707"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/reward_lending.rs": {
+      "bytes": 6008,
+      "sha256": "31acbaaa7c1ce554859b25f3218f3dfa2592ab4758f12c2015702432fc784677"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/reward_settlement.rs": {
+      "bytes": 5818,
+      "sha256": "3e829e0b46ca3ab17dff0e72123cf037fd29fe866ca063e4ac2da84ca61ef34a"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/reward_share_hooks.rs": {
+      "bytes": 4414,
+      "sha256": "4d4cfd2ac30f77e4f120d75c27e99509bda40f57b34e4b75481e35ceaf9c0528"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/storage.rs": {
+      "bytes": 19694,
+      "sha256": "a459cb6509b45aad514b10c1fe3069ec4fadf33c6bd081bffcbccbdf33c6ed34"
+    },
+    "builds/cl-stage1-cash-first-build-v2/workspace/contracts/receipt-vault/src/test.rs": {
+      "bytes": 225613,
+      "sha256": "0e37a64e714f749077822826c221f5c6a4dc981f4daa97de04053422b6ff4278"
+    },
+    "builds/cl-stage1-cash-first-build-v3/artifacts/cl_integration_fixtures.wasm": {
+      "bytes": 3168,
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f"
+    },
+    "builds/cl-stage1-cash-first-build-v3/artifacts/cl_share_pool_facade.wasm": {
+      "bytes": 7298,
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5"
+    },
+    "builds/cl-stage1-cash-first-build-v3/artifacts/cl_share_vault.wasm": {
+      "bytes": 100773,
+      "sha256": "e404d8ae34ca9e151bb864970bdfd67af3dd8b7905614324359ee1da879442ea"
+    },
+    "builds/cl-stage1-cash-first-build-v3/artifacts/jump_rate_model.wasm": {
+      "bytes": 7644,
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800"
+    },
+    "builds/cl-stage1-cash-first-build-v3/artifacts/margin_controller.wasm": {
+      "bytes": 92246,
+      "sha256": "46c186e3bb333b929dabb3a4a4bec4376457081f2e1e404a467c8ada62f078c2"
+    },
+    "builds/cl-stage1-cash-first-build-v3/artifacts/receipt_vault.wasm": {
+      "bytes": 94836,
+      "sha256": "ee0a77f1ec99f3e478337b144bf2072659cd420f1899c2bdf706bb86db291bff"
+    },
+    "builds/cl-stage1-cash-first-build-v3/artifacts/simple_peridottroller.wasm": {
+      "bytes": 63411,
+      "sha256": "a55d5740007553d955c26e08efad4289b093c0d85c34a2b0e2af7262eaba0052"
+    },
+    "builds/cl-stage1-cash-first-build-v3/artifacts/swap_adapter.wasm": {
+      "bytes": 10876,
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d"
+    },
+    "builds/cl-stage1-cash-first-build-v3/build-manifest.json": {
+      "bytes": 19098,
+      "sha256": "ab65d74f2ab089885187151a9ee0247de2dfc56cec57fa52cc5ed66a8298220c"
+    },
+    "builds/cl-stage1-cash-first-build-v3/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "builds/cl-stage1-cash-first-build-v3/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "builds/cl-stage1-cash-first-build-v3/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "builds/cl-stage1-cash-first-build-v3/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "builds/cl-stage1-cash-first-build-v3/logs/cl-share-vault.log": {
+      "bytes": 10348,
+      "sha256": "437484c16c134607e6d3fa3823f52cea911c5c9ffe4a8032d1208e99b04c5b7b"
+    },
+    "builds/cl-stage1-cash-first-build-v3/logs/receipt-vault.log": {
+      "bytes": 4847,
+      "sha256": "e69165ff22480a0d32384998cfbfc8c6e27e56c93e85488c60c18edf40300ab2"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/accounting.rs": {
+      "bytes": 2086,
+      "sha256": "d581a164baff87f72f183301412c5fad633c344f0262d0898cb0490ee85a0ba9"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/allowance_tests.rs": {
+      "bytes": 10289,
+      "sha256": "13a817015de118572e84994eeb3d8dbee858a5cbcbc1aac594f7878ea3b18846"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/allowances.rs": {
+      "bytes": 2546,
+      "sha256": "2b9c31547fe903d668954e7e34aeb80fbae26615bb68492c8aca9e74ec37ec2d"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/constants.rs": {
+      "bytes": 3964,
+      "sha256": "ddef3eb1398636eb90bcf2f49974748cbc252fb43b60740d30e3c30e67535184"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/contract.rs": {
+      "bytes": 129239,
+      "sha256": "f187bedf7b2ccdb02df914176673e69830116395e4e9411ae249397564c33808"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/custody.rs": {
+      "bytes": 6693,
+      "sha256": "3e9fa4127cd02ed849349f0878843e05136de1fd81b98213dbaee93aa6a87dc6"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/events.rs": {
+      "bytes": 3743,
+      "sha256": "effd0d3861686a9bfb1940c06dba1c7e5e261cb631e98c30af5ff5a13322464f"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/funded.rs": {
+      "bytes": 1159,
+      "sha256": "4e54b10e7bc5e5b176abefc4e8d1a6222195dbd977ca8d9d48966ead0ecc363e"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/lib.rs": {
+      "bytes": 879,
+      "sha256": "644ffd76ba7a3e31e9b48b9ff15981a2b80762e6b1f9a1b19ece7dc1635a38d6"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/math.rs": {
+      "bytes": 5460,
+      "sha256": "39b8ae1228bfbf864cf38b6f892df98ca4a086287eb587c430baa25322786c50"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/oracle.rs": {
+      "bytes": 930,
+      "sha256": "32845aa48f81db286b88b9b1fbb30c4cd72e119898d9eeb540656cf9fb1d7a06"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/pool.rs": {
+      "bytes": 4084,
+      "sha256": "f38c741078b5c05cb3fb64bb17fb5e0282008bb78b2a3bf7b45cf2b263e0c906"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/principal_tests.rs": {
+      "bytes": 5545,
+      "sha256": "7f28a6dbd1ff6e9e4bb90edb44e8d920373b6a8569b7c8ff786abf39b4b1a1f6"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/proof_model.rs": {
+      "bytes": 10784,
+      "sha256": "9a0441c2ee2ef1aa9bf9962b5f4ff64479bed2379d8be1573e59a78f63ad04fc"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/proof_model_tests.rs": {
+      "bytes": 12054,
+      "sha256": "f6ee1081372cdd3d0213d6367df4f9eec02c33604059947bfa9dcdba5c0cc3ea"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/reward_history.rs": {
+      "bytes": 30167,
+      "sha256": "d4d067c711bb9ae72e4359639703795573453c3c0148401e2d01fad1e981b535"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/rewards.rs": {
+      "bytes": 12581,
+      "sha256": "c8d96f38041f40386d5f8088695ee4dd481f601d1fa32770a445125b3f323916"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/storage.rs": {
+      "bytes": 11456,
+      "sha256": "51bb49e51204bf631702f7da40a88c0e035b7112bdd5f703656210615782c59d"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/cl-share-vault/src/test.rs": {
+      "bytes": 18305,
+      "sha256": "abb505f30e6d781e60c5cbc7d7027bd5c155606de659e510ab184cb98a8a0983"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/constants.rs": {
+      "bytes": 510,
+      "sha256": "301e390d4284e77420fd32512484994f756f7e3f940f79a55bbc0415c961d6b4"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/contract.rs": {
+      "bytes": 200606,
+      "sha256": "8f48a8a30dcf20b67175a4767904fc93d8b7a9a0741d0db2f770cb5dba1d4294"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/events.rs": {
+      "bytes": 6510,
+      "sha256": "7d8eac0ad86ac1bfb33cd3571763d883b990ecdfb178938e724c16d97ade2c2f"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/helpers.rs": {
+      "bytes": 3727,
+      "sha256": "430f682bde2beef454f8a598175e698fa80fbfd2fe5591fd29a93c12f0c1c386"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/lib.rs": {
+      "bytes": 1199,
+      "sha256": "3cc7288310f51516f89c446bbbf8f7990e9badae97cb8879a844696781d12629"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/lp_lending_test.rs": {
+      "bytes": 22122,
+      "sha256": "19629e05dbbc4c0f80edc715002daeaac8b248a39580b77a1f8818dd5654c152"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/reserve_test.rs": {
+      "bytes": 17397,
+      "sha256": "814428c63b858f058b9162ecb84f2fd93e406d7296def4cff3cc7ae65c79b246"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/reward_accounting_model.rs": {
+      "bytes": 20874,
+      "sha256": "8d3d20b790e687e76b37c40cc2c362226bef40c22dea532af5ccda6e31a4c2c8"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/reward_backing.rs": {
+      "bytes": 19324,
+      "sha256": "110da521652d4bae3f6865934f0de451649a7a2f34d0ef4ca96c7339bdd61280"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/reward_backing_test.rs": {
+      "bytes": 18232,
+      "sha256": "58db226f4eafc47a81b7f8054728b18c67ea626d93a0dabd30a12d92bce1cc47"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/reward_claims.rs": {
+      "bytes": 8997,
+      "sha256": "29932d8151c4e8e6349876af4557fc518667b4bde9cf266708fba754ff9480ca"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/reward_ledger.rs": {
+      "bytes": 14478,
+      "sha256": "e79af88a10bf0c09b95f728a6dc4d03059d4605ae61ed9fcec498b5e6585b707"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/reward_lending.rs": {
+      "bytes": 6008,
+      "sha256": "31acbaaa7c1ce554859b25f3218f3dfa2592ab4758f12c2015702432fc784677"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/reward_settlement.rs": {
+      "bytes": 5818,
+      "sha256": "3e829e0b46ca3ab17dff0e72123cf037fd29fe866ca063e4ac2da84ca61ef34a"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/reward_share_hooks.rs": {
+      "bytes": 4414,
+      "sha256": "4d4cfd2ac30f77e4f120d75c27e99509bda40f57b34e4b75481e35ceaf9c0528"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/storage.rs": {
+      "bytes": 19694,
+      "sha256": "a459cb6509b45aad514b10c1fe3069ec4fadf33c6bd081bffcbccbdf33c6ed34"
+    },
+    "builds/cl-stage1-cash-first-build-v3/workspace/contracts/receipt-vault/src/test.rs": {
+      "bytes": 225613,
+      "sha256": "0e37a64e714f749077822826c221f5c6a4dc981f4daa97de04053422b6ff4278"
+    },
+    "builds/cl-stage1-cash-first-build-v4/artifacts/cl_integration_fixtures.wasm": {
+      "bytes": 3168,
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f"
+    },
+    "builds/cl-stage1-cash-first-build-v4/artifacts/cl_share_pool_facade.wasm": {
+      "bytes": 7298,
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5"
+    },
+    "builds/cl-stage1-cash-first-build-v4/artifacts/cl_share_vault.wasm": {
+      "bytes": 101034,
+      "sha256": "d5b8d5c6f1f2cd85cacb25fbcbe684cc09a3818ad5707808edf11835a72aa766"
+    },
+    "builds/cl-stage1-cash-first-build-v4/artifacts/jump_rate_model.wasm": {
+      "bytes": 7644,
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800"
+    },
+    "builds/cl-stage1-cash-first-build-v4/artifacts/margin_controller.wasm": {
+      "bytes": 92246,
+      "sha256": "46c186e3bb333b929dabb3a4a4bec4376457081f2e1e404a467c8ada62f078c2"
+    },
+    "builds/cl-stage1-cash-first-build-v4/artifacts/receipt_vault.wasm": {
+      "bytes": 94836,
+      "sha256": "ee0a77f1ec99f3e478337b144bf2072659cd420f1899c2bdf706bb86db291bff"
+    },
+    "builds/cl-stage1-cash-first-build-v4/artifacts/simple_peridottroller.wasm": {
+      "bytes": 63411,
+      "sha256": "a55d5740007553d955c26e08efad4289b093c0d85c34a2b0e2af7262eaba0052"
+    },
+    "builds/cl-stage1-cash-first-build-v4/artifacts/swap_adapter.wasm": {
+      "bytes": 10876,
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d"
+    },
+    "builds/cl-stage1-cash-first-build-v4/build-manifest.json": {
+      "bytes": 19098,
+      "sha256": "01f06c90ebd387660b7fa9634ed539af7a5869824596cc021eae6c8464d46e82"
+    },
+    "builds/cl-stage1-cash-first-build-v4/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "builds/cl-stage1-cash-first-build-v4/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "builds/cl-stage1-cash-first-build-v4/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "builds/cl-stage1-cash-first-build-v4/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "builds/cl-stage1-cash-first-build-v4/logs/cl-share-vault.log": {
+      "bytes": 10348,
+      "sha256": "1088b003c69251b4da03c3f4b8481da2e399dc3716f41e7fd13eca07f3fa6770"
+    },
+    "builds/cl-stage1-cash-first-build-v4/logs/receipt-vault.log": {
+      "bytes": 4847,
+      "sha256": "1242895a051b2f166db9961c04eaca5558b73c8387e9bcc449517e6a6db60a5f"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/accounting.rs": {
+      "bytes": 2086,
+      "sha256": "d581a164baff87f72f183301412c5fad633c344f0262d0898cb0490ee85a0ba9"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/allowance_tests.rs": {
+      "bytes": 10289,
+      "sha256": "13a817015de118572e84994eeb3d8dbee858a5cbcbc1aac594f7878ea3b18846"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/allowances.rs": {
+      "bytes": 2546,
+      "sha256": "2b9c31547fe903d668954e7e34aeb80fbae26615bb68492c8aca9e74ec37ec2d"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/constants.rs": {
+      "bytes": 3964,
+      "sha256": "ddef3eb1398636eb90bcf2f49974748cbc252fb43b60740d30e3c30e67535184"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/contract.rs": {
+      "bytes": 129882,
+      "sha256": "815537d3eb80fd6c9dbb7c483825e6be8d147141efe8280be59130b65207d650"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/custody.rs": {
+      "bytes": 6693,
+      "sha256": "3e9fa4127cd02ed849349f0878843e05136de1fd81b98213dbaee93aa6a87dc6"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/events.rs": {
+      "bytes": 3743,
+      "sha256": "effd0d3861686a9bfb1940c06dba1c7e5e261cb631e98c30af5ff5a13322464f"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/funded.rs": {
+      "bytes": 1159,
+      "sha256": "4e54b10e7bc5e5b176abefc4e8d1a6222195dbd977ca8d9d48966ead0ecc363e"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/lib.rs": {
+      "bytes": 879,
+      "sha256": "644ffd76ba7a3e31e9b48b9ff15981a2b80762e6b1f9a1b19ece7dc1635a38d6"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/math.rs": {
+      "bytes": 5460,
+      "sha256": "39b8ae1228bfbf864cf38b6f892df98ca4a086287eb587c430baa25322786c50"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/oracle.rs": {
+      "bytes": 930,
+      "sha256": "32845aa48f81db286b88b9b1fbb30c4cd72e119898d9eeb540656cf9fb1d7a06"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/pool.rs": {
+      "bytes": 4084,
+      "sha256": "f38c741078b5c05cb3fb64bb17fb5e0282008bb78b2a3bf7b45cf2b263e0c906"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/principal_tests.rs": {
+      "bytes": 5545,
+      "sha256": "7f28a6dbd1ff6e9e4bb90edb44e8d920373b6a8569b7c8ff786abf39b4b1a1f6"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/proof_model.rs": {
+      "bytes": 10784,
+      "sha256": "9a0441c2ee2ef1aa9bf9962b5f4ff64479bed2379d8be1573e59a78f63ad04fc"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/proof_model_tests.rs": {
+      "bytes": 12054,
+      "sha256": "f6ee1081372cdd3d0213d6367df4f9eec02c33604059947bfa9dcdba5c0cc3ea"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/reward_history.rs": {
+      "bytes": 30167,
+      "sha256": "d4d067c711bb9ae72e4359639703795573453c3c0148401e2d01fad1e981b535"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/rewards.rs": {
+      "bytes": 12581,
+      "sha256": "c8d96f38041f40386d5f8088695ee4dd481f601d1fa32770a445125b3f323916"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/storage.rs": {
+      "bytes": 11456,
+      "sha256": "51bb49e51204bf631702f7da40a88c0e035b7112bdd5f703656210615782c59d"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/cl-share-vault/src/test.rs": {
+      "bytes": 18305,
+      "sha256": "abb505f30e6d781e60c5cbc7d7027bd5c155606de659e510ab184cb98a8a0983"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/constants.rs": {
+      "bytes": 510,
+      "sha256": "301e390d4284e77420fd32512484994f756f7e3f940f79a55bbc0415c961d6b4"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/contract.rs": {
+      "bytes": 200606,
+      "sha256": "8f48a8a30dcf20b67175a4767904fc93d8b7a9a0741d0db2f770cb5dba1d4294"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/events.rs": {
+      "bytes": 6510,
+      "sha256": "7d8eac0ad86ac1bfb33cd3571763d883b990ecdfb178938e724c16d97ade2c2f"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/helpers.rs": {
+      "bytes": 3727,
+      "sha256": "430f682bde2beef454f8a598175e698fa80fbfd2fe5591fd29a93c12f0c1c386"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/lib.rs": {
+      "bytes": 1199,
+      "sha256": "3cc7288310f51516f89c446bbbf8f7990e9badae97cb8879a844696781d12629"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/lp_lending_test.rs": {
+      "bytes": 22122,
+      "sha256": "19629e05dbbc4c0f80edc715002daeaac8b248a39580b77a1f8818dd5654c152"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/reserve_test.rs": {
+      "bytes": 17397,
+      "sha256": "814428c63b858f058b9162ecb84f2fd93e406d7296def4cff3cc7ae65c79b246"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/reward_accounting_model.rs": {
+      "bytes": 20874,
+      "sha256": "8d3d20b790e687e76b37c40cc2c362226bef40c22dea532af5ccda6e31a4c2c8"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/reward_backing.rs": {
+      "bytes": 19324,
+      "sha256": "110da521652d4bae3f6865934f0de451649a7a2f34d0ef4ca96c7339bdd61280"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/reward_backing_test.rs": {
+      "bytes": 18232,
+      "sha256": "58db226f4eafc47a81b7f8054728b18c67ea626d93a0dabd30a12d92bce1cc47"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/reward_claims.rs": {
+      "bytes": 8997,
+      "sha256": "29932d8151c4e8e6349876af4557fc518667b4bde9cf266708fba754ff9480ca"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/reward_ledger.rs": {
+      "bytes": 14478,
+      "sha256": "e79af88a10bf0c09b95f728a6dc4d03059d4605ae61ed9fcec498b5e6585b707"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/reward_lending.rs": {
+      "bytes": 6008,
+      "sha256": "31acbaaa7c1ce554859b25f3218f3dfa2592ab4758f12c2015702432fc784677"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/reward_settlement.rs": {
+      "bytes": 5818,
+      "sha256": "3e829e0b46ca3ab17dff0e72123cf037fd29fe866ca063e4ac2da84ca61ef34a"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/reward_share_hooks.rs": {
+      "bytes": 4414,
+      "sha256": "4d4cfd2ac30f77e4f120d75c27e99509bda40f57b34e4b75481e35ceaf9c0528"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/storage.rs": {
+      "bytes": 19694,
+      "sha256": "a459cb6509b45aad514b10c1fe3069ec4fadf33c6bd081bffcbccbdf33c6ed34"
+    },
+    "builds/cl-stage1-cash-first-build-v4/workspace/contracts/receipt-vault/src/test.rs": {
+      "bytes": 225613,
+      "sha256": "0e37a64e714f749077822826c221f5c6a4dc981f4daa97de04053422b6ff4278"
+    },
+    "network-config.json": {
+      "bytes": 32384,
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a"
+    },
+    "prototype/README.md": {
+      "bytes": 6595,
+      "sha256": "3dd364c5fea4b61ef4d951b2623bbf613bf10b299e628c932d7b871bed31b4b2"
+    },
+    "prototype/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "prototype/footprints.cjs": {
+      "bytes": 1525,
+      "sha256": "8d835128229c6aaa9e0f1231c926987afe495d4c5dec6b656d5c781208ebd96d"
+    },
+    "prototype/package.py": {
+      "bytes": 2654,
+      "sha256": "b7077c2ff6405720eb42f4da4af0ca52953d4d4d37b6b2d6ae26caab66e330e7"
+    },
+    "prototype/prepare.py": {
+      "bytes": 5178,
+      "sha256": "fa7fe4446b82c0eea870b69a10184232c8ad90dd689ec6b2676b1df291d1050c"
+    },
+    "prototype/receipt.rs": {
+      "bytes": 6313,
+      "sha256": "2e066f5209d8f677a18c5f9b22f13c3dba2c385c33dec0f0f871f02498210e4f"
+    },
+    "prototype/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "prototype/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "prototype/summarize.py": {
+      "bytes": 6463,
+      "sha256": "547545b6d0d3a86a6bbae90ab9567700b29bff469b6b26fe741463c3a57ba25b"
+    },
+    "prototype/tests/stages.rs": {
+      "bytes": 13406,
+      "sha256": "161768ad68605a528a0bdb24227051a23cf2d536904db234c9252fa53913c5ac"
+    },
+    "prototype/vault.rs": {
+      "bytes": 15015,
+      "sha256": "4ceb9b2bd3e6a17e13cd32f684653c85651a9368a0bc4fc207a5bd17aa288b2d"
+    },
+    "review/internal-review.md": {
+      "bytes": 916,
+      "sha256": "27bf7516726362cdb8401a7246e0535e0e15219e9955d5387da244f698bfb1c8"
+    },
+    "review/prompt.txt": {
+      "bytes": 40290,
+      "sha256": "b62eea59d900b64c7dd8fc928d8ba0fc97eb80f11b4d250d08b919aee8c92510"
+    },
+    "review/status.json": {
+      "bytes": 341,
+      "sha256": "da731873ad8d546e87f05ccfff6098c8578acbbd3be8653363f43f31206e2799"
+    },
+    "runs/cl-stage1-captured-v5/budget-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-captured-v5/budget.log": {
+      "bytes": 30278,
+      "sha256": "86f615d961ec3b1462214f403f89f4f45efc968e8691680d2b5f0c2bca7020ac"
+    },
+    "runs/cl-stage1-captured-v5/calls.jsonl": {
+      "bytes": 553752,
+      "sha256": "fddb676e5cb3790128443cda363520411d24f0c26df7d4901094937e468d00ef"
+    },
+    "runs/cl-stage1-captured-v5/gates.json": {
+      "bytes": 3299,
+      "sha256": "2af0b959996902ebaf12f3636ae901885d9a0ca6f33445462abdbe84e6d5ccf7"
+    },
+    "runs/cl-stage1-captured-v5/profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-captured-v5/resources.jsonl": {
+      "bytes": 30161,
+      "sha256": "0e0b5dd89c3afc01a27715c83395985a406bdcd018351b83ea477d5a6eaa2e9c"
+    },
+    "runs/cl-stage1-captured-v5/setup-profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-captured-v5/source-before.json": {
+      "bytes": 4081,
+      "sha256": "3e9486c01b77eefbc530f0d6c5ce918caad8726df55e2f80658b50e13b073566"
+    },
+    "runs/cl-stage1-captured-v5/source/harness/cl-runtime29/src/transaction_evidence.rs": {
+      "bytes": 26196,
+      "sha256": "b030bd688a218d0bb527fea806064a4500743322a7a3b06197fd66995015de8b"
+    },
+    "runs/cl-stage1-captured-v5/source/prototypes/cl-stage1-cash-first/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "runs/cl-stage1-captured-v5/source/prototypes/cl-stage1-cash-first/receipt.rs": {
+      "bytes": 6313,
+      "sha256": "2e066f5209d8f677a18c5f9b22f13c3dba2c385c33dec0f0f871f02498210e4f"
+    },
+    "runs/cl-stage1-captured-v5/source/prototypes/cl-stage1-cash-first/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "runs/cl-stage1-captured-v5/source/prototypes/cl-stage1-cash-first/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "runs/cl-stage1-captured-v5/source/prototypes/cl-stage1-cash-first/tests/stages.rs": {
+      "bytes": 11332,
+      "sha256": "c722113ecd37ffd6e0d9db465cca2c79f1f135f102a941bf59b846003f42257b"
+    },
+    "runs/cl-stage1-captured-v5/source/prototypes/cl-stage1-cash-first/vault.rs": {
+      "bytes": 14372,
+      "sha256": "50cdaf2a3bd42f64cf0ffc6f12331673c2031eb2570bb56048925b39232075f0"
+    },
+    "runs/cl-stage1-captured-v5/source/target/cl-stage1-cash-first-build-v3/build-manifest.json": {
+      "bytes": 19098,
+      "sha256": "ab65d74f2ab089885187151a9ee0247de2dfc56cec57fa52cc5ed66a8298220c"
+    },
+    "runs/cl-stage1-captured-v5/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "runs/cl-stage1-captured-v5/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "runs/cl-stage1-captured-v5/source/target/cl-stage1-cash-first-build-v3/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "runs/cl-stage1-captured-v5/source/target/cl-stage1-cash-first-build-v3/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "runs/cl-stage1-captured-v5/source/test-support/cl_resource_limits.rs": {
+      "bytes": 8407,
+      "sha256": "a4ef8179d020a52b61dc44b7a702055c441c0883ae22b01be32aa4e8510026d6"
+    },
+    "runs/cl-stage1-captured-v5/test-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-captured-v5/tests.log": {
+      "bytes": 111848,
+      "sha256": "1e377dd65eeade4138039dcc7b7e11081892e7a2b0baaee0419f417c84c10a68"
+    },
+    "runs/cl-stage1-captured-v5/transactions.jsonl": {
+      "bytes": 10430233,
+      "sha256": "356674ae974b3010238e68ae2b3f6d2a94facbdfdedc6a01022a693a6d06ffe5"
+    },
+    "runs/cl-stage1-captured-v6/budget-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-captured-v6/budget.log": {
+      "bytes": 31048,
+      "sha256": "5a885f819c7c5b9f04234bf774219ca4379407ebcfdd4c87487b69f05b6e4de4"
+    },
+    "runs/cl-stage1-captured-v6/calls.jsonl": {
+      "bytes": 581111,
+      "sha256": "77746432e3126cf3c77caba4306a5c17f691e9b36e2a808f29625b8062ecf1bc"
+    },
+    "runs/cl-stage1-captured-v6/footprints.json": {
+      "bytes": 234512,
+      "sha256": "eb23529a1cc64d7b2510d601d7f6aceb7d0c87d56b09d46345247547c0a9fda3"
+    },
+    "runs/cl-stage1-captured-v6/gates.json": {
+      "bytes": 3299,
+      "sha256": "2af0b959996902ebaf12f3636ae901885d9a0ca6f33445462abdbe84e6d5ccf7"
+    },
+    "runs/cl-stage1-captured-v6/profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-captured-v6/resources.jsonl": {
+      "bytes": 31015,
+      "sha256": "475840b4bee92fb79b6cd46ccb5864b86e62f25d211010287376c108d1c361e3"
+    },
+    "runs/cl-stage1-captured-v6/setup-profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-captured-v6/source-before.json": {
+      "bytes": 4081,
+      "sha256": "0471ee52ab5a33431358ef1b38b28b302072f53d99b726a48540d61fd7a557dc"
+    },
+    "runs/cl-stage1-captured-v6/source/harness/cl-runtime29/src/transaction_evidence.rs": {
+      "bytes": 26196,
+      "sha256": "b030bd688a218d0bb527fea806064a4500743322a7a3b06197fd66995015de8b"
+    },
+    "runs/cl-stage1-captured-v6/source/prototypes/cl-stage1-cash-first/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "runs/cl-stage1-captured-v6/source/prototypes/cl-stage1-cash-first/receipt.rs": {
+      "bytes": 6313,
+      "sha256": "2e066f5209d8f677a18c5f9b22f13c3dba2c385c33dec0f0f871f02498210e4f"
+    },
+    "runs/cl-stage1-captured-v6/source/prototypes/cl-stage1-cash-first/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "runs/cl-stage1-captured-v6/source/prototypes/cl-stage1-cash-first/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "runs/cl-stage1-captured-v6/source/prototypes/cl-stage1-cash-first/tests/stages.rs": {
+      "bytes": 13406,
+      "sha256": "161768ad68605a528a0bdb24227051a23cf2d536904db234c9252fa53913c5ac"
+    },
+    "runs/cl-stage1-captured-v6/source/prototypes/cl-stage1-cash-first/vault.rs": {
+      "bytes": 15015,
+      "sha256": "4ceb9b2bd3e6a17e13cd32f684653c85651a9368a0bc4fc207a5bd17aa288b2d"
+    },
+    "runs/cl-stage1-captured-v6/source/target/cl-stage1-cash-first-build-v4/build-manifest.json": {
+      "bytes": 19098,
+      "sha256": "01f06c90ebd387660b7fa9634ed539af7a5869824596cc021eae6c8464d46e82"
+    },
+    "runs/cl-stage1-captured-v6/source/target/cl-stage1-cash-first-build-v4/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "runs/cl-stage1-captured-v6/source/target/cl-stage1-cash-first-build-v4/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "runs/cl-stage1-captured-v6/source/target/cl-stage1-cash-first-build-v4/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "runs/cl-stage1-captured-v6/source/target/cl-stage1-cash-first-build-v4/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "runs/cl-stage1-captured-v6/source/test-support/cl_resource_limits.rs": {
+      "bytes": 8407,
+      "sha256": "a4ef8179d020a52b61dc44b7a702055c441c0883ae22b01be32aa4e8510026d6"
+    },
+    "runs/cl-stage1-captured-v6/stage1-table.json": {
+      "bytes": 110404,
+      "sha256": "022665a1082ff976fafb5384acb389876f283c262459a863632b5a3afd745009"
+    },
+    "runs/cl-stage1-captured-v6/stage1-table.md": {
+      "bytes": 713,
+      "sha256": "3c2e9d4fa6a36f56a8de849543e75e7999da9a11212e6d5e927028b55dd48087"
+    },
+    "runs/cl-stage1-captured-v6/test-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-captured-v6/tests.log": {
+      "bytes": 116347,
+      "sha256": "99c58b2468cb88073e0acd2a3005b53fe54d250d8d8bd46e913184ff0b4e638c"
+    },
+    "runs/cl-stage1-captured-v6/transactions.jsonl": {
+      "bytes": 10896127,
+      "sha256": "7ae3c4458d7979aaf252836d2798010a61139878eb6381c9c1cf196a42f1f37c"
+    },
+    "runs/cl-stage1-first-roundtrip/budget-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    "runs/cl-stage1-first-roundtrip/budget.log": {
+      "bytes": 173,
+      "sha256": "dcad07cbeb701744f3cae2c0833e03a6c14aa786d60b0785711dfd16fd031a91"
+    },
+    "runs/cl-stage1-first-roundtrip/profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-first-roundtrip/setup-profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-first-roundtrip/source-before.json": {
+      "bytes": 4081,
+      "sha256": "47e3a5ad1a5d861306d015644e75f1269bcf00457cd2c9548c02c0264b850b00"
+    },
+    "runs/cl-stage1-first-roundtrip/source/harness/cl-runtime29/src/transaction_evidence.rs": {
+      "bytes": 26196,
+      "sha256": "b030bd688a218d0bb527fea806064a4500743322a7a3b06197fd66995015de8b"
+    },
+    "runs/cl-stage1-first-roundtrip/source/prototypes/cl-stage1-cash-first/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "runs/cl-stage1-first-roundtrip/source/prototypes/cl-stage1-cash-first/receipt.rs": {
+      "bytes": 6223,
+      "sha256": "5dfcd8f2fec74c4fe8c495c4c534bffcb91b7f66698f86319997d13d69785b8f"
+    },
+    "runs/cl-stage1-first-roundtrip/source/prototypes/cl-stage1-cash-first/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "runs/cl-stage1-first-roundtrip/source/prototypes/cl-stage1-cash-first/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "runs/cl-stage1-first-roundtrip/source/prototypes/cl-stage1-cash-first/tests/stages.rs": {
+      "bytes": 10531,
+      "sha256": "12a77e8cf131960c42416ae5fc457ea64a080f8a18dfc34fb48c4e0e7087f3e9"
+    },
+    "runs/cl-stage1-first-roundtrip/source/prototypes/cl-stage1-cash-first/vault.rs": {
+      "bytes": 14308,
+      "sha256": "796262b1c49c23109426fa2420a6656d510931dc0fc8f64b31cb07ea5d44278b"
+    },
+    "runs/cl-stage1-first-roundtrip/source/target/cl-stage1-cash-first-build-v2/build-manifest.json": {
+      "bytes": 19097,
+      "sha256": "6af3c198583450f4337430c869da7c81316a3929cb3fc2b5585662af5b06e710"
+    },
+    "runs/cl-stage1-first-roundtrip/source/target/cl-stage1-cash-first-build-v2/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "runs/cl-stage1-first-roundtrip/source/target/cl-stage1-cash-first-build-v2/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "runs/cl-stage1-first-roundtrip/source/target/cl-stage1-cash-first-build-v2/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "runs/cl-stage1-first-roundtrip/source/target/cl-stage1-cash-first-build-v2/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "runs/cl-stage1-first-roundtrip/source/test-support/cl_resource_limits.rs": {
+      "bytes": 8407,
+      "sha256": "a4ef8179d020a52b61dc44b7a702055c441c0883ae22b01be32aa4e8510026d6"
+    },
+    "runs/cl-stage1-first-roundtrip/test-exit-code.txt": {
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "runs/cl-stage1-first-roundtrip/tests.log": {
+      "bytes": 1591,
+      "sha256": "09e5ca228f7e83e9d56c5a7a5ce9683fe4e4ea587a6b5dd2d9997d90349d2046"
+    },
+    "runs/cl-stage1-internal-v3/budget-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-internal-v3/budget.log": {
+      "bytes": 22423,
+      "sha256": "aaf4b5c76a8a11fb71d14a8be0c90dd1d737edda178fc5088b47756ce8219a95"
+    },
+    "runs/cl-stage1-internal-v3/calls.jsonl": {
+      "bytes": 402348,
+      "sha256": "7984f09697742379d72d3a4557411a18e33cb3b2aadbb40052b14494b9113117"
+    },
+    "runs/cl-stage1-internal-v3/footprints.json": {
+      "bytes": 161343,
+      "sha256": "a571c0e0fe2c487fb5beeb71aaee51d9be2711da67f3f96206e8f424b5744339"
+    },
+    "runs/cl-stage1-internal-v3/gates.json": {
+      "bytes": 3287,
+      "sha256": "d970bab0ce3ac98ef32cd026ade1aa152b1be0d4da206d0780b0c8e458d79de7"
+    },
+    "runs/cl-stage1-internal-v3/profile.json": {
+      "bytes": 864,
+      "sha256": "dca24ae20faccdb6cd5bd1b8055ae558123a7c50802736dee5a07438d29344da"
+    },
+    "runs/cl-stage1-internal-v3/resources.jsonl": {
+      "bytes": 21481,
+      "sha256": "d1037704e391e18200a7b1c9973252c33087b5b6c913b7df90ea955bfff0fc83"
+    },
+    "runs/cl-stage1-internal-v3/setup-profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-internal-v3/source-before.json": {
+      "bytes": 4081,
+      "sha256": "0411f74ce87f5672ab12ce22ba80985391446effd6b10fe6493c7441b9dcaf3a"
+    },
+    "runs/cl-stage1-internal-v3/source/harness/cl-runtime29/src/transaction_evidence.rs": {
+      "bytes": 26196,
+      "sha256": "b030bd688a218d0bb527fea806064a4500743322a7a3b06197fd66995015de8b"
+    },
+    "runs/cl-stage1-internal-v3/source/prototypes/cl-stage1-cash-first/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "runs/cl-stage1-internal-v3/source/prototypes/cl-stage1-cash-first/receipt.rs": {
+      "bytes": 6313,
+      "sha256": "2e066f5209d8f677a18c5f9b22f13c3dba2c385c33dec0f0f871f02498210e4f"
+    },
+    "runs/cl-stage1-internal-v3/source/prototypes/cl-stage1-cash-first/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "runs/cl-stage1-internal-v3/source/prototypes/cl-stage1-cash-first/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "runs/cl-stage1-internal-v3/source/prototypes/cl-stage1-cash-first/tests/stages.rs": {
+      "bytes": 10690,
+      "sha256": "45c30f34c988cea441b90a96eb33aa1c9cb40d9b21596e1bc1c17d9d2a92a092"
+    },
+    "runs/cl-stage1-internal-v3/source/prototypes/cl-stage1-cash-first/vault.rs": {
+      "bytes": 14372,
+      "sha256": "50cdaf2a3bd42f64cf0ffc6f12331673c2031eb2570bb56048925b39232075f0"
+    },
+    "runs/cl-stage1-internal-v3/source/target/cl-stage1-cash-first-build-v3/build-manifest.json": {
+      "bytes": 19098,
+      "sha256": "ab65d74f2ab089885187151a9ee0247de2dfc56cec57fa52cc5ed66a8298220c"
+    },
+    "runs/cl-stage1-internal-v3/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "runs/cl-stage1-internal-v3/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "runs/cl-stage1-internal-v3/source/target/cl-stage1-cash-first-build-v3/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "runs/cl-stage1-internal-v3/source/target/cl-stage1-cash-first-build-v3/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "runs/cl-stage1-internal-v3/source/test-support/cl_resource_limits.rs": {
+      "bytes": 8407,
+      "sha256": "a4ef8179d020a52b61dc44b7a702055c441c0883ae22b01be32aa4e8510026d6"
+    },
+    "runs/cl-stage1-internal-v3/test-exit-code.txt": {
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "runs/cl-stage1-internal-v3/tests.log": {
+      "bytes": 100737,
+      "sha256": "f9f59339c4f8e4a3903da5f9672d4484b56efdfe5c123f683489913ca16846bd"
+    },
+    "runs/cl-stage1-internal-v3/transactions.jsonl": {
+      "bytes": 7642915,
+      "sha256": "aeb9716a1bfb9a3912c8ee92cf746cb8d840b7b6efdf4d6b01ac2cb1e7d12671"
+    },
+    "runs/cl-stage1-internal-v4/budget-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-internal-v4/budget.log": {
+      "bytes": 22423,
+      "sha256": "aaf4b5c76a8a11fb71d14a8be0c90dd1d737edda178fc5088b47756ce8219a95"
+    },
+    "runs/cl-stage1-internal-v4/calls.jsonl": {
+      "bytes": 402348,
+      "sha256": "7984f09697742379d72d3a4557411a18e33cb3b2aadbb40052b14494b9113117"
+    },
+    "runs/cl-stage1-internal-v4/gates.json": {
+      "bytes": 3287,
+      "sha256": "d970bab0ce3ac98ef32cd026ade1aa152b1be0d4da206d0780b0c8e458d79de7"
+    },
+    "runs/cl-stage1-internal-v4/profile.json": {
+      "bytes": 864,
+      "sha256": "dca24ae20faccdb6cd5bd1b8055ae558123a7c50802736dee5a07438d29344da"
+    },
+    "runs/cl-stage1-internal-v4/resources.jsonl": {
+      "bytes": 21481,
+      "sha256": "d1037704e391e18200a7b1c9973252c33087b5b6c913b7df90ea955bfff0fc83"
+    },
+    "runs/cl-stage1-internal-v4/setup-profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-internal-v4/source-before.json": {
+      "bytes": 4081,
+      "sha256": "831dbef0f3cafb9057e63560ac7602d4468bd9a47d288f581188c07941d53ebf"
+    },
+    "runs/cl-stage1-internal-v4/source/harness/cl-runtime29/src/transaction_evidence.rs": {
+      "bytes": 26196,
+      "sha256": "b030bd688a218d0bb527fea806064a4500743322a7a3b06197fd66995015de8b"
+    },
+    "runs/cl-stage1-internal-v4/source/prototypes/cl-stage1-cash-first/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "runs/cl-stage1-internal-v4/source/prototypes/cl-stage1-cash-first/receipt.rs": {
+      "bytes": 6313,
+      "sha256": "2e066f5209d8f677a18c5f9b22f13c3dba2c385c33dec0f0f871f02498210e4f"
+    },
+    "runs/cl-stage1-internal-v4/source/prototypes/cl-stage1-cash-first/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "runs/cl-stage1-internal-v4/source/prototypes/cl-stage1-cash-first/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "runs/cl-stage1-internal-v4/source/prototypes/cl-stage1-cash-first/tests/stages.rs": {
+      "bytes": 10776,
+      "sha256": "9014553d1ea4a4bbd4c6bfd8379c94eac97a4a9e6da8d73afe09bae0c694ad53"
+    },
+    "runs/cl-stage1-internal-v4/source/prototypes/cl-stage1-cash-first/vault.rs": {
+      "bytes": 14372,
+      "sha256": "50cdaf2a3bd42f64cf0ffc6f12331673c2031eb2570bb56048925b39232075f0"
+    },
+    "runs/cl-stage1-internal-v4/source/target/cl-stage1-cash-first-build-v3/build-manifest.json": {
+      "bytes": 19098,
+      "sha256": "ab65d74f2ab089885187151a9ee0247de2dfc56cec57fa52cc5ed66a8298220c"
+    },
+    "runs/cl-stage1-internal-v4/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "runs/cl-stage1-internal-v4/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "runs/cl-stage1-internal-v4/source/target/cl-stage1-cash-first-build-v3/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "runs/cl-stage1-internal-v4/source/target/cl-stage1-cash-first-build-v3/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "runs/cl-stage1-internal-v4/source/test-support/cl_resource_limits.rs": {
+      "bytes": 8407,
+      "sha256": "a4ef8179d020a52b61dc44b7a702055c441c0883ae22b01be32aa4e8510026d6"
+    },
+    "runs/cl-stage1-internal-v4/test-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-internal-v4/tests.log": {
+      "bytes": 100620,
+      "sha256": "69fd70a1bccd23ebde531b38be99defd756fafea817e18a9572aa391a1500525"
+    },
+    "runs/cl-stage1-internal-v4/transactions.jsonl": {
+      "bytes": 7642915,
+      "sha256": "aeb9716a1bfb9a3912c8ee92cf746cb8d840b7b6efdf4d6b01ac2cb1e7d12671"
+    },
+    "runs/cl-stage1-internal-v5/budget-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-internal-v5/budget.log": {
+      "bytes": 29822,
+      "sha256": "34d3285637b81ea3321c71bced4e685f7c00bdf0b87dd930e994b04e8b10bc86"
+    },
+    "runs/cl-stage1-internal-v5/calls.jsonl": {
+      "bytes": 553320,
+      "sha256": "31c0687897fbb83eb3415c923cff22c3eeb11383f222afb3c81d9826c509aa55"
+    },
+    "runs/cl-stage1-internal-v5/footprints.json": {
+      "bytes": 220009,
+      "sha256": "97f94bd665ec287809a3fe5863810d42c1b8091bfeb623239a502db94d3f6c62"
+    },
+    "runs/cl-stage1-internal-v5/gates.json": {
+      "bytes": 3287,
+      "sha256": "d970bab0ce3ac98ef32cd026ade1aa152b1be0d4da206d0780b0c8e458d79de7"
+    },
+    "runs/cl-stage1-internal-v5/profile.json": {
+      "bytes": 864,
+      "sha256": "dca24ae20faccdb6cd5bd1b8055ae558123a7c50802736dee5a07438d29344da"
+    },
+    "runs/cl-stage1-internal-v5/resources.jsonl": {
+      "bytes": 29729,
+      "sha256": "2ccc90da84c9ebeda878afd6b4ef136fdfeeff14b99e2b50f84973ead3ff5abb"
+    },
+    "runs/cl-stage1-internal-v5/setup-profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-internal-v5/source-before.json": {
+      "bytes": 4081,
+      "sha256": "3e9486c01b77eefbc530f0d6c5ce918caad8726df55e2f80658b50e13b073566"
+    },
+    "runs/cl-stage1-internal-v5/source/harness/cl-runtime29/src/transaction_evidence.rs": {
+      "bytes": 26196,
+      "sha256": "b030bd688a218d0bb527fea806064a4500743322a7a3b06197fd66995015de8b"
+    },
+    "runs/cl-stage1-internal-v5/source/prototypes/cl-stage1-cash-first/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "runs/cl-stage1-internal-v5/source/prototypes/cl-stage1-cash-first/receipt.rs": {
+      "bytes": 6313,
+      "sha256": "2e066f5209d8f677a18c5f9b22f13c3dba2c385c33dec0f0f871f02498210e4f"
+    },
+    "runs/cl-stage1-internal-v5/source/prototypes/cl-stage1-cash-first/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "runs/cl-stage1-internal-v5/source/prototypes/cl-stage1-cash-first/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "runs/cl-stage1-internal-v5/source/prototypes/cl-stage1-cash-first/tests/stages.rs": {
+      "bytes": 11332,
+      "sha256": "c722113ecd37ffd6e0d9db465cca2c79f1f135f102a941bf59b846003f42257b"
+    },
+    "runs/cl-stage1-internal-v5/source/prototypes/cl-stage1-cash-first/vault.rs": {
+      "bytes": 14372,
+      "sha256": "50cdaf2a3bd42f64cf0ffc6f12331673c2031eb2570bb56048925b39232075f0"
+    },
+    "runs/cl-stage1-internal-v5/source/target/cl-stage1-cash-first-build-v3/build-manifest.json": {
+      "bytes": 19098,
+      "sha256": "ab65d74f2ab089885187151a9ee0247de2dfc56cec57fa52cc5ed66a8298220c"
+    },
+    "runs/cl-stage1-internal-v5/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "runs/cl-stage1-internal-v5/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "runs/cl-stage1-internal-v5/source/target/cl-stage1-cash-first-build-v3/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "runs/cl-stage1-internal-v5/source/target/cl-stage1-cash-first-build-v3/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "runs/cl-stage1-internal-v5/source/test-support/cl_resource_limits.rs": {
+      "bytes": 8407,
+      "sha256": "a4ef8179d020a52b61dc44b7a702055c441c0883ae22b01be32aa4e8510026d6"
+    },
+    "runs/cl-stage1-internal-v5/stage1-table.json": {
+      "bytes": 91511,
+      "sha256": "7e70b9eb86fd147e34103dea82adac4914a4e7f51902c1b5125d311cf7728e4a"
+    },
+    "runs/cl-stage1-internal-v5/stage1-table.md": {
+      "bytes": 713,
+      "sha256": "933c5245a0736f5437de370ded01d293aa5b9171f86056d664eace72bf7da116"
+    },
+    "runs/cl-stage1-internal-v5/test-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-internal-v5/tests.log": {
+      "bytes": 110961,
+      "sha256": "b54156f2137f7dabd948804906f76bab0df78d18ebf1e73dc6946d75f6385fe4"
+    },
+    "runs/cl-stage1-internal-v5/transactions.jsonl": {
+      "bytes": 10429921,
+      "sha256": "3a9c106e0298d3198b2b61624108b59ae20b19e5d48aa79670db02d1dcda87f3"
+    },
+    "runs/cl-stage1-internal-v6/budget-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-internal-v6/budget.log": {
+      "bytes": 30580,
+      "sha256": "a8213c4e652d85856aabfbcfffcf0c339acf82f172ddc3f1de847c1357b1c6a9"
+    },
+    "runs/cl-stage1-internal-v6/calls.jsonl": {
+      "bytes": 580667,
+      "sha256": "8791259ca80015ffcbd3dc38d562e2f0de54efdea7b31deb63c22a7cf19407df"
+    },
+    "runs/cl-stage1-internal-v6/footprints.json": {
+      "bytes": 234512,
+      "sha256": "eb23529a1cc64d7b2510d601d7f6aceb7d0c87d56b09d46345247547c0a9fda3"
+    },
+    "runs/cl-stage1-internal-v6/gates.json": {
+      "bytes": 3287,
+      "sha256": "d970bab0ce3ac98ef32cd026ade1aa152b1be0d4da206d0780b0c8e458d79de7"
+    },
+    "runs/cl-stage1-internal-v6/profile.json": {
+      "bytes": 864,
+      "sha256": "dca24ae20faccdb6cd5bd1b8055ae558123a7c50802736dee5a07438d29344da"
+    },
+    "runs/cl-stage1-internal-v6/resources.jsonl": {
+      "bytes": 30571,
+      "sha256": "9fcbc2ba5d3eba808b457a70902da2f5c188b197fe73f65576b2e4149141e125"
+    },
+    "runs/cl-stage1-internal-v6/setup-profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-internal-v6/source-before.json": {
+      "bytes": 4081,
+      "sha256": "0471ee52ab5a33431358ef1b38b28b302072f53d99b726a48540d61fd7a557dc"
+    },
+    "runs/cl-stage1-internal-v6/source/harness/cl-runtime29/src/transaction_evidence.rs": {
+      "bytes": 26196,
+      "sha256": "b030bd688a218d0bb527fea806064a4500743322a7a3b06197fd66995015de8b"
+    },
+    "runs/cl-stage1-internal-v6/source/prototypes/cl-stage1-cash-first/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "runs/cl-stage1-internal-v6/source/prototypes/cl-stage1-cash-first/receipt.rs": {
+      "bytes": 6313,
+      "sha256": "2e066f5209d8f677a18c5f9b22f13c3dba2c385c33dec0f0f871f02498210e4f"
+    },
+    "runs/cl-stage1-internal-v6/source/prototypes/cl-stage1-cash-first/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "runs/cl-stage1-internal-v6/source/prototypes/cl-stage1-cash-first/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "runs/cl-stage1-internal-v6/source/prototypes/cl-stage1-cash-first/tests/stages.rs": {
+      "bytes": 13406,
+      "sha256": "161768ad68605a528a0bdb24227051a23cf2d536904db234c9252fa53913c5ac"
+    },
+    "runs/cl-stage1-internal-v6/source/prototypes/cl-stage1-cash-first/vault.rs": {
+      "bytes": 15015,
+      "sha256": "4ceb9b2bd3e6a17e13cd32f684653c85651a9368a0bc4fc207a5bd17aa288b2d"
+    },
+    "runs/cl-stage1-internal-v6/source/target/cl-stage1-cash-first-build-v4/build-manifest.json": {
+      "bytes": 19098,
+      "sha256": "01f06c90ebd387660b7fa9634ed539af7a5869824596cc021eae6c8464d46e82"
+    },
+    "runs/cl-stage1-internal-v6/source/target/cl-stage1-cash-first-build-v4/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "runs/cl-stage1-internal-v6/source/target/cl-stage1-cash-first-build-v4/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "runs/cl-stage1-internal-v6/source/target/cl-stage1-cash-first-build-v4/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "runs/cl-stage1-internal-v6/source/target/cl-stage1-cash-first-build-v4/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "runs/cl-stage1-internal-v6/source/test-support/cl_resource_limits.rs": {
+      "bytes": 8407,
+      "sha256": "a4ef8179d020a52b61dc44b7a702055c441c0883ae22b01be32aa4e8510026d6"
+    },
+    "runs/cl-stage1-internal-v6/stage1-table.json": {
+      "bytes": 110380,
+      "sha256": "8222dd445deba53e6e15fbbeb79c21bfe374ec0547097ce6e9ecf0f08905326e"
+    },
+    "runs/cl-stage1-internal-v6/stage1-table.md": {
+      "bytes": 713,
+      "sha256": "3c2e9d4fa6a36f56a8de849543e75e7999da9a11212e6d5e927028b55dd48087"
+    },
+    "runs/cl-stage1-internal-v6/test-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-internal-v6/tests.log": {
+      "bytes": 115422,
+      "sha256": "51293358c2ca600816f659d38035083af73da57041d39aa89582e2f7a4550a63"
+    },
+    "runs/cl-stage1-internal-v6/transactions.jsonl": {
+      "bytes": 10895803,
+      "sha256": "29e82034d02cdbd6dcfe25971281336ce5d2dc625672c8b3bc6235c52515ad20"
+    },
+    "runs/cl-stage1-roundtrip-v2/budget-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    "runs/cl-stage1-roundtrip-v2/budget.log": {
+      "bytes": 4762,
+      "sha256": "33dd8082b491c656c43db5ada51191d9891ae18b09493c924b77850aa2f35ac3"
+    },
+    "runs/cl-stage1-roundtrip-v2/calls.jsonl": {
+      "bytes": 12167,
+      "sha256": "17076cfea590fc523506bff7ae0cf595ce9bb155df8cf4a2cdf073f3489ce92e"
+    },
+    "runs/cl-stage1-roundtrip-v2/gates.json": {
+      "bytes": 3385,
+      "sha256": "7a5671dd5c3dfbd1323abc1ba04d53c3c56b686233471cc39b8bf8861e0573a5"
+    },
+    "runs/cl-stage1-roundtrip-v2/profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-roundtrip-v2/resources.jsonl": {
+      "bytes": 1625,
+      "sha256": "68035d368534724d9ef0da098f09652253eb5cd3bbd08867a661ba699136d7e2"
+    },
+    "runs/cl-stage1-roundtrip-v2/setup-profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-roundtrip-v2/source-before.json": {
+      "bytes": 4081,
+      "sha256": "37137aeb2b17fd249157b7d779b8b8617fffc3ed17ff838baa17b54da870b321"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/harness/cl-runtime29/src/transaction_evidence.rs": {
+      "bytes": 26196,
+      "sha256": "b030bd688a218d0bb527fea806064a4500743322a7a3b06197fd66995015de8b"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/prototypes/cl-stage1-cash-first/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/prototypes/cl-stage1-cash-first/receipt.rs": {
+      "bytes": 6223,
+      "sha256": "5dfcd8f2fec74c4fe8c495c4c534bffcb91b7f66698f86319997d13d69785b8f"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/prototypes/cl-stage1-cash-first/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/prototypes/cl-stage1-cash-first/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/prototypes/cl-stage1-cash-first/tests/stages.rs": {
+      "bytes": 10680,
+      "sha256": "48d64deb9e1373d4a3445b733bb215364c06f61c599cdbe932298a31c96c78a2"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/prototypes/cl-stage1-cash-first/vault.rs": {
+      "bytes": 14308,
+      "sha256": "796262b1c49c23109426fa2420a6656d510931dc0fc8f64b31cb07ea5d44278b"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/target/cl-stage1-cash-first-build-v2/build-manifest.json": {
+      "bytes": 19097,
+      "sha256": "6af3c198583450f4337430c869da7c81316a3929cb3fc2b5585662af5b06e710"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/target/cl-stage1-cash-first-build-v2/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/target/cl-stage1-cash-first-build-v2/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/target/cl-stage1-cash-first-build-v2/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/target/cl-stage1-cash-first-build-v2/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "runs/cl-stage1-roundtrip-v2/source/test-support/cl_resource_limits.rs": {
+      "bytes": 8407,
+      "sha256": "a4ef8179d020a52b61dc44b7a702055c441c0883ae22b01be32aa4e8510026d6"
+    },
+    "runs/cl-stage1-roundtrip-v2/test-exit-code.txt": {
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "runs/cl-stage1-roundtrip-v2/tests.log": {
+      "bytes": 8285,
+      "sha256": "2169aa3fd265d15c1c72a979ac2c3c3f51edf94850d4854502138ea123e4b5d1"
+    },
+    "runs/cl-stage1-roundtrip-v2/transactions.jsonl": {
+      "bytes": 268199,
+      "sha256": "bf6c240d3c0dc07c2c36317e1a61937b722ec90ed87aec6907fe9b89388fdcf4"
+    },
+    "runs/cl-stage1-roundtrip-v3/budget-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-roundtrip-v3/budget.log": {
+      "bytes": 11445,
+      "sha256": "7c31d9adafc9bbcc8e0f8577bba423e5a3714fad5dc71ae634691b762b23974f"
+    },
+    "runs/cl-stage1-roundtrip-v3/calls.jsonl": {
+      "bytes": 167426,
+      "sha256": "9ae599180f9b85dbc15c8ae4fbb7e0c94653e0391102b68bababdbf70aa4d1dc"
+    },
+    "runs/cl-stage1-roundtrip-v3/gates.json": {
+      "bytes": 3299,
+      "sha256": "2af0b959996902ebaf12f3636ae901885d9a0ca6f33445462abdbe84e6d5ccf7"
+    },
+    "runs/cl-stage1-roundtrip-v3/profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-roundtrip-v3/resources.jsonl": {
+      "bytes": 9213,
+      "sha256": "53b7c53f78c8d58d37bf2c3c161bb2344f85607e64543de0db82449479c9327a"
+    },
+    "runs/cl-stage1-roundtrip-v3/setup-profile.json": {
+      "bytes": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    "runs/cl-stage1-roundtrip-v3/source-before.json": {
+      "bytes": 4081,
+      "sha256": "0411f74ce87f5672ab12ce22ba80985391446effd6b10fe6493c7441b9dcaf3a"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/harness/cl-runtime29/src/transaction_evidence.rs": {
+      "bytes": 26196,
+      "sha256": "b030bd688a218d0bb527fea806064a4500743322a7a3b06197fd66995015de8b"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/prototypes/cl-stage1-cash-first/command_types.rs": {
+      "bytes": 488,
+      "sha256": "363a3f7943b0159c12621082b0a410eb41631c7b17c681f3a9f7a254f98d897d"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/prototypes/cl-stage1-cash-first/receipt.rs": {
+      "bytes": 6313,
+      "sha256": "2e066f5209d8f677a18c5f9b22f13c3dba2c385c33dec0f0f871f02498210e4f"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/prototypes/cl-stage1-cash-first/run.sh": {
+      "bytes": 3097,
+      "sha256": "eaff81390ad770858eaf16ccca8d118505a7127727087046345e0ce47fbe6023"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/prototypes/cl-stage1-cash-first/stage_storage.rs": {
+      "bytes": 1271,
+      "sha256": "e8fea5852c01b177e9d9ca95b68afed23d8c472bde4d08c96a59e2679c9d98a6"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/prototypes/cl-stage1-cash-first/tests/stages.rs": {
+      "bytes": 10690,
+      "sha256": "45c30f34c988cea441b90a96eb33aa1c9cb40d9b21596e1bc1c17d9d2a92a092"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/prototypes/cl-stage1-cash-first/vault.rs": {
+      "bytes": 14372,
+      "sha256": "50cdaf2a3bd42f64cf0ffc6f12331673c2031eb2570bb56048925b39232075f0"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/target/cl-stage1-cash-first-build-v3/build-manifest.json": {
+      "bytes": 19098,
+      "sha256": "ab65d74f2ab089885187151a9ee0247de2dfc56cec57fa52cc5ed66a8298220c"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.lock": {
+      "bytes": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/target/cl-stage1-cash-first-build-v3/harness/Cargo.toml": {
+      "bytes": 659,
+      "sha256": "c3c867734d854050509bac0525a0a7d623d30d1212db70af4a61c2b80e84cab6"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/target/cl-stage1-cash-first-build-v3/harness/src/lib.rs": {
+      "bytes": 1212,
+      "sha256": "42f7ba1ab7f850824b23c632f576ffb262c120bc621159f13baac9f4d40a00cd"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/target/cl-stage1-cash-first-build-v3/harness/src/test.rs": {
+      "bytes": 31907,
+      "sha256": "2605f73ae312ad10f56781910a2d829efa9a4da76b076f69316b22ec166794c6"
+    },
+    "runs/cl-stage1-roundtrip-v3/source/test-support/cl_resource_limits.rs": {
+      "bytes": 8407,
+      "sha256": "a4ef8179d020a52b61dc44b7a702055c441c0883ae22b01be32aa4e8510026d6"
+    },
+    "runs/cl-stage1-roundtrip-v3/test-exit-code.txt": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "runs/cl-stage1-roundtrip-v3/tests.log": {
+      "bytes": 12621,
+      "sha256": "f990f4259e45f3d0d28225a63c85e10fc15674ff6f6cac60bb95c603f8f3c91e"
+    },
+    "runs/cl-stage1-roundtrip-v3/transactions.jsonl": {
+      "bytes": 3210826,
+      "sha256": "f98c3552d1b80d91e47d51f163ae45f2e67f1f1ebf6d9e6e1b42139a36132588"
+    },
+    "wasm/aquarius-pool.wasm": {
+      "bytes": 90057,
+      "sha256": "12fca5a7a96577273b6d4184cf9c984036cda0e8f0594747e7b2933dced37ee6"
+    }
+  }
+}
