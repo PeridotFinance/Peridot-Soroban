@@ -6,7 +6,7 @@ The controller can list a future CL receipt with `add_market`. That is a later L
 
 ## Operator inputs and artifact seal
 
-Ledger public account: `GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP`. Confirm it on the device. The deployer public account, unique salts and deployer gas funding remain operator inputs. Market seed and withdrawal amounts are filled below. Its private key stays on the operator's host and is never provided here.
+Ledger public account: `GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP`. Confirm it on the device. Fresh deployer public account: `GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE`, supplied by the operator. Local alias: `peridot-cash-fresh-20261111`. Unique salts remain operator inputs. Market amounts are filled below; the gas quote is recorded in step 1. Its private key stays on the operator's host and is never provided here.
 
 | Market | Underlying SAC | Permanent seed, raw units | Withdrawable seed deposit, raw units |
 |---|---|---:|---:|
@@ -36,6 +36,8 @@ These are operator commands; none has been executed on Mainnet. Use a new output
 ```sh
 NET='Public Global Stellar Network ; September 2015'
 LEDGER_PUBLIC='GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP'
+DEPLOYER_PUBLIC='GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE'
+FRESH_DEPLOYER_ALIAS='peridot-cash-fresh-20261111'
 # Fill: RPC_URL, DEPLOYER_PUBLIC, CONTROLLER, four fresh RECEIPT IDs,
 # unique deployment salts and sealed WASM paths. Seed amounts are selected below.
 build_call() {
@@ -103,7 +105,7 @@ A failed or unavailable raw-key read is not proof of absence. Check instance/cod
 
 ## Ordered ceremony
 
-**1. Deployer gas.** The operator creates/funds a fresh throwaway account. Required XLM is the account's reserve minimum plus the summed current simulated upload/deploy fees and an explicitly chosen retry/restoration buffer. A final gas quote is unavailable until the public source and current simulations exist; do not substitute a guessed budget. Read its public signer weights, thresholds, balance and sequence. Abort for an unexpected signer, wrong address or inadequate balance. Gas is separate from supplier capital and permanent seed.
+**1. Deployer gas.** The operator creates/funds a fresh throwaway account. Public read at 2026-11-11 18:33 UTC confirms the fresh deployer does not yet exist. At ledger 65427198, unsigned final-code simulations quote controller upload **89.9792066 XLM** and receipt upload **119.3289309 XLM**, totaling **209.3081375 XLM**, including 100 stroops nominal inclusion per operation. Both code hashes are currently absent. Creation simulations fail specifically with `Wasm does not exist`; five instance fees remain unquoted until upload. These are unsigned host estimates with placeholder source sequence, not executable transactions or full resource qualification. Recommended initial deployer funding: **300 XLM** = quoted uploads + **1 XLM** current new-account reserve + **89.6918625 XLM** contingency/instance budget. This remainder is a funding buffer, not a measured five-instance fee. Re-simulate each creation after the uploads and stop for insufficient balance; unused funds remain in the deployer. `fresh-deployment-fee-quote.json` preserves all seven results. The Ledger account read 32.0821729 XLM and cannot currently fund 300 XLM; fund the deployer from another operator wallet or replenish Ledger first. Configuration and market seed fees are paid separately by Ledger. Read its public signer weights, thresholds, balance and sequence. Abort for an unexpected signer, wrong address or inadequate balance. Gas is separate from supplier capital and permanent seed.
 
 For a not-yet-existing deployer account, the operator may build the funding transaction as follows, then inspect/sign it with the funding Ledger and submit once. `GAS_STROOPS` is the reviewed amount in stroops, not whole XLM. Existing accounts use a payment instead of create-account; do not retry create-account after it succeeds.
 
