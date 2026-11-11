@@ -1405,7 +1405,10 @@ impl SimplePeridottroller {
         market: &Address,
     ) -> bool {
         let persistent = env.storage().persistent();
-        let mut flags: Map<Address, bool> = persistent.get(&pause_key).unwrap_or(Map::new(env));
+        // Missing global pause metadata is not permission to open risk.
+        let Some(mut flags): Option<Map<Address, bool>> = persistent.get(&pause_key) else {
+            return true;
+        };
         if !flags.get(market.clone()).unwrap_or(false) {
             // pause_key is already in the footprint from the get() above, so
             // extend_ttl here adds no new entries. Bump so a set-but-inactive
