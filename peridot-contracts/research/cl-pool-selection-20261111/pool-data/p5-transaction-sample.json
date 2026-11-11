@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":5,"result":{"latestLedger":65420747,"latestLedgerCloseTime":"1794389777","oldestLedger":65299788,"oldestLedgerCloseTime":"1793784979","status":"NOT_FOUND","txHash":"abeb4c75a5517e4797d2dd740e3f168f299289458f92236e59791d5a710ea83e","applicationOrder":0,"feeBump":false,"events":{},"ledger":0,"createdAt":"0"}}

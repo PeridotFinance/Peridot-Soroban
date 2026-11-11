@@ -1,0 +1,41 @@
+# USDT0 Network Documentation
+
+> Official documentation for the USDT0 Network — Tether's omnichain token infrastructure built on LayerZero's OFT standard. Covers USDT0 (omnichain USDT) and XAUT0 (omnichain Tether Gold): architecture, contract deployments, developer integration, security model, and brand assets. Also includes contract deployments for USAT (Tether America USD).
+
+- [USDT0 Network Documentation](https://docs.usdt0.to/index.md)
+
+## overview
+
+- [Analytics](https://docs.usdt0.to/overview/analytics.md): Track real-time USDT0 stablecoin supply, volumes, and backing on-chain. Fully transparent and permissionless.
+- [The Legacy Mesh](https://docs.usdt0.to/overview/the-legacy-mesh.md): How USDT0 supports non-EVM chains like Tron, TON, Solana, and Celo via pool-based transfers with a 3bp fee.
+- [Use Cases](https://docs.usdt0.to/overview/use-cases.md): How protocols, chains, and exchanges integrate USDT0: DeFi liquidity, cross-chain payments, and unified stablecoin infrastructure.
+
+## technical-documentation
+
+- [Deployments](https://docs.usdt0.to/technical-documentation/deployments.md): Contract addresses for USDT0, XAUT0 and USAT across all supported chains. Copy-paste ready for developers.
+- [Developer Guide](https://docs.usdt0.to/technical-documentation/developer.md): Build with USDT0: integration guides, OFT contract interfaces, and LayerZero developer resources.
+- [Security](https://docs.usdt0.to/technical-documentation/security.md): USDT0 security: audit reports, monitoring infrastructure, and verification standards across all omnichain products.
+- [Token features](https://docs.usdt0.to/technical-documentation/token-features.md): Feature reference for USDT0 Network token contracts: EIP-2612 permit, EIP-3009 gasless transfers, EIP-1271 smart contract wallet signatures, and the ERC-7802 crosschain interface, with per-chain availability.
+- [Additional token behavior](https://docs.usdt0.to/technical-documentation/token-features/additional-behavior.md): Behavior of the shared USDT0 Network token implementation beyond the EIP interfaces: batch transfers with multiTransfer, the compliance blocklist, reverts on transfers to the token contract, and upgradeable proxies.
+- [EIP-1271: Contract wallet signatures](https://docs.usdt0.to/technical-documentation/token-features/eip-1271.md): How USDT0 Network tokens verify EIP-1271 signatures from Safe multisigs and ERC-4337 smart accounts in permit and EIP-3009 calls, and what to account for when you integrate contract wallets.
+- [EIP-2612: Gasless approvals](https://docs.usdt0.to/technical-documentation/token-features/eip-2612.md): Set a USDT0, XAUT0, or USAT allowance with an off-chain signature: the permit function variants, the Permit typed-data struct, nonces and deadlines, and a sign-and-relay example.
+- [EIP-3009: Gasless transfers](https://docs.usdt0.to/technical-documentation/token-features/eip-3009.md): Move USDT0, XAUT0, or USAT with a signed authorization: transferWithAuthorization, receiveWithAuthorization, and cancelAuthorization, their typed-data structs, random nonces and validity windows, and a sign-and-relay example.
+- [ERC-7802: Crosschain mint and burn](https://docs.usdt0.to/technical-documentation/token-features/erc-7802.md): The ERC-7802 crosschain token interface on USDT0 Network tokens: crosschainMint and crosschainBurn, which chains include it, and how to detect support at runtime with ERC-165.
+
+## tutorial
+
+- [How to Transfer](https://docs.usdt0.to/tutorial/how-to-transfer.md): Step-by-step guide to transferring USDT0 and XAUT0 across chains using the Transfer Hub at usdt0.to.
+
+## resources
+
+- [Contact Us](https://docs.usdt0.to/resources/contact.md): Contact the USDT0 team for integration support, partnership inquiries, or product questions.
+- [Media Kit](https://docs.usdt0.to/resources/mediakit.md): Official USDT0 and XAUT0 logos, brand assets, and guidelines for press and partners.
+
+## corn-deprecation
+
+- [USDT0 on Corn: Deprecation Notice](https://docs.usdt0.to/corn-deprecation.md): Corn is winding down USDT0 support. Learn how to move your funds off Corn before the June 25, 2026 deadline.
+
+## Optional
+- [Deployments API (JSON)](https://docs.usdt0.to/api/deployments): Contract addresses for every chain as JSON; filterable via ?product=usdt0|xaut0|usat, ?network=<name>, ?chainId=<id>
+- [Transfer App](https://usdt0.to/transfer): Official cross-chain transfer interface
+- [Analytics](https://analytics.usdt0.to): Live USDT0 Network volume and supply metrics

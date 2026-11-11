@@ -1,0 +1,167 @@
+[
+  {
+    "address": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+    "weeks": [
+      {
+        "start": "2026-10-14T00:00:00",
+        "end": "2026-10-21T00:00:00",
+        "volume_historical_usd": 9337.237431306436,
+        "ordinary_lp_fee_estimate_usd": 4.668618715653218,
+        "rows": 50
+      },
+      {
+        "start": "2026-10-21T00:00:00",
+        "end": "2026-10-28T00:00:00",
+        "volume_historical_usd": 1116.798706246993,
+        "ordinary_lp_fee_estimate_usd": 0.5583993531234965,
+        "rows": 54
+      },
+      {
+        "start": "2026-10-28T00:00:00",
+        "end": "2026-11-04T00:00:00",
+        "volume_historical_usd": 608.3666744758787,
+        "ordinary_lp_fee_estimate_usd": 0.30418333723793933,
+        "rows": 29
+      },
+      {
+        "start": "2026-11-04T00:00:00",
+        "end": "2026-11-11T00:00:00",
+        "volume_historical_usd": 1404.596354850722,
+        "ordinary_lp_fee_estimate_usd": 0.702298177425361,
+        "rows": 44
+      }
+    ]
+  },
+  {
+    "address": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+    "weeks": [
+      {
+        "start": "2026-10-14T00:00:00",
+        "end": "2026-10-21T00:00:00",
+        "volume_historical_usd": 140272.5714149951,
+        "ordinary_lp_fee_estimate_usd": 70.13628570749755,
+        "rows": 122
+      },
+      {
+        "start": "2026-10-21T00:00:00",
+        "end": "2026-10-28T00:00:00",
+        "volume_historical_usd": 34690.54868908335,
+        "ordinary_lp_fee_estimate_usd": 17.345274344541675,
+        "rows": 101
+      },
+      {
+        "start": "2026-10-28T00:00:00",
+        "end": "2026-11-04T00:00:00",
+        "volume_historical_usd": 46283.7281153453,
+        "ordinary_lp_fee_estimate_usd": 23.141864057672652,
+        "rows": 91
+      },
+      {
+        "start": "2026-11-04T00:00:00",
+        "end": "2026-11-11T00:00:00",
+        "volume_historical_usd": 25404.63795475037,
+        "ordinary_lp_fee_estimate_usd": 12.702318977375185,
+        "rows": 101
+      }
+    ]
+  },
+  {
+    "address": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+    "weeks": [
+      {
+        "start": "2026-10-14T00:00:00",
+        "end": "2026-10-21T00:00:00",
+        "volume_historical_usd": 898522.5045214036,
+        "ordinary_lp_fee_estimate_usd": 449.2612522607018,
+        "rows": 160
+      },
+      {
+        "start": "2026-10-21T00:00:00",
+        "end": "2026-10-28T00:00:00",
+        "volume_historical_usd": 432553.8779541163,
+        "ordinary_lp_fee_estimate_usd": 216.27693897705817,
+        "rows": 162
+      },
+      {
+        "start": "2026-10-28T00:00:00",
+        "end": "2026-11-04T00:00:00",
+        "volume_historical_usd": 547295.6316975901,
+        "ordinary_lp_fee_estimate_usd": 273.64781584879506,
+        "rows": 163
+      },
+      {
+        "start": "2026-11-04T00:00:00",
+        "end": "2026-11-11T00:00:00",
+        "volume_historical_usd": 416125.1247050957,
+        "ordinary_lp_fee_estimate_usd": 208.06256235254787,
+        "rows": 166
+      }
+    ]
+  },
+  {
+    "address": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+    "weeks": [
+      {
+        "start": "2026-10-14T00:00:00",
+        "end": "2026-10-21T00:00:00",
+        "volume_historical_usd": 27026.125548866377,
+        "ordinary_lp_fee_estimate_usd": 40.53918832329957,
+        "rows": 49
+      },
+      {
+        "start": "2026-10-21T00:00:00",
+        "end": "2026-10-28T00:00:00",
+        "volume_historical_usd": 7017.233455157079,
+        "ordinary_lp_fee_estimate_usd": 10.525850182735619,
+        "rows": 35
+      },
+      {
+        "start": "2026-10-28T00:00:00",
+        "end": "2026-11-04T00:00:00",
+        "volume_historical_usd": 36192.11357060755,
+        "ordinary_lp_fee_estimate_usd": 54.288170355911326,
+        "rows": 53
+      },
+      {
+        "start": "2026-11-04T00:00:00",
+        "end": "2026-11-11T00:00:00",
+        "volume_historical_usd": 66652.24087496646,
+        "ordinary_lp_fee_estimate_usd": 99.97836131244969,
+        "rows": 95
+      }
+    ]
+  },
+  {
+    "address": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+    "weeks": [
+      {
+        "start": "2026-10-14T00:00:00",
+        "end": "2026-10-21T00:00:00",
+        "volume_historical_usd": 273241.3462826362,
+        "ordinary_lp_fee_estimate_usd": 136.62067314131812,
+        "rows": 26
+      },
+      {
+        "start": "2026-10-21T00:00:00",
+        "end": "2026-10-28T00:00:00",
+        "volume_historical_usd": 6381.430004852649,
+        "ordinary_lp_fee_estimate_usd": 3.190715002426325,
+        "rows": 20
+      },
+      {
+        "start": "2026-10-28T00:00:00",
+        "end": "2026-11-04T00:00:00",
+        "volume_historical_usd": 0.8329885,
+        "ordinary_lp_fee_estimate_usd": 0.00041649425000000003,
+        "rows": 6
+      },
+      {
+        "start": "2026-11-04T00:00:00",
+        "end": "2026-11-11T00:00:00",
+        "volume_historical_usd": 0,
+        "ordinary_lp_fee_estimate_usd": 0.0,
+        "rows": 0
+      }
+    ]
+  }
+]

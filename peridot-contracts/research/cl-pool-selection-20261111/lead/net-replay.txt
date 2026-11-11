@@ -1,0 +1,41 @@
+
+PYUSD/USDC
+1000 full net legs -1.9699 0.8847 entry 1.9243 -0.9301
+1000 wide net legs -1.6157 1.2443 entry 1.932 -0.9264
+1000 tight net legs 72.7276 76.7256 entry 3.5612 -0.1423
+10000 full net legs -19.0508 9.4934 entry 19.3497 -9.1931
+10000 wide net legs -15.5099 13.0902 entry 19.4278 -9.1567
+10000 tight net legs 702.0258 742.2002 entry 35.9759 -1.42
+
+PYUSD/sUSD
+1000 full net legs -0.67 -128.3987 entry 2.4395 129.6952
+1000 wide net legs 16.7422 -112.9974 entry 2.4524 127.3588
+1000 tight net legs 1714.7592 1724.6778 entry 5.4879 -0.0134
+10000 full net legs -31.5215 -4635.6814 entry 49.781 4636.9778
+10000 wide net legs 131.7015 -4599.2532 entry 50.1853 4613.6147
+10000 tight net legs -1611.1517 2956.8344 entry 4392.7646 -0.1248
+
+USDC/sUSD
+1000 full net legs 0.1991 0.0314 entry 0.4279 0.5954
+1000 wide net legs 6.922 6.7505 entry 0.4272 0.5963
+1000 tight net legs 1366.236 1365.2807 entry 0.2912 0.7869
+10000 full net legs 1.6964 0.02 entry 5.3251 6.9991
+10000 wide net legs 68.7741 67.0535 entry 5.3155 7.0112
+10000 tight net legs 10114.8136 10105.0774 entry 3.4051 9.6727
+
+USDC/EURC
+1000 full net legs 0.5685 0.7298 entry 1.7262 1.5658
+1000 wide net legs 22.6488 22.8384 entry 1.7373 1.5557
+1000 tight net legs 1348.6583 1346.7335 entry 0.6947 2.6018
+10000 full net legs -6.2882 -5.3597 entry 29.8739 28.9498
+10000 wide net legs 208.0225 209.5227 entry 30.1321 28.6835
+10000 tight net legs 5761.4665 5701.9434 entry 9.2615 61.4949
+
+USDT0/USDC
+1000 full net legs -0.3435 -0.5065 entry 0.4484 0.6113
+1000 wide net legs 1.4399 1.2785 entry 0.4493 0.6101
+1000 tight net legs 337.0849 337.2786 entry 0.6414 0.3633
+10000 full net legs -5.3687 -6.9963 entry 7.1704 8.7973
+10000 wide net legs 12.3383 10.746 entry 7.1893 8.7753
+10000 tight net legs 1720.8543 1727.9826 entry 11.6328 4.6194
+PASS60entryquotes; allrealizednet fields remain null

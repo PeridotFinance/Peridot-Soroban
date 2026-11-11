@@ -1,0 +1,129 @@
+{
+  "schema": "cash-pilot-scope-resource-evidence-v1",
+  "limits": {
+    "cpu": 100000000,
+    "memory_bytes": 41943040,
+    "sdk_entries": 100,
+    "unique_keys": 100,
+    "writes": 50
+  },
+  "new_execution_performed": false,
+  "release_approval": false,
+  "native_reserve_borrow": {
+    "source": "../docs/deployment-handoffs/evidence/cl-stage1-20261102/reserve-resources-final.jsonl",
+    "original_row": {
+      "flow": "reserve_native_borrow",
+      "ok": true,
+      "instructions": 3063343,
+      "memory_bytes": 322223,
+      "read_entries": 41,
+      "write_entries": 9,
+      "read_bytes": 92,
+      "write_bytes": 1360,
+      "disk_read_entries": 1,
+      "contract_events_size_bytes": 712,
+      "persistent_rent_ledger_bytes": 2769624600,
+      "persistent_entry_rent_bumps": 5,
+      "temporary_rent_ledger_bytes": 454463928,
+      "temporary_entry_rent_bumps": 1,
+      "scope": "native-synthetic-reserve-fixture"
+    },
+    "sdk_entries": 51,
+    "unique_keys": null,
+    "scope": "native synthetic SDK25 single-receipt local collateral, not compiled two-market pilot",
+    "target_Core_application": false,
+    "real_signature_evidence": false
+  },
+  "required_cash_roots": [
+    {
+      "root": "supply_USDC",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    },
+    {
+      "root": "supply_XLM",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    },
+    {
+      "root": "borrow_USDC",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    },
+    {
+      "root": "borrow_XLM",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    },
+    {
+      "root": "repay",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    },
+    {
+      "root": "repay_max",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    },
+    {
+      "root": "liquidate_USDC_debt",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    },
+    {
+      "root": "liquidate_XLM_debt",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    },
+    {
+      "root": "withdraw_debt_free",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    },
+    {
+      "root": "cold_restoration_journey",
+      "status": "FAIL_MISSING_COMPLETE_EVIDENCE",
+      "cpu": null,
+      "memory_bytes": null,
+      "sdk_entries": null,
+      "unique_keys": null,
+      "writes": null
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "time": "2026-11-11T09:30:05.899Z",
+  "benchmark": "indexed token prices normalized to USDC=$1; static rolling prestate; no deposit executed",
+  "rows": [],
+  "error": "The number NaN cannot be converted to a BigInt because it is not an integer"
+}
