@@ -1,0 +1,80 @@
+MARKED TABLE
+1000 full 0.0038092660722053293 0.3594403999999827
+30 in_kind -0.4394496809094123
+30 converted -1.0768193780337634
+365 in_kind -0.40448792380834964
+365 converted -1.0418576209327008
+1000 wide 0.04004132643066567 0.3594403999999827
+30 in_kind -0.40966990527232156
+30 converted -1.0470396023966728
+365 in_kind -0.04216732022374631
+365 converted -0.6795370173480975
+10000 full 0.003809117653163375 3.7018238000000565
+30 in_kind -3.753656168203107
+30 converted -10.280041264099305
+365 in_kind -3.4040522192141394
+365 converted -9.930437315110337
+10000 wide 0.04003397704031381 3.7018238000000565
+30 in_kind -3.4559175978977605
+30 converted -9.982302693793958
+365 in_kind 0.2184337195009043
+365 converted -6.307951376395294
+prices 0.14472467128985064 0.00024239371047291196 pool 245871.0891523935 53.72247750069363
+1000 full gross APR 0.003811425054304434 rewards/y 0.03805956183569316 entry 0.5773743999999965
+  30 in_kind -0.6573819064035912 -0.06573819064035911
+  30 converted -1.077308572500869 -0.10773085725008691
+  365 in_kind -0.6224003339873725 -0.062240033398737245
+  365 converted -1.0423270000846503 -0.10423270000846503
+1000 wide gross APR 0.04002386145404298 rewards/y 0.3996643296247319 entry 0.5773743999999965
+  30 in_kind -0.6276182600476418 -0.06276182600476417
+  30 converted -1.0475449261449195 -0.10475449261449195
+  365 in_kind -0.260275969989987 -0.026027596998998696
+  365 converted -0.6802026360872648 -0.06802026360872648
+10000 full gross APR 0.003811358453202656 rewards/y 0.380588970011226 entry 5.881070600000385
+  30 in_kind -5.932884550668866 -0.059328845506688654
+  30 converted -10.285184116766558 -0.10285184116766559
+  365 in_kind -5.583074939210539 -0.055830749392105396
+  365 converted -9.935374505308232 -0.09935374505308232
+10000 wide gross APR 0.04001651847170999 rewards/y 3.9959102950235708 entry 5.881070600000385
+  30 in_kind -5.635307892982504 -0.05635307892982504
+  30 converted -9.987607459080197 -0.09987607459080197
+  365 in_kind -1.9625589373598062 -0.019625589373598065
+  365 converted -6.314858503457499 -0.06314858503457499
+LENDING [
+  {
+    "pool": "CBAKAZUEJBAFA2DCGBRS2WKJT3FNIMJBHTFL76AY7XMAVEINQNNIQWAO",
+    "name": "Fixed v2.1",
+    "ledger": 65419712,
+    "pool_status": 0,
+    "reserve_enabled": true,
+    "supplied_usdc": 44839.1148547,
+    "borrowed_usdc": 40865.1400473,
+    "utilization": 0.9113726,
+    "reserve_last_time": 1794353477,
+    "backstop_take_rate": 0.2,
+    "supply_apr_percent": 3.0666,
+    "sdk_estimated_weekly_compounded_supply_apy_percent": 3.113172503240036,
+    "annual_supply_interest_per_1000_if_constant": 30.666,
+    "annual_supply_interest_per_10000_if_constant": 306.66,
+    "limitation": "snapshot marginal rate before new supply; no incentives, own transaction costs or risk-adjustment; reserve rate model as captured (not guaranteed future income)"
+  },
+  {
+    "pool": "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD",
+    "name": "Fixed",
+    "ledger": 65419712,
+    "pool_status": 3,
+    "reserve_enabled": true,
+    "supplied_usdc": 46003981.4538946,
+    "borrowed_usdc": 34448730.4377928,
+    "utilization": 0.7488207,
+    "reserve_last_time": 1794383662,
+    "backstop_take_rate": 0.2,
+    "supply_apr_percent": 5.34069,
+    "sdk_estimated_weekly_compounded_supply_apy_percent": 5.482986954766655,
+    "annual_supply_interest_per_1000_if_constant": 53.4069,
+    "annual_supply_interest_per_10000_if_constant": 534.069,
+    "limitation": "snapshot marginal rate before new supply; no incentives, own transaction costs or risk-adjustment; reserve rate model as captured (not guaranteed future income)"
+  }
+]
+LOSSES [{'capital': 1000, 'range': 'full', 'pyusd_usd': 1, 'usdc_usd': 0.99, 'portfolio_terminal_usd': 994.9874371066201, 'hold_pyusd_terminal_usd': 1000, 'net_vs_hold_pyusd_usd': -5.012562893379936, 'initial_mix_terminal_usd': 995.0, 'additional_lp_shortfall_vs_mix_usd': 0.012562893379936213, 'underlying_loss_vs_start_usd': 5.0}, {'capital': 1000, 'range': 'full', 'pyusd_usd': 0.99, 'usdc_usd': 1, 'portfolio_terminal_usd': 994.9874371066201, 'hold_pyusd_terminal_usd': 990.0, 'net_vs_hold_pyusd_usd': 4.987437106620064, 'initial_mix_terminal_usd': 995.0, 'additional_lp_shortfall_vs_mix_usd': 0.012562893379936213, 'underlying_loss_vs_start_usd': 5.0}, {'capital': 1000, 'range': 'wide', 'pyusd_usd': 1, 'usdc_usd': 0.99, 'portfolio_terminal_usd': 994.8679786700654, 'hold_pyusd_terminal_usd': 1000, 'net_vs_hold_pyusd_usd': -5.13202132993456, 'initial_mix_terminal_usd': 995.0, 'additional_lp_shortfall_vs_mix_usd': 0.13202132993455962, 'underlying_loss_vs_start_usd': 5.0}, {'capital': 1000, 'range': 'wide', 'pyusd_usd': 0.99, 'usdc_usd': 1, 'portfolio_terminal_usd': 994.8679786700654, 'hold_pyusd_terminal_usd': 990.0, 'net_vs_hold_pyusd_usd': 4.86797867006544, 'initial_mix_terminal_usd': 995.0, 'additional_lp_shortfall_vs_mix_usd': 0.13202132993455962, 'underlying_loss_vs_start_usd': 5.0}]
+PASS: identity derivation, dilution arithmetic and underperformance assertions

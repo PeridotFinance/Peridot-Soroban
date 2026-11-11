@@ -1,0 +1,77 @@
+# Aquarius Documentation
+
+## Aquarius Documentation
+
+- [Welcome to Aquarius](https://docs.aqua.network/welcome-to-aquarius.md): Aquarius is the liquidity layer of the Stellar network — an AMM protocol governed by AQUA holders.
+- [Quickstart](https://docs.aqua.network/developers/quickstart.md): Execute your first Aquarius swap in about five minutes — on testnet, with the official SDK and nothing to configure.
+- [Integrating with Aquarius](https://docs.aqua.network/developers/integrating-with-aquarius.md): Architecture overview, contract addresses, and integration paths for building on Aquarius
+- [Code examples](https://docs.aqua.network/developers/code-examples.md): Python and JavaScript code samples for interacting with Aquarius through the official SDKs
+- [Prerequisites & basics](https://docs.aqua.network/developers/code-examples/prerequisites-and-basics.md): Install the official Aquarius SDK and set up its client — prerequisites, network presets, signers, assets, trustlines, amounts, and transaction fees used across the code examples.
+- [Executing swaps through optimal path](https://docs.aqua.network/developers/code-examples/executing-swaps-through-optimal-path.md): Swap through the best route across Aquarius pools with the official SDK — quote an exact-input or exact-output swap, check its guard, and execute it.
+- [Executing swaps through specific pool](https://docs.aqua.network/developers/code-examples/executing-swaps-through-specific-pool.md): Pin a swap to one known pool with the official SDK — quote through the router's own estimator and execute without the path-finding API.
+- [Deposit liquidity](https://docs.aqua.network/developers/code-examples/deposit-liquidity.md): Provide liquidity to an Aquarius pool with the official SDK — discover the pool, deposit with a simulation-derived guard, and read the minted shares.
+- [Withdraw liquidity](https://docs.aqua.network/developers/code-examples/withdraw-liquidity.md): Withdraw liquidity from an Aquarius pool with the official SDK — burn pool shares for the underlying tokens, guarded by per-token minimums.
+- [Get pools info](https://docs.aqua.network/developers/code-examples/get-pools-info.md): Read Aquarius pool data with the official SDK — pools for a pair, reserves, share balances, and an account's positions. No signer required.
+- [Claim LP rewards](https://docs.aqua.network/developers/code-examples/claim-lp-rewards.md): Claim accrued AQUA rewards for a liquidity position with the official SDK — check the pending amount, then collect it.
+- [Add fees to swap](https://docs.aqua.network/developers/code-examples/add-fees-to-swap.md): Integrators have the option to introduce a fee for each executed swap.
+- [Deploying a new fee collector](https://docs.aqua.network/developers/code-examples/add-fees-to-swap/deploying-a-new-fee-collector.md): Deploy your own fee collector contract and configure its fee parameters.
+- [Executing swaps with provider fees](https://docs.aqua.network/developers/code-examples/add-fees-to-swap/executing-swaps-with-provider-fees.md): Execute swaps through your fee collector, charging your provider fee on each one.
+- [Claiming & swapping accumulated fees](https://docs.aqua.network/developers/code-examples/add-fees-to-swap/claiming-and-swapping-accumulated-fees.md): Claim the fees your integration has accumulated, or convert them into one target asset.
+- [Concentrated liquidity](https://docs.aqua.network/developers/concentrated-liquidity.md): How Aquarius concentrated liquidity pools work under the hood — ticks, prices, positions, fees and rewards. A guide for developers managing positions with code instead of the UI.
+- [Contract interface reference](https://docs.aqua.network/developers/concentrated-liquidity/contract-interface-reference.md): Full reference of the concentrated liquidity pool smart contract interface: position management, state getters, fees, swaps and rewards.
+- [Managing positions: code examples](https://docs.aqua.network/developers/concentrated-liquidity/managing-positions-code-examples.md): Code examples for the full concentrated liquidity position lifecycle: reading pool state, opening a position, monitoring it, claiming fees and rewards, and withdrawing.
+- [Testing on testnet](https://docs.aqua.network/developers/testing-on-testnet.md): Test your Aquarius integration on Stellar testnet before touching real funds.
+- [Reference](https://docs.aqua.network/developers/reference.md): Lookup material for Aquarius integrators — API, error codes, and addresses.
+- [Router & pool contracts](https://docs.aqua.network/developers/reference/router-and-pool-contracts.md): Function reference for the Aquarius AMM router and direct pool contract calls
+- [Contract authorization](https://docs.aqua.network/developers/reference/contract-authorization.md): How to authorize Aquarius contract calls without the official SDKs, and the exact authorization tree each write operation needs.
+- [Backend API](https://docs.aqua.network/developers/reference/backend-api.md): The Aquarius backend API — path finding and pool data endpoints, versioning, and error behavior.
+- [Error codes](https://docs.aqua.network/developers/reference/error-codes.md): Contract error codes returned by the Aquarius AMM router and pools, and how to handle them.
+- [Addresses & networks](https://docs.aqua.network/developers/reference/addresses-and-networks.md): Canonical contract addresses and endpoints for Aquarius on mainnet and testnet.
+- [Growing liquidity on Aquarius](https://docs.aqua.network/for-projects/for-projects.md): The path to a liquid asset on Aquarius — Asset Registry whitelisting, pool creation, and the two liquidity tools, voting incentives and Pool Incentives, compared.
+- [Pool Incentives](https://docs.aqua.network/for-projects/pool-incentives.md): Pool Incentives let projects and third parties fund extra reward streams for liquidity providers in specific Aquarius pools.
+- [Voting incentives](https://docs.aqua.network/for-projects/what-are-voting-incentives.md): Voting incentives reward voters who support a specific market, directing AQUA emissions toward it — funded by projects or by the protocol itself.
+- [The AQUA token](https://docs.aqua.network/aqua-and-ice/what-are-aqua-tokens.md): AQUA is the core token of Aquarius — used for liquidity voting, locking into ICE, earning rewards, and governance.
+- [AQUAnomics](https://docs.aqua.network/aqua-and-ice/aquanomics.md): AQUA token supply, allocation, and how tokens enter circulation.
+- [ICE tokens](https://docs.aqua.network/aqua-and-ice/ice-tokens-locking-aqua-and-getting-benefits.md): Lock AQUA to receive ICE — non-transferable tokens that carry voting power and boost liquidity rewards.
+- [ICE boosts](https://docs.aqua.network/aqua-and-ice/ice-boosts-how-to-maximize-lp-rewards.md): Holding ICE multiplies your AQUA rewards as a liquidity provider — up to x2.5, based on your ICE share versus your pool share.
+- [ICE delegation](https://docs.aqua.network/aqua-and-ice/overview.md): Aquarius Delegation makes it easier for ICE holders to stay active in the protocol without having to vote on every decision themselves.
+- [dICE & gdICE](https://docs.aqua.network/aqua-and-ice/overview/tokens-for-delegated-voting-dice-and-gdice.md): dICE and gdICE represent delegated ICE for markets and governance. They let delegates vote on behalf of holders.
+- [User guide for delegation](https://docs.aqua.network/aqua-and-ice/overview/user-guide-for-delegation.md): This guide walks you through the process of delegating ICE in the Aquarius app, from selecting a delegate to monitoring activity.
+- [Voting incentives and delegation](https://docs.aqua.network/aqua-and-ice/overview/voting-incentives-and-delegation.md): Delegates can focus on voting incentives, ecosystem growth, or may stay inactive. Your rewards depend on their approach, so choose delegates whose strategy matches your priorities.
+- [Reward program for delegates](https://docs.aqua.network/aqua-and-ice/overview/reward-program-for-delegates.md): To recognize active delegates and keep governance strong, Aquarius allocates a monthly reward pool of 10M AQUA to the most trusted voting delegates.
+- [Becoming a delegate](https://docs.aqua.network/aqua-and-ice/overview/applying-and-becoming-a-delegate.md): Delegation is permissionless, but only whitelisted delegates listed on aqua.network are visible in the app and eligible for monthly rewards.
+- [Delegate code of conduct](https://docs.aqua.network/aqua-and-ice/overview/delegate-code-of-conduct.md): All listed delegates are expected to follow a set of principles and rules that ensure fairness, transparency, and accountability in the Aquarius ecosystem.
+- [How Aquarius AMMs work](https://docs.aqua.network/amm-and-pools/what-are-aquarius-amms.md): How Aquarius pools price swaps, what liquidity providers earn, the three pool types, and the risks to understand before depositing.
+- [System limitations](https://docs.aqua.network/amm-and-pools/system-limitations.md): Known limitations of the Aquarius AMM and how to work around them.
+- [Unsupported token types](https://docs.aqua.network/amm-and-pools/system-limitations/aquarius-amm-limitations-in-support-for-fee-on-transfer-rebasing-and-deflationary-tokens.md): Fee-on-transfer, rebasing, and deflationary tokens are not supported by the Aquarius AMM — why, and what happens if they enter a pool.
+- [Token address migrations](https://docs.aqua.network/amm-and-pools/system-limitations/aquarius-amm-token-address-migration-limitations-and-mitigation-strategy.md): Aquarius pools cannot follow a token contract to a new address — how liquidity providers handle token migrations.
+- [Aquarius voting](https://docs.aqua.network/voting-and-rewards/aquarius-voting.md): How ICE holders direct SDEX and AMM rewards by voting for markets — eligibility threshold, ranking, and the reward cap.
+- [Asset flag restrictions](https://docs.aqua.network/voting-and-rewards/aquarius-voting/aquarius-voting-asset-flag-restrictions.md): Assets with authorization or clawback flags are excluded from market voting and rewards unless governance grants an exception.
+- [Reward cycle](https://docs.aqua.network/voting-and-rewards/reward-cycle.md): When votes are counted and rewards are paid — the continuous, hourly, daily, weekly, and monthly rhythms of Aquarius.
+- [SDEX rewards](https://docs.aqua.network/voting-and-rewards/sdex-rewards.md): How market makers earn hourly AQUA rewards for placing offers on the order books of reward zone markets — and how the reward algorithm weighs offers.
+- [AMM rewards](https://docs.aqua.network/voting-and-rewards/aquarius-amm-rewards.md): How liquidity providers in Aquarius AMM pools earn AQUA rewards, and where to claim them.
+- [Aquarius Governance](https://docs.aqua.network/governance/aquarius-governance-community-led-decision-making.md): How AQUA holders govern the protocol with governICE votes — the proposal lifecycle, quorum, and approval rules.
+- [Asset Registry](https://docs.aqua.network/governance/asset-registry.md): The governance-managed registry that determines which assets are eligible for AQUA emissions and protocol-level pool incentives.
+- [Swap](https://docs.aqua.network/user-guides/swap.md): How to swap one Stellar asset for another in the Aquarius interface and adjust slippage tolerance.
+- [Pools](https://docs.aqua.network/user-guides/pools.md): The Pools section of aqua.network — analytics, pool type badges, and the pool overview screen.
+- [Creating a pool](https://docs.aqua.network/user-guides/pools/creating-a-pool.md): How to create a volatile or stable swap pool in the Aquarius interface, including the 300,000 AQUA deployment cost.
+- [Deposit & withdraw liquidity](https://docs.aqua.network/user-guides/pools/deposit-and-withdraw-liquidity.md): How to deposit liquidity into an Aquarius pool, withdraw it, and claim rewards from the My Liquidity view.
+- [Managing concentrated positions](https://docs.aqua.network/user-guides/pools/manage-concentrated-liquidity-pool-positions.md): How to open, monitor, and rebalance concentrated liquidity positions in the Aquarius interface.
+- [My Aquarius](https://docs.aqua.network/user-guides/dashboard.md): The My Aquarius dashboard — balances, reward history, liquidity positions, ICE locks, and vote management in one place.
+- [Locking AQUA into ICE](https://docs.aqua.network/user-guides/how-to-use-aqua-locker-tool-and-get-ice-tokens.md): How to lock AQUA into ICE with the Locker tool and verify the resulting balances.
+- [Voting for markets](https://docs.aqua.network/user-guides/how-to-vote-for-markets-on-aquarius.md): How to find markets, place ICE votes, earn voting rewards, and withdraw votes in the Aquarius voting interface.
+- [Creating Pool Incentives](https://docs.aqua.network/user-guides/how-to-create-pool-incentives.md): How to schedule a Pool Incentive — requirements, limits, and the creation flow at aqua.network/incentives.
+- [Creating voting incentives](https://docs.aqua.network/user-guides/how-to-create-voting-incentives.md): Create a voting incentive by selecting a market, reward asset, weekly amount, and distribution period in Aquarius.
+- [Using Aquarius Governance](https://docs.aqua.network/user-guides/how-to-use-aquarius-governance.md): The proposal process from discussion to publication — phases, AQUA fees, creator rewards, and the ICE quorum.
+- [Making a governance vote](https://docs.aqua.network/user-guides/how-to-use-aquarius-governance/how-to-make-a-governance-vote.md): How to vote for, against, or abstain on an active governance proposal with governICE.
+- [Creating a proposal](https://docs.aqua.network/user-guides/how-to-use-aquarius-governance/how-to-create-a-proposal.md): How to create, discuss, and publish a governance proposal in the Aquarius interface.
+- [Earning SDEX rewards](https://docs.aqua.network/user-guides/how-to-earn-sdex-rewards.md): How to place order book offers that qualify for hourly SDEX rewards, shown step by step in the LOBSTR app.
+- [Audits](https://docs.aqua.network/security/audits.md): Security audits of Aquarius smart contracts and notable bug bounty fixes
+- [Bug bounties](https://docs.aqua.network/security/bug-bounties.md): Receive AQUA for helping us squash bugs
+- [Stellar essentials](https://docs.aqua.network/ecosystem-overview/stellar-essentials.md): The Stellar basics behind Aquarius — trustlines, network reserves, fees, lumens, and Soroban.
+- [Archive](https://docs.aqua.network/archive/archive.md): Historical materials — concluded airdrops, the Signers Guild announcement, and superseded design documents.
+- [The Initial Airdrop](https://docs.aqua.network/archive/archive/the-initial-airdrop.md): The 2021 Initial Airdrop — eligibility, five-phase distribution, and claim rules. Concluded.
+- [Airdrop #2](https://docs.aqua.network/archive/archive/airdrop-2.md): Airdrop #2 — the January 2022 snapshot, eligibility, boost mechanics, and three-year distribution. Concluded.
+- [Signers Guild](https://docs.aqua.network/archive/archive/signers-guild.md): The multisig team of community signers controlling the main AQUA treasury wallets.
+- [The Aquarius voting mechanism](https://docs.aqua.network/archive/archive/the-aquarius-voting-mechanism.md): How governance votes can be used and verified by everyone
+- [SDEX v2 proposal & algorithm](https://docs.aqua.network/archive/archive/sdex-v2-proposal-and-algorithm.md): Changes to the SDEX reward algorithm

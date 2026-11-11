@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "interfaces/cl-stage1-interface",
   "contracts/receipt-vault",
   "contracts/lp-receipt-vault",
   "contracts/lp-lending-vault",

@@ -1,0 +1,87 @@
+{
+  "schema": "stage1-package1-fixture-pins-v1",
+  "accepted_plan": "3b962e371d74c32e7f6076296a58bbfcecaa7ff9",
+  "accepted_signed_checkpoint": "7f66fb056d0289fcfcd7526399608284521c79e3",
+  "contracts_sdk": "25.3.1",
+  "measurement_host": "29.0.1",
+  "core_version": "29.0.0",
+  "warm_core_sha256": "17535c159b55828bedcd89f497a96a14b196a51c712cd39d6ec54a2a48beccd2",
+  "cold_core_sha256": "b24ef8aa54a6460198eda799654d7fc5995eb6e88a61fa20cc0007a8b0b83ff7",
+  "baseline_files": {
+    "../docs/deployment-handoffs/evidence/cl-stage1-private-signed-20261110/manifest.json": "e3da4f32c81abdd623ac58ef382e107526d8151355b097ddb987f72ac5e5b1fa",
+    "../docs/deployment-handoffs/evidence/cl-stage1-private-signed-20261110/archive.json": "a160fee995bf21abd922a4737a88b583239b08bb5816702f760578e44d8e04c1",
+    "../docs/deployment-handoffs/evidence/cl-stage1-private-signed-20261110/signed-table.json": "efe45667a2832f424dd38c804d46bae8b9d1ab91f43456d774c53cb258b6989c",
+    "../docs/deployment-handoffs/evidence/cl-stage1-private-signed-20261110/cold-table.json": "f28452fa4c7bed29fb6039a797157fc824f082c6efff89da42ccb211a4ac0ba1"
+  },
+  "archived_dependencies": [
+    {
+      "path": "target/cl-share-checkpoint/aquarius-pool.wasm",
+      "size": 90057,
+      "sha256": "12fca5a7a96577273b6d4184cf9c984036cda0e8f0594747e7b2933dced37ee6"
+    },
+    {
+      "path": "target/cl-stage1-captured-v6/profile.json",
+      "size": 877,
+      "sha256": "ade71eed0f53ac14ec62ba7cd180b6ac962eacbbe401bac34ddca2da48162b94"
+    },
+    {
+      "path": "target/cl-stage1-cash-first-build-v4/artifacts/cl_integration_fixtures.wasm",
+      "size": 3168,
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f"
+    },
+    {
+      "path": "target/cl-stage1-cash-first-build-v4/artifacts/cl_share_pool_facade.wasm",
+      "size": 7298,
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5"
+    },
+    {
+      "path": "target/cl-stage1-cash-first-build-v4/artifacts/cl_share_vault.wasm",
+      "size": 101034,
+      "sha256": "d5b8d5c6f1f2cd85cacb25fbcbe684cc09a3818ad5707808edf11835a72aa766"
+    },
+    {
+      "path": "target/cl-stage1-cash-first-build-v4/artifacts/jump_rate_model.wasm",
+      "size": 7644,
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800"
+    },
+    {
+      "path": "target/cl-stage1-cash-first-build-v4/artifacts/margin_controller.wasm",
+      "size": 92246,
+      "sha256": "46c186e3bb333b929dabb3a4a4bec4376457081f2e1e404a467c8ada62f078c2"
+    },
+    {
+      "path": "target/cl-stage1-cash-first-build-v4/artifacts/receipt_vault.wasm",
+      "size": 94836,
+      "sha256": "ee0a77f1ec99f3e478337b144bf2072659cd420f1899c2bdf706bb86db291bff"
+    },
+    {
+      "path": "target/cl-stage1-cash-first-build-v4/artifacts/simple_peridottroller.wasm",
+      "size": 63411,
+      "sha256": "a55d5740007553d955c26e08efad4289b093c0d85c34a2b0e2af7262eaba0052"
+    },
+    {
+      "path": "target/cl-stage1-cash-first-build-v4/artifacts/swap_adapter.wasm",
+      "size": 10876,
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d"
+    },
+    {
+      "path": "target/cl-stage1-cash-first-build-v4/build-manifest.json",
+      "size": 19098,
+      "sha256": "01f06c90ebd387660b7fa9634ed539af7a5869824596cc021eae6c8464d46e82"
+    },
+    {
+      "path": "target/cl-stage1-internal-v6/profile.json",
+      "size": 864,
+      "sha256": "dca24ae20faccdb6cd5bd1b8055ae558123a7c50802736dee5a07438d29344da"
+    },
+    {
+      "path": "target/cl-stage1-signed-local/harness/Cargo.lock",
+      "size": 52798,
+      "sha256": "9d1f31877ed49778c61ecd39f3c9e06783b56f0354bdd005306d3cea94b1a220"
+    }
+  ],
+  "new_code_measurement_status": "not_implemented; baseline identities are not new-code passes",
+  "current_live_pool_hash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+  "live_pool_ledger": 65419687,
+  "live_code_compatibility": "unqualified; do not replace accepted fixture silently"
+}

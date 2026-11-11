@@ -1,0 +1,45 @@
+> For the complete documentation index, see [llms.txt](https://docs.aqua.network/llms.txt). Markdown versions of documentation pages are available by appending `.md` to page URLs; this page is available as [Markdown](https://docs.aqua.network/aqua-and-ice/ice-boosts-how-to-maximize-lp-rewards.md).
+
+# ICE boosts
+
+Holding ICE multiplies your AQUA rewards as a liquidity provider — up to x2.5, based on your ICE share versus your pool share.
+
+Liquidity providers who hold ICE receive a **reward boost** on their AQUA rewards, up to x2.5. The boost is determined by two ratios: your share of the total ICE supply and your share of the pool. It is distinct from the up-to-10x [lock multiplier](/aqua-and-ice/ice-tokens-locking-aqua-and-getting-benefits.md), which determines how much ICE you receive for locking AQUA.
+
+## How the boost is calculated
+
+Aquarius uses the working-balance model known from Curve's veCRV boost:
+
+```
+boost = min(0.4 × deposit + 0.6 × pool_liquidity × your_ICE / total_ICE, deposit) / (0.4 × deposit)
+```
+
+You reach the full x2.5 when your share of the total ICE supply is at least as large as your share of the pool. A larger pool share with the same ICE lowers the boost toward 1x.
+
+The inputs differ per reward system:
+
+| Reward system              | `deposit`                                | `pool_liquidity`                                                                                             |
+| -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| AMM rewards                | Your LP tokens in the pool               | The pool's total LP tokens                                                                                   |
+| Stellar DEX (SDEX) rewards | Your order-book liquidity for the market | Total order-book liquidity for the market, weighted by time on book, spread proximity, and offer fulfillment |
+
+Worked example — suppose the total ICE supply is 50 billion:
+
+* You hold 5 million ICE (0.01% of supply) and provide 0.01% of a pool's liquidity: full **x2.5** boost. A 10% base rewards APY becomes 25%.
+* You double your pool share to 0.02% with the same ICE: the boost drops to **x1.75**.
+
+The boost is recalculated hourly and shifts as other providers deposit and withdraw. Claiming rewards refreshes your boost.
+
+## Where the boost appears in the app
+
+The pool list shows each pool's minimum and maximum boost values:
+
+<figure><img src="https://3649863591-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5QUy59hBUnouBhx8gNSS%2Fuploads%2FHUaOlrn4gDWVa6eEWPxE%2Fimage.png?alt=media&amp;token=4cb2f1a1-0c26-465c-96ba-e96b1a623bd8" alt="The pools list with minimum and maximum ICE boost values per pool"><figcaption></figcaption></figure>
+
+The deposit flow shows how your boost changes before you confirm:
+
+<figure><img src="https://3649863591-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5QUy59hBUnouBhx8gNSS%2Fuploads%2FZ51uR7UbFvefkTfPdXtu%2Fimage.png?alt=media&amp;token=77ab4e60-2767-457c-ac27-6badc7ccb8f2" alt="The deposit dialog showing the boost changing from 1.0 to 1.13"><figcaption></figcaption></figure>
+
+Boosted rewards APY is outlined in purple, with the multiplier shown in blue chips:
+
+<figure><img src="https://3649863591-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5QUy59hBUnouBhx8gNSS%2Fuploads%2FWMz4a5tgoYRtuLV1HEb6%2Fimage.png?alt=media&amp;token=48c1ced2-2c25-465a-b672-77818be5e283" alt="A pool row with boosted rewards APY highlighted and the boost multiplier in a chip"><figcaption></figcaption></figure>

@@ -1,0 +1,9 @@
+   Compiling cl-stage1-interface v1.0.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/interfaces/cl-stage1-interface)
+error[E0599]: no method named `to_alloc_vec` found for struct `soroban_sdk::Bytes` in the current scope
+  --> interfaces/cl-stage1-interface/tests/wire.rs:14:69
+   |
+14 | fn hex(e:&Env,b:soroban_sdk::Bytes)->std::string::String {let _=e;b.to_alloc_vec().iter().map(|n|format!("{n:02x}")).collect()}
+   |                                                                     ^^^^^^^^^^^^ method not found in `soroban_sdk::Bytes`
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `cl-stage1-interface` (test "wire") due to 1 previous error

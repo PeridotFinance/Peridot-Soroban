@@ -1,0 +1,92 @@
+{
+  "retrievedAt": "2026-11-11T08:15:21.828Z",
+  "endpoint": "https://rpc.lightsail.network/",
+  "pyusdUsdIndexedMark": 0.999563817286729,
+  "scope": "independent same-prestate estimates; conversion is NOT applied before deposit estimate; no financial execution",
+  "rows": [
+    {
+      "label": "marked-in-1000",
+      "method": "estimate_swap",
+      "ledger": 65419775,
+      "value": "4996405596",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASnPGVw=",
+      "inputRaw": "5002181865"
+    },
+    {
+      "label": "marked-full-1000",
+      "method": "estimate_deposit_position",
+      "ledger": 65419775,
+      "value": [
+        [
+          "4997167744",
+          "4996405596"
+        ],
+        "4996786655"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAAEAAAAAEAAAACAAAACQAAAAAAAAAAAAAAASnauoAAAAAJAAAAAAAAAAAAAAABKc8ZXAAAAAkAAAAAAAAAAAAAAAEp1Onf"
+    },
+    {
+      "label": "marked-wide-1000",
+      "method": "estimate_deposit_position",
+      "ledger": 65419775,
+      "value": [
+        [
+          "5002181865",
+          "4994170346"
+        ],
+        "52524988990"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAAEAAAAAEAAAACAAAACQAAAAAAAAAAAAAAASonPOkAAAAJAAAAAAAAAAAAAAABKaz96gAAAAkAAAAAAAAAAAAAAAw6u7o+"
+    },
+    {
+      "label": "marked-out-1000",
+      "method": "estimate_swap",
+      "ledger": 65419775,
+      "value": "4992158662",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASmOS8Y=",
+      "inputRaw": "4996405596"
+    },
+    {
+      "label": "marked-in-10000",
+      "method": "estimate_swap",
+      "ledger": 65419775,
+      "value": "49962981762",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6IGmYI=",
+      "inputRaw": "50021818652"
+    },
+    {
+      "label": "marked-full-10000",
+      "method": "estimate_deposit_position",
+      "ledger": 65419775,
+      "value": [
+        [
+          "49970603086",
+          "49962981762"
+        ],
+        "49966792278"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAAEAAAAAEAAAACAAAACQAAAAAAAAAAAAAAC6J65E4AAAAJAAAAAAAAAAAAAAALogaZggAAAAkAAAAAAAAAAAAAAAuiQL5W"
+    },
+    {
+      "label": "marked-wide-10000",
+      "method": "estimate_deposit_position",
+      "ledger": 65419775,
+      "value": [
+        [
+          "50021818652",
+          "49941703454"
+        ],
+        "525249889923"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAAEAAAAAEAAAACAAAACQAAAAAAAAAAAAAAC6WIYRwAAAAJAAAAAAAAAAAAAAALoMHrHgAAAAkAAAAAAAAAAAAAAHpLVUaD"
+    },
+    {
+      "label": "marked-out-10000",
+      "method": "estimate_swap",
+      "ledger": 65419775,
+      "value": "49919441178",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC59uORo=",
+      "inputRaw": "49962981762"
+    }
+  ]
+}

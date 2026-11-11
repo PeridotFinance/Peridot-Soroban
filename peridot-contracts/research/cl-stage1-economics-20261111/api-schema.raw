@@ -1,0 +1,1421 @@
+openapi: 3.0.3
+info:
+  title: Aquarius AMM External API
+  version: 1.0.0
+  description: Public, third-party-facing endpoints of the Aquarius AMM.
+paths:
+  /api/external/gecko-terminal/asset/:
+    get:
+      operationId: external_gecko_terminal_asset_retrieve
+      description: Asset metadata mapped from Aquarius token records.
+      summary: GeckoTerminal Asset
+      parameters:
+      - in: query
+        name: id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      tags:
+      - external
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+              examples:
+                AssetExample:
+                  value:
+                    asset:
+                      id: native
+                      name: native
+                      symbol: native
+                      decimals: 7
+                      metadata:
+                        isNative: 'true'
+                  summary: Asset Example
+          description: ''
+  /api/external/gecko-terminal/events/:
+    get:
+      operationId: external_gecko_terminal_events_retrieve
+      description: Baseline GeckoTerminal events stream built from persisted Aquarius
+        pool events.
+      summary: GeckoTerminal Events
+      parameters:
+      - in: query
+        name: fromBlock
+        schema:
+          type: integer
+          minimum: 0
+        required: true
+      - in: query
+        name: toBlock
+        schema:
+          type: integer
+          minimum: 0
+        required: true
+      tags:
+      - external
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventsResponse'
+              examples:
+                EventsExample:
+                  value:
+                    events:
+                    - block:
+                        blockNumber: 100
+                        blockTimestamp: 1698126147
+                      eventType: swap
+                      txnId: swap-hash
+                      maker: GABC...
+                      pairId: pool-address
+                      asset0In: '1.0000000'
+                      asset1Out: '2.0000000'
+                      priceNative: '2'
+                      reserves:
+                        asset0: '101.0000000'
+                        asset1: '198.0000000'
+                  summary: Events Example
+          description: ''
+  /api/external/gecko-terminal/latest-block/:
+    get:
+      operationId: external_gecko_terminal_latest_block_retrieve
+      description: Latest persisted block currently available for GeckoTerminal event
+        indexing.
+      summary: GeckoTerminal Latest Block
+      tags:
+      - external
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LatestBlockResponse'
+              examples:
+                LatestBlockExample:
+                  value:
+                    block:
+                      blockNumber: 100
+                      blockTimestamp: 1698126147
+                  summary: Latest Block Example
+          description: ''
+  /api/external/gecko-terminal/pair/:
+    get:
+      operationId: external_gecko_terminal_pair_retrieve
+      description: Pair metadata mapped from Aquarius pool records.
+      summary: GeckoTerminal Pair
+      parameters:
+      - in: query
+        name: id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      tags:
+      - external
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairResponse'
+              examples:
+                PairExample:
+                  value:
+                    pair:
+                      id: pool-address
+                      dexKey: aquarius
+                      asset0Id: token-a-address
+                      asset1Id: token-b-address
+                      feeBps: 100
+                      metadata:
+                        poolType: constant_product
+                        version: '1'
+                  summary: Pair Example
+          description: ''
+  /api/external/v1/find-path/:
+    post:
+      operationId: external_v1_find_path_create
+      description: |-
+        Finds the best route to swap an exact `amount` of `token_in_address` for as much `token_out_address` as possible, across up to `max_depth` pools (capped at 4).
+
+        - `success` — whether a route with a non-zero output exists; on `false` the remaining fields are empty.
+        - `amount` — estimated output amount, an integer in the output token's smallest unit.
+        - `amount_with_fee` — minimum acceptable output after applying `slippage` and `provider_fee`: `amount * (1 - slippage) * (1 - provider_fee)`. Use it as the minimum-received bound of the swap transaction.
+        - `swap_chain_xdr` — base64-encoded XDR `SCVal` with the swaps chain in the format expected by the AMM router's `swap_chained` call: a vector of `(pool tokens, pool index hash, token out)` tuples.
+        - `pools` — pool contract addresses along the route, in hop order.
+        - `tokens` / `tokens_addresses` — the token chain along the route (display names / contract addresses), starting with the input token and ending with the output token.
+      summary: Find a swap path (strict send)
+      tags:
+      - External API v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwapOutput'
+          description: ''
+  /api/external/v1/find-path-strict-receive/:
+    post:
+      operationId: external_v1_find_path_strict_receive_create
+      description: |-
+        Finds the cheapest route to receive an exact `amount` of `token_out_address`, paying with `token_in_address`, across up to `max_depth` pools (capped at 3).
+
+        - `amount` — estimated required input amount, an integer in the input token's smallest unit.
+        - `amount_with_fee` — maximum send bound after applying `slippage` and `provider_fee`: `amount * (1 + slippage) * (1 + provider_fee)`.
+        - Remaining fields match the strict-send endpoint; `swap_chain_xdr` targets the router's strict-receive call.
+
+        Legacy variant: it charges `provider_fee` on top of the input amount. The v2 endpoint instead grosses up the receive amount so the fee can be taken from the output — prefer v2 for new integrations.
+      summary: Find a swap path (strict receive, legacy)
+      tags:
+      - External API v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwapOutput'
+          description: ''
+  /api/external/v1/limit-orders/drafts/:
+    post:
+      operationId: external_v1_limit_orders_drafts_create
+      tags:
+      - External API v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/external/v1/limit-orders/orders/:
+    get:
+      operationId: external_v1_limit_orders_orders_retrieve
+      tags:
+      - External API v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/external/v1/limit-orders/orders/{order_id}/:
+    get:
+      operationId: external_v1_limit_orders_orders_retrieve_2
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - External API v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/external/v1/limit-orders/orders/{order_id}/authorize/:
+    post:
+      operationId: external_v1_limit_orders_orders_authorize_create
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - External API v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/external/v1/pools/:
+    get:
+      operationId: external_v1_pools_list
+      description: |-
+        Paginated list of Aquarius AMM pools whose underlying tokens passed metadata validation. Pending or quarantined pools are omitted.
+
+        - `index` — the pool's registry index hash in the AMM router.
+        - `address` — the pool's Soroban contract address.
+        - `tokens_addresses` — Soroban contract addresses of the pool tokens, in pool order.
+        - `tokens_str` — display names for the same tokens: `CODE:ISSUER` for classic Stellar assets, `native` for XLM.
+        - `pool_type` — `constant_product`, `stable` or `concentrated`.
+        - `fee` — swap fee as a decimal fraction (`0.0030` = 0.3%).
+        - `a` — amplification coefficient; set for `stable` pools, `null` for other types.
+        - `tx_count` — number of pool events recorded for the pool (swaps, deposits, withdrawals and claims), updated as events are ingested and recounted hourly.
+        - `total_volume` — lifetime swap volume in USD, scaled by 1e7 (`123097123` = $12.31).
+
+        Use the `page` query parameter to paginate (10 pools per page) and `address__in` (comma-separated pool contract addresses) to fetch specific pools.
+      summary: List operational liquidity pools
+      parameters:
+      - in: query
+        name: address__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - External API v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPoolListList'
+              examples:
+                ConstantProductResponse:
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?page=4
+                    previous: http://api.example.org/accounts/?page=2
+                    results:
+                    - index: 37b1c4a3f30cf96b8b1e2e9f4e2c7a90d43a1b6f5f2f8f0a9d8c7b6a5f4e3bdf
+                      address: CAQODUH4XNX2NTFVACRMO4UR7MA5RLSZA5ZQTHILQYGYYCFQ3LUATIGM
+                      tokens_addresses:
+                      - CAAV3AE3VKD2P4TY7LWTQMMJHIJ4WOCZ5ANCIJPC3NRSERKVXNHBU2W7
+                      - CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA
+                      tokens_str:
+                      - XRP:GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5
+                      - native
+                      pool_type: constant_product
+                      fee: '0.0030'
+                      a: null
+                      tx_count: 42
+                      total_volume: 123097123
+                  summary: Constant product pool example
+          description: ''
+  /api/external/v1/pools/user/{address}/:
+    get:
+      operationId: external_v1_pools_user_retrieve
+      description: |-
+        Same shape as the pools list, restricted to pools where the given Stellar account holds a positive LP share balance, with two extra fields:
+
+        - `balance` — the account's LP share-token balance, scaled by 1e7.
+        - `deposited_tokens` — estimated current value of the position broken down per token, in human-readable token units keyed by token display name. Derived from the account's share of the pool reserves; for `concentrated` pools it is computed from the account's individual positions. Empty object when the breakdown cannot be computed.
+      summary: List pools where an account provides liquidity
+      parameters:
+      - in: path
+        name: address
+        schema:
+          type: string
+        description: Stellar account id (`G...`) whose liquidity positions to list.
+        required: true
+      tags:
+      - External API v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPool'
+              examples:
+                UserPoolResponse:
+                  value:
+                    index: 37b1c4a3f30cf96b8b1e2e9f4e2c7a90d43a1b6f5f2f8f0a9d8c7b6a5f4e3bdf
+                    address: CAQODUH4XNX2NTFVACRMO4UR7MA5RLSZA5ZQTHILQYGYYCFQ3LUATIGM
+                    tokens_addresses:
+                    - CAAV3AE3VKD2P4TY7LWTQMMJHIJ4WOCZ5ANCIJPC3NRSERKVXNHBU2W7
+                    - CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA
+                    tokens_str:
+                    - XRP:GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5
+                    - native
+                    pool_type: constant_product
+                    fee: '0.0030'
+                    a: null
+                    tx_count: 42
+                    total_volume: 123097123
+                    balance: '1000000000.000000000000000000'
+                    deposited_tokens:
+                      XRP:GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5: '61.8338434'
+                      native: '363.9548646'
+                  summary: User Pool Response
+          description: ''
+  /api/external/v1/statistics/all-time/:
+    get:
+      operationId: external_v1_statistics_all_time_retrieve
+      description: |-
+        Protocol-wide totals across all pools. USD values scaled by 1e7:
+
+        - `volume` — swap volume summed over the whole recorded history.
+        - `tvl` — the most recent daily total value locked.
+
+        Responds 404 while no daily statistics have been recorded yet.
+      summary: All-time protocol statistics
+      tags:
+      - External API v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalStatistics'
+              examples:
+                AllTimeStatisticsResponse:
+                  value:
+                    volume: 474836377723
+                    tvl: 96540208544498
+                  summary: All Time Statistics Response
+          description: ''
+  /api/external/v1/statistics/totals/:
+    get:
+      operationId: external_v1_statistics_totals_list
+      description: |-
+        Protocol-wide daily aggregates across all pools, one record per day, newest first.
+
+        All monetary values are USD scaled by 1e7 (`474836377723` = $47,483.64):
+
+        - `volume` — swap volume for the day.
+        - `tvl` — total value locked at the end of the day (for today: current value).
+        - `protocol_fees` / `lp_fees` — swap fees collected by the protocol / distributed to liquidity providers for the day.
+        - `external_rewards` — third-party pool incentives paid out for the day.
+        - `timestamp_date_from` / `timestamp_date_to` — unix-seconds interval the record covers; for the current day `timestamp_date_to` is the time of the request.
+
+        Paginated with `page` and `size` query parameters; records are wrapped in an envelope with `items`, `total`, `page`, `size` and `pages`.
+      summary: Daily protocol statistics history
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - External API v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTotalStatisticsList'
+              examples:
+                TotalStatisticsResponse:
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?page=4
+                    previous: http://api.example.org/accounts/?page=2
+                    results:
+                    - total: 500
+                      next: null
+                      previous: null
+                      items:
+                      - volume: 474836377723
+                        tvl: 96540208544498
+                        protocol_fees: 128036377
+                        lp_fees: 512145509
+                        external_rewards: 96540208
+                        date: '2026-03-27'
+                        timestamp_date_from: 1774569600
+                        timestamp_date_to: 1774655999
+                      page: 1
+                      size: 50
+                      pages: 10
+                  summary: Total Statistics Response
+          description: ''
+  /api/external/v2/find-path/:
+    post:
+      operationId: external_v2_find_path_create
+      description: |-
+        Finds the best route to swap an exact `amount` of `token_in_address` for as much `token_out_address` as possible, across up to `max_depth` pools (capped at 4).
+
+        - `success` — whether a route with a non-zero output exists; on `false` the remaining fields are empty.
+        - `amount` — estimated output amount, an integer in the output token's smallest unit.
+        - `amount_with_fee` — minimum acceptable output after applying `slippage` and `provider_fee`: `amount * (1 - slippage) * (1 - provider_fee)`. Use it as the minimum-received bound of the swap transaction.
+        - `swap_chain_xdr` — base64-encoded XDR `SCVal` with the swaps chain in the format expected by the AMM router's `swap_chained` call: a vector of `(pool tokens, pool index hash, token out)` tuples.
+        - `pools` — pool contract addresses along the route, in hop order.
+        - `tokens` / `tokens_addresses` — the token chain along the route (display names / contract addresses), starting with the input token and ending with the output token.
+      summary: Find a swap path (strict send)
+      tags:
+      - External API v2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwapOutput'
+          description: ''
+  /api/external/v2/find-path-strict-receive/:
+    post:
+      operationId: external_v2_find_path_strict_receive_create
+      description: |-
+        Finds the cheapest route to receive an exact `amount` of `token_out_address`, paying with `token_in_address`, across up to `max_depth` pools (capped at 3).
+
+        Unlike the v1 endpoint, `provider_fee` is applied to the receive side: the requested amount is grossed up by the fee (with ceiling rounding) before routing, so the integrator fee can be deducted from the swap output while the user still receives the requested amount.
+
+        - `amount` — estimated required input amount, an integer in the input token's smallest unit.
+        - `amount_with_fee` — maximum send bound: `amount * (1 + slippage)`.
+        - Remaining fields match the strict-send endpoint; `swap_chain_xdr` targets the router's strict-receive call.
+      summary: Find a swap path (strict receive)
+      tags:
+      - External API v2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SwapInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwapOutput'
+          description: ''
+  /api/external/v2/pools/:
+    get:
+      operationId: external_v2_pools_list
+      description: |-
+        Paginated list of Aquarius AMM pools whose underlying tokens passed metadata validation. Pending or quarantined pools are omitted.
+
+        - `index` — the pool's registry index hash in the AMM router.
+        - `address` — the pool's Soroban contract address.
+        - `tokens_addresses` — Soroban contract addresses of the pool tokens, in pool order.
+        - `tokens_str` — display names for the same tokens: `CODE:ISSUER` for classic Stellar assets, `native` for XLM.
+        - `pool_type` — `constant_product`, `stable` or `concentrated`.
+        - `fee` — swap fee as a decimal fraction (`0.0030` = 0.3%).
+        - `a` — amplification coefficient; set for `stable` pools, `null` for other types.
+        - `tx_count` — number of pool events recorded for the pool (swaps, deposits, withdrawals and claims), updated as events are ingested and recounted hourly.
+        - `total_volume` — lifetime swap volume in USD, scaled by 1e7 (`123097123` = $12.31).
+
+        Use the `page` query parameter to paginate (10 pools per page) and `address__in` (comma-separated pool contract addresses) to fetch specific pools.
+      summary: List operational liquidity pools
+      parameters:
+      - in: query
+        name: address__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - External API v2
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPoolListList'
+              examples:
+                ConstantProductResponse:
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?page=4
+                    previous: http://api.example.org/accounts/?page=2
+                    results:
+                    - index: 37b1c4a3f30cf96b8b1e2e9f4e2c7a90d43a1b6f5f2f8f0a9d8c7b6a5f4e3bdf
+                      address: CAQODUH4XNX2NTFVACRMO4UR7MA5RLSZA5ZQTHILQYGYYCFQ3LUATIGM
+                      tokens_addresses:
+                      - CAAV3AE3VKD2P4TY7LWTQMMJHIJ4WOCZ5ANCIJPC3NRSERKVXNHBU2W7
+                      - CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA
+                      tokens_str:
+                      - XRP:GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5
+                      - native
+                      pool_type: constant_product
+                      fee: '0.0030'
+                      a: null
+                      tx_count: 42
+                      total_volume: 123097123
+                  summary: Constant product pool example
+          description: ''
+  /api/external/v2/pools/user/{address}/:
+    get:
+      operationId: external_v2_pools_user_retrieve
+      description: |-
+        Same shape as the pools list, restricted to pools where the given Stellar account holds a positive LP share balance, with two extra fields:
+
+        - `balance` — the account's LP share-token balance, scaled by 1e7.
+        - `deposited_tokens` — estimated current value of the position broken down per token, in human-readable token units keyed by token display name. Derived from the account's share of the pool reserves; for `concentrated` pools it is computed from the account's individual positions. Empty object when the breakdown cannot be computed.
+      summary: List pools where an account provides liquidity
+      parameters:
+      - in: path
+        name: address
+        schema:
+          type: string
+        description: Stellar account id (`G...`) whose liquidity positions to list.
+        required: true
+      tags:
+      - External API v2
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPool'
+              examples:
+                UserPoolResponse:
+                  value:
+                    index: 37b1c4a3f30cf96b8b1e2e9f4e2c7a90d43a1b6f5f2f8f0a9d8c7b6a5f4e3bdf
+                    address: CAQODUH4XNX2NTFVACRMO4UR7MA5RLSZA5ZQTHILQYGYYCFQ3LUATIGM
+                    tokens_addresses:
+                    - CAAV3AE3VKD2P4TY7LWTQMMJHIJ4WOCZ5ANCIJPC3NRSERKVXNHBU2W7
+                    - CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA
+                    tokens_str:
+                    - XRP:GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5
+                    - native
+                    pool_type: constant_product
+                    fee: '0.0030'
+                    a: null
+                    tx_count: 42
+                    total_volume: 123097123
+                    balance: '1000000000.000000000000000000'
+                    deposited_tokens:
+                      XRP:GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5: '61.8338434'
+                      native: '363.9548646'
+                  summary: User Pool Response
+          description: ''
+  /api/external/v2/statistics/all-time/:
+    get:
+      operationId: external_v2_statistics_all_time_retrieve
+      description: |-
+        Protocol-wide totals across all pools. USD values scaled by 1e7:
+
+        - `volume` — swap volume summed over the whole recorded history.
+        - `tvl` — the most recent daily total value locked.
+
+        Responds 404 while no daily statistics have been recorded yet.
+      summary: All-time protocol statistics
+      tags:
+      - External API v2
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalStatistics'
+              examples:
+                AllTimeStatisticsResponse:
+                  value:
+                    volume: 474836377723
+                    tvl: 96540208544498
+                  summary: All Time Statistics Response
+          description: ''
+  /api/external/v2/statistics/totals/:
+    get:
+      operationId: external_v2_statistics_totals_list
+      description: |-
+        Protocol-wide daily aggregates across all pools, one record per day, newest first.
+
+        All monetary values are USD scaled by 1e7 (`474836377723` = $47,483.64):
+
+        - `volume` — swap volume for the day.
+        - `tvl` — total value locked at the end of the day (for today: current value).
+        - `protocol_fees` / `lp_fees` — swap fees collected by the protocol / distributed to liquidity providers for the day.
+        - `external_rewards` — third-party pool incentives paid out for the day.
+        - `timestamp_date_from` / `timestamp_date_to` — unix-seconds interval the record covers; for the current day `timestamp_date_to` is the time of the request.
+
+        Paginated with `page` and `size` query parameters; records are wrapped in an envelope with `items`, `total`, `page`, `size` and `pages`.
+      summary: Daily protocol statistics history
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - External API v2
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTotalStatisticsList'
+              examples:
+                TotalStatisticsResponse:
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?page=4
+                    previous: http://api.example.org/accounts/?page=2
+                    results:
+                    - total: 500
+                      next: null
+                      previous: null
+                      items:
+                      - volume: 474836377723
+                        tvl: 96540208544498
+                        protocol_fees: 128036377
+                        lp_fees: 512145509
+                        external_rewards: 96540208
+                        date: '2026-03-27'
+                        timestamp_date_from: 1774569600
+                        timestamp_date_to: 1774655999
+                      page: 1
+                      size: 50
+                      pages: 10
+                  summary: Total Statistics Response
+          description: ''
+  /api/tickers/:
+    get:
+      operationId: tickers_list
+      description: |-
+        Aggregator-style ticker snapshot for every Aquarius AMM pool, in one unpaginated response.
+
+        - `ticker_id` — `{base}_{target}` built from the pool token contract addresses; `base` is the first pool token, `target` the second. XLM appears as its native Stellar Asset Contract address.
+        - `pool_id` — the pool's Soroban contract address.
+        - `base_currency` / `target_currency` — token contract addresses.
+        - `last_price` — current price of one base token expressed in target tokens: the pool's current spot price, fee-free; `0` when the pool state gives no price.
+        - `base_volume` / `target_volume` — 24-hour pool volume converted into the respective token units; `null` when the token has no XLM price yet.
+        - `liquidity_in_usd` — pool total value locked, in USD.
+      summary: Pool tickers
+      tags:
+      - External Tickers API
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TickerListSerialzer'
+              examples:
+                TickerResponse:
+                  value:
+                  - - pool_id: CAQODUH4XNX2NTFVACRMO4UR7MA5RLSZA5ZQTHILQYGYYCFQ3LUATIGM
+                      base_currency: CAAV3AE3VKD2P4TY7LWTQMMJHIJ4WOCZ5ANCIJPC3NRSERKVXNHBU2W7
+                      target_currency: CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA
+                      ticker_id: CAAV3AE3VKD2P4TY7LWTQMMJHIJ4WOCZ5ANCIJPC3NRSERKVXNHBU2W7_CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA
+                      base_volume: 1187.2192837
+                      target_volume: 7007.5312836
+                      last_price: 0.1694271
+                      liquidity_in_usd: 125403.52
+                  summary: Ticker Response
+          description: ''
+components:
+  schemas:
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        symbol:
+          type: string
+        decimals:
+          type: integer
+          minimum: 0
+        totalSupply:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,18})?$
+        circulatingSupply:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,18})?$
+        coinGeckoId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - decimals
+      - id
+      - name
+      - symbol
+    AssetResponse:
+      type: object
+      properties:
+        asset:
+          $ref: '#/components/schemas/Asset'
+      required:
+      - asset
+    Block:
+      type: object
+      properties:
+        blockNumber:
+          type: integer
+          minimum: 0
+        blockTimestamp:
+          type: integer
+          minimum: 0
+      required:
+      - blockNumber
+      - blockTimestamp
+    Event:
+      type: object
+      properties:
+        block:
+          $ref: '#/components/schemas/Block'
+        eventType:
+          $ref: '#/components/schemas/EventTypeEnum'
+        txnId:
+          type: string
+        txnIndex:
+          type: integer
+          minimum: 0
+        eventIndex:
+          type: integer
+          minimum: 0
+        maker:
+          type: string
+        pairId:
+          type: string
+        reserves:
+          $ref: '#/components/schemas/Reserves'
+        amount0:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,7})?$
+        amount1:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,7})?$
+        asset0In:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,7})?$
+        asset1Out:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,7})?$
+        asset1In:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,7})?$
+        asset0Out:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,7})?$
+        priceNative:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,54}(?:\.\d{0,28})?$
+      required:
+      - block
+      - eventIndex
+      - eventType
+      - maker
+      - pairId
+      - reserves
+      - txnId
+      - txnIndex
+    EventTypeEnum:
+      enum:
+      - swap
+      - join
+      - exit
+      type: string
+      description: |-
+        * `swap` - swap
+        * `join` - join
+        * `exit` - exit
+    EventsResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+      required:
+      - events
+    GlobalStatistics:
+      type: object
+      properties:
+        volume:
+          type: integer
+          description: All-time swap volume in USD, scaled by 1e7.
+        tvl:
+          type: integer
+          description: Most recent daily total value locked in USD, scaled by 1e7.
+      required:
+      - tvl
+      - volume
+    LatestBlockResponse:
+      type: object
+      properties:
+        block:
+          $ref: '#/components/schemas/Block'
+      required:
+      - block
+    PaginatedPoolListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PoolList'
+    PaginatedTotalStatisticsList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TotalStatistics'
+    Pair:
+      type: object
+      properties:
+        id:
+          type: string
+        dexKey:
+          type: string
+        asset0Id:
+          type: string
+        asset1Id:
+          type: string
+        createdAtBlockNumber:
+          type: integer
+          minimum: 0
+        createdAtBlockTimestamp:
+          type: integer
+          minimum: 0
+        createdAtTxnId:
+          type: string
+        creator:
+          type: string
+        feeBps:
+          type: integer
+          minimum: 0
+        pool:
+          $ref: '#/components/schemas/PoolReference'
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - asset0Id
+      - asset1Id
+      - dexKey
+      - id
+    PairResponse:
+      type: object
+      properties:
+        pair:
+          $ref: '#/components/schemas/Pair'
+      required:
+      - pair
+    PoolList:
+      type: object
+      properties:
+        index:
+          type: string
+          maxLength: 64
+        address:
+          type: string
+          maxLength: 64
+        tokens_addresses:
+          type: array
+          items:
+            type: string
+            maxLength: 64
+        tokens_str:
+          type: array
+          items:
+            type: string
+          readOnly: true
+          description: 'Token display names: `CODE:ISSUER` for classic Stellar assets,
+            `native` for XLM.'
+        pool_type:
+          $ref: '#/components/schemas/PoolTypeEnum'
+        fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,4})?$
+        a:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        tx_count:
+          type: integer
+          description: Number of pool events recorded for the pool.
+        total_volume:
+          type: integer
+          readOnly: true
+          description: Lifetime swap volume in USD, scaled by 1e7.
+      required:
+      - address
+      - fee
+      - index
+      - pool_type
+      - tokens_str
+      - total_volume
+      - tx_count
+    PoolReference:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        assetIds:
+          type: array
+          items:
+            type: string
+        pairIds:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - assetIds
+      - id
+      - name
+      - pairIds
+    PoolTypeEnum:
+      enum:
+      - constant_product
+      - stable
+      - concentrated
+      type: string
+      description: |-
+        * `constant_product` - Standard
+        * `stable` - Stable
+        * `concentrated` - Concentrated
+    Reserves:
+      type: object
+      properties:
+        asset0:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,7})?$
+        asset1:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,7})?$
+      required:
+      - asset0
+      - asset1
+    SwapInput:
+      type: object
+      properties:
+        token_in_address:
+          type: string
+          description: Soroban contract address of the token to sell. The token must
+            be indexed by Aquarius.
+        token_out_address:
+          type: string
+          description: Soroban contract address of the token to buy. The token must
+            be indexed by Aquarius.
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,18})?$
+          description: 'Swap amount as an integer in the token''s smallest unit (1e-7
+            for 7-decimals tokens). Strict send: the exact amount of `token_in_address`
+            to sell. Strict receive: the exact amount of `token_out_address` to receive.'
+        slippage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,6})?$
+          default: '0.000000'
+          description: Maximum acceptable slippage as a decimal fraction (`0.005`
+            = 0.5%). Default 0.
+        provider_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,6})?$
+          default: '0.000000'
+          description: Fee charged by the integrating platform, as a decimal fraction
+            of the swap amount. Default 0.
+        max_depth:
+          type: integer
+          default: 4
+          description: Maximum number of pools in the route. Capped server-side at
+            4 for strict send and 3 for strict receive.
+      required:
+      - amount
+      - token_in_address
+      - token_out_address
+    SwapOutput:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether a viable route was found. On `false` every other field
+            is empty or zero.
+        swap_chain_xdr:
+          type: string
+          description: 'Base64-encoded XDR `SCVal` with the swaps chain in the format
+            expected by the AMM router: a vector of `(pool tokens, pool index hash,
+            token out)` tuples, one per hop.'
+        pools:
+          type: array
+          items:
+            type: string
+          description: Pool contract addresses along the route, in hop order.
+        tokens:
+          type: array
+          items:
+            type: string
+          description: Token display names along the route, starting with the input
+            token and ending with the output token.
+        tokens_addresses:
+          type: array
+          items:
+            type: string
+          description: Token contract addresses along the route, matching `tokens`.
+        amount:
+          type: integer
+          description: 'Estimated swap result in the token''s smallest unit: the output
+            amount for strict send, the required input amount for strict receive.'
+        amount_with_fee:
+          type: integer
+          description: '`amount` adjusted by `slippage` and `provider_fee`: the minimum-received
+            bound for strict send, the maximum-send bound for strict receive.'
+      required:
+      - amount
+      - amount_with_fee
+      - pools
+      - success
+      - swap_chain_xdr
+      - tokens
+      - tokens_addresses
+    TickerListSerialzer:
+      type: object
+      properties:
+        pool_id:
+          type: string
+          description: Soroban contract address of the pool.
+        base_currency:
+          type: string
+          readOnly: true
+          description: Contract address of the first pool token.
+        target_currency:
+          type: string
+          readOnly: true
+          description: Contract address of the second pool token.
+        ticker_id:
+          type: string
+          readOnly: true
+          description: '`{base}_{target}` built from the pool token contract addresses.'
+        base_volume:
+          type: number
+          format: double
+          nullable: true
+          readOnly: true
+          description: 24-hour pool volume in base-token units. `null` when the token
+            has no XLM price yet.
+        target_volume:
+          type: number
+          format: double
+          nullable: true
+          readOnly: true
+          description: 24-hour pool volume in target-token units. `null` when the
+            token has no XLM price yet.
+        last_price:
+          type: number
+          format: double
+          readOnly: true
+          description: 'Current price of one base token expressed in target tokens:
+            the pool''s fee-free spot price.'
+        liquidity_in_usd:
+          type: number
+          format: double
+          readOnly: true
+          description: Pool total value locked, in USD.
+      required:
+      - base_currency
+      - base_volume
+      - last_price
+      - liquidity_in_usd
+      - pool_id
+      - target_currency
+      - target_volume
+      - ticker_id
+    TotalStatistics:
+      type: object
+      properties:
+        volume:
+          type: integer
+          readOnly: true
+          description: Swap volume for the day in USD, scaled by 1e7.
+        tvl:
+          type: integer
+          readOnly: true
+          description: Total value locked in USD, scaled by 1e7.
+        protocol_fees:
+          type: integer
+          readOnly: true
+          description: Swap fees collected by the protocol for the day in USD, scaled
+            by 1e7.
+        lp_fees:
+          type: integer
+          readOnly: true
+          description: Swap fees distributed to liquidity providers for the day in
+            USD, scaled by 1e7.
+        external_rewards:
+          type: integer
+          readOnly: true
+          description: Third-party pool incentives paid out for the day in USD, scaled
+            by 1e7.
+        date:
+          type: string
+          format: date
+        timestamp_date_from:
+          type: integer
+          readOnly: true
+          description: Start of the covered interval, unix seconds.
+        timestamp_date_to:
+          type: integer
+          readOnly: true
+          description: 'End of the covered interval, unix seconds. For the current
+            day: the request time.'
+      required:
+      - date
+      - external_rewards
+      - lp_fees
+      - protocol_fees
+      - timestamp_date_from
+      - timestamp_date_to
+      - tvl
+      - volume
+    UserPool:
+      type: object
+      properties:
+        index:
+          type: string
+          maxLength: 64
+        address:
+          type: string
+          maxLength: 64
+        tokens_addresses:
+          type: array
+          items:
+            type: string
+            maxLength: 64
+        tokens_str:
+          type: array
+          items:
+            type: string
+          readOnly: true
+          description: 'Token display names: `CODE:ISSUER` for classic Stellar assets,
+            `native` for XLM.'
+        pool_type:
+          $ref: '#/components/schemas/PoolTypeEnum'
+        fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,4})?$
+        a:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        tx_count:
+          type: integer
+          description: Number of pool events recorded for the pool.
+        total_volume:
+          type: integer
+          readOnly: true
+          description: Lifetime swap volume in USD, scaled by 1e7.
+        balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,64}(?:\.\d{0,18})?$
+          description: LP share-token balance of the account, scaled by 1e7.
+        deposited_tokens:
+          type: object
+          additionalProperties:
+            type: string
+          readOnly: true
+          description: Estimated current value of the position per token, in human-readable
+            token units keyed by token display name. Empty object when the breakdown
+            cannot be computed.
+      required:
+      - address
+      - balance
+      - deposited_tokens
+      - fee
+      - index
+      - pool_type
+      - tokens_str
+      - total_volume
+      - tx_count
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+tags:
+- name: External API v1
+- name: External API v2
+- name: External Tickers API

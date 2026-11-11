@@ -1,0 +1,999 @@
+{
+  "schema": "stage1-abi-freeze-v1",
+  "sdk": "25.3.1",
+  "source_sha256": "b91192dff921d652f849005f65c6922626f0d51d486719783fb90cfd0e45b8bc",
+  "apis": {
+    "receipt": [
+      "fn stage1_bind(e: Env, admin: Address, vault: Address, binding_hash: BytesN<32>);",
+      "fn stage1_config(e: Env) -> Option<ReceiptConfigV1>;",
+      "fn stage1_job(e: Env, id: u64) -> Option<CommandV1>;",
+      "fn stage1_next(e: Env) -> u64;",
+      "fn prepare_open(e: Env, owner: Address, terms: OpenTermsV1) -> CommandCreatedV1;",
+      "fn fund_open(e: Env, id: u64) -> FundedV1;",
+      "fn convert_open(e: Env, id: u64) -> ConvertedV1;",
+      "fn mint_cash(e: Env, id: u64) -> MintedV1;",
+      "fn invest_cash(e: Env, id: u64) -> InvestedV1;",
+      "fn prepare_close(e: Env, owner: Address, shares: u128, terms: CloseTermsV1) -> CommandCreatedV1;",
+      "fn withdraw_close(e: Env, id: u64) -> ExitV1;",
+      "fn convert_close(e: Env, id: u64) -> PaidV1;",
+      "fn cancel(e: Env, id: u64) -> ReleasedV1;",
+      "fn recover_in_kind( e: Env, id: u64, accept_reward_waiver: bool, consent: Option<WaiverConsentV1>, ) -> ExitV1;"
+    ],
+    "vault": [
+      "fn stage1_bind_receipt(e: Env, admin: Address, binding: BindingV1);",
+      "fn stage1_config(e: Env) -> Option<VaultConfigV1>;",
+      "fn stage1_liability(e: Env, id: u64) -> Option<LiabilityV1>;",
+      "fn stage1_set_risk(e: Env, admin: Address, expected_revision: u64, risk: RiskV1);",
+      "fn stage1_check_open(e: Env, receipt: Address, id: u64, job: CommandV1);",
+      "fn stage1_accept_funds(e: Env, receipt: Address, id: u64, job: CommandV1) -> FundedV1;",
+      "fn stage1_convert_open(e: Env, receipt: Address, id: u64, job: CommandV1) -> ConvertedV1;",
+      "fn stage1_cash_mint(e: Env, receipt: Address, id: u64, job: CommandV1) -> MintedV1;",
+      "fn stage1_invest_cash(e: Env, receipt: Address, id: u64, job: CommandV1) -> InvestedV1;",
+      "fn stage1_lock_close(e: Env, receipt: Address, id: u64, job: CommandV1);",
+      "fn stage1_withdraw_kind(e: Env, receipt: Address, id: u64, job: CommandV1) -> ExitV1;",
+      "fn stage1_convert_exit(e: Env, receipt: Address, id: u64, job: CommandV1) -> PaidV1;",
+      "fn stage1_cancel_kind(e: Env, receipt: Address, id: u64, job: CommandV1) -> ReleasedV1;",
+      "fn stage1_recover_kind( e: Env, receipt: Address, id: u64, job: CommandV1, accept_reward_waiver: bool, consent: Option<WaiverConsentV1>, ) -> ExitV1;",
+      "fn emergency_redeem_v1( e: Env, holder: Address, shares: u128, accept_reward_waiver: bool, consent: Option<HolderConsentV1>, ) -> ExitV1;"
+    ]
+  },
+  "legacy_key_variants": [
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "UnderlyingToken",
+      "types": "",
+      "expression": "LegacyKey0::UnderlyingToken"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "ManagedCash",
+      "types": "",
+      "expression": "LegacyKey0::ManagedCash"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "TotalDeposited",
+      "types": "",
+      "expression": "LegacyKey0::TotalDeposited"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "InterestRatePerSecond",
+      "types": "",
+      "expression": "LegacyKey0::InterestRatePerSecond"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "LastUpdateTime",
+      "types": "",
+      "expression": "LegacyKey0::LastUpdateTime"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "AccumulatedInterest",
+      "types": "",
+      "expression": "LegacyKey0::AccumulatedInterest"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "YearlyRateScaled",
+      "types": "",
+      "expression": "LegacyKey0::YearlyRateScaled"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "InitialExchangeRate",
+      "types": "",
+      "expression": "LegacyKey0::InitialExchangeRate"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BorrowSnapshots",
+      "types": "Address",
+      "expression": "LegacyKey0::BorrowSnapshots(address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "HasBorrowed",
+      "types": "Address",
+      "expression": "LegacyKey0::HasBorrowed(address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "MarginBorrowSnapshots",
+      "types": "u64",
+      "expression": "LegacyKey0::MarginBorrowSnapshots(42u64)"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "MarginHasBorrowed",
+      "types": "u64",
+      "expression": "LegacyKey0::MarginHasBorrowed(42u64)"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "TotalBorrowed",
+      "types": "",
+      "expression": "LegacyKey0::TotalBorrowed"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BorrowIndex",
+      "types": "",
+      "expression": "LegacyKey0::BorrowIndex"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BorrowYearlyRateScaled",
+      "types": "",
+      "expression": "LegacyKey0::BorrowYearlyRateScaled"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "CollateralFactorScaled",
+      "types": "",
+      "expression": "LegacyKey0::CollateralFactorScaled"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "Admin",
+      "types": "",
+      "expression": "LegacyKey0::Admin"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "PendingAdmin",
+      "types": "",
+      "expression": "LegacyKey0::PendingAdmin"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "Peridottroller",
+      "types": "",
+      "expression": "LegacyKey0::Peridottroller"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "InterestModel",
+      "types": "",
+      "expression": "LegacyKey0::InterestModel"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "ReserveFactorScaled",
+      "types": "",
+      "expression": "LegacyKey0::ReserveFactorScaled"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "AdminFeeScaled",
+      "types": "",
+      "expression": "LegacyKey0::AdminFeeScaled"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "FlashLoanFeeScaled",
+      "types": "",
+      "expression": "LegacyKey0::FlashLoanFeeScaled"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "TotalAdminFees",
+      "types": "",
+      "expression": "LegacyKey0::TotalAdminFees"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "TotalReserves",
+      "types": "",
+      "expression": "LegacyKey0::TotalReserves"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "SupplyCap",
+      "types": "",
+      "expression": "LegacyKey0::SupplyCap"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BorrowCap",
+      "types": "",
+      "expression": "LegacyKey0::BorrowCap"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "Initialized",
+      "types": "",
+      "expression": "LegacyKey0::Initialized"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BoostedVault",
+      "types": "",
+      "expression": "LegacyKey0::BoostedVault"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BoostedUnderlyingCached",
+      "types": "",
+      "expression": "LegacyKey0::BoostedUnderlyingCached"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BoostedUnderlyingUpdatedAt",
+      "types": "",
+      "expression": "LegacyKey0::BoostedUnderlyingUpdatedAt"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "TotalBorrowPrincipal",
+      "types": "",
+      "expression": "LegacyKey0::TotalBorrowPrincipal"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "RatesReady",
+      "types": "",
+      "expression": "LegacyKey0::RatesReady"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "IdleCashBufferBps",
+      "types": "",
+      "expression": "LegacyKey0::IdleCashBufferBps"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "FlashLoanActive",
+      "types": "",
+      "expression": "LegacyKey0::FlashLoanActive"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "MarginController",
+      "types": "",
+      "expression": "LegacyKey0::MarginController"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "MarginWithdrawBypass",
+      "types": "Address",
+      "expression": "LegacyKey0::MarginWithdrawBypass(address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "PendingUpgradeHash",
+      "types": "",
+      "expression": "LegacyKey0::PendingUpgradeHash"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "PendingUpgradeEta",
+      "types": "",
+      "expression": "LegacyKey0::PendingUpgradeEta"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "DebtStateVersion",
+      "types": "",
+      "expression": "LegacyKey0::DebtStateVersion"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "DebtStateMigratedAt",
+      "types": "",
+      "expression": "LegacyKey0::DebtStateMigratedAt"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BorrowPrincipal",
+      "types": "Address",
+      "expression": "LegacyKey0::BorrowPrincipal(address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "MarginBorrowPrincipal",
+      "types": "u64",
+      "expression": "LegacyKey0::MarginBorrowPrincipal(42u64)"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "MarginWithdrawBypassV2",
+      "types": "Address",
+      "expression": "LegacyKey0::MarginWithdrawBypassV2(address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "TotalBadDebt",
+      "types": "",
+      "expression": "LegacyKey0::TotalBadDebt"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BoostedAssetCount",
+      "types": "",
+      "expression": "LegacyKey0::BoostedAssetCount"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "BoostedHealthCache",
+      "types": "",
+      "expression": "LegacyKey0::BoostedHealthCache"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "MinCashReserveBps",
+      "types": "",
+      "expression": "LegacyKey0::MinCashReserveBps"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "ClCustody",
+      "types": "",
+      "expression": "LegacyKey0::ClCustody"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "ClCustodyContext",
+      "types": "",
+      "expression": "LegacyKey0::ClCustodyContext"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "CashBorrowingEnabled",
+      "types": "",
+      "expression": "LegacyKey0::CashBorrowingEnabled"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_backing.rs",
+      "enum": "BackingKey",
+      "variant": "HybridBackingState",
+      "types": "",
+      "expression": "LegacyKey1::HybridBackingState"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_backing.rs",
+      "enum": "BackingKey",
+      "variant": "HybridBackingOwner",
+      "types": "Address",
+      "expression": "LegacyKey1::HybridBackingOwner(address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_claims.rs",
+      "enum": "CoordinatorKey",
+      "variant": "RecycledRaw",
+      "types": "Address",
+      "expression": "LegacyKey2::RecycledRaw(address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_claims.rs",
+      "enum": "CoordinatorKey",
+      "variant": "PoolOwed",
+      "types": "Address",
+      "expression": "LegacyKey2::PoolOwed(address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_claims.rs",
+      "enum": "CoordinatorKey",
+      "variant": "PinnedPrimary",
+      "types": "",
+      "expression": "LegacyKey2::PinnedPrimary"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_ledger.rs",
+      "enum": "LedgerKey",
+      "variant": "HybridStreams",
+      "types": "",
+      "expression": "LegacyKey3::HybridStreams"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_ledger.rs",
+      "enum": "LedgerKey",
+      "variant": "HybridStream",
+      "types": "Address",
+      "expression": "LegacyKey3::HybridStream(address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_ledger.rs",
+      "enum": "LedgerKey",
+      "variant": "HybridAccount",
+      "types": "Address, Address",
+      "expression": "LegacyKey3::HybridAccount(address.clone(),address.clone())"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_ledger.rs",
+      "enum": "LedgerKey",
+      "variant": "HybridEpoch",
+      "types": "Address, u64",
+      "expression": "LegacyKey3::HybridEpoch(address.clone(),42u64)"
+    },
+    {
+      "contract": "receipt",
+      "source": "contracts/receipt-vault/src/reward_ledger.rs",
+      "enum": "LedgerKey",
+      "variant": "HybridRegistryInitialized",
+      "types": "",
+      "expression": "LegacyKey3::HybridRegistryInitialized"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "Config",
+      "types": "",
+      "expression": "LegacyKey4::Config"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "Params",
+      "types": "",
+      "expression": "LegacyKey4::Params"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "State",
+      "types": "",
+      "expression": "LegacyKey4::State"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "Admin",
+      "types": "",
+      "expression": "LegacyKey4::Admin"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "Initialized",
+      "types": "",
+      "expression": "LegacyKey4::Initialized"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "PendingAdmin",
+      "types": "",
+      "expression": "LegacyKey4::PendingAdmin"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "PendingUpgradeHash",
+      "types": "",
+      "expression": "LegacyKey4::PendingUpgradeHash"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "PendingUpgradeEta",
+      "types": "",
+      "expression": "LegacyKey4::PendingUpgradeEta"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "Shares",
+      "types": "Address",
+      "expression": "LegacyKey4::Shares(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "RewardRoute",
+      "types": "Address",
+      "expression": "LegacyKey4::RewardRoute(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "OracleSymbol",
+      "types": "Address",
+      "expression": "LegacyKey4::OracleSymbol(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "ReceiptVault",
+      "types": "",
+      "expression": "LegacyKey4::ReceiptVault"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "PrimaryRewardToken",
+      "types": "",
+      "expression": "LegacyKey4::PrimaryRewardToken"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "RewardMinRate",
+      "types": "Address",
+      "expression": "LegacyKey4::RewardMinRate(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "PositionAmounts",
+      "types": "",
+      "expression": "LegacyKey4::PositionAmounts"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "RangeParams",
+      "types": "",
+      "expression": "LegacyKey4::RangeParams"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/storage.rs",
+      "enum": "DataKey",
+      "variant": "RangeState",
+      "types": "",
+      "expression": "LegacyKey4::RangeState"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/accounting.rs",
+      "enum": "Key",
+      "variant": "Busy",
+      "types": "",
+      "expression": "LegacyKey5::Busy"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/accounting.rs",
+      "enum": "Key",
+      "variant": "Book",
+      "types": "Address",
+      "expression": "LegacyKey5::Book(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/accounting.rs",
+      "enum": "Key",
+      "variant": "Excluded",
+      "types": "Address",
+      "expression": "LegacyKey5::Excluded(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/allowances.rs",
+      "enum": "Key",
+      "variant": "ShareAllowance",
+      "types": "Address, Address",
+      "expression": "LegacyKey6::ShareAllowance(address.clone(),address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/custody.rs",
+      "enum": "Key",
+      "variant": "Registered",
+      "types": "Address",
+      "expression": "LegacyKey7::Registered(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/custody.rs",
+      "enum": "Key",
+      "variant": "Allocation",
+      "types": "Address, Address",
+      "expression": "LegacyKey7::Allocation(address.clone(),address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/custody.rs",
+      "enum": "Key",
+      "variant": "Total",
+      "types": "Address",
+      "expression": "LegacyKey7::Total(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/custody.rs",
+      "enum": "Key",
+      "variant": "Beneficial",
+      "types": "Address",
+      "expression": "LegacyKey7::Beneficial(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/custody.rs",
+      "enum": "Key",
+      "variant": "Unassigned",
+      "types": "",
+      "expression": "LegacyKey7::Unassigned"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/custody.rs",
+      "enum": "Key",
+      "variant": "Transfer",
+      "types": "Address",
+      "expression": "LegacyKey7::Transfer(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Index",
+      "types": "",
+      "expression": "LegacyKey8::Index"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Holder",
+      "types": "Address",
+      "expression": "LegacyKey8::Holder(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Count",
+      "types": "",
+      "expression": "LegacyKey8::Count"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Boundary",
+      "types": "u64",
+      "expression": "LegacyKey8::Boundary(42u64)"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Interval",
+      "types": "",
+      "expression": "LegacyKey8::Interval"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Open",
+      "types": "",
+      "expression": "LegacyKey8::Open"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Bucket",
+      "types": "u64",
+      "expression": "LegacyKey8::Bucket(42u64)"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Totals",
+      "types": "",
+      "expression": "LegacyKey8::Totals"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Evidence",
+      "types": "u64, Address",
+      "expression": "LegacyKey8::Evidence(42u64,address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/rewards.rs",
+      "enum": "Key",
+      "variant": "Proposal",
+      "types": "u64",
+      "expression": "LegacyKey8::Proposal(42u64)"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryEnabled",
+      "types": "",
+      "expression": "LegacyKey9::HistoryEnabled"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryRevision",
+      "types": "",
+      "expression": "LegacyKey9::HistoryRevision"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryTracked",
+      "types": "",
+      "expression": "LegacyKey9::HistoryTracked"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryCount",
+      "types": "Address",
+      "expression": "LegacyKey9::HistoryCount(address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryWeight",
+      "types": "Address, u32",
+      "expression": "LegacyKey9::HistoryWeight(address.clone(),42u32)"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistorySegments",
+      "types": "",
+      "expression": "LegacyKey9::HistorySegments"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistorySegment",
+      "types": "u64",
+      "expression": "LegacyKey9::HistorySegment(42u64)"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryInterval",
+      "types": "u64",
+      "expression": "LegacyKey9::HistoryInterval(42u64)"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryWaiver",
+      "types": "u64, u32",
+      "expression": "LegacyKey9::HistoryWaiver(42u64,42u32)"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryWaiverIndex",
+      "types": "u64, Address",
+      "expression": "LegacyKey9::HistoryWaiverIndex(42u64,address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistorySettled",
+      "types": "u64, Address",
+      "expression": "LegacyKey9::HistorySettled(42u64,address.clone())"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryProposal",
+      "types": "u64",
+      "expression": "LegacyKey9::HistoryProposal(42u64)"
+    },
+    {
+      "contract": "vault",
+      "source": "contracts/cl-share-vault/src/reward_history.rs",
+      "enum": "Key",
+      "variant": "HistoryTotals",
+      "types": "",
+      "expression": "LegacyKey9::HistoryTotals"
+    },
+    {
+      "contract": "facade",
+      "source": "contracts/cl-share-pool-facade/src/lib.rs",
+      "enum": "Key",
+      "variant": "Config",
+      "types": "",
+      "expression": "LegacyKey10::Config"
+    },
+    {
+      "contract": "facade",
+      "source": "contracts/cl-share-pool-facade/src/lib.rs",
+      "enum": "Key",
+      "variant": "Busy",
+      "types": "",
+      "expression": "LegacyKey10::Busy"
+    },
+    {
+      "contract": "facade",
+      "source": "contracts/cl-share-pool-facade/src/lib.rs",
+      "enum": "Key",
+      "variant": "NextController",
+      "types": "",
+      "expression": "LegacyKey10::NextController"
+    },
+    {
+      "contract": "facade",
+      "source": "contracts/cl-share-pool-facade/src/lib.rs",
+      "enum": "Key",
+      "variant": "ReadyAt",
+      "types": "",
+      "expression": "LegacyKey10::ReadyAt"
+    }
+  ],
+  "source_files": {
+    "contracts/receipt-vault/src/storage.rs": "a459cb6509b45aad514b10c1fe3069ec4fadf33c6bd081bffcbccbdf33c6ed34",
+    "contracts/receipt-vault/src/reward_backing.rs": "110da521652d4bae3f6865934f0de451649a7a2f34d0ef4ca96c7339bdd61280",
+    "contracts/receipt-vault/src/reward_claims.rs": "29932d8151c4e8e6349876af4557fc518667b4bde9cf266708fba754ff9480ca",
+    "contracts/receipt-vault/src/reward_ledger.rs": "e79af88a10bf0c09b95f728a6dc4d03059d4605ae61ed9fcec498b5e6585b707",
+    "contracts/cl-share-vault/src/storage.rs": "51bb49e51204bf631702f7da40a88c0e035b7112bdd5f703656210615782c59d",
+    "contracts/cl-share-vault/src/accounting.rs": "1b1ac2a13cbb98dd18009e6aae1bf1461338a2264fdbf67e2301e126a60309f9",
+    "contracts/cl-share-vault/src/allowances.rs": "2b9c31547fe903d668954e7e34aeb80fbae26615bb68492c8aca9e74ec37ec2d",
+    "contracts/cl-share-vault/src/custody.rs": "3e9fa4127cd02ed849349f0878843e05136de1fd81b98213dbaee93aa6a87dc6",
+    "contracts/cl-share-vault/src/rewards.rs": "c8d96f38041f40386d5f8088695ee4dd481f601d1fa32770a445125b3f323916",
+    "contracts/cl-share-vault/src/reward_history.rs": "d4d067c711bb9ae72e4359639703795573453c3c0148401e2d01fad1e981b535",
+    "contracts/cl-share-pool-facade/src/lib.rs": "dfcdab984dfd4b0b079dc06941703a4201aad2453b3f5680cbe44297513ce69c"
+  },
+  "limits": {
+    "cpu": 100000000,
+    "memory": 41943040,
+    "sdk_total": 100,
+    "unique_keys": 100,
+    "writes": 50
+  },
+  "scope": "wire/key freeze only; no financial gate passed",
+  "new_key_durability": {
+    "receipt": {
+      "Stage1ConfigV1": "instance",
+      "Stage1Next": "instance",
+      "Stage1Busy": "instance",
+      "Stage1Job": "persistent"
+    },
+    "vault": {
+      "Stage1Receipt": "instance",
+      "Stage1RiskV1": "instance",
+      "Stage1Reserved": "instance",
+      "Stage1Liability": "persistent",
+      "Stage1Locked": "persistent",
+      "Stage1Allocation": "persistent"
+    }
+  }
+}
