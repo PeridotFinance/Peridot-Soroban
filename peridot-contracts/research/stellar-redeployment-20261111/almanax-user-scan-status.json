@@ -1,0 +1,21 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"commit_sha\":\"95c6e39bd1095d43cd4240b8ce7d8d1d82044aba\",\"next_action\":\"fetch_findings_for_scan\",\"project_id\":\"68a08094-f0b1-4da0-8df7-93dc6a53ace9\",\"retryable\":false,\"scan_id\":\"45cb0b28-8af9-48f2-ad22-b58fafd235e5\",\"status\":\"COMPLETE\",\"terminal\":true}"
+      }
+    ],
+    "structuredContent": {
+      "commit_sha": "95c6e39bd1095d43cd4240b8ce7d8d1d82044aba",
+      "next_action": "fetch_findings_for_scan",
+      "project_id": "68a08094-f0b1-4da0-8df7-93dc6a53ace9",
+      "retryable": false,
+      "scan_id": "45cb0b28-8af9-48f2-ad22-b58fafd235e5",
+      "status": "COMPLETE",
+      "terminal": true
+    }
+  }
+}

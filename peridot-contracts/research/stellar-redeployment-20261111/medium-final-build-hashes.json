@@ -1,0 +1,14 @@
+{
+  "jump_rate_model.wasm": {
+    "bytes": 7644,
+    "sha256": "4f57459de70963abb7b6bc4c06ad5eae9d7f8dc0ef3ef59f023241705033126f"
+  },
+  "receipt_vault.wasm": {
+    "bytes": 89033,
+    "sha256": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e"
+  },
+  "simple_peridottroller.wasm": {
+    "bytes": 63285,
+    "sha256": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902"
+  }
+}

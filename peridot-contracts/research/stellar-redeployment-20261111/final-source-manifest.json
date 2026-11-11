@@ -1,0 +1,171 @@
+{
+  "scan_commit": "e3eab76a74028a394b0cde4e48c2ec42662811cc",
+  "files": [
+    {
+      "path": "peridot-contracts/Cargo.lock",
+      "sha256": "5a378c520523bdcf3b0011afbdd2afa467661b50557b195db9dbb6ace5c17520",
+      "bytes": 47224
+    },
+    {
+      "path": "peridot-contracts/Cargo.toml",
+      "sha256": "6f69bdb02f1f60c680746f964e5d9b6943d69a19d6c61c0337ce076e20dff7b6",
+      "bytes": 1427
+    },
+    {
+      "path": "peridot-contracts/contracts/jump-rate-model/Cargo.toml",
+      "sha256": "348aec61dc18dd157e3cfe77ccbb7b2928ff480b055f7065a1e2c201ab772a8d",
+      "bytes": 309
+    },
+    {
+      "path": "peridot-contracts/contracts/jump-rate-model/src/lib.rs",
+      "sha256": "a17aa293aa7f6eb28a3c7780fa6aabaf9e818240bda06a8f240aa55a322847ce",
+      "bytes": 15347
+    },
+    {
+      "path": "peridot-contracts/contracts/jump-rate-model/src/property_test.rs",
+      "sha256": "08c5f8de1d6e8ae4032688a63e8879570210bf9b022ee9756793f5249e452cfd",
+      "bytes": 6362
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/Cargo.toml",
+      "sha256": "5add6958fd0cc2398c6135c9fb10af3b203a0a9ef914ba8eeda6b98b5f4990e0",
+      "bytes": 1011
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/Makefile",
+      "sha256": "a12d1e8aa020d7347d08f35433cc1d5c476143e1d35923a5580d7106ba822d53",
+      "bytes": 171
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/constants.rs",
+      "sha256": "301e390d4284e77420fd32512484994f756f7e3f940f79a55bbc0415c961d6b4",
+      "bytes": 510
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/contract.rs",
+      "sha256": "119d73428d4fe5739c2e80aa194742f026e93e2f60c49f07f700e93aba8da098",
+      "bytes": 199998
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/events.rs",
+      "sha256": "7d8eac0ad86ac1bfb33cd3571763d883b990ecdfb178938e724c16d97ade2c2f",
+      "bytes": 6510
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/helpers.rs",
+      "sha256": "430f682bde2beef454f8a598175e698fa80fbfd2fe5591fd29a93c12f0c1c386",
+      "bytes": 3727
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/lib.rs",
+      "sha256": "bac24bcea3d282caee87dceaaddb54b5e6dda4f9a73130b896d84904f4a32cc8",
+      "bytes": 1243
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/lp_lending_test.rs",
+      "sha256": "19629e05dbbc4c0f80edc715002daeaac8b248a39580b77a1f8818dd5654c152",
+      "bytes": 22122
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/reserve_test.rs",
+      "sha256": "ea11c7bbeab643f019147bef6297c968047bf1c8af283d5e8cc6d996eb48e308",
+      "bytes": 24967
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/reward_accounting_model.rs",
+      "sha256": "8d3d20b790e687e76b37c40cc2c362226bef40c22dea532af5ccda6e31a4c2c8",
+      "bytes": 20874
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/reward_backing.rs",
+      "sha256": "110da521652d4bae3f6865934f0de451649a7a2f34d0ef4ca96c7339bdd61280",
+      "bytes": 19324
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/reward_backing_test.rs",
+      "sha256": "58db226f4eafc47a81b7f8054728b18c67ea626d93a0dabd30a12d92bce1cc47",
+      "bytes": 18232
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/reward_claims.rs",
+      "sha256": "29932d8151c4e8e6349876af4557fc518667b4bde9cf266708fba754ff9480ca",
+      "bytes": 8997
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/reward_ledger.rs",
+      "sha256": "e79af88a10bf0c09b95f728a6dc4d03059d4605ae61ed9fcec498b5e6585b707",
+      "bytes": 14478
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/reward_lending.rs",
+      "sha256": "31acbaaa7c1ce554859b25f3218f3dfa2592ab4758f12c2015702432fc784677",
+      "bytes": 6008
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/reward_settlement.rs",
+      "sha256": "3e829e0b46ca3ab17dff0e72123cf037fd29fe866ca063e4ac2da84ca61ef34a",
+      "bytes": 5818
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/reward_share_hooks.rs",
+      "sha256": "4d4cfd2ac30f77e4f120d75c27e99509bda40f57b34e4b75481e35ceaf9c0528",
+      "bytes": 4414
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/storage.rs",
+      "sha256": "0cc474c1ff21338b719f31836067a185a0308d5081857cf743c3557627297bff",
+      "bytes": 19797
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/test.rs",
+      "sha256": "0e37a64e714f749077822826c221f5c6a4dc981f4daa97de04053422b6ff4278",
+      "bytes": 225613
+    },
+    {
+      "path": "peridot-contracts/contracts/simple-peridottroller/Cargo.toml",
+      "sha256": "f05119e3d5af0dbadc61ba243828e1a90dfe5a019c1d770f297e4a155286dd70",
+      "bytes": 657
+    },
+    {
+      "path": "peridot-contracts/contracts/simple-peridottroller/src/constants.rs",
+      "sha256": "aecf681236f68557dbd919930253828f79fb7bdf32137f6ec0e81b44961fea7c",
+      "bytes": 1253
+    },
+    {
+      "path": "peridot-contracts/contracts/simple-peridottroller/src/contract.rs",
+      "sha256": "94f2701f91c834b09be8d99907cc1dd808e1d9f3d02aeb001e25c1af49590222",
+      "bytes": 157717
+    },
+    {
+      "path": "peridot-contracts/contracts/simple-peridottroller/src/events.rs",
+      "sha256": "0e3618d68a8cd37393ef0b951e19a2f935e0226304af8b0c27ba94cf5f229a82",
+      "bytes": 4665
+    },
+    {
+      "path": "peridot-contracts/contracts/simple-peridottroller/src/lib.rs",
+      "sha256": "b03952ef32f752dc5a7fca8072292c07c85ffe0fae8a8ce48b92714682d172ad",
+      "bytes": 336
+    },
+    {
+      "path": "peridot-contracts/contracts/simple-peridottroller/src/reflector.rs",
+      "sha256": "44c737da6c4bd8b3410801df582b309cc621f2aa0bde518942f743be17d71de7",
+      "bytes": 1461
+    },
+    {
+      "path": "peridot-contracts/contracts/simple-peridottroller/src/storage.rs",
+      "sha256": "6db9c1654531353098fa677d7da0bd7a846ff831ab90919543adca347321b6b3",
+      "bytes": 14981
+    },
+    {
+      "path": "peridot-contracts/contracts/simple-peridottroller/src/test.rs",
+      "sha256": "2eeeb12d3903490e316e9fd698e0286b94adfe08ba1d92d19e29c51935b4cbf7",
+      "bytes": 243988
+    },
+    {
+      "path": "peridot-contracts/contracts/receipt-vault/src/rounding_regression_test.rs",
+      "sha256": "dff931e305af98d4d9fed2b6c5bc0c73bad038b9c9d3e939b9acf3f397474a85",
+      "bytes": 13386
+    }
+  ],
+  "match": true
+}

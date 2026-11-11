@@ -58,6 +58,7 @@ pub enum DataKey {
     ClCustody, // INSTANCE bool; opt-in dedicated nonborrowing CL share custody market
     ClCustodyContext, // INSTANCE exact controller-owned withdrawal/transfer context
     CashBorrowingEnabled, // INSTANCE bool; opt-in markets default disabled until explicit approval
+    PermanentMinimumSupply, // INSTANCE u128; explicit admin-funded, immutable own-address share floor
 }
 
 const TTL_THRESHOLD: u32 = 500_000;

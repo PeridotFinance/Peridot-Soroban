@@ -1,0 +1,90 @@
+{
+  "at": "2026-11-11T16:07:59.010Z",
+  "method": "getLedgerEntries only; absent entries not asserted zero (archive ambiguity)",
+  "rows": [
+    {
+      "name": "coreXLM",
+      "asset": "XLM",
+      "id": "CBU4Y7CJFOUZZE3QBOXTKM54UTUYW3SDJWTNMDGJBNCR5HS5UCEKV3BE",
+      "ledger": 65425447,
+      "balance": {
+        "amount": "1",
+        "authorized": true,
+        "clawback": false
+      },
+      "raw": [
+        "AAAABgAAAAAAAAABJbT82FmuwvpjSEOMSJs8PBDJi20hvk/TyzDLaJU++XcAAAAQAAAAAQAAAAIAAAAPAAAAB0JhbGFuY2UAAAAAEgAAAAFpzHxJK6mck3ALrzUzvKTpi25DTabWDMkLRR6eXaCIqgAAAAEAAAARAAAAAQAAAAMAAAAPAAAABmFtb3VudAAAAAAACgAAAAAAAAAAAAAAAAAAAAEAAAAPAAAACmF1dGhvcml6ZWQAAAAAAAAAAAABAAAADwAAAAhjbGF3YmFjawAAAAAAAAAA"
+      ]
+    },
+    {
+      "name": "coreUSDC",
+      "asset": "USDC",
+      "id": "CBVUJJIJTRJNOORPPCVH72DP7YDCOMDHI6WYKP3WOFVEPSCVP3TBXHIN",
+      "ledger": 65425447,
+      "balance": {
+        "amount": "1",
+        "authorized": true,
+        "clawback": false
+      },
+      "raw": [
+        "AAAABgAAAAAAAAABre/OWa7lKWj3YGHUlMJSW3Vln6QpamX0me8p5WR35JYAAAAQAAAAAQAAAAIAAAAPAAAAB0JhbGFuY2UAAAAAEgAAAAFrRKUJnFLXOi94qn/ob/4GJzBnR62FP3ZxakfIVX7mGwAAAAEAAAARAAAAAQAAAAMAAAAPAAAABmFtb3VudAAAAAAACgAAAAAAAAAAAAAAAAAAAAEAAAAPAAAACmF1dGhvcml6ZWQAAAAAAAAAAAABAAAADwAAAAhjbGF3YmFjawAAAAAAAAAA"
+      ]
+    },
+    {
+      "name": "coreEURC",
+      "asset": "EURC",
+      "id": "CD3WN3PLW63HFZXE56OTRLMBV46WG54TFPGRL4RDQ43HQTTWVB4RPO3G",
+      "ledger": 65425447,
+      "balance": {
+        "amount": "1",
+        "authorized": true,
+        "clawback": false
+      },
+      "raw": [
+        "AAAABgAAAAAAAAAB5qfZ63UjAGpGmqdIOtEQckdEPA2C5idj3mcISMTpfJAAAAAQAAAAAQAAAAIAAAAPAAAAB0JhbGFuY2UAAAAAEgAAAAH3Zu3rt7Zy5uTvnTitga89Y3eTK80V8iOHNnhOdqh5FwAAAAEAAAARAAAAAQAAAAMAAAAPAAAABmFtb3VudAAAAAAACgAAAAAAAAAAAAAAAAAAAAEAAAAPAAAACmF1dGhvcml6ZWQAAAAAAAAAAAABAAAADwAAAAhjbGF3YmFjawAAAAAAAAAA"
+      ]
+    },
+    {
+      "name": "lpXLM",
+      "asset": "XLM",
+      "id": "CBRJTPI3327YPP57KGIZIU4Z6APBUN5F6LJ2Q3MPKCISUQJLAQFFZECZ",
+      "ledger": 65425447,
+      "balance": {
+        "amount": "731404",
+        "authorized": true,
+        "clawback": false
+      },
+      "raw": [
+        "AAAABgAAAAAAAAABJbT82FmuwvpjSEOMSJs8PBDJi20hvk/TyzDLaJU++XcAAAAQAAAAAQAAAAIAAAAPAAAAB0JhbGFuY2UAAAAAEgAAAAFimb0b3r+Hv79RkZRTmfAeGjel8tOobY9QkSpBKwQKXAAAAAEAAAARAAAAAQAAAAMAAAAPAAAABmFtb3VudAAAAAAACgAAAAAAAAAAAAAAAAALKQwAAAAPAAAACmF1dGhvcml6ZWQAAAAAAAAAAAABAAAADwAAAAhjbGF3YmFjawAAAAAAAAAA"
+      ]
+    },
+    {
+      "name": "lpPYUSD",
+      "asset": "PYUSD",
+      "id": "CBNVNCPEW2XXGBEGVMZQXBSODO5V2HMGPT5FFLVLT355SXJMYY53MLMA",
+      "ledger": 65425447,
+      "balance": {
+        "amount": "150091",
+        "authorized": true,
+        "clawback": true
+      },
+      "raw": [
+        "AAAABgAAAAAAAAABhRsf0Nla/aNI78I1s6AoJ/d5xfGVBwvSklowVjnv5PMAAAAQAAAAAQAAAAIAAAAPAAAAB0JhbGFuY2UAAAAAEgAAAAFbVonktq9zBIarMwuGThu7XR2GfPpSrque+9ldLMY7tgAAAAEAAAARAAAAAQAAAAMAAAAPAAAABmFtb3VudAAAAAAACgAAAAAAAAAAAAAAAAACSksAAAAPAAAACmF1dGhvcml6ZWQAAAAAAAAAAAABAAAADwAAAAhjbGF3YmFjawAAAAAAAAAB"
+      ]
+    },
+    {
+      "name": "lpUSDC",
+      "asset": "USDC",
+      "id": "CBIOHQFWKSYTRET3LJV4LTO3ZQWRQMQ7I2SJAZ62IZCQHDST4YO3AZP7",
+      "ledger": 65425447,
+      "balance": {
+        "amount": "150039",
+        "authorized": true,
+        "clawback": false
+      },
+      "raw": [
+        "AAAABgAAAAAAAAABre/OWa7lKWj3YGHUlMJSW3Vln6QpamX0me8p5WR35JYAAAAQAAAAAQAAAAIAAAAPAAAAB0JhbGFuY2UAAAAAEgAAAAFQ48C2VLE4kntaa8XN28wtGDIfRqSQZ9pGRQOOU+YdsAAAAAEAAAARAAAAAQAAAAMAAAAPAAAABmFtb3VudAAAAAAACgAAAAAAAAAAAAAAAAACShcAAAAPAAAACmF1dGhvcml6ZWQAAAAAAAAAAAABAAAADwAAAAhjbGF3YmFjawAAAAAAAAAA"
+      ]
+    }
+  ]
+}

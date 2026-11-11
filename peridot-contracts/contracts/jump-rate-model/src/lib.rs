@@ -327,6 +327,57 @@ mod test {
     use super::*;
     use soroban_sdk::testutils::Address as _;
 
+    // Test-only genesis for getter arithmetic. No initializer/authentication
+    // claim is made, and no blanket authorization bypass is installed.
+    fn denominator_fixture(env: &Env) -> Address {
+        let admin = Address::generate(env);
+        let id = env.register(JumpRateModel, ());
+        env.as_contract(&id, || {
+            let storage = env.storage().persistent();
+            storage.set(&DataKey::Admin, &admin);
+            storage.set(&DataKey::BaseRatePerYear, &20_000u128);
+            storage.set(&DataKey::MultiplierPerYear, &180_000u128);
+            storage.set(&DataKey::JumpMultiplierPerYear, &4_000_000u128);
+            storage.set(&DataKey::Kink, &800_000u128);
+        });
+        id
+    }
+
+    #[test]
+    fn zero_denominator_supply_only_zero_debt_has_zero_supplier_income() {
+        let env = Env::default();
+        let id = denominator_fixture(&env);
+        let client = JumpRateModelClient::new(&env, &id);
+        // Empty market and cash fully reserved: both have zero denominator.
+        // The ordinary cash-only case is included as the comparison.
+        for (cash, reserves) in [(0u128, 0u128), (100, 100), (100, 0)] {
+            assert_eq!(client.get_borrow_rate(&cash, &0, &reserves), 20_000);
+            for reserve_factor in [0u128, 100_000, 1_000_000] {
+                assert_eq!(
+                    client.get_supply_rate(&cash, &0, &reserves, &reserve_factor),
+                    0,
+                    "zero debt must never manufacture supplier interest"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn zero_denominator_with_debt_records_existing_rate_discontinuity() {
+        let env = Env::default();
+        let id = denominator_fixture(&env);
+        let client = JumpRateModelClient::new(&env, &id);
+        // Diagnostic pin, not approval of the debt-bearing economics: a net
+        // asset denominator of one saturates utilization, while zero currently
+        // takes the explicit zero-utilization branch. Supply-only has no debt.
+        let full_rate = 20_000 + 800_000 * 180_000 / SCALE_1E6
+            + 200_000 * 4_000_000 / SCALE_1E6;
+        assert_eq!(client.get_borrow_rate(&100, &50, &149), full_rate);
+        assert_eq!(client.get_supply_rate(&100, &50, &149, &100_000), 867_600);
+        assert_eq!(client.get_borrow_rate(&100, &50, &150), 20_000);
+        assert_eq!(client.get_supply_rate(&100, &50, &150, &100_000), 0);
+    }
+
     #[test]
     fn model_rates() {
         let env = Env::default();

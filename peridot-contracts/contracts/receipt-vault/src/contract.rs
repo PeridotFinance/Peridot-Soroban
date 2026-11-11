@@ -1,6 +1,6 @@
 use soroban_sdk::{
     auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
-    token, Address, Bytes, Env, IntoVal, MuxedAddress, String, Symbol, Val, Vec,
+    token, Address, Bytes, Env, IntoVal, MuxedAddress, String, Symbol, Val, Vec, U256,
 };
 #[cfg(not(feature = "lp-engine"))]
 use soroban_sdk::{contract, contractimpl};
@@ -547,8 +547,39 @@ impl ReceiptVault {
         0u128
     }
 
+    // Financial conversions use the exact NAV/supply ratio, not its truncated
+    // 1e6 quote. Both directions round down; the U256 product avoids u128 overflow.
+    fn floor_ratio(env: &Env, amount: u128, numerator: u128, denominator: u128) -> u128 {
+        assert!(denominator > 0, "zero ratio denominator");
+        U256::from_u128(env, amount)
+            .mul(&U256::from_u128(env, numerator))
+            .div(&U256::from_u128(env, denominator))
+            .to_u128()
+            .expect("ratio overflow")
+    }
+
+    fn minimum_supply(env: &Env) -> u128 {
+        env.storage().instance().get(&DataKey::PermanentMinimumSupply).unwrap_or(0)
+    }
+
+    fn preserve_minimum_supply(env: &Env, owner: &Address, amount: u128) {
+        let floor = Self::minimum_supply(env);
+        if floor > 0 && *owner == env.current_contract_address() {
+            let remaining = ptoken_balance(env, owner).checked_sub(amount)
+                .expect("insufficient locked shares");
+            assert!(remaining >= floor, "permanent minimum supply locked");
+        }
+    }
+
     fn minimum_cash_reserve_bps(env: &Env) -> Option<u32> {
-        env.storage().instance().get(&DataKey::MinCashReserveBps)
+        let configured = env.storage().instance().get(&DataKey::MinCashReserveBps);
+        // The replacement cash release must never select legacy allocation or
+        // bypass borrowing controls because configuration is absent. An explicit
+        // configured zero is still allowed; absence requires all cash retained.
+        #[cfg(not(feature = "lp-engine"))]
+        { Some(configured.unwrap_or(10_000)) }
+        #[cfg(feature = "lp-engine")]
+        { configured }
     }
 
     fn ceil_bps(amount: u128, bps: u32) -> u128 {
@@ -1244,6 +1275,13 @@ impl ReceiptVault {
         // Borrowing is gated until either an interest model is configured or
         // admin explicitly enables static-rate mode.
         env.storage().persistent().set(&DataKey::RatesReady, &false);
+        // Fresh ordinary receipts start with an explicit durable cash policy.
+        // Existing deployed instances are not migrated by this initializer.
+        #[cfg(not(feature = "lp-engine"))]
+        {
+            env.storage().instance().set(&DataKey::MinCashReserveBps, &0u32);
+            env.storage().instance().set(&DataKey::CashBorrowingEnabled, &false);
+        }
 
         // Set last update time and accumulated interest
         let now = env.ledger().timestamp();
@@ -1640,10 +1678,53 @@ impl ReceiptVault {
         }
     }
 
+    /// Explicitly fund permanent minimum shares in a fresh cash-only market.
+    /// All seed assets are locked, not an ordinary withdrawable deposit. The
+    /// minimum is 1,000 RAW pToken units, not 1,000 tokens or a principal guarantee.
+    pub fn seed_minimum_supply(env: Env, admin: Address, seed_assets: u128) -> u128 {
+        let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
+        let stored: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin missing");
+        assert!(admin == stored, "invalid admin");
+        admin.require_auth();
+        assert!(Self::minimum_cash_reserve_bps(&env).is_some() && !Self::cl_custody(&env), "cash market required");
+        assert!(!env.storage().instance().has(&DataKey::PermanentMinimumSupply), "minimum supply already seeded");
+        assert!(total_ptokens_supply(&env) == 0 && Self::get_total_underlying(env.clone()) == 0,
+            "minimum supply requires empty market");
+        assert!(Self::get_total_borrowed(env.clone()) == 0, "minimum supply requires zero debt");
+        assert!(!env.storage().persistent().has(&DataKey::BoostedVault), "cash-only seed required");
+        assert!(Self::get_managed_cash(&env) == 0 && Self::get_total_reserves(env.clone()) == 0
+            && env.storage().persistent().get::<_, u128>(&DataKey::TotalAdminFees).unwrap_or(0) == 0,
+            "seed requires no prior claims");
+        let cap: u128 = env.storage().persistent().get(&DataKey::SupplyCap).expect("supply cap missing");
+        assert!(cap == 0 || seed_assets <= cap, "supply cap exceeded");
+        let rate: u128 = env.storage().persistent().get(&DataKey::InitialExchangeRate).expect("initial exchange rate missing");
+        let planned = Self::floor_ratio(&env, seed_assets, SCALE_1E6, rate);
+        assert!(planned >= 1_000, "minimum seed is 1000 raw shares");
+        let before = Self::current_live_cash(&env, &token_address);
+        token::Client::new(&env, &token_address).transfer(&admin, &env.current_contract_address(), &to_i128(seed_assets));
+        let received = Self::current_live_cash(&env, &token_address).checked_sub(before).expect("seed cash decreased");
+        assert!(received == seed_assets, "seed transfer mismatch");
+        Self::add_managed_cash(&env, received);
+        env.storage().persistent().set(&DataKey::TotalDeposited, &received);
+        env.storage().instance().set(&DataKey::PermanentMinimumSupply, &planned);
+        TokenBase::mint(&env, &env.current_contract_address(), to_i128(planned));
+        Mint { minter: env.current_contract_address(), mint_amount: received, mint_tokens: planned }.publish(&env);
+        planned
+    }
+
+    pub fn get_minimum_supply(env: Env) -> u128 {
+        ensure_initialized(&env);
+        Self::minimum_supply(&env)
+    }
+
     /// Deposit tokens into the vault and receive pTokens
     pub fn deposit(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
+        if Self::minimum_cash_reserve_bps(&env).is_some() && !Self::cl_custody(&env) {
+            assert!(Self::minimum_supply(&env) >= 1_000, "cash market must be explicitly seeded");
+        }
         // Always update interest first
         Self::update_interest(env.clone());
         // Require authorization from the user
@@ -1693,15 +1774,23 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::SupplyCap)
-            .unwrap_or(0u128);
+            .expect("supply cap missing");
         let total_underlying_before = if cap > 0 {
             Some(Self::get_total_underlying(env.clone()))
         } else {
             None
         };
 
-        // Calculate pTokens to mint based on current exchange rate BEFORE moving cash
-        let current_rate = Self::get_exchange_rate(env.clone());
+        // Capture exact supplier NAV and supply BEFORE moving cash. The public
+        // exchange-rate quote remains informational; truncating it here overmints.
+        let underlying_for_mint = total_underlying_before.unwrap_or_else(|| Self::get_total_underlying(env.clone()));
+        let initial_rate = if total_ptokens_before == 0 {
+            assert!(underlying_for_mint == 0, "non-empty vault at zero supply");
+            env.storage().persistent().get(&DataKey::InitialExchangeRate).unwrap_or(SCALE_1E6)
+        } else {
+            assert!(underlying_for_mint > 0, "invalid underlying state");
+            0u128
+        };
         let amount_i128 = to_i128(amount);
         token_client.transfer(&user, &env.current_contract_address(), &amount_i128);
         let cash_after = Self::current_live_cash(&env, &token_address);
@@ -1718,10 +1807,11 @@ impl ReceiptVault {
             }
         }
 
-        let scaled_amount = received_cash
-            .checked_mul(SCALE_1E6)
-            .expect("ptoken calculation overflow");
-        let ptokens_to_mint = scaled_amount / current_rate;
+        let ptokens_to_mint = if total_ptokens_before == 0 {
+            Self::floor_ratio(&env, received_cash, SCALE_1E6, initial_rate)
+        } else {
+            Self::floor_ratio(&env, received_cash, total_ptokens_before, underlying_for_mint)
+        };
         if ptokens_to_mint == 0 {
             panic!("amount below minimum");
         }
@@ -1784,6 +1874,7 @@ impl ReceiptVault {
         // Always update interest first
         Self::update_interest(env.clone());
         let current_ptokens = ptoken_balance(&env, &user);
+        Self::preserve_minimum_supply(&env, &user, ptoken_amount);
         // Rewards accrue and fail closed on error.
         let total_ptokens_before = total_ptokens_supply(&env);
         let total_borrowed_before: u128 = env
@@ -1808,14 +1899,12 @@ impl ReceiptVault {
             Self::enforce_margin_lock(&env, &user, current_ptokens, ptoken_amount);
         }
 
-        // Calculate underlying tokens to return based on current exchange rate
-        let current_rate = Self::get_exchange_rate(env.clone());
-        // underlying = ptoken_amount * rate / 1e6
-        // SECURITY: Use checked_mul to prevent silent overflow in release builds
-        let underlying_to_return = ptoken_amount
-            .checked_mul(current_rate)
-            .expect("withdraw calculation overflow")
-            / SCALE_1E6;
+        // Use one exact NAV snapshot for payout and the conservative health quote.
+        let underlying_for_withdraw = Self::get_total_underlying(env.clone());
+        let current_rate = Self::floor_ratio(&env, underlying_for_withdraw, SCALE_1E6, total_ptokens_before);
+        let underlying_to_return = Self::floor_ratio(
+            &env, ptoken_amount, underlying_for_withdraw, total_ptokens_before,
+        );
 
         // Check we have enough liquid underlying (cash)
         let available_underlying = Self::get_available_liquidity(env.clone());
@@ -1917,6 +2006,7 @@ impl ReceiptVault {
         let total_ptokens_after = total_ptokens_before
             .checked_sub(ptoken_amount)
             .expect("ptoken supply underflow");
+        assert!(total_ptokens_after >= Self::minimum_supply(&env), "permanent minimum supply locked");
         let final_exit = total_ptokens_after == 0;
         if final_exit {
             let total_borrowed: u128 = env
@@ -2123,6 +2213,7 @@ impl ReceiptVault {
     ) {
         let to_address = to.address();
         let token_address = ensure_initialized(&env);
+        Self::preserve_minimum_supply(&env, &from, amount);
         Self::ensure_not_in_flash_loan(&env);
         if amount == 0 {
             return;
@@ -2466,6 +2557,9 @@ impl ReceiptVault {
     /// Soroban's transaction footprint, so operators should call this periodically.
     pub fn bump_ttl(env: Env) {
         let _ = ensure_initialized(&env);
+        // Instance policy flags share the contract-instance lifetime. Maintain
+        // it explicitly on the keeper path as well as the persistent keys.
+        env.storage().instance().extend_ttl(500_000, 1_000_000);
         // BoostedAssetCount stays off the ordinary ensure_initialized hot path:
         // one extra absent-key read is enough to push boundary lending calls
         // past Soroban's 100-entry footprint limit. The explicit keeper path
@@ -3872,7 +3966,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::BorrowCap)
-            .unwrap_or(0u128);
+            .expect("borrow cap missing");
         if bcap > 0 {
             let principal_total: u128 = env
                 .storage()
@@ -4056,7 +4150,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::BorrowCap)
-            .unwrap_or(0u128);
+            .expect("borrow cap missing");
         if bcap > 0 {
             let principal_total: u128 = env
                 .storage()
@@ -4750,6 +4844,7 @@ impl ReceiptVault {
             abort_seize(&env, &borrower, &liquidator, ptoken_amount, "no_comp");
         };
         comp_addr.require_auth();
+        Self::preserve_minimum_supply(&env, &borrower, ptoken_amount);
         if ptoken_amount == 0 {
             abort_seize(&env, &borrower, &liquidator, ptoken_amount, "zero_amt");
         }

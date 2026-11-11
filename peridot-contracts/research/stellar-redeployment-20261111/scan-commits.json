@@ -1,0 +1,8 @@
+{
+  "base": "841acf3abc24a16495d0728852f41794bfa397fa",
+  "unpatched": "9fd83fc8297626b17550419edf01d3f11598a187",
+  "source": "227d0564e6776b47a01e9545d9093d84b6950534",
+  "patched": "95c6e39bd1095d43cd4240b8ce7d8d1d82044aba",
+  "medium_fixed": "10de9449e68285aa8dda2b736d14bfaca20a904f",
+  "medium_final": "e3eab76a74028a394b0cde4e48c2ec42662811cc"
+}
