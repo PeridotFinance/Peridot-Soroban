@@ -1,0 +1,46 @@
+[workspace]
+resolver = "2"
+members = [
+  "interfaces/cl-stage1-interface",
+  "contracts/receipt-vault",
+  "contracts/lp-receipt-vault",
+  "contracts/lp-lending-vault",
+  "contracts/lp-peridottroller",
+  "contracts/simple-peridottroller",
+  "contracts/jump-rate-model",
+  "contracts/peridot-token",
+  "contracts/swap-adapter",
+  "contracts/aquarius-lp-vault",
+  "contracts/cl-share-vault",
+  "contracts/cl-integration-fixtures",
+  "contracts/cl-share-pool-facade",
+  "contracts/price-router",
+  "contracts/margin-controller",
+  "contracts/smart-account-basic",
+  "contracts/smart-account-factory",
+  "contracts/mocks/mock-token",
+  "contracts/mocks/mock-lending-vault",
+  "contracts/mocks/mock-aquarius-pool",
+  "contracts/mocks/mock-depth-fixture",
+  "contracts/mocks/flash-loan-receiver",
+]
+
+[workspace.dependencies]
+soroban-sdk = { version = "25.3.0", features = ["experimental_spec_shaking_v2"] }
+stellar-tokens = { path = "../openzeppelin-stellar-contracts/packages/tokens" }
+stellar-contract-utils = { path = "../openzeppelin-stellar-contracts/packages/contract-utils" }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+# For more information about this profile see https://soroban.stellar.org/docs/basic-tutorials/logging#cargotoml-profile
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true
