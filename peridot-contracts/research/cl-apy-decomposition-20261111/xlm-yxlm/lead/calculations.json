@@ -1,0 +1,139 @@
+{
+  "scope": "conditional static-mark continuation; no native-XLM signed fixture/realized CL issuer coupon/finite historical position return",
+  "pool": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+  "window": [
+    "2026-11-04T00:00:00Z",
+    "2026-11-11T00:00:00Z"
+  ],
+  "stats_buckets": 86,
+  "event_counts": {
+    "swap": 235,
+    "claim": 36,
+    "deposit": 5,
+    "claim_fees": 13,
+    "withdraw": 2
+  },
+  "volume_usdc_historical": "2812.09765498643960",
+  "LP_fee_share": "0.5",
+  "week_aggregate_fee_estimate": "1.406048827493219800",
+  "annual_week_fee_over_current_TVL_percent": "0.02416638035895988115701345714",
+  "range": [
+    -2000,
+    2020
+  ],
+  "L10k": "3544730546961",
+  "A": "9810831244853116",
+  "W": "11624878347869489",
+  "tps": "1.7484101",
+  "schedule_end": "1794413719",
+  "historical_sale_benchmark": {
+    "label": "small",
+    "time": "2026-11-11T08:56:52Z",
+    "transaction_hash": "d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db",
+    "AQUA_in": "534.4348539",
+    "USDC_out": "0.1296981",
+    "realized_leg_USDC_per_AQUA": "0.000242682712501883852152704818191499317556017654034970117056581",
+    "scope": "third-party historic venue leg; network fee belongs to larger routed transaction; not our sale"
+  },
+  "rows": [
+    {
+      "mode": "fees_only",
+      "total_capital": 10000,
+      "LP_capital": "10000",
+      "lock_capital": "0",
+      "nets": [
+        {
+          "leg": 0,
+          "holding": "XLM",
+          "entry_marked_cost_usdc": "5.164870840555715015198088",
+          "entry_liquidity_fraction": "0.9989660624618285061839262804",
+          "weekly_fee_usdc_sensitivity": "0.0005073081457256018842677840407",
+          "weekly_aqua": "0",
+          "annual_net_excluding_issuer_distributions": "-5.223204426361969501283407832",
+          "annual_net_vs_hold_with_advertised_1_6pct_coupon": "-5.223204426361969501283407832",
+          "coupon_credited_to_vault": 0,
+          "warm_cost_usdc_old_fixture_anchor": "0.08478608197623229862214"
+        },
+        {
+          "leg": 1,
+          "holding": "yXLM",
+          "entry_marked_cost_usdc": "5.179879440408678887754342",
+          "entry_liquidity_fraction": "0.9989649884916812109348573558",
+          "weekly_fee_usdc_sensitivity": "0.0005073076005246722333247631473",
+          "weekly_aqua": "0",
+          "annual_net_excluding_issuer_distributions": "-5.238213054643267562781690779",
+          "annual_net_vs_hold_with_advertised_1_6pct_coupon": "-165.2382130546432675627816908",
+          "coupon_credited_to_vault": 0,
+          "warm_cost_usdc_old_fixture_anchor": "0.08478608197623229862214"
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "mode": "base",
+      "total_capital": 10000,
+      "LP_capital": "10000",
+      "lock_capital": "0",
+      "nets": [
+        {
+          "leg": 0,
+          "holding": "XLM",
+          "entry_marked_cost_usdc": "5.164870840555715015198088",
+          "entry_liquidity_fraction": "0.9989660624618285061839262804",
+          "weekly_fee_usdc_sensitivity": "0.0005073081457256018842677840407",
+          "weekly_aqua": "322.0092621629735615538468143",
+          "annual_net_excluding_issuer_distributions": "-1.148444478470420862530936164",
+          "annual_net_vs_hold_with_advertised_1_6pct_coupon": "-1.148444478470420862530936164",
+          "coupon_credited_to_vault": 0,
+          "warm_cost_usdc_old_fixture_anchor": "0.08478608197623229862214"
+        },
+        {
+          "leg": 1,
+          "holding": "yXLM",
+          "entry_marked_cost_usdc": "5.179879440408678887754342",
+          "entry_liquidity_fraction": "0.9989649884916812109348573558",
+          "weekly_fee_usdc_sensitivity": "0.0005073076005246722333247631473",
+          "weekly_aqua": "322.0089160821237779376962740",
+          "annual_net_excluding_issuer_distributions": "-1.163457486117628954374116027",
+          "annual_net_vs_hold_with_advertised_1_6pct_coupon": "-161.1634574861176289543741160",
+          "coupon_credited_to_vault": 0,
+          "warm_cost_usdc_old_fixture_anchor": "0.08478608197623229862214"
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "mode": "boost_including_lock",
+      "total_capital": 10000,
+      "LP_capital": "9271.834238674186955227079952",
+      "lock_capital": "728.165761325813044772920048",
+      "nets": [
+        {
+          "leg": 0,
+          "holding": "XLM",
+          "entry_marked_cost_usdc": "4.788782629779440597061970931",
+          "entry_liquidity_fraction": "0.9989660624618285061839262804",
+          "weekly_fee_usdc_sensitivity": "0.0004703800615780240619891572761",
+          "weekly_aqua": "746.1046820888961861831376298",
+          "annual_net_excluding_issuer_distributions": "4.592293740281824198897279139",
+          "annual_net_vs_hold_with_advertised_1_6pct_coupon": "4.592293740281824198897279139",
+          "coupon_credited_to_vault": 0,
+          "warm_cost_usdc_old_fixture_anchor": "0.08478608197623229862214"
+        },
+        {
+          "leg": 1,
+          "holding": "yXLM",
+          "entry_marked_cost_usdc": "4.802698354778567677220094504",
+          "entry_liquidity_fraction": "0.9989649884916812109348573558",
+          "weekly_fee_usdc_sensitivity": "0.0004703795560501967985135934265",
+          "weekly_aqua": "746.1038805313548928907034584",
+          "annual_net_excluding_issuer_distributions": "4.578367845877632297158160272",
+          "annual_net_vs_hold_with_advertised_1_6pct_coupon": "-155.4216321541223677028418397",
+          "coupon_credited_to_vault": 0,
+          "warm_cost_usdc_old_fixture_anchor": "0.08478608197623229862214"
+        }
+      ],
+      "realized_net": null
+    }
+  ]
+}

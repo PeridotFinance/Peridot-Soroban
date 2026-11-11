@@ -1,0 +1,347 @@
+[
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "base",
+    "label": "CAFJZQWS-base",
+    "time": "2026-11-11T10:50:44.303Z",
+    "ledger": 65421640,
+    "cost": null,
+    "value": [
+      "Other",
+      "USD"
+    ],
+    "minResourceFee": "6467",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 711549,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "decimals",
+    "label": "CAFJZQWS-decimals",
+    "time": "2026-11-11T10:50:44.865Z",
+    "ledger": 65421640,
+    "cost": null,
+    "value": 14,
+    "minResourceFee": "6383",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 696945,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "resolution",
+    "label": "CAFJZQWS-resolution",
+    "time": "2026-11-11T10:50:45.430Z",
+    "ledger": 65421640,
+    "cost": null,
+    "value": 300,
+    "minResourceFee": "6391",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 697407,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "last_timestamp",
+    "label": "CAFJZQWS-last_timestamp",
+    "time": "2026-11-11T10:50:46.003Z",
+    "ledger": 65421640,
+    "cost": null,
+    "value": "1794394200",
+    "minResourceFee": "6411",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 698367,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "base",
+    "label": "CALI2BYU-base",
+    "time": "2026-11-11T10:50:46.567Z",
+    "ledger": 65421640,
+    "cost": null,
+    "value": [
+      "Stellar",
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75"
+    ],
+    "minResourceFee": "6658",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1080247,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "decimals",
+    "label": "CALI2BYU-decimals",
+    "time": "2026-11-11T10:50:47.124Z",
+    "ledger": 65421640,
+    "cost": null,
+    "value": 14,
+    "minResourceFee": "6493",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1063427,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "resolution",
+    "label": "CALI2BYU-resolution",
+    "time": "2026-11-11T10:50:47.692Z",
+    "ledger": 65421640,
+    "cost": null,
+    "value": 300,
+    "minResourceFee": "6501",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1063889,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "last_timestamp",
+    "label": "CALI2BYU-last_timestamp",
+    "time": "2026-11-11T10:50:48.246Z",
+    "ledger": 65421641,
+    "cost": null,
+    "value": "1794394200",
+    "minResourceFee": "6521",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1064849,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "lastprice",
+    "label": "external-XLM",
+    "time": "2026-11-11T10:50:48.812Z",
+    "ledger": 65421641,
+    "cost": null,
+    "value": {
+      "price": "14848816077125",
+      "timestamp": "1794394200"
+    },
+    "minResourceFee": "6717",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 821119,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "lastprice",
+    "label": "external-yXLM",
+    "time": "2026-11-11T10:50:49.363Z",
+    "ledger": 65421641,
+    "cost": null,
+    "value": null,
+    "minResourceFee": "6480",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 744927,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "lastprice",
+    "label": "external-USDC",
+    "time": "2026-11-11T10:50:49.931Z",
+    "ledger": 65421641,
+    "cost": null,
+    "value": {
+      "price": "100077597650360",
+      "timestamp": "1794394200"
+    },
+    "minResourceFee": "6713",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 807059,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "lastprice",
+    "label": "dex-XLM",
+    "time": "2026-11-11T10:50:50.509Z",
+    "ledger": 65421641,
+    "cost": null,
+    "value": {
+      "price": "14851761814408",
+      "timestamp": "1794394200"
+    },
+    "minResourceFee": "6886",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1182966,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "lastprice",
+    "label": "dex-yXLM",
+    "time": "2026-11-11T10:50:51.085Z",
+    "ledger": 65421641,
+    "cost": null,
+    "value": null,
+    "minResourceFee": "6660",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1141798,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+    "method": "get_slot0",
+    "label": "pool-get_slot0",
+    "time": "2026-11-11T10:50:51.659Z",
+    "ledger": 65421641,
+    "cost": null,
+    "value": {
+      "sqrt_price_x96": "79259974659293628166848868508",
+      "tick": 8
+    },
+    "minResourceFee": "6853",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1453494,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+    "method": "get_tokens",
+    "label": "pool-get_tokens",
+    "time": "2026-11-11T10:50:52.230Z",
+    "ledger": 65421641,
+    "cost": null,
+    "value": [
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      "CBZVSNVB55ANF24QVJL2K5QCLOAB6XITGTGXYEAF6NPTXYKEJUYQOHFC"
+    ],
+    "minResourceFee": "6884",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1558624,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+    "method": "get_fee_fraction",
+    "label": "pool-get_fee_fraction",
+    "time": "2026-11-11T10:50:52.799Z",
+    "ledger": 65421641,
+    "cost": null,
+    "value": 10,
+    "minResourceFee": "6622",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1439871,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+    "method": "get_protocol_fee_fraction",
+    "label": "pool-get_protocol_fee_fraction",
+    "time": "2026-11-11T10:50:53.375Z",
+    "ledger": 65421642,
+    "cost": null,
+    "value": 5000,
+    "minResourceFee": "6650",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1444246,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+    "method": "version",
+    "label": "pool-version",
+    "time": "2026-11-11T10:50:53.939Z",
+    "ledger": 65421642,
+    "cost": null,
+    "value": 220,
+    "minResourceFee": "6532",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1195359,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  }
+]

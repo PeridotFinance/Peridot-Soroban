@@ -1,0 +1,62 @@
+{
+  "at": "2026-11-11T10:52:06.242Z",
+  "scope": "independent rolling unsigned live estimates; no executed deposit, no sequential path proof",
+  "pool": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+  "range": [
+    -2000,
+    2020
+  ],
+  "capital": 10000,
+  "prices": [
+    0.1475897354963751,
+    0.14747135922432844
+  ],
+  "slot": {
+    "sqrt_price_x96": "79259974659293628166848868508",
+    "tick": 8
+  },
+  "desired_amounts": [
+    "339092603492",
+    "338732975707"
+  ],
+  "views": [
+    {
+      "label": "deposit",
+      "method": "estimate_deposit_position",
+      "ledger": 65421656,
+      "value": [
+        [
+          "339092603492",
+          "338732975707"
+        ],
+        "3544730546961"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAAEAAAAAEAAAACAAAACQAAAAAAAAAAAAAATvN+gmQAAAAJAAAAAAAAAAAAAABO3g8GWwAAAAkAAAAAAAAAAAAAAzlSZ7MR",
+      "resourceFee": "8351"
+    },
+    {
+      "label": "entry_0",
+      "method": "estimate_swap",
+      "leg": 0,
+      "initial": "677553894000",
+      "keep": "339092603492",
+      "input": "338461290508",
+      "ledger": 65421656,
+      "value": "338382746968",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAATsku9Vg=",
+      "resourceFee": "9647"
+    },
+    {
+      "label": "entry_1",
+      "method": "estimate_swap",
+      "leg": 1,
+      "initial": "678097771160",
+      "keep": "338732975707",
+      "input": "339364795453",
+      "ledger": 65421657,
+      "value": "338741638745",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAATt6TNlk=",
+      "resourceFee": "8345"
+    }
+  ]
+}

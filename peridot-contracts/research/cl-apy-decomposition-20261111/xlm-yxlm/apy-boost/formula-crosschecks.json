@@ -1,0 +1,54 @@
+[
+  {
+    "raw_liquidity": 5458529715593449,
+    "pool_raw_total": 9810831244853116,
+    "ICE": 16514243133671221,
+    "total_ICE": 616277490709458557,
+    "calculated_new_weight_before_sequential_rounding": 5852877525541221,
+    "actual_new_weight": 5852877525541220,
+    "difference": -1,
+    "ranges": [
+      {
+        "tick_lower": 0,
+        "tick_upper": 20
+      }
+    ],
+    "zero_auth": true
+  },
+  {
+    "raw_liquidity": 2263966278389980,
+    "pool_raw_total": 9810831244853116,
+    "ICE": 14124124568529310,
+    "total_ICE": 616277490709458557,
+    "calculated_new_weight_before_sequential_rounding": 2601239839518110,
+    "actual_new_weight": 2601239839518108,
+    "difference": -2,
+    "ranges": [
+      {
+        "tick_lower": -20,
+        "tick_upper": 60
+      },
+      {
+        "tick_lower": -887260,
+        "tick_upper": 887260
+      }
+    ],
+    "zero_auth": true
+  },
+  {
+    "raw_liquidity": 794499745893147,
+    "pool_raw_total": 9810831244853116,
+    "ICE": 150022660494560,
+    "total_ICE": 616277490709458557,
+    "calculated_new_weight_before_sequential_rounding": 798082175141021,
+    "actual_new_weight": 798082175141020,
+    "difference": -1,
+    "ranges": [
+      {
+        "tick_lower": 0,
+        "tick_upper": 20
+      }
+    ],
+    "zero_auth": true
+  }
+]

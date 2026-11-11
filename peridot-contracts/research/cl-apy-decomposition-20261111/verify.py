@@ -33,4 +33,12 @@ with tarfile.open(archive,'r:xz') as t:
 signed=json.loads((P/'lead/signed-table.json').read_text())
 assert len(signed['rows'])==18 and not signed['release_approval']
 assert all(x['pass'] and x['gate_summary']=={'invocation':True,'lifecycle':False,'transaction':False,'checkpoint':False} for x in signed['rows'])
-print(f"PASS {len(manifest['files'])} file identities, {len(expected)} archive members, 9 conditional capital rows, 3 CL UI component identities, 18 private applications; not a release gate")
+six=json.loads((P/'xlm-yxlm/lead/calculations.json').read_text())
+assert six['event_counts']['swap']==235 and len(six['rows'])==3
+for row in six['rows']:
+    assert abs(float(row['LP_capital'])+float(row['lock_capital'])-10000)<1e-8
+    assert row['realized_net'] is None
+    a=row['nets'][1]
+    assert abs(float(a['annual_net_excluding_issuer_distributions'])-160-float(a['annual_net_vs_hold_with_advertised_1_6pct_coupon']))<1e-8
+    assert all(n['coupon_credited_to_vault']==0 for n in row['nets'])
+print(f"PASS {len(manifest['files'])} file identities, {len(expected)} archive members, 12 conditional capital rows, 18 preserved private applications; sixth pool remains unmeasured; not a release gate")

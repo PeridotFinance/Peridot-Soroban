@@ -1,0 +1,15 @@
+{
+  "source": "reused accepted sale-fx capture, not a new historical study",
+  "source_path": "research/cl-apy-decomposition-20261111/sale-fx/swap-small-operations.json",
+  "sha256": "821eb52dd83e42299d24cdfcf79c023a1686a274cbf52e7a64ea14190b84da53",
+  "receipt": {
+    "file": "swap-small-operations.json",
+    "url": "https://horizon.stellar.org/transactions/d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db/operations?limit=200",
+    "time": "2026-11-11T10:17:24.490591+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 7737,
+    "sha256": "821eb52dd83e42299d24cdfcf79c023a1686a274cbf52e7a64ea14190b84da53"
+  }
+}

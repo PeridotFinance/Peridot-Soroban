@@ -1,0 +1,165 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://horizon.stellar.org/transactions/d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db/operations?cursor=\u0026limit=200\u0026order=asc"
+    },
+    "next": {
+      "href": "https://horizon.stellar.org/transactions/d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db/operations?cursor=280977937325993985\u0026limit=200\u0026order=asc"
+    },
+    "prev": {
+      "href": "https://horizon.stellar.org/transactions/d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db/operations?cursor=280977937325993985\u0026limit=200\u0026order=desc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon.stellar.org/operations/280977937325993985"
+          },
+          "transaction": {
+            "href": "https://horizon.stellar.org/transactions/d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db"
+          },
+          "effects": {
+            "href": "https://horizon.stellar.org/operations/280977937325993985/effects"
+          },
+          "succeeds": {
+            "href": "https://horizon.stellar.org/effects?order=desc\u0026cursor=280977937325993985"
+          },
+          "precedes": {
+            "href": "https://horizon.stellar.org/effects?order=asc\u0026cursor=280977937325993985"
+          }
+        },
+        "id": "280977937325993985",
+        "paging_token": "280977937325993985",
+        "transaction_successful": true,
+        "source_account": "GAUUYI2635N3QS6UWVOFCPGT4KEMGC3LHFRKRVRUH2KQFALFOKCTCJDH",
+        "type": "invoke_host_function",
+        "type_i": 24,
+        "created_at": "2026-11-11T08:56:52Z",
+        "transaction_hash": "d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db",
+        "function": "HostFunctionTypeHostFunctionTypeInvokeContract",
+        "parameters": [
+          {
+            "value": "AAAAEgAAAAFgM7QlDnBOMU+wZJc9GF25IsrgvScrpb/xmqxXDxKsLw==",
+            "type": "Address"
+          },
+          {
+            "value": "AAAADwAAAAxzd2FwX2NoYWluZWQ=",
+            "type": "Sym"
+          },
+          {
+            "value": "AAAAEgAAAAAAAAAAKUwjXt9buEvUtVxRPNPiiMMLazliqNY0PpUCgWVyhTE=",
+            "type": "Address"
+          },
+          {
+            "value": "AAAAEAAAAAEAAAAEAAAAEAAAAAEAAAADAAAAEAAAAAEAAAACAAAAEgAAAAEohS9owZhIjjRvsSEu1QKQU3Ycwk9FM5LjU5ggGwgl5wAAABIAAAABcrL4hxZ5yncYyLhihst4rfO6w75RIlRNOA//ghIVnYIAAAANAAAAILLgL8/KbJb4rVy9hOd4Snd7NtnJaiRZQCxPRYRiqrfwAAAAEgAAAAEohS9owZhIjjRvsSEu1QKQU3Ycwk9FM5LjU5ggGwgl5wAAABAAAAABAAAAAwAAABAAAAABAAAAAgAAABIAAAABKIUvaMGYSI40b7EhLtUCkFN2HMJPRTOS41OYIBsIJecAAAASAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAADQAAACCax6nN4jrCraERBe6qQuQ8LqgzLKCqj0H1jXFgJ01xjgAAABIAAAABre/OWa7lKWj3YGHUlMJSW3Vln6QpamX0me8p5WR35JYAAAAQAAAAAQAAAAMAAAAQAAAAAQAAAAIAAAASAAAAAQo9Il4pA0vY4HH2bq2cWy6D1P5YMRPR+KU9ptz7RydBAAAAEgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAAA0AAAAgsuAvz8pslvitXL2E53hKd3s22clqJFlALE9FhGKqt/AAAAASAAAAAQo9Il4pA0vY4HH2bq2cWy6D1P5YMRPR+KU9ptz7RydBAAAAEAAAAAEAAAADAAAAEAAAAAEAAAACAAAAEgAAAAEKPSJeKQNL2OBx9m6tnFsug9T+WDET0filPabc+0cnQQAAABIAAAABJbT82FmuwvpjSEOMSJs8PBDJi20hvk/TyzDLaJU++XcAAAANAAAAIJrHqc3iOsKtoREF7qpC5DwuqDMsoKqPQfWNcWAnTXGOAAAAEgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dw==",
+            "type": "Vec"
+          },
+          {
+            "value": "AAAAEgAAAAFysviHFnnKdxjIuGKGy3it87rDvlEiVE04D/+CEhWdgg==",
+            "type": "Address"
+          },
+          {
+            "value": "AAAACQAAAAAAAAAAAAAAADrPbd0=",
+            "type": "U128"
+          },
+          {
+            "value": "AAAACQAAAAAAAAAAAAAAAACINQw=",
+            "type": "U128"
+          }
+        ],
+        "address": "",
+        "salt": "",
+        "asset_balance_changes": [
+          {
+            "asset_type": "credit_alphanum12",
+            "asset_code": "LiquidPoetry",
+            "asset_issuer": "GCALKYUJDHXJT7O5RP7VQSPWTH5GRMWUMJ2B3QKC5ZNXYBBC35WDYYEG",
+            "type": "transfer",
+            "from": "GAUUYI2635N3QS6UWVOFCPGT4KEMGC3LHFRKRVRUH2KQFALFOKCTCJDH",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "98.6672605"
+          },
+          {
+            "asset_type": "credit_alphanum12",
+            "asset_code": "LiquidPoetry",
+            "asset_issuer": "GCALKYUJDHXJT7O5RP7VQSPWTH5GRMWUMJ2B3QKC5ZNXYBBC35WDYYEG",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CAADCGQTOUUW3K3ZAKCNLTADVCI77VBPTSLWCIK5RB3BXVTAP57UWOTC",
+            "amount": "98.6672605"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "AQUA",
+            "asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+            "type": "transfer",
+            "from": "CAADCGQTOUUW3K3ZAKCNLTADVCI77VBPTSLWCIK5RB3BXVTAP57UWOTC",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "534.4348539"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "AQUA",
+            "asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+            "amount": "534.4348539"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "USDC",
+            "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            "type": "transfer",
+            "from": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "0.1296981"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "USDC",
+            "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CBN2N5L4UM5PPQE5UQNC3HVGT56TDQMAXMT3LVFMNN6XLFXZMCJY6KOU",
+            "amount": "0.1296981"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "CODY",
+            "asset_issuer": "GAW55YAX46HLIDRONLOLUWP672HTFXW5WWTEI2T7OXVEFEDE5UKQDJAK",
+            "type": "transfer",
+            "from": "CBN2N5L4UM5PPQE5UQNC3HVGT56TDQMAXMT3LVFMNN6XLFXZMCJY6KOU",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "0.0932582"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "CODY",
+            "asset_issuer": "GAW55YAX46HLIDRONLOLUWP672HTFXW5WWTEI2T7OXVEFEDE5UKQDJAK",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CAOBPWLHSERILJTLOH4APQU3AXUGQBOKLWDEM64A4AZG6XFSZHBEREDW",
+            "amount": "0.0932582"
+          },
+          {
+            "asset_type": "native",
+            "type": "transfer",
+            "from": "CAOBPWLHSERILJTLOH4APQU3AXUGQBOKLWDEM64A4AZG6XFSZHBEREDW",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "0.8936498"
+          },
+          {
+            "asset_type": "native",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "GAUUYI2635N3QS6UWVOFCPGT4KEMGC3LHFRKRVRUH2KQFALFOKCTCJDH",
+            "amount": "0.8936498"
+          }
+        ]
+      }
+    ]
+  }
+}

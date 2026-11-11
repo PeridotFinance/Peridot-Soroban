@@ -1,0 +1,92 @@
+[
+  {
+    "file": "boost-math.json",
+    "bytes": 2405,
+    "sha256": "b59d6482b2c3c8d18bed2593d4da485a13f0419df64b08644a2f83b3e0553dc2"
+  },
+  {
+    "file": "boost-math.py",
+    "bytes": 1551,
+    "sha256": "e315d9b49081f18f730b0e8705ed108d322176e721b082a3ac171a3f23cea4cc"
+  },
+  {
+    "file": "detail.json",
+    "bytes": 1882,
+    "sha256": "d21754c590f45a34bfc5b94b39765c5d849438a47be9f51877bf354f45a54c6c"
+  },
+  {
+    "file": "formula-crosschecks.json",
+    "bytes": 1292,
+    "sha256": "d90073f78e387dbfddeeeb32ab0079286baeda38a10a12c0249bd219fb5dd047"
+  },
+  {
+    "file": "getters.cjs",
+    "bytes": 2760,
+    "sha256": "40c3d1d8840050aa21ffee79c700dc39b3a27f7e1394c1539587010c9d0698e1"
+  },
+  {
+    "file": "getters.json",
+    "bytes": 21595,
+    "sha256": "ddfccd8492dc2bc29f6f9f7472629048d0bca9c1006168ba82ca4f70e9b027eb"
+  },
+  {
+    "file": "holders.json",
+    "bytes": 655,
+    "sha256": "3ca1044675f9be407a481e60d442496b2a9896c3223ed81c7f0d5a93aa32b270"
+  },
+  {
+    "file": "independent-review.json",
+    "bytes": 2162,
+    "sha256": "18a038f1c85e3c7cf3fa5c83f20fe7f1913e29a0cce1b26c11acecca08732a18"
+  },
+  {
+    "file": "pair-pools.json",
+    "bytes": 2667,
+    "sha256": "a83fefd46ceff8e4eb86e84e8f76562b7c58edb3b8c73090826d4623057b59d8"
+  },
+  {
+    "file": "pull.py",
+    "bytes": 653,
+    "sha256": "5d36f34870195e7efae45236928df2aa94c12433caa18264afb7d51e4e9d41a3"
+  },
+  {
+    "file": "report.md",
+    "bytes": 7270,
+    "sha256": "c2bf914224bd55bb7fd404d2a50a766ac71fa1625b10d6583c098945f674e649"
+  },
+  {
+    "file": "review.py",
+    "bytes": 4616,
+    "sha256": "51f9170388c26a4e772879f95125727e1c1c5f5a5a06f09768df4bf4277c13d9"
+  },
+  {
+    "file": "reward-views.cjs",
+    "bytes": 1844,
+    "sha256": "748b54834918da8e07c142f2c7ca6de972049534981dd09714ca7cfef6f5784e"
+  },
+  {
+    "file": "reward-views.json",
+    "bytes": 10504,
+    "sha256": "af59e8eee903b56a8a0587915c55de79b3990a15b350935608cda529764b1911"
+  },
+  {
+    "file": "selected-pools.json",
+    "bytes": 2379,
+    "sha256": "0c5fda8ba78a6db27619a1b9eb09417693a1c70409d6a8e9dad4bc01b7c208bf"
+  },
+  {
+    "file": "sources.json",
+    "bytes": 1029,
+    "sha256": "75e36957901a1c4f8b2c15de86dc68a9f09d16efdbd98f93d796e5b2462d42a0"
+  },
+  {
+    "file": "summary.json",
+    "bytes": 986,
+    "sha256": "3e66f330772091843d073f945159ab4fe0aae5a1bf2911d2b504d44175d06d92"
+  },
+  {
+    "file": "ui-pools.json",
+    "bytes": 408105,
+    "sha256": "d3ddf26a912cb2334b468436a3bc260a17b3257e9dd3dbdd1e6f066c8da47a89"
+  }
+]

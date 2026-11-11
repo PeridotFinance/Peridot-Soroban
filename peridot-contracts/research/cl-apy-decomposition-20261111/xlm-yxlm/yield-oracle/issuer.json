@@ -1,0 +1,99 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://horizon.stellar.org/accounts/GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"
+    },
+    "transactions": {
+      "href": "https://horizon.stellar.org/accounts/GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55/transactions{?cursor,limit,order}",
+      "templated": true
+    },
+    "operations": {
+      "href": "https://horizon.stellar.org/accounts/GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55/operations{?cursor,limit,order}",
+      "templated": true
+    },
+    "payments": {
+      "href": "https://horizon.stellar.org/accounts/GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55/payments{?cursor,limit,order}",
+      "templated": true
+    },
+    "effects": {
+      "href": "https://horizon.stellar.org/accounts/GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55/effects{?cursor,limit,order}",
+      "templated": true
+    },
+    "offers": {
+      "href": "https://horizon.stellar.org/accounts/GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55/offers{?cursor,limit,order}",
+      "templated": true
+    },
+    "trades": {
+      "href": "https://horizon.stellar.org/accounts/GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55/trades{?cursor,limit,order}",
+      "templated": true
+    },
+    "data": {
+      "href": "https://horizon.stellar.org/accounts/GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55/data/{key}",
+      "templated": true
+    }
+  },
+  "id": "GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
+  "account_id": "GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
+  "sequence": "148006617424593036",
+  "sequence_ledger": 64407017,
+  "sequence_time": "1789290710",
+  "subentry_count": 5,
+  "home_domain": "ultracapital.xyz",
+  "last_modified_ledger": 65120805,
+  "last_modified_time": "2026-10-25T00:56:48Z",
+  "thresholds": {
+    "low_threshold": 20,
+    "med_threshold": 20,
+    "high_threshold": 20
+  },
+  "flags": {
+    "auth_required": false,
+    "auth_revocable": false,
+    "auth_immutable": false,
+    "auth_clawback_enabled": false
+  },
+  "balances": [
+    {
+      "balance": "12861.6232056",
+      "buying_liabilities": "0.0000000",
+      "selling_liabilities": "0.0000000",
+      "asset_type": "native"
+    }
+  ],
+  "signers": [
+    {
+      "weight": 1,
+      "key": "GA2T6GR7VXXXBETTERSAFETHANSORRYXXXPROTECTEDBYLOBSTRVAULT",
+      "type": "ed25519_public_key"
+    },
+    {
+      "weight": 1,
+      "key": "GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
+      "type": "ed25519_public_key"
+    },
+    {
+      "weight": 1,
+      "key": "GBXEFLHWOXNNUBBYYDNSCK4QBZOUS6TTJGBUNCI5CDG7CRAY27UXVONL",
+      "type": "ed25519_public_key"
+    },
+    {
+      "weight": 10,
+      "key": "GCPKFQUU4LCMRAH6GORRRSY7HF2VKDKC7LXHS7TNLGJZX5RCESQSOWBS",
+      "type": "ed25519_public_key"
+    },
+    {
+      "weight": 10,
+      "key": "GCQJNA2OAZRULDPN3PE5HIV6KIDUH4YZ7EWNZONZVWJQV43MU7NVM2U7",
+      "type": "ed25519_public_key"
+    },
+    {
+      "weight": 10,
+      "key": "GDFRPJP7I4KXPDOEIRBKAMYYO2CQHWIMEBESBH57YPAHL6TWB3CV527H",
+      "type": "ed25519_public_key"
+    }
+  ],
+  "data": {},
+  "num_sponsoring": 0,
+  "num_sponsored": 0,
+  "paging_token": "GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"
+}

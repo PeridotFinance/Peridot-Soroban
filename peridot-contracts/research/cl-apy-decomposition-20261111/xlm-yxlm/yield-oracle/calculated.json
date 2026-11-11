@@ -1,0 +1,66 @@
+{
+  "pool_yXLM_per_XLM": "1.00080321266369864526119475212646620953593509492700924728265",
+  "pool_XLM_per_yXLM": "0.999197431969107247483173257858374756587229697694746716482793",
+  "pool_yXLM_discount_vs_promised_par_XLM_bps": "-8.02568030892752516826742141625243412770302305253283517207000",
+  "primary_XLM_USD": "0.14848816077125",
+  "primary_USDC_USD": "1.0007759765036",
+  "DEX_XLM_USDC": "0.14851761814408",
+  "primary_yXLM": null,
+  "nominal_redemption_price_not_oracle": 1,
+  "withdraw_fee_yXLM": ".5",
+  "withdraw_fee_USD_at_nominal_par_and_current_XLM_price": "0.074244080385625",
+  "publisher_current_yXLM_APY": ".016",
+  "daily_equivalent_rate_if_annual_compounded_APY": "0.00004348957346953573889590763740516025718997312433716924710",
+  "holding_benchmarks_at_constant_XLM_USD_no_depeg_no_fees": {
+    "1000": {
+      "hold_XLM_coupon_USD": 0,
+      "hold_yXLM_publisher_conditional_coupon_USD": "16.000",
+      "illustrative_half_yXLM_LP_coupon_only_if_entitlement_verified_USD": "8.000",
+      "LP_coupon_booked_without_eligibility_evidence_USD": 0
+    },
+    "10000": {
+      "hold_XLM_coupon_USD": 0,
+      "hold_yXLM_publisher_conditional_coupon_USD": "160.000",
+      "illustrative_half_yXLM_LP_coupon_only_if_entitlement_verified_USD": "80.000",
+      "LP_coupon_booked_without_eligibility_evidence_USD": 0
+    }
+  },
+  "scope": "publisher coupon / nominal redemption terms; no measured coupon receipt, no reserve audit, no guaranteed year, no executable redemption or CL yield attribution proof",
+  "sale_quotes": [
+    {
+      "label": "xy_base",
+      "AQUA_in": "322.3424426",
+      "USDC_out_quote": "0.0795011",
+      "effective_USDC_per_AQUA": "0.000246635532568245172191916622276039053629731352045044036655197",
+      "annual_USDC_conditional_365over7": "4.1454145",
+      "ledger": 65421671,
+      "historical_price_sensitivity_weekly_USDC": "0.0782269383246507980044001392926368045772397929303540133500264"
+    },
+    {
+      "label": "xy_boost_annual_prefunded",
+      "AQUA_in": "746.8763607",
+      "USDC_out_quote": "0.1842063",
+      "effective_USDC_per_AQUA": "0.000246635600874226464187514885420579626065007950920409951595888",
+      "annual_USDC_conditional_365over7": "9.60504278571428571428571428571428571428571428571428571428571",
+      "ledger": 65421673,
+      "historical_price_sensitivity_weekly_USDC": "0.181253981118211403389909035272222165972772083830590151560473"
+    },
+    {
+      "label": "xy_boost_day1_min",
+      "AQUA_in": "763.5441817",
+      "USDC_out_quote": "0.1883172",
+      "effective_USDC_per_AQUA": "0.000246635629624888804257127639638197507595518882859689794424898",
+      "annual_USDC_conditional_365over7": "9.81939685714285714285714285714285714285714285714285714285714",
+      "ledger": 65421673,
+      "historical_price_sensitivity_weekly_USDC": "0.185298973129987265600380783847675620319417943560884961211921"
+    }
+  ],
+  "historical_reference": {
+    "transaction": "d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db",
+    "time": "2026-11-11T08:56:52Z",
+    "AQUA_in": "534.4348539",
+    "USDC_out": "0.1296981",
+    "realized_leg_USDC_per_AQUA": "0.000242682712501883852152704818191499317556017654034970117056581",
+    "scope": "third-party venue leg, not this vault sale, fee of enclosing routed transaction unallocated"
+  }
+}
