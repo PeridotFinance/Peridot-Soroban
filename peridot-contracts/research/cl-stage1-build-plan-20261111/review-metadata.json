@@ -1,0 +1,16 @@
+{
+  "requested_model": "fable",
+  "resolved_model": [
+    "claude-fable-5-2"
+  ],
+  "effort": "high",
+  "review_completed": true,
+  "tools_enabled": false,
+  "scope": "bounded prepared ABI and key-inventory excerpt only; not code or measurement verification",
+  "payload_sha256": "a0a6cb89ebbd900079cf3d422fcbccc38552269f3fccc7a84a0c618afa394d69",
+  "response_sha256": "afef2f258563823352bdf0a3eda812de838abeb08ac0a11dce177babe495649e",
+  "duration_ms": 234265,
+  "num_turns": 1,
+  "initial_sandbox_attempt": "Not logged in; approved bounded-payload retry completed",
+  "no_revised_plan_reapproval_claim": true
+}
