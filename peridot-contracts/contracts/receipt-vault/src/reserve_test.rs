@@ -509,3 +509,135 @@ fn cl_custody_orphan_context_replace_requires_controller_and_later_ledger() {
     f.env.ledger().with_mut(|ledger| ledger.sequence_number += 1);
     c.prepare(&f.vault, &f.user, &9);
 }
+
+// Actual native receipt + SimplePeridottroller; SAC and callback contracts execute
+// their own authorization. Generated external admin/user auth is narrowly mocked.
+// This proves native behavior, not compiled resource or real-signature acceptance.
+fn flash_guard_fixture() -> (F, Address, Address) {
+    use simple_peridottroller::{SimplePeridottroller, SimplePeridottrollerClient};
+    let f = F::new();
+    let controller = f.env.register(SimplePeridottroller, ());
+    let c = SimplePeridottrollerClient::new(&f.env, &controller);
+    f.auth(&f.admin, &controller, "initialize", (&f.admin,).into_val(&f.env));
+    c.initialize(&f.admin);
+    f.auth(&f.admin, &controller, "add_market", (&f.vault,).into_val(&f.env));
+    c.add_market(&f.vault);
+    assert!(c.is_market_supported(&f.vault));
+    f.env.as_contract(&controller, || {
+        use simple_peridottroller::DataKey as ControllerKey;
+        let storage = f.env.storage().persistent();
+        assert_eq!(storage.get::<_, Address>(&ControllerKey::Admin), Some(f.admin.clone()));
+        assert!(!storage.has(&ControllerKey::PeridotToken));
+        assert!(!storage.has(&ControllerKey::SupplySpeed(f.vault.clone())));
+        assert!(!storage.has(&ControllerKey::BorrowSpeed(f.vault.clone())));
+    });
+    f.auth(&f.admin, &f.vault, "set_peridottroller", (&controller,).into_val(&f.env));
+    f.c().set_peridottroller(&controller);
+    let receiver = f.env.register(crate::test::FlashLoanRepayer, ());
+    crate::test::FlashLoanRepayerClient::new(&f.env, &receiver).configure(&f.asset);
+    flash_guard_supply(&f, 1_000_000);
+    (f, controller, receiver)
+}
+
+fn flash_guard_supply(f: &F, amount: u128) {
+    f.mint(&f.user, amount as i128);
+    f.env.mock_auths(&[MockAuth {
+        address: &f.user,
+        invoke: &MockAuthInvoke {
+            contract: &f.vault,
+            fn_name: "deposit",
+            args: (&f.user, amount).into_val(&f.env),
+            sub_invokes: &[MockAuthInvoke {
+                contract: &f.asset,
+                fn_name: "transfer",
+                args: (&f.user, &f.vault, amount as i128).into_val(&f.env),
+                sub_invokes: &[],
+            }],
+        },
+    }]);
+    f.c().deposit(&f.user, &amount);
+}
+
+fn flash_guard_pause(f: &F, controller: &Address, paused: bool) {
+    f.auth(&f.admin, controller, "set_pause_borrow", (&f.vault, paused).into_val(&f.env));
+    simple_peridottroller::SimplePeridottrollerClient::new(&f.env, controller)
+        .set_pause_borrow(&f.vault, &paused);
+}
+
+fn flash_guard_attempt(f: &F, receiver: &Address, amount: u128, expected: bool) {
+    let data = soroban_sdk::Bytes::new(&f.env);
+    f.auth(&f.user, &f.vault, "flash_loan", (&f.user, receiver, amount, &data).into_val(&f.env));
+    let cash = token::Client::new(&f.env, &f.asset).balance(&f.vault);
+    let receiver_cash = token::Client::new(&f.env, &f.asset).balance(receiver);
+    let shares = f.c().get_ptoken_balance(&f.user);
+    let reserves = f.c().get_total_reserves();
+    let before = f.env.to_snapshot().ledger;
+    let outcome = f.c().try_flash_loan(&f.user, receiver, &amount, &data);
+    assert_eq!(outcome.is_ok(), expected, "flash outcome: {outcome:?}");
+    if !expected {
+        // Includes managed cash, flash-active marker, interest and controller state.
+        assert_eq!(f.env.to_snapshot().ledger, before, "rejection must roll back all ledger state");
+    }
+    assert_eq!(token::Client::new(&f.env, &f.asset).balance(&f.vault), cash);
+    assert_eq!(token::Client::new(&f.env, &f.asset).balance(receiver), receiver_cash);
+    assert_eq!(f.c().get_ptoken_balance(&f.user), shares);
+    assert_eq!(f.c().get_total_reserves(), reserves);
+}
+
+#[test]
+fn reserve_flash_durable_disabled_survives_controller_pause_expiry_and_lift() {
+    let (f, controller, receiver) = flash_guard_fixture();
+    f.policy(1000);
+    f.enable(false);
+    flash_guard_pause(&f, &controller, true);
+    let c = simple_peridottroller::SimplePeridottrollerClient::new(&f.env, &controller);
+    for phase in 0..3 {
+        match phase {
+            0 => assert!(c.is_borrow_paused(&f.vault)),
+            1 => {
+                f.env.ledger().with_mut(|l| l.timestamp += simple_peridottroller::MAX_PAUSE_DURATION_SECS + 1);
+                assert!(!c.is_borrow_paused(&f.vault));
+            }
+            _ => {
+                flash_guard_pause(&f, &controller, true);
+                flash_guard_pause(&f, &controller, false);
+                assert!(!c.is_borrow_paused(&f.vault));
+            }
+        }
+        assert!(!f.c().get_cash_borrowing_enabled());
+        flash_guard_attempt(&f, &receiver, 100, false);
+        // Supply and principal redemption remain available under borrowing-only pause.
+        let shares = f.c().get_ptoken_balance(&f.user);
+        flash_guard_supply(&f, 200);
+        assert_eq!(f.c().get_ptoken_balance(&f.user), shares + 200);
+        f.auth(&f.user, &f.vault, "withdraw", (&f.user, 200u128).into_val(&f.env));
+        let cash = token::Client::new(&f.env, &f.asset).balance(&f.user);
+        f.c().withdraw(&f.user, &200);
+        assert_eq!(f.c().get_ptoken_balance(&f.user), shares);
+        assert_eq!(token::Client::new(&f.env, &f.asset).balance(&f.user), cash + 200);
+    }
+    // Same callback/auth succeeds once the actual durable switch is enabled.
+    f.enable(true);
+    flash_guard_attempt(&f, &receiver, 100, true);
+}
+
+#[test]
+fn reserve_flash_enabled_obeys_floor_and_controller_pause() {
+    let (f, controller, receiver) = flash_guard_fixture();
+    f.policy(6000);
+    f.enable(true);
+    flash_guard_attempt(&f, &receiver, 400_001, false);
+    flash_guard_attempt(&f, &receiver, 400_000, true);
+    flash_guard_pause(&f, &controller, true);
+    flash_guard_attempt(&f, &receiver, 1, false);
+    flash_guard_pause(&f, &controller, false);
+    flash_guard_attempt(&f, &receiver, 1, true);
+}
+
+#[test]
+fn reserve_flash_unconfigured_legacy_repayment_still_succeeds() {
+    let (f, _controller, receiver) = flash_guard_fixture();
+    assert_eq!(f.c().get_min_cash_reserve_bps(), None);
+    assert!(!f.c().get_cash_borrowing_enabled());
+    flash_guard_attempt(&f, &receiver, 900_000, true);
+}

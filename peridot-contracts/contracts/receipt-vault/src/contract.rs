@@ -4529,6 +4529,10 @@ impl ReceiptVault {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
         Self::update_interest(env.clone());
+        // Configured cash markets use the same durable borrowing policy for flash loans.
+        if Self::minimum_cash_reserve_bps(&env).is_some() {
+            Self::check_cash_borrow(&env, &token_address, amount);
+        }
 
         if let Some(comp_addr) = env
             .storage()
