@@ -1,0 +1,110 @@
+[
+  {
+    "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+    "method": "estimate_swap",
+    "label": "p1_boost_budget_year_prefunded",
+    "time": "2026-11-11T10:19:02.058Z",
+    "ledger": 65421259,
+    "cost": null,
+    "value": "1817603",
+    "minResourceFee": "9751",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 2517629,
+      "diskReadBytes": 0,
+      "writeBytes": 2564,
+      "uniqueKeys": 4,
+      "writes": 1
+    }
+  },
+  {
+    "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+    "method": "estimate_swap",
+    "label": "p4_boost_budget_year_prefunded",
+    "time": "2026-11-11T10:19:02.641Z",
+    "ledger": 65421259,
+    "cost": null,
+    "value": "5834303",
+    "minResourceFee": "9751",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 2517629,
+      "diskReadBytes": 0,
+      "writeBytes": 2564,
+      "uniqueKeys": 4,
+      "writes": 1
+    }
+  },
+  {
+    "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+    "method": "estimate_swap",
+    "label": "p5_boost_budget_year_prefunded",
+    "time": "2026-11-11T10:19:03.220Z",
+    "ledger": 65421260,
+    "cost": null,
+    "value": "3995457",
+    "minResourceFee": "9751",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 2517629,
+      "diskReadBytes": 0,
+      "writeBytes": 2564,
+      "uniqueKeys": 4,
+      "writes": 1
+    }
+  },
+  {
+    "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+    "method": "estimate_swap",
+    "label": "p1_boost_budget_day1_min",
+    "time": "2026-11-11T10:19:03.813Z",
+    "ledger": 65421260,
+    "cost": null,
+    "value": "1845416",
+    "minResourceFee": "9751",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 2517629,
+      "diskReadBytes": 0,
+      "writeBytes": 2564,
+      "uniqueKeys": 4,
+      "writes": 1
+    }
+  },
+  {
+    "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+    "method": "estimate_swap",
+    "label": "p4_boost_budget_day1_min",
+    "time": "2026-11-11T10:19:04.376Z",
+    "ledger": 65421260,
+    "cost": null,
+    "value": "7843161",
+    "minResourceFee": "9751",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 2517629,
+      "diskReadBytes": 0,
+      "writeBytes": 2564,
+      "uniqueKeys": 4,
+      "writes": 1
+    }
+  },
+  {
+    "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+    "method": "estimate_swap",
+    "label": "p5_boost_budget_day1_min",
+    "time": "2026-11-11T10:19:04.943Z",
+    "ledger": 65421260,
+    "cost": null,
+    "value": "4819822",
+    "minResourceFee": "9751",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 2517629,
+      "diskReadBytes": 0,
+      "writeBytes": 2564,
+      "uniqueKeys": 4,
+      "writes": 1
+    }
+  }
+]

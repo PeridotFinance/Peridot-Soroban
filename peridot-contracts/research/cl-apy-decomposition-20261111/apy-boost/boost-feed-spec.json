@@ -1,0 +1,191 @@
+[
+  {
+    "name": "version",
+    "inputs": [],
+    "outputs": [
+      "scSpecTypeU32"
+    ]
+  },
+  {
+    "name": "total_supply",
+    "inputs": [],
+    "outputs": [
+      "scSpecTypeU128"
+    ]
+  },
+  {
+    "name": "__constructor",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "scSpecTypeAddress"
+      },
+      {
+        "name": "operations_admin",
+        "type": "scSpecTypeAddress"
+      },
+      {
+        "name": "emergency_admin",
+        "type": "scSpecTypeAddress"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "apply_upgrade",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "scSpecTypeAddress"
+      }
+    ],
+    "outputs": [
+      "scSpecTypeBytesN"
+    ]
+  },
+  {
+    "name": "contract_name",
+    "inputs": [],
+    "outputs": [
+      "scSpecTypeSymbol"
+    ]
+  },
+  {
+    "name": "commit_upgrade",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "scSpecTypeAddress"
+      },
+      {
+        "name": "new_wasm_hash",
+        "type": "scSpecTypeBytesN"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "revert_upgrade",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "scSpecTypeAddress"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "set_total_supply",
+    "inputs": [
+      {
+        "name": "operations_admin",
+        "type": "scSpecTypeAddress"
+      },
+      {
+        "name": "total_supply",
+        "type": "scSpecTypeU128"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "get_emergency_mode",
+    "inputs": [],
+    "outputs": [
+      "scSpecTypeBool"
+    ]
+  },
+  {
+    "name": "get_future_address",
+    "inputs": [
+      {
+        "name": "role_name",
+        "type": "scSpecTypeSymbol"
+      }
+    ],
+    "outputs": [
+      "scSpecTypeAddress"
+    ]
+  },
+  {
+    "name": "set_emergency_mode",
+    "inputs": [
+      {
+        "name": "emergency_admin",
+        "type": "scSpecTypeAddress"
+      },
+      {
+        "name": "value",
+        "type": "scSpecTypeBool"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "get_privileged_addrs",
+    "inputs": [],
+    "outputs": [
+      "scSpecTypeMap"
+    ]
+  },
+  {
+    "name": "set_privileged_addrs",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "scSpecTypeAddress"
+      },
+      {
+        "name": "operations_admin",
+        "type": "scSpecTypeAddress"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "apply_transfer_ownership",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "scSpecTypeAddress"
+      },
+      {
+        "name": "role_name",
+        "type": "scSpecTypeSymbol"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "commit_transfer_ownership",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "scSpecTypeAddress"
+      },
+      {
+        "name": "role_name",
+        "type": "scSpecTypeSymbol"
+      },
+      {
+        "name": "new_address",
+        "type": "scSpecTypeAddress"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "revert_transfer_ownership",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "scSpecTypeAddress"
+      },
+      {
+        "name": "role_name",
+        "type": "scSpecTypeSymbol"
+      }
+    ],
+    "outputs": []
+  }
+]

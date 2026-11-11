@@ -1,0 +1,68 @@
+{
+  "at": "2026-11-11T10:45:53.009495+00:00",
+  "scope": "bounded independent offline arithmetic/code review, no financial execution",
+  "files": [
+    {
+      "file": "lead/calculations.py",
+      "sha256": "f4b2bafa3b77de81441a68001944718e5e46f6c71143a0829ac0305745c1dab6"
+    },
+    {
+      "file": "lead/calculations.json",
+      "sha256": "c58695fa2bab64903d3b64ed2e9125cf34f2ebf13b6087b26a0b16fc4f55afc7"
+    },
+    {
+      "file": "lead/report.md",
+      "sha256": "5e25be457c8cfc995a9dee92f315f24c24635c0d6c3c7c126f25f678da9cad7a"
+    },
+    {
+      "file": "lead/pilot-runbook.md",
+      "sha256": "a969883803cc46339520c70026dc871899b8ac0b7f77da1a9bea24a688df11e9"
+    },
+    {
+      "file": "lead/signed-table.json",
+      "sha256": "40e4c92819b514e66829e3e3b2f533018ab95761b084fe2e6adced58dc1ecedb"
+    }
+  ],
+  "result": "PASS conditional arithmetic; not execution or yield qualification",
+  "checks": [
+    "9 rows; LP plus lock exactly10000",
+    "active liquidity denominator for fees, checkpointed working liquidity denominator for rewards",
+    "entry reduction applied to liquidity before both fractions",
+    "entry marked cost plus one warm lifecycle cost deducted once",
+    "ICE end-year7x reserve included inside capital;2.5xboost not applied to fees",
+    "all percentages use total10000 not smaller LP sleeve",
+    "updated warm lifecycle fees independently sum exactly seven source-signature applied roots: PYUSD0.5642323 XLM,EURC0.5642217 XLM;USDT0 old0.5744714 XLM retained",
+    "report opening/open-deposit wording and access-policy artifact terminology corrected",
+    "runbook address contract ID preimage corrected; executable WASM separately bound"
+  ],
+  "caveats": [
+    "ICE acquisition slippage and lock fees unmeasured",
+    "future other-holder checkpoint refresh changes W",
+    "historical third-party saleleg benchmark differs by pool/date; not exact future weekly sale",
+    "favorable entry basis is one-time mark gain not recurring strategy yield",
+    "postentry haircut leaves slight excess ICE pre-funding",
+    "vault eligibility for ICE boost unproven"
+  ],
+  "previous_review": {
+    "at": "2026-11-11T10:22:29.558867+00:00",
+    "files": [
+      {
+        "file": "lead/calculations.py",
+        "sha256": "a5efcf37cc2e75d039791da82a797ca2463bb8e31d011746ff738e1963802652"
+      },
+      {
+        "file": "lead/calculations.json",
+        "sha256": "744dfa66c6676386410ed39034eda79ea2aab9f461a19900ab3c3d33487f52bf"
+      }
+    ]
+  },
+  "warm_cost_update": {
+    "expected_xlm": {
+      "1": 0.5642323,
+      "4": 0.5642217,
+      "5": 0.5744714
+    },
+    "evidence_scope": "sum of independent private root applications; not a continuous live journey",
+    "review": "PASS; all previous accounting caveats remain"
+  }
+}

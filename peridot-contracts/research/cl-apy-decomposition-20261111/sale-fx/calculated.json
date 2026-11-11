@@ -1,0 +1,527 @@
+{
+  "scope": "rolling public unsigned estimates, historical third-party swap legs, fresh oracle comparisons; no financial execution",
+  "quotes": [
+    {
+      "label": "p1_base",
+      "input_AQUA": "314.4875276",
+      "output_USDC": "0.0765732",
+      "effective_USDC_per_AQUA": "0.000243485649762855651004202177460216708447931465756481720644237",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "0.9434626",
+      "no_fee_CP_output_USDC": "0.0768036",
+      "discount_to_spot_bps": "30.0044033999748977339667080456032351252281365376641299968200",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421200,
+      "annual_reward_USDC_conditional_365over7": "3.99274542857142857142857142857142857142857142857142857142857",
+      "annual_reward_rate_percent_on_10000": "0.0399274542857142857142857142857142857142857142857142857142857",
+      "classic_paths": [
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "314.4875276",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.0768224",
+          "path": [
+            {
+              "asset_type": "native"
+            },
+            {
+              "asset_type": "credit_alphanum12",
+              "asset_code": "PYUSD",
+              "asset_issuer": "GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "314.4875276",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.0768030",
+          "path": [
+            {
+              "asset_type": "native"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "314.4875276",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.0766691",
+          "path": []
+        }
+      ]
+    },
+    {
+      "label": "p1_maxboost_lp_only",
+      "input_AQUA": "785.9798327",
+      "output_USDC": "0.1913747",
+      "effective_USDC_per_AQUA": "0.000243485509472411174246659522463851635159137079981212601919729",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "2.3579395",
+      "no_fee_CP_output_USDC": "0.1919505",
+      "discount_to_spot_bps": "30.0101478662916626058921858045145711509124473028543794004900",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421200,
+      "annual_reward_USDC_conditional_365over7": "9.97882364285714285714285714285714285714285714285714285714286",
+      "annual_reward_rate_percent_on_10000": "0.0997882364285714285714285714285714285714285714285714285714286",
+      "classic_paths": [
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "785.9798327",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.1919977",
+          "path": [
+            {
+              "asset_type": "native"
+            },
+            {
+              "asset_type": "credit_alphanum12",
+              "asset_code": "PYUSD",
+              "asset_issuer": "GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "785.9798327",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.1919492",
+          "path": [
+            {
+              "asset_type": "native"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "785.9798327",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.1916132",
+          "path": []
+        }
+      ]
+    },
+    {
+      "label": "p4_base",
+      "input_AQUA": "6770.1434811",
+      "output_USDC": "1.6484204",
+      "effective_USDC_per_AQUA": "0.000243483820483545763415356694957830884190712310781073203804658",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "20.3104305",
+      "no_fee_CP_output_USDC": "1.6533805",
+      "discount_to_spot_bps": "30.0793068149494299707995778842369739186079932002436816389400",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421200,
+      "annual_reward_USDC_conditional_365over7": "85.9533494285714285714285714285714285714285714285714285714286",
+      "annual_reward_rate_percent_on_10000": "0.859533494285714285714285714285714285714285714285714285714286",
+      "classic_paths": [
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "6770.1434811",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "1.6537991",
+          "path": [
+            {
+              "asset_type": "native"
+            },
+            {
+              "asset_type": "credit_alphanum12",
+              "asset_code": "PYUSD",
+              "asset_issuer": "GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "6770.1434811",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "1.6533221",
+          "path": [
+            {
+              "asset_type": "native"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "6770.1434811",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "1.6503280",
+          "path": []
+        }
+      ]
+    },
+    {
+      "label": "p4_maxboost_lp_only",
+      "input_AQUA": "16385.6447703",
+      "output_USDC": "3.9895945",
+      "effective_USDC_per_AQUA": "0.000243481080905121787021900845461416026191661128763900430960632",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "49.1569344",
+      "no_fee_CP_output_USDC": "4.0015991",
+      "discount_to_spot_bps": "30.1914842054863561249188111017518745943028069487418367471300",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421200,
+      "annual_reward_USDC_conditional_365over7": "208.028856071428571428571428571428571428571428571428571428571",
+      "annual_reward_rate_percent_on_10000": "2.08028856071428571428571428571428571428571428571428571428571",
+      "classic_paths": [
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "16385.6447703",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "4.0013421",
+          "path": [
+            {
+              "asset_type": "native"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "16385.6447703",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "3.9936404",
+          "path": []
+        }
+      ]
+    },
+    {
+      "label": "p5_base",
+      "input_AQUA": "1540.9379183",
+      "output_USDC": "0.3751957",
+      "effective_USDC_per_AQUA": "0.000243485279675591976767309587984197507173511417121183836598695",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "4.6228138",
+      "no_fee_CP_output_USDC": "0.3763247",
+      "discount_to_spot_bps": "30.0195573459786296455014689956953838245671443507146382604500",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421200,
+      "annual_reward_USDC_conditional_365over7": "19.5637757857142857142857142857142857142857142857142857142857",
+      "annual_reward_rate_percent_on_10000": "0.195637757857142857142857142857142857142857142857142857142857",
+      "classic_paths": [
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "1540.9379183",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.3764176",
+          "path": [
+            {
+              "asset_type": "native"
+            },
+            {
+              "asset_type": "credit_alphanum12",
+              "asset_code": "PYUSD",
+              "asset_issuer": "GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "1540.9379183",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.3763223",
+          "path": [
+            {
+              "asset_type": "native"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "1540.9379183",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.3756591",
+          "path": []
+        }
+      ]
+    },
+    {
+      "label": "p5_maxboost_lp_only",
+      "input_AQUA": "3817.2401176",
+      "output_USDC": "0.9294394",
+      "effective_USDC_per_AQUA": "0.000243484656811257442287130174427987626470605758887773038844267",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "11.4517204",
+      "no_fee_CP_output_USDC": "0.9322361",
+      "discount_to_spot_bps": "30.0450617429672661255376844604277555069953064168305223012700",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421200,
+      "annual_reward_USDC_conditional_365over7": "48.4636258571428571428571428571428571428571428571428571428571",
+      "annual_reward_rate_percent_on_10000": "0.484636258571428571428571428571428571428571428571428571428571",
+      "classic_paths": [
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "3817.2401176",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.9324690",
+          "path": [
+            {
+              "asset_type": "native"
+            },
+            {
+              "asset_type": "credit_alphanum12",
+              "asset_code": "PYUSD",
+              "asset_issuer": "GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "3817.2401176",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.9322328",
+          "path": [
+            {
+              "asset_type": "native"
+            }
+          ]
+        },
+        {
+          "source_asset_type": "credit_alphanum4",
+          "source_asset_code": "AQUA",
+          "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "source_amount": "3817.2401176",
+          "destination_asset_type": "credit_alphanum4",
+          "destination_asset_code": "USDC",
+          "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "destination_amount": "0.9305559",
+          "path": []
+        }
+      ]
+    },
+    {
+      "label": "linear_1_AQUA",
+      "input_AQUA": "1",
+      "output_USDC": "0.0002434",
+      "effective_USDC_per_AQUA": "0.0002434",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "0.003",
+      "no_fee_CP_output_USDC": "0.0002442",
+      "discount_to_spot_bps": "33.5115002631878431614161237043375091520792488667024716406200",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421200,
+      "annual_reward_USDC_conditional_365over7": "0.0126915714285714285714285714285714285714285714285714285714286",
+      "annual_reward_rate_percent_on_10000": "0.000126915714285714285714285714285714285714285714285714285714286"
+    },
+    {
+      "label": "linear_10_AQUA",
+      "input_AQUA": "10",
+      "output_USDC": "0.0024348",
+      "effective_USDC_per_AQUA": "0.00024348",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "0.03",
+      "no_fee_CP_output_USDC": "0.0024421",
+      "discount_to_spot_bps": "30.2357439773252919184124806882994935429262757356808455014700",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421200,
+      "annual_reward_USDC_conditional_365over7": "0.126957428571428571428571428571428571428571428571428571428571",
+      "annual_reward_rate_percent_on_10000": "0.00126957428571428571428571428571428571428571428571428571428571"
+    },
+    {
+      "label": "linear_100_AQUA",
+      "input_AQUA": "100",
+      "output_USDC": "0.0243485",
+      "effective_USDC_per_AQUA": "0.000243485",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "0.3",
+      "no_fee_CP_output_USDC": "0.0244218",
+      "discount_to_spot_bps": "30.0310092094588824657247529997971175673542149149919938677800",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421201,
+      "annual_reward_USDC_conditional_365over7": "1.26960035714285714285714285714285714285714285714285714285714",
+      "annual_reward_rate_percent_on_10000": "0.0126960035714285714285714285714285714285714285714285714285714"
+    },
+    {
+      "label": "p1_boost_budget_year_prefunded",
+      "input_AQUA": "746.493259",
+      "output_USDC": "0.1817603",
+      "effective_USDC_per_AQUA": "0.000243485520878628590536274353684418200486389120896267865695489",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "2.2394798",
+      "no_fee_CP_output_USDC": "0.1823072",
+      "discount_to_spot_bps": "30.0096808164366710357150109245908052411639026865265782079100",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421259,
+      "annual_reward_USDC_conditional_365over7": "9.47750135714285714285714285714285714285714285714285714285714",
+      "annual_reward_rate_percent_on_10000": "0.0947750135714285714285714285714285714285714285714285714285714"
+    },
+    {
+      "label": "p4_boost_budget_year_prefunded",
+      "input_AQUA": "2396.1647205",
+      "output_USDC": "0.5834303",
+      "effective_USDC_per_AQUA": "0.000243485055517492750766004778092633636202474086129923053426410",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "7.1884942",
+      "no_fee_CP_output_USDC": "0.5851858",
+      "discount_to_spot_bps": "30.0287359372607118362110430506385430441766465576409188097800",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421259,
+      "annual_reward_USDC_conditional_365over7": "30.4217227857142857142857142857142857142857142857142857142857",
+      "annual_reward_rate_percent_on_10000": "0.304217227857142857142857142857142857142857142857142857142857"
+    },
+    {
+      "label": "p5_boost_budget_year_prefunded",
+      "input_AQUA": "1640.9439218",
+      "output_USDC": "0.3995457",
+      "effective_USDC_per_AQUA": "0.000243485285933309948410694067388208293371308552660132715084962",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "4.9228318",
+      "no_fee_CP_output_USDC": "0.4007479",
+      "discount_to_spot_bps": "30.0193011114913700721151954159655155228424034860021526026900",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421260,
+      "annual_reward_USDC_conditional_365over7": "20.8334543571428571428571428571428571428571428571428571428571",
+      "annual_reward_rate_percent_on_10000": "0.208334543571428571428571428571428571428571428571428571428571"
+    },
+    {
+      "label": "p1_boost_budget_day1_min",
+      "input_AQUA": "757.9162683",
+      "output_USDC": "0.1845416",
+      "effective_USDC_per_AQUA": "0.000243485471573166389045036414611553206054859397982393195715496",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "2.2737489",
+      "no_fee_CP_output_USDC": "0.1850969",
+      "discount_to_spot_bps": "30.0116997249083447025495123469521300341194570361268903196500",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421260,
+      "annual_reward_USDC_conditional_365over7": "9.62252628571428571428571428571428571428571428571428571428571",
+      "annual_reward_rate_percent_on_10000": "0.0962252628571428571428571428571428571428571428571428571428571"
+    },
+    {
+      "label": "p4_boost_budget_day1_min",
+      "input_AQUA": "3221.211398",
+      "output_USDC": "0.7843161",
+      "effective_USDC_per_AQUA": "0.000243484827008550154149181363352421615887998916114601429831399",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "9.6636342",
+      "no_fee_CP_output_USDC": "0.7866761",
+      "discount_to_spot_bps": "30.0380926823242952418549396801578128295191233220995314701800",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421260,
+      "annual_reward_USDC_conditional_365over7": "40.8964823571428571428571428571428571428571428571428571428571",
+      "annual_reward_rate_percent_on_10000": "0.408964823571428571428571428571428571428571428571428571428571"
+    },
+    {
+      "label": "p5_boost_budget_day1_min",
+      "input_AQUA": "1979.5137949",
+      "output_USDC": "0.4819822",
+      "effective_USDC_per_AQUA": "0.000243485143292142863964842582163709679131774359730176791201911",
+      "spot_USDC_per_AQUA": "0.000244218412539609644586115240479130323486637327855472491446406",
+      "input_fee_AQUA": "5.9385414",
+      "no_fee_CP_output_USDC": "0.4834325",
+      "discount_to_spot_bps": "30.0251418327376156213616589139054619307484888274949719806700",
+      "formula_from_initial_reserves_matches": true,
+      "quote_ledger": 65421260,
+      "annual_reward_USDC_conditional_365over7": "25.1319290",
+      "annual_reward_rate_percent_on_10000": "0.25131929"
+    }
+  ],
+  "fx": {
+    "oracle_timestamp": "1794391800",
+    "USDC_USD_external": "1.00083307783972",
+    "EURC_USD_external": "1.11482658760255",
+    "EURC_USDC_external_cross": "1.11389862334374770869587094397550896584214873146426880854860",
+    "EURC_USDC_dex": "1.10599720911274",
+    "EUR_USD_forex": "1.11864410559291",
+    "pool_EURC_per_USDC": "0.904179590955613249921125913918376536602320865575887614377338",
+    "pool_USDC_per_EURC": "1.10597497444408766220884416465331685863202705498255787184631",
+    "pool_vs_external_bps_prior_orientation": "71.6440162097051584825890399978653328027744755728775531047000",
+    "pool_vs_external_bps_USDC_per_EURC": "-71.1343809356232451453062424163839980240074906209255469807300",
+    "pool_vs_dex_bps_USDC_per_EURC": "-0.201037294390417369478893334708553722195159561004822796070000",
+    "dex_vs_external_bps_USDC_per_EURC": "-70.9347696946505897685304836876589103575093724994582745813200",
+    "EURC_external_vs_FX_bps": "-34.1262960335058287539753843993845163433466861338050999914800"
+  },
+  "historical_sales": [
+    {
+      "label": "small",
+      "time": "2026-11-11T08:56:52Z",
+      "transaction_hash": "d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db",
+      "AQUA_in": "534.4348539",
+      "USDC_out": "0.1296981",
+      "realized_leg_USDC_per_AQUA": "0.000242682712501883852152704818191499317556017654034970117056581",
+      "scope": "third-party historic venue leg; network fee belongs to larger routed transaction; not our sale"
+    },
+    {
+      "label": "medium",
+      "time": "2026-11-10T23:05:12Z",
+      "transaction_hash": "c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298",
+      "AQUA_in": "2764.6825935",
+      "USDC_out": "0.6675974",
+      "realized_leg_USDC_per_AQUA": "0.000241473434082298388080765409571780558902701392509779983898900",
+      "scope": "third-party historic venue leg; network fee belongs to larger routed transaction; not our sale"
+    },
+    {
+      "label": "large",
+      "time": "2026-11-11T06:30:27Z",
+      "transaction_hash": "d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474",
+      "AQUA_in": "26808.1604665",
+      "USDC_out": "6.5124573",
+      "realized_leg_USDC_per_AQUA": "0.000242928167642762867524332975478312086296389298733459966698234",
+      "scope": "third-party historic venue leg; network fee belongs to larger routed transaction; not our sale"
+    }
+  ]
+}

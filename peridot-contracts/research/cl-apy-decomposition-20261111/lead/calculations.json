@@ -1,0 +1,366 @@
+{
+  "scope": "conditional constant-mark continuation, not realized net yield or deployable boosted vault",
+  "annualizer": 52.142857142857146,
+  "income_price": "observed historic third-party AQUA sale-leg price; not our execution",
+  "missing_costs": [
+    "weekly claim/sale transaction fees",
+    "ICE acquisition slippage and lock transaction fees",
+    "recurring keeper/restoration/hosting",
+    "new-WASM lifecycle fee difference",
+    "price-path losses and mark changes"
+  ],
+  "annual_net_formula": "tabulated net - (365/7)*weekly claim/sale cost - other missing costs; locked AQUA terminal mark change separately",
+  "rows": [
+    {
+      "pool": 1,
+      "pair": [
+        "PYUSD:GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5",
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      ],
+      "mode": "fees_only",
+      "total_capital": 10000,
+      "LP_capital": 10000.0,
+      "locked_capital": 0.0,
+      "weekly_fees_before_entry_scaling": 0.00017530681435268443,
+      "weekly_AQUA_before_entry_scaling": 0,
+      "historical_sale_price": 0.00024268271250188386,
+      "historical_sale_transaction": "d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db",
+      "annual_gross_before_entry_scaling": 0.009140998176961401,
+      "warm_lifecycle_xlm_anchor": 0.5642323,
+      "warm_scope": "sum of independently applied private current-code roots",
+      "nets": [
+        {
+          "deposited_leg": 0,
+          "hold_benchmark": "PYUSD:GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5",
+          "entry_cost_usd_sensitivity": 19.427792875339946,
+          "effective_liquidity": 520227721901.3361,
+          "weekly_aqua": 0,
+          "annual_conditional_net_before_unmeasured_costs_usd": -19.50105993572224,
+          "percent_total_10000": -0.1950105993572224
+        },
+        {
+          "deposited_leg": 1,
+          "hold_benchmark": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "entry_cost_usd_sensitivity": -9.156736806602567,
+          "effective_liquidity": 522251742503.0,
+          "weekly_aqua": 0,
+          "annual_conditional_net_before_unmeasured_costs_usd": 9.083505163944483,
+          "percent_total_10000": 0.09083505163944483
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "pool": 1,
+      "pair": [
+        "PYUSD:GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5",
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      ],
+      "mode": "base",
+      "total_capital": 10000,
+      "LP_capital": 10000.0,
+      "locked_capital": 0.0,
+      "weekly_fees_before_entry_scaling": 0.00017530681435268443,
+      "weekly_AQUA_before_entry_scaling": 314.4875276865215,
+      "historical_sale_price": 0.00024268271250188386,
+      "historical_sale_transaction": "d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db",
+      "annual_gross_before_entry_scaling": 3.9887196392407276,
+      "warm_lifecycle_xlm_anchor": 0.5642323,
+      "warm_scope": "sum of independently applied private current-code roots",
+      "nets": [
+        {
+          "deposited_leg": 0,
+          "hold_benchmark": "PYUSD:GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5",
+          "entry_cost_usd_sensitivity": 19.427792875339946,
+          "effective_liquidity": 520227721901.3361,
+          "weekly_aqua": 313.2689569213904,
+          "annual_conditional_net_before_unmeasured_costs_usd": -15.536901296288473,
+          "percent_total_10000": -0.15536901296288474
+        },
+        {
+          "deposited_leg": 1,
+          "hold_benchmark": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "entry_cost_usd_sensitivity": -9.156736806602567,
+          "effective_liquidity": 522251742503.0,
+          "weekly_aqua": 314.4875276865215,
+          "annual_conditional_net_before_unmeasured_costs_usd": 13.06308380500825,
+          "percent_total_10000": 0.1306308380500825
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "pool": 1,
+      "pair": [
+        "PYUSD:GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5",
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      ],
+      "mode": "boost_including_lock",
+      "total_capital": 10000,
+      "LP_capital": 9497.371551891529,
+      "locked_capital": 502.6284481084713,
+      "weekly_fees_before_entry_scaling": 0.00016649748411760225,
+      "weekly_AQUA_before_entry_scaling": 746.4932590292462,
+      "historical_sale_price": 0.00024268271250188386,
+      "historical_sale_transaction": "d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db",
+      "annual_gross_before_entry_scaling": 9.45493426487755,
+      "warm_lifecycle_xlm_anchor": 0.5642323,
+      "warm_scope": "sum of independently applied private current-code roots",
+      "nets": [
+        {
+          "deposited_leg": 0,
+          "hold_benchmark": "PYUSD:GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5",
+          "entry_cost_usd_sensitivity": 18.451296737029452,
+          "effective_liquidity": 494079596649.1087,
+          "weekly_aqua": 743.6015624981086,
+          "annual_conditional_net_before_unmeasured_costs_usd": -9.115360770877558,
+          "percent_total_10000": -0.09115360770877558
+        },
+        {
+          "deposited_leg": 1,
+          "hold_benchmark": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "entry_cost_usd_sensitivity": -8.696493165518529,
+          "effective_liquidity": 496001884217.3772,
+          "weekly_aqua": 746.4932590292462,
+          "annual_conditional_net_before_unmeasured_costs_usd": 18.069054789561037,
+          "percent_total_10000": 0.18069054789561037
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "pool": 4,
+      "pair": [
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+      ],
+      "mode": "fees_only",
+      "total_capital": 10000,
+      "LP_capital": 10000.0,
+      "locked_capital": 0.0,
+      "weekly_fees_before_entry_scaling": 2.9409468615852044,
+      "weekly_AQUA_before_entry_scaling": 0,
+      "historical_sale_price": 0.00024292816764276287,
+      "historical_sale_transaction": "d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474",
+      "annual_gross_before_entry_scaling": 153.34937206837137,
+      "warm_lifecycle_xlm_anchor": 0.5642217,
+      "warm_scope": "sum of independently applied private current-code roots",
+      "nets": [
+        {
+          "deposited_leg": 0,
+          "hold_benchmark": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "entry_cost_usd_sensitivity": 30.132116010016034,
+          "effective_liquidity": 487421532517.19415,
+          "weekly_aqua": 0,
+          "annual_conditional_net_before_unmeasured_costs_usd": 122.24295918328933,
+          "percent_total_10000": 1.2224295918328933
+        },
+        {
+          "deposited_leg": 1,
+          "hold_benchmark": "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+          "entry_cost_usd_sensitivity": 28.68349195094743,
+          "effective_liquidity": 487530002851.1086,
+          "weekly_aqua": 0,
+          "annual_conditional_net_before_unmeasured_costs_usd": 123.72451855815991,
+          "percent_total_10000": 1.2372451855815991
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "pool": 4,
+      "pair": [
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+      ],
+      "mode": "base",
+      "total_capital": 10000,
+      "LP_capital": 10000.0,
+      "locked_capital": 0.0,
+      "weekly_fees_before_entry_scaling": 2.9409468615852044,
+      "weekly_AQUA_before_entry_scaling": 6770.143481191547,
+      "historical_sale_price": 0.00024292816764276287,
+      "historical_sale_transaction": "d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474",
+      "annual_gross_before_entry_scaling": 239.10656791923245,
+      "warm_lifecycle_xlm_anchor": 0.5642217,
+      "warm_scope": "sum of independently applied private current-code roots",
+      "nets": [
+        {
+          "deposited_leg": 0,
+          "hold_benchmark": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "entry_cost_usd_sensitivity": 30.132116010016034,
+          "effective_liquidity": 487421532517.19415,
+          "weekly_aqua": 6730.465540461524,
+          "annual_conditional_net_before_unmeasured_costs_usd": 207.49755579920117,
+          "percent_total_10000": 2.0749755579920115
+        },
+        {
+          "deposited_leg": 1,
+          "hold_benchmark": "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+          "entry_cost_usd_sensitivity": 28.68349195094743,
+          "effective_liquidity": 487530002851.1086,
+          "weekly_aqua": 6731.930627912694,
+          "annual_conditional_net_before_unmeasured_costs_usd": 208.99767339101908,
+          "percent_total_10000": 2.089976733910191
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "pool": 4,
+      "pair": [
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+      ],
+      "mode": "boost_including_lock",
+      "total_capital": 10000,
+      "LP_capital": 1395.482562047721,
+      "locked_capital": 8604.51743795228,
+      "weekly_fees_before_entry_scaling": 0.4210614527667784,
+      "weekly_AQUA_before_entry_scaling": 2396.164720536031,
+      "historical_sale_price": 0.00024292816764276287,
+      "historical_sale_transaction": "d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474",
+      "annual_gross_before_entry_scaling": 52.30749079419182,
+      "warm_lifecycle_xlm_anchor": 0.5642217,
+      "warm_scope": "sum of independently applied private current-code roots",
+      "nets": [
+        {
+          "deposited_leg": 0,
+          "hold_benchmark": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "entry_cost_usd_sensitivity": 4.204884244957634,
+          "effective_liquidity": 68018824899.43207,
+          "weekly_aqua": 2381.9189686385266,
+          "annual_conditional_net_before_unmeasured_costs_usd": 47.708789778450324,
+          "percent_total_10000": 0.4770878977845032
+        },
+        {
+          "deposited_leg": 1,
+          "hold_benchmark": "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+          "entry_cost_usd_sensitivity": 4.00273128361833,
+          "effective_liquidity": 68033961745.379776,
+          "weekly_aqua": 2382.444942600238,
+          "annual_conditional_net_before_unmeasured_costs_usd": 47.922441669607565,
+          "percent_total_10000": 0.47922441669607563
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "pool": 5,
+      "pair": [
+        "USDT0:GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q",
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      ],
+      "mode": "fees_only",
+      "total_capital": 10000,
+      "LP_capital": 10000.0,
+      "locked_capital": 0.0,
+      "weekly_fees_before_entry_scaling": 0.0,
+      "weekly_AQUA_before_entry_scaling": 0,
+      "historical_sale_price": 0.0002414734340822984,
+      "historical_sale_transaction": "c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298",
+      "annual_gross_before_entry_scaling": 0.0,
+      "warm_lifecycle_xlm_anchor": 0.5744714,
+      "warm_scope": "accepted old-code anchor; USDT0 not remeasured",
+      "nets": [
+        {
+          "deposited_leg": 0,
+          "hold_benchmark": "USDT0:GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q",
+          "entry_cost_usd_sensitivity": 7.1893183103802585,
+          "effective_liquidity": 522406358942.2593,
+          "weekly_aqua": 0,
+          "annual_conditional_net_before_unmeasured_costs_usd": -7.2731857640907345,
+          "percent_total_10000": -0.07273185764090734
+        },
+        {
+          "deposited_leg": 1,
+          "hold_benchmark": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "entry_cost_usd_sensitivity": 8.775349512605317,
+          "effective_liquidity": 522237160353.9564,
+          "weekly_aqua": 0,
+          "annual_conditional_net_before_unmeasured_costs_usd": -8.859216966315792,
+          "percent_total_10000": -0.08859216966315792
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "pool": 5,
+      "pair": [
+        "USDT0:GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q",
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      ],
+      "mode": "base",
+      "total_capital": 10000,
+      "LP_capital": 10000.0,
+      "locked_capital": 0.0,
+      "weekly_fees_before_entry_scaling": 0.0,
+      "weekly_AQUA_before_entry_scaling": 1540.937918391249,
+      "historical_sale_price": 0.0002414734340822984,
+      "historical_sale_transaction": "c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298",
+      "annual_gross_before_entry_scaling": 19.402126194924374,
+      "warm_lifecycle_xlm_anchor": 0.5744714,
+      "warm_scope": "accepted old-code anchor; USDT0 not remeasured",
+      "nets": [
+        {
+          "deposited_leg": 0,
+          "hold_benchmark": "USDT0:GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q",
+          "entry_cost_usd_sensitivity": 7.1893183103802585,
+          "effective_liquidity": 522406358942.2593,
+          "weekly_aqua": 1538.7400995508497,
+          "annual_conditional_net_before_unmeasured_costs_usd": 12.101267441554796,
+          "percent_total_10000": 0.12101267441554796
+        },
+        {
+          "deposited_leg": 1,
+          "hold_benchmark": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "entry_cost_usd_sensitivity": 8.775349512605317,
+          "effective_liquidity": 522237160353.9564,
+          "weekly_aqua": 1538.244777773618,
+          "annual_conditional_net_before_unmeasured_costs_usd": 10.508999585980991,
+          "percent_total_10000": 0.10508999585980991
+        }
+      ],
+      "realized_net": null
+    },
+    {
+      "pool": 5,
+      "pair": [
+        "USDT0:GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q",
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      ],
+      "mode": "boost_including_lock",
+      "total_capital": 10000,
+      "LP_capital": 4261.303746066275,
+      "locked_capital": 5738.696253933725,
+      "weekly_fees_before_entry_scaling": 0.0,
+      "weekly_AQUA_before_entry_scaling": 1640.9439218098619,
+      "historical_sale_price": 0.0002414734340822984,
+      "historical_sale_transaction": "c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298",
+      "annual_gross_before_entry_scaling": 20.66131326237203,
+      "warm_lifecycle_xlm_anchor": 0.5744714,
+      "warm_scope": "accepted old-code anchor; USDT0 not remeasured",
+      "nets": [
+        {
+          "deposited_leg": 0,
+          "hold_benchmark": "USDT0:GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q",
+          "entry_cost_usd_sensitivity": 3.063586904768626,
+          "effective_liquidity": 222613217432.94928,
+          "weekly_aqua": 1638.604401421427,
+          "annual_conditional_net_before_unmeasured_costs_usd": 17.484401734158663,
+          "percent_total_10000": 0.17484401734158664
+        },
+        {
+          "deposited_leg": 1,
+          "hold_benchmark": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          "entry_cost_usd_sensitivity": 3.7394429751105895,
+          "effective_liquidity": 222541116775.13287,
+          "weekly_aqua": 1638.0771440396134,
+          "annual_conditional_net_before_unmeasured_costs_usd": 16.801906905605183,
+          "percent_total_10000": 0.16801906905605182
+        }
+      ],
+      "realized_net": null
+    }
+  ]
+}
