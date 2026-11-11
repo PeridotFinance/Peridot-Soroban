@@ -108,8 +108,8 @@ impl F {
             (&f.admin,).into_val(&f.env),
         );
         f.c().enable_static_rates(&f.admin);
-        // Existing reserve arithmetic fixtures model the pre-default-policy
-        // deployed schema. Fresh policy/seed behavior is tested separately.
+        // Explicit missing-configuration fixture, not archival. The replacement
+        // default must retain all cash and leave borrowing disabled.
         f.env.as_contract(&f.vault, || {
             f.env.storage().instance().remove(&DataKey::MinCashReserveBps);
             f.env.storage().instance().remove(&DataKey::CashBorrowingEnabled);
@@ -147,6 +147,16 @@ impl F {
             (&self.admin, enabled).into_val(&self.env),
         );
         self.c().set_cash_borrowing_enabled(&self.admin, &enabled);
+    }
+    fn seed(&self) {
+        self.policy(0);
+        self.mint(&self.admin, 1000);
+        self.env.mock_auths(&[MockAuth { address: &self.admin, invoke: &MockAuthInvoke {
+            contract: &self.vault, fn_name: "seed_minimum_supply", args: (&self.admin, 1000u128).into_val(&self.env),
+            sub_invokes: &[MockAuthInvoke { contract: &self.asset, fn_name: "transfer",
+                args: (&self.admin, &self.vault, 1000i128).into_val(&self.env), sub_invokes: &[] }],
+        } }]);
+        assert_eq!(self.c().seed_minimum_supply(&self.admin, &1000), 1000);
     }
     fn mint(&self, to: &Address, amount: i128) {
         self.auth(
@@ -196,9 +206,9 @@ impl F {
     }
 }
 #[test]
-fn reserve_optional_bounded_and_authorized() {
+fn reserve_missing_policy_safe_bounded_and_authorized() {
     let f = F::new();
-    assert_eq!(f.c().get_min_cash_reserve_bps(), None);
+    assert_eq!(f.c().get_min_cash_reserve_bps(), Some(10000));
     assert!(f.c().try_set_min_cash_reserve_bps(&f.admin, &1000).is_err());
     f.policy(1000);
     assert_eq!(f.c().get_min_cash_reserve_bps(), Some(1000));
@@ -302,6 +312,7 @@ fn reserve_margin_uses_same_floor_and_controller_auth() {
 
 fn strategy_fixture() -> (F, Address, Address) {
     let f = F::new();
+    f.seed(); // explicit admin-funded floor; user supplies the other 99,999,000
     let strategy = f.env.register(crate::test::MockBoostedVault, ());
     crate::test::MockBoostedVaultClient::new(&f.env, &strategy).initialize(&f.asset);
     f.auth(
@@ -320,22 +331,22 @@ fn strategy_fixture() -> (F, Address, Address) {
     f.c().set_idle_cash_buffer_bps(&f.admin, &5000);
     f.policy(1000);
     f.enable(true);
-    f.mint(&f.user, 100_000_000);
+    f.mint(&f.user, 99_999_000);
     f.env.mock_auths(&[MockAuth {
         address: &f.user,
         invoke: &MockAuthInvoke {
             contract: &f.vault,
             fn_name: "deposit",
-            args: (&f.user, 100_000_000u128).into_val(&f.env),
+            args: (&f.user, 99_999_000u128).into_val(&f.env),
             sub_invokes: &[MockAuthInvoke {
                 contract: &f.asset,
                 fn_name: "transfer",
-                args: (&f.user, &f.vault, 100_000_000i128).into_val(&f.env),
+                args: (&f.user, &f.vault, 99_999_000i128).into_val(&f.env),
                 sub_invokes: &[],
             }],
         },
     }]);
-    f.c().deposit(&f.user, &100_000_000);
+    f.c().deposit(&f.user, &99_999_000);
     let controller = f.env.register(ReserveBorrower, ());
     f.env.as_contract(&f.vault, || {
         f.env
@@ -400,7 +411,7 @@ fn reserve_cash_first_withdrawal_worked_example_and_shortfall_rollback() {
                 token::Client::new(&f.env, &f.asset).balance(&strategy),
                 50_000_000
             );
-            assert_eq!(f.c().get_ptoken_balance(&f.user), 100_000_000);
+            assert_eq!(f.c().get_ptoken_balance(&f.user), 99_999_000);
         }
     }
 }
@@ -542,14 +553,7 @@ fn flash_guard_fixture(seeded: bool) -> (F, Address, Address) {
     let receiver = f.env.register(crate::test::FlashLoanRepayer, ());
     crate::test::FlashLoanRepayerClient::new(&f.env, &receiver).configure(&f.asset);
     if seeded {
-        f.policy(0);
-        f.mint(&f.admin, 1000);
-        f.env.mock_auths(&[MockAuth { address: &f.admin, invoke: &MockAuthInvoke {
-            contract: &f.vault, fn_name: "seed_minimum_supply", args: (&f.admin, 1000u128).into_val(&f.env),
-            sub_invokes: &[MockAuthInvoke { contract: &f.asset, fn_name: "transfer",
-                args: (&f.admin, &f.vault, 1000i128).into_val(&f.env), sub_invokes: &[] }],
-        } }]);
-        assert_eq!(f.c().seed_minimum_supply(&f.admin, &1000), 1000);
+        f.seed();
     }
     flash_guard_supply(&f, 1_000_000);
     (f, controller, receiver)
@@ -653,9 +657,13 @@ fn reserve_flash_enabled_obeys_floor_and_controller_pause() {
 }
 
 #[test]
-fn reserve_flash_unconfigured_legacy_repayment_still_succeeds() {
-    let (f, _controller, receiver) = flash_guard_fixture(false);
-    assert_eq!(f.c().get_min_cash_reserve_bps(), None);
+fn reserve_flash_missing_policy_stays_disabled() {
+    let (f, _controller, receiver) = flash_guard_fixture(true);
+    f.env.as_contract(&f.vault, || {
+        f.env.storage().instance().remove(&DataKey::MinCashReserveBps);
+        f.env.storage().instance().remove(&DataKey::CashBorrowingEnabled);
+    });
+    assert_eq!(f.c().get_min_cash_reserve_bps(), Some(10000));
     assert!(!f.c().get_cash_borrowing_enabled());
-    flash_guard_attempt(&f, &receiver, 900_000, true);
+    flash_guard_attempt(&f, &receiver, 900_000, false);
 }

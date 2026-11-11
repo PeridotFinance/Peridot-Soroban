@@ -572,7 +572,14 @@ impl ReceiptVault {
     }
 
     fn minimum_cash_reserve_bps(env: &Env) -> Option<u32> {
-        env.storage().instance().get(&DataKey::MinCashReserveBps)
+        let configured = env.storage().instance().get(&DataKey::MinCashReserveBps);
+        // The replacement cash release must never select legacy allocation or
+        // bypass borrowing controls because configuration is absent. An explicit
+        // configured zero is still allowed; absence requires all cash retained.
+        #[cfg(not(feature = "lp-engine"))]
+        { Some(configured.unwrap_or(10_000)) }
+        #[cfg(feature = "lp-engine")]
+        { configured }
     }
 
     fn ceil_bps(amount: u128, bps: u32) -> u128 {

@@ -7,6 +7,9 @@ use soroban_sdk::{testutils::{Address as _, Ledger as _, MockAuth, MockAuthInvok
 struct R { e: Env, admin: Address, incumbent: Address, entrant: Address, asset: Address, vault: Address }
 impl R {
     fn new() -> Self {
+        Self::with_rate(1_000_000)
+    }
+    fn with_rate(borrow_rate: u128) -> Self {
         let e = Env::default();
         let admin = Address::generate(&e);
         let incumbent = Address::generate(&e);
@@ -14,20 +17,12 @@ impl R {
         let asset = e.register_stellar_asset_contract_v2(admin.clone()).address();
         let vault = e.register(ReceiptVault, ());
         let f = Self { e, admin, incumbent, entrant, asset, vault };
-        f.auth(&f.admin, &f.vault, "initialize", (&f.asset, 0u128, 1_000_000u128, &f.admin).into_val(&f.e));
-        f.c().initialize(&f.asset, &0, &1_000_000, &f.admin);
-        f.auth(&f.admin, &f.vault, "enable_static_rates", (&f.admin,).into_val(&f.e));
-        f.c().enable_static_rates(&f.admin);
-        f
-    }
-    // Explicit historical-state fixture: older deployed instances have no cash
-    // policy key. This exercises arithmetic compatibility without a new seed.
-    fn legacy() -> Self {
-        let f = Self::new();
-        f.e.as_contract(&f.vault, || {
-            f.e.storage().instance().remove(&crate::DataKey::MinCashReserveBps);
-            f.e.storage().instance().remove(&crate::DataKey::CashBorrowingEnabled);
-        });
+        f.auth(&f.admin, &f.vault, "initialize", (&f.asset, 0u128, borrow_rate, &f.admin).into_val(&f.e));
+        f.c().initialize(&f.asset, &0, &borrow_rate, &f.admin);
+        if borrow_rate > 0 {
+            f.auth(&f.admin, &f.vault, "enable_static_rates", (&f.admin,).into_val(&f.e));
+            f.c().enable_static_rates(&f.admin);
+        }
         f
     }
     fn seed(&self, amount: u128) -> u128 {
@@ -64,12 +59,13 @@ impl R {
 #[test]
 fn medium2_direct_donation_minimum_supply_last_exit_next_minter_no_capture() {
     for incumbent_first in [true, false] {
-        let f = R::legacy();
+        let f = R::new();
+        f.seed(1000);
         f.deposit(&f.incumbent, 1);
         f.mint(&f.incumbent, 999);
         f.auth(&f.incumbent, &f.asset, "transfer", (&f.incumbent, &f.vault, 999i128).into_val(&f.e));
         token::Client::new(&f.e, &f.asset).transfer(&f.incumbent, &f.vault, &999);
-        assert_eq!(f.c().get_total_underlying(), 1);
+        assert_eq!(f.c().get_total_underlying(), 1001);
         assert_eq!(f.c().get_exchange_rate(), 1_000_000);
         f.deposit(&f.entrant, 1500);
         assert_eq!(f.c().get_ptoken_balance(&f.entrant), 1500);
@@ -77,9 +73,9 @@ fn medium2_direct_donation_minimum_supply_last_exit_next_minter_no_capture() {
         else { f.withdraw(&f.entrant, 1500); f.withdraw(&f.incumbent, 1); }
         assert_eq!(f.balance(&f.incumbent), 1);
         assert_eq!(f.balance(&f.entrant), 1500);
-        assert_eq!(f.c().get_total_underlying(), 0);
-        assert_eq!(f.c().get_total_ptokens(), 0);
-        assert_eq!(f.balance(&f.vault), 999);
+        assert_eq!(f.c().get_total_underlying(), 1000);
+        assert_eq!(f.c().get_total_ptokens(), 1000);
+        assert_eq!(f.balance(&f.vault), 1999);
         // An entrant front-running the next legitimate deposit cannot capture donations.
         f.deposit(&f.incumbent, 1);
         f.deposit(&f.entrant, 7);
@@ -87,37 +83,43 @@ fn medium2_direct_donation_minimum_supply_last_exit_next_minter_no_capture() {
         f.withdraw(&f.entrant, 7);
         assert_eq!(f.balance(&f.incumbent), 2);
         assert_eq!(f.balance(&f.entrant), 1507);
-        assert_eq!(f.balance(&f.vault), 999);
+        assert_eq!(f.balance(&f.vault), 1999);
     }
 }
 
 #[test]
-fn medium2_public_interest_exact_rounding_prevents_incumbent_capture() {
-    let f = R::legacy();
+fn medium2_seeded_public_interest_uses_exact_ratio() {
+    let f = R::new();
+    f.seed(1000);
+    // Nonzero debt exists only in this explicitly enabled test configuration.
+    f.auth(&f.admin, &f.vault, "set_cash_borrowing_enabled", (&f.admin, true).into_val(&f.e));
+    f.c().set_cash_borrowing_enabled(&f.admin, &true);
     f.deposit(&f.incumbent, 3);
     f.auth(&f.incumbent, &f.vault, "borrow", (&f.incumbent, 1u128).into_val(&f.e));
     f.c().borrow(&f.incumbent, &1);
     f.e.ledger().with_mut(|l| l.timestamp += 365 * 24 * 60 * 60);
     f.c().update_interest();
     assert_eq!(f.c().get_user_borrow_balance(&f.incumbent), 2);
-    f.mint(&f.incumbent, 1); // borrower funds the actual one-unit accrued interest
+    f.mint(&f.incumbent, 1);
     f.fund_call(&f.incumbent, "repay", 2);
     assert_eq!(f.c().get_total_borrowed(), 0);
-    assert_eq!(f.c().get_total_underlying(), 4);
-    assert_eq!(f.c().get_total_ptokens(), 3);
-    assert_eq!(f.c().get_exchange_rate(), 1_333_333);
-    let entrant_deposit = 1_333_333u128;
-    let exact_fair_mint = entrant_deposit * 3 / 4;
-    f.deposit(&f.entrant, entrant_deposit);
-    let minted = f.c().get_ptoken_balance(&f.entrant);
-    assert_eq!(exact_fair_mint, 999_999);
-    assert_eq!(minted, exact_fair_mint);
+    assert_eq!(f.c().get_total_underlying(), 1004);
+    assert_eq!(f.c().get_total_ptokens(), 1003);
+    let amount = 100_000_000u128;
+    let exact_mint = amount * 1003 / 1004;
+    let rounded_quote_mint = amount * 1_000_000 / f.c().get_exchange_rate();
+    assert!(rounded_quote_mint > exact_mint);
+    f.deposit(&f.entrant, amount);
+    assert_eq!(f.c().get_ptoken_balance(&f.entrant), exact_mint);
+    let expected_incumbent = 3 * f.c().get_total_underlying() / f.c().get_total_ptokens();
     f.withdraw(&f.incumbent, 3);
-    assert_eq!(f.balance(&f.incumbent), 4); // retains the actual earned interest
-    f.withdraw(&f.entrant, minted);
-    assert_eq!(f.balance(&f.entrant), entrant_deposit as i128);
-    assert_eq!(f.c().get_total_underlying(), 0);
-    std::println!("MEDIUM2_FIXED public_interest=1 exact_mint=999999 actual_mint=999999 incumbent_payout=4 entrant_profit=0 donation_capture=false");
+    assert_eq!(f.balance(&f.incumbent), expected_incumbent as i128);
+    let expected_entrant = exact_mint * f.c().get_total_underlying() / f.c().get_total_ptokens();
+    f.withdraw(&f.entrant, exact_mint);
+    assert_eq!(f.balance(&f.entrant), expected_entrant as i128);
+    assert!(expected_entrant <= amount);
+    assert_eq!(f.c().get_total_ptokens(), 1000);
+    assert_eq!(f.c().get_ptoken_balance(&f.vault), 1000);
 }
 
 #[test]
@@ -126,7 +128,14 @@ fn medium2_fresh_cash_requires_explicit_funded_immutable_seed() {
     assert_eq!(f.c().get_min_cash_reserve_bps(), Some(0));
     assert_eq!(f.c().get_minimum_supply(), 0);
     f.mint(&f.incumbent, 10);
+    f.e.mock_auths(&[MockAuth { address: &f.incumbent, invoke: &MockAuthInvoke {
+        contract: &f.vault, fn_name: "deposit", args: (&f.incumbent, 10u128).into_val(&f.e),
+        sub_invokes: &[MockAuthInvoke { contract: &f.asset, fn_name: "transfer",
+            args: (&f.incumbent, &f.vault, 10i128).into_val(&f.e), sub_invokes: &[] }],
+    } }]);
+    let before_unseeded_deposit = f.e.to_snapshot().ledger;
     assert!(f.c().try_deposit(&f.incumbent, &10).is_err());
+    assert_eq!(f.e.to_snapshot().ledger, before_unseeded_deposit);
     assert!(f.c().try_seed_minimum_supply(&f.admin, &1000).is_err());
     f.auth(&f.entrant, &f.vault, "seed_minimum_supply", (&f.entrant, 1000u128).into_val(&f.e));
     assert!(f.c().try_seed_minimum_supply(&f.entrant, &1000).is_err());
@@ -199,4 +208,46 @@ fn medium2_locked_seed_cannot_be_seized_and_cap_is_enforced() {
     assert_eq!(f.c().get_ptoken_balance(&f.entrant), 1);
     assert_eq!(f.c().get_ptoken_balance(&f.incumbent), 9);
     assert_eq!(f.c().get_ptoken_balance(&f.vault), 1000);
+}
+
+#[test]
+fn medium1_missing_caps_fail_closed_without_blocking_supply_only_exit() {
+    use simple_peridottroller::{SimplePeridottroller, SimplePeridottrollerClient};
+    let f = R::with_rate(0);
+    let controller = f.e.register(SimplePeridottroller, ());
+    let c = SimplePeridottrollerClient::new(&f.e, &controller);
+    f.auth(&f.admin, &controller, "initialize", (&f.admin,).into_val(&f.e));
+    c.initialize(&f.admin);
+    f.auth(&f.admin, &controller, "add_market", (&f.vault,).into_val(&f.e));
+    c.add_market(&f.vault);
+    f.auth(&f.admin, &f.vault, "set_peridottroller", (&controller,).into_val(&f.e));
+    f.c().set_peridottroller(&controller);
+    f.auth(&f.admin, &f.vault, "set_min_cash_reserve_bps", (&f.admin, 10000u32).into_val(&f.e));
+    f.c().set_min_cash_reserve_bps(&f.admin, &10000);
+    assert!(!f.c().get_cash_borrowing_enabled());
+    assert_eq!(f.seed(1000), 1000);
+    f.deposit(&f.incumbent, 100);
+    // Construct truly absent configuration, NOT a simulation of archival.
+    // Host29 TTL-only restoration is tested separately in the compiled fixture.
+    f.e.as_contract(&f.vault, || {
+        f.e.storage().persistent().remove(&crate::DataKey::SupplyCap);
+        f.e.storage().persistent().remove(&crate::DataKey::BorrowCap);
+    });
+    f.mint(&f.entrant, 10);
+    f.auth(&f.entrant, &f.vault, "deposit", (&f.entrant, 10u128).into_val(&f.e));
+    let before = f.e.to_snapshot().ledger;
+    assert!(f.c().try_deposit(&f.entrant, &10).is_err());
+    assert_eq!(f.e.to_snapshot().ledger, before);
+    f.auth(&f.incumbent, &f.vault, "borrow", (&f.incumbent, 1u128).into_val(&f.e));
+    let before = f.e.to_snapshot().ledger;
+    assert!(f.c().try_borrow(&f.incumbent, &1).is_err());
+    assert_eq!(f.e.to_snapshot().ledger, before);
+    f.e.ledger().with_mut(|l| l.timestamp += 4 * 24 * 60 * 60);
+    f.withdraw(&f.incumbent, 100);
+    assert_eq!(f.balance(&f.incumbent), 100);
+    assert_eq!(f.c().get_total_borrowed(), 0);
+    assert_eq!(f.c().get_total_underlying(), 1000);
+    assert_eq!(f.c().get_total_ptokens(), 1000);
+    assert_eq!(f.c().get_ptoken_balance(&f.vault), 1000);
+    assert!(!f.c().get_cash_borrowing_enabled());
 }
