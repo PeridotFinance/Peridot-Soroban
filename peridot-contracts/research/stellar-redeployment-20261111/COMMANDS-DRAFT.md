@@ -117,6 +117,10 @@ stellar tx new create-account --source-account "$LEDGER_PUBLIC" \
 
 This classic operation has no Soroban simulation step. Verify the decoded amount and source reserve/sequence, use the Ledger signature protocol, then read the new account before uploads.
 
+**Funding complete — do not repeat step 1.** Treasury transaction `6ba8f1d665b553b5cacd18dd0ab59ede404f48b52514422406197c667b598929` succeeded at ledger 65427468; the deployer read back **300.0001000 XLM** and sequence 281008835320086528. Resubmitting the older failed Ledger envelope `0190372b...` returned TxBadSeq and is not a new funding requirement. Public confirmation is saved in `deployer-funded-6ba8f1d6.json`.
+
+Unsigned funded-source CLI preflight confirms the controller quote unchanged at 89.9792066 XLM. Receipt quote at ledger 65427535 remains 119.3289309 XLM. Prepare each upload from a fresh account sequence after the preceding transaction lands. No operator upload has yet been observed at this checkpoint.
+
 **2. Two code uploads — deployer signatures.** One each for controller and receipt:
 
 ```sh
@@ -126,6 +130,18 @@ stellar contract upload --wasm "$WASM" --optimize=false --build-only \
 ```
 
 Compare local bytes with the seal before signing; read uploaded code hash/TTL after success. Abort on any mismatch. No automatic rebuild or changed optimization at upload.
+
+**Both code uploads confirmed.** Controller transaction `5fb9f13f6d421ce18ea67bec5001f1b087387d2a1fdd45169ac1efd8aafe7fb7` succeeded at ledger 65427574, charging **78.2436225 XLM**. Receipt transaction `1409139551c20649289f18edbd4de2bb3205ea59a063a9bedff7179696af80f0` succeeded at ledger 65427604, charging **103.7655941 XLM**. Fresh-deployer balance is **117.9908834 XLM**, sequence **281008835320086530**. Fetched public code bytes exactly match both sealed local WASMs. Do not repeat the uploads.
+
+Five independent unsigned creation simulations at ledger 65427628 pass, totaling **0.1046850 XLM** with nominal inclusion. These are fresh empty instances, not initialization/configuration. Expected IDs were independently derived by the CLI and matched simulator return values; each was absent before deployment. Use the pinned salts below. Build each transaction only after the previous one completes, so source sequence is fresh. Proposed resource-fee allowance is **0.1 XLM per creation**, plus inclusion fee; this is an allowance, not the quoted charge. No contract administration is assigned to the deployer by these creations.
+
+| Label | Pinned salt | Expected ID — NOT YET DEPLOYED at this checkpoint |
+|---|---|---|
+| controller | `d30c38265e4717f9a1569788dc57d55c7d321b6504a7e3b96c5389cf1ec80c93` | `CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK` |
+| USDC | `1393ee404f539db850e249c19d49a675c6e50394a127683a25adc0e327deac97` | `CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F` |
+| XLM | `1ce59528d7905dbfb1bea8a3f5207d5c5a3e868ca4c1c88807d7f022157dd9cf` | `CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS` |
+| PYUSD | `74c3f848cef9deed9c3d96f9915f450145bab22d29c4d78ccb0a2e5db9ebb542` | `CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC` |
+| EURC | `19a24b1dc4380e232896349b0b87bd313f2a58637aa7190116ed2fe814bcb43e` | `CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4` |
 
 **3. Five fresh instances — deployer signatures.** One controller, then USDC, XLM, PYUSD and EURC receipts; unique recorded salts:
 
