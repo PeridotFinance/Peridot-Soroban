@@ -1,4 +1,6 @@
-# Fresh lending release evidence — scoped disposition
+# Fresh lending release gate — PASSED by operator
+
+Operator accepted `4c98bdd3`, resolved both original mediums, and passed the fresh-deployment release gate. HIGH90f942e8 is **not applicable to this fresh deployment**; legacy markets are retired and will never be upgraded. This is the operator's recorded disposition, not an alteration of Almanax's raw OPEN finding. Any future upgrade of the new markets requires a storage-compatibility test against their live state first, as specified in COMMANDS-DRAFT.md. No live transaction has been executed by this documentation update.
 
 Both original medium findings have executable fixes/tests. The accepted flash guard remains in place. Final source snapshot e3eab76a74028a394b0cde4e48c2ec42662811cc has a completed Almanax rescan: **one HIGH legacy-upgrade incompatibility and one LOW fail-closed missing pause map**, no medium. Raw JSON and all earlier findings are preserved. The HIGH is a real unsupported upgrade path; the user forbids old-contract reuse/upgrade. Compiled fresh initialize→permanent seed→deposit→full withdrawal→next deposit passes, while synthetic nonempty/unseeded legacy state explicitly reproduces rejection. This is the required test-backed fresh-only non-applicability disposition, not a scan with zero high findings or an API dismissal.
 
@@ -16,7 +18,7 @@ Native: 5 accounting/configuration + 13 reserve/flash tests PASS; 2 rate denomin
 
 The global CL checker retains invocation PASS and lifecycle/transaction/checkpoint FAIL for missing required global CL proofs. Those failures are not relabelled, swallowed or presented as CI approval. They are distinct from this scoped fresh cash-market remediation, and do not authorize CL deployment or borrowing activation.
 
-The command list is prepared in COMMANDS-DRAFT.md. New addresses, deployer fee funding and separate per-market permanent/withdrawable seed amounts remain operator inputs. Every actual transaction still requires current simulation, review, operator signature, one submission and post-transaction readback; none was performed here. No old contract was invoked. Ledger-only reserve/fee withdrawal and strategy binding remain accepted powers, explicitly not used in supply-only mode. Maintenance margin stays unset.
+The command list is prepared in COMMANDS-DRAFT.md. New addresses and deployer fee funding remain operator inputs. Approved permanent seeds are 1 USDC, 5 XLM, 1 PYUSD and 1 EURC. The command list now contains the four approximately $100 deposits and approximately $10 withdrawal checks, with timestamped XLM/EURC price evidence. Every actual transaction still requires current simulation, review, operator signature, one submission and post-transaction readback; none was performed here. No old contract was invoked. Ledger-only reserve/fee withdrawal and strategy binding remain accepted powers, explicitly not used in supply-only mode. Maintenance margin stays unset.
 
 ## Measured pinned-host envelope
 

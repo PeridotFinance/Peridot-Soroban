@@ -1,4 +1,6 @@
-# Findings and executable disposition
+# Findings and executable disposition — accepted
+
+Operator accepted 4c98bdd3: both original mediums resolved; fresh-deployment release gate passed. Final HIGH90f942e8 is recorded **not applicable to the fresh deployment**, since retired legacy markets will never be upgraded. Future upgrades of the new markets require storage-compatibility testing against their live state before proposal/signature. Raw historical scanner findings remain intact.
 
 Accepted flash commit e3e6f73 is pushed. The fixed lending-only snapshot is e3eab76a74028a394b0cde4e48c2ec42662811cc, containing 33 scoped files. Final receipt SHA4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e. Current checkout matches every scoped file byte-for-byte. No audited-byte identity is claimed after these source corrections.
 
