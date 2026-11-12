@@ -1,8 +1,48 @@
-# Fresh lending ceremony — final operator list, not executed
+# Fresh lending ceremony — operator progress and remaining commands
 
 **Release gate passed by operator decision accepting 4c98bdd3 on 2026-11-11.** Both original mediums are resolved. Almanax HIGH90f942e8 is recorded as **not applicable to this fresh deployment**: populated legacy markets are retired and will never be upgraded. Its raw scanner record is preserved. Current simulations, signatures and readbacks below remain required; this decision does not assert that deployment has occurred. No old contract is invoked or reused. The release is one fresh default controller plus four fresh default receipts, using canonical USDC, XLM, PYUSD and EURC assets. No PERI deployment, margin controller, strategy, oracle, router or rate-model binding. Initial rates and debt are zero. The rate WASM is reviewed and preserved but need not be deployed for this supply-only configuration.
 
 The controller can list a future CL receipt with `add_market`. That is a later Ledger action, with separate accounting and no lending-cash routing. Do not set maintenance margin or enable borrowing.
+
+## Confirmed operator progress — 2026-11-12
+
+Funding, both code uploads and all five creations have completed. **Do not repeat steps 1–3.** `confirmed-instances-20261112.json` records the five successful creation transactions, total charged fee **0.0891585 XLM**, and remaining deployer balance **117.9017249 XLM**. Pinned salts and IDs remain in the historical `fresh-instance-plan.json`; its original pre-deployment measurements are preserved.
+
+At ledger **65437466**, public RPC confirms all five installed executable hashes match the accepted clean artifacts and all five are uninitialized. `initialization-preflight-20261112.json` records independent unsigned Ledger-source simulations: controller 3,046,567 declared CPU / 15 unique keys / 11 writes; each receipt 5,878,116 / 35 / 23. Estimated combined initialization fee including nominal inclusion: **2.3797473 XLM**. These are preflights, not applied initialization. Only source-account authorization was requested; no restoration preamble. Actual commands must refresh sequence and simulation separately before each operator signature.
+
+**Initialization subsequently confirmed at ledgers 65437507–65437529.** All five Ledger-source transactions succeeded; total actual fee **2.0695530 XLM**. `ledger-initialization-transactions-20261112.json` preserves transaction identities and fees; `fresh-cash-initialized-20261112.json` verifies actual raw storage, Ledger admins, canonical assets, zero debt/cash, disabled borrowing and absent external bindings. Do not repeat initialize. Guardian assignment, policy configuration, listing, seed deposits and withdrawal checks remain outstanding.
+
+Seventeen independent unsigned configuration preflights passed (`configuration-preflight-20261112.json`): maximum declared CPU 13,265,344, 52 unique keys and 4 writes (maxima across rows). The four borrow-pause setters require listing first and will be simulated after each `add_market` by the operator CLI. These preflights are not a sequential applied configuration. `check-fresh-cash-state.cjs guardian` checks the intermediate guardian phase; `configured` checks all four bindings, durable policy and supported-market/pause maps before seeds. The Ledger wallet has 32.0821629 XLM, zero USDC/EURC and no PYUSD trustline at the current readback; seed assets must be funded before the deposit ceremony. Refresh the dated XLM/EURC dollar conversions before that ceremony.
+
+## Configuration confirmed; wallet funding pending — 2026-11-12 09:18 UTC
+
+All 21 configuration transactions succeeded (actual total fee **0.4617483 XLM**). Independent raw readback at ledger **65437805** verifies Ledger admin/guardian, all four fresh-controller bindings/listings, 10000 bps reserve, borrowing disabled, no pending authorities/upgrades and no external allocation. Do not repeat configuration. Transaction identities are in `ledger-configuration-transactions-20261112.json`.
+
+The Ledger wallet currently holds **29.5508616 XLM**, zero USDC/EURC and no PYUSD trustline. Before market seeding, fund that wallet with **101 USDC, 101 PYUSD, 91.2062548 EURC**, and a suggested **700 additional XLM**. The latter leaves approximately **38.8749738 XLM** after the XLM seed/deposit, before remaining fees and the account's locked reserve. It is operating balance, not supplier capital. Do not transfer these assets directly to receipt contracts.
+
+Create the canonical PYUSD trustline first: issuer `GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5`, whose Mainnet SAC derivation exactly matches the bound PYUSD asset. The prepared CLI build-only example has zero signatures and is not submitted; rebuild with the current source sequence before operator signing. Confirm the resulting trustline is authorized before sending PYUSD. No permanent seed or ordinary deposit has been submitted.
+
+## Funding verified; permanent seeds next — 2026-11-12 09:32 UTC
+
+Ledger funding now reads **728.5406217 XLM, 101 USDC, 101.0611141 PYUSD and 92 EURC**, with the canonical PYUSD trustline authorized. `funded-ledger-preseed-20261112.json` records the public balances. No additional funding is currently needed for the approved seed/deposit amounts. The preceding funding shortfall is historical and resolved.
+
+Fresh configuration and all four actual SAC balances/share totals/NAV were checked again: zero underlying, zero shares/NAV, exchange rate 1000000, CL custody false. Four independent unsigned `seed_minimum_supply` simulations passed at ledger **65437981** with exact permanent amounts and source-account authorization. Maximum declared CPU 8,733,583 / 37 unique keys / 6 writes; total nominal fee **0.3830017 XLM**. `permanent-seed-preflight-20261112.json` retains unsigned authorization trees. No seed transaction has been applied at this checkpoint. The empty-state and pre-seed configuration scripts are phase-specific: do not interpret their expected failures after seeding as a deployed-state regression.
+
+## Permanent seeds confirmed; ordinary deposits next — 2026-11-12 09:39 UTC
+
+All four permanent seeds succeeded at ledgers **65438011, 65438021, 65438027 and 65438031**. Exact wallet debits (including **0.3324090 XLM** actual fees), actual underlying balances, NAV, receipt-owned permanent shares, zero Ledger shares and initial exchange rates reconcile. Do not repeat `seed_minimum_supply`. Evidence: `seed-verification-deposit-preflight-20261112.json`.
+
+Independent unsigned ordinary-deposit simulations passed for **100 USDC, 685.6758878 XLM, 100 PYUSD and 90.2062548 EURC** at ledgers 65438052–65438053. Maximum declared CPU **14,401,142**, **44 unique keys**, **8 writes**; combined nominal fees **0.2887482 XLM**. Only source-account authorization is requested; no restoration is required. No ordinary deposit has yet been applied at this checkpoint. The first verification attempt's history-filter error included other-source incoming funding; its failure is preserved and the verifier now filters by exact source account before comparing sequence numbers.
+
+## Ordinary deposits confirmed; withdrawal checks next — 2026-11-12
+
+All four ordinary deposits succeeded. Wallet debits reconcile exactly including **0.2506673 XLM** in actual fees. Owner shares match the approved raw deposits, permanent receipt-owned shares remain unchanged, and actual cash/NAV/total shares match their sum. Exchange rates remain 1000000, debt zero, borrowing disabled. Evidence and transaction identities: `deposit-verification-withdraw-preflight-20261112.json`.
+
+Four independent unsigned withdrawal simulations passed at ledgers **65438101–65438102** for **10 USDC, 68.5675887 XLM, 10 PYUSD and 9.0206254 EURC**. Exact raw share burns equal the expected raw payouts at the verified 1:1 NAV/share ratio. Maximum declared CPU **18,422,584**, **45 unique keys**, **7 writes**; combined nominal fees **0.0136744 XLM**. Source-account authorization only, no restoration. These withdrawal transactions have not yet been applied; operator signatures and final wallet/share/cash readbacks remain required before top-ups.
+
+## Ceremony complete — 2026-11-12
+
+All four live withdrawal checks are now confirmed. Exact payouts, raw receipt burns, cash/NAV, exchange rates and unchanged permanent floors reconcile, including **0.0115753 XLM** actual withdrawal fees. Final roles, durable safeguards, code hashes and absent external bindings pass the post-withdraw audit. See `LIVE-CEREMONY-COMPLETE-20261112.md`, `fresh-deployment-manifest.json` and `final-withdrawal-verification-20261112.json`. **Do not replay any completed ceremony transaction below.** Further top-ups require separately supplied operator amounts; the separate tracker is ready.
 
 ## Operator inputs and artifact seal
 
@@ -11,15 +51,15 @@ Ledger public account: `GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP
 | Market | Underlying SAC | Permanent seed, raw units | Withdrawable seed deposit, raw units |
 |---|---|---:|---:|
 | USDC | CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75 | 10000000 (1 USDC) | 1000000000 (100 USDC) |
-| XLM | CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA | 50000000 (5 XLM) | 6632113356 (663.2113356 XLM) |
+| XLM | CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA | 50000000 (5 XLM) | 6856758878 (685.6758878 XLM) |
 | PYUSD | CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2 | 10000000 (1 PYUSD) | 1000000000 (100 PYUSD) |
-| EURC | CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV | 10000000 (1 EURC) | 902039669 (90.2039669 EURC) |
+| EURC | CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV | 10000000 (1 EURC) | 902062548 (90.2062548 EURC) |
 
 All four use seven decimals. The minimum permanent seed at the initialized 1:1 rate is **1,000 raw units = 0.0001000 underlying units**. All assets passed to `seed_minimum_supply` are permanently allocated to nonredeemable receipt-owned shares. This is separate from the operator's withdrawable deposit. Do not accidentally pass the full deposit to the seed method.
 
-The permanent amounts are approved: **1 USDC, 5 XLM, 1 PYUSD and 1 EURC**. Withdrawable deposits are **100 USDC, 663.2113356 XLM, 100 PYUSD and 90.2039669 EURC**. The XLM/EURC amounts use [Coinbase XLM/USD](https://api.coinbase.com/v2/prices/XLM-USD/spot) $0.1507815 and [Coinbase EURC/USD](https://api.coinbase.com/v2/prices/EURC-USD/spot) $1.108598694695612, fetched 2026-11-11 17:54:38 UTC. Raw responses and exact Decimal calculations are pinned in `seed-price-quotes.json` and `approved-seed-amounts.json`. Quantities round down to seven decimals; these are approximate dollar values, not exchange guarantees. USDC/PYUSD are the exact token amounts specified by the operator, not a claim of exact market parity. Recheck quotes before signing if execution is delayed, and record any refreshed quantity explicitly. No asset swap is included.
+The permanent amounts are approved: **1 USDC, 5 XLM, 1 PYUSD and 1 EURC**. Withdrawable deposits are **100 USDC, 685.6758878 XLM, 100 PYUSD and 90.2062548 EURC**. The XLM/EURC amounts use [Coinbase XLM/USD](https://api.coinbase.com/v2/prices/XLM-USD/spot) $0.1458415 and [Coinbase EURC/USD](https://api.coinbase.com/v2/prices/EURC-USD/spot) $1.1085705777270018, fetched 2026-11-12 09:18:20 UTC. Current raw responses and exact Decimal quantities are pinned in `preseed-funding-20261112.json`; the earlier `seed-price-quotes.json` and `approved-seed-amounts.json` remain historical evidence. Quantities round down to seven decimals; these are approximate dollar values, not exchange guarantees. USDC/PYUSD are the exact token amounts specified by the operator, not a claim of exact market parity. Recheck quotes before signing if execution is delayed, and record any refreshed quantity explicitly. No asset swap is included.
 
-The four withdrawal checks use 10 USDC, 66.3211335 XLM, 10 PYUSD and 9.0203966 EURC at the same quote snapshot. They are additional transactions after all four deposits; each returns assets from the withdrawable allocation, never from the permanent seed. Fees and account reserves require extra XLM outside these allocations.
+The four withdrawal checks use 10 USDC, 68.5675887 XLM, 10 PYUSD and 9.0206254 EURC at the same quote snapshot. They are additional transactions after all four deposits; each returns assets from the withdrawable allocation, never from the permanent seed. Fees and account reserves require extra XLM outside these allocations.
 
 Build only with `stellar contract build`, default features and the Ledger initializer environment variables. `medium-final-build-hashes.json` is the current artifact seal; the earlier `build-hashes.json` and `medium-fixed-build-hashes.json` are historical checkpoints. Any production source change invalidates this seal and requires rebuilding/rescanning.
 
@@ -31,7 +71,7 @@ Build only with `stellar contract build`, default features and the Ledger initia
 
 ## Command forms and signature protocol
 
-These are operator commands; none has been executed on Mainnet. Use a new output directory, one unique `STEP` per transaction, and stop on every command error. Never overwrite an envelope or retry an unknown submission.
+These are operator commands. Funding, uploads and creations are now confirmed above; subsequent configuration and funding steps have not been executed. Use a new output directory, one unique `STEP` per transaction, and stop on every command error. Never overwrite an envelope or retry an unknown submission.
 
 ```sh
 NET='Public Global Stellar Network ; September 2015'
@@ -67,9 +107,9 @@ select_market() {
   MARKET="$1"
   case "$MARKET" in
     USDC) RECEIPT="${RECEIPT_USDC:?fresh USDC receipt required}"; ASSET=CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75; LOCKED_SEED_RAW=10000000; DEPOSIT_RAW=1000000000; WITHDRAW_RAW=100000000 ;;
-    XLM) RECEIPT="${RECEIPT_XLM:?fresh XLM receipt required}"; ASSET=CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA; LOCKED_SEED_RAW=50000000; DEPOSIT_RAW=6632113356; WITHDRAW_RAW=663211335 ;;
+    XLM) RECEIPT="${RECEIPT_XLM:?fresh XLM receipt required}"; ASSET=CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA; LOCKED_SEED_RAW=50000000; DEPOSIT_RAW=6856758878; WITHDRAW_RAW=685675887 ;;
     PYUSD) RECEIPT="${RECEIPT_PYUSD:?fresh PYUSD receipt required}"; ASSET=CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2; LOCKED_SEED_RAW=10000000; DEPOSIT_RAW=1000000000; WITHDRAW_RAW=100000000 ;;
-    EURC) RECEIPT="${RECEIPT_EURC:?fresh EURC receipt required}"; ASSET=CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV; LOCKED_SEED_RAW=10000000; DEPOSIT_RAW=902039669; WITHDRAW_RAW=90203966 ;;
+    EURC) RECEIPT="${RECEIPT_EURC:?fresh EURC receipt required}"; ASSET=CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV; LOCKED_SEED_RAW=10000000; DEPOSIT_RAW=902062548; WITHDRAW_RAW=90206254 ;;
     *) return 2 ;;
   esac
   CONTRACT="$RECEIPT"
@@ -250,9 +290,9 @@ Expected values at the pinned quotes, assuming only the listed seed/deposit/with
 | Market | Shares burned = underlying paid, raw | Operator receipt balance after, raw | Market underlying after, raw | Exchange rate |
 |---|---:|---:|---:|---:|
 | USDC | 100000000 | 900000000 | 910000000 | 1000000 |
-| XLM | 663211335 | 5968902021 | 6018902021 | 1000000 |
+| XLM | 685675887 | 6171082991 | 6221082991 | 1000000 |
 | PYUSD | 100000000 | 900000000 | 910000000 | 1000000 |
-| EURC | 90203966 | 811835703 | 821835703 | 1000000 |
+| EURC | 90206254 | 811856294 | 821856294 | 1000000 |
 
 Other suppliers' intervening transactions must be reconciled from transaction metadata rather than treated as this operator's balance changes. The permanent seed remains in the market totals. Record each market's successful deposit hash, successful withdrawal hash, read ledger and before/after balances/rate; **all four markets must pass both operations** before top-ups.
 

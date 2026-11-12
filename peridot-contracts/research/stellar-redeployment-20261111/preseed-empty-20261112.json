@@ -1,0 +1,147 @@
+{
+  "observedAt": "2026-11-12T09:31:45.755Z",
+  "scope": "unsigned public getter simulations only; no applied financial operation",
+  "rows": [
+    {
+      "market": "USDC",
+      "contract": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      "method": "balance",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "method": "get_total_ptokens",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "method": "get_total_underlying",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "method": "get_exchange_rate",
+      "ledger": 65437972,
+      "value": "1000000"
+    },
+    {
+      "market": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "method": "get_cl_custody",
+      "ledger": 65437972,
+      "value": false
+    },
+    {
+      "market": "XLM",
+      "contract": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      "method": "balance",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "method": "get_total_ptokens",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "method": "get_total_underlying",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "method": "get_exchange_rate",
+      "ledger": 65437972,
+      "value": "1000000"
+    },
+    {
+      "market": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "method": "get_cl_custody",
+      "ledger": 65437972,
+      "value": false
+    },
+    {
+      "market": "PYUSD",
+      "contract": "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2",
+      "method": "balance",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "method": "get_total_ptokens",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "method": "get_total_underlying",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "method": "get_exchange_rate",
+      "ledger": 65437972,
+      "value": "1000000"
+    },
+    {
+      "market": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "method": "get_cl_custody",
+      "ledger": 65437972,
+      "value": false
+    },
+    {
+      "market": "EURC",
+      "contract": "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV",
+      "method": "balance",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "method": "get_total_ptokens",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "method": "get_total_underlying",
+      "ledger": 65437972,
+      "value": "0"
+    },
+    {
+      "market": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "method": "get_exchange_rate",
+      "ledger": 65437972,
+      "value": "1000000"
+    },
+    {
+      "market": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "method": "get_cl_custody",
+      "ledger": 65437972,
+      "value": false
+    }
+  ],
+  "result": "PASS"
+}

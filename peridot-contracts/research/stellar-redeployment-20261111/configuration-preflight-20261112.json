@@ -1,0 +1,279 @@
+{
+  "observedAt": "2026-11-12T08:57:35.168Z",
+  "scope": "independent unsigned prestate simulations; pause calls require listing first and are deferred to operator simulation",
+  "rows": [
+    {
+      "label": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "method": "set_pause_guardian",
+      "ledger": 65437562,
+      "instructions": 2714050,
+      "uniqueKeys": 12,
+      "writes": 1,
+      "writeBytes": 136,
+      "minResourceFee": "272951",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "method": "set_min_cash_reserve_bps",
+      "ledger": 65437562,
+      "instructions": 4413466,
+      "uniqueKeys": 32,
+      "writes": 1,
+      "writeBytes": 420,
+      "minResourceFee": "14617",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "method": "set_cash_borrowing_enabled",
+      "ledger": 65437562,
+      "instructions": 4456549,
+      "uniqueKeys": 32,
+      "writes": 1,
+      "writeBytes": 420,
+      "minResourceFee": "14647",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "USDC",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "method": "add_market",
+      "ledger": 65437562,
+      "instructions": 7008022,
+      "uniqueKeys": 46,
+      "writes": 4,
+      "writeBytes": 464,
+      "minResourceFee": "715084",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "method": "set_peridottroller",
+      "ledger": 65437562,
+      "instructions": 13265344,
+      "uniqueKeys": 52,
+      "writes": 1,
+      "writeBytes": 132,
+      "minResourceFee": "276024",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "method": "set_min_cash_reserve_bps",
+      "ledger": 65437562,
+      "instructions": 4413466,
+      "uniqueKeys": 32,
+      "writes": 1,
+      "writeBytes": 420,
+      "minResourceFee": "14617",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "method": "set_cash_borrowing_enabled",
+      "ledger": 65437562,
+      "instructions": 4456549,
+      "uniqueKeys": 32,
+      "writes": 1,
+      "writeBytes": 420,
+      "minResourceFee": "14647",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "XLM",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "method": "add_market",
+      "ledger": 65437562,
+      "instructions": 7026153,
+      "uniqueKeys": 46,
+      "writes": 4,
+      "writeBytes": 464,
+      "minResourceFee": "715089",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "method": "set_peridottroller",
+      "ledger": 65437562,
+      "instructions": 13254742,
+      "uniqueKeys": 52,
+      "writes": 1,
+      "writeBytes": 132,
+      "minResourceFee": "276021",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "method": "set_min_cash_reserve_bps",
+      "ledger": 65437562,
+      "instructions": 4413466,
+      "uniqueKeys": 32,
+      "writes": 1,
+      "writeBytes": 420,
+      "minResourceFee": "14617",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "method": "set_cash_borrowing_enabled",
+      "ledger": 65437562,
+      "instructions": 4456549,
+      "uniqueKeys": 32,
+      "writes": 1,
+      "writeBytes": 420,
+      "minResourceFee": "14647",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "PYUSD",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "method": "add_market",
+      "ledger": 65437562,
+      "instructions": 7008022,
+      "uniqueKeys": 46,
+      "writes": 4,
+      "writeBytes": 464,
+      "minResourceFee": "715084",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "method": "set_peridottroller",
+      "ledger": 65437562,
+      "instructions": 13265344,
+      "uniqueKeys": 52,
+      "writes": 1,
+      "writeBytes": 132,
+      "minResourceFee": "276024",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "method": "set_min_cash_reserve_bps",
+      "ledger": 65437562,
+      "instructions": 4413466,
+      "uniqueKeys": 32,
+      "writes": 1,
+      "writeBytes": 420,
+      "minResourceFee": "14617",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "method": "set_cash_borrowing_enabled",
+      "ledger": 65437562,
+      "instructions": 4456549,
+      "uniqueKeys": 32,
+      "writes": 1,
+      "writeBytes": 420,
+      "minResourceFee": "14647",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "EURC",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "method": "add_market",
+      "ledger": 65437562,
+      "instructions": 7026153,
+      "uniqueKeys": 46,
+      "writes": 4,
+      "writeBytes": 464,
+      "minResourceFee": "715089",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    },
+    {
+      "label": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "method": "set_peridottroller",
+      "ledger": 65437562,
+      "instructions": 13254742,
+      "uniqueKeys": 52,
+      "writes": 1,
+      "writeBytes": 132,
+      "minResourceFee": "276021",
+      "restore": false,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "result": "PASS"
+    }
+  ],
+  "result": "PASS"
+}

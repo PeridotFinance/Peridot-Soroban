@@ -1,0 +1,81 @@
+{
+  "observedAt": "2026-11-12T09:18:20.291894+00:00",
+  "sources": {
+    "ledger": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+    "XLM": "https://api.coinbase.com/v2/prices/XLM-USD/spot",
+    "EURC": "https://api.coinbase.com/v2/prices/EURC-USD/spot"
+  },
+  "account": {
+    "account_id": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+    "sequence": "246894391124295798",
+    "balances": [
+      {
+        "balance": "0.0000000",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 63829262,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "asset_type": "credit_alphanum4",
+        "asset_code": "EURC",
+        "asset_issuer": "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+      },
+      {
+        "balance": "0.0000000",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 65386806,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "asset_type": "credit_alphanum4",
+        "asset_code": "USDC",
+        "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      },
+      {
+        "balance": "29.5508616",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "asset_type": "native"
+      }
+    ],
+    "subentry_count": 2
+  },
+  "quotes": {
+    "XLM": {
+      "data": {
+        "amount": "0.1458415",
+        "base": "XLM",
+        "currency": "USD"
+      }
+    },
+    "EURC": {
+      "data": {
+        "amount": "1.1085705777270018",
+        "base": "EURC",
+        "currency": "USD"
+      }
+    }
+  },
+  "amounts": {
+    "XLM": {
+      "priceUSD": "0.1458415",
+      "permanentSeed": "5",
+      "ordinaryDeposit": "685.6758878",
+      "withdrawalCheck": "68.5675887",
+      "seedPlusDeposit": "690.6758878",
+      "depositRaw": "6856758878",
+      "withdrawRaw": "685675887"
+    },
+    "EURC": {
+      "priceUSD": "1.1085705777270018",
+      "permanentSeed": "1",
+      "ordinaryDeposit": "90.2062548",
+      "withdrawalCheck": "9.0206254",
+      "seedPlusDeposit": "91.2062548",
+      "depositRaw": "902062548",
+      "withdrawRaw": "90206254"
+    }
+  }
+}

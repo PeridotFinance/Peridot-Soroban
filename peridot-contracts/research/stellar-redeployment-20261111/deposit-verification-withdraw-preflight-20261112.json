@@ -1,0 +1,489 @@
+{
+  "observedAt": "2026-11-12T09:42:30.627Z",
+  "scope": "actual deposit public readbacks; independent unsigned withdrawal preflights, not applied",
+  "markets": [
+    {
+      "market": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "seedRaw": "10000000",
+      "depositRaw": "1000000000",
+      "reads": [
+        {
+          "method": "get_admin",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_minimum_supply",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": "10000000",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_ptoken_balance",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": "10000000",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_ptoken_balance",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": "1000000000",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_total_ptokens",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": "1010000000",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_total_underlying",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": "1010000000",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_exchange_rate",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": "1000000",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_total_borrowed",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": "0",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_cash_borrowing_enabled",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": false,
+          "ledger": 65438101
+        },
+        {
+          "method": "get_min_cash_reserve_bps",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": 10000,
+          "ledger": 65438101
+        },
+        {
+          "method": "get_cl_custody",
+          "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "value": false,
+          "ledger": 65438101
+        },
+        {
+          "method": "balance",
+          "contract": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+          "value": "1010000000",
+          "ledger": 65438101
+        }
+      ],
+      "depositReadback": "PASS",
+      "withdrawPreflight": {
+        "burnRaw": "100000000",
+        "expectedPayoutRaw": "100000000",
+        "ledger": 65438101,
+        "instructions": 18419555,
+        "uniqueKeys": 45,
+        "writes": 7,
+        "writeBytes": 1348,
+        "minResourceFee": "34146",
+        "auth": [
+          "sorobanCredentialsSourceAccount"
+        ],
+        "authXdr": [
+          "AAAAAAAAAAAAAAAB7bMNql0I96VkpUy0yUbCw7xgcA0x9oTpQs0LNb3oMFMAAAAId2l0aGRyYXcAAAACAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAJAAAAAAAAAAAAAAAABfXhAAAAAAA="
+        ],
+        "result": "PASS"
+      }
+    },
+    {
+      "market": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "seedRaw": "50000000",
+      "depositRaw": "6856758878",
+      "reads": [
+        {
+          "method": "get_admin",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_minimum_supply",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": "50000000",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_ptoken_balance",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": "50000000",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_ptoken_balance",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": "6856758878",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_total_ptokens",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": "6906758878",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_total_underlying",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": "6906758878",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_exchange_rate",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": "1000000",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_total_borrowed",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": "0",
+          "ledger": 65438101
+        },
+        {
+          "method": "get_cash_borrowing_enabled",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": false,
+          "ledger": 65438101
+        },
+        {
+          "method": "get_min_cash_reserve_bps",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": 10000,
+          "ledger": 65438102
+        },
+        {
+          "method": "get_cl_custody",
+          "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "value": false,
+          "ledger": 65438102
+        },
+        {
+          "method": "balance",
+          "contract": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+          "value": "6906758878",
+          "ledger": 65438102
+        }
+      ],
+      "depositReadback": "PASS",
+      "withdrawPreflight": {
+        "burnRaw": "685675887",
+        "expectedPayoutRaw": "685675887",
+        "ledger": 65438102,
+        "instructions": 18361230,
+        "uniqueKeys": 45,
+        "writes": 7,
+        "writeBytes": 1376,
+        "minResourceFee": "33882",
+        "auth": [
+          "sorobanCredentialsSourceAccount"
+        ],
+        "authXdr": [
+          "AAAAAAAAAAAAAAABTsNwTUu0KJgDoxDt0TzousnYwglIJkfQJqYxiGEO264AAAAId2l0aGRyYXcAAAACAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAJAAAAAAAAAAAAAAAAKN6VbwAAAAA="
+        ],
+        "result": "PASS"
+      }
+    },
+    {
+      "market": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "seedRaw": "10000000",
+      "depositRaw": "1000000000",
+      "reads": [
+        {
+          "method": "get_admin",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_minimum_supply",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": "10000000",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_ptoken_balance",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": "10000000",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_ptoken_balance",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": "1000000000",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_total_ptokens",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": "1010000000",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_total_underlying",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": "1010000000",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_exchange_rate",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": "1000000",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_total_borrowed",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": "0",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_cash_borrowing_enabled",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": false,
+          "ledger": 65438102
+        },
+        {
+          "method": "get_min_cash_reserve_bps",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": 10000,
+          "ledger": 65438102
+        },
+        {
+          "method": "get_cl_custody",
+          "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "value": false,
+          "ledger": 65438102
+        },
+        {
+          "method": "balance",
+          "contract": "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2",
+          "value": "1010000000",
+          "ledger": 65438102
+        }
+      ],
+      "depositReadback": "PASS",
+      "withdrawPreflight": {
+        "burnRaw": "100000000",
+        "expectedPayoutRaw": "100000000",
+        "ledger": 65438102,
+        "instructions": 18422584,
+        "uniqueKeys": 45,
+        "writes": 7,
+        "writeBytes": 1356,
+        "minResourceFee": "34171",
+        "auth": [
+          "sorobanCredentialsSourceAccount"
+        ],
+        "authXdr": [
+          "AAAAAAAAAAAAAAAB/OmYHk+ogirzuDolvXJIOVh05HYfsQN/6LJDo2piF6cAAAAId2l0aGRyYXcAAAACAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAJAAAAAAAAAAAAAAAABfXhAAAAAAA="
+        ],
+        "result": "PASS"
+      }
+    },
+    {
+      "market": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "seedRaw": "10000000",
+      "depositRaw": "902062548",
+      "reads": [
+        {
+          "method": "get_admin",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_minimum_supply",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": "10000000",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_ptoken_balance",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": "10000000",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_ptoken_balance",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": "902062548",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_total_ptokens",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": "912062548",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_total_underlying",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": "912062548",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_exchange_rate",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": "1000000",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_total_borrowed",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": "0",
+          "ledger": 65438102
+        },
+        {
+          "method": "get_cash_borrowing_enabled",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": false,
+          "ledger": 65438102
+        },
+        {
+          "method": "get_min_cash_reserve_bps",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": 10000,
+          "ledger": 65438102
+        },
+        {
+          "method": "get_cl_custody",
+          "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "value": false,
+          "ledger": 65438102
+        },
+        {
+          "method": "balance",
+          "contract": "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV",
+          "value": "912062548",
+          "ledger": 65438102
+        }
+      ],
+      "depositReadback": "PASS",
+      "withdrawPreflight": {
+        "burnRaw": "90206254",
+        "expectedPayoutRaw": "90206254",
+        "ledger": 65438102,
+        "instructions": 18418049,
+        "uniqueKeys": 45,
+        "writes": 7,
+        "writeBytes": 1348,
+        "minResourceFee": "34145",
+        "auth": [
+          "sorobanCredentialsSourceAccount"
+        ],
+        "authXdr": [
+          "AAAAAAAAAAAAAAABL2f1mpF/wdtaJAGHXjzJ26K7RzL/v6oasV5MzBzO7dIAAAAId2l0aGRyYXcAAAACAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAJAAAAAAAAAAAAAAAABWBwLgAAAAA="
+        ],
+        "result": "PASS"
+      }
+    }
+  ],
+  "account": {
+    "account_id": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+    "sequence": "246894391124295809",
+    "balances": [
+      {
+        "balance": "0.7937452",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 65438091,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "asset_type": "credit_alphanum4",
+        "asset_code": "EURC",
+        "asset_issuer": "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+      },
+      {
+        "balance": "0.0611141",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 65438087,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "is_clawback_enabled": true,
+        "asset_type": "credit_alphanum12",
+        "asset_code": "PYUSD",
+        "asset_issuer": "GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5"
+      },
+      {
+        "balance": "0.0000000",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 65438076,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "asset_type": "credit_alphanum4",
+        "asset_code": "USDC",
+        "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      },
+      {
+        "balance": "37.2816576",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "asset_type": "native"
+      }
+    ],
+    "subentry_count": 3
+  },
+  "transactions": [
+    {
+      "hash": "aadbcabe53a80b785fc824fafa0cdc52ffe16393adb86ece0875f8e9c28f807b",
+      "successful": true,
+      "ledger": 65438091,
+      "created_at": "2026-11-12T09:41:37Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295809",
+      "fee_charged": "626717"
+    },
+    {
+      "hash": "0bb6f97238e3a9df13fe2b5cb4b562db9baf09a7cf94947a8cca472e3e944530",
+      "successful": true,
+      "ledger": 65438087,
+      "created_at": "2026-11-12T09:41:17Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295808",
+      "fee_charged": "626743"
+    },
+    {
+      "hash": "f7d382d8f659132dfbcccc33f06298e2e3281507203328402790e27989f1b0e1",
+      "successful": true,
+      "ledger": 65438082,
+      "created_at": "2026-11-12T09:40:52Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295807",
+      "fee_charged": "626493"
+    },
+    {
+      "hash": "412a5c78944135a25dde81bf1ef22c3a08063ec28aa4a752c8ed5d0b345147c1",
+      "successful": true,
+      "ledger": 65438076,
+      "created_at": "2026-11-12T09:40:22Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295806",
+      "fee_charged": "626720"
+    }
+  ],
+  "depositFeesStroops": "2506673",
+  "walletDeltas": "PASS",
+  "result": "PASS"
+}
