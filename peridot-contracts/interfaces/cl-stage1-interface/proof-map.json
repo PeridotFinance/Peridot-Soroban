@@ -1,0 +1,187 @@
+{
+  "schema": "stage1-proof-map-v1",
+  "interface_version": 1,
+  "accepted_plan": "3b962e371d74c32e7f6076296a58bbfcecaa7ff9",
+  "accepted_measurement_baseline": "7f66fb056d0289fcfcd7526399608284521c79e3",
+  "package1": "wire/ABI freeze only",
+  "rows": [
+    {
+      "row": "O1",
+      "receipt_root": "prepare_open",
+      "required_test": "compiled_stage1_isolated_prepare",
+      "invariants": [
+        "S1-ID",
+        "S1-AUTH",
+        "S1-PHASE",
+        "S1-RESOURCE"
+      ],
+      "implementation_status": "not_implemented",
+      "execution_status": "not_run"
+    },
+    {
+      "row": "O2",
+      "receipt_root": "fund_open",
+      "required_test": "compiled_stage1_isolated_fund",
+      "invariants": [
+        "S1-CASH",
+        "S1-AUTH",
+        "S1-PHASE",
+        "S1-RESOURCE"
+      ],
+      "implementation_status": "not_implemented",
+      "execution_status": "not_run"
+    },
+    {
+      "row": "O3",
+      "receipt_root": "convert_open",
+      "required_test": "compiled_stage1_isolated_convert",
+      "invariants": [
+        "S1-CASH",
+        "S1-ID",
+        "S1-RESOURCE"
+      ],
+      "implementation_status": "not_implemented",
+      "execution_status": "not_run"
+    },
+    {
+      "row": "O4",
+      "receipt_root": "mint_cash",
+      "required_test": "compiled_stage1_isolated_mint",
+      "invariants": [
+        "S1-MINT",
+        "S1-REWARD",
+        "S1-LOCK",
+        "S1-RESOURCE"
+      ],
+      "implementation_status": "not_implemented",
+      "execution_status": "not_run"
+    },
+    {
+      "row": "O5",
+      "receipt_root": "invest_cash",
+      "required_test": "compiled_stage1_isolated_invest",
+      "invariants": [
+        "S1-INVEST",
+        "S1-CASH",
+        "S1-RESOURCE"
+      ],
+      "implementation_status": "not_implemented",
+      "execution_status": "not_run"
+    },
+    {
+      "row": "C1",
+      "receipt_root": "prepare_close",
+      "required_test": "compiled_stage1_isolated_prepare_close",
+      "invariants": [
+        "S1-LOCK",
+        "S1-AUTH",
+        "S1-RESOURCE"
+      ],
+      "implementation_status": "not_implemented",
+      "execution_status": "not_run"
+    },
+    {
+      "row": "C2a",
+      "receipt_root": "withdraw_close/InKind",
+      "required_test": "compiled_stage1_isolated_withdraw_in_kind",
+      "invariants": [
+        "S1-FEE",
+        "S1-REWARD",
+        "S1-CASH",
+        "S1-RESOURCE"
+      ],
+      "implementation_status": "not_implemented",
+      "execution_status": "not_run"
+    },
+    {
+      "row": "C2b",
+      "receipt_root": "withdraw_close/ConvertToUnderlying",
+      "required_test": "compiled_stage1_isolated_withdraw_for_conversion",
+      "invariants": [
+        "S1-FEE",
+        "S1-CASH",
+        "S1-RESOURCE"
+      ],
+      "implementation_status": "not_implemented",
+      "execution_status": "not_run"
+    },
+    {
+      "row": "C3",
+      "receipt_root": "convert_close",
+      "required_test": "compiled_stage1_isolated_close_convert",
+      "invariants": [
+        "S1-CASH",
+        "S1-PHASE",
+        "S1-RESOURCE"
+      ],
+      "implementation_status": "not_implemented",
+      "execution_status": "not_run"
+    }
+  ],
+  "gates": [
+    {
+      "gate": "G1",
+      "required_test_family": "compiled_stage1_outage_mixture_recovery",
+      "invariants": [
+        "S1-RECOVER",
+        "S1-CONSENT",
+        "S1-REWARD",
+        "S1-FEE"
+      ],
+      "status": "not_run",
+      "passing_evidence": null
+    },
+    {
+      "gate": "G2",
+      "required_test_family": "compiled_stage1_stressed_histories",
+      "invariants": [
+        "S1-HISTORY",
+        "S1-CASH",
+        "S1-INVEST",
+        "S1-LOCK",
+        "S1-REWARD"
+      ],
+      "status": "not_run",
+      "passing_evidence": null
+    },
+    {
+      "gate": "G3",
+      "required_test_family": "private_core_stage1_interrupted_restore_resume_reexpire",
+      "invariants": [
+        "S1-RESTORE",
+        "S1-RECOVER",
+        "S1-RESOURCE"
+      ],
+      "status": "not_run",
+      "passing_evidence": null
+    },
+    {
+      "gate": "G4",
+      "required_test_family": "private_core_stage1_financial_parity",
+      "invariants": [
+        "S1-PARITY",
+        "S1-AUTH",
+        "S1-PHASE",
+        "S1-RESOURCE"
+      ],
+      "status": "not_run",
+      "passing_evidence": null
+    }
+  ],
+  "additional_required_tests": [
+    "stage1_binding_mismatch_and_upgrade_freeze",
+    "stage1_phase_caller_matrix",
+    "stage1_lock_all_allowance_paths",
+    "stage1_fee_one_unit_before_burn",
+    "stage1_first_mint_final_exit",
+    "stage1_payout_failure_atomic_rollback",
+    "stage1_waiver_boundary_replay",
+    "stage1_cash_mint_cancel_cycle",
+    "stage1_band_edge_sandwich",
+    "stage1_concurrent_command_liabilities",
+    "stage1_facade_atomic_bypass_rejected"
+  ],
+  "release_approval": false,
+  "legacy_combined_checker_unchanged": true,
+  "missing_required_flows_must_fail": true
+}

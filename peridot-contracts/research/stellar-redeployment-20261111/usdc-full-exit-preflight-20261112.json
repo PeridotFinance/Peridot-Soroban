@@ -1,0 +1,13 @@
+{
+  "observedAt": "2026-11-12T13:17:02.217Z",
+  "ledger": 65440675,
+  "scope": "unsigned current-state full USDC exit preflight, not submitted; redeposit requires applied exit first",
+  "amountRaw": "900000000",
+  "instructions": 18419555,
+  "keys": 45,
+  "writes": 7,
+  "minResourceFee": "34167",
+  "auth": [
+    "sorobanCredentialsSourceAccount"
+  ]
+}

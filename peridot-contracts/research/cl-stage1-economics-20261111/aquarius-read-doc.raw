@@ -1,0 +1,384 @@
+> For the complete documentation index, see [llms.txt](https://docs.aqua.network/llms.txt). Markdown versions of documentation pages are available by appending `.md` to page URLs; this page is available as [Markdown](https://docs.aqua.network/developers/reference/router-and-pool-contracts.md).
+
+# Router & pool contracts
+
+Function reference for the Aquarius AMM router and direct pool contract calls
+
+The **router** is the single entry point for all AMM functionality: swaps, deposits, withdrawals, reward claims, and pool discovery. Router addresses for mainnet and testnet are listed in [Addresses & Networks](/developers/reference/addresses-and-networks.md).
+
+### Token ordering
+
+Token vectors (`tokens`) list each token once, in ascending order of contract ID: the 32 bytes a `C...` address encodes. The router rejects an unsorted vector with `2002 TokensNotSorted`. The official SDKs sort token vectors for you.
+
+### Read functions
+
+Read-only functions don't change state — call them through transaction **simulation**; no signature or fees are required.
+
+#### Get pools
+
+The `get_pools` function returns all pools that exist for a set of tokens, as a map of pool hash → pool contract address:
+
+```rust
+fn get_pools(e: Env, tokens: Vec<Address>) -> Map<BytesN<32>, Address>;
+```
+
+| Parameter | Description           |
+| --------- | --------------------- |
+| `tokens`  | Ordered tokens vector |
+
+See the [Get pools info example](/developers/code-examples/get-pools-info.md) for usage in Python and JavaScript.
+
+#### Get info
+
+The `get_info` function returns the parameters of a specific pool — pool type, fee, and type-specific values (for example, `a` for stable pools):
+
+```rust
+fn get_info(e: Env, tokens: Vec<Address>, pool_index: BytesN<32>) -> Map<Symbol, Val>;
+```
+
+| Parameter    | Description                 |
+| ------------ | --------------------------- |
+| `tokens`     | Ordered tokens vector       |
+| `pool_index` | Pool hash (see `get_pools`) |
+
+### Write functions
+
+#### Deposit
+
+The `deposit` function increases pool liquidity by exchanging tokens for pool share tokens:
+
+```rust
+fn deposit(
+  e: Env,
+  user: Address,
+  tokens: Vec<Address>,
+  pool_index: BytesN<32>,
+  desired_amounts: Vec<u128>,
+  min_shares: u128,
+) -> (Vec<u128>, u128);
+```
+
+| Parameter         | Description                                    |
+| ----------------- | ---------------------------------------------- |
+| `user`            | The address of the user executing the deposit  |
+| `tokens`          | Ordered tokens vector                          |
+| `pool_index`      | Pool hash (see `get_pools`)                    |
+| `desired_amounts` | Vector of desired amounts to deposit           |
+| `min_shares`      | Minimum amount of shares to receive on deposit |
+
+**Returns:** the actual amounts of deposited tokens and the minted shares amount.
+
+#### Withdraw
+
+The `withdraw` function removes liquidity from a pool by exchanging pool shares for pool tokens:
+
+```rust
+fn withdraw(
+  e: Env,
+  user: Address,
+  tokens: Vec<Address>,
+  pool_index: BytesN<32>,
+  share_amount: u128,
+  min_amounts: Vec<u128>,
+) -> Vec<u128>;
+```
+
+| Parameter      | Description                                      |
+| -------------- | ------------------------------------------------ |
+| `user`         | The address of the user executing the withdrawal |
+| `tokens`       | Ordered tokens vector                            |
+| `pool_index`   | Pool hash (see `get_pools`)                      |
+| `share_amount` | Amount of shares to withdraw                     |
+| `min_amounts`  | Vector of minimum amounts to withdraw            |
+
+**Returns:** the actual amounts of withdrawn tokens.
+
+#### Swap chained
+
+The `swap_chained` function executes a chain of token swaps to exchange an input token for an output token, with the **input amount fixed** (strict-send):
+
+```rust
+fn swap_chained(
+    e: Env,
+    user: Address,
+    swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+    token_in: Address,
+    in_amount: u128,
+    out_min: u128,
+) -> u128
+```
+
+| Parameter     | Description                                                                                                                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user`        | The address of the user executing the swaps                                                                                                                                                                             |
+| `swaps_chain` | The series of swaps to execute. No need to build it manually — the find-path API returns it as an XDR-encoded `SCVal`. Each element is a tuple of the pool's token vector, the pool index hash, and the token to obtain |
+| `token_in`    | The address of the input token to be swapped                                                                                                                                                                            |
+| `in_amount`   | The amount of the input token to be swapped                                                                                                                                                                             |
+| `out_min`     | The minimum amount of the output token to be received                                                                                                                                                                   |
+
+**Returns:** the amount of the output token received after all swaps have been executed.
+
+#### Swap chained strict receive
+
+The `swap_chained_strict_receive` function is the strict-receive counterpart of `swap_chained`: the **output amount is fixed**, and the function spends no more of the input token than the specified maximum:
+
+```rust
+fn swap_chained_strict_receive(
+    e: Env,
+    user: Address,
+    swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+    token_in: Address,
+    out_amount: u128,
+    max_in: u128,
+) -> u128
+```
+
+Parameters mirror `swap_chained`, except:
+
+| Parameter    | Description                                                  |
+| ------------ | ------------------------------------------------------------ |
+| `out_amount` | The exact amount of the output token to receive              |
+| `max_in`     | The maximum amount of the input token you authorize to spend |
+
+**Returns:** the amount of the input token actually spent. See [Executing swaps through optimal path](/developers/code-examples/executing-swaps-through-optimal-path.md#complete-code-examples) for a complete example covering both modes.
+
+{% hint style="warning" %}
+**Chain length limits:** strict-send chains support up to **4 pools**, strict-receive chains up to **3** — the find-path API enforces these caps. Longer chains raise no contract validation error; the transaction fails simulation with a `BudgetExceed` error due to Soroban limitations.
+{% endhint %}
+
+#### Swap
+
+The `swap` function executes an exact-input swap against one pool you choose, without a swap chain:
+
+```rust
+fn swap(
+    e: Env,
+    user: Address,
+    tokens: Vec<Address>,
+    token_in: Address,
+    token_out: Address,
+    pool_index: BytesN<32>,
+    in_amount: u128,
+    out_min: u128,
+) -> u128
+```
+
+| Parameter    | Description                                           |
+| ------------ | ----------------------------------------------------- |
+| `user`       | The address of the user executing the swap            |
+| `tokens`     | Ordered tokens vector of the pool                     |
+| `token_in`   | The address of the input token                        |
+| `token_out`  | The address of the output token                       |
+| `pool_index` | Pool hash (see `get_pools`)                           |
+| `in_amount`  | The amount of the input token to be swapped           |
+| `out_min`    | The minimum amount of the output token to be received |
+
+**Returns:** the amount of the output token received. See [Executing swaps through specific pool](/developers/code-examples/executing-swaps-through-specific-pool.md#complete-code-examples) for a complete example.
+
+#### Claim
+
+The `claim` function collects accrued AQUA rewards for a liquidity provider:
+
+```rust
+fn claim(e: Env, user: Address, tokens: Vec<Address>, pool_index: BytesN<32>) -> u128;
+```
+
+**Returns:** the amount of AQUA claimed. See the [Claim LP rewards example](/developers/code-examples/claim-lp-rewards.md).
+
+### Pool contract functions
+
+Every liquidity pool is a separate contract that can also be called directly — useful for contract sub-invocations, as a direct call requires fewer resources than going through the router. `in_idx`/`out_idx` are the token indices in the pool's sorted token vector:
+
+| Function                                                                                                | Description                                                      |
+| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `estimate_swap(in_idx: u32, out_idx: u32, in_amount: u128) -> u128`                                     | Estimate the output of an exact-input swap (call via simulation) |
+| `swap(user: Address, in_idx: u32, out_idx: u32, in_amount: u128, out_min: u128) -> u128`                | Execute an exact-input swap against this pool only               |
+| `estimate_swap_strict_receive(in_idx: u32, out_idx: u32, out_amount: u128) -> u128`                     | Estimate the input required for an exact-output swap             |
+| `swap_strict_receive(user: Address, in_idx: u32, out_idx: u32, out_amount: u128, in_max: u128) -> u128` | Execute an exact-output swap, spending at most `in_max`          |
+| `claim(user: Address) -> u128`                                                                          | Claim accrued AQUA rewards from this pool                        |
+
+### Provider fee contracts
+
+The provider swap fee factory deploys [fee collectors](/developers/code-examples/add-fees-to-swap.md). The mainnet factory address is listed in [Addresses & networks](/developers/reference/addresses-and-networks.md).
+
+#### Deploy swap fee contract
+
+The factory's `deploy_swap_fee_contract` function deploys a new collector:
+
+```rust
+fn deploy_swap_fee_contract(
+    e: Env,
+    operator: Address,
+    fee_destination: Address,
+    max_swap_fee_fraction: u32,
+    swap_fee_fraction_denominator: u32,
+) -> Address
+```
+
+| Parameter                       | Description                                               |
+| ------------------------------- | --------------------------------------------------------- |
+| `operator`                      | The only address that can claim fees from the collector   |
+| `fee_destination`               | The address every claim pays out to                       |
+| `max_swap_fee_fraction`         | Upper bound for the per-swap `fee_fraction`               |
+| `swap_fee_fraction_denominator` | Denominator of `fee_fraction` and `max_swap_fee_fraction` |
+
+**Returns:** the address of the new collector.
+
+A collector wraps the router's chained swaps and takes `fee_fraction / swap_fee_fraction_denominator` of the output. A `fee_fraction` above the collector's `max_swap_fee_fraction` fails the call with [`FeeFractionTooHigh`](/developers/reference/error-codes.md#provider-fee-collector-specific).
+
+#### Collector swap chained
+
+The collector's `swap_chained` function executes an exact-input chained swap through the router and keeps the provider fee from the output:
+
+```rust
+fn swap_chained(
+    e: Env,
+    user: Address,
+    swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+    token_in: Address,
+    in_amount: u128,
+    out_min: u128,
+    fee_fraction: u32,
+) -> u128
+```
+
+| Parameter      | Description                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------- |
+| `user`         | The address executing the swap; pays `in_amount` and receives the net output                  |
+| `swaps_chain`  | The series of swaps to execute, in the format of the router's [`swap_chained`](#swap-chained) |
+| `token_in`     | The address of the input token                                                                |
+| `in_amount`    | The amount of the input token to be swapped                                                   |
+| `out_min`      | The minimum net output, checked after the fee is taken                                        |
+| `fee_fraction` | The provider fee for this swap, over the collector's `swap_fee_fraction_denominator`          |
+
+**Returns:** the net output sent to `user`.
+
+#### Collector swap chained to
+
+The `swap_chained_to` function is `swap_chained` with the net output sent to another address:
+
+```rust
+fn swap_chained_to(
+    e: Env,
+    user: Address,
+    to: Address,
+    swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+    token_in: Address,
+    in_amount: u128,
+    out_min: u128,
+    fee_fraction: u32,
+) -> u128
+```
+
+Parameters mirror the collector's `swap_chained`, except:
+
+| Parameter | Description                                                |
+| --------- | ---------------------------------------------------------- |
+| `user`    | The address executing the swap; pays `in_amount`           |
+| `to`      | The address that receives the net output; it does not sign |
+
+**Returns:** the net output sent to `to`.
+
+#### Collector swap chained strict receive
+
+The collector's `swap_chained_strict_receive` function executes an exact-output chained swap: `user` receives exactly `out_amount` after the fee and spends at most `in_max`:
+
+```rust
+fn swap_chained_strict_receive(
+    e: Env,
+    user: Address,
+    swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+    token_in: Address,
+    out_amount: u128,
+    in_max: u128,
+    fee_fraction: u32,
+) -> u128
+```
+
+| Parameter      | Description                                                                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `user`         | The address executing the swap; pays the input, receives `out_amount`, and gets back the unused part of `in_max` |
+| `swaps_chain`  | The series of swaps to execute, in the format of the router's [`swap_chained`](#swap-chained)                    |
+| `token_in`     | The address of the input token                                                                                   |
+| `out_amount`   | The exact net output to receive, after the fee                                                                   |
+| `in_max`       | The maximum amount of the input token you authorize to spend                                                     |
+| `fee_fraction` | The provider fee for this swap, over the collector's `swap_fee_fraction_denominator`                             |
+
+**Returns:** the amount of the input token actually spent.
+
+#### Collector swap chained strict receive to
+
+The `swap_chained_strict_receive_to` function is `swap_chained_strict_receive` with the output sent to another address:
+
+```rust
+fn swap_chained_strict_receive_to(
+    e: Env,
+    user: Address,
+    to: Address,
+    swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+    token_in: Address,
+    out_amount: u128,
+    in_max: u128,
+    fee_fraction: u32,
+) -> u128
+```
+
+Parameters mirror the collector's `swap_chained_strict_receive`, except:
+
+| Parameter | Description                                                                              |
+| --------- | ---------------------------------------------------------------------------------------- |
+| `user`    | The address executing the swap; pays the input and gets back the unused part of `in_max` |
+| `to`      | The address that receives exactly `out_amount`; it does not sign                         |
+
+**Returns:** the amount of the input token actually spent.
+
+#### Claim fees
+
+The `claim_fees` function transfers the collector's entire balance of one token to `fee_destination`:
+
+```rust
+fn claim_fees(e: Env, operator: Address, token: Address) -> u128
+```
+
+| Parameter  | Description                                 |
+| ---------- | ------------------------------------------- |
+| `operator` | The collector's operator, set at deployment |
+| `token`    | The token to pay out                        |
+
+**Returns:** the amount transferred to `fee_destination`.
+
+#### Claim fees and swap
+
+The `claim_fees_and_swap` function swaps the collector's entire balance of one token through the router and sends the output to `fee_destination`:
+
+```rust
+fn claim_fees_and_swap(
+    e: Env,
+    operator: Address,
+    swaps_chain: Vec<(Vec<Address>, BytesN<32>, Address)>,
+    token: Address,
+    out_min: u128,
+) -> u128
+```
+
+| Parameter     | Description                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `operator`    | The collector's operator, set at deployment                                                                         |
+| `swaps_chain` | The series of swaps from `token` to the payout token, in the format of the router's [`swap_chained`](#swap-chained) |
+| `token`       | The accumulated token to swap                                                                                       |
+| `out_min`     | The minimum amount of the payout token to receive                                                                   |
+
+**Returns:** the amount of the payout token sent to `fee_destination`.
+
+#### Collector getters
+
+```rust
+// The address every claim pays out to
+fn get_fee_destination(e: Env) -> Address;
+// The per-swap fee cap, over the collector's fee denominator
+fn get_max_swap_fee_fraction(e: Env) -> u32;
+// The router the collector swaps through
+fn get_router(e: Env) -> Address;
+```
+
+The authorization each call needs is listed in [Contract authorization](/developers/reference/contract-authorization.md).

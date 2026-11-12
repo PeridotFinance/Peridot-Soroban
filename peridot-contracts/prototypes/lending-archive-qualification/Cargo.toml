@@ -1,0 +1,24 @@
+[package]
+name = "lending-archive-qualification"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Deliberately isolated: production contract dependencies remain on SDK25.
+[workspace]
+
+[dependencies]
+soroban-sdk = { version = "=29.0.1", features = ["testutils"] }
+soroban-env-host = { version = "=29.0.1", features = ["testutils"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[features]
+default = ["transaction-evidence"]
+transaction-evidence = []
+# Opt-in bounded venue study; baseline CI keeps its existing test population.
+fee-pending-comparison = ["transaction-evidence"]
+
+[profile.dev]
+overflow-checks = true

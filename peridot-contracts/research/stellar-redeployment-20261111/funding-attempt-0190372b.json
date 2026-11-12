@@ -1,0 +1,74 @@
+{
+  "observed_at": "2026-11-11T18:46:32.742950+00:00",
+  "reads": {
+    "transaction": {
+      "url": "https://horizon.stellar.org/transactions/0190372b445577e50994af1fc0210f40b0babe6601bece717e802e32f2515358",
+      "status": 200,
+      "body": {
+        "hash": "0190372b445577e50994af1fc0210f40b0babe6601bece717e802e32f2515358",
+        "successful": false,
+        "ledger": 65427344,
+        "created_at": "2026-11-11T18:46:02Z",
+        "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "source_account_sequence": "246894391124295772",
+        "fee_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "fee_charged": "100",
+        "max_fee": "100",
+        "result_xdr": "AAAAAAAAAGT/////AAAAAQAAAAAAAAAA/////gAAAAA="
+      }
+    },
+    "source": {
+      "url": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "status": 200,
+      "body": {
+        "account_id": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "sequence": "246894391124295772",
+        "subentry_count": 2,
+        "num_sponsoring": 0,
+        "num_sponsored": 0,
+        "balances": [
+          {
+            "balance": "0.0000000",
+            "limit": "922337203685.4775807",
+            "buying_liabilities": "0.0000000",
+            "selling_liabilities": "0.0000000",
+            "last_modified_ledger": 63829262,
+            "is_authorized": true,
+            "is_authorized_to_maintain_liabilities": true,
+            "asset_type": "credit_alphanum4",
+            "asset_code": "EURC",
+            "asset_issuer": "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+          },
+          {
+            "balance": "0.0000000",
+            "limit": "922337203685.4775807",
+            "buying_liabilities": "0.0000000",
+            "selling_liabilities": "0.0000000",
+            "last_modified_ledger": 65386806,
+            "is_authorized": true,
+            "is_authorized_to_maintain_liabilities": true,
+            "asset_type": "credit_alphanum4",
+            "asset_code": "USDC",
+            "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+          },
+          {
+            "balance": "32.0821629",
+            "buying_liabilities": "0.0000000",
+            "selling_liabilities": "0.0000000",
+            "asset_type": "native"
+          }
+        ]
+      }
+    },
+    "deployer": {
+      "url": "https://horizon.stellar.org/accounts/GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+      "status": 404,
+      "body": {
+        "type": "https://stellar.org/horizon-errors/not_found",
+        "title": "Resource Missing",
+        "status": 404,
+        "detail": "The resource at the url requested was not found.  This usually occurs for one of two reasons:  The url requested is not valid, or no data in our database could be found with the parameters provided."
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"count\":2,\"findings\":[{\"category\":\"\",\"description\":\"`is_deposit_paused` (via `is_market_paused`) now returns `true` (paused) when the persistent pause-flags map is missing. If the pause key is ever absent due to TTL expiry/archival restore or migration mistakes, markets can become globally paused, potentially freezing user actions that depend on these pause checks until state is repaired.\",\"file_path\":\"peridot-contracts/contracts/simple-peridottroller/src/contract.rs\",\"id\":\"1d3c8da4-f33b-4011-ac55-038b23aa42fe\",\"line_end\":1410,\"line_start\":1410,\"recommendation\":\"Ensure the pause-flags key TTL is reliably extended (or re-initialized) in keeper/admin flows, or explicitly initialize missing pause metadata to an empty map during setup/migration rather than treating absence as a permanent pause.\",\"repo\":\"https://github.com/PeridotFinance/Peridot-Soroban\",\"severity\":\"LOW\",\"sha\":\"e3eab76a74028a394b0cde4e48c2ec42662811cc\",\"state\":\"OPEN\",\"title\":\"Contract Lifecycle \\u0026 State: missing pause metadata hard-pauses markets in `is_deposit_paused`\"},{\"category\":\"\",\"description\":\"`deposit` now requires `PermanentMinimumSupply \\u003e= 1_000` for any market where `minimum_cash_reserve_bps()` returns `Some(_)`, but the only way to set `PermanentMinimumSupply` (`seed_minimum_supply`) requires an *empty* market (zero supply/underlying/borrow). In non-`lp-engine` builds, `minimum_cash_reserve_bps()` returns `Some(10_000)` even when `MinCashReserveBps` is absent, so legacy/unconfigured deployed markets can start reverting on every deposit after upgrade with no recovery path.\",\"file_path\":\"peridot-contracts/contracts/receipt-vault/src/contract.rs\",\"id\":\"90f942e8-e3e5-4037-89e8-21e94d8b48f4\",\"line_end\":1726,\"line_start\":1726,\"recommendation\":\"Gate the `cash market must be explicitly seeded` assertion to only apply when `total_ptokens_supply == 0` (i.e., first-deposit protection), or only when `PermanentMinimumSupply` is explicitly configured. Alternatively provide an admin migration method that can safely set a floor for non-empty markets, or keep `MinCashReserveBps` absence as `None` for legacy instances.\",\"repo\":\"https://github.com/PeridotFinance/Peridot-Soroban\",\"severity\":\"HIGH\",\"sha\":\"e3eab76a74028a394b0cde4e48c2ec42662811cc\",\"state\":\"OPEN\",\"title\":\"Business Logic: deposits can be permanently bricked in `deposit`\"}]}"
+      }
+    ],
+    "structuredContent": {
+      "count": 2,
+      "findings": [
+        {
+          "category": "",
+          "description": "`is_deposit_paused` (via `is_market_paused`) now returns `true` (paused) when the persistent pause-flags map is missing. If the pause key is ever absent due to TTL expiry/archival restore or migration mistakes, markets can become globally paused, potentially freezing user actions that depend on these pause checks until state is repaired.",
+          "file_path": "peridot-contracts/contracts/simple-peridottroller/src/contract.rs",
+          "id": "1d3c8da4-f33b-4011-ac55-038b23aa42fe",
+          "line_end": 1410,
+          "line_start": 1410,
+          "recommendation": "Ensure the pause-flags key TTL is reliably extended (or re-initialized) in keeper/admin flows, or explicitly initialize missing pause metadata to an empty map during setup/migration rather than treating absence as a permanent pause.",
+          "repo": "https://github.com/PeridotFinance/Peridot-Soroban",
+          "severity": "LOW",
+          "sha": "e3eab76a74028a394b0cde4e48c2ec42662811cc",
+          "state": "OPEN",
+          "title": "Contract Lifecycle & State: missing pause metadata hard-pauses markets in `is_deposit_paused`"
+        },
+        {
+          "category": "",
+          "description": "`deposit` now requires `PermanentMinimumSupply >= 1_000` for any market where `minimum_cash_reserve_bps()` returns `Some(_)`, but the only way to set `PermanentMinimumSupply` (`seed_minimum_supply`) requires an *empty* market (zero supply/underlying/borrow). In non-`lp-engine` builds, `minimum_cash_reserve_bps()` returns `Some(10_000)` even when `MinCashReserveBps` is absent, so legacy/unconfigured deployed markets can start reverting on every deposit after upgrade with no recovery path.",
+          "file_path": "peridot-contracts/contracts/receipt-vault/src/contract.rs",
+          "id": "90f942e8-e3e5-4037-89e8-21e94d8b48f4",
+          "line_end": 1726,
+          "line_start": 1726,
+          "recommendation": "Gate the `cash market must be explicitly seeded` assertion to only apply when `total_ptokens_supply == 0` (i.e., first-deposit protection), or only when `PermanentMinimumSupply` is explicitly configured. Alternatively provide an admin migration method that can safely set a floor for non-empty markets, or keep `MinCashReserveBps` absence as `None` for legacy instances.",
+          "repo": "https://github.com/PeridotFinance/Peridot-Soroban",
+          "severity": "HIGH",
+          "sha": "e3eab76a74028a394b0cde4e48c2ec42662811cc",
+          "state": "OPEN",
+          "title": "Business Logic: deposits can be permanently bricked in `deposit`"
+        }
+      ]
+    }
+  }
+}

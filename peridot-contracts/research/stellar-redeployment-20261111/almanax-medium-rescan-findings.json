@@ -1,0 +1,62 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"count\":3,\"findings\":[{\"category\":\"\",\"description\":\"`deposit` now loads `DataKey::SupplyCap` with `.expect(\\\"supply cap missing\\\")`. In Soroban, persistent entries can expire if TTL isn\u2019t bumped; if `SupplyCap` expires, user deposits will trap rather than defaulting to `0` (cap disabled), creating a denial-of-service condition.\",\"file_path\":\"peridot-contracts/contracts/receipt-vault/src/contract.rs\",\"id\":\"d2d495e7-eee4-44bb-8668-710d103b2525\",\"line_end\":1770,\"line_start\":1770,\"recommendation\":\"Either ensure `SupplyCap` is always TTL-bumped on all hot paths that call `deposit`/`seed_minimum_supply`, or restore a safe default (e.g., `unwrap_or(0u128)`) and treat missing as disabled cap.\",\"repo\":\"https://github.com/PeridotFinance/Peridot-Soroban\",\"severity\":\"MEDIUM\",\"sha\":\"10de9449e68285aa8dda2b736d14bfaca20a904f\",\"state\":\"OPEN\",\"suggested_fix\":\"            .unwrap_or(0u128);\",\"title\":\"Resource Management: Persistent key expiry triggers panic in `deposit`\"},{\"category\":\"\",\"description\":\"`borrow_with_cash_policy` now reads `DataKey::BorrowCap` via `.expect(\\\"borrow cap missing\\\")`. If `BorrowCap` expires from persistent storage (TTL not extended) or was never set in older deployments, borrows will trap, potentially freezing the market.\",\"file_path\":\"peridot-contracts/contracts/receipt-vault/src/contract.rs\",\"id\":\"4cf58b3f-aa58-49bc-bd3a-a2978a74230b\",\"line_end\":3962,\"line_start\":3962,\"recommendation\":\"Ensure `BorrowCap` is included in persistent TTL extension on keeper/hot paths, or use `unwrap_or(0u128)` to fail open to `cap=0` (disabled) consistent with the initializer default.\",\"repo\":\"https://github.com/PeridotFinance/Peridot-Soroban\",\"severity\":\"MEDIUM\",\"sha\":\"10de9449e68285aa8dda2b736d14bfaca20a904f\",\"state\":\"OPEN\",\"suggested_fix\":\"            .unwrap_or(0u128);\",\"title\":\"Resource Management: Persistent key expiry triggers panic in `borrow_with_cash_policy`\"},{\"category\":\"\",\"description\":\"`borrow_for_margin` now uses `.expect(\\\"borrow cap missing\\\")` for `DataKey::BorrowCap`. If the `BorrowCap` persistent key expires, margin borrows will revert even when the intended default is `0` (cap disabled).\",\"file_path\":\"peridot-contracts/contracts/receipt-vault/src/contract.rs\",\"id\":\"9639ca2b-6dd2-4379-ae21-efb94fdd4b30\",\"line_end\":4146,\"line_start\":4146,\"recommendation\":\"Bump TTL for `BorrowCap` alongside other core persistent keys, or revert to `unwrap_or(0u128)` for backward-compatible behavior under TTL expiry.\",\"repo\":\"https://github.com/PeridotFinance/Peridot-Soroban\",\"severity\":\"MEDIUM\",\"sha\":\"10de9449e68285aa8dda2b736d14bfaca20a904f\",\"state\":\"OPEN\",\"suggested_fix\":\"            .unwrap_or(0u128);\",\"title\":\"Resource Management: Persistent key expiry triggers panic in `borrow_for_margin`\"}]}"
+      }
+    ],
+    "structuredContent": {
+      "count": 3,
+      "findings": [
+        {
+          "category": "",
+          "description": "`deposit` now loads `DataKey::SupplyCap` with `.expect(\"supply cap missing\")`. In Soroban, persistent entries can expire if TTL isn\u2019t bumped; if `SupplyCap` expires, user deposits will trap rather than defaulting to `0` (cap disabled), creating a denial-of-service condition.",
+          "file_path": "peridot-contracts/contracts/receipt-vault/src/contract.rs",
+          "id": "d2d495e7-eee4-44bb-8668-710d103b2525",
+          "line_end": 1770,
+          "line_start": 1770,
+          "recommendation": "Either ensure `SupplyCap` is always TTL-bumped on all hot paths that call `deposit`/`seed_minimum_supply`, or restore a safe default (e.g., `unwrap_or(0u128)`) and treat missing as disabled cap.",
+          "repo": "https://github.com/PeridotFinance/Peridot-Soroban",
+          "severity": "MEDIUM",
+          "sha": "10de9449e68285aa8dda2b736d14bfaca20a904f",
+          "state": "OPEN",
+          "suggested_fix": "            .unwrap_or(0u128);",
+          "title": "Resource Management: Persistent key expiry triggers panic in `deposit`"
+        },
+        {
+          "category": "",
+          "description": "`borrow_with_cash_policy` now reads `DataKey::BorrowCap` via `.expect(\"borrow cap missing\")`. If `BorrowCap` expires from persistent storage (TTL not extended) or was never set in older deployments, borrows will trap, potentially freezing the market.",
+          "file_path": "peridot-contracts/contracts/receipt-vault/src/contract.rs",
+          "id": "4cf58b3f-aa58-49bc-bd3a-a2978a74230b",
+          "line_end": 3962,
+          "line_start": 3962,
+          "recommendation": "Ensure `BorrowCap` is included in persistent TTL extension on keeper/hot paths, or use `unwrap_or(0u128)` to fail open to `cap=0` (disabled) consistent with the initializer default.",
+          "repo": "https://github.com/PeridotFinance/Peridot-Soroban",
+          "severity": "MEDIUM",
+          "sha": "10de9449e68285aa8dda2b736d14bfaca20a904f",
+          "state": "OPEN",
+          "suggested_fix": "            .unwrap_or(0u128);",
+          "title": "Resource Management: Persistent key expiry triggers panic in `borrow_with_cash_policy`"
+        },
+        {
+          "category": "",
+          "description": "`borrow_for_margin` now uses `.expect(\"borrow cap missing\")` for `DataKey::BorrowCap`. If the `BorrowCap` persistent key expires, margin borrows will revert even when the intended default is `0` (cap disabled).",
+          "file_path": "peridot-contracts/contracts/receipt-vault/src/contract.rs",
+          "id": "9639ca2b-6dd2-4379-ae21-efb94fdd4b30",
+          "line_end": 4146,
+          "line_start": 4146,
+          "recommendation": "Bump TTL for `BorrowCap` alongside other core persistent keys, or revert to `unwrap_or(0u128)` for backward-compatible behavior under TTL expiry.",
+          "repo": "https://github.com/PeridotFinance/Peridot-Soroban",
+          "severity": "MEDIUM",
+          "sha": "10de9449e68285aa8dda2b736d14bfaca20a904f",
+          "state": "OPEN",
+          "suggested_fix": "            .unwrap_or(0u128);",
+          "title": "Resource Management: Persistent key expiry triggers panic in `borrow_for_margin`"
+        }
+      ]
+    }
+  }
+}

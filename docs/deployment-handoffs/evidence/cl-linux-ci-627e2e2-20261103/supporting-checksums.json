@@ -1,0 +1,42 @@
+{
+  "README.md": {
+    "bytes": 2817,
+    "sha256": "ed89eb1aa539bc47ee7776d35d9eef20c9e39e79a3f3ceef5072c723473a8481"
+  },
+  "baseline-jobs.json": {
+    "bytes": 3713,
+    "sha256": "0ce312d7deaabd10d78b55433c9d82183cd97b6f1f5e8738bb394b488e86f86e"
+  },
+  "baseline-verification.log": {
+    "bytes": 3691,
+    "sha256": "cbbc322b0c210741998fbf63f5dc29f96b3879a83707b46da3fdfa74348aaf54"
+  },
+  "baseline-verified-summary.json": {
+    "bytes": 59729,
+    "sha256": "1451aa2bdfe35041f04643b45f1e7fa8b38865c27c50a3a22e48730a8d1af397"
+  },
+  "capture-identity.json": {
+    "bytes": 380,
+    "sha256": "20cc61ffa1a5408de81f38d90a248a5e30f31c3885ad024d235eb7ef049c2b86"
+  },
+  "checker-job.log": {
+    "bytes": 21440,
+    "sha256": "8b036d463ba8a5a7ca014a33724d5a09a53c61128a4cbfa8f99d67c0e13dbed1"
+  },
+  "github-0.json": {
+    "bytes": 912,
+    "sha256": "1fe4e746cf20545eed058200a8bb46bd65214f135a3fa1e1ac8a7d416b77686e"
+  },
+  "preserve.py": {
+    "bytes": 5658,
+    "sha256": "1bb66e633dc392fc74d98bac2a627ec436dd0598306afd8608ddb2962c310cf6"
+  },
+  "verify-archive.py": {
+    "bytes": 1396,
+    "sha256": "9373e22ac043e6955f1d3d526026009aa345f45dadfcbacf5eea83905c08ed4a"
+  },
+  "verify-baseline.py": {
+    "bytes": 6513,
+    "sha256": "ceb57a040161b4bf4f662de7682667a0ff08ebf6abe4e8364ccbeb1622b2a143"
+  }
+}

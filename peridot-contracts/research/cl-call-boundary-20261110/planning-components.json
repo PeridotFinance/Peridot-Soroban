@@ -1,0 +1,42 @@
+{
+  "schema": "cl-design-component-budgets-v1",
+  "new_transaction_measurements": false,
+  "limit": 100000000,
+  "fee_view_source_sha256": "a6489e6ac3a73cf8cd3fe58c5839f24bebed2b21ab4f826fa9a62b33bdd8550c",
+  "fee_view_observations": 31,
+  "fee_view_min": 2058416,
+  "fee_view_max": 2091665,
+  "calculations": {
+    "cash_mint_tree_arithmetic": {
+      "original": 165098817,
+      "removed_disjoint_calls": [
+        64233503,
+        4538505,
+        1067269,
+        8785882,
+        10778299
+      ],
+      "remainder": 75695359
+    },
+    "investment_components": {
+      "components": [
+        64233503,
+        4538505,
+        4770986,
+        4770986,
+        1067269
+      ],
+      "sum": 79381249
+    },
+    "withdrawal_components": {
+      "components": [
+        62561356,
+        5720808,
+        2091665,
+        4770986
+      ],
+      "sum": 75144815
+    }
+  },
+  "qualification": "Unmeasured new full transactions; same-call memory/storage/auth cannot be inferred by subtraction or summing old roots"
+}

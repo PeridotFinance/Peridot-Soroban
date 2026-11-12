@@ -1,0 +1,30 @@
+{
+  "initialization_admin": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+  "scope": "local stellar contract build; no onchain attestation; patched receipt rebuilt in isolated clean-build target",
+  "artifacts": [
+    {
+      "name": "controller",
+      "path": "target/lending-release-clean-20261111/artifacts/simple_peridottroller.wasm",
+      "bytes": 63289,
+      "sha256": "0885a8ab71ae54cc513f34c933a8ad20b43d7c4a6505a22c6fddd387c463544f"
+    },
+    {
+      "name": "rate_model",
+      "path": "target/lending-release-clean-20261111/artifacts/jump_rate_model.wasm",
+      "bytes": 7644,
+      "sha256": "4f57459de70963abb7b6bc4c06ad5eae9d7f8dc0ef3ef59f023241705033126f"
+    },
+    {
+      "name": "receipt_unpatched",
+      "path": "target/lending-release-clean-20261111/receipt-vault-unpatched.wasm",
+      "bytes": 87197,
+      "sha256": "d71e7e630da58e59e295a0cd3fbce2aaaffa05330a55142ec83b04eec6bdc1b1"
+    },
+    {
+      "name": "receipt_patched",
+      "path": "target/lending-release-clean-20261111/patched-artifacts/receipt_vault.wasm",
+      "bytes": 87224,
+      "sha256": "7f2e9f2f2f737699fbdf3defc7e96d44d6e78bd867d608eafe145580fc3a5efd"
+    }
+  ]
+}

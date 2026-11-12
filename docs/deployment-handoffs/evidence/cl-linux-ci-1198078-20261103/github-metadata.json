@@ -1,0 +1,171 @@
+{
+  "artifacts": {
+    "artifacts": [
+      {
+        "id": 13176432381,
+        "name": "cl-stage1-evidence-025782585be9abfe88722303058b460a19807604",
+        "size_in_bytes": 200952624,
+        "url": "https://api.github.com/repos/PeridotFinance/Peridot-Soroban/actions/artifacts/13176432381",
+        "archive_download_url": "https://api.github.com/repos/PeridotFinance/Peridot-Soroban/actions/artifacts/13176432381/zip",
+        "expired": false,
+        "created_at": "2026-11-02T20:27:39Z",
+        "expires_at": "2026-11-16T20:27:22Z",
+        "updated_at": "2026-11-02T20:27:39Z",
+        "digest": "sha256:ef03eac5e1f67f3fdb470f5e5b4366d8af06e51fb9773a1d5dd4ba89827660c7",
+        "workflow_run": {
+          "id": 41512536485,
+          "repository_id": 1001707821,
+          "head_repository_id": 1001707821,
+          "head_branch": "feat/cl-share-stage1-checkpoint",
+          "head_sha": "11980783cd0da692dee97394a21c949757a6e910"
+        }
+      }
+    ]
+  },
+  "jobs": {
+    "jobs": [
+      {
+        "id": 125508485751,
+        "name": "checkpoint-gates",
+        "status": "completed",
+        "conclusion": "failure",
+        "run_id": 41512536485,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Install pinned Rust and Stellar build CLI",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Fetch hash-pinned public Aquarius bytecode",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Execute both profiles and every required gate",
+            "status": "completed",
+            "conclusion": "failure",
+            "number": 6
+          },
+          {
+            "name": "Publish evidence even when a required gate fails",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 13
+          },
+          {
+            "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          }
+        ]
+      },
+      {
+        "id": 125508485816,
+        "name": "checker-tests",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 41512536485,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Install pinned unsigned XDR decoder dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Run PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p 'test_cl*py' -v",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          }
+        ]
+      }
+    ]
+  },
+  "runs": {
+    "workflow_runs": [
+      {
+        "id": 41512536485,
+        "name": "CL Stage 1 evidence",
+        "status": "completed",
+        "conclusion": "failure",
+        "run_number": 8,
+        "jobs_url": "https://api.github.com/repos/PeridotFinance/Peridot-Soroban/actions/runs/41512536485/jobs",
+        "logs_url": "https://api.github.com/repos/PeridotFinance/Peridot-Soroban/actions/runs/41512536485/logs",
+        "workflow_id": 404422357
+      }
+    ]
+  }
+}

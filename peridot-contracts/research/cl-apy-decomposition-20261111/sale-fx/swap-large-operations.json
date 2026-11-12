@@ -1,0 +1,147 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://horizon.stellar.org/transactions/d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474/operations?cursor=\u0026limit=200\u0026order=asc"
+    },
+    "next": {
+      "href": "https://horizon.stellar.org/transactions/d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474/operations?cursor=280970391068495873\u0026limit=200\u0026order=asc"
+    },
+    "prev": {
+      "href": "https://horizon.stellar.org/transactions/d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474/operations?cursor=280970391068495873\u0026limit=200\u0026order=desc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon.stellar.org/operations/280970391068495873"
+          },
+          "transaction": {
+            "href": "https://horizon.stellar.org/transactions/d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474"
+          },
+          "effects": {
+            "href": "https://horizon.stellar.org/operations/280970391068495873/effects"
+          },
+          "succeeds": {
+            "href": "https://horizon.stellar.org/effects?order=desc\u0026cursor=280970391068495873"
+          },
+          "precedes": {
+            "href": "https://horizon.stellar.org/effects?order=asc\u0026cursor=280970391068495873"
+          }
+        },
+        "id": "280970391068495873",
+        "paging_token": "280970391068495873",
+        "transaction_successful": true,
+        "source_account": "GD3WMHKBP4YDNXSLG3CT2SKNFDJDAM5CF2IZDD4BFVSHIHJQ3KFELMUT",
+        "type": "invoke_host_function",
+        "type_i": 24,
+        "created_at": "2026-11-11T06:30:27Z",
+        "transaction_hash": "d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474",
+        "function": "HostFunctionTypeHostFunctionTypeInvokeContract",
+        "parameters": [
+          {
+            "value": "AAAAEgAAAAFgM7QlDnBOMU+wZJc9GF25IsrgvScrpb/xmqxXDxKsLw==",
+            "type": "Address"
+          },
+          {
+            "value": "AAAADwAAAAxzd2FwX2NoYWluZWQ=",
+            "type": "Sym"
+          },
+          {
+            "value": "AAAAEgAAAAAAAAAA92YdQX8wNt5LNsU9SU0o0jAzoi6RkY+BLWR0HTDaikU=",
+            "type": "Address"
+          },
+          {
+            "value": "AAAAEAAAAAEAAAADAAAAEAAAAAEAAAADAAAAEAAAAAEAAAACAAAAEgAAAAEohS9owZhIjjRvsSEu1QKQU3Ycwk9FM5LjU5ggGwgl5wAAABIAAAAB9dY2s8jXzG7hE8SbmuCde2oc7rMwUvMBIanSieZmJ1MAAAANAAAAIJrHqc3iOsKtoREF7qpC5DwuqDMsoKqPQfWNcWAnTXGOAAAAEgAAAAEohS9owZhIjjRvsSEu1QKQU3Ycwk9FM5LjU5ggGwgl5wAAABAAAAABAAAAAwAAABAAAAABAAAAAgAAABIAAAABKIUvaMGYSI40b7EhLtUCkFN2HMJPRTOS41OYIBsIJecAAAASAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAADQAAACCax6nN4jrCraERBe6qQuQ8LqgzLKCqj0H1jXFgJ01xjgAAABIAAAABre/OWa7lKWj3YGHUlMJSW3Vln6QpamX0me8p5WR35JYAAAAQAAAAAQAAAAMAAAAQAAAAAQAAAAIAAAASAAAAASW0/NhZrsL6Y0hDjEibPDwQyYttIb5P08swy2iVPvl3AAAAEgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAAA0AAAAgsuAvz8pslvitXL2E53hKd3s22clqJFlALE9FhGKqt/AAAAASAAAAASW0/NhZrsL6Y0hDjEibPDwQyYttIb5P08swy2iVPvl3",
+            "type": "Vec"
+          },
+          {
+            "value": "AAAAEgAAAAH11jazyNfMbuETxJua4J17ahzuszBS8wEhqdKJ5mYnUw==",
+            "type": "Address"
+          },
+          {
+            "value": "AAAACQAAAAAAAAAAAAAAAgflYdc=",
+            "type": "U128"
+          },
+          {
+            "value": "AAAACQAAAAAAAAAAAAAAABp+RCY=",
+            "type": "U128"
+          }
+        ],
+        "address": "",
+        "salt": "",
+        "asset_balance_changes": [
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "BLND",
+            "asset_issuer": "GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY",
+            "type": "transfer",
+            "from": "GD3WMHKBP4YDNXSLG3CT2SKNFDJDAM5CF2IZDD4BFVSHIHJQ3KFELMUT",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "872.2407895"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "BLND",
+            "asset_issuer": "GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CAB6MICC2WKRT372U3FRPKGGVB5R3FDJSMWSLPF2UJNJPYMBZ76RQVYE",
+            "amount": "872.2407895"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "AQUA",
+            "asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+            "type": "transfer",
+            "from": "CAB6MICC2WKRT372U3FRPKGGVB5R3FDJSMWSLPF2UJNJPYMBZ76RQVYE",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "26808.1604665"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "AQUA",
+            "asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+            "amount": "26808.1604665"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "USDC",
+            "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            "type": "transfer",
+            "from": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "6.5124573"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "USDC",
+            "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CA6PUJLBYKZKUEKLZJMKBZLEKP2OTHANDEOWSFF44FTSYLKQPIICCJBE",
+            "amount": "6.5124573"
+          },
+          {
+            "asset_type": "native",
+            "type": "transfer",
+            "from": "CA6PUJLBYKZKUEKLZJMKBZLEKP2OTHANDEOWSFF44FTSYLKQPIICCJBE",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "44.8972322"
+          },
+          {
+            "asset_type": "native",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "GD3WMHKBP4YDNXSLG3CT2SKNFDJDAM5CF2IZDD4BFVSHIHJQ3KFELMUT",
+            "amount": "44.8972322"
+          }
+        ]
+      }
+    ]
+  }
+}

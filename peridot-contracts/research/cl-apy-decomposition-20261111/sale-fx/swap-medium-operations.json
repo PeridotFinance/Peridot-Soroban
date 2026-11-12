@@ -1,0 +1,158 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://horizon.stellar.org/transactions/c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298/operations?cursor=\u0026limit=200\u0026order=asc"
+    },
+    "next": {
+      "href": "https://horizon.stellar.org/transactions/c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298/operations?cursor=280947443058368513\u0026limit=200\u0026order=asc"
+    },
+    "prev": {
+      "href": "https://horizon.stellar.org/transactions/c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298/operations?cursor=280947443058368513\u0026limit=200\u0026order=desc"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon.stellar.org/operations/280947443058368513"
+          },
+          "transaction": {
+            "href": "https://horizon.stellar.org/transactions/c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298"
+          },
+          "effects": {
+            "href": "https://horizon.stellar.org/operations/280947443058368513/effects"
+          },
+          "succeeds": {
+            "href": "https://horizon.stellar.org/effects?order=desc\u0026cursor=280947443058368513"
+          },
+          "precedes": {
+            "href": "https://horizon.stellar.org/effects?order=asc\u0026cursor=280947443058368513"
+          }
+        },
+        "id": "280947443058368513",
+        "paging_token": "280947443058368513",
+        "transaction_successful": true,
+        "source_account": "GAB7QE2RKOOUH74ZVKN46PXXMX5JJM4YYKR6JYKIJBOR66KXVBZ3JPE3",
+        "type": "invoke_host_function",
+        "type_i": 24,
+        "created_at": "2026-11-10T23:05:12Z",
+        "transaction_hash": "c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298",
+        "function": "HostFunctionTypeHostFunctionTypeInvokeContract",
+        "parameters": [
+          {
+            "value": "AAAAEgAAAAGeYsKTkQ40QcOJNmSNpPcBvp870v63jb813CRhoUyZLw==",
+            "type": "Address"
+          },
+          {
+            "value": "AAAADwAAAAxzd2FwX2NoYWluZWQ=",
+            "type": "Sym"
+          },
+          {
+            "value": "AAAAEgAAAAAAAAAAA/gTUVOdQ/+ZqpvPPvdl+pSzmMKj5OFISF0feVeoc7Q=",
+            "type": "Address"
+          },
+          {
+            "value": "AAAAEAAAAAEAAAAEAAAAEAAAAAEAAAADAAAAEAAAAAEAAAACAAAAEgAAAAEBXYCbqoen8nj67TgxiToTyzhZ6BokJeLbYyJFVbtOGgAAABIAAAABJbT82FmuwvpjSEOMSJs8PBDJi20hvk/TyzDLaJU++XcAAAANAAAAICT5yZHESs8z//X0QDHEA4XSNdwhLXN56CS6PbHDU3HzAAAAEgAAAAEBXYCbqoen8nj67TgxiToTyzhZ6BokJeLbYyJFVbtOGgAAABAAAAABAAAAAwAAABAAAAABAAAAAgAAABIAAAABAV2Am6qHp/J4+u04MYk6E8s4WegaJCXi22MiRVW7ThoAAAASAAAAASiFL2jBmEiONG+xIS7VApBTdhzCT0UzkuNTmCAbCCXnAAAADQAAACCax6nN4jrCraERBe6qQuQ8LqgzLKCqj0H1jXFgJ01xjgAAABIAAAABKIUvaMGYSI40b7EhLtUCkFN2HMJPRTOS41OYIBsIJecAAAAQAAAAAQAAAAMAAAAQAAAAAQAAAAIAAAASAAAAASiFL2jBmEiONG+xIS7VApBTdhzCT0UzkuNTmCAbCCXnAAAAEgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAAA0AAAAgmsepzeI6wq2hEQXuqkLkPC6oMyygqo9B9Y1xYCdNcY4AAAASAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAADAAAAEAAAAAEAAAACAAAAEgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABIAAAAB03lS7VP9h5HxhSTHv0hj8OP0y6fzTNeuyJgNgZb4Z8kAAAANAAAAICT5yZHESs8z//X0QDHEA4XSNdwhLXN56CS6PbHDU3HzAAAAEgAAAAHTeVLtU/2HkfGFJMe/SGPw4/TLp/NM167ImA2BlvhnyQ==",
+            "type": "Vec"
+          },
+          {
+            "value": "AAAAEgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dw==",
+            "type": "Address"
+          },
+          {
+            "value": "AAAACQAAAAAAAAAAAAAAAALALQI=",
+            "type": "U128"
+          },
+          {
+            "value": "AAAACQAAAAAAAAAAAAAAAAB4TUY=",
+            "type": "U128"
+          },
+          {
+            "value": "AAAAAwAAAlg=",
+            "type": "U32"
+          }
+        ],
+        "address": "",
+        "salt": "",
+        "asset_balance_changes": [
+          {
+            "asset_type": "native",
+            "type": "transfer",
+            "from": "GAB7QE2RKOOUH74ZVKN46PXXMX5JJM4YYKR6JYKIJBOR66KXVBZ3JPE3",
+            "to": "CCPGFQUTSEHDIQODRE3GJDNE64A35HZ32L7LPDN7GXOCIYNBJSMS6V6B",
+            "amount": "4.6148866"
+          },
+          {
+            "asset_type": "native",
+            "type": "transfer",
+            "from": "CCPGFQUTSEHDIQODRE3GJDNE64A35HZ32L7LPDN7GXOCIYNBJSMS6V6B",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "4.6148866"
+          },
+          {
+            "asset_type": "native",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CAAJYIESEIKI7KZV67MBSXPCRGKH5WY354WUS55H4UNBD35OSKYPZA7Q",
+            "amount": "4.6148866"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "XRP",
+            "asset_issuer": "GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5",
+            "type": "transfer",
+            "from": "CAAJYIESEIKI7KZV67MBSXPCRGKH5WY354WUS55H4UNBD35OSKYPZA7Q",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "0.6307189"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "XRP",
+            "asset_issuer": "GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CD5N56WHTHT3XOB6BQBEK3OQFJUC3T5XGLIAZOP6GTBXZ6CLTEQKFY5Q",
+            "amount": "0.6307189"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "AQUA",
+            "asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+            "type": "transfer",
+            "from": "CD5N56WHTHT3XOB6BQBEK3OQFJUC3T5XGLIAZOP6GTBXZ6CLTEQKFY5Q",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "2764.6825935"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "AQUA",
+            "asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+            "amount": "2764.6825935"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "USDC",
+            "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            "type": "transfer",
+            "from": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+            "to": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "amount": "0.6675974"
+          },
+          {
+            "asset_type": "credit_alphanum4",
+            "asset_code": "USDC",
+            "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            "type": "transfer",
+            "from": "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK",
+            "to": "CA26X2GYYE2H3ZXNXFPU537O2HITDXNMF5HXUJVL3O7XEVQUUB4RQ54T",
+            "amount": "0.6675974"
+          }
+        ]
+      }
+    ]
+  }
+}

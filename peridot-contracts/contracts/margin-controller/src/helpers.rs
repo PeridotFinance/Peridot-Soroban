@@ -24,6 +24,9 @@ pub fn next_position_id(env: &Env) -> u64 {
     env.storage()
         .persistent()
         .set(&DataKey::PositionCounter, &id);
+    env.storage()
+        .persistent()
+        .extend_ttl(&DataKey::PositionCounter, TTL_THRESHOLD, TTL_EXTEND_TO);
     id
 }
 

@@ -1,0 +1,52 @@
+{
+  "_embedded": {
+    "records": [
+      {
+        "source_asset_type": "credit_alphanum4",
+        "source_asset_code": "AQUA",
+        "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+        "source_amount": "6770.1434811",
+        "destination_asset_type": "credit_alphanum4",
+        "destination_asset_code": "USDC",
+        "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        "destination_amount": "1.6537991",
+        "path": [
+          {
+            "asset_type": "native"
+          },
+          {
+            "asset_type": "credit_alphanum12",
+            "asset_code": "PYUSD",
+            "asset_issuer": "GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5"
+          }
+        ]
+      },
+      {
+        "source_asset_type": "credit_alphanum4",
+        "source_asset_code": "AQUA",
+        "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+        "source_amount": "6770.1434811",
+        "destination_asset_type": "credit_alphanum4",
+        "destination_asset_code": "USDC",
+        "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        "destination_amount": "1.6533221",
+        "path": [
+          {
+            "asset_type": "native"
+          }
+        ]
+      },
+      {
+        "source_asset_type": "credit_alphanum4",
+        "source_asset_code": "AQUA",
+        "source_asset_issuer": "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+        "source_amount": "6770.1434811",
+        "destination_asset_type": "credit_alphanum4",
+        "destination_asset_code": "USDC",
+        "destination_asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        "destination_amount": "1.6503280",
+        "path": []
+      }
+    ]
+  }
+}

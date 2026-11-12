@@ -1,0 +1,87 @@
+{
+  "observedAt": "2026-11-11T18:33:54.647Z",
+  "endpoint": "https://soroban-rpc.mainnet.stellar.gateway.fm",
+  "source": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+  "scope": "unsigned host fee planning; source account not yet created; sequence0 placeholder is not executable",
+  "uploads": [
+    {
+      "label": "upload-simple_peridottroller.wasm",
+      "latestLedger": 65427198,
+      "minResourceFeeStroops": "899791966",
+      "feeWithNominalInclusionStroops": "899792066",
+      "instructions": 54309185,
+      "diskReadBytes": 0,
+      "writeBytes": 63388,
+      "uniqueKeys": 1,
+      "writes": 1,
+      "restoreRequired": false,
+      "transactionDataXdr": "AAAAAAAAAAAAAAABAAAAB4R4lKZftZZ1x0cH6oiZYzp2OKonFqGDsLLv41qLwrkCAzyxQQAAAAAAAPecAAAAADWhvF4=",
+      "authEntries": 0,
+      "sha256": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+      "bytes": 63285,
+      "codeCurrentlyPresent": false
+    },
+    {
+      "label": "upload-receipt_vault.wasm",
+      "latestLedger": 65427198,
+      "minResourceFeeStroops": "1193289209",
+      "feeWithNominalInclusionStroops": "1193289309",
+      "instructions": 75954678,
+      "diskReadBytes": 0,
+      "writeBytes": 89136,
+      "uniqueKeys": 1,
+      "writes": 1,
+      "restoreRequired": false,
+      "transactionDataXdr": "AAAAAAAAAAAAAAABAAAAB0Ipt++fQAKKIOe6ziSE8zDbvqYlqpjyn0U4YeDEmPeeBIb59gAAAAAAAVwwAAAAAEcgJfk=",
+      "authEntries": 0,
+      "sha256": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "bytes": 89033,
+      "codeCurrentlyPresent": false
+    }
+  ],
+  "deployments": [
+    {
+      "label": "deploy-controller",
+      "latestLedger": 65427198,
+      "error": "HostError: Error(Storage, MissingValue)\n\nEvent log (newest first):\n   0: [Diagnostic Event] topics:[error, Error(Storage, MissingValue)], data:[\"Wasm does not exist\", Bytes(847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902)]\n"
+    },
+    {
+      "label": "deploy-USDC",
+      "latestLedger": 65427198,
+      "error": "HostError: Error(Storage, MissingValue)\n\nEvent log (newest first):\n   0: [Diagnostic Event] topics:[error, Error(Storage, MissingValue)], data:[\"Wasm does not exist\", Bytes(4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e)]\n"
+    },
+    {
+      "label": "deploy-XLM",
+      "latestLedger": 65427198,
+      "error": "HostError: Error(Storage, MissingValue)\n\nEvent log (newest first):\n   0: [Diagnostic Event] topics:[error, Error(Storage, MissingValue)], data:[\"Wasm does not exist\", Bytes(4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e)]\n"
+    },
+    {
+      "label": "deploy-PYUSD",
+      "latestLedger": 65427198,
+      "error": "HostError: Error(Storage, MissingValue)\n\nEvent log (newest first):\n   0: [Diagnostic Event] topics:[error, Error(Storage, MissingValue)], data:[\"Wasm does not exist\", Bytes(4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e)]\n"
+    },
+    {
+      "label": "deploy-EURC",
+      "latestLedger": 65427198,
+      "error": "HostError: Error(Storage, MissingValue)\n\nEvent log (newest first):\n   0: [Diagnostic Event] topics:[error, Error(Storage, MissingValue)], data:[\"Wasm does not exist\", Bytes(4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e)]\n"
+    }
+  ],
+  "network": {
+    "passphrase": "Public Global Stellar Network ; September 2015",
+    "protocolVersion": 29
+  },
+  "latestLedger": {
+    "id": "95b99d2a9c921ddde0e65adf7a9372ae969c93197df18e4ee66e0a9f555dcd60",
+    "sequence": 65427198,
+    "protocolVersion": 29,
+    "closeTime": "1794422032"
+  },
+  "fundingPlan": {
+    "recommendedXlm": "300",
+    "quotedUploadsXlm": "209.3081375",
+    "newAccountMinimumXlm": "1",
+    "remainingAfterQuotedUploadsAndMinimumXlm": "89.6918625",
+    "instanceFees": "UNQUOTED until pinned code exists; resimulate each before signing",
+    "scope": "deployer only; Ledger configuration and seed fees separate"
+  }
+}

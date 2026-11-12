@@ -1,0 +1,1051 @@
+{
+  "scope": "accepted historical compiled synthetic-oracle fixture only; not live Reflector or new guard qualification",
+  "archive_sha256": "7842eda4b75d0ebcb9800091e9a1f165d64976d113583fde1cca4d01133ea925",
+  "calls_member": "runs/cl-stage1-internal-v6/calls.jsonl",
+  "calls_sha256": "8791259ca80015ffcbd3dc38d562e2f0de54efdea7b31deb63c22a7cf19407df",
+  "oracle_wasm_sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+  "traces": [
+    {
+      "flow": "stage1_fee_checkpoint_cash_mint",
+      "root_cpu": 71099168,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 385515,
+          "new_memory_read_entries": 1,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.6",
+          "cpu": 360932,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.7",
+          "cpu": 381351,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.8",
+          "cpu": 360932,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.9",
+          "cpu": 1073756,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1488730,
+      "slot_cpu": 1073756,
+      "covered_calls_cpu": 2562486
+    },
+    {
+      "flow": "stage_prepare",
+      "root_cpu": 7132108,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.0",
+          "cpu": 384844,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.1",
+          "cpu": 361436,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.2",
+          "cpu": 381955,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.3",
+          "cpu": 361536,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.1.4",
+          "cpu": 1077981,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1489771,
+      "slot_cpu": 1077981,
+      "covered_calls_cpu": 2567752
+    },
+    {
+      "flow": "stage1_prepare",
+      "root_cpu": 7132108,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.0",
+          "cpu": 384844,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.1",
+          "cpu": 361436,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.2",
+          "cpu": 381955,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.3",
+          "cpu": 361536,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.1.4",
+          "cpu": 1077981,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1489771,
+      "slot_cpu": 1077981,
+      "covered_calls_cpu": 2567752
+    },
+    {
+      "flow": "stage1_convert",
+      "root_cpu": 30634903,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.2",
+          "cpu": 384024,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.3",
+          "cpu": 360480,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.4",
+          "cpu": 380895,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 360476,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.6",
+          "cpu": 1077143,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1485875,
+      "slot_cpu": 1077143,
+      "covered_calls_cpu": 2563018
+    },
+    {
+      "flow": "stage1_fee_checkpoint_cash_mint",
+      "root_cpu": 71097878,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 385497,
+          "new_memory_read_entries": 1,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.6",
+          "cpu": 360914,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.7",
+          "cpu": 381333,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.8",
+          "cpu": 360914,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.9",
+          "cpu": 1073738,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1488658,
+      "slot_cpu": 1073738,
+      "covered_calls_cpu": 2562396
+    },
+    {
+      "flow": "stage1_keeper_investment",
+      "root_cpu": 94552119,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.2",
+          "cpu": 383860,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.3",
+          "cpu": 360316,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.4",
+          "cpu": 380731,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 360312,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.6",
+          "cpu": 1077279,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1485219,
+      "slot_cpu": 1077279,
+      "covered_calls_cpu": 2562498
+    },
+    {
+      "flow": "stage1_optional_close_conversion",
+      "root_cpu": 23305643,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.2",
+          "cpu": 384096,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.3",
+          "cpu": 360552,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.4",
+          "cpu": 380967,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 360548,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.6",
+          "cpu": 1077365,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1486163,
+      "slot_cpu": 1077365,
+      "covered_calls_cpu": 2563528
+    },
+    {
+      "flow": "stage_prepare",
+      "root_cpu": 7132108,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.0",
+          "cpu": 384844,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.1",
+          "cpu": 361436,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.2",
+          "cpu": 381955,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.3",
+          "cpu": 361536,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.1.4",
+          "cpu": 1077981,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1489771,
+      "slot_cpu": 1077981,
+      "covered_calls_cpu": 2567752
+    },
+    {
+      "flow": "stage1_prepare",
+      "root_cpu": 7132108,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.0",
+          "cpu": 384844,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.1",
+          "cpu": 361436,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.2",
+          "cpu": 381955,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.3",
+          "cpu": 361536,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.1.4",
+          "cpu": 1077981,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1489771,
+      "slot_cpu": 1077981,
+      "covered_calls_cpu": 2567752
+    },
+    {
+      "flow": "stage1_convert",
+      "root_cpu": 30634903,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.2",
+          "cpu": 384024,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.3",
+          "cpu": 360480,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.4",
+          "cpu": 380895,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 360476,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.6",
+          "cpu": 1077143,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1485875,
+      "slot_cpu": 1077143,
+      "covered_calls_cpu": 2563018
+    },
+    {
+      "flow": "stage1_fee_checkpoint_cash_mint",
+      "root_cpu": 71097878,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 385497,
+          "new_memory_read_entries": 1,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.6",
+          "cpu": 360914,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.7",
+          "cpu": 381333,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.8",
+          "cpu": 360914,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.9",
+          "cpu": 1073738,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1488658,
+      "slot_cpu": 1073738,
+      "covered_calls_cpu": 2562396
+    },
+    {
+      "flow": "stage1_keeper_investment",
+      "root_cpu": 94552119,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.2",
+          "cpu": 383860,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.3",
+          "cpu": 360316,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.4",
+          "cpu": 380731,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 360312,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.6",
+          "cpu": 1077279,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1485219,
+      "slot_cpu": 1077279,
+      "covered_calls_cpu": 2562498
+    },
+    {
+      "flow": "stage1_optional_close_conversion",
+      "root_cpu": 23305643,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.2",
+          "cpu": 384096,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.3",
+          "cpu": 360552,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.4",
+          "cpu": 380967,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 360548,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.6",
+          "cpu": 1077365,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1486163,
+      "slot_cpu": 1077365,
+      "covered_calls_cpu": 2563528
+    },
+    {
+      "flow": "stage1_convert",
+      "root_cpu": 30634903,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.2",
+          "cpu": 384024,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.3",
+          "cpu": 360480,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.4",
+          "cpu": 380895,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 360476,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.6",
+          "cpu": 1077143,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1485875,
+      "slot_cpu": 1077143,
+      "covered_calls_cpu": 2563018
+    },
+    {
+      "flow": "stage1_keeper_investment",
+      "root_cpu": 94552119,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.2",
+          "cpu": 383860,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.3",
+          "cpu": 360316,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.4",
+          "cpu": 380731,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 360312,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.6",
+          "cpu": 1077279,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1485219,
+      "slot_cpu": 1077279,
+      "covered_calls_cpu": 2562498
+    },
+    {
+      "flow": "stage1_fee_checkpoint_cash_mint",
+      "root_cpu": 71097878,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.5",
+          "cpu": 385497,
+          "new_memory_read_entries": 1,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.6",
+          "cpu": 360914,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.0.7",
+          "cpu": 381333,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.0.8",
+          "cpu": 360914,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.0.9",
+          "cpu": 1073738,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1488658,
+      "slot_cpu": 1073738,
+      "covered_calls_cpu": 2562396
+    },
+    {
+      "flow": "stage_prepare",
+      "root_cpu": 7132108,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.0",
+          "cpu": 384844,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.1",
+          "cpu": 361436,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.2",
+          "cpu": 381955,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.3",
+          "cpu": 361536,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.1.4",
+          "cpu": 1077981,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1489771,
+      "slot_cpu": 1077981,
+      "covered_calls_cpu": 2567752
+    },
+    {
+      "flow": "stage1_prepare",
+      "root_cpu": 7132108,
+      "calls": [
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.0",
+          "cpu": 384844,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.1",
+          "cpu": 361436,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "lastprice",
+          "role": "oracle",
+          "path": "0.1.2",
+          "cpu": 381955,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "resolution",
+          "role": "oracle",
+          "path": "0.1.3",
+          "cpu": 361536,
+          "new_memory_read_entries": 0,
+          "new_write_entries": 0
+        },
+        {
+          "function": "get_slot0",
+          "role": "aquarius",
+          "path": "0.1.4",
+          "cpu": 1077981,
+          "new_memory_read_entries": 2,
+          "new_write_entries": 0
+        }
+      ],
+      "oracle_calls_cpu": 1489771,
+      "slot_cpu": 1077981,
+      "covered_calls_cpu": 2567752
+    }
+  ],
+  "signed_baseline_headroom": [
+    {
+      "flow": "stage_prepare",
+      "cpu": 7397126,
+      "cpu_remaining": 92602874,
+      "memory": 4784483,
+      "memory_remaining": 37158557,
+      "sdk_total": 16,
+      "sdk_remaining": 84,
+      "unique_keys": 13,
+      "keys_remaining": 87,
+      "writes": 3,
+      "writes_remaining": 47
+    },
+    {
+      "flow": "stage_fund",
+      "cpu": 3754855,
+      "cpu_remaining": 96245145,
+      "memory": 3007875,
+      "memory_remaining": 38935165,
+      "sdk_total": 17,
+      "sdk_remaining": 83,
+      "unique_keys": 12,
+      "keys_remaining": 88,
+      "writes": 5,
+      "writes_remaining": 45
+    },
+    {
+      "flow": "stage_convert",
+      "cpu": 31245907,
+      "cpu_remaining": 68754093,
+      "memory": 6606474,
+      "memory_remaining": 35336566,
+      "sdk_total": 30,
+      "sdk_remaining": 70,
+      "unique_keys": 22,
+      "keys_remaining": 78,
+      "writes": 8,
+      "writes_remaining": 42
+    },
+    {
+      "flow": "stage_mint",
+      "cpu": 72062767,
+      "cpu_remaining": 27937233,
+      "memory": 9095932,
+      "memory_remaining": 32847108,
+      "sdk_total": 69,
+      "sdk_remaining": 31,
+      "unique_keys": 50,
+      "keys_remaining": 50,
+      "writes": 19,
+      "writes_remaining": 31
+    },
+    {
+      "flow": "stage_invest",
+      "cpu": 95144812,
+      "cpu_remaining": 4855188,
+      "memory": 10894011,
+      "memory_remaining": 31049029,
+      "sdk_total": 61,
+      "sdk_remaining": 39,
+      "unique_keys": 43,
+      "keys_remaining": 57,
+      "writes": 18,
+      "writes_remaining": 32
+    },
+    {
+      "flow": "stage_prepare_close",
+      "cpu": 2724937,
+      "cpu_remaining": 97275063,
+      "memory": 2898398,
+      "memory_remaining": 39044642,
+      "sdk_total": 13,
+      "sdk_remaining": 87,
+      "unique_keys": 10,
+      "keys_remaining": 90,
+      "writes": 3,
+      "writes_remaining": 47
+    },
+    {
+      "flow": "stage_withdraw_in_kind",
+      "cpu": 78728736,
+      "cpu_remaining": 21271264,
+      "memory": 9857357,
+      "memory_remaining": 32085683,
+      "sdk_total": 78,
+      "sdk_remaining": 22,
+      "unique_keys": 52,
+      "keys_remaining": 48,
+      "writes": 26,
+      "writes_remaining": 24
+    },
+    {
+      "flow": "stage_withdraw",
+      "cpu": 78061427,
+      "cpu_remaining": 21938573,
+      "memory": 9839514,
+      "memory_remaining": 32103526,
+      "sdk_total": 74,
+      "sdk_remaining": 26,
+      "unique_keys": 50,
+      "keys_remaining": 50,
+      "writes": 24,
+      "writes_remaining": 26
+    },
+    {
+      "flow": "stage_close_convert",
+      "cpu": 23786729,
+      "cpu_remaining": 76213271,
+      "memory": 6407954,
+      "memory_remaining": 35535086,
+      "sdk_total": 32,
+      "sdk_remaining": 68,
+      "unique_keys": 23,
+      "keys_remaining": 77,
+      "writes": 9,
+      "writes_remaining": 41
+    },
+    {
+      "flow": "stage_prepare-detached",
+      "cpu": 7909748,
+      "cpu_remaining": 92090252,
+      "memory": 4803785,
+      "memory_remaining": 37139255,
+      "sdk_total": 19,
+      "sdk_remaining": 81,
+      "unique_keys": 15,
+      "keys_remaining": 85,
+      "writes": 4,
+      "writes_remaining": 46
+    },
+    {
+      "flow": "stage_fund-detached",
+      "cpu": 4331094,
+      "cpu_remaining": 95668906,
+      "memory": 3053540,
+      "memory_remaining": 38889500,
+      "sdk_total": 20,
+      "sdk_remaining": 80,
+      "unique_keys": 14,
+      "keys_remaining": 86,
+      "writes": 6,
+      "writes_remaining": 44
+    },
+    {
+      "flow": "stage_prepare_close-detached",
+      "cpu": 3213260,
+      "cpu_remaining": 96786740,
+      "memory": 2913694,
+      "memory_remaining": 39029346,
+      "sdk_total": 16,
+      "sdk_remaining": 84,
+      "unique_keys": 12,
+      "keys_remaining": 88,
+      "writes": 4,
+      "writes_remaining": 46
+    }
+  ],
+  "new_guard_complete_transaction_cost": null,
+  "new_guard_resource_gate": "UNMEASURED; no build or new financial execution authorized in this research"
+}

@@ -1,0 +1,74 @@
+> For the complete documentation index, see [llms.txt](https://docs.aqua.network/llms.txt). Markdown versions of documentation pages are available by appending `.md` to page URLs; this page is available as [Markdown](https://docs.aqua.network/developers/reference/backend-api.md).
+
+# Backend API
+
+The Aquarius backend API — path finding and pool data endpoints, versioning, and error behavior.
+
+The backend API provides off-chain conveniences for integrators: route computation for swaps (returning ready-to-execute XDR) and indexed pool data. It is a free, public API — **no API key or authentication is currently required**. The full machine-readable spec is at [amm-api.aqua.network/api/schema/redoc](https://amm-api.aqua.network/api/schema/redoc/).
+
+|         | Base URL                                               |
+| ------- | ------------------------------------------------------ |
+| Mainnet | `https://amm-api.aqua.network/api/external/v2`         |
+| Testnet | `https://amm-api-testnet.aqua.network/api/external/v2` |
+
+{% hint style="info" %}
+**Versioning:** use `v2`. `v1` remains available and is identical except for one endpoint — `v2`'s `find-path-strict-receive` correctly accounts for [provider fees](/developers/code-examples/add-fees-to-swap.md) when computing the required input.
+{% endhint %}
+
+## Endpoints
+
+| Method | Path                         | Purpose                                                  |
+| ------ | ---------------------------- | -------------------------------------------------------- |
+| `POST` | `/find-path/`                | Best route for an exact-**input** swap (strict-send)     |
+| `POST` | `/find-path-strict-receive/` | Best route for an exact-**output** swap (strict-receive) |
+| `GET`  | `/pools/`                    | List pools; filter with `?address__in=<addr1>,<addr2>`   |
+| `GET`  | `/pools/user/<address>`      | Pools where the given account holds a position           |
+| `GET`  | `/statistics/totals/`        | Daily time series: volume, TVL, LP fees, protocol fees   |
+| `GET`  | `/statistics/all-time/`      | All-time aggregate volume and TVL                        |
+
+List endpoints are paginated (10 items per page by default; use `?page=N`).
+
+## Find-path request & response
+
+Request body (both endpoints):
+
+| Field               | Type              | Notes                                                                       |
+| ------------------- | ----------------- | --------------------------------------------------------------------------- |
+| `token_in_address`  | string            | Contract address of the token you send                                      |
+| `token_out_address` | string            | Contract address of the token you receive                                   |
+| `amount`            | string/number     | In stroops. Input amount for `find-path`, desired output for strict-receive |
+| `slippage`          | decimal, optional | for example, `"0.01"` for 1%; default 0                                     |
+| `provider_fee`      | decimal, optional | Your integrator fee, for example, `"0.003"`; default 0                      |
+| `max_depth`         | int, optional     | Route length cap — up to 4 hops (strict-send) / 3 hops (strict-receive)     |
+
+Response:
+
+| Field                         | Notes                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `success`                     | **Always check this.** `false` means no route exists — other fields are zeroed                         |
+| `swap_chain_xdr`              | XDR-encoded swap chain, passed directly to the router's `swap_chained` / `swap_chained_strict_receive` |
+| `pools`                       | Pool contract addresses along the route                                                                |
+| `tokens` / `tokens_addresses` | Assets along the route                                                                                 |
+| `amount`                      | Expected output (strict-send) or required input (strict-receive), in stroops                           |
+| `amount_with_fee`             | `amount` adjusted for the requested slippage and provider fee                                          |
+
+Example:
+
+```bash
+curl -X POST "https://amm-api.aqua.network/api/external/v2/find-path/" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token_in_address": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+    "token_out_address": "CDNVQW44C3HALYNVQ4SOBXY5EWYTGVYXX6JPESOLQDABJI5FC5LTRRUE",
+    "amount": "100000000",
+    "slippage": "0.01"
+  }'
+```
+
+## Error behavior
+
+* **No route found** → HTTP `200` with `success: false` and zeroed fields. Handle this case explicitly.
+* **Invalid input** (malformed token address, bad JSON) → HTTP `400` with field-level validation messages.
+* `/statistics/all-time/` → HTTP `404` if no statistics exist yet (relevant on fresh testnet deployments).
+
+See the [swap guides](/developers/code-examples/executing-swaps-through-optimal-path.md) for the full route → execute flow, and [Error codes](/developers/reference/error-codes.md) for the on-chain errors that can follow.

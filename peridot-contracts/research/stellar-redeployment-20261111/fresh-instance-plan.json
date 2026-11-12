@@ -1,0 +1,118 @@
+{
+  "observedAt": "2026-11-11T19:09:45.598Z",
+  "source": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+  "endpoint": "https://soroban-rpc.mainnet.stellar.gateway.fm",
+  "scope": "independent unsigned simulations from one prestate; actual deployments must build sequentially with fresh sequence",
+  "code": [
+    {
+      "name": "simple_peridottroller.wasm",
+      "sha256": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+      "bytes": 63285,
+      "ledger": 65427628,
+      "liveUntilLedgerSeq": 67501173,
+      "exactLocalMatch": true
+    },
+    {
+      "name": "receipt_vault.wasm",
+      "sha256": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "bytes": 89033,
+      "ledger": 65427628,
+      "liveUntilLedgerSeq": 67501203,
+      "exactLocalMatch": true
+    }
+  ],
+  "instances": [
+    {
+      "label": "controller",
+      "wasmHash": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+      "salt": "d30c38265e4717f9a1569788dc57d55c7d321b6504a7e3b96c5389cf1ec80c93",
+      "expectedContract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "absentBeforeDeployment": true,
+      "simulationLedger": 65427628,
+      "feeWithNominalInclusionStroops": "209322",
+      "minResourceFeeStroops": "209222",
+      "instructions": 1500690,
+      "uniqueKeys": 2,
+      "writes": 1,
+      "writeBytes": 104,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "transactionDataXdr": "AAAAAAAAAAEAAAAHhHiUpl+1lnXHRwfqiJljOnY4qicWoYOwsu/jWovCuQIAAAABAAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABQAAAABABbmEgAAAAAAAABoAAAAAAADMUY="
+    },
+    {
+      "label": "USDC",
+      "wasmHash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "salt": "1393ee404f539db850e249c19d49a675c6e50394a127683a25adc0e327deac97",
+      "expectedContract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "absentBeforeDeployment": true,
+      "simulationLedger": 65427628,
+      "feeWithNominalInclusionStroops": "209382",
+      "minResourceFeeStroops": "209282",
+      "instructions": 1701360,
+      "uniqueKeys": 2,
+      "writes": 1,
+      "writeBytes": 104,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "transactionDataXdr": "AAAAAAAAAAEAAAAHQim3759AAoog57rOJITzMNu+piWqmPKfRThh4MSY954AAAABAAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABQAAAABABn18AAAAAAAAABoAAAAAAADMYI="
+    },
+    {
+      "label": "XLM",
+      "wasmHash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "salt": "1ce59528d7905dbfb1bea8a3f5207d5c5a3e868ca4c1c88807d7f022157dd9cf",
+      "expectedContract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "absentBeforeDeployment": true,
+      "simulationLedger": 65427628,
+      "feeWithNominalInclusionStroops": "209382",
+      "minResourceFeeStroops": "209282",
+      "instructions": 1701360,
+      "uniqueKeys": 2,
+      "writes": 1,
+      "writeBytes": 104,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "transactionDataXdr": "AAAAAAAAAAEAAAAHQim3759AAoog57rOJITzMNu+piWqmPKfRThh4MSY954AAAABAAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABQAAAABABn18AAAAAAAAABoAAAAAAADMYI="
+    },
+    {
+      "label": "PYUSD",
+      "wasmHash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "salt": "74c3f848cef9deed9c3d96f9915f450145bab22d29c4d78ccb0a2e5db9ebb542",
+      "expectedContract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "absentBeforeDeployment": true,
+      "simulationLedger": 65427628,
+      "feeWithNominalInclusionStroops": "209382",
+      "minResourceFeeStroops": "209282",
+      "instructions": 1701360,
+      "uniqueKeys": 2,
+      "writes": 1,
+      "writeBytes": 104,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "transactionDataXdr": "AAAAAAAAAAEAAAAHQim3759AAoog57rOJITzMNu+piWqmPKfRThh4MSY954AAAABAAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABQAAAABABn18AAAAAAAAABoAAAAAAADMYI="
+    },
+    {
+      "label": "EURC",
+      "wasmHash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "salt": "19a24b1dc4380e232896349b0b87bd313f2a58637aa7190116ed2fe814bcb43e",
+      "expectedContract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "absentBeforeDeployment": true,
+      "simulationLedger": 65427628,
+      "feeWithNominalInclusionStroops": "209382",
+      "minResourceFeeStroops": "209282",
+      "instructions": 1701360,
+      "uniqueKeys": 2,
+      "writes": 1,
+      "writeBytes": 104,
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "transactionDataXdr": "AAAAAAAAAAEAAAAHQim3759AAoog57rOJITzMNu+piWqmPKfRThh4MSY954AAAABAAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABQAAAABABn18AAAAAAAAABoAAAAAAADMYI="
+    }
+  ],
+  "sourceSequence": "281008835320086530",
+  "totalFeeWithNominalInclusionStroops": "1046850"
+}

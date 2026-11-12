@@ -1,0 +1,46 @@
+{
+  "observed_at": "2026-11-11T19:08:25.289390+00:00",
+  "transactions": {
+    "controller_upload": {
+      "hash": "5fb9f13f6d421ce18ea67bec5001f1b087387d2a1fdd45169ac1efd8aafe7fb7",
+      "successful": true,
+      "ledger": 65427574,
+      "created_at": "2026-11-11T19:05:12Z",
+      "source_account": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+      "source_account_sequence": "281008835320086529",
+      "fee_charged": "782436225",
+      "max_fee": "1000000100",
+      "result_xdr": "AAAAAC6jB4EAAAAAAAAAAQAAAAAAAAAYAAAAAF4gtf04jc65UJbCZJDORmF05Cu3jD9GsPr4AlLHJYJRAAAAAA==",
+      "fee_meta_xdr": "AAAAAgAAAAMD5lgOAAAAAAAAAADDLXh4dorGLuYr8+TfeZnSFmi1ABQ98T9Xs2qoy1gbmQAAAACy0GHoA+ZYDAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAED5lh2AAAAAAAAAADDLXh4dorGLuYr8+TfeZnSFmi1ABQ98T9Xs2qoy1gbmQAAAAB3NZeEA+ZYDAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+      "result_meta_xdr": null
+    },
+    "receipt_upload": {
+      "hash": "1409139551c20649289f18edbd4de2bb3205ea59a063a9bedff7179696af80f0",
+      "successful": true,
+      "ledger": 65427604,
+      "created_at": "2026-11-11T19:07:42Z",
+      "source_account": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+      "source_account_sequence": "281008835320086530",
+      "fee_charged": "1037655941",
+      "max_fee": "1300000100",
+      "result_xdr": "AAAAAD3ZX4UAAAAAAAAAAQAAAAAAAAAYAAAAAKkJupReFKFdM6FEVCghX7yndAHP1HImU18nr+TqrwLVAAAAAA==",
+      "fee_meta_xdr": "AAAAAgAAAAMD5lh2AAAAAAAAAADDLXh4dorGLuYr8+TfeZnSFmi1ABQ98T9Xs2qoy1gbmQAAAACELVpnA+ZYDAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAADAAAAAAPmWHYAAAAAavS8aAAAAAAAAAABA+ZYlAAAAAAAAAAAwy14eHaKxi7mK/Pk33mZ0hZotQAUPfE/V7NqqMtYG5kAAAAANrDtAwPmWAwAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAwAAAAAD5lh2AAAAAGr0vGgAAAAA",
+      "result_meta_xdr": null
+    }
+  },
+  "deployer": {
+    "account_id": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+    "sequence": "281008835320086530",
+    "balances": [
+      {
+        "balance": "117.9908834",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "asset_type": "native"
+      }
+    ],
+    "subentry_count": 0,
+    "num_sponsoring": 0,
+    "num_sponsored": 0
+  }
+}

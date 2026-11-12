@@ -1,0 +1,146 @@
+{
+  "schema": "cl-proof-map-v1",
+  "sources": {
+    "test::closing_qualification::expired_pending::compiled_option1_expired_pending_independent_funding_outage_trade_and_rollback": "prototypes/cl-option1-qualification/pending-recovery-tests.rs",
+    "test::closing_qualification::early_pending::compiled_option1_unhealthy_pending_before_expiry_independent_recovery": "prototypes/cl-option1-qualification/pending-unhealthy-tests.rs",
+    "test::closing_qualification::combined_regressions::compiled_combined_repayment_aged_full_max_refund_release_and_beneficiary_claims": "prototypes/cl-option1-qualification/combined-pending-regression-tests.rs",
+    "test::closing_qualification::combined_regressions::compiled_combined_repayment_insufficient_max_unauthorized_and_closed_rollback": "prototypes/cl-option1-qualification/combined-pending-regression-tests.rs",
+    "test::closing_qualification::combined_regressions::compiled_combined_funded_liquidation_without_borrower_authorization": "prototypes/cl-option1-qualification/combined-pending-regression-tests.rs",
+    "test::closing_qualification::compiled_atomic_qualification_swap_close_64_owners_128_changes_8_unresolved_5pct_trade": "prototypes/cl-atomic-qualification/tests/combined.rs",
+    "test::closing_qualification::closing_cases::compiled_option1_closing_and_liquidated_six_states_independent_full_settlement": "prototypes/cl-option1-qualification/closing-recovery-tests.rs"
+  },
+  "proofs": [
+    {
+      "label": "option1_pending_open_independent_funded_recovery",
+      "tests": [
+        "test::closing_qualification::expired_pending::compiled_option1_expired_pending_independent_funding_outage_trade_and_rollback"
+      ],
+      "assertions": [
+        "Strict timeout, distinct independent payer, fresh synthetic price reads, accrued debt fully repaid with exact max/refund, zero bonus bounded seizure and residual return, real nested authorization, both upstream reward failures, historical rewards preserved, replay rollback and late quarantine. No Closing/Liquidated or live valuation qualification."
+      ],
+      "resource_flows": [
+        "option1_pending_live_reject",
+        "option1_pending_exact_deadline_reject",
+        "option1_pending_intervening_actual_trade",
+        "option1_pending_disable_test_borrowing",
+        "option1_pending_max_too_small",
+        "option1_pending_min_seize_reject",
+        "option1_pending_missing_auth",
+        "option1_pending_missing_nested_auth",
+        "option1_pending_independent_full_recovery",
+        "option1_pending_repeated_recovery",
+        "option1_pending_late_reward_quarantine"
+      ]
+    },
+    {
+      "label": "option1_pending_bundle_2",
+      "tests": [
+        "test::closing_qualification::early_pending::compiled_option1_unhealthy_pending_before_expiry_independent_recovery"
+      ],
+      "assertions": [
+        "Fresh existing maintenance condition admits an unhealthy swapped PendingOpen before expiry while rejecting healthy state; independent payer full-funds current debt with max/refund, residual return and no waiver. New timing availability remains validation-only."
+      ],
+      "resource_flows": [
+        "option1_pending_healthy_preexpiry_reject",
+        "option1_pending_unhealthy_insufficient_payer_cash",
+        "option1_pending_unhealthy_insufficient_max",
+        "option1_pending_unhealthy_missing_auth",
+        "option1_pending_preexpiry_unhealthy_funded",
+        "option1_pending_unhealthy_replay",
+        "option1_pending_unhealthy_late_quarantine"
+      ]
+    },
+    {
+      "label": "option1_pending_bundle_3",
+      "tests": [
+        "test::closing_qualification::combined_regressions::compiled_combined_repayment_aged_full_max_refund_release_and_beneficiary_claims"
+      ],
+      "assertions": [
+        "Prior combined repayment/max/refund/beneficiary test adapted only for candidate identity; actual assertions remain in generated pinned source."
+      ],
+      "resource_flows": [
+        "combined_repayment_aged_full_max",
+        "combined_repayment_zero_debt_repeat",
+        "combined_repayment_debt_free_release",
+        "combined_repayment_beneficiary_claim_outage",
+        "combined_repayment_late_quarantined_rewards",
+        "combined_repayment_receipt_exit"
+      ]
+    },
+    {
+      "label": "option1_pending_bundle_4",
+      "tests": [
+        "test::closing_qualification::combined_regressions::compiled_combined_repayment_insufficient_max_unauthorized_and_closed_rollback"
+      ],
+      "assertions": [
+        "Prior compiled repayment rejection assertions with complete ledger rollback; candidate identity adapted explicitly."
+      ],
+      "resource_flows": [
+        "combined_repayment_insufficient_max_rollback",
+        "combined_repayment_zero_max_rollback",
+        "combined_repayment_unauthorized_rollback",
+        "combined_repayment_wrong_owner_rollback",
+        "combined_repayment_unfunded_max_rollback",
+        "combined_repayment_closed_repay_rollback",
+        "combined_repayment_repeated_release_rollback",
+        "combined_repayment_after_rejections_full_repay",
+        "combined_repayment_after_rejections_release"
+      ]
+    },
+    {
+      "label": "option1_pending_bundle_5",
+      "tests": [
+        "test::closing_qualification::combined_regressions::compiled_combined_funded_liquidation_without_borrower_authorization"
+      ],
+      "assertions": [
+        "Independent active funded liquidation and historical conservation, with actual measured Aquarius trade in main fixture replacing original separate restoration hook."
+      ],
+      "resource_flows": [
+        "option1_combined_active_independent_trade",
+        "combined_liquidation_without_borrower_auth"
+      ]
+    },
+    {
+      "label": "option1_joined_stressed_atomic_open_activation_close",
+      "tests": [
+        "test::closing_qualification::compiled_atomic_qualification_swap_close_64_owners_128_changes_8_unresolved_5pct_trade"
+      ],
+      "assertions": [
+        "Actual claim-first atomic mint/transfer/custody and close, 64 position-ID vector, exact historical reward conservation and retained quarantine."
+      ],
+      "resource_flows": [
+        "atomic_qualification_aged_swap_open",
+        "atomic_qualification_swap_open",
+        "atomic_qualification_activate",
+        "atomic_qualification_prepare_close",
+        "atomic_qualification_swap_close",
+        "atomic_qualification_finish_close"
+      ]
+    },
+    {
+      "label": "option1_joined_six_long_stalled_states",
+      "tests": [
+        "test::closing_qualification::closing_cases::compiled_option1_closing_and_liquidated_six_states_independent_full_settlement"
+      ],
+      "assertions": [
+        "Actual Long Closing withdrawn/converted, Liquidated Started/converted, and committed partial-close residual debt: exact own proceeds first, external full repayment/max refund, no borrower authorization, zero bonus and complete residual return, both venue reward calls failed, booked historical rewards and scaled conservation preserved. Typed invalid minimum rejects with ledger/TTL rollback. Artificial long timestamp only for residual accrual; CL Short is prohibited by existing guards and not qualified.",
+        "A ninth real active position has nonzero contingent close fees; live converted zero-topup settlement rejects Contract9102 with unchanged ledger/TTL, debt, pending proceeds, reward entitlement and fee terms. Ordinary finish remains available.",
+        "Actual withdrawn Closing inherited by Liquidated Started has zero pTokens and positive underlying. Distinct successor payer rejects before exclusivity deadline with ledger/TTL rollback and succeeds after deadline, full-funding debt before direct underlying seizure. Generic legacy WASM panic is a paired business-state proof, not account-signature behavior."
+      ],
+      "resource_flows": [
+        "option1_stalled_impossible_seizure_rollback",
+        "option1_closing_withdrawn_funded",
+        "option1_closing_converted_proceeds",
+        "option1_liquidated_started_funded",
+        "option1_liquidated_converted_proceeds",
+        "option1_stalled_real_partial_finish",
+        "option1_closing_partial_finish_residual_funded",
+        "option1_stalled_live_converted_close_reject",
+        "option1_inherited_real_prepare_close",
+        "option1_inherited_real_begin_liquidation",
+        "option1_inherited_early_takeover_reject",
+        "option1_liquidated_inherited_underlying_successor_funded"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "startLedger": 65439001,
+  "cursor": "281061375655530497",
+  "scannedTransactions": 217400,
+  "keys": {
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABQAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABQAAAAB": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABQAAAAB": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABQAAAAB": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABQAAAAB": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAAB": {
+      "group": "USDC SAC dependency",
+      "contract": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      "purpose": "shared SAC instance",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dwAAABQAAAAB": {
+      "group": "XLM SAC dependency",
+      "contract": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      "purpose": "shared SAC instance",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dwAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAGFGx/Q2Vr9o0jvwjWzoCgn93nF8ZUHC9KSWjBWOe/k8wAAABQAAAAB": {
+      "group": "PYUSD SAC dependency",
+      "contract": "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2",
+      "purpose": "shared SAC instance",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAGFGx/Q2Vr9o0jvwjWzoCgn93nF8ZUHC9KSWjBWOe/k8wAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAHmp9nrdSMAakaap0g60RByR0Q8DYLmJ2PeZwhIxOl8kAAAABQAAAAB": {
+      "group": "EURC SAC dependency",
+      "contract": "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV",
+      "purpose": "shared SAC instance",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAHmp9nrdSMAakaap0g60RByR0Q8DYLmJ2PeZwhIxOl8kAAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAAB4R4lKZftZZ1x0cH6oiZYzp2OKonFqGDsLLv41qLwrkC": {
+      "group": "controller code",
+      "purpose": "WASM",
+      "kind": "code",
+      "hash": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+      "keyXdr": "AAAAB4R4lKZftZZ1x0cH6oiZYzp2OKonFqGDsLLv41qLwrkC",
+      "origin": "sealed artifact"
+    },
+    "AAAAB0Ipt++fQAKKIOe6ziSE8zDbvqYlqpjyn0U4YeDEmPee": {
+      "group": "shared receipt code",
+      "purpose": "WASM",
+      "kind": "code",
+      "hash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "keyXdr": "AAAAB0Ipt++fQAKKIOe6ziSE8zDbvqYlqpjyn0U4YeDEmPee",
+      "origin": "sealed artifact"
+    }
+  },
+  "matchedTransactions": {},
+  "coveredThrough": 65439700,
+  "coverageNote": "All transaction pages from creation through the pinned target ledger scanned. Cursor may include part of a later ledger. Current TTL reads are subsequent; rerun discovery to catch concurrent writes."
+}

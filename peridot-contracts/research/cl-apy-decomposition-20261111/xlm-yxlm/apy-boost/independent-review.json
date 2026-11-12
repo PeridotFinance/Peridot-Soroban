@@ -1,0 +1,54 @@
+{
+  "at": "2026-11-11T10:59:12.434988+00:00",
+  "scope": "bounded independent offline economics review only",
+  "result": "PASS",
+  "checks": [
+    "7-day indexed volume and50%ordinary LP share recomputed",
+    "all6directional results independently reconstructed using entry mixture shortfall, entrant dilution and warm anchor",
+    "all3total capital sums equal10000; boost lockinsidebudget with7xendyearprefunding",
+    "160conditional holding coupon subtracted only foryXLMbenchmark; no CLcoupon credited",
+    "prior9displayed net/capitalrows match preserved calculations to2dp; sixth3rows match new arithmetic",
+    "no signed XLM/yXLM fixture, realized position return or guaranteed coupon inferred"
+  ],
+  "files": [
+    {
+      "file": "xlm-yxlm/lead/calculate.py",
+      "sha256": "414850320bfacfe8d3b50f2b36923eb901dd119eee7e0af3fd24e6c9c0973609"
+    },
+    {
+      "file": "xlm-yxlm/lead/calculations.json",
+      "sha256": "15269cc783868ff004afc0f4032f8ca108cff11c61d6a23ab3543c94ab019a0b"
+    },
+    {
+      "file": "xlm-yxlm/lead/report.md",
+      "sha256": "b453200f4808cce65a931173e5c0c53862f9427e9fc2603e1443011d01e97af6"
+    },
+    {
+      "file": "xlm-yxlm/lead/quotes.json",
+      "sha256": "9ba8406a4f5c484c0831716780def69a1b280cd525289a4e12cf104d8efa1d6a"
+    },
+    {
+      "file": "xlm-yxlm/lead/stats.json",
+      "sha256": "474ef44df0c667d2e5b9a28d3faee2edc33c6a23467b99297ff67148b4b00916"
+    },
+    {
+      "file": "xlm-yxlm/lead/events-1.json",
+      "sha256": "196d0eae55dd1f32d8081211becbe82fd2ddced08c751f0eeb2f6df77ce984eb"
+    },
+    {
+      "file": "lead/calculations.json",
+      "sha256": "c58695fa2bab64903d3b64ed2e9125cf34f2ebf13b6087b26a0b16fc4f55afc7"
+    },
+    {
+      "file": "xlm-yxlm/apy-boost/boost-math.json",
+      "sha256": "b59d6482b2c3c8d18bed2593d4da485a13f0419df64b08644a2f83b3e0553dc2"
+    }
+  ],
+  "limitations": [
+    "UIfee annualization window unknown",
+    "new native pair lifecycle costs use old anchor",
+    "AQUArewardannualrenewal and staticweights conditional",
+    "vaultICEeligibility and issuercouponpayment/entitlement unproven",
+    "ICEacquisition and weeklyclaim/salecosts missing"
+  ]
+}

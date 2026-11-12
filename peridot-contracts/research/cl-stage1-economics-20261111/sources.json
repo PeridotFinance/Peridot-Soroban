@@ -1,0 +1,362 @@
+[
+  {
+    "name": "pool-api",
+    "url": "https://amm-api.aqua.network/api/external/v1/pools/?address__in=CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+    "retrieved_at": "2026-11-11T08:05:12.666600+00:00",
+    "status": 200,
+    "file": "pool-api.raw",
+    "sha256": "d15acfe47a56e89147ea08428b7d5f8a06d1846bef0f66d965a282e6d2e696f6",
+    "bytes": 575
+  },
+  {
+    "name": "aqua-site",
+    "url": "https://aqua.network/pools/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/",
+    "retrieved_at": "2026-11-11T08:05:12.781290+00:00",
+    "status": 200,
+    "file": "aqua-site.raw",
+    "sha256": "2126bf9b9b1750a7155e5bb13a258649a2c42f7c99a970ee1016658ba67e16d6",
+    "bytes": 3688
+  },
+  {
+    "name": "aqua-api-doc",
+    "url": "https://docs.aqua.network/developers/reference/backend-api.md",
+    "retrieved_at": "2026-11-11T08:05:13.238101+00:00",
+    "status": 200,
+    "file": "aqua-api-doc.raw",
+    "sha256": "b6d240d4b4ef89c6fb767b07997e7c76531c07ed53123d2c05f65b8b5aa42ed8",
+    "bytes": 5328
+  },
+  {
+    "name": "blend-site",
+    "url": "https://mainnet.blend.capital/",
+    "retrieved_at": "2026-11-11T08:05:13.811308+00:00",
+    "status": 200,
+    "file": "blend-site.raw",
+    "sha256": "2fb22a0b0e6330367c7614adce6b15fdcaff143c107029cd56e55862307fee7a",
+    "bytes": 1767
+  },
+  {
+    "name": "horizon",
+    "url": "https://horizon.stellar.org/",
+    "retrieved_at": "2026-11-11T08:05:14.880073+00:00",
+    "status": 200,
+    "file": "horizon.raw",
+    "sha256": "286179e4b7ecc895ebbe82750529cb6a9b9bfc63e94808ffd1f4fd51d2fb59a9",
+    "bytes": 4332
+  },
+  {
+    "name": "rpc",
+    "url": "https://rpc.lightsail.network/",
+    "retrieved_at": "2026-11-11T08:05:15.358153+00:00",
+    "error": "HTTP Error 405: Method Not Allowed",
+    "file": "rpc.raw",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "name": "aqua-site-js-0",
+    "url": "https://aqua.network/js/bundle.210f44c2325870df73c3.min.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "retrieved_at": "2026-11-11T08:05:36.619602+00:00",
+    "status": 200,
+    "file": "aqua-site-js-0.raw",
+    "sha256": "fd878b768d0768d7c221c577bdf926a7f1ae8df6d5b298a9e4e4450a2b59b9bc",
+    "bytes": 5711
+  },
+  {
+    "name": "aqua-site-js-1",
+    "url": "https://aqua.network/js/bundle.935dad89e54992d54d65.min.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "retrieved_at": "2026-11-11T08:05:36.620263+00:00",
+    "status": 200,
+    "file": "aqua-site-js-1.raw",
+    "sha256": "8782d96094357136ac2b36ceeac57d12b90180ebe2944894f36a1d75d4d027e9",
+    "bytes": 1153986
+  },
+  {
+    "name": "aqua-site-js-2",
+    "url": "https://aqua.network/js/bundle.32025b46b318f2025289.min.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "retrieved_at": "2026-11-11T08:05:36.620407+00:00",
+    "status": 200,
+    "file": "aqua-site-js-2.raw",
+    "sha256": "bd0d4d029db94ea665cc33f3311d3b9df2c68e0dfd1388d9ac1fb820acf2eef7",
+    "bytes": 852041
+  },
+  {
+    "name": "blend-site-js-0",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/polyfills-42372ed130431b0a.js",
+    "retrieved_at": "2026-11-11T08:05:36.620575+00:00",
+    "status": 200,
+    "file": "blend-site-js-0.raw",
+    "sha256": "0973c1d64c88adc8e3c950410cb58b288f72118d5965b78049438deb8f2f9683",
+    "bytes": 112594
+  },
+  {
+    "name": "blend-site-js-1",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/webpack-5fb4c023459bd01f.js",
+    "retrieved_at": "2026-11-11T08:05:36.620694+00:00",
+    "status": 200,
+    "file": "blend-site-js-1.raw",
+    "sha256": "23992fc4dfa9ee64038b4bc02cecf14daebe7af1656244f0cf86310ffbb26e98",
+    "bytes": 5333
+  },
+  {
+    "name": "blend-site-js-2",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/framework-97862ef36bc4065f.js",
+    "retrieved_at": "2026-11-11T08:05:36.620812+00:00",
+    "status": 200,
+    "file": "blend-site-js-2.raw",
+    "sha256": "13936d15e51ad77be0fdf9907c914e089472bfb6cec6aa7aa95c085f5ee50412",
+    "bytes": 139889
+  },
+  {
+    "name": "blend-site-js-3",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/main-2f39567f8b4e7925.js",
+    "retrieved_at": "2026-11-11T08:05:36.715449+00:00",
+    "status": 200,
+    "file": "blend-site-js-3.raw",
+    "sha256": "c1756f1c235cd91409c1b8d33cef01a0b598832f8bbdf369ef07863313e7e9ad",
+    "bytes": 126875
+  },
+  {
+    "name": "blend-site-js-4",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/pages/_app-1433dd28c5e97497.js",
+    "retrieved_at": "2026-11-11T08:05:36.735632+00:00",
+    "status": 200,
+    "file": "blend-site-js-4.raw",
+    "sha256": "98373aef0d78a995de4b5eeaf2b16807e53df59dbcb36eda300f669853518c8c",
+    "bytes": 1221731
+  },
+  {
+    "name": "blend-site-js-5",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/3491-a4a0c7aa99088cdb.js",
+    "retrieved_at": "2026-11-11T08:05:36.789807+00:00",
+    "status": 200,
+    "file": "blend-site-js-5.raw",
+    "sha256": "2dde8fa10be5a089eb2ef8675f827cc29ad0bf0cc89863808501da7a2994e83f",
+    "bytes": 33319
+  },
+  {
+    "name": "blend-site-js-6",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/6840-f22b567fee3c8b00.js",
+    "retrieved_at": "2026-11-11T08:05:36.837149+00:00",
+    "status": 200,
+    "file": "blend-site-js-6.raw",
+    "sha256": "c174f92cfc5997d3b879fe5bf4954ddd267de33dd7df16ab993a792baf3cf237",
+    "bytes": 4821
+  },
+  {
+    "name": "blend-site-js-7",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/9739-209647fb90a515bc.js",
+    "retrieved_at": "2026-11-11T08:05:36.844073+00:00",
+    "status": 200,
+    "file": "blend-site-js-7.raw",
+    "sha256": "455d6c56d86f504d267a6745c1e07b493e2abcbf528017c71a9fec672072a46b",
+    "bytes": 12829
+  },
+  {
+    "name": "blend-site-js-8",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/4645-88fe1f5b85148db1.js",
+    "retrieved_at": "2026-11-11T08:05:36.869207+00:00",
+    "status": 200,
+    "file": "blend-site-js-8.raw",
+    "sha256": "172ca03f39eebd4cc9eb350a92fb8f3be636414b636ebb10ace000534eb2852f",
+    "bytes": 6192
+  },
+  {
+    "name": "blend-site-js-9",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/1842-ce54fcd7f775ef96.js",
+    "retrieved_at": "2026-11-11T08:05:36.925498+00:00",
+    "status": 200,
+    "file": "blend-site-js-9.raw",
+    "sha256": "a3ef089663729fa2aa6c8b81294f76719f9ba655730bca3258b6ae1d5d0edfa4",
+    "bytes": 39683
+  },
+  {
+    "name": "blend-site-js-10",
+    "url": "https://mainnet.blend.capital/_next/static/chunks/pages/index-23e18028e90f28cd.js",
+    "retrieved_at": "2026-11-11T08:05:37.004193+00:00",
+    "status": 200,
+    "file": "blend-site-js-10.raw",
+    "sha256": "32beb78d64b92ced326669ce4393d9fee47e6657ed12ad6ce1b403b3c0469acf",
+    "bytes": 31818
+  },
+  {
+    "name": "blend-site-js-11",
+    "url": "https://mainnet.blend.capital/_next/static/M5FlJXOjYBeNa47KJzBAq/_buildManifest.js",
+    "retrieved_at": "2026-11-11T08:05:37.036576+00:00",
+    "status": 200,
+    "file": "blend-site-js-11.raw",
+    "sha256": "91cd4338319d3bfa89588b388b23eab82cf825495c3f0582f3eccf66db1f2427",
+    "bytes": 2013
+  },
+  {
+    "name": "blend-site-js-12",
+    "url": "https://mainnet.blend.capital/_next/static/M5FlJXOjYBeNa47KJzBAq/_ssgManifest.js",
+    "retrieved_at": "2026-11-11T08:05:37.037028+00:00",
+    "status": 200,
+    "file": "blend-site-js-12.raw",
+    "sha256": "6f5b4aa00d2f8d6aed9935b471806bf7acef464d0c1d390260e5fe27f800c67e",
+    "bytes": 77
+  },
+  {
+    "name": "api-schema",
+    "url": "https://amm-api.aqua.network/api/schema/",
+    "retrieved_at": "2026-11-11T08:05:37.037445+00:00",
+    "status": 200,
+    "file": "api-schema.raw",
+    "sha256": "99642f647b39995b6f82b047d49fcc817e511614ca56bc808b646eb35402e6f5",
+    "bytes": 48937
+  },
+  {
+    "name": "pool-detail",
+    "url": "https://amm-api.aqua.network/pools/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/",
+    "retrieved_at": "2026-11-11T08:06:08.455421+00:00",
+    "status": 200,
+    "file": "pool-detail.raw",
+    "sha256": "469de92b5851c19ef777cfa9638a335c5444412bcfd92501fc45681757505716",
+    "bytes": 1524
+  },
+  {
+    "name": "pool-stats",
+    "url": "https://amm-api.aqua.network/statistics/pool/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/?size=1000",
+    "retrieved_at": "2026-11-11T08:06:08.456196+00:00",
+    "status": 200,
+    "file": "pool-stats.raw",
+    "sha256": "18b1c1dda9086d93fafc1b4d41ff737d706d6fb707fa1714dfb90bd8d4457883",
+    "bytes": 48145
+  },
+  {
+    "name": "tokens",
+    "url": "https://amm-api.aqua.network/tokens/?pooled=true&size=500",
+    "retrieved_at": "2026-11-11T08:06:08.456425+00:00",
+    "status": 200,
+    "file": "tokens.raw",
+    "sha256": "62fcf4b1b22050fcc17b1e494a7e418a647e159fa87ac582e10d592e058d29fc",
+    "bytes": 128314
+  },
+  {
+    "name": "blend-config",
+    "url": "https://mainnet.blend.capital/config.json",
+    "retrieved_at": "2026-11-11T08:06:08.456659+00:00",
+    "error": "HTTP Error 404: Not Found",
+    "file": "blend-config.raw",
+    "sha256": "fa943e687e9652a6cd4204bcdd7f8a6daf831a590b9d1f420fb6ec3d43c895ac",
+    "bytes": 153
+  },
+  {
+    "name": "aquarius-read-doc",
+    "url": "https://docs.aqua.network/developers/reference/router-and-pool-contracts.md",
+    "retrieved_at": "2026-11-11T08:06:08.457762+00:00",
+    "status": 200,
+    "file": "aquarius-read-doc.raw",
+    "sha256": "e3e25865003704aa90501821abe1d491253b72d7b1fdba59a6ba9dae3dacede2",
+    "bytes": 18511
+  },
+  {
+    "name": "aqua-reward-doc",
+    "url": "https://docs.aqua.network/llms.txt",
+    "retrieved_at": "2026-11-11T08:06:08.564357+00:00",
+    "status": 200,
+    "file": "aqua-reward-doc.raw",
+    "sha256": "592d3c49fe17f13529fa723ce1cfb33d16b6eab2f03acf85148c1baa50ea9e3c",
+    "bytes": 15502
+  },
+  {
+    "name": "cl-doc",
+    "url": "https://docs.aqua.network/developers/concentrated-liquidity.md",
+    "retrieved_at": "2026-11-11T08:07:05.210921+00:00",
+    "status": 200,
+    "file": "cl-doc.raw",
+    "sha256": "f2c8ccd844a28dc8b43b3c18ae2371055edca2961ed8964a05a1c9461a9fdc81",
+    "bytes": 10298
+  },
+  {
+    "name": "cl-abi",
+    "url": "https://docs.aqua.network/developers/concentrated-liquidity/contract-interface-reference.md",
+    "retrieved_at": "2026-11-11T08:07:05.211518+00:00",
+    "status": 200,
+    "file": "cl-abi.raw",
+    "sha256": "eb0a56c4a5392228b46f30ec1dd600f06de253932e2e8d3f6011ce416090ac2e",
+    "bytes": 19436
+  },
+  {
+    "name": "ice-doc",
+    "url": "https://docs.aqua.network/aqua-and-ice/ice-boosts-how-to-maximize-lp-rewards.md",
+    "retrieved_at": "2026-11-11T08:07:05.212007+00:00",
+    "status": 200,
+    "file": "ice-doc.raw",
+    "sha256": "06a9e598c0d4cc38a36e0e1ac7a38e48c54421531e62d30a6cd9cbb55c93a3d1",
+    "bytes": 3694
+  },
+  {
+    "name": "cl-fee-doc",
+    "url": "https://docs.aqua.network/amm-and-pools/aquarius-amm-fees.md",
+    "retrieved_at": "2026-11-11T08:07:05.212323+00:00",
+    "status": 200,
+    "file": "cl-fee-doc.raw",
+    "sha256": "bc25f9ba136e67419706f26f0b7d0159a8884d95e93e5bea29122799c0811629",
+    "bytes": 2285
+  },
+  {
+    "name": "blend-sdk-reserve",
+    "url": "https://raw.githubusercontent.com/blend-capital/blend-sdk-js/main/src/pool/reserve.ts",
+    "retrieved_at": "2026-11-11T08:07:05.212503+00:00",
+    "status": 200,
+    "file": "blend-sdk-reserve.raw",
+    "sha256": "75e8befbf8e60091166b3b00c2ddec286eb7ac9e5edc733fdf1218bd6d242e4c",
+    "bytes": 31384
+  },
+  {
+    "name": "blend-sdk-pool",
+    "url": "https://raw.githubusercontent.com/blend-capital/blend-sdk-js/main/src/pool/pool.ts",
+    "retrieved_at": "2026-11-11T08:07:05.546352+00:00",
+    "status": 200,
+    "file": "blend-sdk-pool.raw",
+    "sha256": "91ca1cbd14f67fe59862064489e8f1ec37d372b164970f27cb3603d6c914a7ff",
+    "bytes": 3636
+  },
+  {
+    "name": "paypal-reward",
+    "url": "https://www.paypal.com/us/cshelp/article/what-are-pyusd-rewards-help1247",
+    "retrieved_at": "2026-11-11T08:07:05.581134+00:00",
+    "status": 200,
+    "file": "paypal-reward.raw",
+    "sha256": "8f3605f61eb08894009b7e0cab06aa496b23c7d2df08289b1d9eb650ccfed1f4",
+    "bytes": 446250
+  },
+  {
+    "name": "paxos-issuer",
+    "url": "https://docs.paxos.com/api-reference/endpoints/crypto-withdrawals/create-crypto-withdrawal",
+    "retrieved_at": "2026-11-11T08:16:48.329673+00:00",
+    "status": 200,
+    "file": "paxos-issuer.raw",
+    "sha256": "b2ccab81ac0ab19d82aa140361566ae34aa076f876a669e0bc9240a98a661698",
+    "bytes": 553554
+  },
+  {
+    "name": "paxos-sac",
+    "url": "https://docs.paxos.com/guides/stablecoin/pyusd/mainnet",
+    "retrieved_at": "2026-11-11T08:16:48.330275+00:00",
+    "status": 200,
+    "file": "paxos-sac.raw",
+    "sha256": "f5a2ea69e95444f6cd5684a1d2824ee707b394a9fa71776f7e5faccd73e37db4",
+    "bytes": 209168
+  },
+  {
+    "name": "circle-addresses",
+    "url": "https://developers.circle.com/stablecoins/usdc-contract-addresses",
+    "retrieved_at": "2026-11-11T08:16:48.330407+00:00",
+    "status": 200,
+    "file": "circle-addresses.raw",
+    "sha256": "ea356d99c5de50d25ba5914b6b4cfec0aa05f98e185012cd1ac45a733ab822c7",
+    "bytes": 222559
+  },
+  {
+    "name": "paypal-rate",
+    "url": "https://www.paypal.com/us/digital-wallet/manage-money/crypto/pyusd",
+    "retrieved_at": "2026-11-11T08:16:48.330528+00:00",
+    "error": "HTTP Error 403: Forbidden",
+    "file": "paypal-rate.raw",
+    "sha256": "d875426b498f11e6313d604902a6cfc532d0e2c30069e7c1d0edd666ce9a98a7",
+    "bytes": 4691
+  }
+]

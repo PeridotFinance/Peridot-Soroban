@@ -1,0 +1,26 @@
+[
+  { label: 'marked-in-1000', ledger: 65419775, value: 4996405596n },
+  {
+    label: 'marked-full-1000',
+    ledger: 65419775,
+    value: [ [Array], 4996786655n ]
+  },
+  {
+    label: 'marked-wide-1000',
+    ledger: 65419775,
+    value: [ [Array], 52524988990n ]
+  },
+  { label: 'marked-out-1000', ledger: 65419775, value: 4992158662n },
+  { label: 'marked-in-10000', ledger: 65419775, value: 49962981762n },
+  {
+    label: 'marked-full-10000',
+    ledger: 65419775,
+    value: [ [Array], 49966792278n ]
+  },
+  {
+    label: 'marked-wide-10000',
+    ledger: 65419775,
+    value: [ [Array], 525249889923n ]
+  },
+  { label: 'marked-out-10000', ledger: 65419775, value: 49919441178n }
+]

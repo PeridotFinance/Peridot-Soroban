@@ -1,0 +1,129 @@
+{
+  "observedAt": "2026-11-12T08:46:08.250779+00:00",
+  "transactions": {
+    "controller": {
+      "hash": "81fa75d0395c9480aff1880fed43aa7b57bac147a2e4d1c66eeebb496a08f26e",
+      "successful": true,
+      "ledger": 65437362,
+      "created_at": "2026-11-12T08:40:52Z",
+      "source_account": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+      "source_account_sequence": "281008835320086531",
+      "fee_charged": "178269",
+      "result_xdr": "AAAAAAACuF0AAAAAAAAAAQAAAAAAAAAYAAAAAAuCNKIK0xtR2VOXM32ieRfJ3NpzVfI6vKlrvy+Gs28pAAAAAA=="
+    },
+    "USDC": {
+      "hash": "b0388a0a87d213ca880fd1e42fea8a9599ece3c5ed8105200b97e7a557d7aeac",
+      "successful": true,
+      "ledger": 65437364,
+      "created_at": "2026-11-12T08:41:02Z",
+      "source_account": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+      "source_account_sequence": "281008835320086532",
+      "fee_charged": "178329",
+      "result_xdr": "AAAAAAACuJkAAAAAAAAAAQAAAAAAAAAYAAAAACpUc+FhWEAIYhapsf9rfW1Ia+l2mGNzxuSip5gF1kwjAAAAAA=="
+    },
+    "XLM": {
+      "hash": "d95013be47a3b6268f996bbcb18abf5030fea508b2ee5b3812908473edf6762d",
+      "successful": true,
+      "ledger": 65437366,
+      "created_at": "2026-11-12T08:41:12Z",
+      "source_account": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+      "source_account_sequence": "281008835320086533",
+      "fee_charged": "178329",
+      "result_xdr": "AAAAAAACuJkAAAAAAAAAAQAAAAAAAAAYAAAAADh0CohO9xayXjgN/XlkhoGE1xdzuOuYuWuEHNfOoq77AAAAAA=="
+    },
+    "PYUSD": {
+      "hash": "79e32039a601ba8e643dfa196f825dadf1dbfdea31f213bdb76141e944b3c038",
+      "successful": true,
+      "ledger": 65437369,
+      "created_at": "2026-11-12T08:41:27Z",
+      "source_account": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+      "source_account_sequence": "281008835320086534",
+      "fee_charged": "178329",
+      "result_xdr": "AAAAAAACuJkAAAAAAAAAAQAAAAAAAAAYAAAAAHyx6GF/budTbXPS6+WjveRc2stWucHL0WuwOARNI03AAAAAAA=="
+    },
+    "EURC": {
+      "hash": "8d32142f252db737874d33ac46bf8e39a28c2f3a92828403077060fc8a6f27a4",
+      "successful": true,
+      "ledger": 65437372,
+      "created_at": "2026-11-12T08:41:42Z",
+      "source_account": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+      "source_account_sequence": "281008835320086535",
+      "fee_charged": "178329",
+      "result_xdr": "AAAAAAACuJkAAAAAAAAAAQAAAAAAAAAYAAAAABIggq3H/cPclEp841pSkHrC2n9tvHSgunEERU+UDSaUAAAAAA=="
+    }
+  },
+  "deployer": {
+    "account_id": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+    "sequence": "281008835320086535",
+    "balances": [
+      {
+        "balance": "117.9017249",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "asset_type": "native"
+      }
+    ],
+    "signers": [
+      {
+        "weight": 1,
+        "key": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+        "type": "ed25519_public_key"
+      }
+    ],
+    "thresholds": {
+      "low_threshold": 0,
+      "med_threshold": 0,
+      "high_threshold": 0
+    },
+    "subentry_count": 0
+  },
+  "ledger": {
+    "account_id": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+    "sequence": "246894391124295772",
+    "balances": [
+      {
+        "balance": "0.0000000",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 63829262,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "asset_type": "credit_alphanum4",
+        "asset_code": "EURC",
+        "asset_issuer": "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+      },
+      {
+        "balance": "0.0000000",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 65386806,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "asset_type": "credit_alphanum4",
+        "asset_code": "USDC",
+        "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      },
+      {
+        "balance": "32.0821629",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "asset_type": "native"
+      }
+    ],
+    "signers": [
+      {
+        "weight": 1,
+        "key": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "type": "ed25519_public_key"
+      }
+    ],
+    "thresholds": {
+      "low_threshold": 0,
+      "med_threshold": 0,
+      "high_threshold": 0
+    },
+    "subentry_count": 2
+  }
+}

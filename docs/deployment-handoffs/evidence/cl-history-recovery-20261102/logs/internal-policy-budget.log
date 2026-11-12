@@ -1,0 +1,486 @@
+PROFILE internal-policy mode=acceptance captured_ledger=65264920
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+wrong_caller: PASS cpu=463456 memory=1243226 entries=2 writes=0 read_bytes=0 write_bytes=0 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 140, "disk_entry_reads": 0, "entry_writes": 0, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 140, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+controller_impersonation: PASS cpu=467989 memory=1243282 entries=2 writes=0 read_bytes=0 write_bytes=0 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 141, "disk_entry_reads": 0, "entry_writes": 0, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 141, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+unauthorized_vault_recovery: PASS cpu=874540 memory=1343592 entries=3 writes=0 read_bytes=0 write_bytes=0 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 263, "disk_entry_reads": 0, "entry_writes": 0, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 263, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+unauthorized_receipt_recovery: PASS cpu=3265720 memory=1354279 entries=32 writes=0 read_bytes=0 write_bytes=0 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 980, "disk_entry_reads": 0, "entry_writes": 0, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 980, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+unauthorized_pending_recovery: PASS cpu=752432 memory=1331571 entries=2 writes=0 read_bytes=0 write_bytes=0 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 226, "disk_entry_reads": 0, "entry_writes": 0, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 226, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+cancel_pending_open_v3: PASS cpu=10941749 memory=2838638 entries=87 writes=17 read_bytes=0 write_bytes=764 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 3283, "disk_entry_reads": 13277, "entry_writes": 21250, "events": 420, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 327}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 129828, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+cancel_before_execute: PASS cpu=10941749 memory=2838638 entries=87 writes=17 read_bytes=0 write_bytes=764 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 3283, "disk_entry_reads": 13277, "entry_writes": 21250, "events": 420, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 327}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 129828, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer: PASS cpu=410337 memory=149725 entries=9 writes=3 read_bytes=92 write_bytes=520 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 124, "disk_entry_reads": 3124, "entry_writes": 3750, "events": 577, "persistent_rent": 374605, "read_bytes": 21, "temporary_rent": 91271, "write_bytes": 222}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 473694, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27154131 memory=5579381 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8147, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618821, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28801958 memory=8414020 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8641, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219324, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open: PASS cpu=28801958 memory=8414020 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8641, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219324, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100001509 memory=16779406 entries=136 writes=30 read_bytes=276 write_bytes=4460 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1904}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95239, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+execute_before_swap_rejected: PASS cpu=946964 memory=1404679 entries=6 writes=1 read_bytes=0 write_bytes=0 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 285, "disk_entry_reads": 781, "entry_writes": 1250, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 2316, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100000040 memory=16797614 entries=136 writes=30 read_bytes=276 write_bytes=4476 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1911}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95246, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+premature_pending_expiry_rejected: PASS cpu=3780671 memory=1383408 entries=27 writes=0 read_bytes=0 write_bytes=0 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 1135, "disk_entry_reads": 0, "entry_writes": 0, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1135, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+expired_unswapped_open_rejected: PASS cpu=1972783 memory=1422370 entries=10 writes=1 read_bytes=0 write_bytes=0 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 592, "disk_entry_reads": 781, "entry_writes": 1250, "events": 0, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 0}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 2623, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+expired_pending_before_swap: PASS cpu=10860129 memory=2770444 entries=84 writes=16 read_bytes=0 write_bytes=692 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 3259, "disk_entry_reads": 12496, "entry_writes": 20000, "events": 420, "persistent_rent": 0, "read_bytes": 0, "temporary_rent": 0, "write_bytes": 296}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 36471, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+deposit_underlying: FAIL cpu=100001295 memory=9991903 entries=63 writes=18 read_bytes=276 write_bytes=3164 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30001, "disk_entry_reads": 16401, "entry_writes": 22500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1351}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 70314, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+transfer_spot_to_margin: PASS cpu=27124326 memory=5576117 entries=78 writes=9 read_bytes=0 write_bytes=1148 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8138, "disk_entry_reads": 7029, "entry_writes": 11250, "events": 948, "persistent_rent": 1499686, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 490}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 1618812, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+begin_open_position_v3: PASS cpu=28793890 memory=8410076 entries=100 writes=15 read_bytes=0 write_bytes=3656 scope=compiled-local-controlled-state runtime_protocol=29
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 8639, "disk_entry_reads": 11715, "entry_writes": 18750, "events": 557, "persistent_rent": 4086829, "read_bytes": 0, "temporary_rent": 91271, "write_bytes": 1561}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 4219322, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+swap_open_position_v3: FAIL cpu=100004098 memory=16784045 entries=136 writes=30 read_bytes=276 write_bytes=4236 scope=compiled-local-controlled-state runtime_protocol=29
+  invocation/proof failed
+  partial_fee_estimate={"captured_ledger": 65264920, "components": {"cpu": 30002, "disk_entry_reads": 25773, "entry_writes": 37500, "events": 0, "persistent_rent": 0, "read_bytes": 61, "temporary_rent": 0, "write_bytes": 1808}, "full_transaction_fee": false, "local_host_protocol": 29, "network_protocol": 29, "profile": "internal-policy", "rent_rate_per_1kb": 1000, "resource_fee_stroops": 95144, "run_mode": "acceptance", "runtime_matches_network": true, "scope": "partial local resource estimate; excludes envelope/history/base fees, return bytes; not RPC simulation"}
+INTERNAL-POLICY: FAIL
+INVOCATION GATE: FAIL
+LIFECYCLE GATE: FAIL
+TRANSACTION GATE: FAIL
+CHECKPOINT GATE: FAIL
+  LIFECYCLE: test process did not succeed: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/internal-policy-harness.log
+  LIFECYCLE: successful Cargo suite summary missing: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/internal-policy-harness.log
+  LIFECYCLE: test process did not succeed: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/internal-policy-archive.log
+  LIFECYCLE: successful Cargo suite summary missing: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/internal-policy-archive.log
+  LIFECYCLE: test process did not succeed: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/unresolved-internal.log
+  LIFECYCLE: successful Cargo suite summary missing: /Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-history-publication-v2/logs/unresolved-internal.log
+  LIFECYCLE: proof has no successful measured invocation: deposit -> deposit
+  LIFECYCLE: proof test not completed successfully: deposit -> test::compiled_vault_core_flows
+  LIFECYCLE: proof has no successful measured invocation: redeem -> redeem
+  LIFECYCLE: proof test not completed successfully: redeem -> test::compiled_vault_core_flows
+  LIFECYCLE: proof test not completed successfully: transfer -> test::compiled_vault_core_flows
+  LIFECYCLE: proof has no successful measured invocation: emergency_redeem -> emergency_redeem
+  LIFECYCLE: proof test not completed successfully: emergency_redeem -> test::compiled_vault_core_flows
+  LIFECYCLE: proof has no successful measured invocation: claim_rewards -> claim_rewards
+  LIFECYCLE: proof test not completed successfully: claim_rewards -> test::compiled_vault_core_flows
+  LIFECYCLE: proof test not completed successfully: begin_open -> test::compiled_v3_checkpoint
+  LIFECYCLE: proof has no successful measured invocation: swap_open_position_v3 -> swap_open_position_v3
+  LIFECYCLE: proof test not completed successfully: swap_open_position_v3 -> test::compiled_v3_checkpoint
+  LIFECYCLE: proof has no successful measured invocation: activate_open_position_v3 -> activate_open_position_v3
+  LIFECYCLE: proof test not completed successfully: activate_open_position_v3 -> test::compiled_v3_checkpoint
+  LIFECYCLE: proof has no successful measured invocation: prepare_close_position_v3 -> prepare_close_position_v3
+  LIFECYCLE: proof test not completed successfully: prepare_close_position_v3 -> test::compiled_v3_checkpoint
+  LIFECYCLE: proof has no successful measured invocation: swap_close -> swap_close
+  LIFECYCLE: proof test not completed successfully: swap_close -> test::compiled_v3_checkpoint
+  LIFECYCLE: proof has no successful measured invocation: finish_close -> finish_close
+  LIFECYCLE: proof test not completed successfully: finish_close -> test::compiled_v3_checkpoint
+  LIFECYCLE: proof has no successful measured invocation: funded_liquidation -> funded_liquidation
+  LIFECYCLE: proof test not completed successfully: funded_liquidation -> test::funded_tests::compiled_funded_liquidation
+  LIFECYCLE: proof has no successful measured invocation: repay_release -> repay_release
+  LIFECYCLE: proof test not completed successfully: repay_release -> test::funded_tests::compiled_repay_release
+  LIFECYCLE: proof has no successful measured invocation: claim_failure_recovery -> claim_failure_recovery
+  LIFECYCLE: proof test not completed successfully: claim_failure_recovery -> test::compiled_venue_rewards_and_claim_failure
+  LIFECYCLE: proof has no successful measured invocation: cancel_after_execute -> cancel_after_execute_rejection
+  LIFECYCLE: proof has no successful measured invocation: cancel_after_execute -> execute_open_position_v3
+  LIFECYCLE: proof test not completed successfully: cancel_after_execute -> test::recovery_state_tests::compiled_cancel_after_execute_is_rejection_then_repay_release
+  LIFECYCLE: proof has no successful measured invocation: cancel_after_swap -> cancel_after_swap
+  LIFECYCLE: proof test not completed successfully: cancel_after_swap -> test::funded_tests::compiled_interrupted_open_recovery_claim_outage
+  LIFECYCLE: proof has no successful measured invocation: receipt_custody_ownership_change -> receipt_custody_ownership_change
+  LIFECYCLE: proof test not completed successfully: receipt_custody_ownership_change -> test::compiled_receipt_margin_reward_custody
+  LIFECYCLE: proof has no successful measured invocation: allowance_transfer_from -> allowance_transfer_from
+  LIFECYCLE: proof test not completed successfully: allowance_transfer_from -> test::lifecycle_tests::compiled_allowance_reward_boundary_and_claim_rollback
+  LIFECYCLE: proof has no successful measured invocation: quarantine_reconciliation -> quarantine_reconciliation
+  LIFECYCLE: proof test not completed successfully: quarantine_reconciliation -> test::historical_tests::compiled_automatic_history_exited_owner_and_later_accrual
+  LIFECYCLE: proof has no successful measured invocation: waiver_redistribution -> waiver_redistribution
+  LIFECYCLE: proof test not completed successfully: waiver_redistribution -> test::historical_tests::compiled_governed_waiver_original_custody_coowner_exits_before_receipt
+  LIFECYCLE: proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_fractional_first_transfer
+  LIFECYCLE: proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_emission_change
+  LIFECYCLE: proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_shifted_range
+  LIFECYCLE: proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_returned_range
+  LIFECYCLE: proof has no successful measured invocation: pending_claim_boundary_matrix -> pending_boundary_partial_exit
+  LIFECYCLE: proof test not completed successfully: pending_claim_boundary_matrix -> test::venue_boundary_tests::compiled_pending_claim_boundary_matrix
+  LIFECYCLE: proof has no successful measured invocation: failed_activation_recovery -> failed_activation_atomic
+  LIFECYCLE: proof has no successful measured invocation: failed_activation_recovery -> recover_pending_open_funded
+  LIFECYCLE: proof test not completed successfully: failed_activation_recovery -> test::recovery_state_tests::compiled_failed_activation_preserves_pending_recovery
+  LIFECYCLE: proof has no successful measured invocation: expired_pending_resolution -> expired_pending_resolution
+  LIFECYCLE: proof test not completed successfully: expired_pending_resolution -> test::recovery_state_tests::compiled_expired_swapped_permissionless_resolution
+  LIFECYCLE: proof has no successful measured invocation: both_reward_calls_failed_funded_liquidation -> both_reward_calls_failed_funded_liquidation
+  LIFECYCLE: proof test not completed successfully: both_reward_calls_failed_funded_liquidation -> test::adversarial_tests::compiled_both_reward_calls_fail_forced_settlement_preserves_history
+  LIFECYCLE: proof has no successful measured invocation: funded_insufficient_liquidator_rollback -> funded_insufficient_liquidator_rollback
+  LIFECYCLE: proof test not completed successfully: funded_insufficient_liquidator_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity
+  LIFECYCLE: proof has no successful measured invocation: funded_invalid_valuation_rollback -> funded_invalid_valuation_rollback
+  LIFECYCLE: proof test not completed successfully: funded_invalid_valuation_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity
+  LIFECYCLE: proof has no successful measured invocation: funded_failed_collateral_transfer_rollback -> funded_failed_collateral_transfer_rollback
+  LIFECYCLE: proof test not completed successfully: funded_failed_collateral_transfer_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity
+  LIFECYCLE: proof has no successful measured invocation: funded_unauthorized_rollback -> funded_unauthorized_rollback
+  LIFECYCLE: proof test not completed successfully: funded_unauthorized_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity
+  LIFECYCLE: proof has no successful measured invocation: funded_repeated_execution_rollback -> funded_repeated_execution_rollback
+  LIFECYCLE: proof test not completed successfully: funded_repeated_execution_rollback -> test::adversarial_tests::compiled_funded_adversarial_atomicity
+  LIFECYCLE: proof has no successful measured invocation: historical_multiple_intervals -> historical_multiple_intervals
+  LIFECYCLE: proof test not completed successfully: historical_multiple_intervals -> test::historical_tests::compiled_multiple_unsettled_intervals_exited_beneficiary
+  LIFECYCLE: proof has no successful measured invocation: historical_shortfall -> governed_proportional_shortfall
+  LIFECYCLE: proof test not completed successfully: historical_shortfall -> test::historical_shortfall_tests::compiled_governed_shortfall_proportional_exited_custody_owner
+  LIFECYCLE: proof has no successful measured invocation: historical_unresolved_intervals -> historical_unresolved_intervals
+  LIFECYCLE: proof test not completed successfully: historical_unresolved_intervals -> test::unresolved_stress_tests::compiled_multiple_unresolved_intervals_after_funded_exits
+  TRANSACTION: transaction row 2: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 2: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 2: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 2: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 2: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 2: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 2: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 2: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 5: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 5: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 5: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 5: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 5: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 5: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 5: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 5: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 14: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 14: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 14: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 14: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 14: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 14: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 14: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 14: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 18: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 18: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 18: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 18: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 18: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 18: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 18: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 18: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 19: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 19: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 19: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 19: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 19: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 19: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 19: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 19: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 20: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 20: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 20: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 20: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 20: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 20: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 20: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 20: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 23: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 23: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 23: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 23: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 23: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 23: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 23: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 23: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 26: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 26: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 26: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 26: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 26: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 26: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 26: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 26: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 29: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 29: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 29: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 29: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 29: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 29: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 29: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 29: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 32: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 32: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 32: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 32: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 32: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 32: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 32: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 32: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 33: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 33: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 33: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 33: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 33: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 33: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 33: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 33: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 36: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 36: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 36: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 36: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 36: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 36: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 36: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 36: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 37: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 37: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 37: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 37: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 37: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 37: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 37: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 37: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 38: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 38: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 38: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 38: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 38: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 38: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 38: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 38: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 39: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 39: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 39: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 39: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 39: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 39: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 39: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 39: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 75: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 75: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 75: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 75: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 75: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 75: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 75: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 75: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 78: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 78: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 78: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 78: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 78: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 78: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 78: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 78: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 81: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 81: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 81: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 81: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 81: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 81: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 81: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 81: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 153: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 153: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 153: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 153: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 153: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 153: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 153: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 153: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 154: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 154: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 154: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 154: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 154: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 154: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 154: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 154: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 155: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 155: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 155: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 155: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 155: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 155: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 155: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 155: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 156: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 156: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 156: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 156: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 156: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 156: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 156: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 156: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 159: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 159: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 159: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 159: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 159: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 159: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 159: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 159: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 160: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 160: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 160: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 160: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 160: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 160: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 160: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 160: transaction outcome/success classification mismatch
+  TRANSACTION: transaction row 163: transaction evidence mismatch: contract_authorization_enforced
+  TRANSACTION: transaction row 163: transaction evidence mismatch: base_fee_source
+  TRANSACTION: transaction row 163: transaction evidence mismatch: limits_pass
+  TRANSACTION: transaction row 163: transaction evidence mismatch: diagnostic_shadow_ok
+  TRANSACTION: transaction row 163: transaction evidence mismatch: exact_captured_cost_model
+  TRANSACTION: transaction row 163: transaction evidence mismatch: signature_verification_measured
+  TRANSACTION: transaction row 163: transaction evidence mismatch: live_state_validation
+  TRANSACTION: transaction row 163: transaction outcome/success classification mismatch
+  TRANSACTION: unsigned transaction proof missing: activate_open_position_v3 -> v3.activate_open_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (success)
+  TRANSACTION: unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (rejected, proof_case=allowance_missing_spender_auth)
+  TRANSACTION: unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (rejected, proof_case=allowance_wrong_recipient_auth, auth_mode=enforcing-mismatched-root, mismatched_argument_indices=[2])
+  TRANSACTION: unsigned transaction proof missing: allowance_transfer_from -> vault.transfer_from (rejected, proof_case=allowance_failed_claim_rollback)
+  TRANSACTION: unsigned transaction proof missing: both_reward_calls_failed_funded_liquidation -> v3.liquidate_funded_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: cancel_after_execute -> v3.execute_open_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: cancel_after_execute -> v3.repay_margin_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: cancel_after_execute -> v3.release_debt_free_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: cancel_after_execute -> v3.cancel_pending_open_v3 (rejected, proof_case=cancel_after_execute_rejection)
+  TRANSACTION: unsigned transaction proof missing: cancel_after_swap -> v3.recover_pending_open_funded (success)
+  TRANSACTION: unsigned transaction proof missing: claim_failure_recovery -> vault.emergency_redeem (success)
+  TRANSACTION: unsigned transaction proof missing: claim_rewards -> vault.claim_rewards (success)
+  TRANSACTION: unsigned transaction proof missing: deposit -> vault.deposit_underlying (success)
+  TRANSACTION: unsigned transaction proof missing: emergency_redeem -> vault.emergency_redeem (success)
+  TRANSACTION: unsigned transaction proof missing: expired_pending_resolution -> v3.resolve_pending_open_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: expired_pending_resolution -> v3.release_debt_free_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: failed_activation_recovery -> v3.recover_pending_open_funded (success)
+  TRANSACTION: unsigned transaction proof missing: failed_activation_recovery -> v3.activate_open_position_v3 (rejected, proof_case=failed_activation_atomic)
+  TRANSACTION: unsigned transaction proof missing: finish_close -> v3.finish_close_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: funded_failed_collateral_transfer_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_failed_collateral_transfer_rollback)
+  TRANSACTION: unsigned transaction proof missing: funded_insufficient_liquidator_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_insufficient_liquidator_rollback)
+  TRANSACTION: unsigned transaction proof missing: funded_invalid_valuation_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_invalid_valuation_rollback)
+  TRANSACTION: unsigned transaction proof missing: funded_liquidation -> v3.liquidate_funded_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: funded_repeated_execution_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_repeated_execution_rollback)
+  TRANSACTION: unsigned transaction proof missing: funded_unauthorized_rollback -> v3.liquidate_funded_v3 (rejected, proof_case=funded_unauthorized_rollback)
+  TRANSACTION: unsigned transaction proof missing: historical_multiple_intervals -> vault.settle_reward_segment (success)
+  TRANSACTION: unsigned transaction proof missing: historical_shortfall -> vault.settle_reward_segment (success)
+  TRANSACTION: unsigned transaction proof missing: historical_unresolved_intervals -> v3.liquidate_funded_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: pending_claim_boundary_matrix -> vault.transfer (success)
+  TRANSACTION: unsigned transaction proof missing: pending_claim_boundary_matrix -> vault.emergency_redeem (success)
+  TRANSACTION: unsigned transaction proof missing: prepare_close_position_v3 -> v3.prepare_close_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: quarantine_reconciliation -> vault.settle_reward_segment (success)
+  TRANSACTION: unsigned transaction proof missing: quarantine_reconciliation -> vault.settle_reward_segment (success)
+  TRANSACTION: unsigned transaction proof missing: receipt_custody_ownership_change -> share_receipt.transfer (success)
+  TRANSACTION: unsigned transaction proof missing: redeem -> vault.redeem (success)
+  TRANSACTION: unsigned transaction proof missing: repay_release -> v3.repay_margin_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: repay_release -> v3.release_debt_free_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: swap_close -> v3.swap_close_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: swap_open_position_v3 -> v3.swap_open_position_v3 (success)
+  TRANSACTION: unsigned transaction proof missing: transfer -> vault.transfer (success)
+  TRANSACTION: unsigned transaction proof missing: waiver_redistribution -> vault.attribute_reward_segment (success)
+  TRANSACTION: unsigned transaction proof missing: waiver_redistribution -> vault.settle_reward_segment (success)
+RELEASE APPROVAL: NOT GRANTED — resource profiles and controlled-state evidence do not authorize release.
+Scope: matching target runtime/cost model and SDK invocation limits remain required. Unsigned transaction evidence uses recording-only external authorization, not real account signatures. Controlled-state execution is not live-state validation.

@@ -1,0 +1,28 @@
+{
+  "internal-policy": {
+    "rows": 68,
+    "cpu_max": 100004098,
+    "memory_max": 16797614,
+    "sdk_entry_total_max": 136,
+    "write_entries_max": 30,
+    "failed_rows": 25
+  },
+  "captured-network-diagnostic": {
+    "rows": 602,
+    "cpu_max": 235455376,
+    "memory_max": 24514438,
+    "sdk_entry_total_max": 213,
+    "write_entries_max": 56,
+    "failed_rows": 0
+  },
+  "unsigned_transactions": {
+    "rows": 1478,
+    "success": 1449,
+    "rejections": 29,
+    "cpu_max": 236694470,
+    "memory_max": 21678403,
+    "unique_footprint_max": 158,
+    "restored_rows": 297,
+    "archive_baseline_matches": true
+  }
+}

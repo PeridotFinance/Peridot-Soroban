@@ -1,0 +1,116 @@
+{
+  "archive": "medium-host-and-wasm.tar.xz",
+  "sha256": "dc14b3cbc2b47cf6236c23c40ff518b0050fb0a91da474dce11a2106d589d5e8",
+  "files": [
+    {
+      "path": "target/lending-archive-qualification/final-v4/network-config.json",
+      "sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+      "bytes": 32384
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/internal-policy-checker.log",
+      "sha256": "b86445ce478101cdca1dffe5c87b649df33968515fc044a9e605801c8b92aeb9",
+      "bytes": 8735
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/artifact-hashes.json",
+      "sha256": "1733ece5e59d3e11e562baf2636caa7887a305436ef33722fa9d813cbff6dc83",
+      "bytes": 289
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/internal-policy.json.attempts.jsonl",
+      "sha256": "b6560271fc81079b825581991242b927fc9dc87e14bc48edebbceeec6ed618e5",
+      "bytes": 1248548
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/captured-network-diagnostic-profile.json",
+      "sha256": "dd321fe454b7e366ba3e42435025b3597e13f52d124e62add35d0a9213fec0d5",
+      "bytes": 869
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/captured-network-diagnostic.log",
+      "sha256": "78622ab161041fc97caa04c60b8e768db601a4a7d8b653c58537ccdacaa556ef",
+      "bytes": 3416
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/statuses.json",
+      "sha256": "42a2e3c92c7ba4b402c53aeb4abce29d93455c3eabd623fbd44a739dd61de961",
+      "bytes": 155
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/captured-network-diagnostic.json",
+      "sha256": "19078f3fa69cc92d606e9b1ee8dd1a021a133fa23a1c34d4c0a3e99877f1cc66",
+      "bytes": 1273415
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/captured-network-diagnostic-checker.log",
+      "sha256": "721ef1eb18cd98e13a03dc75743884282603bacdac51817a8cc1ae462fbdb37a",
+      "bytes": 8843
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/captured-network-diagnostic.json.sdk.jsonl",
+      "sha256": "fe3435850c49b956cfb0ff5afa5a746e44b753f9918c970f879cf60c7eb176ec",
+      "bytes": 6296
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/internal-policy.log",
+      "sha256": "0700fe7dc47cfa4c2e3da252527dcb75db787c2efaaa023f6373eefd6d56b84a",
+      "bytes": 3539
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/captured-network-diagnostic-gates.json",
+      "sha256": "9c784371b5de2334ae7a136e0059575d972c5618a8663efdb2eff818786e0784",
+      "bytes": 3310
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/internal-policy.json.snapshot.json",
+      "sha256": "de3553d381fdbded0313cffc17c23a721a21b20bfc458363166b44e4394ce670",
+      "bytes": 333847
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/internal-policy.json",
+      "sha256": "8109e1fba6919ddb60c77af3b0ea35c463cff952a85c47dc7a2a0765f059800d",
+      "bytes": 1273403
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/internal-policy.json.sdk.jsonl",
+      "sha256": "66c9d9f4cd1a98f0d66ad890425565e01e818eecde03c6dd3788c27e517de2f3",
+      "bytes": 6212
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/captured-network-diagnostic.json.snapshot.json",
+      "sha256": "de3553d381fdbded0313cffc17c23a721a21b20bfc458363166b44e4394ce670",
+      "bytes": 333847
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/captured-network-diagnostic.json.attempts.jsonl",
+      "sha256": "b6560271fc81079b825581991242b927fc9dc87e14bc48edebbceeec6ed618e5",
+      "bytes": 1248548
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/internal-policy-profile.json",
+      "sha256": "03860564694d24ca6bd801c98ac1bb14b79f16201489183bad2f2d46092e0250",
+      "bytes": 856
+    },
+    {
+      "path": "target/lending-archive-qualification/final-v4/internal-policy-gates.json",
+      "sha256": "d5cd27cd6b7485320e8903203274f54901561cf1ff118bf3230ef8b90c084a55",
+      "bytes": 3298
+    },
+    {
+      "path": "target/lending-medium-fixed-20261111/artifacts/receipt_vault.wasm",
+      "sha256": "c30e5efc5ebc6cb5b53875ad104257fec93b96a708d600ce5337555efe15a9c7",
+      "bytes": 89919
+    },
+    {
+      "path": "target/lending-medium-fixed-20261111/artifacts/jump_rate_model.wasm",
+      "sha256": "4f57459de70963abb7b6bc4c06ad5eae9d7f8dc0ef3ef59f023241705033126f",
+      "bytes": 7644
+    },
+    {
+      "path": "target/lending-medium-fixed-20261111/artifacts/simple_peridottroller.wasm",
+      "sha256": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+      "bytes": 63285
+    }
+  ]
+}

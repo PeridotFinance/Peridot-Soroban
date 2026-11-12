@@ -1,0 +1,11 @@
+[
+  "Cargo.toml",
+  "contracts/cl-share-vault/src/contract.rs",
+  "contracts/cl-share-vault/src/pool.rs",
+  "contracts/margin-controller/src/lib.rs",
+  "contracts/margin-controller/src/perps.rs",
+  "contracts/margin-controller/src/pending_recovery.rs",
+  "contracts/margin-controller/src/split_open.rs",
+  "contracts/cl-split-escrow/Cargo.toml",
+  "contracts/cl-split-escrow/src/lib.rs"
+]

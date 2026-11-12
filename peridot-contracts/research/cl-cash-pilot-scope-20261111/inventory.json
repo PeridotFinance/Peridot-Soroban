@@ -1,0 +1,118 @@
+{
+  "schema": "cash-pilot-source-inventory-v1",
+  "source_checkpoint": "b7b433c4885db5878f7fa6f25f3d1fad2b5a07b3",
+  "files": [
+    {
+      "path": "research/cl-cash-pilot-scope-20261111/source-policy/00-shared-risk-model-and-rollout-2.txt",
+      "bytes": 28139,
+      "sha256": "e8aef84913e9f3e91b51e57928b037950df62bcb626806cd3e02d0c04c461a17",
+      "source_path": "docs/handoffs/00-shared-risk-model-and-rollout-2.md"
+    },
+    {
+      "path": "research/cl-cash-pilot-scope-20261111/source-policy/02-stellar-upshift-xlm-usdc-isolated-group.txt",
+      "bytes": 24916,
+      "sha256": "b9090a81f818a401b7560d1e05444f9704c40378d80dc644dbeea65786447bbf",
+      "source_path": "docs/handoffs/02-stellar-upshift-xlm-usdc-isolated-group.md"
+    },
+    {
+      "path": "contracts/receipt-vault/src/contract.rs",
+      "bytes": 193803,
+      "sha256": "2ee32aa7ef77933d23a7895ec12e7f01f73c31be224771558b2e879c37374358"
+    },
+    {
+      "path": "contracts/receipt-vault/src/storage.rs",
+      "bytes": 19694,
+      "sha256": "a459cb6509b45aad514b10c1fe3069ec4fadf33c6bd081bffcbccbdf33c6ed34"
+    },
+    {
+      "path": "contracts/receipt-vault/src/reserve_test.rs",
+      "bytes": 17397,
+      "sha256": "814428c63b858f058b9162ecb84f2fd93e406d7296def4cff3cc7ae65c79b246"
+    },
+    {
+      "path": "contracts/receipt-vault/src/test.rs",
+      "bytes": 225613,
+      "sha256": "0e37a64e714f749077822826c221f5c6a4dc981f4daa97de04053422b6ff4278"
+    },
+    {
+      "path": "contracts/receipt-vault/Cargo.toml",
+      "bytes": 1011,
+      "sha256": "5add6958fd0cc2398c6135c9fb10af3b203a0a9ef914ba8eeda6b98b5f4990e0"
+    },
+    {
+      "path": "contracts/simple-peridottroller/src/contract.rs",
+      "bytes": 157613,
+      "sha256": "b71859c1ff4632e2ff5e8032f1a0224736c2b6d82a3a8c8e66af2a276b63fcf8"
+    },
+    {
+      "path": "contracts/simple-peridottroller/src/test.rs",
+      "bytes": 243988,
+      "sha256": "2eeeb12d3903490e316e9fd698e0286b94adfe08ba1d92d19e29c51935b4cbf7"
+    },
+    {
+      "path": "contracts/simple-peridottroller/src/storage.rs",
+      "bytes": 14981,
+      "sha256": "6db9c1654531353098fa677d7da0bd7a846ff831ab90919543adca347321b6b3"
+    },
+    {
+      "path": "contracts/simple-peridottroller/Cargo.toml",
+      "bytes": 657,
+      "sha256": "f05119e3d5af0dbadc61ba243828e1a90dfe5a019c1d770f297e4a155286dd70"
+    },
+    {
+      "path": "contracts/jump-rate-model/src/lib.rs",
+      "bytes": 12909,
+      "sha256": "7b209c07539c6c75748ba21b16f539fc1a7be5262c12fd7049b2baa45fc5c2fa"
+    },
+    {
+      "path": "contracts/jump-rate-model/Cargo.toml",
+      "bytes": 309,
+      "sha256": "348aec61dc18dd157e3cfe77ccbb7b2928ff480b055f7065a1e2c201ab772a8d"
+    },
+    {
+      "path": "scripts/deploy_funding_group_mainnet.sh",
+      "bytes": 1038,
+      "sha256": "b2e5762f8377f7b53e88d7a5e0792d0571ce431d54ed9d51c2900bf034d8e8eb"
+    },
+    {
+      "path": "scripts/prepare_funding_group.py",
+      "bytes": 6122,
+      "sha256": "8a66baf9b0b3964a8d12f8807c189e7df8c9bbd967595f75e26255b2b5ac715b"
+    },
+    {
+      "path": "scripts/tests/funding_plan_test.py",
+      "bytes": 2833,
+      "sha256": "8c899c081a01fc1dcb1540aa51797c1a11acac4893ae6f0346e35b4f7dc88d8f"
+    },
+    {
+      "path": "scripts/check_budget.sh",
+      "bytes": 6443,
+      "sha256": "e73da827a5976eabf18881e8da491e4a1acfb434065116eb468ac65a445a4f3e"
+    },
+    {
+      "path": "../docs/deployment-handoffs/evidence/cl-stage1-20261102/reserve-resources-final.jsonl",
+      "bytes": 2012,
+      "sha256": "7c21392d159fae014a544b53c3cdd8a580580f189b0bc5b7422f7d27eecc9545"
+    },
+    {
+      "path": "../docs/deployment-handoffs/14-cl-decisions-reserve-integration-20261102.md",
+      "bytes": 13676,
+      "sha256": "eb45e97cb88ec9ef4c5477056fa7c98b7ec23c29f32750baf5b2aa1d6f72a2b1"
+    },
+    {
+      "path": "research/cl-cash-pilot-scope-20261111/report.md",
+      "bytes": 20818,
+      "sha256": "556531ee36a5f05847f41126cb2c3fe9b3e58e0efc8ed027d6b334fcb028df5f"
+    },
+    {
+      "path": "research/cl-cash-pilot-scope-20261111/resource-evidence.json",
+      "bytes": 3363,
+      "sha256": "c735ddf79269ba49eb6c4e18b50519c9c7dbfb8e53564e201afc221f21aa2824"
+    },
+    {
+      "path": "research/cl-cash-pilot-scope-20261111/verify.py",
+      "bytes": 1091,
+      "sha256": "88dd4756b2110e2da93ea712625027c989f795847ccc65b5ad9e6d15012342b8"
+    }
+  ]
+}

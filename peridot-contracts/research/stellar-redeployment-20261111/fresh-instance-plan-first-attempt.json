@@ -1,0 +1,27 @@
+{
+  "observedAt": "2026-11-11T19:09:32.508Z",
+  "source": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+  "endpoint": "https://soroban-rpc.mainnet.stellar.gateway.fm",
+  "scope": "independent unsigned simulations from one prestate; actual deployments must build sequentially with fresh sequence",
+  "code": [
+    {
+      "name": "simple_peridottroller.wasm",
+      "sha256": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+      "bytes": 63285,
+      "ledger": 65427625,
+      "liveUntilLedgerSeq": 67501173,
+      "exactLocalMatch": true
+    },
+    {
+      "name": "receipt_vault.wasm",
+      "sha256": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "bytes": 89033,
+      "ledger": 65427625,
+      "liveUntilLedgerSeq": 67501203,
+      "exactLocalMatch": true
+    }
+  ],
+  "instances": [],
+  "sourceSequence": "281008835320086530",
+  "error": "Error: Command failed: stellar contract id wasm --source-account GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE --salt d30c38265e4717f9a1569788dc57d55c7d321b6504a7e3b96c5389cf1ec80c93 --network-passphrase Public Global Stellar Network ; September 2015\n❌ error: network passphrase is used but rpc-url is missing, use `--rpc-url` or `STELLAR_RPC_URL`\n"
+}

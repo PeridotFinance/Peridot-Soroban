@@ -1,0 +1,147 @@
+# Every live TTL entry — fresh cash lending
+
+Snapshot ledger **65440850**. Every row gives the inclusive live-until ledger; it becomes eligible for archival after that ledger. Dates are estimates using **5 seconds per ledger**, not guaranteed calendar deadlines. No discovered entry is missing or archived.
+
+Discovery scanned public transaction changes from ledger 65437362 through 65440843. It identified 129 entries owned by the new controller/receipts, two sealed code entries and eight canonical SAC dependency entries. No rate model, oracle, router or external strategy was deployed. Classic Ledger/deployer account entries do not have Soroban TTLs.
+
+| Contract/group | Storage kind | Key | Live-until ledger | Remaining ledgers | Estimated archive eligibility UTC |
+|---|---|---|---:|---:|---|
+| EURC | instance | `INSTANCE` | 67510971 | 2070121 | 2027-03-12T08:41:42.000Z |
+| EURC | persistent | `["AccumulatedInterest"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["Admin"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["AdminFeeScaled"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["Balance","CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4"]` | 67511630 | 2070780 | 2027-03-12T09:36:37.000Z |
+| EURC | persistent | `["Balance","GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"]` | 67511690 | 2070840 | 2027-03-12T09:41:37.000Z |
+| EURC | persistent | `["BorrowCap"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["BorrowIndex"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["BorrowYearlyRateScaled"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["CollateralFactorScaled"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["DebtStateMigratedAt"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["DebtStateVersion"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["HasBorrowed","GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"]` | 68550905 | 3110055 | 2027-05-11T13:02:52.000Z |
+| EURC | persistent | `["InitialExchangeRate"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["Initialized"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["LastUpdateTime"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["ManagedCash"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["Peridottroller"]` | 67511390 | 2070540 | 2027-03-12T09:16:37.000Z |
+| EURC | persistent | `["RatesReady"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["ReserveFactorScaled"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["SupplyCap"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["TotalAdminFees"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["TotalBorrowed"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["TotalDeposited"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["TotalReserves"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["UnderlyingToken"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC | persistent | `["YearlyRateScaled"]` | 67511128 | 2070278 | 2027-03-12T08:54:47.000Z |
+| EURC SAC dependency | instance | `shared SAC instance` | 67326587 | 1885737 | 2027-03-01T16:36:22.000Z |
+| EURC SAC dependency | persistent | `["Balance","CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4"]` | 67511630 | 2070780 | 2027-03-12T09:36:37.000Z |
+| PYUSD | instance | `INSTANCE` | 67510968 | 2070118 | 2027-03-12T08:41:27.000Z |
+| PYUSD | persistent | `["AccumulatedInterest"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["Admin"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["AdminFeeScaled"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["Balance","CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC"]` | 67511626 | 2070776 | 2027-03-12T09:36:17.000Z |
+| PYUSD | persistent | `["Balance","GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"]` | 67511686 | 2070836 | 2027-03-12T09:41:17.000Z |
+| PYUSD | persistent | `["BorrowCap"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["BorrowIndex"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["BorrowYearlyRateScaled"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["CollateralFactorScaled"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["DebtStateMigratedAt"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["DebtStateVersion"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["HasBorrowed","GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"]` | 68550902 | 3110052 | 2027-05-11T13:02:37.000Z |
+| PYUSD | persistent | `["InitialExchangeRate"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["Initialized"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["LastUpdateTime"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["ManagedCash"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["Peridottroller"]` | 67511359 | 2070509 | 2027-03-12T09:14:02.000Z |
+| PYUSD | persistent | `["RatesReady"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["ReserveFactorScaled"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["SupplyCap"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["TotalAdminFees"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["TotalBorrowed"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["TotalDeposited"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["TotalReserves"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["UnderlyingToken"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD | persistent | `["YearlyRateScaled"]` | 67511126 | 2070276 | 2027-03-12T08:54:37.000Z |
+| PYUSD SAC dependency | instance | `shared SAC instance` | 68504845 | 3063995 | 2027-05-08T21:04:32.000Z |
+| PYUSD SAC dependency | persistent | `["Balance","CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC"]` | 67511626 | 2070776 | 2027-03-12T09:36:17.000Z |
+| USDC | instance | `INSTANCE` | 67510963 | 2070113 | 2027-03-12T08:41:02.000Z |
+| USDC | persistent | `["AccumulatedInterest"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["Admin"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["AdminFeeScaled"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["Balance","CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F"]` | 67511610 | 2070760 | 2027-03-12T09:34:57.000Z |
+| USDC | persistent | `["Balance","GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"]` | 67511675 | 2070825 | 2027-03-12T09:40:22.000Z |
+| USDC | persistent | `["BorrowCap"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["BorrowIndex"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["BorrowYearlyRateScaled"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["CollateralFactorScaled"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["DebtStateMigratedAt"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["DebtStateVersion"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["HasBorrowed","GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"]` | 68550896 | 3110046 | 2027-05-11T13:02:07.000Z |
+| USDC | persistent | `["InitialExchangeRate"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["Initialized"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["LastUpdateTime"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["ManagedCash"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["Peridottroller"]` | 67511295 | 2070445 | 2027-03-12T09:08:42.000Z |
+| USDC | persistent | `["RatesReady"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["ReserveFactorScaled"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["SupplyCap"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["TotalAdminFees"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["TotalBorrowed"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["TotalDeposited"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["TotalReserves"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["UnderlyingToken"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC | persistent | `["YearlyRateScaled"]` | 67511122 | 2070272 | 2027-03-12T08:54:17.000Z |
+| USDC SAC dependency | instance | `shared SAC instance` | 67326585 | 1885735 | 2027-03-01T16:36:12.000Z |
+| USDC SAC dependency | persistent | `["Balance","CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F"]` | 67511610 | 2070760 | 2027-03-12T09:34:57.000Z |
+| XLM | instance | `INSTANCE` | 67510965 | 2070115 | 2027-03-12T08:41:12.000Z |
+| XLM | persistent | `["AccumulatedInterest"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["Admin"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["AdminFeeScaled"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["Balance","CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS"]` | 67511620 | 2070770 | 2027-03-12T09:35:47.000Z |
+| XLM | persistent | `["Balance","GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"]` | 67511681 | 2070831 | 2027-03-12T09:40:52.000Z |
+| XLM | persistent | `["BorrowCap"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["BorrowIndex"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["BorrowYearlyRateScaled"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["CollateralFactorScaled"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["DebtStateMigratedAt"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["DebtStateVersion"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["HasBorrowed","GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"]` | 68550899 | 3110049 | 2027-05-11T13:02:22.000Z |
+| XLM | persistent | `["InitialExchangeRate"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["Initialized"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["LastUpdateTime"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["ManagedCash"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["Peridottroller"]` | 67511317 | 2070467 | 2027-03-12T09:10:32.000Z |
+| XLM | persistent | `["RatesReady"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["ReserveFactorScaled"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["SupplyCap"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["TotalAdminFees"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["TotalBorrowed"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["TotalDeposited"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["TotalReserves"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["UnderlyingToken"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM | persistent | `["YearlyRateScaled"]` | 67511124 | 2070274 | 2027-03-12T08:54:27.000Z |
+| XLM SAC dependency | instance | `shared SAC instance` | 67627770 | 2186920 | 2027-03-19T02:54:57.000Z |
+| XLM SAC dependency | persistent | `["Balance","CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS"]` | 67511620 | 2070770 | 2027-03-12T09:35:47.000Z |
+| controller | instance | `INSTANCE` | 67510961 | 2070111 | 2027-03-12T08:40:52.000Z |
+| controller | persistent | `["Admin"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["CloseFactorScaled"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["LiquidationFeeScaled"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["LiquidationIncentiveScaled"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["MarketUnderlying","CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4"]` | 67511379 | 2070529 | 2027-03-12T09:15:42.000Z |
+| controller | persistent | `["MarketUnderlying","CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS"]` | 67511304 | 2070454 | 2027-03-12T09:09:27.000Z |
+| controller | persistent | `["MarketUnderlying","CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC"]` | 67511330 | 2070480 | 2027-03-12T09:11:37.000Z |
+| controller | persistent | `["MarketUnderlying","CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F"]` | 67511291 | 2070441 | 2027-03-12T09:08:22.000Z |
+| controller | persistent | `["OracleMaxAgeMultiplier"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["PauseBorrow"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["PauseBorrowUntil"]` | 67511293 | 2070443 | 2027-03-12T09:08:32.000Z |
+| controller | persistent | `["PauseDeposit"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["PauseGuardian"]` | 67511246 | 2070396 | 2027-03-12T09:04:37.000Z |
+| controller | persistent | `["PauseLiquidation"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["PauseRedeem"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["SupportedMarkets"]` | 67511106 | 2070256 | 2027-03-12T08:52:57.000Z |
+| controller | persistent | `["SupportedToken","CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"]` | 67511304 | 2070454 | 2027-03-12T09:09:27.000Z |
+| controller | persistent | `["SupportedToken","CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2"]` | 67511330 | 2070480 | 2027-03-12T09:11:37.000Z |
+| controller | persistent | `["SupportedToken","CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75"]` | 67511291 | 2070441 | 2027-03-12T09:08:22.000Z |
+| controller | persistent | `["SupportedToken","CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV"]` | 67511379 | 2070529 | 2027-03-12T09:15:42.000Z |
+| controller code | code | `WASM` | 67501173 | 2060323 | 2027-03-11T19:05:12.000Z |
+| shared receipt code | code | `WASM` | 67501203 | 2060353 | 2027-03-11T19:07:42.000Z |

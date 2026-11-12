@@ -1,0 +1,26 @@
+{
+  "XLM": {
+    "url": "https://api.coinbase.com/v2/prices/XLM-USD/spot",
+    "http_date": "Wed, 11 Nov 2026 17:54:38 GMT",
+    "observed_at": "2026-11-11T17:54:38.735459+00:00",
+    "body": {
+      "data": {
+        "amount": "0.1507815",
+        "base": "XLM",
+        "currency": "USD"
+      }
+    }
+  },
+  "EURC": {
+    "url": "https://api.coinbase.com/v2/prices/EURC-USD/spot",
+    "http_date": "Wed, 11 Nov 2026 17:54:38 GMT",
+    "observed_at": "2026-11-11T17:54:38.759672+00:00",
+    "body": {
+      "data": {
+        "amount": "1.108598694695612",
+        "base": "EURC",
+        "currency": "USD"
+      }
+    }
+  }
+}

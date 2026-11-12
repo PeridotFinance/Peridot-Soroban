@@ -1,0 +1,11 @@
+test_all_limits_and_evidence_fail_closed (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_internal_policy_caps_are_not_network_caps (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_missing_flows_never_pass (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_partial_fees_support_both_window_shapes_and_actual_runtime (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_profiles_keep_distinct_limits (test_cl_resource_profiles.ResourceProfileTests) ... ok
+test_tampering_config_and_profile_is_rejected (test_cl_resource_profiles.ResourceProfileTests) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.031s
+
+OK

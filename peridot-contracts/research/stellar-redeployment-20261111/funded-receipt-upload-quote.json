@@ -1,0 +1,9 @@
+{
+  "observedAt": "2026-11-11T19:01:59.120Z",
+  "scope": "fee-only simulation; no reusable receipt envelope saved before controller upload",
+  "ledger": 65427535,
+  "source": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+  "feeWithNominalInclusionStroops": "1193289309",
+  "instructions": 75954678,
+  "restoreRequired": false
+}

@@ -1,0 +1,264 @@
+--- a/contracts/margin-controller/src/lib.rs
++++ b/contracts/margin-controller/src/lib.rs
+@@ -33,3 +33,6 @@
+ #[cfg(test)]
+ #[path="../../../test-support/cl_resource_limits.rs"]
+ mod cl_resource_limits;
++
++#[cfg(feature = "funded-liquidation-validation")]
++mod funded_stalled_settlement;
+--- a/contracts/margin-controller/src/contract.rs
++++ b/contracts/margin-controller/src/contract.rs
+@@ -1311,3 +1311,16 @@
+         Self::liquidate_pending_open_funded_impl(&env, payer, position_id, max_repay, min_seize_underlying)
+     }
+ }
++
++// Isolated unadopted zero-bonus Closing/staged-liquidation recovery.
++#[cfg(feature = "funded-liquidation-validation")]
++#[contractimpl]
++impl MarginController {
++    pub fn settle_stalled_funded_v3(env: Env, payer: Address, position_id: u64,
++        max_top_up: u128, min_seize_ptokens: u128, min_seize_underlying: u128) -> (u128,u128,u128,u128) {
++        crate::funded_liquidation::require_validation_network(&env);
++        bump_instance_ttl(&env);
++        payer.require_auth();
++        Self::settle_stalled_funded_v3_impl(&env,payer,position_id,max_top_up,min_seize_ptokens,min_seize_underlying)
++    }
++}
+--- /dev/null
++++ b/contracts/margin-controller/src/funded_stalled_settlement.rs
+@@ -0,0 +1,233 @@
++//! Isolated validation-only forced settlement. No new persisted financial stage.
++use crate::{constants::SCALE_1E6, contract::MarginController, fees::get_fee_terms, helpers::*, storage::*};
++use soroban_sdk::{contracterror, contractevent, panic_with_error, token, Address, Env, IntoVal};
++
++#[contracterror]
++#[derive(Copy, Clone, Debug, Eq, PartialEq)]
++#[repr(u32)]
++pub enum StalledError { SeizureBelowMinimum = 9101, LiveConvertedClose = 9102 }
++
++struct Assets {
++    proceeds: u128,
++    underlying: u128,
++    ptokens: u128,
++    closing_expiry: Option<u64>,
++}
++
++#[contractevent(topics = ["stalled_funded_settlement"])]
++#[derive(Clone, Debug, Eq, PartialEq)]
++struct StalledSettled {
++    #[topic]
++    id: u64,
++    #[topic]
++    payer: Address,
++    owner: Address,
++    paid_proceeds: u128,
++    paid_external: u128,
++    seized_ptokens: u128,
++    seized_underlying: u128,
++    returned_proceeds: u128,
++    returned_ptokens: u128,
++    returned_underlying: u128,
++    contingent_fee_uncharged: u128,
++}
++
++fn normalize(env: &Env, id: u64, position: &Position, payer: &Address) -> Assets {
++    match position.status {
++        PositionStatus::Closing => {
++            let close = get_pending_perps_close_or_panic(env, id);
++            assert!(close.owner == position.owner, "close owner mismatch");
++            let rest = get_pending_perps_close_remainder(env, id);
++            if close.debt_amount == 0 {
++                assert!(close.received_debt_asset == 0 && rest == 0, "ambiguous close assets");
++                Assets { proceeds: 0, underlying: close.collateral_underlying, ptokens: 0,
++                    closing_expiry: Some(close.expires_at) }
++            } else {
++                Assets { proceeds: close.received_debt_asset, underlying: rest, ptokens: 0,
++                    closing_expiry: Some(close.expires_at) }
++            }
++        }
++        PositionStatus::Liquidated => {
++            let pending = get_pending_liquidation_or_panic(env, id);
++            assert!(pending.kind == PendingLiquidationKind::PerpsV3 && pending.owner == position.owner,
++                "liquidation identity mismatch");
++            let deadline = get_pending_liquidation_takeover_after(env, id)
++                .unwrap_or_else(|| pending.repay_amount.min(u64::MAX as u128) as u64);
++            assert!(pending.liquidator == *payer || env.ledger().timestamp() > deadline,
++                "liquidator exclusivity active");
++            let held = get_pending_liquidation_collateral_underlying(env, id);
++            match pending.stage {
++                PendingLiquidationStage::Started => {
++                    assert!(held == 0 || position.collateral_ptokens == 0, "ambiguous liquidation assets");
++                    Assets { proceeds: pending.received_debt_asset, underlying: held,
++                        ptokens: position.collateral_ptokens, closing_expiry: None }
++                }
++                PendingLiquidationStage::CollateralConverted => {
++                    assert!(held == 0 && position.collateral_ptokens == 0, "converted collateral remains");
++                    Assets { proceeds: pending.received_debt_asset, underlying: 0, ptokens: 0,
++                        closing_expiry: None }
++                }
++                _ => panic!("unsupported liquidation stage"),
++            }
++        }
++        _ => panic!("not stalled closing or liquidated"),
++    }
++}
++
++fn value(amount: u128, price: (u128, u128)) -> u128 {
++    assert!(price.0 > 0 && price.1 > 0, "invalid fresh price");
++    amount.checked_mul(price.0).expect("value overflow") / price.1
++}
++
++impl MarginController {
++    fn stalled_transfer_underlying(env: &Env, asset: &Address, owner: &Address, to: &Address, amount: u128) {
++        if amount == 0 { return; }
++        Self::cl_prepare(env, asset, owner, to, amount, true);
++        let controller = env.current_contract_address();
++        let token = token::Client::new(env, asset);
++        let before = token.balance(to);
++        let from_before = token.balance(&controller);
++        let signed: i128 = amount.try_into().expect("transfer overflow");
++        Self::authorize_controller_subcall(env, asset, "transfer",
++            (controller.clone(), to.clone(), signed).into_val(env));
++        token.transfer(&controller, to, &signed);
++        assert!(token.balance(to).checked_sub(before) == Some(signed)
++            && from_before.checked_sub(token.balance(&controller)) == Some(signed), "underlying delta mismatch");
++    }
++
++    fn stalled_transfer_ptokens(env: &Env, position: &Position, vault: &Address, to: &Address, amount: u128) {
++        if amount == 0 { return; }
++        let controller = env.current_contract_address();
++        let receipt = ReceiptVaultClient::new(env, vault);
++        let before = receipt.get_ptoken_balance(to);
++        let from_before = receipt.get_ptoken_balance(&controller);
++        Self::cl_receipt_reassign(env, &position.collateral_asset, vault, &position.owner, to, amount, true);
++        Self::begin_margin_withdraw_if_supported(env, vault, &controller, to, amount);
++        let signed: i128 = amount.try_into().expect("ptoken overflow");
++        Self::authorize_controller_subcall(env, vault, "transfer", (controller.clone(), to.clone(), signed).into_val(env));
++        receipt.transfer(&controller, to, &signed);
++        assert!(receipt.get_ptoken_balance(to).checked_sub(before) == Some(amount)
++            && from_before.checked_sub(receipt.get_ptoken_balance(&controller)) == Some(amount), "receipt delta mismatch");
++    }
++
++    pub(crate) fn settle_stalled_funded_v3_impl(env: &Env, payer: Address, id: u64,
++        max_top_up: u128, min_ptokens: u128, min_underlying: u128) -> (u128, u128, u128, u128) {
++        let position = get_position_record_or_panic(env, id);
++        assert!(get_position_mode(env, id) == PositionMode::PerpsV3, "not v3");
++        let controller = env.current_contract_address();
++        assert!(payer != position.owner && payer != controller && position.owner != controller, "invalid recovery payer");
++        let mut assets = normalize(env, id, &position, &payer);
++        let vaults = get_position_vaults(env, id, &position);
++        let perps = get_perps_position_data_or_panic(env, id);
++        let (expected_debt, expected_collateral) = match perps.side {
++            PositionSide::Long => (&perps.margin_asset, &perps.base_asset),
++            PositionSide::Short => (&perps.base_asset, &perps.margin_asset),
++        };
++        assert!(position.debt_asset == *expected_debt && position.collateral_asset == *expected_collateral,
++            "position asset mismatch");
++        Self::assert_margin_lock_configured(env, &vaults.debt_vault);
++        Self::assert_margin_lock_configured(env, &vaults.position_vault);
++        let policy = get_peridottroller(env);
++        assert!(!policy.is_liquidation_paused(&vaults.debt_vault)
++            && !policy.is_liquidation_paused(&vaults.position_vault), "liquidation paused");
++        let debt_vault = ReceiptVaultClient::new(env, &vaults.debt_vault);
++        let position_vault = ReceiptVaultClient::new(env, &vaults.position_vault);
++        assert!(debt_vault.get_underlying_token() == position.debt_asset
++            && position_vault.get_underlying_token() == position.collateral_asset, "receipt asset mismatch");
++        if position.collateral_asset == position.debt_asset {
++            assets.proceeds = assets.proceeds.checked_add(assets.underlying).expect("same asset overflow");
++            assets.underlying = 0;
++        }
++        assert!((assets.ptokens > 0 && min_underlying == 0) || (assets.ptokens == 0 && min_ptokens == 0),
++            "wrong seizure unit");
++        let cash = token::Client::new(env, &position.debt_asset);
++        assert!(cash.balance(&controller) >= i128::try_from(assets.proceeds).expect("proceeds overflow"), "held proceeds missing");
++        if assets.underlying > 0 {
++            assert!(token::Client::new(env, &position.collateral_asset).balance(&controller)
++                >= i128::try_from(assets.underlying).expect("collateral overflow"), "held collateral missing");
++        }
++        if assets.ptokens > 0 {
++            assert!(position_vault.get_ptoken_balance(&controller) >= assets.ptokens, "receipt collateral missing");
++        }
++        debt_vault.update_interest();
++        let debt = debt_vault.get_margin_borrow_balance(&id);
++        let used = assets.proceeds.min(debt);
++        let needed = debt - used;
++        // Full own-proceeds coverage does not authorize a fee-free early exit.
++        // Ordinary finish_close remains available during the live deadline and
++        // preserves its contingent fee. Only expired Closing may use the
++        // zero-top-up forced-settlement exception without a health valuation.
++        if needed == 0 {
++            if let Some(expiry) = assets.closing_expiry {
++                if env.ledger().timestamp() <= expiry {
++                    panic_with_error!(env, StalledError::LiveConvertedClose);
++                }
++            }
++        }
++        assert!(max_top_up >= needed, "max top up too small");
++        let mut seized_t = 0;
++        let mut seized_u = 0;
++        if needed > 0 {
++            // No static/cached-price fallback. Any value-based seizure fails closed.
++            let dp = refresh_price_usd(env, &position.debt_asset);
++            let cp = refresh_price_usd(env, &position.collateral_asset);
++            let rate = if assets.ptokens > 0 {
++                position_vault.update_interest();
++                let r = position_vault.get_exchange_rate();
++                assert!(r > 0, "invalid receipt rate"); r
++            } else { SCALE_1E6 };
++            let underlying = assets.underlying.checked_add(assets.ptokens.checked_mul(rate).expect("collateral overflow") / SCALE_1E6).expect("collateral overflow");
++            let debt_value = value(debt, dp);
++            let collateral_value = value(underlying, cp).checked_add(value(assets.proceeds, dp)).expect("value overflow");
++            if let Some(expiry) = assets.closing_expiry {
++                let notional = match perps.side { PositionSide::Long => collateral_value, PositionSide::Short => debt_value };
++                let maintenance = notional.checked_mul(perps.maintenance_margin_scaled).expect("maintenance overflow") / SCALE_1E6;
++                assert!(env.ledger().timestamp() > expiry || collateral_value.saturating_sub(debt_value) <= maintenance,
++                    "healthy close still live");
++            }
++            let seize_value = value(needed, dp);
++            let cap_u = seize_value.checked_mul(cp.1).expect("seizure overflow") / cp.0;
++            if assets.ptokens > 0 {
++                seized_t = (cap_u.checked_mul(SCALE_1E6).expect("seizure overflow") / rate).min(assets.ptokens);
++            } else { seized_u = cap_u.min(assets.underlying); }
++        }
++        if seized_t < min_ptokens || seized_u < min_underlying {
++            panic_with_error!(env, StalledError::SeizureBelowMinimum);
++        }
++        // Current proceeds belong to this position and pay its debt BEFORE any
++        // external contribution. No persisted partial-settlement stage is added.
++        if used > 0 {
++            let before = cash.balance(&controller);
++            Self::authorize_controller_margin_repay(env, &vaults.debt_vault, &position.debt_asset,
++                &controller, id, used);
++            debt_vault.repay_for_margin(&id, &controller, &used);
++            assert!(before.checked_sub(cash.balance(&controller)) == Some(i128::try_from(used).unwrap())
++                && debt_vault.get_margin_borrow_balance(&id) == needed, "proceeds repayment mismatch");
++        }
++        if needed > 0 {
++            let payer_before = cash.balance(&payer);
++            let vault_before = cash.balance(&vaults.debt_vault);
++            let paid = debt_vault.repay_full_for_margin(&id, &payer, &max_top_up);
++            assert!(paid == needed && payer_before.checked_sub(cash.balance(&payer)) == Some(i128::try_from(needed).unwrap())
++                && cash.balance(&vaults.debt_vault).checked_sub(vault_before) == Some(i128::try_from(needed).unwrap()),
++                "external full repayment mismatch");
++        }
++        assert!(debt_vault.get_margin_borrow_balance(&id) == 0, "debt remains");
++        // Payer compensation is based only on its net contribution; zero bonus.
++        Self::stalled_transfer_ptokens(env, &position, &vaults.position_vault, &payer, seized_t);
++        Self::stalled_transfer_ptokens(env, &position, &vaults.position_vault, &position.owner, assets.ptokens - seized_t);
++        Self::stalled_transfer_underlying(env, &position.collateral_asset, &position.owner, &payer, seized_u);
++        Self::stalled_transfer_underlying(env, &position.collateral_asset, &position.owner, &position.owner, assets.underlying - seized_u);
++        Self::stalled_transfer_underlying(env, &position.debt_asset, &position.owner, &position.owner, assets.proceeds - used);
++        // Explicit research policy: no NEW contingent closing fee on forced
++        // settlement. Previously reserved fee entitlement/backing is untouched.
++        let contingent = get_fee_terms(env, id).map(|f| f.close_fee_underlying).unwrap_or(0);
++        StalledSettled { id, payer, owner: position.owner.clone(), paid_proceeds: used, paid_external: needed,
++            seized_ptokens: seized_t, seized_underlying: seized_u, returned_proceeds: assets.proceeds - used,
++            returned_ptokens: assets.ptokens - seized_t, returned_underlying: assets.underlying - seized_u,
++            contingent_fee_uncharged: contingent }.publish(env);
++        clear_perps_v3_position_storage(env, id);
++        remove_user_position(env, &position.owner, id);
++        (used, needed, seized_t, seized_u)
++    }
++}

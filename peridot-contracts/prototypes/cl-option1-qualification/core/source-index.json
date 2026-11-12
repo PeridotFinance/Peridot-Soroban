@@ -1,0 +1,56 @@
+{
+  "scope": "four controlled native Core29 fixture modes pass; financial/live/signature/release qualification remains false",
+  "official_core_commit": "a9d72b0cac3a89ebbcf926af449ac73089e0f8f7",
+  "files": [
+    {
+      "path": "CLRestoreQualification.cpp",
+      "bytes": 19292,
+      "sha256": "247ba377b3319525f648bdfbbfc9c8159ce8cd80a5e557adca4306be8378a814"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4482,
+      "sha256": "6efb8e185ae493919ef7c1ebcd6af0a67a1d19ec21de18850ab51cabefc4a8cc"
+    },
+    {
+      "path": "core-fixture.patch",
+      "bytes": 22284,
+      "sha256": "3dded1cab6f818daf07857d3bd3c4ae3a18ed12c2ca102ae9505004887d7f108"
+    },
+    {
+      "path": "generate-maintenance-input.py",
+      "bytes": 3321,
+      "sha256": "5ed95fc1d71a15dc9d2bf82bec04a6d8f3a53acc5cca44517055906ca9277c38"
+    },
+    {
+      "path": "generate-partial-input.py",
+      "bytes": 2190,
+      "sha256": "34ac380cf6298707a015e59e19f4767a0a2d4ffa19dba6390cceb3b5a5a084e7"
+    },
+    {
+      "path": "generate-receipt-state-input.py",
+      "bytes": 5716,
+      "sha256": "341604c4396542502b8ac755dd7e2b77da3ba123473ea1eb76b9394d4c62e0f6"
+    },
+    {
+      "path": "regenerate-receipt-input.py",
+      "bytes": 1226,
+      "sha256": "2f00e83a19fae7d4ce09537f33c7cb3672442157555d4cd009ccb8a47830c4d9"
+    },
+    {
+      "path": "run-restore-test.sh",
+      "bytes": 849,
+      "sha256": "ded3f550feac3f484579ef518c60a907f7da99837b2c8ffa0902a60f66b13af6"
+    },
+    {
+      "path": "signing-refusal.patch",
+      "bytes": 530,
+      "sha256": "5d0b1bf915dc5c6c8925ea15cb0dc9fb01701010a86302d01bc67cbde2426356"
+    },
+    {
+      "path": "verify-staged-inputs.py",
+      "bytes": 1485,
+      "sha256": "b858928be18ebbe14898115607f2b41804679b757b4ede7885e84563510a8ae4"
+    }
+  ]
+}

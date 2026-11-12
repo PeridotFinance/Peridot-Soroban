@@ -1,0 +1,406 @@
+{
+  "schema": "cl-decisions-checkpoint-v1",
+  "stage1_complete": false,
+  "release_approval": false,
+  "pr": "https://github.com/PeridotFinance/Peridot-Soroban/pull/75",
+  "draft": true,
+  "source_parent": "ac6325589a0095084c2df641d9b743860b4795f8",
+  "production_stages_changed": false,
+  "resource_policy_changed": false,
+  "three_claim_boundaries_preserved": true,
+  "new_required_proofs": 46,
+  "runtime": "SDK/host29.0.1; captured ledger65264920 exact cost coefficients; controlled state/syntheticexternal auth/unsignedtransactions",
+  "baseline_report": "docs/deployment-handoffs/14-cl-decisions-reserve-integration-20261102.md",
+  "resource_decision": "docs/deployment-handoffs/12-cl-resource-decision-20261102.md",
+  "history_plan": "docs/deployment-handoffs/13-cl-history-operating-plan-20261102.md",
+  "durable_evidence": "docs/deployment-handoffs/evidence/cl-decisions-reserve-20261102",
+  "completed_prior_ci": {
+    "run": 41449397462,
+    "source": "ac6325589a0095084c2df641d9b743860b4795f8",
+    "checker": "PASS",
+    "checkpoint": "FAIL",
+    "artifact": 13146343183,
+    "separate_archive": "docs/deployment-handoffs/evidence/cl-linux-ci-ac63255-20261102",
+    "per_profile_replay_verified": true
+  },
+  "profiles": {
+    "internal-policy": {
+      "gates": {
+        "invocation": false,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "lifecycle_errors": 106,
+      "transaction_errors": 303,
+      "tests": {
+        "integrity": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 1,
+              "failed": 0,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 37,
+              "result": "ok"
+            }
+          ],
+          "sha256": "c61197d84bf0e594cacfadb82b4a4a44fda1bf4d1340b58f426c0c4b433b9c28"
+        },
+        "harness": {
+          "passed": 4,
+          "failed": 32,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 4,
+              "failed": 32,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 2,
+              "result": "FAILED"
+            }
+          ],
+          "sha256": "5fc5512c119ec3d7c0a7cb8f5eccf571f0cf24e876cfd22794c547bb8ff87680"
+        },
+        "archive": {
+          "passed": 0,
+          "failed": 3,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 0,
+              "failed": 3,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 35,
+              "result": "FAILED"
+            }
+          ],
+          "sha256": "8da7a84b927e88f33568b531609f6d229db7944e28f51d66fc682a893c71f949"
+        },
+        "history-scale-archive": {
+          "passed": 0,
+          "failed": 2,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 0,
+              "failed": 2,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 36,
+              "result": "FAILED"
+            }
+          ],
+          "sha256": "9e632cc125d990ec2315eacdc1b61b92f8414e031a90026242c2d3f56307cb18"
+        },
+        "native-funded": {
+          "passed": 5,
+          "failed": 4,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 5,
+              "failed": 4,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 112,
+              "result": "FAILED"
+            }
+          ],
+          "sha256": "f8fb592cd249792e5a82ebb9143e8a24da011c486fb5dd515578aa066d0b67fb"
+        }
+      },
+      "sdk": {
+        "rows": 161,
+        "failed_rows": 31,
+        "max": {
+          "instructions": 100003731,
+          "memory_bytes": 16847283,
+          "read_entries": 113,
+          "write_entries": 30,
+          "disk_read_entries": 3,
+          "read_bytes": 276,
+          "write_bytes": 5484,
+          "contract_events_size_bytes": 2280,
+          "persistent_rent_ledger_bytes": 5594570160,
+          "persistent_entry_rent_bumps": 9,
+          "temporary_rent_ledger_bytes": 223948728,
+          "temporary_entry_rent_bumps": 1
+        },
+        "sdk_entries_max": 137,
+        "runtime_protocols": [
+          29
+        ]
+      },
+      "unsigned_max": {
+        "instructions": 61650405,
+        "memory_bytes": 8084470,
+        "transaction_size_bytes": 9960,
+        "write_entries": 27,
+        "disk_read_entries": 2,
+        "disk_read_bytes": 184,
+        "write_bytes": 5484,
+        "contract_events_size_bytes": 2284
+      },
+      "unique_footprint_max": 115,
+      "fee_maxima_stroops": {
+        "inclusion": 100,
+        "non_refundable": 72352,
+        "refundable": 5577,
+        "rent": 4599374,
+        "total": 4651047
+      }
+    },
+    "captured-network-diagnostic": {
+      "gates": {
+        "invocation": true,
+        "lifecycle": true,
+        "transaction": true,
+        "checkpoint": true
+      },
+      "lifecycle_errors": 0,
+      "transaction_errors": 0,
+      "tests": {
+        "integrity": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 1,
+              "failed": 0,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 37,
+              "result": "ok"
+            }
+          ],
+          "sha256": "3bfb9558a63d73125709f1ad7f9c76769ae04e3ac1842de75729434019e78926"
+        },
+        "harness": {
+          "passed": 36,
+          "failed": 0,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 36,
+              "failed": 0,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 2,
+              "result": "ok"
+            }
+          ],
+          "sha256": "4ba4c31aa87a4f78f5bce825c70e36fbcefb24645007bb78483ce554aefa4d26"
+        },
+        "archive": {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 3,
+              "failed": 0,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 35,
+              "result": "ok"
+            }
+          ],
+          "sha256": "2119311a4199567cbdababb34d6bf328f8818b67c4ba85626289ad134d8402d3"
+        },
+        "history-scale-archive": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 2,
+              "failed": 0,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 36,
+              "result": "ok"
+            }
+          ],
+          "sha256": "e900350d35e89b920a1e258500f587ed8d291c888ba776717782e8dd807af397"
+        },
+        "native-funded": {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "sections": [
+            {
+              "passed": 9,
+              "failed": 0,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 112,
+              "result": "ok"
+            }
+          ],
+          "sha256": "4c009f5fc631af37ae5a9a3301d5ffbde33be8a5d1b1fa35f2755773b7451d12"
+        }
+      },
+      "sdk": {
+        "rows": 1652,
+        "failed_rows": 0,
+        "max": {
+          "instructions": 235456689,
+          "memory_bytes": 24514601,
+          "read_entries": 157,
+          "write_entries": 56,
+          "disk_read_entries": 3,
+          "read_bytes": 276,
+          "write_bytes": 19236,
+          "contract_events_size_bytes": 6200,
+          "persistent_rent_ledger_bytes": 27786229536,
+          "persistent_entry_rent_bumps": 30,
+          "temporary_rent_ledger_bytes": 228372152,
+          "temporary_entry_rent_bumps": 2
+        },
+        "sdk_entries_max": 213,
+        "runtime_protocols": [
+          29
+        ]
+      },
+      "unsigned_max": {
+        "instructions": 236693999,
+        "memory_bytes": 21678566,
+        "transaction_size_bytes": 15092,
+        "write_entries": 57,
+        "disk_read_entries": 12,
+        "disk_read_bytes": 2580,
+        "write_bytes": 19236,
+        "contract_events_size_bytes": 6204
+      },
+      "unique_footprint_max": 158,
+      "fee_maxima_stroops": {
+        "inclusion": 100,
+        "non_refundable": 162160,
+        "refundable": 15147,
+        "rent": 22686852,
+        "total": 22845642
+      }
+    }
+  },
+  "native_default": {
+    "passed": 110,
+    "failed": 0,
+    "ignored": 2,
+    "sections": [
+      {
+        "passed": 110,
+        "failed": 0,
+        "ignored": 2,
+        "measured": 0,
+        "filtered_out": 8,
+        "result": "ok"
+      }
+    ],
+    "sha256": "af6e67f5d993ff310bbde7f9507098804ed78a1f27da06895081c7b02b3b5b81"
+  },
+  "native_vault": {
+    "passed": 53,
+    "failed": 0,
+    "ignored": 0,
+    "sections": [
+      {
+        "passed": 53,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "result": "ok"
+      },
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "result": "ok"
+      }
+    ],
+    "sha256": "492f0dbbf793dd81eba1051287f3109d7ad1551a41a2bde6baf6bbe1b76c53f9"
+  },
+  "checker_tests_passed": 32,
+  "artifacts": {
+    "cl_integration_fixtures.wasm": {
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+      "bytes": 3168
+    },
+    "cl_share_vault.wasm": {
+      "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f",
+      "bytes": 85750
+    },
+    "cl_share_pool_facade.wasm": {
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5",
+      "bytes": 7298
+    },
+    "margin_controller.wasm": {
+      "sha256": "f59f592b1013d4e1ec49975f0cb2bb0ff81e9ab0f88f92bd76c3b7a1d6de7a36",
+      "bytes": 91657
+    },
+    "swap_adapter.wasm": {
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d",
+      "bytes": 10876
+    },
+    "receipt_vault.wasm": {
+      "sha256": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e",
+      "bytes": 87197
+    },
+    "simple_peridottroller.wasm": {
+      "sha256": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2",
+      "bytes": 63289
+    },
+    "jump_rate_model.wasm": {
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+      "bytes": 7644
+    }
+  },
+  "additional_fixture_artifacts": {
+    "default_margin": {
+      "path": "default-artifacts/margin_controller.wasm",
+      "sha256": "3ff76a19dabcd20e5c432aee6757e4561537f991dfcdd4d81926691c34cf4bb9",
+      "bytes": 87123
+    },
+    "legacy_receipt": {
+      "path": "legacy-receipt/artifacts/receipt_vault_legacy_abi.wasm",
+      "sha256": "dddbadfc2bfa8d8dd24867e9b8e1db138506eeb7225f1301c9b68135948d3264",
+      "bytes": 80262
+    }
+  },
+  "reserve": "default source patch prepared; dependency upgrades/bindings/readbacks unexecuted; validation CL custody/funded liquidation remain guarded",
+  "fee_refund_regression": {
+    "old_incorrect_alice_fee": 400,
+    "fixed_alice_fee": 0,
+    "fixed_bob_fee": 200000,
+    "repeat_fee": 0,
+    "reserved_refund": 200000
+  },
+  "safety": {
+    "borrowing_preparation_enabled": false,
+    "production_maintenance_margin": null,
+    "signatures": 0,
+    "broadcasts": 0,
+    "secrets_read": false,
+    "upshift_binding": false,
+    "shared00_changed": false
+  },
+  "remaining": [
+    "Existing internal resource failures",
+    "Signed account/contract-wallet/envelope overhead",
+    "Live asset/oracle/venue/depeg/capacity validation",
+    "Receipt ABI/storage/binding deployment ordering and readbacks",
+    "History collector/indexer/retention and archival funding not deployed",
+    "Governance authenticity unavailable =>indefinite quarantine",
+    "Production CL custody/funded liquidation ABI remains validation-only",
+    "New isolated split prototype is separate work, not adoption"
+  ]
+}

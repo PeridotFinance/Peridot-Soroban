@@ -1,0 +1,20 @@
+   Compiling cl-runtime29-harness v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/harness/cl-runtime29)
+warning: unused import: `TryFromVal`
+ --> src/../../../contracts/cl-share-pool-facade/src/historical_tests.rs:3:23
+  |
+3 | use soroban_sdk::{Map,TryFromVal,BytesN};
+  |                       ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cl-runtime29-harness` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.00s
+     Running unittests src/lib.rs (harness/cl-runtime29/target/debug/deps/cl_runtime29_harness-4e9f232d23272ed4)
+
+running 1 test
+RESOURCE_PROFILE {"captured_ledger":65264920,"limits":{"contract_events_size_bytes":16384,"disk_read_bytes":200000,"disk_read_entries":200,"instructions":400000000,"ledger_entries":400,"max_contract_code_entry_size_bytes":131072,"max_contract_data_entry_size_bytes":65536,"max_contract_data_key_size_bytes":250,"mem_bytes":41943040,"transaction_size_bytes":132096,"write_bytes":132096,"write_entries":200},"mode":"acceptance","name":"captured-network-diagnostic","network_config_path":"/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-stage1-history-final/network-config.json","network_sha256":"a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd","release_approval":false,"schema":"cl-resource-profile-v1","target_protocol":29} host_protocol=29 exact_captured_cost_model=true
+RUNTIME_INTEGRITY Version { pkg: "29.0.1", rev: "ff6ae01b3465ac44185d2824876491e62c9a4cc4", interface: ScEnvMetaEntryInterfaceVersion { protocol: 29, pre_release: 0 }, xdr: Version { pkg: "28.0.0", rev: "d0f1330e43c3a2c0c616da30698b24140d4eea72", xdr: "9c9c145953e80990d6ff1ae3a6a973a0ce6d0694", features: [] } }
+test runtime_integrity_and_captured_cost_models ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.01s
+

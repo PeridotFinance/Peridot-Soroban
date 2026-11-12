@@ -1,0 +1,88 @@
+{
+  "ledger": 65440850,
+  "stateArchival": {
+    "maxEntryTtl": 3110400,
+    "minPersistentTtl": 2073600,
+    "minTemporaryTtl": 17280
+  },
+  "groups": {
+    "controller": {
+      "count": 21,
+      "minRemainingLedgers": 2070111,
+      "maxRemainingLedgers": 2070529,
+      "earliestArchiveUTC": "2027-03-12T08:40:52.000Z",
+      "latestArchiveUTC": "2027-03-12T09:15:42.000Z"
+    },
+    "USDC": {
+      "count": 27,
+      "minRemainingLedgers": 2070113,
+      "maxRemainingLedgers": 3110046,
+      "earliestArchiveUTC": "2027-03-12T08:41:02.000Z",
+      "latestArchiveUTC": "2027-05-11T13:02:07.000Z"
+    },
+    "XLM": {
+      "count": 27,
+      "minRemainingLedgers": 2070115,
+      "maxRemainingLedgers": 3110049,
+      "earliestArchiveUTC": "2027-03-12T08:41:12.000Z",
+      "latestArchiveUTC": "2027-05-11T13:02:22.000Z"
+    },
+    "PYUSD": {
+      "count": 27,
+      "minRemainingLedgers": 2070118,
+      "maxRemainingLedgers": 3110052,
+      "earliestArchiveUTC": "2027-03-12T08:41:27.000Z",
+      "latestArchiveUTC": "2027-05-11T13:02:37.000Z"
+    },
+    "EURC": {
+      "count": 27,
+      "minRemainingLedgers": 2070121,
+      "maxRemainingLedgers": 3110055,
+      "earliestArchiveUTC": "2027-03-12T08:41:42.000Z",
+      "latestArchiveUTC": "2027-05-11T13:02:52.000Z"
+    },
+    "USDC SAC dependency": {
+      "count": 2,
+      "minRemainingLedgers": 1885735,
+      "maxRemainingLedgers": 2070760,
+      "earliestArchiveUTC": "2027-03-01T16:36:12.000Z",
+      "latestArchiveUTC": "2027-03-12T09:34:57.000Z"
+    },
+    "XLM SAC dependency": {
+      "count": 2,
+      "minRemainingLedgers": 2070770,
+      "maxRemainingLedgers": 2186920,
+      "earliestArchiveUTC": "2027-03-12T09:35:47.000Z",
+      "latestArchiveUTC": "2027-03-19T02:54:57.000Z"
+    },
+    "PYUSD SAC dependency": {
+      "count": 2,
+      "minRemainingLedgers": 2070776,
+      "maxRemainingLedgers": 3063995,
+      "earliestArchiveUTC": "2027-03-12T09:36:17.000Z",
+      "latestArchiveUTC": "2027-05-08T21:04:32.000Z"
+    },
+    "EURC SAC dependency": {
+      "count": 2,
+      "minRemainingLedgers": 1885737,
+      "maxRemainingLedgers": 2070780,
+      "earliestArchiveUTC": "2027-03-01T16:36:22.000Z",
+      "latestArchiveUTC": "2027-03-12T09:36:37.000Z"
+    },
+    "controller code": {
+      "count": 1,
+      "minRemainingLedgers": 2060323,
+      "maxRemainingLedgers": 2060323,
+      "earliestArchiveUTC": "2027-03-11T19:05:12.000Z",
+      "latestArchiveUTC": "2027-03-11T19:05:12.000Z"
+    },
+    "shared receipt code": {
+      "count": 1,
+      "minRemainingLedgers": 2060353,
+      "maxRemainingLedgers": 2060353,
+      "earliestArchiveUTC": "2027-03-11T19:07:42.000Z",
+      "latestArchiveUTC": "2027-03-11T19:07:42.000Z"
+    }
+  },
+  "missing": []
+}

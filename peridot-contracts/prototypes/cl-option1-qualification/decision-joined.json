@@ -1,0 +1,102 @@
+{
+  "assessment_sha256": "75f1407dfc5b0781e1a3ceaaf4db69658197664b7ec1a3c2fc1e926b2a697c0e",
+  "joined_maxima": {
+    "instructions": 227685319,
+    "memory_bytes": 22793790,
+    "sdk_entries": 176,
+    "unique_keys": 126,
+    "write_entries": 52
+  },
+  "settings": {
+    "instructions": [
+      100000000,
+      300000000,
+      240000000,
+      400000000
+    ],
+    "memory_bytes": [
+      41943040,
+      33554432,
+      26843545,
+      41943040
+    ],
+    "sdk_entries": [
+      100,
+      300,
+      240,
+      null
+    ],
+    "unique_keys": [
+      100,
+      300,
+      240,
+      400
+    ],
+    "write_entries": [
+      50,
+      100,
+      80,
+      200
+    ]
+  },
+  "supplier_separate_population": {
+    "deposit_underlying": {
+      "instructions": 166914792,
+      "memory_bytes": 14418955,
+      "sdk_entries": 70,
+      "unique_keys": 49,
+      "writes": 22
+    },
+    "redeem": {
+      "instructions": 139966854,
+      "memory_bytes": 10640393,
+      "sdk_entries": 65,
+      "unique_keys": 47,
+      "writes": 19
+    }
+  },
+  "mixed_evidence_sha256": "8e54a87a2eb0248c52f48e86bd6521ca72747f6c4b4975f0adddd276e34a0ed1",
+  "mixed_maxima": {
+    "instructions": 46980924,
+    "memory_bytes": 9091183,
+    "sdk_entries": 97,
+    "unique_keys": 70,
+    "write_entries": 28
+  },
+  "wasm": {
+    "cl_integration_fixtures.wasm": {
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+      "bytes": 3168
+    },
+    "cl_share_pool_facade.wasm": {
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5",
+      "bytes": 7298
+    },
+    "cl_share_vault.wasm": {
+      "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f",
+      "bytes": 85750
+    },
+    "jump_rate_model.wasm": {
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+      "bytes": 7644
+    },
+    "margin_controller.wasm": {
+      "sha256": "ad9fbb7669ff126ff54e8d9b021d610b9313cb5f3dc595df6e9d7dabc3d7d482",
+      "bytes": 100419
+    },
+    "receipt_vault.wasm": {
+      "sha256": "fc1ac7d397428438c58c50ce8930907c5965587aac7cc0f9988025235dcde362",
+      "bytes": 88329
+    },
+    "simple_peridottroller.wasm": {
+      "sha256": "a55d5740007553d955c26e08efad4289b093c0d85c34a2b0e2af7262eaba0052",
+      "bytes": 63411
+    },
+    "swap_adapter.wasm": {
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d",
+      "bytes": 10876
+    }
+  },
+  "policy_adopted": false,
+  "release_approval": false
+}

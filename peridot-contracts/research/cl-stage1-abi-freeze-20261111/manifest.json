@@ -1,0 +1,119 @@
+{
+  "schema": "stage1-package1-evidence-v1",
+  "accepted_parent": "3b962e371d74c32e7f6076296a58bbfcecaa7ff9",
+  "native_tests_passed": 5,
+  "financial_tests_run": false,
+  "release_approval": false,
+  "files": [
+    {
+      "path": "../docs/deployment-handoffs/28-cl-stage1-package1-abi-freeze-20261111.md",
+      "bytes": 9819,
+      "sha256": "e0d5655b6d1dce1718743a93088d34303fae02c501d4a0cae7fee58b93b31603"
+    },
+    {
+      "path": "Cargo.lock",
+      "bytes": 47224,
+      "sha256": "5a378c520523bdcf3b0011afbdd2afa467661b50557b195db9dbb6ace5c17520"
+    },
+    {
+      "path": "Cargo.toml",
+      "bytes": 1427,
+      "sha256": "6f69bdb02f1f60c680746f964e5d9b6943d69a19d6c61c0337ce076e20dff7b6"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/Cargo.toml",
+      "bytes": 204,
+      "sha256": "b795d8f1ad632fab37632fc3b272e4caa5931434fde2d44770c61c5d14387ca5"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/README.md",
+      "bytes": 1912,
+      "sha256": "685d1964d5e25d3d43f2be4e41249411e187ba468d4ee99502818d276938cd79"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/SEMANTICS.md",
+      "bytes": 16668,
+      "sha256": "3abee7db87742a36ee3c21e37fa0a9ec9366546f86517203504a0f821eca3827"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/abi-manifest.json",
+      "bytes": 31515,
+      "sha256": "ee5c94990c25bfc24467999241eb18679739044c46bd2a1d0d31a365bf4a4160"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/fixture-pins.json",
+      "bytes": 4004,
+      "sha256": "2d4399906662529189e059c8213d32b12b9499a03e0824eac9228b7ee4699e82"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/freeze.py",
+      "bytes": 5431,
+      "sha256": "c3c3b56190a6eaf9e2ca64850c209c5dd7a14d8417260c64f75778c9db43d9ce"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/proof-map.json",
+      "bytes": 4881,
+      "sha256": "de6114915683c299d2cceefe69f790dd06ff4e82981a54994dc655e004bc839a"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/src/lib.rs",
+      "bytes": 10768,
+      "sha256": "b91192dff921d652f849005f65c6922626f0d51d486719783fb90cfd0e45b8bc"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/tests/key_catalog.rs",
+      "bytes": 20729,
+      "sha256": "88534a3b8c8566e2216493c18df721f7ebbdc288a11ffd2064391564ba22800c"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/tests/wire.rs",
+      "bytes": 9295,
+      "sha256": "244691aa86fcc5d9c0112ac000ec863aba558a586ecf2c546a3f3c6ca71dcb66"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/verify.py",
+      "bytes": 1059,
+      "sha256": "50a935204eb036f46ff923f9c3194b398b5a2027f2c381b850c691ee5261ff5a"
+    },
+    {
+      "path": "interfaces/cl-stage1-interface/wire-golden.json",
+      "bytes": 15055,
+      "sha256": "58d0f0c51e6db06748d892930a208abdb9c3fbb2d922e2048f85157ae4cb9044"
+    },
+    {
+      "path": "research/cl-stage1-abi-freeze-20261111/README.md",
+      "bytes": 765,
+      "sha256": "dc009a24deca16002ebe922eba3b7f482f4e6b66b3aa63b7f3ccb5c853f97eba"
+    },
+    {
+      "path": "research/cl-stage1-abi-freeze-20261111/check.log",
+      "bytes": 202,
+      "sha256": "02d5f4eaade8493047966efe6278d5e5db0a7c5459e1d25d5043a25a5776603a"
+    },
+    {
+      "path": "research/cl-stage1-abi-freeze-20261111/economics-replay.log",
+      "bytes": 5010,
+      "sha256": "a4a6161a0f844455571e229b23b801211948cb839a0ad39f7f7bb01afabaa470"
+    },
+    {
+      "path": "research/cl-stage1-abi-freeze-20261111/native-release.log",
+      "bytes": 1244,
+      "sha256": "fcc22b502398165710d261af2939999cce24853931d3f094d92e0cc0f5778f5a"
+    },
+    {
+      "path": "research/cl-stage1-abi-freeze-20261111/verify.py",
+      "bytes": 658,
+      "sha256": "881c84a2e7cb3f4a94f0eb179cf231876c2a6187fd9f2d967c8210adce1e66e0"
+    },
+    {
+      "path": "research/cl-stage1-abi-freeze-20261111/wire-first.log",
+      "bytes": 709,
+      "sha256": "b3b1eff90de9bfa1afce5b71f49c2db9e267035c5d095eda5b9d2ddc20f2bdee"
+    },
+    {
+      "path": "research/cl-stage1-economics-20261111/manifest.json",
+      "bytes": 8146,
+      "sha256": "4febf775a752379abf78267e75a457a11d63b233ca8cdf9542be5fde3f5cb868"
+    }
+  ]
+}

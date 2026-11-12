@@ -1,0 +1,1720 @@
+{
+  "startLedger": 65437362,
+  "cursor": "281066284803289089",
+  "coveredThrough": 65440843,
+  "scannedTransactions": 970400,
+  "keys": {
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABQAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABQAAAAB",
+      "firstSeenLedger": 65437362,
+      "lastSeenLedger": 65437507,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABQAAAAB": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABQAAAAB",
+      "firstSeenLedger": 65437364,
+      "lastSeenLedger": 65440497,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABQAAAAB": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABQAAAAB",
+      "firstSeenLedger": 65437366,
+      "lastSeenLedger": 65440500,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABQAAAAB": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABQAAAAB",
+      "firstSeenLedger": 65437369,
+      "lastSeenLedger": 65440503,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABQAAAAB": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "INSTANCE",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABQAAAAB",
+      "firstSeenLedger": 65437372,
+      "lastSeenLedger": 65440506,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAAB": {
+      "group": "USDC SAC dependency",
+      "contract": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      "purpose": "shared SAC instance",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dwAAABQAAAAB": {
+      "group": "XLM SAC dependency",
+      "contract": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      "purpose": "shared SAC instance",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dwAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAGFGx/Q2Vr9o0jvwjWzoCgn93nF8ZUHC9KSWjBWOe/k8wAAABQAAAAB": {
+      "group": "PYUSD SAC dependency",
+      "contract": "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2",
+      "purpose": "shared SAC instance",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAGFGx/Q2Vr9o0jvwjWzoCgn93nF8ZUHC9KSWjBWOe/k8wAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAABgAAAAHmp9nrdSMAakaap0g60RByR0Q8DYLmJ2PeZwhIxOl8kAAAABQAAAAB": {
+      "group": "EURC SAC dependency",
+      "contract": "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV",
+      "purpose": "shared SAC instance",
+      "kind": "instance",
+      "keyScValXdr": "AAAAFA==",
+      "keyXdr": "AAAABgAAAAHmp9nrdSMAakaap0g60RByR0Q8DYLmJ2PeZwhIxOl8kAAAABQAAAAB",
+      "origin": "explicit dependency"
+    },
+    "AAAAB4R4lKZftZZ1x0cH6oiZYzp2OKonFqGDsLLv41qLwrkC": {
+      "group": "controller code",
+      "purpose": "WASM",
+      "kind": "code",
+      "hash": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+      "keyXdr": "AAAAB4R4lKZftZZ1x0cH6oiZYzp2OKonFqGDsLLv41qLwrkC",
+      "origin": "sealed artifact"
+    },
+    "AAAAB0Ipt++fQAKKIOe6ziSE8zDbvqYlqpjyn0U4YeDEmPee": {
+      "group": "shared receipt code",
+      "purpose": "WASM",
+      "kind": "code",
+      "hash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "keyXdr": "AAAAB0Ipt++fQAKKIOe6ziSE8zDbvqYlqpjyn0U4YeDEmPee",
+      "origin": "sealed artifact"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAQU3VwcG9ydGVkTWFya2V0cwAAAAE=": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"SupportedMarkets\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBTdXBwb3J0ZWRNYXJrZXRz",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAQU3VwcG9ydGVkTWFya2V0cwAAAAE=",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437780,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAQUGF1c2VMaXF1aWRhdGlvbgAAAAE=": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"PauseLiquidation\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBQYXVzZUxpcXVpZGF0aW9u",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAQUGF1c2VMaXF1aWRhdGlvbgAAAAE=",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437507,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAMUGF1c2VEZXBvc2l0AAAAAQ==": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"PauseDeposit\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAxQYXVzZURlcG9zaXQ=",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAMUGF1c2VEZXBvc2l0AAAAAQ==",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437507,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAARQ2xvc2VGYWN0b3JTY2FsZWQAAAAAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"CloseFactorScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABFDbG9zZUZhY3RvclNjYWxlZAAAAA==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAARQ2xvc2VGYWN0b3JTY2FsZWQAAAAAAAAB",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437507,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAUTGlxdWlkYXRpb25GZWVTY2FsZWQAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"LiquidationFeeScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABRMaXF1aWRhdGlvbkZlZVNjYWxlZA==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAUTGlxdWlkYXRpb25GZWVTY2FsZWQAAAAB",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437507,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAaTGlxdWlkYXRpb25JbmNlbnRpdmVTY2FsZWQAAAAAAAE=": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"LiquidationIncentiveScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABpMaXF1aWRhdGlvbkluY2VudGl2ZVNjYWxlZAAA",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAaTGlxdWlkYXRpb25JbmNlbnRpdmVTY2FsZWQAAAAAAAE=",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437507,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAALUGF1c2VSZWRlZW0AAAAAAQ==": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"PauseRedeem\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtQYXVzZVJlZGVlbQA=",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAALUGF1c2VSZWRlZW0AAAAAAQ==",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437507,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAWT3JhY2xlTWF4QWdlTXVsdGlwbGllcgAAAAAAAQ==": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"OracleMaxAgeMultiplier\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABZPcmFjbGVNYXhBZ2VNdWx0aXBsaWVyAAA=",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAWT3JhY2xlTWF4QWdlTXVsdGlwbGllcgAAAAAAAQ==",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437507,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAALUGF1c2VCb3Jyb3cAAAAAAQ==": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"PauseBorrow\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtQYXVzZUJvcnJvdwA=",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAALUGF1c2VCb3Jyb3cAAAAAAQ==",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437789,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"Admin\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAVBZG1pbgAAAA==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB",
+      "firstSeenLedger": 65437507,
+      "lastSeenLedger": 65437507,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAQWWVhcmx5UmF0ZVNjYWxlZAAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"YearlyRateScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBZZWFybHlSYXRlU2NhbGVk",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAQWWVhcmx5UmF0ZVNjYWxlZAAAAAE=",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"UnderlyingToken\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA9VbmRlcmx5aW5nVG9rZW4A",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxEZXBvc2l0ZWQAAAAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"TotalDeposited\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5Ub3RhbERlcG9zaXRlZAAA",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxEZXBvc2l0ZWQAAAAAAAE=",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65440497,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxCb3Jyb3dlZAAAAAAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"TotalBorrowed\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA1Ub3RhbEJvcnJvd2VkAAAA",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxCb3Jyb3dlZAAAAAAAAAE=",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxBZG1pbkZlZXMAAAAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"TotalAdminFees\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5Ub3RhbEFkbWluRmVlcwAA",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxBZG1pbkZlZXMAAAAAAAE=",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAJU3VwcGx5Q2FwAAAAAAAAAQ==": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"SupplyCap\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAlTdXBwbHlDYXAAAAA=",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAJU3VwcGx5Q2FwAAAAAAAAAQ==",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAATUmVzZXJ2ZUZhY3RvclNjYWxlZAAAAAAB": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"ReserveFactorScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNSZXNlcnZlRmFjdG9yU2NhbGVkAA==",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAATUmVzZXJ2ZUZhY3RvclNjYWxlZAAAAAAB",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAKUmF0ZXNSZWFkeQAAAAAAAQ==": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"RatesReady\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAApSYXRlc1JlYWR5AAA=",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAKUmF0ZXNSZWFkeQAAAAAAAQ==",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAALTWFuYWdlZENhc2gAAAAAAQ==": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"ManagedCash\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtNYW5hZ2VkQ2FzaAA=",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAALTWFuYWdlZENhc2gAAAAAAQ==",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65440497,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAATSW5pdGlhbEV4Y2hhbmdlUmF0ZQAAAAAB": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"InitialExchangeRate\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNJbml0aWFsRXhjaGFuZ2VSYXRlAA==",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAATSW5pdGlhbEV4Y2hhbmdlUmF0ZQAAAAAB",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"Initialized\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtJbml0aWFsaXplZAA=",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAQRGVidFN0YXRlVmVyc2lvbgAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"DebtStateVersion\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBEZWJ0U3RhdGVWZXJzaW9u",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAQRGVidFN0YXRlVmVyc2lvbgAAAAE=",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"Admin\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAVBZG1pbgAAAA==",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOTGFzdFVwZGF0ZVRpbWUAAAAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"LastUpdateTime\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5MYXN0VXBkYXRlVGltZQAA",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOTGFzdFVwZGF0ZVRpbWUAAAAAAAE=",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65440497,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAATQWNjdW11bGF0ZWRJbnRlcmVzdAAAAAAB": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"AccumulatedInterest\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNBY2N1bXVsYXRlZEludGVyZXN0AA==",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAATQWNjdW11bGF0ZWRJbnRlcmVzdAAAAAAB",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAATRGVidFN0YXRlTWlncmF0ZWRBdAAAAAAB": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"DebtStateMigratedAt\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNEZWJ0U3RhdGVNaWdyYXRlZEF0AA==",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAATRGVidFN0YXRlTWlncmF0ZWRBdAAAAAAB",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAWQm9ycm93WWVhcmx5UmF0ZVNjYWxlZAAAAAAAAQ==": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"BorrowYearlyRateScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABZCb3Jyb3dZZWFybHlSYXRlU2NhbGVkAAA=",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAWQm9ycm93WWVhcmx5UmF0ZVNjYWxlZAAAAAAAAQ==",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAWQ29sbGF0ZXJhbEZhY3RvclNjYWxlZAAAAAAAAQ==": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"CollateralFactorScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABZDb2xsYXRlcmFsRmFjdG9yU2NhbGVkAAA=",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAWQ29sbGF0ZXJhbEZhY3RvclNjYWxlZAAAAAAAAQ==",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOQWRtaW5GZWVTY2FsZWQAAAAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"AdminFeeScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5BZG1pbkZlZVNjYWxlZAAA",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOQWRtaW5GZWVTY2FsZWQAAAAAAAE=",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAALQm9ycm93SW5kZXgAAAAAAQ==": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"BorrowIndex\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtCb3Jyb3dJbmRleAA=",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAALQm9ycm93SW5kZXgAAAAAAQ==",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAJQm9ycm93Q2FwAAAAAAAAAQ==": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"BorrowCap\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAlCb3Jyb3dDYXAAAAA=",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAJQm9ycm93Q2FwAAAAAAAAAQ==",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxSZXNlcnZlcwAAAAAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"TotalReserves\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA1Ub3RhbFJlc2VydmVzAAAA",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxSZXNlcnZlcwAAAAAAAAE=",
+      "firstSeenLedger": 65437523,
+      "lastSeenLedger": 65437523,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAQWWVhcmx5UmF0ZVNjYWxlZAAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"YearlyRateScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBZZWFybHlSYXRlU2NhbGVk",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAQWWVhcmx5UmF0ZVNjYWxlZAAAAAE=",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAANVG90YWxSZXNlcnZlcwAAAAAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"TotalReserves\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA1Ub3RhbFJlc2VydmVzAAAA",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAANVG90YWxSZXNlcnZlcwAAAAAAAAE=",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxEZXBvc2l0ZWQAAAAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"TotalDeposited\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5Ub3RhbERlcG9zaXRlZAAA",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxEZXBvc2l0ZWQAAAAAAAE=",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65440500,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxBZG1pbkZlZXMAAAAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"TotalAdminFees\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5Ub3RhbEFkbWluRmVlcwAA",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxBZG1pbkZlZXMAAAAAAAE=",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAJU3VwcGx5Q2FwAAAAAAAAAQ==": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"SupplyCap\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAlTdXBwbHlDYXAAAAA=",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAJU3VwcGx5Q2FwAAAAAAAAAQ==",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAATUmVzZXJ2ZUZhY3RvclNjYWxlZAAAAAAB": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"ReserveFactorScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNSZXNlcnZlRmFjdG9yU2NhbGVkAA==",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAATUmVzZXJ2ZUZhY3RvclNjYWxlZAAAAAAB",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAKUmF0ZXNSZWFkeQAAAAAAAQ==": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"RatesReady\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAApSYXRlc1JlYWR5AAA=",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAKUmF0ZXNSZWFkeQAAAAAAAQ==",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAALTWFuYWdlZENhc2gAAAAAAQ==": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"ManagedCash\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtNYW5hZ2VkQ2FzaAA=",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAALTWFuYWdlZENhc2gAAAAAAQ==",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65440500,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAATSW5pdGlhbEV4Y2hhbmdlUmF0ZQAAAAAB": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"InitialExchangeRate\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNJbml0aWFsRXhjaGFuZ2VSYXRlAA==",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAATSW5pdGlhbEV4Y2hhbmdlUmF0ZQAAAAAB",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"UnderlyingToken\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA9VbmRlcmx5aW5nVG9rZW4A",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOQWRtaW5GZWVTY2FsZWQAAAAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"AdminFeeScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5BZG1pbkZlZVNjYWxlZAAA",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOQWRtaW5GZWVTY2FsZWQAAAAAAAE=",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAQRGVidFN0YXRlVmVyc2lvbgAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"DebtStateVersion\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBEZWJ0U3RhdGVWZXJzaW9u",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAQRGVidFN0YXRlVmVyc2lvbgAAAAE=",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAANVG90YWxCb3Jyb3dlZAAAAAAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"TotalBorrowed\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA1Ub3RhbEJvcnJvd2VkAAAA",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAANVG90YWxCb3Jyb3dlZAAAAAAAAAE=",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAWQ29sbGF0ZXJhbEZhY3RvclNjYWxlZAAAAAAAAQ==": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"CollateralFactorScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABZDb2xsYXRlcmFsRmFjdG9yU2NhbGVkAAA=",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAWQ29sbGF0ZXJhbEZhY3RvclNjYWxlZAAAAAAAAQ==",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOTGFzdFVwZGF0ZVRpbWUAAAAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"LastUpdateTime\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5MYXN0VXBkYXRlVGltZQAA",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOTGFzdFVwZGF0ZVRpbWUAAAAAAAE=",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65440500,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAALQm9ycm93SW5kZXgAAAAAAQ==": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"BorrowIndex\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtCb3Jyb3dJbmRleAA=",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAALQm9ycm93SW5kZXgAAAAAAQ==",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"Initialized\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtJbml0aWFsaXplZAA=",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAATRGVidFN0YXRlTWlncmF0ZWRBdAAAAAAB": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"DebtStateMigratedAt\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNEZWJ0U3RhdGVNaWdyYXRlZEF0AA==",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAATRGVidFN0YXRlTWlncmF0ZWRBdAAAAAAB",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAWQm9ycm93WWVhcmx5UmF0ZVNjYWxlZAAAAAAAAQ==": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"BorrowYearlyRateScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABZCb3Jyb3dZZWFybHlSYXRlU2NhbGVkAAA=",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAWQm9ycm93WWVhcmx5UmF0ZVNjYWxlZAAAAAAAAQ==",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAJQm9ycm93Q2FwAAAAAAAAAQ==": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"BorrowCap\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAlCb3Jyb3dDYXAAAAA=",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAJQm9ycm93Q2FwAAAAAAAAAQ==",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAATQWNjdW11bGF0ZWRJbnRlcmVzdAAAAAAB": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"AccumulatedInterest\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNBY2N1bXVsYXRlZEludGVyZXN0AA==",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAATQWNjdW11bGF0ZWRJbnRlcmVzdAAAAAAB",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"Admin\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAVBZG1pbgAAAA==",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB",
+      "firstSeenLedger": 65437525,
+      "lastSeenLedger": 65437525,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAQWWVhcmx5UmF0ZVNjYWxlZAAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"YearlyRateScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBZZWFybHlSYXRlU2NhbGVk",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAQWWVhcmx5UmF0ZVNjYWxlZAAAAAE=",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxSZXNlcnZlcwAAAAAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"TotalReserves\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA1Ub3RhbFJlc2VydmVzAAAA",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxSZXNlcnZlcwAAAAAAAAE=",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxBZG1pbkZlZXMAAAAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"TotalAdminFees\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5Ub3RhbEFkbWluRmVlcwAA",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxBZG1pbkZlZXMAAAAAAAE=",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAJU3VwcGx5Q2FwAAAAAAAAAQ==": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"SupplyCap\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAlTdXBwbHlDYXAAAAA=",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAJU3VwcGx5Q2FwAAAAAAAAAQ==",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAATUmVzZXJ2ZUZhY3RvclNjYWxlZAAAAAAB": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"ReserveFactorScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNSZXNlcnZlRmFjdG9yU2NhbGVkAA==",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAATUmVzZXJ2ZUZhY3RvclNjYWxlZAAAAAAB",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxEZXBvc2l0ZWQAAAAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"TotalDeposited\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5Ub3RhbERlcG9zaXRlZAAA",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxEZXBvc2l0ZWQAAAAAAAE=",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65440503,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAALTWFuYWdlZENhc2gAAAAAAQ==": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"ManagedCash\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtNYW5hZ2VkQ2FzaAA=",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAALTWFuYWdlZENhc2gAAAAAAQ==",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65440503,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAATSW5pdGlhbEV4Y2hhbmdlUmF0ZQAAAAAB": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"InitialExchangeRate\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNJbml0aWFsRXhjaGFuZ2VSYXRlAA==",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAATSW5pdGlhbEV4Y2hhbmdlUmF0ZQAAAAAB",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"Initialized\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtJbml0aWFsaXplZAA=",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAWQ29sbGF0ZXJhbEZhY3RvclNjYWxlZAAAAAAAAQ==": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"CollateralFactorScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABZDb2xsYXRlcmFsRmFjdG9yU2NhbGVkAAA=",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAWQ29sbGF0ZXJhbEZhY3RvclNjYWxlZAAAAAAAAQ==",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAALQm9ycm93SW5kZXgAAAAAAQ==": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"BorrowIndex\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtCb3Jyb3dJbmRleAA=",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAALQm9ycm93SW5kZXgAAAAAAQ==",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAATRGVidFN0YXRlTWlncmF0ZWRBdAAAAAAB": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"DebtStateMigratedAt\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNEZWJ0U3RhdGVNaWdyYXRlZEF0AA==",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAATRGVidFN0YXRlTWlncmF0ZWRBdAAAAAAB",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOTGFzdFVwZGF0ZVRpbWUAAAAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"LastUpdateTime\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5MYXN0VXBkYXRlVGltZQAA",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOTGFzdFVwZGF0ZVRpbWUAAAAAAAE=",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65440503,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"UnderlyingToken\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA9VbmRlcmx5aW5nVG9rZW4A",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAWQm9ycm93WWVhcmx5UmF0ZVNjYWxlZAAAAAAAAQ==": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"BorrowYearlyRateScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABZCb3Jyb3dZZWFybHlSYXRlU2NhbGVkAAA=",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAWQm9ycm93WWVhcmx5UmF0ZVNjYWxlZAAAAAAAAQ==",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAATQWNjdW11bGF0ZWRJbnRlcmVzdAAAAAAB": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"AccumulatedInterest\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNBY2N1bXVsYXRlZEludGVyZXN0AA==",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAATQWNjdW11bGF0ZWRJbnRlcmVzdAAAAAAB",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAQRGVidFN0YXRlVmVyc2lvbgAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"DebtStateVersion\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBEZWJ0U3RhdGVWZXJzaW9u",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAQRGVidFN0YXRlVmVyc2lvbgAAAAE=",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxCb3Jyb3dlZAAAAAAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"TotalBorrowed\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA1Ub3RhbEJvcnJvd2VkAAAA",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAANVG90YWxCb3Jyb3dlZAAAAAAAAAE=",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOQWRtaW5GZWVTY2FsZWQAAAAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"AdminFeeScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5BZG1pbkZlZVNjYWxlZAAA",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOQWRtaW5GZWVTY2FsZWQAAAAAAAE=",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"Admin\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAVBZG1pbgAAAA==",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAJQm9ycm93Q2FwAAAAAAAAAQ==": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"BorrowCap\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAlCb3Jyb3dDYXAAAAA=",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAJQm9ycm93Q2FwAAAAAAAAAQ==",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAKUmF0ZXNSZWFkeQAAAAAAAQ==": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"RatesReady\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAApSYXRlc1JlYWR5AAA=",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAKUmF0ZXNSZWFkeQAAAAAAAQ==",
+      "firstSeenLedger": 65437527,
+      "lastSeenLedger": 65437527,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAANVG90YWxSZXNlcnZlcwAAAAAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"TotalReserves\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA1Ub3RhbFJlc2VydmVzAAAA",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAANVG90YWxSZXNlcnZlcwAAAAAAAAE=",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"UnderlyingToken\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA9VbmRlcmx5aW5nVG9rZW4A",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAPVW5kZXJseWluZ1Rva2VuAAAAAAE=",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxEZXBvc2l0ZWQAAAAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"TotalDeposited\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5Ub3RhbERlcG9zaXRlZAAA",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxEZXBvc2l0ZWQAAAAAAAE=",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65440506,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxBZG1pbkZlZXMAAAAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"TotalAdminFees\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5Ub3RhbEFkbWluRmVlcwAA",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOVG90YWxBZG1pbkZlZXMAAAAAAAE=",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAJU3VwcGx5Q2FwAAAAAAAAAQ==": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"SupplyCap\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAlTdXBwbHlDYXAAAAA=",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAJU3VwcGx5Q2FwAAAAAAAAAQ==",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAALTWFuYWdlZENhc2gAAAAAAQ==": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"ManagedCash\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtNYW5hZ2VkQ2FzaAA=",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAALTWFuYWdlZENhc2gAAAAAAQ==",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65440506,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOTGFzdFVwZGF0ZVRpbWUAAAAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"LastUpdateTime\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5MYXN0VXBkYXRlVGltZQAA",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOTGFzdFVwZGF0ZVRpbWUAAAAAAAE=",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65440506,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"Initialized\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtJbml0aWFsaXplZAA=",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAALSW5pdGlhbGl6ZWQAAAAAAQ==",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAATSW5pdGlhbEV4Y2hhbmdlUmF0ZQAAAAAB": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"InitialExchangeRate\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNJbml0aWFsRXhjaGFuZ2VSYXRlAA==",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAATSW5pdGlhbEV4Y2hhbmdlUmF0ZQAAAAAB",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAATRGVidFN0YXRlTWlncmF0ZWRBdAAAAAAB": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"DebtStateMigratedAt\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNEZWJ0U3RhdGVNaWdyYXRlZEF0AA==",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAATRGVidFN0YXRlTWlncmF0ZWRBdAAAAAAB",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAATUmVzZXJ2ZUZhY3RvclNjYWxlZAAAAAAB": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"ReserveFactorScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNSZXNlcnZlRmFjdG9yU2NhbGVkAA==",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAATUmVzZXJ2ZUZhY3RvclNjYWxlZAAAAAAB",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAQRGVidFN0YXRlVmVyc2lvbgAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"DebtStateVersion\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBEZWJ0U3RhdGVWZXJzaW9u",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAQRGVidFN0YXRlVmVyc2lvbgAAAAE=",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAWQ29sbGF0ZXJhbEZhY3RvclNjYWxlZAAAAAAAAQ==": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"CollateralFactorScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABZDb2xsYXRlcmFsRmFjdG9yU2NhbGVkAAA=",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAWQ29sbGF0ZXJhbEZhY3RvclNjYWxlZAAAAAAAAQ==",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAANVG90YWxCb3Jyb3dlZAAAAAAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"TotalBorrowed\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA1Ub3RhbEJvcnJvd2VkAAAA",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAANVG90YWxCb3Jyb3dlZAAAAAAAAAE=",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAWQm9ycm93WWVhcmx5UmF0ZVNjYWxlZAAAAAAAAQ==": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"BorrowYearlyRateScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABZCb3Jyb3dZZWFybHlSYXRlU2NhbGVkAAA=",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAWQm9ycm93WWVhcmx5UmF0ZVNjYWxlZAAAAAAAAQ==",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAALQm9ycm93SW5kZXgAAAAAAQ==": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"BorrowIndex\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAtCb3Jyb3dJbmRleAA=",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAALQm9ycm93SW5kZXgAAAAAAQ==",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAKUmF0ZXNSZWFkeQAAAAAAAQ==": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"RatesReady\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAApSYXRlc1JlYWR5AAA=",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAKUmF0ZXNSZWFkeQAAAAAAAQ==",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAJQm9ycm93Q2FwAAAAAAAAAQ==": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"BorrowCap\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAlCb3Jyb3dDYXAAAAA=",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAJQm9ycm93Q2FwAAAAAAAAAQ==",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAATQWNjdW11bGF0ZWRJbnRlcmVzdAAAAAAB": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"AccumulatedInterest\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABNBY2N1bXVsYXRlZEludGVyZXN0AA==",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAATQWNjdW11bGF0ZWRJbnRlcmVzdAAAAAAB",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOQWRtaW5GZWVTY2FsZWQAAAAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"AdminFeeScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5BZG1pbkZlZVNjYWxlZAAA",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOQWRtaW5GZWVTY2FsZWQAAAAAAAE=",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAQWWVhcmx5UmF0ZVNjYWxlZAAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"YearlyRateScaled\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBZZWFybHlSYXRlU2NhbGVk",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAQWWVhcmx5UmF0ZVNjYWxlZAAAAAE=",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"Admin\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAAVBZG1pbgAAAA==",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAAB",
+      "firstSeenLedger": 65437529,
+      "lastSeenLedger": 65437529,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAANUGF1c2VHdWFyZGlhbgAAAAAAAAE=": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"PauseGuardian\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA1QYXVzZUd1YXJkaWFuAAAA",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAANUGF1c2VHdWFyZGlhbgAAAAAAAAE=",
+      "firstSeenLedger": 65437647,
+      "lastSeenLedger": 65437647,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAABre/OWa7lKWj3YGHUlMJSW3Vln6QpamX0me8p5WR35JYAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"SupportedToken\",\"CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAA5TdXBwb3J0ZWRUb2tlbgAAAAAAEgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklg==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAABre/OWa7lKWj3YGHUlMJSW3Vln6QpamX0me8p5WR35JYAAAAB",
+      "firstSeenLedger": 65437692,
+      "lastSeenLedger": 65437692,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAQTWFya2V0VW5kZXJseWluZwAAABIAAAAB7bMNql0I96VkpUy0yUbCw7xgcA0x9oTpQs0LNb3oMFMAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"MarketUnderlying\",\"CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAABBNYXJrZXRVbmRlcmx5aW5nAAAAEgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUw==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAQTWFya2V0VW5kZXJseWluZwAAABIAAAAB7bMNql0I96VkpUy0yUbCw7xgcA0x9oTpQs0LNb3oMFMAAAAB",
+      "firstSeenLedger": 65437692,
+      "lastSeenLedger": 65437692,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAQUGF1c2VCb3Jyb3dVbnRpbAAAAAE=": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"PauseBorrowUntil\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAABBQYXVzZUJvcnJvd1VudGls",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAQAAAA8AAAAQUGF1c2VCb3Jyb3dVbnRpbAAAAAE=",
+      "firstSeenLedger": 65437694,
+      "lastSeenLedger": 65437789,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOUGVyaWRvdHRyb2xsZXIAAAAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"Peridottroller\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5QZXJpZG90dHJvbGxlcgAA",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAQAAAA8AAAAOUGVyaWRvdHRyb2xsZXIAAAAAAAE=",
+      "firstSeenLedger": 65437696,
+      "lastSeenLedger": 65437696,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAABJbT82FmuwvpjSEOMSJs8PBDJi20hvk/TyzDLaJU++XcAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"SupportedToken\",\"CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAA5TdXBwb3J0ZWRUb2tlbgAAAAAAEgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dw==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAABJbT82FmuwvpjSEOMSJs8PBDJi20hvk/TyzDLaJU++XcAAAAB",
+      "firstSeenLedger": 65437705,
+      "lastSeenLedger": 65437705,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAQTWFya2V0VW5kZXJseWluZwAAABIAAAABTsNwTUu0KJgDoxDt0TzousnYwglIJkfQJqYxiGEO264AAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"MarketUnderlying\",\"CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAABBNYXJrZXRVbmRlcmx5aW5nAAAAEgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brg==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAQTWFya2V0VW5kZXJseWluZwAAABIAAAABTsNwTUu0KJgDoxDt0TzousnYwglIJkfQJqYxiGEO264AAAAB",
+      "firstSeenLedger": 65437705,
+      "lastSeenLedger": 65437705,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOUGVyaWRvdHRyb2xsZXIAAAAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"Peridottroller\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5QZXJpZG90dHJvbGxlcgAA",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAQAAAA8AAAAOUGVyaWRvdHRyb2xsZXIAAAAAAAE=",
+      "firstSeenLedger": 65437718,
+      "lastSeenLedger": 65437718,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAABhRsf0Nla/aNI78I1s6AoJ/d5xfGVBwvSklowVjnv5PMAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"SupportedToken\",\"CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAA5TdXBwb3J0ZWRUb2tlbgAAAAAAEgAAAAGFGx/Q2Vr9o0jvwjWzoCgn93nF8ZUHC9KSWjBWOe/k8w==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAABhRsf0Nla/aNI78I1s6AoJ/d5xfGVBwvSklowVjnv5PMAAAAB",
+      "firstSeenLedger": 65437731,
+      "lastSeenLedger": 65437731,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAQTWFya2V0VW5kZXJseWluZwAAABIAAAAB/OmYHk+ogirzuDolvXJIOVh05HYfsQN/6LJDo2piF6cAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"MarketUnderlying\",\"CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAABBNYXJrZXRVbmRlcmx5aW5nAAAAEgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpw==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAQTWFya2V0VW5kZXJseWluZwAAABIAAAAB/OmYHk+ogirzuDolvXJIOVh05HYfsQN/6LJDo2piF6cAAAAB",
+      "firstSeenLedger": 65437731,
+      "lastSeenLedger": 65437731,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOUGVyaWRvdHRyb2xsZXIAAAAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"Peridottroller\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5QZXJpZG90dHJvbGxlcgAA",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAQAAAA8AAAAOUGVyaWRvdHRyb2xsZXIAAAAAAAE=",
+      "firstSeenLedger": 65437760,
+      "lastSeenLedger": 65437760,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAAB5qfZ63UjAGpGmqdIOtEQckdEPA2C5idj3mcISMTpfJAAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"SupportedToken\",\"CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAA5TdXBwb3J0ZWRUb2tlbgAAAAAAEgAAAAHmp9nrdSMAakaap0g60RByR0Q8DYLmJ2PeZwhIxOl8kA==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAOU3VwcG9ydGVkVG9rZW4AAAAAABIAAAAB5qfZ63UjAGpGmqdIOtEQckdEPA2C5idj3mcISMTpfJAAAAAB",
+      "firstSeenLedger": 65437780,
+      "lastSeenLedger": 65437780,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAQTWFya2V0VW5kZXJseWluZwAAABIAAAABL2f1mpF/wdtaJAGHXjzJ26K7RzL/v6oasV5MzBzO7dIAAAAB": {
+      "group": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "purpose": "[\"MarketUnderlying\",\"CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAABBNYXJrZXRVbmRlcmx5aW5nAAAAEgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0g==",
+      "keyXdr": "AAAABgAAAAFZGX1q8dGTnffM4pXW2eHcpI2ZBnZVDaU+VGPchm/0hAAAABAAAAABAAAAAgAAAA8AAAAQTWFya2V0VW5kZXJseWluZwAAABIAAAABL2f1mpF/wdtaJAGHXjzJ26K7RzL/v6oasV5MzBzO7dIAAAAB",
+      "firstSeenLedger": 65437780,
+      "lastSeenLedger": 65437780,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOUGVyaWRvdHRyb2xsZXIAAAAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"Peridottroller\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAABAAAADwAAAA5QZXJpZG90dHJvbGxlcgAA",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAQAAAA8AAAAOUGVyaWRvdHRyb2xsZXIAAAAAAAE=",
+      "firstSeenLedger": 65437791,
+      "lastSeenLedger": 65437791,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAe2zDapdCPelZKVMtMlGwsO8YHANMfaE6ULNCzW96DBTAAAAAQ==": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"Balance\",\"CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAAB7bMNql0I96VkpUy0yUbCw7xgcA0x9oTpQs0LNb3oMFM=",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAe2zDapdCPelZKVMtMlGwsO8YHANMfaE6ULNCzW96DBTAAAAAQ==",
+      "firstSeenLedger": 65438011,
+      "lastSeenLedger": 65438011,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAe2zDapdCPelZKVMtMlGwsO8YHANMfaE6ULNCzW96DBTAAAAAQ==": {
+      "group": "USDC SAC dependency",
+      "contract": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      "purpose": "[\"Balance\",\"CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAAB7bMNql0I96VkpUy0yUbCw7xgcA0x9oTpQs0LNb3oMFM=",
+      "keyXdr": "AAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAe2zDapdCPelZKVMtMlGwsO8YHANMfaE6ULNCzW96DBTAAAAAQ==",
+      "firstSeenLedger": 65438011,
+      "lastSeenLedger": 65440497,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAU7DcE1LtCiYA6MQ7dE86LrJ2MIJSCZH0CamMYhhDtuuAAAAAQ==": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"Balance\",\"CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABTsNwTUu0KJgDoxDt0TzousnYwglIJkfQJqYxiGEO264=",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAU7DcE1LtCiYA6MQ7dE86LrJ2MIJSCZH0CamMYhhDtuuAAAAAQ==",
+      "firstSeenLedger": 65438021,
+      "lastSeenLedger": 65438021,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAU7DcE1LtCiYA6MQ7dE86LrJ2MIJSCZH0CamMYhhDtuuAAAAAQ==": {
+      "group": "XLM SAC dependency",
+      "contract": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      "purpose": "[\"Balance\",\"CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABTsNwTUu0KJgDoxDt0TzousnYwglIJkfQJqYxiGEO264=",
+      "keyXdr": "AAAABgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAU7DcE1LtCiYA6MQ7dE86LrJ2MIJSCZH0CamMYhhDtuuAAAAAQ==",
+      "firstSeenLedger": 65438021,
+      "lastSeenLedger": 65440500,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAfzpmB5PqIIq87g6Jb1ySDlYdOR2H7EDf+iyQ6NqYhenAAAAAQ==": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"Balance\",\"CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAAB/OmYHk+ogirzuDolvXJIOVh05HYfsQN/6LJDo2piF6c=",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAfzpmB5PqIIq87g6Jb1ySDlYdOR2H7EDf+iyQ6NqYhenAAAAAQ==",
+      "firstSeenLedger": 65438027,
+      "lastSeenLedger": 65438027,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAGFGx/Q2Vr9o0jvwjWzoCgn93nF8ZUHC9KSWjBWOe/k8wAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAfzpmB5PqIIq87g6Jb1ySDlYdOR2H7EDf+iyQ6NqYhenAAAAAQ==": {
+      "group": "PYUSD SAC dependency",
+      "contract": "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2",
+      "purpose": "[\"Balance\",\"CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAAB/OmYHk+ogirzuDolvXJIOVh05HYfsQN/6LJDo2piF6c=",
+      "keyXdr": "AAAABgAAAAGFGx/Q2Vr9o0jvwjWzoCgn93nF8ZUHC9KSWjBWOe/k8wAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAfzpmB5PqIIq87g6Jb1ySDlYdOR2H7EDf+iyQ6NqYhenAAAAAQ==",
+      "firstSeenLedger": 65438027,
+      "lastSeenLedger": 65440503,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHmp9nrdSMAakaap0g60RByR0Q8DYLmJ2PeZwhIxOl8kAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAS9n9ZqRf8HbWiQBh148yduiu0cy/7+qGrFeTMwczu3SAAAAAQ==": {
+      "group": "EURC SAC dependency",
+      "contract": "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV",
+      "purpose": "[\"Balance\",\"CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABL2f1mpF/wdtaJAGHXjzJ26K7RzL/v6oasV5MzBzO7dI=",
+      "keyXdr": "AAAABgAAAAHmp9nrdSMAakaap0g60RByR0Q8DYLmJ2PeZwhIxOl8kAAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAS9n9ZqRf8HbWiQBh148yduiu0cy/7+qGrFeTMwczu3SAAAAAQ==",
+      "firstSeenLedger": 65438031,
+      "lastSeenLedger": 65440506,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAS9n9ZqRf8HbWiQBh148yduiu0cy/7+qGrFeTMwczu3SAAAAAQ==": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"Balance\",\"CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABL2f1mpF/wdtaJAGHXjzJ26K7RzL/v6oasV5MzBzO7dI=",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAS9n9ZqRf8HbWiQBh148yduiu0cy/7+qGrFeTMwczu3SAAAAAQ==",
+      "firstSeenLedger": 65438031,
+      "lastSeenLedger": 65438031,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQAAAAE=": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"Balance\",\"GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAAAAAAAALk+sf3KkLF7e0UX4x7GkilfJiRvwqcz1/3nKuFtVbKJ",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQAAAAE=",
+      "firstSeenLedger": 65438076,
+      "lastSeenLedger": 65440497,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAgAAAA8AAAALSGFzQm9ycm93ZWQAAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAB": {
+      "group": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "purpose": "[\"HasBorrowed\",\"GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAtIYXNCb3Jyb3dlZAAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQ==",
+      "keyXdr": "AAAABgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAABAAAAABAAAAAgAAAA8AAAALSGFzQm9ycm93ZWQAAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAB",
+      "firstSeenLedger": 65438076,
+      "lastSeenLedger": 65438076,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAgAAAA8AAAALSGFzQm9ycm93ZWQAAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAB": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"HasBorrowed\",\"GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAtIYXNCb3Jyb3dlZAAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQ==",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAgAAAA8AAAALSGFzQm9ycm93ZWQAAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAB",
+      "firstSeenLedger": 65438082,
+      "lastSeenLedger": 65438082,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQAAAAE=": {
+      "group": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "purpose": "[\"Balance\",\"GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAAAAAAAALk+sf3KkLF7e0UX4x7GkilfJiRvwqcz1/3nKuFtVbKJ",
+      "keyXdr": "AAAABgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQAAAAE=",
+      "firstSeenLedger": 65438082,
+      "lastSeenLedger": 65440500,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAgAAAA8AAAALSGFzQm9ycm93ZWQAAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAB": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"HasBorrowed\",\"GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAtIYXNCb3Jyb3dlZAAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQ==",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAgAAAA8AAAALSGFzQm9ycm93ZWQAAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAB",
+      "firstSeenLedger": 65438087,
+      "lastSeenLedger": 65438087,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQAAAAE=": {
+      "group": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "purpose": "[\"Balance\",\"GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAAAAAAAALk+sf3KkLF7e0UX4x7GkilfJiRvwqcz1/3nKuFtVbKJ",
+      "keyXdr": "AAAABgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQAAAAE=",
+      "firstSeenLedger": 65438087,
+      "lastSeenLedger": 65440503,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQAAAAE=": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"Balance\",\"GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAAAAAAAALk+sf3KkLF7e0UX4x7GkilfJiRvwqcz1/3nKuFtVbKJ",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQAAAAE=",
+      "firstSeenLedger": 65438091,
+      "lastSeenLedger": 65440506,
+      "lastAction": "live"
+    },
+    "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAgAAAA8AAAALSGFzQm9ycm93ZWQAAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAB": {
+      "group": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "purpose": "[\"HasBorrowed\",\"GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP\"]",
+      "kind": "persistent",
+      "keyScValXdr": "AAAAEAAAAAEAAAACAAAADwAAAAtIYXNCb3Jyb3dlZAAAAAASAAAAAAAAAAC5PrH9ypCxe3tFF+MexpIpXyYkb8KnM9f95yrhbVWyiQ==",
+      "keyXdr": "AAAABgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAABAAAAABAAAAAgAAAA8AAAALSGFzQm9ycm93ZWQAAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAB",
+      "firstSeenLedger": 65438091,
+      "lastSeenLedger": 65438091,
+      "lastAction": "live"
+    }
+  },
+  "matchedTransactions": {
+    "81fa75d0395c9480aff1880fed43aa7b57bac147a2e4d1c66eeebb496a08f26e": {
+      "ledger": 65437362,
+      "status": "SUCCESS"
+    },
+    "b0388a0a87d213ca880fd1e42fea8a9599ece3c5ed8105200b97e7a557d7aeac": {
+      "ledger": 65437364,
+      "status": "SUCCESS"
+    },
+    "d95013be47a3b6268f996bbcb18abf5030fea508b2ee5b3812908473edf6762d": {
+      "ledger": 65437366,
+      "status": "SUCCESS"
+    },
+    "79e32039a601ba8e643dfa196f825dadf1dbfdea31f213bdb76141e944b3c038": {
+      "ledger": 65437369,
+      "status": "SUCCESS"
+    },
+    "8d32142f252db737874d33ac46bf8e39a28c2f3a92828403077060fc8a6f27a4": {
+      "ledger": 65437372,
+      "status": "SUCCESS"
+    },
+    "9b17019f95ce56327a09dcb45226f162bf62bf30bd545f6318ea625e7d771a27": {
+      "ledger": 65437507,
+      "status": "SUCCESS"
+    },
+    "1db7bcd715e0e635ef33941ab261d263cb0cbd95e8df1b42dca910a8685a983d": {
+      "ledger": 65437523,
+      "status": "SUCCESS"
+    },
+    "93d2bdf2d1ca6c42f3ec3537065bc59897ef9ff6b9c0e2f3c5e97f4fe8ff28ac": {
+      "ledger": 65437525,
+      "status": "SUCCESS"
+    },
+    "2b0489d5a45b9db4a6f580edfb2c622ff4b93aee5238340f53e3e34c01ae9191": {
+      "ledger": 65437527,
+      "status": "SUCCESS"
+    },
+    "9a4fe8ae0cd9e82db16688594b7bab9db14deb6a52e2a220fbf0df26ca1571ca": {
+      "ledger": 65437529,
+      "status": "SUCCESS"
+    },
+    "a106896e7895dab28a1dc23d0b316842922decbc975ba513555932ce5aa8b73b": {
+      "ledger": 65437647,
+      "status": "SUCCESS"
+    },
+    "d3d014e75edf53bb1d78f8d9df2442d93ca9d651d7512462ff610e1fff363382": {
+      "ledger": 65437686,
+      "status": "SUCCESS"
+    },
+    "e2c13dd45491473caa33a70310319007f857cc552970ed98ed45239f1f7d04c5": {
+      "ledger": 65437690,
+      "status": "SUCCESS"
+    },
+    "44cb5b1f4b14adeb2aca3292c754537d18b507793667ec4774fb4bd7ec2a6a3a": {
+      "ledger": 65437692,
+      "status": "SUCCESS"
+    },
+    "da884569a3cd231b7135eeeceaf115ae10c93b2d545fc7284999de5255641f15": {
+      "ledger": 65437694,
+      "status": "SUCCESS"
+    },
+    "e9c9c66f395e4e0e55f1b746279d92b633b4ce061f49131e277b1ede5e251b24": {
+      "ledger": 65437696,
+      "status": "SUCCESS"
+    },
+    "aa3d9dff20d361dd493606a91d75140013de37e22baa13a8f674f8168e46dd74": {
+      "ledger": 65437699,
+      "status": "SUCCESS"
+    },
+    "eba03dcc2d894ec127dbd16663fa692093655d316eb58d656cea38188e9635b7": {
+      "ledger": 65437702,
+      "status": "SUCCESS"
+    },
+    "5206eb83134cfe848ac832554485cd52a47902388a1ffc53184d0c1ed9904b32": {
+      "ledger": 65437705,
+      "status": "SUCCESS"
+    },
+    "d6ed1c94050cba90d50300627369348a323d874778db189ae3ce8d7a5b60b360": {
+      "ledger": 65437707,
+      "status": "SUCCESS"
+    },
+    "035ed8754692b01f9d4620b39322949bf56dbb5787b30e807ca057a0d2ab9b0e": {
+      "ledger": 65437718,
+      "status": "SUCCESS"
+    },
+    "baad0d1ce51a8e9b1ae37c13f9fb7c6cec425d52117a32a3b005c74be8671e73": {
+      "ledger": 65437720,
+      "status": "SUCCESS"
+    },
+    "7b34ecbe119d4020752657762c5d901191470caa9732e0c9c06182e130588598": {
+      "ledger": 65437729,
+      "status": "SUCCESS"
+    },
+    "087c269658d90d1738c44453c03c34001bcadc1013afb995d5d26592711e0229": {
+      "ledger": 65437731,
+      "status": "SUCCESS"
+    },
+    "38fd0d1cffacd99a30e04640216b14b9cc2af6d9e6353c5fdf591b2a2acd5fbb": {
+      "ledger": 65437743,
+      "status": "SUCCESS"
+    },
+    "f949a679189915085df8db265c4c3e31615fd0ca8ab6b327a77e888fd25df72e": {
+      "ledger": 65437760,
+      "status": "SUCCESS"
+    },
+    "670058353fddc3d08a9296b700d147c542153962dee8a68848aa6149eb9de922": {
+      "ledger": 65437775,
+      "status": "SUCCESS"
+    },
+    "8b8fd85f004cf0598bee8924ed8bb7650187564829f4b32bbbc0e0754688ed57": {
+      "ledger": 65437777,
+      "status": "SUCCESS"
+    },
+    "c367d3490e456a79895d9912bb536e51e9ee66d24ae7b5cfe7b5530bbff847db": {
+      "ledger": 65437780,
+      "status": "SUCCESS"
+    },
+    "704c44337742a92f73eb9abc066d28503779c5244f1548f1924f9a5f641e38f6": {
+      "ledger": 65437789,
+      "status": "SUCCESS"
+    },
+    "241e8170e66a20358d3cd2b771bcad9e6d491513fef2ca364cd3b502282fd8b9": {
+      "ledger": 65437791,
+      "status": "SUCCESS"
+    },
+    "871ec36ddde533df39310e7e70c48c884c29d26d41f78be5f3adf06eb6414676": {
+      "ledger": 65438011,
+      "status": "SUCCESS"
+    },
+    "1f3a9d5f46d2f49d977e0de23b54798419946e6bea6e23f592450118c23a92cf": {
+      "ledger": 65438021,
+      "status": "SUCCESS"
+    },
+    "7e764316ef9be8bff492c5ab7278399a4f8e41c4ab016869c9d9a00bdf914e7e": {
+      "ledger": 65438027,
+      "status": "SUCCESS"
+    },
+    "6f48b47e13ee71926c51e4f7b58e5cca0f6b35a507f43ded15d59808a7267585": {
+      "ledger": 65438031,
+      "status": "SUCCESS"
+    },
+    "412a5c78944135a25dde81bf1ef22c3a08063ec28aa4a752c8ed5d0b345147c1": {
+      "ledger": 65438076,
+      "status": "SUCCESS"
+    },
+    "f7d382d8f659132dfbcccc33f06298e2e3281507203328402790e27989f1b0e1": {
+      "ledger": 65438082,
+      "status": "SUCCESS"
+    },
+    "0bb6f97238e3a9df13fe2b5cb4b562db9baf09a7cf94947a8cca472e3e944530": {
+      "ledger": 65438087,
+      "status": "SUCCESS"
+    },
+    "aadbcabe53a80b785fc824fafa0cdc52ffe16393adb86ece0875f8e9c28f807b": {
+      "ledger": 65438091,
+      "status": "SUCCESS"
+    },
+    "b8a827fedceabf1f8a6582ef9280811288e0eb687b22a6b84c8cc41269547eaf": {
+      "ledger": 65440497,
+      "status": "SUCCESS"
+    },
+    "a5827d9fa66365a2088bae41c667386296d515d8c1cea49cf78784c1e58718f0": {
+      "ledger": 65440500,
+      "status": "SUCCESS"
+    },
+    "3463b6ef25ce57bcc78b432d4ebb5e34f00905ecfa272e2af4c1bb5fb30b3e70": {
+      "ledger": 65440503,
+      "status": "SUCCESS"
+    },
+    "7363d95b52290425f3a7cdf1ca5e83e9fc2533eb9dd4c1ad02e74c93f836318c": {
+      "ledger": 65440506,
+      "status": "SUCCESS"
+    }
+  },
+  "bootstrapSegments": [
+    {
+      "from": 65437362,
+      "through": 65439000,
+      "scannedTransactions": 412200
+    },
+    {
+      "from": 65439001,
+      "through": 65439700,
+      "scannedTransactions": 217400
+    },
+    {
+      "from": 65439701,
+      "through": 65440400,
+      "scannedTransactions": 199400
+    },
+    {
+      "from": 65440401,
+      "through": 65440736,
+      "scannedTransactions": 113600
+    }
+  ],
+  "coverageNote": "All transaction pages from creation through the pinned target ledger scanned. Cursor may include part of a later ledger. Current TTL reads are subsequent; rerun discovery to catch concurrent writes."
+}

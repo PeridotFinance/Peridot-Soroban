@@ -1,0 +1,338 @@
+{
+  "time": "2026-11-11T09:38:37.642Z",
+  "scope": "first/last completed-week swap metadata, with explicit retained-window fallback",
+  "rows": [
+    {
+      "pool": 1,
+      "label": "first",
+      "hash": "0e92160149658e6da5cf666dff7edb322715f927fda0f94f36023ddc4292304c",
+      "event_time": "2026-11-04 02:08:19",
+      "event_ledger": 65294412,
+      "status": "NOT_FOUND",
+      "oldestLedger": 65299816
+    },
+    {
+      "pool": 1,
+      "label": "last",
+      "hash": "001dfb50482b4d8d8b4f165b6bfd631736a5399971295310b067e778ae3915e5",
+      "event_time": "2026-11-10 16:33:17",
+      "event_ledger": 65408471,
+      "status": "SUCCESS",
+      "oldestLedger": 65299816,
+      "states": [
+        {
+          "type": "ledgerEntryState",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "43726370529909370512626991065947",
+          "feeGrowth1": "30751745410173349707669098505806",
+          "slot": {
+            "sqrt_price_x96": "79222128201527840329550822633",
+            "tick": -2
+          },
+          "liquidity": "2091675066835145",
+          "fee": 10,
+          "protocolShare": 5000
+        },
+        {
+          "type": "ledgerEntryUpdated",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "43732311266780921733372718694317",
+          "feeGrowth1": "30751745410173349707669098505806",
+          "slot": {
+            "sqrt_price_x96": "79222125438349880045436169781",
+            "tick": -2
+          },
+          "liquidity": "2091675066835145",
+          "fee": 10,
+          "protocolShare": 5000
+        }
+      ]
+    },
+    {
+      "pool": 1,
+      "label": "first-retained",
+      "hash": "3a3d334f3a74c85dcca2aad57081533b2ba88c8b9ac48b0f87cd8d12c5d43367",
+      "event_time": "2026-11-04 12:17:14",
+      "event_ledger": 65301719,
+      "status": "SUCCESS",
+      "oldestLedger": 65299816,
+      "states": [
+        {
+          "type": "ledgerEntryState",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "43271555165447188620318634383345",
+          "feeGrowth1": "30161094156488544319344933871862",
+          "slot": {
+            "sqrt_price_x96": "79222064978747246725135709277",
+            "tick": -2
+          },
+          "liquidity": "2271098279656971",
+          "fee": 10,
+          "protocolShare": 5000
+        },
+        {
+          "type": "ledgerEntryUpdated",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "43295327902041807325014146223982",
+          "feeGrowth1": "30161094156488544319344933871862",
+          "slot": {
+            "sqrt_price_x96": "79222053921494619714725129425",
+            "tick": -2
+          },
+          "liquidity": "2271098279656971",
+          "fee": 10,
+          "protocolShare": 5000
+        }
+      ]
+    },
+    {
+      "pool": 2,
+      "label": "first",
+      "hash": "cab488c171556186715bac12987eda5e523a1d20af903a21cc57187d127d6f5d",
+      "event_time": "2026-11-04 00:14:49",
+      "event_ledger": 65293050,
+      "status": "NOT_FOUND",
+      "oldestLedger": 65299816
+    },
+    {
+      "pool": 2,
+      "label": "last",
+      "hash": "9422537711dd1167bb886874aaf729eaf84e2ef7d4875e49820db616e3332389",
+      "event_time": "2026-11-10 19:12:12",
+      "event_ledger": 65410378,
+      "status": "SUCCESS",
+      "oldestLedger": 65299817,
+      "states": [
+        {
+          "type": "ledgerEntryState",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "21027336636592624548472875080963169",
+          "feeGrowth1": "21929313256499388772700120418447377",
+          "slot": {
+            "sqrt_price_x96": "79555333033752631645480649781",
+            "tick": 82
+          },
+          "liquidity": "3364628674316",
+          "fee": 10,
+          "protocolShare": 5000
+        },
+        {
+          "type": "ledgerEntryUpdated",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "21027336636592624548472875080963169",
+          "feeGrowth1": "21931915363853861898076105268553246",
+          "slot": {
+            "sqrt_price_x96": "79556543480350646190898831272",
+            "tick": 82
+          },
+          "liquidity": "3364628674316",
+          "fee": 10,
+          "protocolShare": 5000
+        }
+      ]
+    },
+    {
+      "pool": 2,
+      "label": "first-retained",
+      "hash": "6e9394c300f9296a539e70b29be94ff78960814edeb9a8e876f2966cb546b69a",
+      "event_time": "2026-11-04 10:34:14",
+      "event_ledger": 65300483,
+      "status": "SUCCESS",
+      "oldestLedger": 65299817,
+      "states": [
+        {
+          "type": "ledgerEntryState",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "16887726202652396712186508516108840",
+          "feeGrowth1": "17671511960777715827562558869291296",
+          "slot": {
+            "sqrt_price_x96": "79523726064105640455395892747",
+            "tick": 74
+          },
+          "liquidity": "143864500412012",
+          "fee": 10,
+          "protocolShare": 5000
+        },
+        {
+          "type": "ledgerEntryUpdated",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "16888097987235296275045538707144468",
+          "feeGrowth1": "17671511960777715827562558869291296",
+          "slot": {
+            "sqrt_price_x96": "79523551819750046462591627440",
+            "tick": 74
+          },
+          "liquidity": "143864500412012",
+          "fee": 10,
+          "protocolShare": 5000
+        }
+      ]
+    },
+    {
+      "pool": 3,
+      "label": "first",
+      "hash": "bba7a4867ab298416da36361eac1daf822846ccf52f000a3addcc2077a4252ff",
+      "event_time": "2026-11-04 00:01:39",
+      "event_ledger": 65292892,
+      "status": "NOT_FOUND",
+      "oldestLedger": 65299817
+    },
+    {
+      "pool": 3,
+      "label": "last",
+      "hash": "4e42d9acb91e153351c733a52bc3bd5c3fe95517b8eb91d38c337b68f3069064",
+      "event_time": "2026-11-10 23:42:52",
+      "event_ledger": 65413626,
+      "status": "SUCCESS",
+      "oldestLedger": 65299817,
+      "states": [
+        {
+          "type": "ledgerEntryState",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "60396680208954861455107224043091400",
+          "feeGrowth1": "61829661269690977799524082961519165",
+          "slot": {
+            "sqrt_price_x96": "79599074902505978948502068289",
+            "tick": 93
+          },
+          "liquidity": "215533563344248",
+          "fee": 10,
+          "protocolShare": 5000
+        },
+        {
+          "type": "ledgerEntryUpdated",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "60406266625566198379948623787935424",
+          "feeGrowth1": "61829661269690977799524082961519165",
+          "slot": {
+            "sqrt_price_x96": "79594573744735307460822501049",
+            "tick": 92
+          },
+          "liquidity": "215533563344248",
+          "fee": 10,
+          "protocolShare": 5000
+        }
+      ]
+    },
+    {
+      "pool": 3,
+      "label": "first-retained",
+      "hash": "e5a4860e5cc14911f46d24e987a66424e7b845e52728209cd7a126df72ca642f",
+      "event_time": "2026-11-04 09:47:19",
+      "event_ledger": 65299920,
+      "status": "SUCCESS",
+      "oldestLedger": 65299818,
+      "states": [
+        {
+          "type": "ledgerEntryState",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "52550036517483602745403503867155489",
+          "feeGrowth1": "53717488608068922641347096934702992",
+          "slot": {
+            "sqrt_price_x96": "79521313023977097911449497314",
+            "tick": 73
+          },
+          "liquidity": "301270714157944",
+          "fee": 10,
+          "protocolShare": 5000
+        },
+        {
+          "type": "ledgerEntryUpdated",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "52550579246636754768954775485272627",
+          "feeGrowth1": "53717488608068922641347096934702992",
+          "slot": {
+            "sqrt_price_x96": "79521058677815526282864111876",
+            "tick": 73
+          },
+          "liquidity": "301270714157944",
+          "fee": 10,
+          "protocolShare": 5000
+        }
+      ]
+    },
+    {
+      "pool": 4,
+      "label": "first",
+      "hash": "bddcef53826a49f4a98e816b5607daf7f2c5dfc12969a7bd59eafeb501c32acd",
+      "event_time": "2026-11-04 00:14:54",
+      "event_ledger": 65293051,
+      "status": "NOT_FOUND",
+      "oldestLedger": 65299818
+    },
+    {
+      "pool": 4,
+      "label": "last",
+      "hash": "1477b6c2bd4332ced86609f1797160a98274a745a764c1de3225c1a1209e6b44",
+      "event_time": "2026-11-10 23:42:57",
+      "event_ledger": 65413627,
+      "status": "SUCCESS",
+      "oldestLedger": 65299818,
+      "states": [
+        {
+          "type": "ledgerEntryState",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "268467413035603425751500980436708956",
+          "feeGrowth1": "248002027977202722726584954335887200",
+          "slot": {
+            "sqrt_price_x96": "75356783716978068685521106474",
+            "tick": -1003
+          },
+          "liquidity": "16179558248109",
+          "fee": 30,
+          "protocolShare": 5000
+        },
+        {
+          "type": "ledgerEntryUpdated",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "268467413035603425751500980436708956",
+          "feeGrowth1": "248002031258135887009401199578259270",
+          "slot": {
+            "sqrt_price_x96": "75356784221535194656428646064",
+            "tick": -1003
+          },
+          "liquidity": "16179558248109",
+          "fee": 30,
+          "protocolShare": 5000
+        }
+      ]
+    },
+    {
+      "pool": 4,
+      "label": "first-retained",
+      "hash": "35e133bac8992e25388d122ebcbb9237d51be3b0ddbd0328872a7c8a05b4fecb",
+      "event_time": "2026-11-04 10:33:49",
+      "event_ledger": 65300478,
+      "status": "SUCCESS",
+      "oldestLedger": 65299818,
+      "states": [
+        {
+          "type": "ledgerEntryState",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "261009209535913986733450368123252072",
+          "feeGrowth1": "239093292344994703636977556435417783",
+          "slot": {
+            "sqrt_price_x96": "75018498883219076934677301206",
+            "tick": -1092
+          },
+          "liquidity": "18723867643050",
+          "fee": 30,
+          "protocolShare": 5000
+        },
+        {
+          "type": "ledgerEntryUpdated",
+          "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+          "feeGrowth0": "261009660226047998904241738399461524",
+          "feeGrowth1": "239093292344994703636977556435417783",
+          "slot": {
+            "sqrt_price_x96": "75018436351724757476621375336",
+            "tick": -1093
+          },
+          "liquidity": "18723867643050",
+          "fee": 30,
+          "protocolShare": 5000
+        }
+      ]
+    }
+  ]
+}

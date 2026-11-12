@@ -1,0 +1,221 @@
+{
+  "observed_at": "2026-11-11T18:33:25.679257+00:00",
+  "reads": {
+    "deployer": {
+      "url": "https://horizon.stellar.org/accounts/GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+      "status": 404,
+      "body": {
+        "type": "https://stellar.org/horizon-errors/not_found",
+        "title": "Resource Missing",
+        "status": 404,
+        "detail": "The resource at the url requested was not found.  This usually occurs for one of two reasons:  The url requested is not valid, or no data in our database could be found with the parameters provided."
+      }
+    },
+    "ledger_account": {
+      "url": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "status": 200,
+      "http_date": "Wed, 11 Nov 2026 18:33:26 GMT",
+      "body": {
+        "_links": {
+          "self": {
+            "href": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"
+          },
+          "transactions": {
+            "href": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP/transactions{?cursor,limit,order}",
+            "templated": true
+          },
+          "operations": {
+            "href": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP/operations{?cursor,limit,order}",
+            "templated": true
+          },
+          "payments": {
+            "href": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP/payments{?cursor,limit,order}",
+            "templated": true
+          },
+          "effects": {
+            "href": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP/effects{?cursor,limit,order}",
+            "templated": true
+          },
+          "offers": {
+            "href": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP/offers{?cursor,limit,order}",
+            "templated": true
+          },
+          "trades": {
+            "href": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP/trades{?cursor,limit,order}",
+            "templated": true
+          },
+          "data": {
+            "href": "https://horizon.stellar.org/accounts/GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP/data/{key}",
+            "templated": true
+          }
+        },
+        "id": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "account_id": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "sequence": "246894391124295771",
+        "sequence_ledger": 65386834,
+        "sequence_time": "1794220212",
+        "subentry_count": 2,
+        "last_modified_ledger": 65386836,
+        "last_modified_time": "2026-11-09T10:30:22Z",
+        "thresholds": {
+          "low_threshold": 0,
+          "med_threshold": 0,
+          "high_threshold": 0
+        },
+        "flags": {
+          "auth_required": false,
+          "auth_revocable": false,
+          "auth_immutable": false,
+          "auth_clawback_enabled": false
+        },
+        "balances": [
+          {
+            "balance": "0.0000000",
+            "limit": "922337203685.4775807",
+            "buying_liabilities": "0.0000000",
+            "selling_liabilities": "0.0000000",
+            "last_modified_ledger": 63829262,
+            "is_authorized": true,
+            "is_authorized_to_maintain_liabilities": true,
+            "asset_type": "credit_alphanum4",
+            "asset_code": "EURC",
+            "asset_issuer": "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+          },
+          {
+            "balance": "0.0000000",
+            "limit": "922337203685.4775807",
+            "buying_liabilities": "0.0000000",
+            "selling_liabilities": "0.0000000",
+            "last_modified_ledger": 65386806,
+            "is_authorized": true,
+            "is_authorized_to_maintain_liabilities": true,
+            "asset_type": "credit_alphanum4",
+            "asset_code": "USDC",
+            "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+          },
+          {
+            "balance": "32.0821729",
+            "buying_liabilities": "0.0000000",
+            "selling_liabilities": "0.0000000",
+            "asset_type": "native"
+          }
+        ],
+        "signers": [
+          {
+            "weight": 1,
+            "key": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+            "type": "ed25519_public_key"
+          }
+        ],
+        "data": {},
+        "num_sponsoring": 0,
+        "num_sponsored": 0,
+        "paging_token": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"
+      }
+    },
+    "network_ledger": {
+      "url": "https://horizon.stellar.org/ledgers?order=desc&limit=1",
+      "status": 200,
+      "http_date": "Wed, 11 Nov 2026 18:33:26 GMT",
+      "body": {
+        "_links": {
+          "self": {
+            "href": "https://horizon.stellar.org/ledgers?cursor=&limit=1&order=desc"
+          },
+          "next": {
+            "href": "https://horizon.stellar.org/ledgers?cursor=281007649909112832&limit=1&order=desc"
+          },
+          "prev": {
+            "href": "https://horizon.stellar.org/ledgers?cursor=281007649909112832&limit=1&order=asc"
+          }
+        },
+        "_embedded": {
+          "records": [
+            {
+              "_links": {
+                "self": {
+                  "href": "https://horizon.stellar.org/ledgers/65427192"
+                },
+                "transactions": {
+                  "href": "https://horizon.stellar.org/ledgers/65427192/transactions{?cursor,limit,order}",
+                  "templated": true
+                },
+                "operations": {
+                  "href": "https://horizon.stellar.org/ledgers/65427192/operations{?cursor,limit,order}",
+                  "templated": true
+                },
+                "payments": {
+                  "href": "https://horizon.stellar.org/ledgers/65427192/payments{?cursor,limit,order}",
+                  "templated": true
+                },
+                "effects": {
+                  "href": "https://horizon.stellar.org/ledgers/65427192/effects{?cursor,limit,order}",
+                  "templated": true
+                }
+              },
+              "id": "c803c6953df8341023c52896b764e682d33caa1af4854b4e997a56fca10a5059",
+              "paging_token": "281007649909112832",
+              "hash": "c803c6953df8341023c52896b764e682d33caa1af4854b4e997a56fca10a5059",
+              "prev_hash": "002ff8ee87a6a1b9db911cb87c19665ff726260404256776c79caebdfc591dbf",
+              "sequence": 65427192,
+              "successful_transaction_count": 96,
+              "failed_transaction_count": 10,
+              "operation_count": 319,
+              "tx_set_operation_count": 428,
+              "closed_at": "2026-11-11T18:33:22Z",
+              "total_coins": "105443902087.3472865",
+              "fee_pool": "11014184.6258053",
+              "base_fee_in_stroops": 100,
+              "base_reserve_in_stroops": 5000000,
+              "max_tx_set_size": 1000,
+              "protocol_version": 29,
+              "header_xdr": "AAAAHQAv+O6HpqG525EcuHwZZl/3JiYEBCVndsecrr38WR2/PFszF0TsEAoP2s67xoQL7OhMCTcmCj7407QYqEl1LjUAAAAAavS08gAAAAAAAAABAAAAADrIHVZWS64y0x3qknqYR2FQ4KitH65G2AXgifQIZn02AAAAQDV26JK7IgryzRa1srZMwKHONB6G1Tmjb8QqLmtkOjr01SX+pPmsl9AdWuAPCALT3DVifKPTpO4eP2BfYfdZpQaToWOOgetju/QuUdbiqPmRKotFLFah7IX8Qsoa+RiULd+Wfc48U5zNnt5dfubUlFRa63qLUZgnmlf+0mRkM7lVA+ZW+A6iHrPseVthAABkLGWfAYUAAAEWAAAAAG8zwyQAAABkAExLQAAAA+g50CPb2yUnXSPD3cCcm38/pmh3C9TUb4ZJ3AIeomaukJW6/PrCECSWLNcrNYx5pS1kOfByEscuXODo+qC/vzLwNtasNOLlYRkMluxvPIGoC+KdjrfWtvegJEyCenx/Wogy/CmIHD6wNBmWE0N/i2Yg76Dtg7RN1j5wnDbOBCfdhAAAAAA="
+            }
+          ]
+        }
+      }
+    },
+    "fee_stats": {
+      "url": "https://horizon.stellar.org/fee_stats",
+      "status": 200,
+      "http_date": "Wed, 11 Nov 2026 18:33:26 GMT",
+      "body": {
+        "last_ledger": "65427192",
+        "last_ledger_base_fee": "100",
+        "ledger_capacity_usage": "0.48",
+        "fee_charged": {
+          "max": "172927",
+          "min": "100",
+          "mode": "100",
+          "p10": "100",
+          "p20": "100",
+          "p30": "100",
+          "p40": "100",
+          "p50": "100",
+          "p60": "100",
+          "p70": "100",
+          "p80": "100",
+          "p90": "100",
+          "p95": "18886",
+          "p99": "172919"
+        },
+        "max_fee": {
+          "max": "71177576",
+          "min": "100",
+          "mode": "100",
+          "p10": "100",
+          "p20": "125",
+          "p30": "400",
+          "p40": "5934",
+          "p50": "20000",
+          "p60": "21009",
+          "p70": "100000",
+          "p80": "270000",
+          "p90": "1000000",
+          "p95": "2250000",
+          "p99": "67788167"
+        }
+      }
+    }
+  }
+}

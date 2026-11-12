@@ -1,0 +1,113 @@
+{
+  "observedAt": "2026-11-12T09:38:04.386Z",
+  "scope": "actual seed public readbacks; independent unsigned ordinary-deposit preflights, not applied",
+  "markets": [],
+  "account": {
+    "account_id": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+    "sequence": "246894391124295805",
+    "balances": [
+      {
+        "balance": "91.0000000",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 65438031,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "asset_type": "credit_alphanum4",
+        "asset_code": "EURC",
+        "asset_issuer": "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+      },
+      {
+        "balance": "100.0611141",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 65438027,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "is_clawback_enabled": true,
+        "asset_type": "credit_alphanum12",
+        "asset_code": "PYUSD",
+        "asset_issuer": "GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5"
+      },
+      {
+        "balance": "100.0000000",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 65438011,
+        "is_authorized": true,
+        "is_authorized_to_maintain_liabilities": true,
+        "asset_type": "credit_alphanum4",
+        "asset_code": "USDC",
+        "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      },
+      {
+        "balance": "723.2082127",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "asset_type": "native"
+      }
+    ],
+    "subentry_count": 3
+  },
+  "transactions": [
+    {
+      "hash": "6f48b47e13ee71926c51e4f7b58e5cca0f6b35a507f43ded15d59808a7267585",
+      "successful": true,
+      "ledger": 65438031,
+      "created_at": "2026-11-12T09:36:37Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295805",
+      "fee_charged": "831319"
+    },
+    {
+      "hash": "7e764316ef9be8bff492c5ab7278399a4f8e41c4ab016869c9d9a00bdf914e7e",
+      "successful": true,
+      "ledger": 65438027,
+      "created_at": "2026-11-12T09:36:17Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295804",
+      "fee_charged": "831306"
+    },
+    {
+      "hash": "1f3a9d5f46d2f49d977e0de23b54798419946e6bea6e23f592450118c23a92cf",
+      "successful": true,
+      "ledger": 65438021,
+      "created_at": "2026-11-12T09:35:47Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295803",
+      "fee_charged": "830142"
+    },
+    {
+      "hash": "871ec36ddde533df39310e7e70c48c884c29d26d41f78be5f3adf06eb6414676",
+      "successful": true,
+      "ledger": 65438011,
+      "created_at": "2026-11-12T09:34:57Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295802",
+      "fee_charged": "831323"
+    },
+    {
+      "hash": "39492c8b48ed9480d3e4264c846f0134ecaefb72429694fd0c3d9761ff77f85b",
+      "successful": true,
+      "ledger": 65437940,
+      "created_at": "2026-11-12T09:29:02Z",
+      "source_account": "GDM55CBNFY2JYERNTXVO4QHJMM4L6HTNMMYQDZOHYRVVQAUZTQEFNWA3",
+      "source_account_sequence": "281053807922642945",
+      "fee_charged": "100"
+    },
+    {
+      "hash": "5aa6b4291ae55eb2badd61194396947965e0053a43b7b77dee0ee11ff0e02b14",
+      "successful": true,
+      "ledger": 65437938,
+      "created_at": "2026-11-12T09:28:52Z",
+      "source_account": "GDM5XP4ACJPXPYP5G2UYGB6WC3G2MUBCYI2ZUCYWVB5CL2JWGCFWNWA3",
+      "source_account_sequence": "274130840332533796",
+      "fee_charged": "300"
+    }
+  ],
+  "result": "FAIL",
+  "error": "AssertionError [ERR_ASSERTION]: reconcile additional or missing account transactions\n\n6 !== 4\n"
+}

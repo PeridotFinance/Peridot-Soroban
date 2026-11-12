@@ -1,0 +1,155 @@
+{
+  "scope": "bounded public read-only yXLM terms/oracle/coupon benchmark; unsigned sale estimates, reused public third-party historical leg; no signing/submission",
+  "files": [
+    {
+      "file": "amounts-base.json",
+      "bytes": 30,
+      "sha256": "770ca30791c9218777895b1e6424bbfae4d34889d0b121a3ff2d4f904aebcd2a"
+    },
+    {
+      "file": "amounts-boost.json",
+      "bytes": 85,
+      "sha256": "ffe8558a90d19a6ed1ad3892f8ee1ebd0b23b54b5e033dc2f7be86427d2d67a2"
+    },
+    {
+      "file": "base-quote.json",
+      "bytes": 1408,
+      "sha256": "4a62c260d623bb7fe445ba080ccdf67fea1824af9a740a2644dab5a69b97384d"
+    },
+    {
+      "file": "base-quote.log",
+      "bytes": 467,
+      "sha256": "cdf5d1c04ad440e3b77ddd71eb4168760d338fbb4eb10d239f520419c711b2f1"
+    },
+    {
+      "file": "boost-quote.json",
+      "bytes": 2501,
+      "sha256": "0115a71125024fb16c786e84219250a8788f2498f132c1cd9bc1585602d29f42"
+    },
+    {
+      "file": "boost-quote.log",
+      "bytes": 961,
+      "sha256": "df2482099da55a4b31b0491aa73a53deaad3458da4c7688e5f41a089a3345eec"
+    },
+    {
+      "file": "calculate.py",
+      "bytes": 3182,
+      "sha256": "be4b14714c309f08027861f86ce27cd53b7d1f02548a605f099e6c0b1d5dcce2"
+    },
+    {
+      "file": "calculated.json",
+      "bytes": 3317,
+      "sha256": "728782ca4c20b5fda1df3eb7761a13237303d1b103e28797b9417bd68a46125e"
+    },
+    {
+      "file": "deposit.html",
+      "bytes": 8514,
+      "sha256": "eb9368ad2c70602a69339abeb8c0d39a62199c6cc065292fc4db684c2feab5dc"
+    },
+    {
+      "file": "fetch.py",
+      "bytes": 740,
+      "sha256": "c355bf726df5c5174091929816914fd2b77fffa1c065b4d7c8218c81c6bf3c62"
+    },
+    {
+      "file": "historical-reference.json",
+      "bytes": 656,
+      "sha256": "dc7f9daf851bd2dd9772665596b7e8eba0ac6b4065669cb26af83c15c8e79559"
+    },
+    {
+      "file": "historical-small-operations.json",
+      "bytes": 7737,
+      "sha256": "821eb52dd83e42299d24cdfcf79c023a1686a274cbf52e7a64ea14190b84da53"
+    },
+    {
+      "file": "issuer.json",
+      "bytes": 3263,
+      "sha256": "eafbf4b449ceacaf390b41ece88ec5657c2a478784c1c3dc58f47a4b2c3898cb"
+    },
+    {
+      "file": "quote.cjs",
+      "bytes": 3908,
+      "sha256": "99feb3365b75f79aef8c3a4fa8fba78c510258731e47bb10a909e4df81895bde"
+    },
+    {
+      "file": "read.cjs",
+      "bytes": 3602,
+      "sha256": "e23ff47196bbd9b95457b7789359186cb3ad0cc557ebb1b422efdbb87e8c9155"
+    },
+    {
+      "file": "reads.json",
+      "bytes": 15320,
+      "sha256": "afd2be18a6184574a1cafe0be5a8ae6834ce58a4e44abfca88836b5f3827d3fc"
+    },
+    {
+      "file": "reads.log",
+      "bytes": 8872,
+      "sha256": "0206b794bde9484800be24668912e0ba5cfffc86e5323c5a53e92639d2b38122"
+    },
+    {
+      "file": "reflector-config.json",
+      "bytes": 12199,
+      "sha256": "2ae38a09a09d22ef06b608f7596450fd2d07db5a4fab3130cd92b762dc4339ee"
+    },
+    {
+      "file": "report.md",
+      "bytes": 10089,
+      "sha256": "dffedc5fad4c741ca80079dee7bd3731be878c7f103b687a00e61499f8d4a289"
+    },
+    {
+      "file": "sep24-deposit-fee.json",
+      "bytes": 11,
+      "sha256": "11c04d1894c49e87d85e353e1d0e761df691acf9af33edeed8c2ad2f6c719a52"
+    },
+    {
+      "file": "sep24-info.json",
+      "bytes": 746,
+      "sha256": "606dbca0b8d512a2e0c2f013a3e7a90e7870a6dfe726d4f215eea89bffc20204"
+    },
+    {
+      "file": "sep24-withdraw-fee.json",
+      "bytes": 11,
+      "sha256": "1e6d50e34e9bdddf62f0c9d4f981ab5dd81cce00dcc5463bfe14319c1703a46e"
+    },
+    {
+      "file": "sep6-info.json",
+      "bytes": 588,
+      "sha256": "f00b2c146a9d39930cfb45dd3af2affd82013e9ed162096bfa410cf393b41583"
+    },
+    {
+      "file": "sources.json",
+      "bytes": 3687,
+      "sha256": "37aa48f36b1d1a21e82f8b76ebe240a730d235b31f187122b673f35f58f41fdf"
+    },
+    {
+      "file": "ultra-home.html",
+      "bytes": 26745,
+      "sha256": "d2a7444c1e147943c0614bc57a20378c8178da2824dc044c8fb3a061f4d41b54"
+    },
+    {
+      "file": "ultra-old.html",
+      "bytes": 162,
+      "sha256": "340c8464c2007ce3f80682e15dfafa4180b641d53c14201b929906b7b0284d87"
+    },
+    {
+      "file": "ultra-toml.txt",
+      "bytes": 6049,
+      "sha256": "8d7ab1099a2c76539db3e9e03b0834ad5ba8093ff346b7c486fd0d9da593bc26"
+    },
+    {
+      "file": "ultra-yxlm.html",
+      "bytes": 32836,
+      "sha256": "5f8f5bc76c620f9c0657fa274ed6f3564a625925047d494f74fbe0d058d08a74"
+    },
+    {
+      "file": "verify.py",
+      "bytes": 1592,
+      "sha256": "f96e92e5b33c0039e67c64bde928af5e96fe4b34f0e8545a7760891ba891cc82"
+    },
+    {
+      "file": "withdraw.html",
+      "bytes": 8044,
+      "sha256": "f2e642c23d7219556b5f2c490849acd46542abdecd26db2973cb5d7c4a0789df"
+    }
+  ]
+}

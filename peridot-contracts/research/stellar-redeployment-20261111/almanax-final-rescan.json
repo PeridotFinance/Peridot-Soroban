@@ -1,0 +1,28 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"commit_sha\":\"e3eab76a74028a394b0cde4e48c2ec42662811cc\",\"max_expected_duration_seconds\":1200,\"next_action\":\"poll_status\",\"org_id\":\"7e20cbb3-df8a-4098-b4cf-ab9528c6f245\",\"project_id\":\"68a08094-f0b1-4da0-8df7-93dc6a53ace9\",\"project_name\":\"Peridot-Soroban-Margin\",\"recommended_poll_after_seconds\":30,\"repo_name\":\"Peridot-Soroban\",\"repo_owner\":\"PeridotFinance\",\"retryable\":false,\"scan_id\":\"c9fc8ddd-3f1d-4957-b72e-e099cffa239f\",\"status\":\"PENDING\",\"terminal\":false,\"typical_duration_seconds\":300}"
+      }
+    ],
+    "structuredContent": {
+      "commit_sha": "e3eab76a74028a394b0cde4e48c2ec42662811cc",
+      "max_expected_duration_seconds": 1200,
+      "next_action": "poll_status",
+      "org_id": "7e20cbb3-df8a-4098-b4cf-ab9528c6f245",
+      "project_id": "68a08094-f0b1-4da0-8df7-93dc6a53ace9",
+      "project_name": "Peridot-Soroban-Margin",
+      "recommended_poll_after_seconds": 30,
+      "repo_name": "Peridot-Soroban",
+      "repo_owner": "PeridotFinance",
+      "retryable": false,
+      "scan_id": "c9fc8ddd-3f1d-4957-b72e-e099cffa239f",
+      "status": "PENDING",
+      "terminal": false,
+      "typical_duration_seconds": 300
+    }
+  }
+}

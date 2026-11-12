@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>ALMANAX_API_KEY</key>
+		<string></string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/Users/joshua/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+	<key>Label</key>
+	<string>finance.peridot.fresh-cash-ttl-20261112</string>
+	<key>Nice</key>
+	<integer>10</integer>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/node</string>
+		<string>/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/scripts/cash_ttl_keeper.cjs</string>
+		<string>scheduled</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/research/stellar-cash-ttl-20261112/keeper.stderr.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/research/stellar-cash-ttl-20261112/keeper.stdout.log</string>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+	<key>ThrottleInterval</key>
+	<integer>300</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts</string>
+</dict>
+</plist>

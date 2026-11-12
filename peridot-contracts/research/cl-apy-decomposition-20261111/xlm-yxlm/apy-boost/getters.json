@@ -1,0 +1,582 @@
+{
+  "time": "2026-11-11T10:50:36.208Z",
+  "endpoint": "https://rpc.lightsail.network/",
+  "scope": "public getters only; rolling ledger snapshots",
+  "pools": [
+    {
+      "address": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+      "api_tokens": [
+        "native",
+        "yXLM:GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"
+      ],
+      "views": [
+        {
+          "method": "get_tokens",
+          "label": "get_tokens",
+          "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+          "ledger": 65421638,
+          "value": [
+            "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+            "CBZVSNVB55ANF24QVJL2K5QCLOAB6XITGTGXYEAF6NPTXYKEJUYQOHFC"
+          ],
+          "returnXdr": "AAAAEAAAAAEAAAACAAAAEgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dwAAABIAAAABc1k2oe9A0uuQqleldgJbgB9dEzTNfBAF81874URNMQc=",
+          "resourceFee": "6884",
+          "requiresRestore": false
+        },
+        {
+          "method": "get_reserves",
+          "label": "get_reserves",
+          "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+          "ledger": 65421638,
+          "value": [
+            "12717678785269",
+            "8024529284218"
+          ],
+          "returnXdr": "AAAAEAAAAAEAAAACAAAACQAAAAAAAAAAAAALkRC58vUAAAAJAAAAAAAAAAAAAAdMWzeseg==",
+          "resourceFee": "6772",
+          "requiresRestore": false
+        },
+        {
+          "method": "get_fee_fraction",
+          "label": "get_fee_fraction",
+          "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+          "ledger": 65421638,
+          "value": 10,
+          "returnXdr": "AAAAAwAAAAo=",
+          "resourceFee": "6622",
+          "requiresRestore": false
+        },
+        {
+          "method": "get_protocol_fee_fraction",
+          "label": "get_protocol_fee_fraction",
+          "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+          "ledger": 65421638,
+          "value": 5000,
+          "returnXdr": "AAAAAwAAE4g=",
+          "resourceFee": "6650",
+          "requiresRestore": false
+        },
+        {
+          "method": "get_active_liquidity",
+          "label": "get_active_liquidity",
+          "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+          "ledger": 65421638,
+          "value": "9810831244853116",
+          "returnXdr": "AAAACQAAAAAAAAAAACLa5idM/3w=",
+          "resourceFee": "6664",
+          "requiresRestore": false
+        },
+        {
+          "method": "get_total_shares",
+          "label": "get_total_shares",
+          "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+          "ledger": 65421638,
+          "value": "9810831244853116",
+          "returnXdr": "AAAACQAAAAAAAAAAACLa5idM/3w=",
+          "resourceFee": "6657",
+          "requiresRestore": false
+        },
+        {
+          "method": "get_slot0",
+          "label": "get_slot0",
+          "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+          "ledger": 65421638,
+          "value": {
+            "sqrt_price_x96": "79259974659293628166848868508",
+            "tick": 8
+          },
+          "returnXdr": "AAAAEQAAAAEAAAACAAAADwAAAA5zcXJ0X3ByaWNlX3g5NgAAAAAACwAAAAAAAAAAAAAAAAAAAAAAAAABABpQe9Zti8V7P3CcAAAADwAAAAR0aWNrAAAABAAAAAg=",
+          "resourceFee": "6853",
+          "requiresRestore": false
+        },
+        {
+          "method": "get_rewards_info",
+          "label": "get_rewards_info",
+          "contract": "CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F",
+          "ledger": 65421638,
+          "value": {
+            "acc": "57406328307924",
+            "block": "0",
+            "boost": "10000000",
+            "boost_balance": "0",
+            "boost_supply": "0",
+            "exp_at": "1794413719",
+            "last_time": "1794394232",
+            "new_working_balance": "0",
+            "new_working_supply": "11624878347869489",
+            "pool_acc": "57406328307924",
+            "state": "1",
+            "supply": "9810831244853116",
+            "to_claim": "0",
+            "tps": "17484101",
+            "usr_block": "0",
+            "working_balance": "0",
+            "working_supply": "11624878347869489"
+          },
+          "returnXdr": "AAAAEQAAAAEAAAARAAAADwAAAANhY2MAAAAACgAAAAAAAAAAAAA0NfPOgNQAAAAPAAAABWJsb2NrAAAAAAAACgAAAAAAAAAAAAAAAAAAAAAAAAAPAAAABWJvb3N0AAAAAAAACgAAAAAAAAAAAAAAAACYloAAAAAPAAAADWJvb3N0X2JhbGFuY2UAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAA8AAAAMYm9vc3Rfc3VwcGx5AAAACgAAAAAAAAAAAAAAAAAAAAAAAAAPAAAABmV4cF9hdAAAAAAACgAAAAAAAAAAAAAAAGr0lJcAAAAPAAAACWxhc3RfdGltZQAAAAAAAAoAAAAAAAAAAAAAAABq9Eh4AAAADwAAABNuZXdfd29ya2luZ19iYWxhbmNlAAAAAAoAAAAAAAAAAAAAAAAAAAAAAAAADwAAABJuZXdfd29ya2luZ19zdXBwbHkAAAAAAAoAAAAAAAAAAAApTMPoe10xAAAADwAAAAhwb29sX2FjYwAAAAoAAAAAAAAAAAAANDXzzoDUAAAADwAAAAVzdGF0ZQAAAAAAAAoAAAAAAAAAAAAAAAAAAAABAAAADwAAAAZzdXBwbHkAAAAAAAoAAAAAAAAAAAAi2uYnTP98AAAADwAAAAh0b19jbGFpbQAAAAoAAAAAAAAAAAAAAAAAAAAAAAAADwAAAAN0cHMAAAAACgAAAAAAAAAAAAAAAAEKyUUAAAAPAAAACXVzcl9ibG9jawAAAAAAAAoAAAAAAAAAAAAAAAAAAAAAAAAADwAAAA93b3JraW5nX2JhbGFuY2UAAAAACgAAAAAAAAAAAAAAAAAAAAAAAAAPAAAADndvcmtpbmdfc3VwcGx5AAAAAAAKAAAAAAAAAAAAKUzD6HtdMQ==",
+          "resourceFee": "1015691",
+          "requiresRestore": false
+        },
+        {
+          "method": "decimals",
+          "label": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA-decimals",
+          "contract": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+          "ledger": 65421638,
+          "value": 7,
+          "returnXdr": "AAAAAwAAAAc=",
+          "resourceFee": "6126",
+          "requiresRestore": false
+        },
+        {
+          "method": "decimals",
+          "label": "CBZVSNVB55ANF24QVJL2K5QCLOAB6XITGTGXYEAF6NPTXYKEJUYQOHFC-decimals",
+          "contract": "CBZVSNVB55ANF24QVJL2K5QCLOAB6XITGTGXYEAF6NPTXYKEJUYQOHFC",
+          "ledger": 65421638,
+          "value": 7,
+          "returnXdr": "AAAAAwAAAAc=",
+          "resourceFee": "6130",
+          "requiresRestore": false
+        }
+      ],
+      "instance": {
+        "ledger": 65421638,
+        "entries": [
+          {
+            "xdr": "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",
+            "liveUntilLedgerSeq": 68078625,
+            "wasmHash": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+            "storage": [
+              [
+                [
+                  "Admin"
+                ],
+                "GAV5FBMKD2ZF4X2MGWDNQYUP7KFL7MRM6HZBY7HKQLB4BRHSCCX5J6VS"
+              ],
+              [
+                [
+                  "ClaimKilled"
+                ],
+                false
+              ],
+              [
+                [
+                  "ConfigStorage"
+                ],
+                "CAUJNVN5DWOBCKLV5KPR3KRQBKRI7L2X7VOUAWF5FDISVSQNXCEYITPJ"
+              ],
+              [
+                [
+                  "Decimals"
+                ],
+                [
+                  7,
+                  7
+                ]
+              ],
+              [
+                [
+                  "EmPauseAdmins"
+                ],
+                [
+                  "GA6MVTGQDCJPP27IAMG6PSDTWOJYTD3NUTLR2W54ADBCBY7OID5YUDSI"
+                ]
+              ],
+              [
+                [
+                  "EmergencyAdmin"
+                ],
+                "GCGZ6E5RBUKLNB4VZ5RC65C4QMBSBJ3COVRRJCWAMCXJC36LB7YYWEKM"
+              ],
+              [
+                [
+                  "EmergencyMode"
+                ],
+                false
+              ],
+              [
+                [
+                  "ExcludedLiquidity"
+                ],
+                "0"
+              ],
+              [
+                [
+                  "ExcludedShares"
+                ],
+                "273490095973"
+              ],
+              [
+                [
+                  "Fee"
+                ],
+                10
+              ],
+              [
+                [
+                  "FeeGrowthGlobal0X128"
+                ],
+                "168503929805223427047311914334458940"
+              ],
+              [
+                [
+                  "FeeGrowthGlobal1X128"
+                ],
+                "237941062152167217484724306598631911"
+              ],
+              [
+                [
+                  "FullRangeLiquidity"
+                ],
+                "15008777180"
+              ],
+              [
+                [
+                  "FutureWASM"
+                ],
+                {
+                  "type": "Buffer",
+                  "data": [
+                    21,
+                    90,
+                    23,
+                    185,
+                    146,
+                    159,
+                    251,
+                    31,
+                    158,
+                    132,
+                    189,
+                    110,
+                    245,
+                    192,
+                    10,
+                    77,
+                    97,
+                    60,
+                    26,
+                    181,
+                    244,
+                    173,
+                    76,
+                    80,
+                    45,
+                    132,
+                    81,
+                    82,
+                    80,
+                    204,
+                    41,
+                    7
+                  ]
+                }
+              ],
+              [
+                [
+                  "GaugeFutureWasm"
+                ],
+                {
+                  "type": "Buffer",
+                  "data": [
+                    128,
+                    33,
+                    39,
+                    227,
+                    130,
+                    218,
+                    55,
+                    170,
+                    38,
+                    208,
+                    190,
+                    46,
+                    241,
+                    108,
+                    5,
+                    60,
+                    6,
+                    6,
+                    236,
+                    206,
+                    237,
+                    157,
+                    174,
+                    166,
+                    3,
+                    216,
+                    38,
+                    234,
+                    211,
+                    225,
+                    104,
+                    199
+                  ]
+                }
+              ],
+              [
+                [
+                  "IsKilledDeposit"
+                ],
+                false
+              ],
+              [
+                [
+                  "IsKilledSwap"
+                ],
+                false
+              ],
+              [
+                [
+                  "LegacyTotalRemaining"
+                ],
+                "3386082594114"
+              ],
+              [
+                [
+                  "Liquidity"
+                ],
+                "9810831244853116"
+              ],
+              [
+                [
+                  "LiquidityActiveBoosted"
+                ],
+                "11624878347869489"
+              ],
+              [
+                [
+                  "MaxInitTick"
+                ],
+                887260
+              ],
+              [
+                [
+                  "MigrationBarrier"
+                ],
+                false
+              ],
+              [
+                [
+                  "MinInitTick"
+                ],
+                -887260
+              ],
+              [
+                [
+                  "OperationsAdmin"
+                ],
+                "GBVQPX2LQ55HLRMLIWBEYVVQL3SZ5RFPRKYLRSLZU4XRIWAXW2KQIMMD"
+              ],
+              [
+                [
+                  "Operator"
+                ],
+                "GCXYKA3BM574WC6TWESEDUGUJTNQ5SVCFMHWLQ634H5FTE7FYPV3JH3X"
+              ],
+              [
+                [
+                  "PauseAdmin"
+                ],
+                "GA6MA665XVKHTQUZVSMUKUPGT7OREJNCLAZ5ZEH5CXPKYTWFJKZ3YSEK"
+              ],
+              [
+                [
+                  "Plane"
+                ],
+                "CCABO2IQYDWRGGQ4DYQ73CV3ZFDBRZTEQNDDJMFT7JZO54CLS4RYJROY"
+              ],
+              [
+                [
+                  "PoolRewardConfig"
+                ],
+                {
+                  "expired_at": "1791218777",
+                  "tps": "0"
+                }
+              ],
+              [
+                [
+                  "PoolRewardData"
+                ],
+                {
+                  "accumulated": "265415664835966",
+                  "block": "2661",
+                  "claimed": "259366455229932",
+                  "last_time": "1791218777"
+                }
+              ],
+              [
+                [
+                  "ProtocolFeeFraction"
+                ],
+                5000
+              ],
+              [
+                [
+                  "ProtocolFees"
+                ],
+                {
+                  "token0": "174492585",
+                  "token1": "65768361"
+                }
+              ],
+              [
+                [
+                  "Reserve0"
+                ],
+                "12717678785269"
+              ],
+              [
+                [
+                  "Reserve1"
+                ],
+                "8024529284218"
+              ],
+              [
+                [
+                  "RewardBoostFeed"
+                ],
+                "CBKCROE56TU2FTT3C5CVN676PYVLTOQUQDHHH57GLWDY5VOKSCZPGOFN"
+              ],
+              [
+                [
+                  "RewardBoostToken"
+                ],
+                "CARCKZ66U4AI2545NS4RAF47QVEXG3PRRCDA52H4Q3FDRAGSMP4BRU3W"
+              ],
+              [
+                [
+                  "RewardToken"
+                ],
+                "CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK"
+              ],
+              [
+                [
+                  "RewardTokenRegistry"
+                ],
+                [
+                  "CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK"
+                ]
+              ],
+              [
+                [
+                  "Router"
+                ],
+                "CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK"
+              ],
+              [
+                [
+                  "Slot0"
+                ],
+                {
+                  "sqrt_price_x96": "79259974659293628166848868508",
+                  "tick": 8
+                }
+              ],
+              [
+                [
+                  "SystemFeeAdmin"
+                ],
+                "GB57YDVGLL2BAVOXHPXYCZR77J4MLPLMGJKFMTUKMHFI2AEGS4SGGW7N"
+              ],
+              [
+                [
+                  "TickSpacing"
+                ],
+                20
+              ],
+              [
+                [
+                  "Token0"
+                ],
+                "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+              ],
+              [
+                [
+                  "Token1"
+                ],
+                "CBZVSNVB55ANF24QVJL2K5QCLOAB6XITGTGXYEAF6NPTXYKEJUYQOHFC"
+              ],
+              [
+                [
+                  "TokenFutureWasm"
+                ],
+                {
+                  "type": "Buffer",
+                  "data": [
+                    114,
+                    235,
+                    93,
+                    82,
+                    197,
+                    50,
+                    231,
+                    140,
+                    204,
+                    108,
+                    138,
+                    127,
+                    133,
+                    35,
+                    196,
+                    88,
+                    224,
+                    55,
+                    100,
+                    7,
+                    71,
+                    23,
+                    23,
+                    47,
+                    105,
+                    194,
+                    83,
+                    158,
+                    117,
+                    76,
+                    230,
+                    36
+                  ]
+                }
+              ],
+              [
+                [
+                  "TotalRawLiquidity"
+                ],
+                "9810831244853116"
+              ],
+              [
+                [
+                  "TotalWeightedLiquidity"
+                ],
+                "9427712566710888"
+              ],
+              [
+                [
+                  "UpgradeDeadline"
+                ],
+                "0"
+              ],
+              [
+                [
+                  "VaultAddr"
+                ],
+                "CACKGTHQN3CENUMSSU7ASAAASE4L3W5MQTEFUHMN3TDAFYCSF45S7E5U"
+              ],
+              [
+                [
+                  "WorkingSupply"
+                ],
+                "11175542877194917"
+              ]
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "network": {
+    "passphrase": "Public Global Stellar Network ; September 2015",
+    "protocolVersion": 29
+  }
+}

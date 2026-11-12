@@ -1,0 +1,87 @@
+ℹ️  CARGO_BUILD_RUSTFLAGS=--remap-path-prefix=/Users/joshua/.cargo/registry/src= SOROBAN_SDK_BUILD_SYSTEM_SUPPORTS_SPEC_SHAKING_V2=1 cargo rustc --manifest-path=contracts/margin-controller/Cargo.toml --crate-type=cdylib --target=wasm32v1-none --release --features=funded-liquidation-validation
+   Compiling simple-peridottroller v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/simple-peridottroller)
+   Compiling swap-adapter v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/swap-adapter)
+   Compiling receipt-vault v0.2.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/receipt-vault)
+   Compiling margin-controller v0.1.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/contracts/margin-controller)
+    Finished `release` profile [optimized] target(s) in 7.60s
+ℹ️  Build Summary:
+    Wasm File: target/cl-share-checkpoint/artifacts/margin_controller.wasm (91503 bytes optimized (original size was 109338 bytes))
+    Wasm Hash: 157d0d86121843598e146ef6061d25eae2fc265c2ef34902cb6d2be87dfcaf29
+    Wasm Size: 91503 bytes optimized (original size was 109338 bytes)
+    Exported Functions: 75 found
+      • accept_admin
+      • activate_open_position_v3
+      • add_position_collateral_v3
+      • begin_close_position_v3
+      • begin_liquidation_v3
+      • begin_open_position_v3
+      • cancel_close_position_v3
+      • cancel_pending_open_v3
+      • claim_margin_fees
+      • close_position_v3
+      • compact_user_positions
+      • deposit_collateral
+      • distribute_margin_fees
+      • execute_open_position_v3
+      • execute_peridottroller_update
+      • execute_swap_adapter_update
+      • expire_close_position_v3
+      • expire_pending_open_v3
+      • finish_close_position_v3
+      • finish_liquidation_v3
+      • get_admin
+      • get_claimable_margin_fees
+      • get_health_factor
+      • get_liquidation_takeover_after
+      • get_margin_balance_ptokens
+      • get_margin_balance_underlying
+      • get_margin_fee_index
+      • get_pending_liquidation
+      • get_pending_perps_close
+      • get_pending_perps_open
+      • get_pending_perps_open_execution
+      • get_perps_pair_config
+      • get_perps_pair_execution_config
+      • get_perps_pair_exit_config
+      • get_perps_position
+      • get_position
+      • get_position_counter
+      • get_position_fee_terms
+      • get_undistributed_margin_fees
+      • get_user_positions
+      • initialize
+      • liquidate_funded_v3
+      • liquidate_position_v3
+      • locked_ptokens_in_market
+      • prepare_close_position_v3
+      • preview_liquidation_v3
+      • preview_open_fees_v3
+      • propose_upgrade_wasm
+      • recover_pending_open_funded
+      • release_debt_free_position_v3
+      • repay_margin_position_v3
+      • replace_position_pool_v3
+      • resolve_pending_open_v3
+      • set_admin
+      • set_cl_share_asset
+      • set_close_fee_bps
+      • set_market
+      • set_max_slippage_scaled
+      • set_open_fee_bps
+      • set_params
+      • set_peridottroller
+      • set_perps_pair_config
+      • set_perps_pair_execution_config
+      • set_perps_pair_exit_config
+      • set_swap_adapter
+      • swap_close_position_v3
+      • swap_close_short_position_v3
+      • swap_liquidation_v3
+      • swap_open_position_v3
+      • sweep_orphan_fees
+      • transfer_margin_to_spot
+      • transfer_spot_to_margin
+      • upgrade_wasm
+      • withdraw_close_position_v3
+      • withdraw_collateral
+✅ Build Complete

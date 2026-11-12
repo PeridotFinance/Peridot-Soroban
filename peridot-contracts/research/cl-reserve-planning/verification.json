@@ -1,0 +1,47 @@
+{
+  "schema": "stellar-cl-reserve-model-verification-v1",
+  "command": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "research/cl-reserve-planning",
+    "-p",
+    "test_study.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "tests_passed": 11,
+  "deterministic_results_match": true,
+  "coverage_status": "UNPROVEN",
+  "release_approval": false,
+  "scope": "Mathematical planning only; no contract execution or resource gate",
+  "review_corrections": [
+    "Separate full-initial-exposure counterfactual marks from actual cumulative and unexited loss partitions",
+    "Distinguish collateral deficit from realized lender bad debt after funded full repayment",
+    "Count debt funding outside supplier capital S, or explicitly subtract it and report gap"
+  ],
+  "files": {
+    "study.py": {
+      "sha256": "f8f3e3d1800414b7a4e1d5b7c08a8f69afc3ddecfa2edcf7deded43970a65b14",
+      "bytes": 13798
+    },
+    "test_study.py": {
+      "sha256": "31f90d25925bdc6399531050d080711586887ce6e1d734326ff4aa179bea9515",
+      "bytes": 6213
+    },
+    "results.json": {
+      "sha256": "61e87ccb2c3f9d5aa5459a2ccd8a04201572bcad9c3bde20d4aae87d81255f20",
+      "bytes": 1229287
+    },
+    "README.md": {
+      "sha256": "754dd60dd179295690d3cb3961f004904cdf940572a2518f69b7049331491715",
+      "bytes": 7066
+    },
+    "model-tests.log": {
+      "sha256": "e5608214c2c2500c7d3a639c89a56f30d73f80c22f63be7f2a33e3f07cec7213",
+      "bytes": 1152
+    }
+  }
+}

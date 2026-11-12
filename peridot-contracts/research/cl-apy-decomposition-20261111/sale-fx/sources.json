@@ -1,0 +1,192 @@
+[
+  {
+    "file": "failed-dns-0.raw",
+    "url": "https://amm-api.aqua.network/pools/CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O/",
+    "time": "2026-11-11T10:11:58.118549+00:00",
+    "status": "000",
+    "exit": 6,
+    "error": "curl: (6) Could not resolve host: amm-api.aqua.network\n",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "failed-dns-1.raw",
+    "url": "https://orchestrator.reflector.network/config",
+    "time": "2026-11-11T10:11:58.158746+00:00",
+    "status": "000",
+    "exit": 6,
+    "error": "curl: (6) Could not resolve host: orchestrator.reflector.network\n",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "failed-dns-2.raw",
+    "url": "https://horizon.stellar.org/order_book?selling_asset_type=credit_alphanum4&selling_asset_code=AQUA&selling_asset_issuer=GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA&buying_asset_type=credit_alphanum4&buying_asset_code=USDC&buying_asset_issuer=GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN&limit=200",
+    "time": "2026-11-11T10:11:58.195336+00:00",
+    "status": "000",
+    "exit": 6,
+    "error": "curl: (6) Could not resolve host: horizon.stellar.org\n",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "aqua-usdc-pool.json",
+    "url": "https://amm-api.aqua.network/pools/CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O/",
+    "time": "2026-11-11T10:12:12.118317+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1276,
+    "sha256": "dd9d4a68dab497a5d67ec696156af6b62f7174477efc54868d9b5603aae52153"
+  },
+  {
+    "file": "reflector-config.json",
+    "url": "https://orchestrator.reflector.network/config",
+    "time": "2026-11-11T10:12:12.248979+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 12199,
+    "sha256": "2ae38a09a09d22ef06b608f7596450fd2d07db5a4fab3130cd92b762dc4339ee"
+  },
+  {
+    "file": "orderbook.json",
+    "url": "https://horizon.stellar.org/order_book?selling_asset_type=credit_alphanum4&selling_asset_code=AQUA&selling_asset_issuer=GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA&buying_asset_type=credit_alphanum4&buying_asset_code=USDC&buying_asset_issuer=GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN&limit=200",
+    "time": "2026-11-11T10:12:12.891462+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 33386,
+    "sha256": "27ae8c87458ccf2c5f3fd88400d4d470f6d3fa08056ff94f50b47bd79035ab14"
+  },
+  {
+    "file": "aqua-usdc-swaps.json",
+    "url": "https://amm-api.aqua.network/events/pool/CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O/?event_type=swap&size=100",
+    "time": "2026-11-11T10:12:50.445555+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 46436,
+    "sha256": "55d36fdc615202ac3f3a8999209fb122b8d832d0b3f2eae721ceb19f4c816bf1"
+  },
+  {
+    "file": "reflector-doc.md",
+    "url": "https://reflector.network/docs",
+    "time": "2026-11-11T10:12:50.601609+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 2988,
+    "sha256": "2b0f0b84dcce22f2f8e3ee6f8252ecdc2fa0697ca1a783eb51c410657f348805"
+  },
+  {
+    "file": "path-base-pyusd.json",
+    "url": "https://horizon.stellar.org/paths/strict-send?source_asset_type=credit_alphanum4&source_asset_code=AQUA&source_asset_issuer=GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA&source_amount=314.4875276&destination_assets=USDC%3AGA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    "time": "2026-11-11T10:12:51.341536+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1090,
+    "sha256": "2b2e930f3e4dfacf3e85b4a04028dd0c3883647ae9a0097dae4338bfe320d952"
+  },
+  {
+    "file": "path-p1_base.json",
+    "url": "https://horizon.stellar.org/paths/strict-send?source_asset_type=credit_alphanum4&source_asset_code=AQUA&source_asset_issuer=GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA&source_amount=314.4875276&destination_assets=USDC%3AGA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    "time": "2026-11-11T10:16:40.327605+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1840,
+    "sha256": "ae10cd65db88173e27e279f2fbd3ef670ea455c3f8d8d0421a41fee4b745a7b7"
+  },
+  {
+    "file": "path-p1_maxboost_lp_only.json",
+    "url": "https://horizon.stellar.org/paths/strict-send?source_asset_type=credit_alphanum4&source_asset_code=AQUA&source_asset_issuer=GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA&source_amount=785.9798327&destination_assets=USDC%3AGA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    "time": "2026-11-11T10:16:40.949742+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1840,
+    "sha256": "96fab708393f59276101a065b4a713af5be72d4bd643cfd11fcd5aed2bcad014"
+  },
+  {
+    "file": "path-p4_base.json",
+    "url": "https://horizon.stellar.org/paths/strict-send?source_asset_type=credit_alphanum4&source_asset_code=AQUA&source_asset_issuer=GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA&source_amount=6770.1434811&destination_assets=USDC%3AGA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    "time": "2026-11-11T10:16:41.555384+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1843,
+    "sha256": "c3b6111bed2b4c711e96118dfc715fc9ba483bc5f7773ab30b46b998923eb33b"
+  },
+  {
+    "file": "path-p4_maxboost_lp_only.json",
+    "url": "https://horizon.stellar.org/paths/strict-send?source_asset_type=credit_alphanum4&source_asset_code=AQUA&source_asset_issuer=GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA&source_amount=16385.6447703&destination_assets=USDC%3AGA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    "time": "2026-11-11T10:16:42.162104+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1094,
+    "sha256": "c99fa6d20110a5c954368051228fa32876253f57ce7bb616034ea017269baa69"
+  },
+  {
+    "file": "path-p5_base.json",
+    "url": "https://horizon.stellar.org/paths/strict-send?source_asset_type=credit_alphanum4&source_asset_code=AQUA&source_asset_issuer=GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA&source_amount=1540.9379183&destination_assets=USDC%3AGA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    "time": "2026-11-11T10:16:42.780722+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1843,
+    "sha256": "e08108401f605365c92cb6aba3f23c55d1a43e03daf4f4e13b530408cf14dbcb"
+  },
+  {
+    "file": "path-p5_maxboost_lp_only.json",
+    "url": "https://horizon.stellar.org/paths/strict-send?source_asset_type=credit_alphanum4&source_asset_code=AQUA&source_asset_issuer=GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA&source_amount=3817.2401176&destination_assets=USDC%3AGA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    "time": "2026-11-11T10:16:43.365245+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1843,
+    "sha256": "10d028b03d3a0e7ab4e7e46c8eeb5caced3dfa37a337594e2c03d0ba368e9ac0"
+  },
+  {
+    "file": "reflector-app.js",
+    "url": "https://reflector.network/app.d02bdbfc198a54bc0628.js",
+    "time": "2026-11-11T10:16:43.596730+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1506624,
+    "sha256": "437d1768a50df2d3b91804979649710fc8800fee7c590e8d31d3d2cd2a353649"
+  },
+  {
+    "file": "swap-small-operations.json",
+    "url": "https://horizon.stellar.org/transactions/d056736c75967356e897cd24b6215bbff29676041d51eb5c656291d8b3ec81db/operations?limit=200",
+    "time": "2026-11-11T10:17:24.490591+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 7737,
+    "sha256": "821eb52dd83e42299d24cdfcf79c023a1686a274cbf52e7a64ea14190b84da53"
+  },
+  {
+    "file": "swap-medium-operations.json",
+    "url": "https://horizon.stellar.org/transactions/c683e94201519e9c17de45ab6a2a3514fd7036e38fab2c502226ab66ed4da298/operations?limit=200",
+    "time": "2026-11-11T10:17:25.000080+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 7256,
+    "sha256": "b7fac244c21c56ae0febdb6ad98e7b2ec42da2ad3418745b83c3a2817a633012"
+  },
+  {
+    "file": "swap-large-operations.json",
+    "url": "https://horizon.stellar.org/transactions/d89eba2ec03aa5fc6c6086da152a3e79a6fe2e94b75d4446d71ef63ba1331474/operations?limit=200",
+    "time": "2026-11-11T10:17:25.517758+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 6645,
+    "sha256": "daa40b8241a46313ec697d793663813abee27f2c4f5509d18ef9664058530886"
+  }
+]

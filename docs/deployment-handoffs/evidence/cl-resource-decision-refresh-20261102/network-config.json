@@ -1,0 +1,1357 @@
+{
+  "scope": "read-only Mainnet fee/limit settings; test execution remains local controlled state",
+  "rpc": "https://rpc.lightsail.network/",
+  "network": {
+    "passphrase": "Public Global Stellar Network ; September 2015",
+    "protocolVersion": 29
+  },
+  "ledger": 65270655,
+  "settings": {
+    "configSettingContractComputeV0": {
+      "values": {
+        "ledgerMaxInstructions": 580000000,
+        "txMaxInstructions": 400000000,
+        "feeRatePerInstructionsIncrement": 3,
+        "txMemoryLimit": 41943040
+      },
+      "xdr": "AAAACAAAAAEAAAAAIpIZAAAAAAAX14QAAAAAAAAAAAMCgAAA",
+      "lastModifiedLedger": 65080525
+    },
+    "configSettingContractLedgerCostV0": {
+      "values": {
+        "ledgerMaxDiskReadEntries": 2000,
+        "ledgerMaxDiskReadBytes": 400000,
+        "ledgerMaxWriteLedgerEntries": 2000,
+        "ledgerMaxWriteBytes": 297000,
+        "txMaxDiskReadEntries": 200,
+        "txMaxDiskReadBytes": 200000,
+        "txMaxWriteLedgerEntries": 200,
+        "txMaxWriteBytes": 132096,
+        "feeDiskReadLedgerEntry": 781,
+        "feeWriteLedgerEntry": 1250,
+        "feeDiskRead1Kb": 223,
+        "sorobanStateTargetSizeBytes": 3000000000,
+        "rentFee1KbSorobanStateSizeLow": -17000,
+        "rentFee1KbSorobanStateSizeHigh": 10000,
+        "sorobanStateRentFeeGrowthFactor": 5000
+      },
+      "xdr": "AAAACAAAAAIAAAfQAAYagAAAB9AABIgoAAAAyAADDUAAAADIAAIEAAAAAAAAAAMNAAAAAAAABOIAAAAAAAAA3wAAAACy0F4A////////vZgAAAAAAAAnEAAAE4g=",
+      "lastModifiedLedger": 65080525
+    },
+    "configSettingContractLedgerCostExtV0": {
+      "values": {
+        "txMaxFootprintEntries": 400,
+        "feeWrite1Kb": 437
+      },
+      "xdr": "AAAACAAAAA8AAAGQAAAAAAAAAbU=",
+      "lastModifiedLedger": 65080525
+    },
+    "configSettingContractHistoricalDataV0": {
+      "values": {
+        "feeHistorical1Kb": 2029
+      },
+      "xdr": "AAAACAAAAAMAAAAAAAAH7Q==",
+      "lastModifiedLedger": 65080525
+    },
+    "configSettingContractEventsV0": {
+      "values": {
+        "txMaxContractEventsSizeBytes": 16384,
+        "feeContractEvents1Kb": 2500
+      },
+      "xdr": "AAAACAAAAAQAAEAAAAAAAAAACcQ=",
+      "lastModifiedLedger": 65080525
+    },
+    "configSettingContractBandwidthV0": {
+      "values": {
+        "ledgerMaxTxsSizeBytes": 864000,
+        "txMaxSizeBytes": 132096,
+        "feeTxSize1Kb": 203
+      },
+      "xdr": "AAAACAAAAAUADS8AAAIEAAAAAAAAAADL",
+      "lastModifiedLedger": 65080525
+    },
+    "configSettingStateArchival": {
+      "values": {
+        "maxEntryTtl": 3110400,
+        "minTemporaryTtl": 17280,
+        "minPersistentTtl": 2073600,
+        "persistentRentRateDenominator": 1215,
+        "tempRentRateDenominator": 2430,
+        "maxEntriesToArchive": 1000,
+        "liveSorobanStateSizeWindowSampleSize": 30,
+        "liveSorobanStateSizeWindowSamplePeriod": 64,
+        "evictionScanSize": 500000,
+        "startingEvictionScanLevel": 7
+      },
+      "xdr": "AAAACAAAAAoAL3YAAABDgAAfpAAAAAAAAAAEvwAAAAAAAAl+AAAD6AAAAB4AAABAAAehIAAAAAc=",
+      "lastModifiedLedger": 59516381
+    },
+    "configSettingLiveSorobanStateSizeWindow": {
+      "values": [
+        1767112755,
+        1766978851,
+        1764780243,
+        1764871691,
+        1764825843,
+        1764328775,
+        1763950983,
+        1763860030,
+        1763763278,
+        1763628818,
+        1763658690,
+        1763969594,
+        1764302642,
+        1764544398,
+        1764905518,
+        1765125118,
+        1765589934,
+        1759154585,
+        1746241731,
+        1746647671,
+        1746950927,
+        1747149171,
+        1747511967,
+        1747890183,
+        1748108835,
+        1748362487,
+        1748563983,
+        1748891875,
+        1749353311,
+        1749555467
+      ],
+      "xdr": "AAAACAAAAAwAAAAeAAAAAGlUADMAAAAAaVH1IwAAAABpMGjTAAAAAGkxzgsAAAAAaTEa8wAAAABpKYVHAAAAAGkjwYcAAAAAaSJePgAAAABpIOROAAAAAGke1xIAAAAAaR9LwgAAAABpJAo6AAAAAGkpHzIAAAAAaSzPjgAAAABpMlIuAAAAAGk1q/4AAAAAaTzDrgAAAABo2pGZAAAAAGgViMMAAAAAaBu6dwAAAABoIFsPAAAAAGgjYXMAAAAAaCjqnwAAAABoLrAHAAAAAGgyBiMAAAAAaDXk9wAAAABoOPgPAAAAAGg9+OMAAAAAaEUDXwAAAABoSBkL",
+      "lastModifiedLedger": 65270592
+    },
+    "configSettingContractCostParamsCpuInstructions": {
+      "values": [
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 4,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 434,
+          "linearTerm": 16
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 42,
+          "linearTerm": 16
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 44,
+          "linearTerm": 16
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 295,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 60,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 221,
+          "linearTerm": 26
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 331,
+          "linearTerm": 4369
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 3636,
+          "linearTerm": 7013
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 40256,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 377551,
+          "linearTerm": 4059
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 417482,
+          "linearTerm": 45712
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 41142,
+          "linearTerm": 634
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1945,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 6481,
+          "linearTerm": 5943
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 711,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 2314804,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 4176,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 4716,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 4680,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 4256,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 884,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1059,
+          "linearTerm": 502
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 73077,
+          "linearTerm": 25410
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 540752
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 176363
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 29989
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 1061449
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 237336
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 328476
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 701845
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 429383
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 28
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 43030,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 7556
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 10711
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 3300
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 23038
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 42488
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 828974
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 297100
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 14
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1882,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 3000906,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 661,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 985,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1934,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 730510,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 5921,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1057822,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 92642,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 100742,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 7689,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 2458985,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 2347584,
+          "linearTerm": 94135478
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1020885,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 2638451,
+          "linearTerm": 6803
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 25207,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 7873219,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 7663880,
+          "linearTerm": 298580871
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1856539,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 6315452,
+          "linearTerm": 7232
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 10558948,
+          "linearTerm": 632860943
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1994,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1155,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 74,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 332,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 691,
+          "linearTerm": 74558
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 35421,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 344,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 476,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 904,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 2811,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1706052,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 61,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 3623,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1150435,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 5263916,
+          "linearTerm": 392472814
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 2052,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1133,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 74,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 332,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 755,
+          "linearTerm": 68930
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 33151,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1185193,
+          "linearTerm": 41568084
+        }
+      ],
+      "xdr": "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",
+      "lastModifiedLedger": 62447231
+    },
+    "configSettingContractCostParamsMemoryBytes": {
+      "values": [
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 16,
+          "linearTerm": 128
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 242,
+          "linearTerm": 384
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 384
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 132773,
+          "linearTerm": 4903
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 69472,
+          "linearTerm": 1217
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 14,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 181,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 99,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 99,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 99,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 99,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 99,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 17564,
+          "linearTerm": 6457
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 47464
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 13420
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 6285
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 64670
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 29074
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 48095
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 103229
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 36394
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 257
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 70704,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 14613
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 6833
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 1025
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 129632
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 13665
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 97637
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 9176
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 126
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 109494,
+          "linearTerm": 266603
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 2776,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 5896,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 219654,
+          "linearTerm": 266603
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1672,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 3960,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 2204,
+          "linearTerm": 9340474
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 248,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 128
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 1821,
+          "linearTerm": 6232546
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 312,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 0,
+          "linearTerm": 0
+        },
+        {
+          "ext": {
+            "variant": 0
+          },
+          "constTerm": 73061,
+          "linearTerm": 229779
+        }
+      ],
+      "xdr": "AAAACAAAAAcAAABWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADyAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIGpQAAAAAAABMnAAAAAAAAAAAAAQ9gAAAAAAAABMEAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALUAAAAAAAAAAAAAAAAAAAAAAAAAYwAAAAAAAAAAAAAAAAAAAAAAAABjAAAAAAAAAAAAAAAAAAAAAAAAAGMAAAAAAAAAAAAAAAAAAAAAAAAAYwAAAAAAAAAAAAAAAAAAAAAAAABjAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEnAAAAAAAABk5AAAAAAAAAAAAAAAAAAAAAAAAuWgAAAAAAAAAAAAAAAAAAAAAAAA0bAAAAAAAAAAAAAAAAAAAAAAAABiNAAAAAAAAAAAAAAAAAAAAAAAA/J4AAAAAAAAAAAAAAAAAAAAAAABxkgAAAAAAAAAAAAAAAAAAAAAAALvfAAAAAAAAAAAAAAAAAAAAAAABkz0AAAAAAAAAAAAAAAAAAAAAAACOKgAAAAAAAAAAAAAAAAAAAAAAAAEBAAAAAAAAAAAAARQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5FQAAAAAAAAAAAAAAAAAAAAAAABqxAAAAAAAAAAAAAAAAAAAAAAAABAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfpgAAAAAAAAAAAAAAAAAAAAAAAANWEAAAAAAAAAAAAAAAAAAAAAAAF9ZQAAAAAAAAAAAAAAAAAAAAAAACPYAAAAAAAAAAAAAAAAAAAAAAAAAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABq7YAAAAAAAQRawAAAAAAAAAAAAAK2AAAAAAAAAAAAAAAAAAAAAAAABcIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1oGAAAAAAAEEWsAAAAAAAAAAAAABogAAAAAAAAAAAAAAAAAAAAAAAAPeAAAAAAAAAAAAAAAAAAAAAAAAAicAAAAAACOhjoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcdAAAAAABfGeIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABHWUAAAAAAAOBkw==",
+      "lastModifiedLedger": 62447231
+    },
+    "configSettingContractMaxSizeBytes": {
+      "values": 131072,
+      "xdr": "AAAACAAAAAAAAgAA",
+      "lastModifiedLedger": 57941156
+    },
+    "configSettingContractDataKeySizeBytes": {
+      "values": 250,
+      "xdr": "AAAACAAAAAgAAAD6",
+      "lastModifiedLedger": 57941156
+    },
+    "configSettingContractDataEntrySizeBytes": {
+      "values": 65536,
+      "xdr": "AAAACAAAAAkAAQAA",
+      "lastModifiedLedger": 57941156
+    }
+  }
+}

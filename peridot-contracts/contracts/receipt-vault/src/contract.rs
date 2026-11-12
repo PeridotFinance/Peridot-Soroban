@@ -1,6 +1,6 @@
 use soroban_sdk::{
     auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
-    token, Address, Bytes, Env, IntoVal, MuxedAddress, String, Symbol, Val, Vec,
+    token, Address, Bytes, Env, IntoVal, MuxedAddress, String, Symbol, Val, Vec, U256,
 };
 #[cfg(not(feature = "lp-engine"))]
 use soroban_sdk::{contract, contractimpl};
@@ -547,6 +547,67 @@ impl ReceiptVault {
         0u128
     }
 
+    // Financial conversions use the exact NAV/supply ratio, not its truncated
+    // 1e6 quote. Both directions round down; the U256 product avoids u128 overflow.
+    fn floor_ratio(env: &Env, amount: u128, numerator: u128, denominator: u128) -> u128 {
+        assert!(denominator > 0, "zero ratio denominator");
+        U256::from_u128(env, amount)
+            .mul(&U256::from_u128(env, numerator))
+            .div(&U256::from_u128(env, denominator))
+            .to_u128()
+            .expect("ratio overflow")
+    }
+
+    fn minimum_supply(env: &Env) -> u128 {
+        env.storage().instance().get(&DataKey::PermanentMinimumSupply).unwrap_or(0)
+    }
+
+    fn preserve_minimum_supply(env: &Env, owner: &Address, amount: u128) {
+        let floor = Self::minimum_supply(env);
+        if floor > 0 && *owner == env.current_contract_address() {
+            let remaining = ptoken_balance(env, owner).checked_sub(amount)
+                .expect("insufficient locked shares");
+            assert!(remaining >= floor, "permanent minimum supply locked");
+        }
+    }
+
+    fn minimum_cash_reserve_bps(env: &Env) -> Option<u32> {
+        let configured = env.storage().instance().get(&DataKey::MinCashReserveBps);
+        // The replacement cash release must never select legacy allocation or
+        // bypass borrowing controls because configuration is absent. An explicit
+        // configured zero is still allowed; absence requires all cash retained.
+        #[cfg(not(feature = "lp-engine"))]
+        { Some(configured.unwrap_or(10_000)) }
+        #[cfg(feature = "lp-engine")]
+        { configured }
+    }
+
+    fn ceil_bps(amount: u128, bps: u32) -> u128 {
+        let bps = bps as u128;
+        (amount / BPS_SCALE) * bps
+            + ((amount % BPS_SCALE) * bps + BPS_SCALE - 1) / BPS_SCALE
+    }
+
+    // Donations are not managed cash. Protocol claims are not supplier liquidity.
+    fn unencumbered_cash(env: &Env, token: &Address) -> u128 {
+        let reserves: u128 = env.storage().persistent().get(&DataKey::TotalReserves).unwrap_or(0);
+        let fees: u128 = env.storage().persistent().get(&DataKey::TotalAdminFees).unwrap_or(0);
+        Self::current_live_cash(env, token).min(Self::get_managed_cash(env))
+            .saturating_sub(reserves).saturating_sub(fees)
+    }
+
+    fn borrowing_reserve(env: &Env) -> u128 {
+        Self::ceil_bps(Self::get_total_underlying_for_account_health(env),
+            Self::minimum_cash_reserve_bps(env).unwrap_or(0))
+    }
+
+    fn check_cash_borrow(env: &Env, token: &Address, amount: u128) {
+        assert!(env.storage().instance().get::<_, bool>(&DataKey::CashBorrowingEnabled).unwrap_or(false),
+            "cash borrowing disabled");
+        assert!(amount <= Self::unencumbered_cash(env, token).saturating_sub(Self::borrowing_reserve(env)),
+            "minimum borrowing reserve");
+    }
+
     fn idle_cash_buffer_bps(env: &Env) -> u32 {
         let value: Option<u32> = env.storage().persistent().get(&DataKey::IdleCashBufferBps);
         if value.is_some() {
@@ -566,8 +627,18 @@ impl ReceiptVault {
         else {
             return 0u128;
         };
+        assert!(!Self::cl_custody(env), "custody strategy forbidden");
         let available_cash = Self::current_live_cash(env, token_address);
-        let deploy_amount = amount.min(available_cash);
+        let deploy_amount = if Self::minimum_cash_reserve_bps(env).is_some() {
+            // Allocation targets apply only to unborrowed managed assets. The
+            // borrowing floor uses supplier NAV, including outstanding loans.
+            let unborrowed = Self::get_managed_cash(env)
+                .checked_add(Self::get_boosted_underlying_for_account_health(env))
+                .expect("unborrowed assets overflow");
+            let target = Self::ceil_bps(unborrowed, Self::idle_cash_buffer_bps(env));
+            let floor = target.max(Self::borrowing_reserve(env));
+            amount.min(Self::unencumbered_cash(env, token_address).saturating_sub(floor))
+        } else { amount.min(available_cash) };
         if deploy_amount == 0 {
             return 0u128;
         }
@@ -1204,6 +1275,13 @@ impl ReceiptVault {
         // Borrowing is gated until either an interest model is configured or
         // admin explicitly enables static-rate mode.
         env.storage().persistent().set(&DataKey::RatesReady, &false);
+        // Fresh ordinary receipts start with an explicit durable cash policy.
+        // Existing deployed instances are not migrated by this initializer.
+        #[cfg(not(feature = "lp-engine"))]
+        {
+            env.storage().instance().set(&DataKey::MinCashReserveBps, &0u32);
+            env.storage().instance().set(&DataKey::CashBorrowingEnabled, &false);
+        }
 
         // Set last update time and accumulated interest
         let now = env.ledger().timestamp();
@@ -1263,6 +1341,7 @@ impl ReceiptVault {
 
     /// Admin: set boosted vault address (DeFindex).
     pub fn set_boosted_vault(env: Env, admin: Address, boosted_vault: Address) {
+        assert!(!Self::cl_custody(&env),"custody strategy forbidden");
         let _ = ensure_initialized(&env);
         let stored: Address = env
             .storage()
@@ -1477,6 +1556,10 @@ impl ReceiptVault {
     }
 
     pub(crate) fn deposit_excess_idle_cash(env: &Env, token_address: &Address, live_cash: u128) {
+        if Self::minimum_cash_reserve_bps(env).is_some() {
+            let _ = Self::deposit_into_boosted(env, token_address, live_cash);
+            return;
+        }
         let bps = Self::idle_cash_buffer_bps(env) as u128;
         let total_underlying = Self::get_total_underlying(env.clone());
         let desired_idle = total_underlying.saturating_mul(bps) / BPS_SCALE;
@@ -1486,10 +1569,162 @@ impl ReceiptVault {
         }
     }
 
+    fn cl_custody(env: &Env) -> bool {
+        env.storage().instance().get(&DataKey::ClCustody).unwrap_or(false)
+    }
+
+    /// Dedicated CL collateral market only. Registration on the underlying
+    /// share vault is separately authorized by that vault's admin.
+    pub fn set_cl_custody(env: Env, admin: Address) {
+        let token = ensure_initialized(&env);
+        let expected: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin missing");
+        assert!(admin == expected, "invalid admin");
+        admin.require_auth();
+        assert!(total_ptokens_supply(&env) == 0, "custody requires empty market");
+        assert!(env.storage().persistent().get::<_,u128>(&DataKey::InitialExchangeRate).unwrap_or(SCALE_1E6)==SCALE_1E6,"custody initial rate must be one");
+        for key in [DataKey::TotalBorrowed,DataKey::TotalReserves,DataKey::TotalAdminFees,DataKey::YearlyRateScaled] {
+            assert!(env.storage().persistent().get::<_,u128>(&key).unwrap_or(0)==0,"custody requires clean accounting");
+        }
+        assert!(!env.storage().persistent().has(&DataKey::BoostedVault), "custody strategy forbidden");
+        let registered: bool = call_contract_or_panic(&env,&token,"is_custodian",(env.current_contract_address(),));
+        assert!(registered,"receipt not registered custodian");
+        env.storage().instance().set(&DataKey::ClCustody,&true);
+    }
+
+    pub fn get_cl_custody(env: Env) -> bool { Self::cl_custody(&env) }
+
+    pub fn cl_assign_margin_rewards(env: Env, owner: Address, amount_underlying: u128) {
+        if !Self::cl_custody(&env) { return; }
+        let token = ensure_initialized(&env);
+        Self::require_margin_controller_auth(&env);
+        let _: () = call_contract_or_panic(&env,&token,"custody_assign",
+            (env.current_contract_address(),owner,amount_underlying));
+    }
+
+    pub fn cl_prepare_margin_rewards(env: Env, owner: Address, ptokens: u128, recovery: bool) {
+        if !Self::cl_custody(&env) { return; }
+        ensure_initialized(&env);
+        let controller = Self::require_margin_controller_auth(&env);
+        if let Some(previous) = env.storage().instance().get::<_, ClCustodyContext>(&DataKey::ClCustodyContext) {
+            assert!(previous.ledger < env.ledger().sequence(), "custody context pending");
+        }
+        env.storage().instance().set(&DataKey::ClCustodyContext,&ClCustodyContext {
+            owner,recipient:controller,ptokens,recovery,withdrawal:true,ledger:env.ledger().sequence() });
+    }
+
+    pub fn cl_reassign_margin_rewards(env: Env, owner: Address, newowner: Address, ptokens: u128, recovery: bool) {
+        if !Self::cl_custody(&env) { return; }
+        ensure_initialized(&env);
+        Self::require_margin_controller_auth(&env);
+        if let Some(previous) = env.storage().instance().get::<_, ClCustodyContext>(&DataKey::ClCustodyContext) {
+            assert!(previous.ledger < env.ledger().sequence(), "custody context pending");
+        }
+        env.storage().instance().set(&DataKey::ClCustodyContext,&ClCustodyContext {
+            owner,recipient:newowner,ptokens,recovery,withdrawal:false,ledger:env.ledger().sequence() });
+    }
+
+    fn cl_boundary(env: &Env, physical: &Address, recipient: &Address, ptokens: u128, withdrawal: bool) -> (Address,bool) {
+        if env.storage().persistent().get::<_,Address>(&DataKey::MarginController).as_ref() == Some(physical) {
+            let ctx: ClCustodyContext = env.storage().instance().get(&DataKey::ClCustodyContext).expect("custody context missing");
+            assert!(ctx.recipient == *recipient && ctx.ptokens == ptokens && ctx.withdrawal == withdrawal
+                && ctx.ledger == env.ledger().sequence(),"custody context mismatch");
+            env.storage().instance().remove(&DataKey::ClCustodyContext);
+            (ctx.owner,ctx.recovery)
+        } else { (physical.clone(),false) }
+    }
+
+    /// Optional new-market policy. Once configured, even zero bps remains cash-only.
+    /// First configuration leaves borrowing disabled until explicitly enabled.
+    pub fn set_min_cash_reserve_bps(env: Env, admin: Address, bps: u32) {
+        ensure_initialized(&env);
+        let expected: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin missing");
+        assert!(admin == expected, "invalid admin");
+        admin.require_auth();
+        assert!(bps <= 10_000, "invalid reserve bps");
+        env.storage().instance().set(&DataKey::MinCashReserveBps, &bps);
+    }
+
+    pub fn get_min_cash_reserve_bps(env: Env) -> Option<u32> {
+        ensure_initialized(&env);
+        Self::minimum_cash_reserve_bps(&env)
+    }
+
+    pub fn set_cash_borrowing_enabled(env: Env, admin: Address, enabled: bool) {
+        ensure_initialized(&env);
+        let expected: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin missing");
+        assert!(admin == expected, "invalid admin");
+        admin.require_auth();
+        assert!(Self::minimum_cash_reserve_bps(&env).is_some(), "reserve not configured");
+        env.storage().instance().set(&DataKey::CashBorrowingEnabled, &enabled);
+    }
+
+    pub fn get_cash_borrowing_enabled(env: Env) -> bool {
+        ensure_initialized(&env);
+        env.storage().instance().get(&DataKey::CashBorrowingEnabled).unwrap_or(false)
+    }
+
+    pub fn get_borrowable_cash(env: Env) -> u128 {
+        let token = ensure_initialized(&env);
+        Self::unencumbered_cash(&env, &token).saturating_sub(Self::borrowing_reserve(&env))
+    }
+
+    /// V3 checks the floor again after the complete open and all cash costs.
+    /// Legacy markets without the optional policy retain their existing behavior.
+    pub fn assert_borrowing_reserve(env: Env) {
+        let token = ensure_initialized(&env);
+        if Self::minimum_cash_reserve_bps(&env).is_some() {
+            assert!(Self::unencumbered_cash(&env, &token) >= Self::borrowing_reserve(&env),
+                "minimum borrowing reserve");
+        }
+    }
+
+    /// Explicitly fund permanent minimum shares in a fresh cash-only market.
+    /// All seed assets are locked, not an ordinary withdrawable deposit. The
+    /// minimum is 1,000 RAW pToken units, not 1,000 tokens or a principal guarantee.
+    pub fn seed_minimum_supply(env: Env, admin: Address, seed_assets: u128) -> u128 {
+        let token_address = ensure_initialized(&env);
+        Self::ensure_not_in_flash_loan(&env);
+        let stored: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin missing");
+        assert!(admin == stored, "invalid admin");
+        admin.require_auth();
+        assert!(Self::minimum_cash_reserve_bps(&env).is_some() && !Self::cl_custody(&env), "cash market required");
+        assert!(!env.storage().instance().has(&DataKey::PermanentMinimumSupply), "minimum supply already seeded");
+        assert!(total_ptokens_supply(&env) == 0 && Self::get_total_underlying(env.clone()) == 0,
+            "minimum supply requires empty market");
+        assert!(Self::get_total_borrowed(env.clone()) == 0, "minimum supply requires zero debt");
+        assert!(!env.storage().persistent().has(&DataKey::BoostedVault), "cash-only seed required");
+        assert!(Self::get_managed_cash(&env) == 0 && Self::get_total_reserves(env.clone()) == 0
+            && env.storage().persistent().get::<_, u128>(&DataKey::TotalAdminFees).unwrap_or(0) == 0,
+            "seed requires no prior claims");
+        let cap: u128 = env.storage().persistent().get(&DataKey::SupplyCap).expect("supply cap missing");
+        assert!(cap == 0 || seed_assets <= cap, "supply cap exceeded");
+        let rate: u128 = env.storage().persistent().get(&DataKey::InitialExchangeRate).expect("initial exchange rate missing");
+        let planned = Self::floor_ratio(&env, seed_assets, SCALE_1E6, rate);
+        assert!(planned >= 1_000, "minimum seed is 1000 raw shares");
+        let before = Self::current_live_cash(&env, &token_address);
+        token::Client::new(&env, &token_address).transfer(&admin, &env.current_contract_address(), &to_i128(seed_assets));
+        let received = Self::current_live_cash(&env, &token_address).checked_sub(before).expect("seed cash decreased");
+        assert!(received == seed_assets, "seed transfer mismatch");
+        Self::add_managed_cash(&env, received);
+        env.storage().persistent().set(&DataKey::TotalDeposited, &received);
+        env.storage().instance().set(&DataKey::PermanentMinimumSupply, &planned);
+        TokenBase::mint(&env, &env.current_contract_address(), to_i128(planned));
+        Mint { minter: env.current_contract_address(), mint_amount: received, mint_tokens: planned }.publish(&env);
+        planned
+    }
+
+    pub fn get_minimum_supply(env: Env) -> u128 {
+        ensure_initialized(&env);
+        Self::minimum_supply(&env)
+    }
+
     /// Deposit tokens into the vault and receive pTokens
     pub fn deposit(env: Env, user: Address, amount: u128) {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
+        if Self::minimum_cash_reserve_bps(&env).is_some() && !Self::cl_custody(&env) {
+            assert!(Self::minimum_supply(&env) >= 1_000, "cash market must be explicitly seeded");
+        }
         // Always update interest first
         Self::update_interest(env.clone());
         // Require authorization from the user
@@ -1539,15 +1774,23 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::SupplyCap)
-            .unwrap_or(0u128);
+            .expect("supply cap missing");
         let total_underlying_before = if cap > 0 {
             Some(Self::get_total_underlying(env.clone()))
         } else {
             None
         };
 
-        // Calculate pTokens to mint based on current exchange rate BEFORE moving cash
-        let current_rate = Self::get_exchange_rate(env.clone());
+        // Capture exact supplier NAV and supply BEFORE moving cash. The public
+        // exchange-rate quote remains informational; truncating it here overmints.
+        let underlying_for_mint = total_underlying_before.unwrap_or_else(|| Self::get_total_underlying(env.clone()));
+        let initial_rate = if total_ptokens_before == 0 {
+            assert!(underlying_for_mint == 0, "non-empty vault at zero supply");
+            env.storage().persistent().get(&DataKey::InitialExchangeRate).unwrap_or(SCALE_1E6)
+        } else {
+            assert!(underlying_for_mint > 0, "invalid underlying state");
+            0u128
+        };
         let amount_i128 = to_i128(amount);
         token_client.transfer(&user, &env.current_contract_address(), &amount_i128);
         let cash_after = Self::current_live_cash(&env, &token_address);
@@ -1564,20 +1807,30 @@ impl ReceiptVault {
             }
         }
 
-        let scaled_amount = received_cash
-            .checked_mul(SCALE_1E6)
-            .expect("ptoken calculation overflow");
-        let ptokens_to_mint = scaled_amount / current_rate;
+        let ptokens_to_mint = if total_ptokens_before == 0 {
+            Self::floor_ratio(&env, received_cash, SCALE_1E6, initial_rate)
+        } else {
+            Self::floor_ratio(&env, received_cash, total_ptokens_before, underlying_for_mint)
+        };
         if ptokens_to_mint == 0 {
             panic!("amount below minimum");
         }
         Self::add_managed_cash(&env, received_cash);
+        if Self::cl_custody(&env) {
+            assert!(ptokens_to_mint == received_cash,"custody exchange rate changed");
+            // V3 assigns the borrower immediately after its deposit in the same
+            // activation call. A registered custodian is never a beneficiary.
+            if env.storage().persistent().get::<_,Address>(&DataKey::MarginController).as_ref()!=Some(&user) {
+                let _: () = call_contract_or_panic(&env,&token_address,"custody_assign",
+                    (env.current_contract_address(),user.clone(),received_cash));
+            }
+        }
 
         let deploy_amount = if received_cash == 0 {
             0u128
         } else {
             let idle_bps = Self::idle_cash_buffer_bps(&env) as u128;
-            if idle_bps == 0 {
+            if Self::minimum_cash_reserve_bps(&env).is_some() || idle_bps == 0 {
                 received_cash
             } else {
                 let total_underlying_after = Self::get_total_underlying(env.clone());
@@ -1621,6 +1874,7 @@ impl ReceiptVault {
         // Always update interest first
         Self::update_interest(env.clone());
         let current_ptokens = ptoken_balance(&env, &user);
+        Self::preserve_minimum_supply(&env, &user, ptoken_amount);
         // Rewards accrue and fail closed on error.
         let total_ptokens_before = total_ptokens_supply(&env);
         let total_borrowed_before: u128 = env
@@ -1645,14 +1899,12 @@ impl ReceiptVault {
             Self::enforce_margin_lock(&env, &user, current_ptokens, ptoken_amount);
         }
 
-        // Calculate underlying tokens to return based on current exchange rate
-        let current_rate = Self::get_exchange_rate(env.clone());
-        // underlying = ptoken_amount * rate / 1e6
-        // SECURITY: Use checked_mul to prevent silent overflow in release builds
-        let underlying_to_return = ptoken_amount
-            .checked_mul(current_rate)
-            .expect("withdraw calculation overflow")
-            / SCALE_1E6;
+        // Use one exact NAV snapshot for payout and the conservative health quote.
+        let underlying_for_withdraw = Self::get_total_underlying(env.clone());
+        let current_rate = Self::floor_ratio(&env, underlying_for_withdraw, SCALE_1E6, total_ptokens_before);
+        let underlying_to_return = Self::floor_ratio(
+            &env, ptoken_amount, underlying_for_withdraw, total_ptokens_before,
+        );
 
         // Check we have enough liquid underlying (cash)
         let available_underlying = Self::get_available_liquidity(env.clone());
@@ -1754,6 +2006,7 @@ impl ReceiptVault {
         let total_ptokens_after = total_ptokens_before
             .checked_sub(ptoken_amount)
             .expect("ptoken supply underflow");
+        assert!(total_ptokens_after >= Self::minimum_supply(&env), "permanent minimum supply locked");
         let final_exit = total_ptokens_after == 0;
         if final_exit {
             let total_borrowed: u128 = env
@@ -1825,6 +2078,12 @@ impl ReceiptVault {
         // Transfer tokens back to user
         let underlying_i128 = to_i128(payout);
         let cash_before_withdraw = Self::current_live_cash(&env, &token_address);
+        if Self::cl_custody(&env) {
+            assert!(payout == ptoken_amount,"custody exchange rate changed");
+            let (owner,recovery) = Self::cl_boundary(&env,&user,&user,ptoken_amount,true);
+            let _: () = call_contract_or_panic(&env,&token_address,"custody_prepare_transfer",
+                (env.current_contract_address(),owner,user.clone(),payout,recovery));
+        }
         token_client.transfer(&env.current_contract_address(), &user, &underlying_i128);
         let cash_after_withdraw = Self::current_live_cash(&env, &token_address);
         Self::sub_managed_cash(
@@ -1954,6 +2213,7 @@ impl ReceiptVault {
     ) {
         let to_address = to.address();
         let token_address = ensure_initialized(&env);
+        Self::preserve_minimum_supply(&env, &from, amount);
         Self::ensure_not_in_flash_loan(&env);
         if amount == 0 {
             return;
@@ -2064,6 +2324,16 @@ impl ReceiptVault {
             Self::enforce_margin_lock(&env, &from, from_bal, amount);
         }
 
+        if Self::cl_custody(&env) {
+            let (owner,recovery) = Self::cl_boundary(&env,&from,&to_address,amount,false);
+            // Entering margin custody preserves the sender's beneficial owner.
+            let beneficiary = if env.storage().persistent().get::<_,Address>(&DataKey::MarginController).as_ref() == Some(&to_address) {
+                owner.clone()
+            } else { to_address.clone() };
+            let method = if recovery { "custody_recover_reassign" } else { "custody_reassign" };
+            let _: () = call_contract_or_panic(&env,&token_address,method,
+                (env.current_contract_address(),owner,beneficiary,amount));
+        }
         match spender {
             Some(spender_addr) => {
                 TokenBase::transfer_from(&env, &spender_addr, &from, &to_address, to_i128(amount));
@@ -2242,7 +2512,9 @@ impl ReceiptVault {
 
     /// Get the exchange rate (pToken to underlying ratio) scaled by 1e6
     pub fn get_exchange_rate(env: Env) -> u128 {
-        let _ = ensure_initialized(&env);
+        // Valuation maintains the keys it consumes; governance/borrow-state
+        // keepalive is independent of this read-only quote.
+        let _ = ensure_initialized_for_snapshot(&env);
         Self::get_exchange_rate_internal(&env)
     }
 
@@ -2285,6 +2557,9 @@ impl ReceiptVault {
     /// Soroban's transaction footprint, so operators should call this periodically.
     pub fn bump_ttl(env: Env) {
         let _ = ensure_initialized(&env);
+        // Instance policy flags share the contract-instance lifetime. Maintain
+        // it explicitly on the keeper path as well as the persistent keys.
+        env.storage().instance().extend_ttl(500_000, 1_000_000);
         // BoostedAssetCount stays off the ordinary ensure_initialized hot path:
         // one extra absent-key read is enough to push boundary lending calls
         // past Soroban's 100-entry footprint limit. The explicit keeper path
@@ -2402,6 +2677,11 @@ impl ReceiptVault {
             panic!("not admin");
         }
         admin.require_auth();
+        if Self::cl_custody(&env) {
+            let existing: Option<Address> = env.storage().persistent().get(&DataKey::MarginController);
+            assert!(existing == margin_controller, "custody controller immutable");
+            return;
+        }
 
         if let Some(controller) = margin_controller {
             let _: u128 = call_contract_or_panic(
@@ -2424,7 +2704,8 @@ impl ReceiptVault {
     }
 
     pub fn get_margin_controller(env: Env) -> Option<Address> {
-        let _ = ensure_initialized(&env);
+        let _ = ensure_initialized_for_snapshot(&env);
+        bump_margin_controller_ttl(&env);
         env.storage().persistent().get(&DataKey::MarginController)
     }
 
@@ -2960,6 +3241,7 @@ impl ReceiptVault {
         borrow_yearly_rate_scaled: u128,
         total_borrowed: u128,
     ) {
+        assert!(!Self::cl_custody(&env) || (total_borrowed == 0 && supply_yearly_rate_scaled == 0),"custody recovery accounting invalid");
         let stored_admin: Address = env
             .storage()
             .persistent()
@@ -3065,6 +3347,7 @@ impl ReceiptVault {
 
     /// Admin: update yearly interest rate (scaled 1e6). Applies after accruing with old rate.
     pub fn set_interest_rate(env: Env, yearly_rate_scaled: u128) {
+        assert!(!Self::cl_custody(&env) || yearly_rate_scaled == 0,"custody supply rate must be zero");
         let _ = ensure_initialized(&env);
         // Admin guard
         let admin: Address = env
@@ -3683,7 +3966,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::BorrowCap)
-            .unwrap_or(0u128);
+            .expect("borrow cap missing");
         if bcap > 0 {
             let principal_total: u128 = env
                 .storage()
@@ -3703,7 +3986,10 @@ impl ReceiptVault {
         // Pull liquidity from boosted vault only when managed cash indicates a shortfall.
         // This avoids extra token-balance reads on the common non-boosted path.
         let managed_cash = Self::get_managed_cash(&env);
-        if managed_cash < amount {
+        assert!(!Self::cl_custody(&env),"custody borrowing forbidden");
+        if Self::minimum_cash_reserve_bps(&env).is_some() {
+            Self::check_cash_borrow(&env, &token_address, amount);
+        } else if managed_cash < amount {
             Self::ensure_liquid_cash_with_policy(&env, &token_address, amount, managed_only);
             let cash_for_borrow = Self::spendable_cash(&env, &token_address, managed_only);
             if cash_for_borrow < amount {
@@ -3778,7 +4064,8 @@ impl ReceiptVault {
     /// Borrow into a margin position namespace.
     /// Callable only by the configured margin controller.
     pub fn init_margin_borrow_state(env: Env, position_id: u64) {
-        let _ = ensure_initialized(&env);
+        let _ = ensure_initialized_for_snapshot(&env);
+        bump_margin_controller_ttl(&env);
         let _margin_controller = Self::require_margin_controller_auth(&env);
         let has_snapshot = env
             .storage()
@@ -3863,7 +4150,7 @@ impl ReceiptVault {
             .storage()
             .persistent()
             .get(&DataKey::BorrowCap)
-            .unwrap_or(0u128);
+            .expect("borrow cap missing");
         if bcap > 0 {
             let principal_total: u128 = env
                 .storage()
@@ -3881,7 +4168,10 @@ impl ReceiptVault {
         }
 
         let managed_cash = Self::get_managed_cash(&env);
-        if managed_cash < amount {
+        assert!(!Self::cl_custody(&env),"custody borrowing forbidden");
+        if Self::minimum_cash_reserve_bps(&env).is_some() {
+            Self::check_cash_borrow(&env, &token_address, amount);
+        } else if managed_cash < amount {
             Self::ensure_liquid_cash(&env, &token_address, amount);
             let cash_for_borrow = Self::current_live_cash(&env, &token_address);
             if cash_for_borrow < amount {
@@ -4333,6 +4623,10 @@ impl ReceiptVault {
         let token_address = ensure_initialized(&env);
         Self::ensure_not_in_flash_loan(&env);
         Self::update_interest(env.clone());
+        // Configured cash markets use the same durable borrowing policy for flash loans.
+        if Self::minimum_cash_reserve_bps(&env).is_some() {
+            Self::check_cash_borrow(&env, &token_address, amount);
+        }
 
         if let Some(comp_addr) = env
             .storage()
@@ -4550,6 +4844,7 @@ impl ReceiptVault {
             abort_seize(&env, &borrower, &liquidator, ptoken_amount, "no_comp");
         };
         comp_addr.require_auth();
+        Self::preserve_minimum_supply(&env, &borrower, ptoken_amount);
         if ptoken_amount == 0 {
             abort_seize(&env, &borrower, &liquidator, ptoken_amount, "zero_amt");
         }
@@ -4588,6 +4883,12 @@ impl ReceiptVault {
         if seize_ctx.fee_ptokens > 0 {
             if let Some(recipient) = seize_ctx.fee_recipient {
                 let fee_i128 = to_i128(seize_ctx.fee_ptokens);
+                if Self::cl_custody(&env) {
+                    assert!(env.storage().persistent().get::<_,Address>(&DataKey::MarginController).as_ref()!=Some(&borrower),"margin custody requires funded route");
+                    let token = ensure_initialized(&env);
+                    let _: () = call_contract_or_panic(&env,&token,"custody_recover_reassign",
+                        (env.current_contract_address(),borrower.clone(),recipient.clone(),seize_ctx.fee_ptokens));
+                }
                 TokenBase::update(&env, Some(&borrower), Some(&recipient), fee_i128);
                 stellar_tokens::fungible::emit_transfer(
                     &env, &borrower, &recipient, None, fee_i128,
@@ -4597,6 +4898,12 @@ impl ReceiptVault {
             }
         }
         if remaining > 0 {
+            if Self::cl_custody(&env) {
+                assert!(env.storage().persistent().get::<_,Address>(&DataKey::MarginController).as_ref()!=Some(&borrower),"margin custody requires funded route");
+                let token = ensure_initialized(&env);
+                let _: () = call_contract_or_panic(&env,&token,"custody_recover_reassign",
+                    (env.current_contract_address(),borrower.clone(),liquidator.clone(),remaining));
+            }
             TokenBase::update(&env, Some(&borrower), Some(&liquidator), to_i128(remaining));
             stellar_tokens::fungible::emit_transfer(
                 &env,

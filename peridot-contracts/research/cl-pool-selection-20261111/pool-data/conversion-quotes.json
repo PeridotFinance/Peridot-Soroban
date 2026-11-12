@@ -1,0 +1,1983 @@
+{
+  "time": "2026-11-11T09:34:11.999Z",
+  "scope": "independent unsigned swap quotes against rolling live prestates, not sequential deposit or exit proof",
+  "rows": [
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "4979359857",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "4993614814",
+      "ledger": 65420721,
+      "output": "4973609996",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAShzRAw=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "4992853207",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "4993614814",
+      "ledger": 65420721,
+      "output": "4988609301",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASlYIxU=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "5007146793",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "4992853207",
+      "ledger": 65420721,
+      "output": "5002890704",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASoyDdA=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "4993614813",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "4992853207",
+      "ledger": 65420721,
+      "output": "4987848457",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASlMhwk=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "4999345461",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "4973629210",
+      "ledger": 65420721,
+      "output": "4993572474",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASmj3no=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "5012892968",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "4973629210",
+      "ledger": 65420721,
+      "output": "5008631981",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASqJqK0=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "4987107032",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5012892968",
+      "ledger": 65420721,
+      "output": "4982868024",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASkAiDg=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "4973629210",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5012892968",
+      "ledger": 65420721,
+      "output": "4967885979",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASgb7Js=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "9210049370",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "762925301",
+      "ledger": 65420721,
+      "output": "9199395580",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAiRTovw=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "9235007276",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "762925301",
+      "ledger": 65420722,
+      "output": "9227138860",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAiX69yw=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "764992720",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "9235007280",
+      "ledger": 65420722,
+      "output": "764344022",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAC2O9tY=",
+      "resourceFee": "8297"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "762925301",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "9235007280",
+      "ledger": 65420722,
+      "output": "762045855",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAC1r5Z8=",
+      "resourceFee": "9631"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "49793598577",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "49936148141",
+      "ledger": 65420722,
+      "output": "49735035545",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC5Rwapk=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "49928532072",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "49936148141",
+      "ledger": 65420722,
+      "output": "49885022330",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC51hCHo=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "50071467928",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "49928532072",
+      "ledger": 65420722,
+      "output": "50027830211",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6XkG8M=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "49936148141",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "49928532072",
+      "ledger": 65420722,
+      "output": "49877414059",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC5zs8Ks=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "49993454611",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "49736292107",
+      "ledger": 65420722,
+      "output": "49934651760",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6BWUXA=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "50128929688",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "49736292107",
+      "ledger": 65420722,
+      "output": "50085240518",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6lQHsY=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "49871070312",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50128929688",
+      "ledger": 65420722,
+      "output": "49827612012",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC5n1BWw=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "49736292107",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50128929688",
+      "ledger": 65420722,
+      "output": "49677797834",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC5EHCco=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "92100493704",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "7629253014",
+      "ledger": 65420722,
+      "output": "91990314292",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAFWsMzTQ=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "92350072806",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "7629253014",
+      "ledger": 65420722,
+      "output": "92267725699",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAFXuVw4M=",
+      "resourceFee": "8288"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "7649927194",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "92350072806",
+      "ledger": 65420722,
+      "output": "7643415085",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAceVQi0=",
+      "resourceFee": "8299"
+    },
+    {
+      "pool": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "7629253014",
+      "prices": [
+        1.002709856294809,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "92350072806",
+      "ledger": 65420722,
+      "output": "7620433574",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAcY2lqY=",
+      "resourceFee": "9633"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "4978417357",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "4994557314",
+      "ledger": 65420722,
+      "output": "5010008127",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASqeqD8=",
+      "resourceFee": "9665"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "5034611636",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "4994557314",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "5050933775",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "5034611636",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "4994557314",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "5034611636",
+      "ledger": 65420722,
+      "output": "5026239724",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASuWVOw=",
+      "resourceFee": "9665"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "5001717390",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "4971257281",
+      "ledger": 65420722,
+      "output": "5033440431",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASwENK8=",
+      "resourceFee": "9665"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "5058174670",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "4971257281",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "5027370741",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "5058174670",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "4971257281",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "5058174670",
+      "ledger": 65420722,
+      "output": "5002807375",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASowyE8=",
+      "resourceFee": "9665"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "9912951080",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "60023591",
+      "ledger": 65420722,
+      "output": "9969496105",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAlI6cCk=",
+      "resourceFee": "11252"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "10024844163",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "9972974671",
+      "keep_quantity": "60023591",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "60701113",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "10024844298",
+      "ledger": 65420722,
+      "output": "60157448",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAOV7gg=",
+      "resourceFee": "9239"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "60023591",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "10024844298",
+      "ledger": 65420722,
+      "output": "60443968",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAOaTUA=",
+      "resourceFee": "9663"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "49784173571",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "49945573147",
+      "ledger": 65420722,
+      "output": "49844048206",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC5rv0U4=",
+      "resourceFee": "16131"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "50346116365",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "49945573147",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "50509337752",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50346116365",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "49945573147",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50346116365",
+      "ledger": 65420722,
+      "output": "50004447311",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6R/UE8=",
+      "resourceFee": "16140"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "50017173904",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "49712572814",
+      "ledger": 65420722,
+      "output": "50075600305",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6i9BbE=",
+      "resourceFee": "16140"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "50581746707",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "49712572814",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "50273707410",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50581746707",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "49712572814",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50581746707",
+      "ledger": 65420722,
+      "output": "49772887352",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC5ax/Tg=",
+      "resourceFee": "16140"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "99129510800",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "600235918",
+      "ledger": 65420722,
+      "output": "55945015978",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAADQaVMqo=",
+      "resourceFee": "18001"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "100248442959",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "99729746718",
+      "keep_quantity": "600235918",
+      "ledger": 65420722,
+      "output": "3701110719",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAANyad78=",
+      "resourceFee": "11356"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "607011129",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "100248442988",
+      "ledger": 65420722,
+      "output": "601480345",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAACPZ3Jk=",
+      "resourceFee": "9260"
+    },
+    {
+      "pool": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "600235918",
+      "prices": [
+        1.002709856294809,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "100248442988",
+      "ledger": 65420722,
+      "output": "604396288",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAACQGWwA=",
+      "resourceFee": "9680"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "5000419381",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "4999580619",
+      "ledger": 65420722,
+      "output": "5038880415",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASxXNp8=",
+      "resourceFee": "9675"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "5043195673",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "4999580619",
+      "ledger": 65420722,
+      "output": "4994464797",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASmxfB0=",
+      "resourceFee": "8355"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "5042349738",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "5043195673",
+      "ledger": 65420722,
+      "output": "4993627055",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASmks68=",
+      "resourceFee": "8355"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "4999580619",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "5043195673",
+      "ledger": 65420722,
+      "output": "5038035221",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASxKURU=",
+      "resourceFee": "9675"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "4993002494",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5006997506",
+      "ledger": 65420722,
+      "output": "5031406654",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASvlLD4=",
+      "resourceFee": "9675"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "5035715339",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5006997506",
+      "ledger": 65420722,
+      "output": "4987056915",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASlAcxM=",
+      "resourceFee": "8355"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "5049830072",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "5035715339",
+      "ledger": 65420722,
+      "output": "5001034936",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASoVvLg=",
+      "resourceFee": "8355"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "5006997506",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "5035715339",
+      "ledger": 65420722,
+      "output": "5045508981",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASy8W3U=",
+      "resourceFee": "9675"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "3432455528",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "6567544472",
+      "ledger": 65420723,
+      "output": "3458881717",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAM4qWLU=",
+      "resourceFee": "9672"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "3461818609",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "6567544472",
+      "ledger": 65420723,
+      "output": "3428393121",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAMxZIKE=",
+      "resourceFee": "8353"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "6623726802",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "3461818609",
+      "ledger": 65420723,
+      "output": "6559675886",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAYb8te4=",
+      "resourceFee": "8355"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "6567544472",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "10085545411",
+      "keep_quantity": "3461818609",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "50004193802",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "49995806198",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "50431956736",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "49995806198",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "50423497381",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50431956736",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "49995806198",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50431956736",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "49930024939",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50069975061",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "50357153392",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50069975061",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "50498300725",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50357153392",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "50069975061",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50357153392",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "34324555271",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "65675444729",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "34618186092",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "65675444729",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "66237268025",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "34618186092",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "65675444729",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "34618186092",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "4999598455",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5000401545",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "4521264134",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5000401545",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "4521990391",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "9043254525",
+      "keep_quantity": "4521264134",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "5000401545",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "9043254525",
+      "keep_quantity": "4521264134",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "5029127727",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "4970872273",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "4547968206",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "4970872273",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "4495286319",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "9043254525",
+      "keep_quantity": "4547968206",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "4970872273",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "9043254525",
+      "keep_quantity": "4547968206",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "2115135348",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "7884864652",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "1912770730",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "7884864652",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "7130483795",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "9043254525",
+      "keep_quantity": "1912770730",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "7884864652",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "9043254525",
+      "keep_quantity": "1912770730",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "49995984544",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50004015456",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "45212641346",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50004015456",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "45219903905",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "90432545251",
+      "keep_quantity": "45212641346",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "50004015456",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "90432545251",
+      "keep_quantity": "45212641346",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "50291277264",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "49708722736",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "45479682069",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "49708722736",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "44952863182",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "90432545251",
+      "keep_quantity": "45479682069",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "49708722736",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "90432545251",
+      "keep_quantity": "45479682069",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "21151353475",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "78848646525",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "19127707302",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "78848646525",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "71304837949",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "90432545251",
+      "keep_quantity": "19127707302",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "78848646524",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "90432545251",
+      "keep_quantity": "19127707302",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "5004255229",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10007693936",
+      "keep_quantity": "5003438707",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "5000407945",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10007693936",
+      "keep_quantity": "5003438707",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "4999592054",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5000407946",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "5003438707",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5000407946",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "5013580359",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10007693936",
+      "keep_quantity": "4994113577",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "5009725907",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10007693936",
+      "keep_quantity": "4994113577",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "4990274093",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5009725907",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "4994113577",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5009725907",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "6975543811",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10007693936",
+      "keep_quantity": "3032150125",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "6970180998",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10007693936",
+      "keep_quantity": "3032150125",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "3029819002",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "6970180998",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "3032150125",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "6970180998",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "50042552284",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100076939361",
+      "keep_quantity": "50034387077",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "50004079463",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100076939361",
+      "keep_quantity": "50034387077",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "49995920536",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50004079464",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "50034387077",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50004079464",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "50135803584",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100076939361",
+      "keep_quantity": "49941135777",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "50097259072",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100076939361",
+      "keep_quantity": "49941135777",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "49902740928",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50097259072",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "49941135777",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50097259072",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "69755438110",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100076939361",
+      "keep_quantity": "30321501251",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "exit",
+      "input": "69701809982",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100076939361",
+      "keep_quantity": "30321501251",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "30298190018",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "69701809982",
+      "error": "Request failed with status code 429"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "exit",
+      "input": "30321501251",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "69701809982",
+      "error": "Request failed with status code 429"
+    }
+  ]
+}

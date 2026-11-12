@@ -1,0 +1,84 @@
+{
+  "observedAt": "2026-11-12T09:32:29.715Z",
+  "source": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+  "scope": "independent unsigned permanent-seed preflights from current state; not applied",
+  "rows": [
+    {
+      "market": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "asset": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      "amountRaw": "10000000",
+      "ledger": 65437981,
+      "instructions": 8733583,
+      "uniqueKeys": 37,
+      "writes": 6,
+      "writeBytes": 1240,
+      "minResourceFee": "957712",
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "authXdr": [
+        "AAAAAAAAAAAAAAAB7bMNql0I96VkpUy0yUbCw7xgcA0x9oTpQs0LNb3oMFMAAAATc2VlZF9taW5pbXVtX3N1cHBseQAAAAACAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAJAAAAAAAAAAAAAAAAAJiWgAAAAAEAAAAAAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAALk+sf3KkLF7e0UX4x7GkilfJiRvwqcz1/3nKuFtVbKJAAAAEgAAAAHtsw2qXQj3pWSlTLTJRsLDvGBwDTH2hOlCzQs1vegwUwAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAA=="
+      ],
+      "result": "PASS"
+    },
+    {
+      "market": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "asset": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      "amountRaw": "50000000",
+      "ledger": 65437981,
+      "instructions": 8652569,
+      "uniqueKeys": 36,
+      "writes": 6,
+      "writeBytes": 1268,
+      "minResourceFee": "956493",
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "authXdr": [
+        "AAAAAAAAAAAAAAABTsNwTUu0KJgDoxDt0TzousnYwglIJkfQJqYxiGEO264AAAATc2VlZF9taW5pbXVtX3N1cHBseQAAAAACAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAJAAAAAAAAAAAAAAAAAvrwgAAAAAEAAAAAAAAAASW0/NhZrsL6Y0hDjEibPDwQyYttIb5P08swy2iVPvl3AAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAALk+sf3KkLF7e0UX4x7GkilfJiRvwqcz1/3nKuFtVbKJAAAAEgAAAAFOw3BNS7QomAOjEO3RPOi6ydjCCUgmR9AmpjGIYQ7brgAAAAoAAAAAAAAAAAAAAAAC+vCAAAAAAA=="
+      ],
+      "result": "PASS"
+    },
+    {
+      "market": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "asset": "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2",
+      "amountRaw": "10000000",
+      "ledger": 65437981,
+      "instructions": 8731031,
+      "uniqueKeys": 37,
+      "writes": 6,
+      "writeBytes": 1248,
+      "minResourceFee": "957700",
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "authXdr": [
+        "AAAAAAAAAAAAAAAB/OmYHk+ogirzuDolvXJIOVh05HYfsQN/6LJDo2piF6cAAAATc2VlZF9taW5pbXVtX3N1cHBseQAAAAACAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAJAAAAAAAAAAAAAAAAAJiWgAAAAAEAAAAAAAAAAYUbH9DZWv2jSO/CNbOgKCf3ecXxlQcL0pJaMFY57+TzAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAALk+sf3KkLF7e0UX4x7GkilfJiRvwqcz1/3nKuFtVbKJAAAAEgAAAAH86ZgeT6iCKvO4OiW9ckg5WHTkdh+xA3/oskOjamIXpwAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAA=="
+      ],
+      "result": "PASS"
+    },
+    {
+      "market": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "asset": "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV",
+      "amountRaw": "10000000",
+      "ledger": 65437981,
+      "instructions": 8728713,
+      "uniqueKeys": 37,
+      "writes": 6,
+      "writeBytes": 1240,
+      "minResourceFee": "957712",
+      "auth": [
+        "sorobanCredentialsSourceAccount"
+      ],
+      "authXdr": [
+        "AAAAAAAAAAAAAAABL2f1mpF/wdtaJAGHXjzJ26K7RzL/v6oasV5MzBzO7dIAAAATc2VlZF9taW5pbXVtX3N1cHBseQAAAAACAAAAEgAAAAAAAAAAuT6x/cqQsXt7RRfjHsaSKV8mJG/CpzPX/ecq4W1VsokAAAAJAAAAAAAAAAAAAAAAAJiWgAAAAAEAAAAAAAAAAean2et1IwBqRpqnSDrREHJHRDwNguYnY95nCEjE6XyQAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAALk+sf3KkLF7e0UX4x7GkilfJiRvwqcz1/3nKuFtVbKJAAAAEgAAAAEvZ/WakX/B21okAYdePMnbortHMv+/qhqxXkzMHM7t0gAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAA=="
+      ],
+      "result": "PASS"
+    }
+  ],
+  "result": "PASS"
+}

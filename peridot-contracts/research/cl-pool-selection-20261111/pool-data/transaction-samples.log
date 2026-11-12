@@ -1,0 +1,81 @@
+1 SUCCESS [
+  'latestLedger',
+  'latestLedgerCloseTime',
+  'oldestLedger',
+  'oldestLedgerCloseTime',
+  'status',
+  'txHash',
+  'applicationOrder',
+  'feeBump',
+  'envelopeXdr',
+  'resultXdr',
+  'resultMetaXdr',
+  'diagnosticEventsXdr',
+  'events',
+  'ledger',
+  'createdAt'
+]
+2 SUCCESS [
+  'latestLedger',
+  'latestLedgerCloseTime',
+  'oldestLedger',
+  'oldestLedgerCloseTime',
+  'status',
+  'txHash',
+  'applicationOrder',
+  'feeBump',
+  'envelopeXdr',
+  'resultXdr',
+  'resultMetaXdr',
+  'diagnosticEventsXdr',
+  'events',
+  'ledger',
+  'createdAt'
+]
+3 SUCCESS [
+  'latestLedger',
+  'latestLedgerCloseTime',
+  'oldestLedger',
+  'oldestLedgerCloseTime',
+  'status',
+  'txHash',
+  'applicationOrder',
+  'feeBump',
+  'envelopeXdr',
+  'resultXdr',
+  'resultMetaXdr',
+  'diagnosticEventsXdr',
+  'events',
+  'ledger',
+  'createdAt'
+]
+4 SUCCESS [
+  'latestLedger',
+  'latestLedgerCloseTime',
+  'oldestLedger',
+  'oldestLedgerCloseTime',
+  'status',
+  'txHash',
+  'applicationOrder',
+  'feeBump',
+  'envelopeXdr',
+  'resultXdr',
+  'resultMetaXdr',
+  'diagnosticEventsXdr',
+  'events',
+  'ledger',
+  'createdAt'
+]
+5 NOT_FOUND [
+  'latestLedger',
+  'latestLedgerCloseTime',
+  'oldestLedger',
+  'oldestLedgerCloseTime',
+  'status',
+  'txHash',
+  'applicationOrder',
+  'feeBump',
+  'events',
+  'ledger',
+  'createdAt'
+]

@@ -1,0 +1,517 @@
+{
+  "schema": "cl-split-prototype-checkpoint-v1",
+  "baseline_commit": "9cf43082bfb57334d57dbc58cfa90ccad4d98078",
+  "stage1_complete": false,
+  "pr_number": 75,
+  "pr_draft": true,
+  "production_stage_changes": false,
+  "resource_policy_changes": false,
+  "borrowing_enabled": false,
+  "production_maintenance_margin_set": false,
+  "scope": "local compiled controlled-state experiment; not a deployment candidate",
+  "documentation": "docs/deployment-handoffs/15-cl-split-transaction-feasibility-20261102.md",
+  "evidence": "docs/deployment-handoffs/evidence/cl-split-prototype-20261102",
+  "profiles": {
+    "internal-policy": {
+      "test_counts": {
+        "ok": 8,
+        "FAILED": 13
+      },
+      "gates": {
+        "schema": "cl-verification-gates-v1",
+        "profile": "internal-policy",
+        "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+        "gates": {
+          "invocation": false,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "selected_gate": "invocation",
+        "release_approval": false,
+        "missing_required_flows": [
+          "allowance_transfer_from",
+          "begin_open",
+          "both_reward_calls_failed_funded_liquidation",
+          "cancel_after_execute",
+          "cancel_after_swap",
+          "cancel_before_execute",
+          "claim_failure_recovery",
+          "claim_rewards",
+          "default_missing_reserve_abi",
+          "default_pending_fee_refund_conservation",
+          "default_pending_recovery_rollback",
+          "default_reserve_active_repay_release",
+          "default_reserve_finalization_rollback",
+          "default_short_pending_recovery",
+          "deposit",
+          "expired_pending_before_swap",
+          "expired_pending_resolution",
+          "failed_activation_recovery",
+          "finish_close",
+          "funded_failed_collateral_transfer_rollback",
+          "funded_insufficient_liquidator_rollback",
+          "funded_invalid_valuation_rollback",
+          "funded_liquidation",
+          "funded_repeated_execution_rollback",
+          "funded_unauthorized_rollback",
+          "historical_multiple_intervals",
+          "historical_shortfall",
+          "historical_unresolved_intervals",
+          "history_scale_64_owners",
+          "history_scale_8_unresolved",
+          "pending_claim_boundary_matrix",
+          "prepare_close_position_v3",
+          "quarantine_reconciliation",
+          "receipt_custody_ownership_change",
+          "repay_release",
+          "reserve_complete_open",
+          "reserve_complete_open_rollback",
+          "reserve_no_liquidation_bypass",
+          "reserve_swap_rejections",
+          "swap_close",
+          "swap_open_position_v3",
+          "waiver_redistribution"
+        ],
+        "lifecycle_errors": [
+          "completed lifecycle proof manifest missing",
+          "required invocation coverage missing: allowance_transfer_from, begin_open, both_reward_calls_failed_funded_liquidation, cancel_after_execute, cancel_after_swap, cancel_before_execute, claim_failure_recovery, claim_rewards, default_missing_reserve_abi, default_pending_fee_refund_conservation, default_pending_recovery_rollback, default_reserve_active_repay_release, default_reserve_finalization_rollback, default_short_pending_recovery, deposit, expired_pending_before_swap, expired_pending_resolution, failed_activation_recovery, finish_close, funded_failed_collateral_transfer_rollback, funded_insufficient_liquidator_rollback, funded_invalid_valuation_rollback, funded_liquidation, funded_repeated_execution_rollback, funded_unauthorized_rollback, historical_multiple_intervals, historical_shortfall, historical_unresolved_intervals, history_scale_64_owners, history_scale_8_unresolved, pending_claim_boundary_matrix, prepare_close_position_v3, quarantine_reconciliation, receipt_custody_ownership_change, repay_release, reserve_complete_open, reserve_complete_open_rollback, reserve_no_liquidation_bypass, reserve_swap_rejections, swap_close, swap_open_position_v3, waiver_redistribution"
+        ],
+        "transaction_errors": [
+          "transaction row 21: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 21: transaction evidence mismatch: base_fee_source",
+          "transaction row 21: transaction evidence mismatch: limits_pass",
+          "transaction row 21: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 21: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 21: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 21: transaction evidence mismatch: live_state_validation",
+          "transaction row 21: transaction outcome/success classification mismatch",
+          "transaction row 27: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 27: transaction evidence mismatch: base_fee_source",
+          "transaction row 27: transaction evidence mismatch: limits_pass",
+          "transaction row 27: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 27: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 27: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 27: transaction evidence mismatch: live_state_validation",
+          "transaction row 27: transaction outcome/success classification mismatch",
+          "transaction row 84: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 84: transaction evidence mismatch: base_fee_source",
+          "transaction row 84: transaction evidence mismatch: limits_pass",
+          "transaction row 84: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 84: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 84: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 84: transaction evidence mismatch: live_state_validation",
+          "transaction row 84: transaction outcome/success classification mismatch",
+          "transaction row 117: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 117: transaction evidence mismatch: base_fee_source",
+          "transaction row 117: transaction evidence mismatch: limits_pass",
+          "transaction row 117: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 117: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 117: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 117: transaction evidence mismatch: live_state_validation",
+          "transaction row 117: transaction outcome/success classification mismatch",
+          "transaction row 147: transaction evidence mismatch: limits_pass",
+          "transaction row 151: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 151: transaction evidence mismatch: base_fee_source",
+          "transaction row 151: transaction evidence mismatch: limits_pass",
+          "transaction row 151: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 151: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 151: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 151: transaction evidence mismatch: live_state_validation",
+          "transaction row 151: transaction outcome/success classification mismatch",
+          "transaction row 162: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 162: transaction evidence mismatch: base_fee_source",
+          "transaction row 162: transaction evidence mismatch: limits_pass",
+          "transaction row 162: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 162: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 162: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 162: transaction evidence mismatch: live_state_validation",
+          "transaction row 162: transaction outcome/success classification mismatch",
+          "transaction row 163: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 163: transaction evidence mismatch: base_fee_source",
+          "transaction row 163: transaction evidence mismatch: limits_pass",
+          "transaction row 163: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 163: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 163: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 163: transaction evidence mismatch: live_state_validation",
+          "transaction row 163: transaction outcome/success classification mismatch",
+          "transaction row 176: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 176: transaction evidence mismatch: base_fee_source",
+          "transaction row 176: transaction evidence mismatch: limits_pass",
+          "transaction row 176: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 176: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 176: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 176: transaction evidence mismatch: live_state_validation",
+          "transaction row 176: transaction outcome/success classification mismatch",
+          "transaction row 177: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 177: transaction evidence mismatch: base_fee_source",
+          "transaction row 177: transaction evidence mismatch: limits_pass",
+          "transaction row 177: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 177: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 177: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 177: transaction evidence mismatch: live_state_validation",
+          "transaction row 177: transaction outcome/success classification mismatch",
+          "transaction row 182: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 182: transaction evidence mismatch: base_fee_source",
+          "transaction row 182: transaction evidence mismatch: limits_pass",
+          "transaction row 182: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 182: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 182: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 182: transaction evidence mismatch: live_state_validation",
+          "transaction row 182: transaction outcome/success classification mismatch",
+          "transaction row 191: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 191: transaction evidence mismatch: base_fee_source",
+          "transaction row 191: transaction evidence mismatch: limits_pass",
+          "transaction row 191: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 191: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 191: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 191: transaction evidence mismatch: live_state_validation",
+          "transaction row 191: transaction outcome/success classification mismatch",
+          "transaction row 200: transaction evidence mismatch: contract_authorization_enforced",
+          "transaction row 200: transaction evidence mismatch: base_fee_source",
+          "transaction row 200: transaction evidence mismatch: limits_pass",
+          "transaction row 200: transaction evidence mismatch: diagnostic_shadow_ok",
+          "transaction row 200: transaction evidence mismatch: exact_captured_cost_model",
+          "transaction row 200: transaction evidence mismatch: signature_verification_measured",
+          "transaction row 200: transaction evidence mismatch: live_state_validation",
+          "transaction row 200: transaction outcome/success classification mismatch",
+          "transaction proof-to-call mapping missing"
+        ]
+      },
+      "sdk_maxima": {
+        "instructions": 100027236,
+        "memory_bytes": 16785837,
+        "sdk_entries": 181,
+        "write_entries": 37,
+        "read_bytes": 92,
+        "write_bytes": 11724,
+        "contract_events_size_bytes": 1796
+      }
+    },
+    "captured-network-diagnostic": {
+      "test_counts": {
+        "ok": 21
+      },
+      "gates": {
+        "schema": "cl-verification-gates-v1",
+        "profile": "captured-network-diagnostic",
+        "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+        "gates": {
+          "invocation": true,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "selected_gate": "invocation",
+        "release_approval": false,
+        "missing_required_flows": [
+          "allowance_transfer_from",
+          "begin_open",
+          "both_reward_calls_failed_funded_liquidation",
+          "cancel_after_execute",
+          "cancel_after_swap",
+          "cancel_before_execute",
+          "claim_failure_recovery",
+          "claim_rewards",
+          "default_missing_reserve_abi",
+          "default_pending_fee_refund_conservation",
+          "default_pending_recovery_rollback",
+          "default_reserve_active_repay_release",
+          "default_reserve_finalization_rollback",
+          "default_short_pending_recovery",
+          "deposit",
+          "expired_pending_before_swap",
+          "expired_pending_resolution",
+          "failed_activation_recovery",
+          "finish_close",
+          "funded_failed_collateral_transfer_rollback",
+          "funded_insufficient_liquidator_rollback",
+          "funded_invalid_valuation_rollback",
+          "funded_liquidation",
+          "funded_repeated_execution_rollback",
+          "funded_unauthorized_rollback",
+          "historical_multiple_intervals",
+          "historical_shortfall",
+          "historical_unresolved_intervals",
+          "history_scale_64_owners",
+          "history_scale_8_unresolved",
+          "pending_claim_boundary_matrix",
+          "quarantine_reconciliation",
+          "receipt_custody_ownership_change",
+          "repay_release",
+          "reserve_complete_open",
+          "reserve_complete_open_rollback",
+          "reserve_no_liquidation_bypass",
+          "reserve_swap_rejections",
+          "swap_close",
+          "swap_open_position_v3",
+          "waiver_redistribution"
+        ],
+        "lifecycle_errors": [
+          "completed lifecycle proof manifest missing",
+          "required invocation coverage missing: allowance_transfer_from, begin_open, both_reward_calls_failed_funded_liquidation, cancel_after_execute, cancel_after_swap, cancel_before_execute, claim_failure_recovery, claim_rewards, default_missing_reserve_abi, default_pending_fee_refund_conservation, default_pending_recovery_rollback, default_reserve_active_repay_release, default_reserve_finalization_rollback, default_short_pending_recovery, deposit, expired_pending_before_swap, expired_pending_resolution, failed_activation_recovery, finish_close, funded_failed_collateral_transfer_rollback, funded_insufficient_liquidator_rollback, funded_invalid_valuation_rollback, funded_liquidation, funded_repeated_execution_rollback, funded_unauthorized_rollback, historical_multiple_intervals, historical_shortfall, historical_unresolved_intervals, history_scale_64_owners, history_scale_8_unresolved, pending_claim_boundary_matrix, quarantine_reconciliation, receipt_custody_ownership_change, repay_release, reserve_complete_open, reserve_complete_open_rollback, reserve_no_liquidation_bypass, reserve_swap_rejections, swap_close, swap_open_position_v3, waiver_redistribution"
+        ],
+        "transaction_errors": [
+          "transaction proof-to-call mapping missing"
+        ]
+      },
+      "sdk_maxima": {
+        "instructions": 187766920,
+        "memory_bytes": 20335321,
+        "sdk_entries": 181,
+        "write_entries": 40,
+        "read_bytes": 184,
+        "write_bytes": 16648,
+        "contract_events_size_bytes": 4728
+      }
+    }
+  },
+  "wasm": {
+    "baseline-artifacts/margin_controller.wasm": {
+      "sha256": "f59f592b1013d4e1ec49975f0cb2bb0ff81e9ab0f88f92bd76c3b7a1d6de7a36",
+      "bytes": 91657
+    },
+    "baseline-artifacts/swap_adapter.wasm": {
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d",
+      "bytes": 10876
+    },
+    "baseline-artifacts/receipt_vault.wasm": {
+      "sha256": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e",
+      "bytes": 87197
+    },
+    "baseline-artifacts/jump_rate_model.wasm": {
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+      "bytes": 7644
+    },
+    "baseline-artifacts/simple_peridottroller.wasm": {
+      "sha256": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2",
+      "bytes": 63289
+    },
+    "baseline-artifacts/cl_share_vault.wasm": {
+      "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f",
+      "bytes": 85750
+    },
+    "baseline-artifacts/cl_share_pool_facade.wasm": {
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5",
+      "bytes": 7298
+    },
+    "baseline-artifacts/cl_integration_fixtures.wasm": {
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+      "bytes": 3168
+    },
+    "artifacts/margin_controller.wasm": {
+      "sha256": "0b7a9e7fb8a9b28fed408dcbe1f87739e98c60947aadff1aa2acce883f90b601",
+      "bytes": 97869
+    },
+    "artifacts/swap_adapter.wasm": {
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d",
+      "bytes": 10876
+    },
+    "artifacts/receipt_vault.wasm": {
+      "sha256": "db995c2ee1614eb90660c8ab79b0780358ed91e0e686aa1ec1c95dc56cc11f0e",
+      "bytes": 87197
+    },
+    "artifacts/jump_rate_model.wasm": {
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+      "bytes": 7644
+    },
+    "artifacts/cl_split_escrow.wasm": {
+      "sha256": "6e0babdb056a51b22dc338195bb64270b2103bd36bb2a9baf01c68462b084c91",
+      "bytes": 12016
+    },
+    "artifacts/simple_peridottroller.wasm": {
+      "sha256": "d24e9b05cfa8d1d438dd58c2dda67c954b1cf80016da7c85e0fbf698ae29d3a2",
+      "bytes": 63289
+    },
+    "artifacts/cl_share_vault.wasm": {
+      "sha256": "b549cb931966b57d00fa99be6105e908af6d172e2a98dccf850ab4b9adda28df",
+      "bytes": 93878
+    },
+    "artifacts/cl_share_pool_facade.wasm": {
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5",
+      "bytes": 7298
+    },
+    "artifacts/cl_integration_fixtures.wasm": {
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+      "bytes": 3168
+    }
+  },
+  "remaining_gates": [
+    "internal resources",
+    "absent-owner pre-delivery liquidation",
+    "new escrow archival/restoration",
+    "concurrent jobs and larger histories",
+    "full pause/config/valuation mutation matrix",
+    "complete Stage1 proof mapping",
+    "real signed authorization costs",
+    "live state validation",
+    "release approval"
+  ],
+  "supplemental_late_recovery": {
+    "internal-policy": {
+      "test_counts": {
+        "FAILED": 2
+      },
+      "gates": {
+        "schema": "cl-verification-gates-v1",
+        "profile": "internal-policy",
+        "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+        "gates": {
+          "invocation": false,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "selected_gate": "invocation",
+        "release_approval": false,
+        "missing_required_flows": [
+          "activate_open_position_v3",
+          "allowance_transfer_from",
+          "begin_open",
+          "both_reward_calls_failed_funded_liquidation",
+          "cancel_after_execute",
+          "cancel_after_swap",
+          "cancel_before_execute",
+          "claim_failure_recovery",
+          "claim_rewards",
+          "default_missing_reserve_abi",
+          "default_pending_fee_refund_conservation",
+          "default_pending_recovery_rollback",
+          "default_reserve_active_repay_release",
+          "default_reserve_finalization_rollback",
+          "default_short_pending_recovery",
+          "deposit",
+          "emergency_redeem",
+          "expired_pending_before_swap",
+          "expired_pending_resolution",
+          "failed_activation_recovery",
+          "finish_close",
+          "funded_failed_collateral_transfer_rollback",
+          "funded_insufficient_liquidator_rollback",
+          "funded_invalid_valuation_rollback",
+          "funded_liquidation",
+          "funded_repeated_execution_rollback",
+          "funded_unauthorized_rollback",
+          "historical_multiple_intervals",
+          "historical_shortfall",
+          "historical_unresolved_intervals",
+          "history_scale_64_owners",
+          "history_scale_8_unresolved",
+          "pending_claim_boundary_matrix",
+          "prepare_close_position_v3",
+          "quarantine_reconciliation",
+          "receipt_custody_ownership_change",
+          "redeem",
+          "repay_release",
+          "reserve_complete_open",
+          "reserve_complete_open_rollback",
+          "reserve_no_liquidation_bypass",
+          "reserve_swap_rejections",
+          "swap_close",
+          "swap_open_position_v3",
+          "transfer",
+          "waiver_redistribution"
+        ],
+        "lifecycle_errors": [
+          "completed lifecycle proof manifest missing",
+          "required invocation coverage missing: activate_open_position_v3, allowance_transfer_from, begin_open, both_reward_calls_failed_funded_liquidation, cancel_after_execute, cancel_after_swap, cancel_before_execute, claim_failure_recovery, claim_rewards, default_missing_reserve_abi, default_pending_fee_refund_conservation, default_pending_recovery_rollback, default_reserve_active_repay_release, default_reserve_finalization_rollback, default_short_pending_recovery, deposit, emergency_redeem, expired_pending_before_swap, expired_pending_resolution, failed_activation_recovery, finish_close, funded_failed_collateral_transfer_rollback, funded_insufficient_liquidator_rollback, funded_invalid_valuation_rollback, funded_liquidation, funded_repeated_execution_rollback, funded_unauthorized_rollback, historical_multiple_intervals, historical_shortfall, historical_unresolved_intervals, history_scale_64_owners, history_scale_8_unresolved, pending_claim_boundary_matrix, prepare_close_position_v3, quarantine_reconciliation, receipt_custody_ownership_change, redeem, repay_release, reserve_complete_open, reserve_complete_open_rollback, reserve_no_liquidation_bypass, reserve_swap_rejections, swap_close, swap_open_position_v3, transfer, waiver_redistribution"
+        ],
+        "transaction_errors": [
+          "transaction proof-to-call mapping missing"
+        ]
+      },
+      "sdk_maxima": {
+        "instructions": 37682204,
+        "memory_bytes": 9743060,
+        "sdk_entries": 127,
+        "write_entries": 40,
+        "read_bytes": 92,
+        "write_bytes": 8812,
+        "contract_events_size_bytes": 1872
+      }
+    },
+    "captured-network-diagnostic": {
+      "test_counts": {
+        "ok": 2
+      },
+      "gates": {
+        "schema": "cl-verification-gates-v1",
+        "profile": "captured-network-diagnostic",
+        "config_sha256": "a28fb64bb85c74f8f0d1d4bd7a0daf413ada6f603647c64f556a7905af554dcd",
+        "gates": {
+          "invocation": true,
+          "lifecycle": false,
+          "transaction": false,
+          "checkpoint": false
+        },
+        "selected_gate": "invocation",
+        "release_approval": false,
+        "missing_required_flows": [
+          "activate_open_position_v3",
+          "allowance_transfer_from",
+          "begin_open",
+          "both_reward_calls_failed_funded_liquidation",
+          "cancel_after_execute",
+          "cancel_after_swap",
+          "cancel_before_execute",
+          "claim_failure_recovery",
+          "claim_rewards",
+          "default_missing_reserve_abi",
+          "default_pending_fee_refund_conservation",
+          "default_pending_recovery_rollback",
+          "default_reserve_active_repay_release",
+          "default_reserve_finalization_rollback",
+          "default_short_pending_recovery",
+          "deposit",
+          "emergency_redeem",
+          "expired_pending_before_swap",
+          "expired_pending_resolution",
+          "failed_activation_recovery",
+          "finish_close",
+          "funded_failed_collateral_transfer_rollback",
+          "funded_insufficient_liquidator_rollback",
+          "funded_invalid_valuation_rollback",
+          "funded_liquidation",
+          "funded_repeated_execution_rollback",
+          "funded_unauthorized_rollback",
+          "historical_multiple_intervals",
+          "historical_shortfall",
+          "historical_unresolved_intervals",
+          "history_scale_64_owners",
+          "history_scale_8_unresolved",
+          "pending_claim_boundary_matrix",
+          "prepare_close_position_v3",
+          "quarantine_reconciliation",
+          "receipt_custody_ownership_change",
+          "redeem",
+          "repay_release",
+          "reserve_complete_open",
+          "reserve_complete_open_rollback",
+          "reserve_no_liquidation_bypass",
+          "reserve_swap_rejections",
+          "swap_close",
+          "swap_open_position_v3",
+          "transfer",
+          "waiver_redistribution"
+        ],
+        "lifecycle_errors": [
+          "completed lifecycle proof manifest missing",
+          "required invocation coverage missing: activate_open_position_v3, allowance_transfer_from, begin_open, both_reward_calls_failed_funded_liquidation, cancel_after_execute, cancel_after_swap, cancel_before_execute, claim_failure_recovery, claim_rewards, default_missing_reserve_abi, default_pending_fee_refund_conservation, default_pending_recovery_rollback, default_reserve_active_repay_release, default_reserve_finalization_rollback, default_short_pending_recovery, deposit, emergency_redeem, expired_pending_before_swap, expired_pending_resolution, failed_activation_recovery, finish_close, funded_failed_collateral_transfer_rollback, funded_insufficient_liquidator_rollback, funded_invalid_valuation_rollback, funded_liquidation, funded_repeated_execution_rollback, funded_unauthorized_rollback, historical_multiple_intervals, historical_shortfall, historical_unresolved_intervals, history_scale_64_owners, history_scale_8_unresolved, pending_claim_boundary_matrix, prepare_close_position_v3, quarantine_reconciliation, receipt_custody_ownership_change, redeem, repay_release, reserve_complete_open, reserve_complete_open_rollback, reserve_no_liquidation_bypass, reserve_swap_rejections, swap_close, swap_open_position_v3, transfer, waiver_redistribution"
+        ],
+        "transaction_errors": [
+          "transaction proof-to-call mapping missing"
+        ]
+      },
+      "sdk_maxima": {
+        "instructions": 37682204,
+        "memory_bytes": 9743060,
+        "sdk_entries": 127,
+        "write_entries": 40,
+        "read_bytes": 92,
+        "write_bytes": 8812,
+        "contract_events_size_bytes": 1872
+      }
+    }
+  },
+  "executed_cases_across_main_and_supplement": 23
+}

@@ -1,0 +1,195 @@
+{
+  "observedAt": "2026-11-12T09:19:43.650320+00:00",
+  "totalFeeStroops": "4617483",
+  "transactions": [
+    {
+      "hash": "241e8170e66a20358d3cd2b771bcad9e6d491513fef2ca364cd3b502282fd8b9",
+      "successful": true,
+      "ledger": 65437791,
+      "created_at": "2026-11-12T09:16:37Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295798",
+      "fee_charged": "238037"
+    },
+    {
+      "hash": "704c44337742a92f73eb9abc066d28503779c5244f1548f1924f9a5f641e38f6",
+      "successful": true,
+      "ledger": 65437789,
+      "created_at": "2026-11-12T09:16:27Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295797",
+      "fee_charged": "174702"
+    },
+    {
+      "hash": "c367d3490e456a79895d9912bb536e51e9ee66d24ae7b5cfe7b5530bbff847db",
+      "successful": true,
+      "ledger": 65437780,
+      "created_at": "2026-11-12T09:15:42Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295796",
+      "fee_charged": "619805"
+    },
+    {
+      "hash": "8b8fd85f004cf0598bee8924ed8bb7650187564829f4b32bbbc0e0754688ed57",
+      "successful": true,
+      "ledger": 65437777,
+      "created_at": "2026-11-12T09:15:27Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295795",
+      "fee_charged": "9907"
+    },
+    {
+      "hash": "670058353fddc3d08a9296b700d147c542153962dee8a68848aa6149eb9de922",
+      "successful": true,
+      "ledger": 65437775,
+      "created_at": "2026-11-12T09:15:17Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295794",
+      "fee_charged": "9877"
+    },
+    {
+      "hash": "f949a679189915085df8db265c4c3e31615fd0ca8ab6b327a77e888fd25df72e",
+      "successful": true,
+      "ledger": 65437760,
+      "created_at": "2026-11-12T09:14:02Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295793",
+      "fee_charged": "238039"
+    },
+    {
+      "hash": "38fd0d1cffacd99a30e04640216b14b9cc2af6d9e6353c5fdf591b2a2acd5fbb",
+      "successful": true,
+      "ledger": 65437743,
+      "created_at": "2026-11-12T09:12:37Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295792",
+      "fee_charged": "174660"
+    },
+    {
+      "hash": "087c269658d90d1738c44453c03c34001bcadc1013afb995d5d26592711e0229",
+      "successful": true,
+      "ledger": 65437731,
+      "created_at": "2026-11-12T09:11:37Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295791",
+      "fee_charged": "619779"
+    },
+    {
+      "hash": "7b34ecbe119d4020752657762c5d901191470caa9732e0c9c06182e130588598",
+      "successful": true,
+      "ledger": 65437729,
+      "created_at": "2026-11-12T09:11:27Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295790",
+      "fee_charged": "9907"
+    },
+    {
+      "hash": "baad0d1ce51a8e9b1ae37c13f9fb7c6cec425d52117a32a3b005c74be8671e73",
+      "successful": true,
+      "ledger": 65437720,
+      "created_at": "2026-11-12T09:10:42Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295789",
+      "fee_charged": "9877"
+    },
+    {
+      "hash": "035ed8754692b01f9d4620b39322949bf56dbb5787b30e807ca057a0d2ab9b0e",
+      "successful": true,
+      "ledger": 65437718,
+      "created_at": "2026-11-12T09:10:32Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295788",
+      "fee_charged": "238032"
+    },
+    {
+      "hash": "d6ed1c94050cba90d50300627369348a323d874778db189ae3ce8d7a5b60b360",
+      "successful": true,
+      "ledger": 65437707,
+      "created_at": "2026-11-12T09:09:37Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295787",
+      "fee_charged": "174617"
+    },
+    {
+      "hash": "5206eb83134cfe848ac832554485cd52a47902388a1ffc53184d0c1ed9904b32",
+      "successful": true,
+      "ledger": 65437705,
+      "created_at": "2026-11-12T09:09:27Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295786",
+      "fee_charged": "619765"
+    },
+    {
+      "hash": "eba03dcc2d894ec127dbd16663fa692093655d316eb58d656cea38188e9635b7",
+      "successful": true,
+      "ledger": 65437702,
+      "created_at": "2026-11-12T09:09:12Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295785",
+      "fee_charged": "9907"
+    },
+    {
+      "hash": "aa3d9dff20d361dd493606a91d75140013de37e22baa13a8f674f8168e46dd74",
+      "successful": true,
+      "ledger": 65437699,
+      "created_at": "2026-11-12T09:08:57Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295784",
+      "fee_charged": "9877"
+    },
+    {
+      "hash": "e9c9c66f395e4e0e55f1b746279d92b633b4ce061f49131e277b1ede5e251b24",
+      "successful": true,
+      "ledger": 65437696,
+      "created_at": "2026-11-12T09:08:42Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295783",
+      "fee_charged": "238034"
+    },
+    {
+      "hash": "da884569a3cd231b7135eeeceaf115ae10c93b2d545fc7284999de5255641f15",
+      "successful": true,
+      "ledger": 65437694,
+      "created_at": "2026-11-12T09:08:32Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295782",
+      "fee_charged": "349169"
+    },
+    {
+      "hash": "44cb5b1f4b14adeb2aca3292c754537d18b507793667ec4774fb4bd7ec2a6a3a",
+      "successful": true,
+      "ledger": 65437692,
+      "created_at": "2026-11-12T09:08:22Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295781",
+      "fee_charged": "619738"
+    },
+    {
+      "hash": "e2c13dd45491473caa33a70310319007f857cc552970ed98ed45239f1f7d04c5",
+      "successful": true,
+      "ledger": 65437690,
+      "created_at": "2026-11-12T09:08:12Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295780",
+      "fee_charged": "9907"
+    },
+    {
+      "hash": "d3d014e75edf53bb1d78f8d9df2442d93ca9d651d7512462ff610e1fff363382",
+      "successful": true,
+      "ledger": 65437686,
+      "created_at": "2026-11-12T09:07:52Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295779",
+      "fee_charged": "9877"
+    },
+    {
+      "hash": "a106896e7895dab28a1dc23d0b316842922decbc975ba513555932ce5aa8b73b",
+      "successful": true,
+      "ledger": 65437647,
+      "created_at": "2026-11-12T09:04:37Z",
+      "source_account": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "source_account_sequence": "246894391124295778",
+      "fee_charged": "233970"
+    }
+  ]
+}

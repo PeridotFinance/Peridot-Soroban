@@ -1,0 +1,760 @@
+{
+  "endpoint": "https://rpc.lightsail.network/",
+  "retrievedAt": "2026-11-11T10:13:49.567Z",
+  "scope": "unsigned public read-only getter/estimate simulations; rolling state; not a sale or financial execution",
+  "views": [
+    {
+      "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+      "method": "base",
+      "label": "CAFJZQWS-base",
+      "args": [],
+      "time": "2026-11-11T10:13:50.389Z",
+      "ledger": 65421197,
+      "cost": null,
+      "value": [
+        "Other",
+        "USD"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAADwAAAAVPdGhlcgAAAAAAAA8AAAADVVNEAA==",
+      "minResourceFee": "6467",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 711549,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAQqcwtIg/YBbNNmtGbhNe8Rgt3pf4V5u9+ryss1eStu+AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAArbfQAAAAAAAAAAAAAAAAAAGUM="
+    },
+    {
+      "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+      "method": "decimals",
+      "label": "CAFJZQWS-decimals",
+      "args": [],
+      "time": "2026-11-11T10:13:50.963Z",
+      "ledger": 65421197,
+      "cost": null,
+      "value": 14,
+      "returnXdr": "AAAAAwAAAA4=",
+      "minResourceFee": "6383",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 696945,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAQqcwtIg/YBbNNmtGbhNe8Rgt3pf4V5u9+ryss1eStu+AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAAqicQAAAAAAAAAAAAAAAAAAGO8="
+    },
+    {
+      "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+      "method": "resolution",
+      "label": "CAFJZQWS-resolution",
+      "args": [],
+      "time": "2026-11-11T10:13:51.548Z",
+      "ledger": 65421197,
+      "cost": null,
+      "value": 300,
+      "returnXdr": "AAAAAwAAASw=",
+      "minResourceFee": "6391",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 697407,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAQqcwtIg/YBbNNmtGbhNe8Rgt3pf4V5u9+ryss1eStu+AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAAqkPwAAAAAAAAAAAAAAAAAAGPc="
+    },
+    {
+      "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+      "method": "last_timestamp",
+      "label": "CAFJZQWS-last_timestamp",
+      "args": [],
+      "time": "2026-11-11T10:13:52.128Z",
+      "ledger": 65421197,
+      "cost": null,
+      "value": "1794391800",
+      "returnXdr": "AAAABQAAAABq9D74",
+      "minResourceFee": "6411",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 698367,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAQqcwtIg/YBbNNmtGbhNe8Rgt3pf4V5u9+ryss1eStu+AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAAqn/wAAAAAAAAAAAAAAAAAAGQs="
+    },
+    {
+      "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+      "method": "base",
+      "label": "CALI2BYU-base",
+      "args": [],
+      "time": "2026-11-11T10:13:52.703Z",
+      "ledger": 65421197,
+      "cost": null,
+      "value": [
+        "Stellar",
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAADwAAAAdTdGVsbGFyAAAAABIAAAABre/OWa7lKWj3YGHUlMJSW3Vln6QpamX0me8p5WR35JY=",
+      "minResourceFee": "6658",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1080247,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAARaNBxTSSetWNC4nLzJBaQ5k76/gKizguw+g4m4KcHT1AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAABB7twAAAAAAAAAAAAAAAAAAGgI="
+    },
+    {
+      "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+      "method": "decimals",
+      "label": "CALI2BYU-decimals",
+      "args": [],
+      "time": "2026-11-11T10:13:53.277Z",
+      "ledger": 65421198,
+      "cost": null,
+      "value": 14,
+      "returnXdr": "AAAAAwAAAA4=",
+      "minResourceFee": "6493",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1063427,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAARaNBxTSSetWNC4nLzJBaQ5k76/gKizguw+g4m4KcHT1AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAABA6AwAAAAAAAAAAAAAAAAAAGV0="
+    },
+    {
+      "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+      "method": "resolution",
+      "label": "CALI2BYU-resolution",
+      "args": [],
+      "time": "2026-11-11T10:13:53.856Z",
+      "ledger": 65421198,
+      "cost": null,
+      "value": 300,
+      "returnXdr": "AAAAAwAAASw=",
+      "minResourceFee": "6501",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1063889,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAARaNBxTSSetWNC4nLzJBaQ5k76/gKizguw+g4m4KcHT1AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAABA70QAAAAAAAAAAAAAAAAAAGWU="
+    },
+    {
+      "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+      "method": "last_timestamp",
+      "label": "CALI2BYU-last_timestamp",
+      "args": [],
+      "time": "2026-11-11T10:13:54.506Z",
+      "ledger": 65421198,
+      "cost": null,
+      "value": "1794391800",
+      "returnXdr": "AAAABQAAAABq9D74",
+      "minResourceFee": "6521",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1064849,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAARaNBxTSSetWNC4nLzJBaQ5k76/gKizguw+g4m4KcHT1AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAABA/kQAAAAAAAAAAAAAAAAAAGXk="
+    },
+    {
+      "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+      "method": "base",
+      "label": "CBKGPWGK-base",
+      "args": [],
+      "time": "2026-11-11T10:13:55.099Z",
+      "ledger": 65421198,
+      "cost": null,
+      "value": [
+        "Other",
+        "USD"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAADwAAAAVPdGhlcgAAAAAAAA8AAAADVVNEAA==",
+      "minResourceFee": "6487",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 779860,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAVRn2MqSsl7oRTsnGOtzDab2RGjGeO0/tZe6Fh8H4O7BAAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAAvmVAAAAAAAAAAAAAAAAAAAGVc="
+    },
+    {
+      "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+      "method": "decimals",
+      "label": "CBKGPWGK-decimals",
+      "args": [],
+      "time": "2026-11-11T10:13:55.658Z",
+      "ledger": 65421198,
+      "cost": null,
+      "value": 14,
+      "returnXdr": "AAAAAwAAAA4=",
+      "minResourceFee": "6403",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 764684,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAVRn2MqSsl7oRTsnGOtzDab2RGjGeO0/tZe6Fh8H4O7BAAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAAurDAAAAAAAAAAAAAAAAAAAGQM="
+    },
+    {
+      "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+      "method": "resolution",
+      "label": "CBKGPWGK-resolution",
+      "args": [],
+      "time": "2026-11-11T10:13:56.221Z",
+      "ledger": 65421198,
+      "cost": null,
+      "value": 300,
+      "returnXdr": "AAAAAwAAASw=",
+      "minResourceFee": "6412",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 767094,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAVRn2MqSsl7oRTsnGOtzDab2RGjGeO0/tZe6Fh8H4O7BAAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAAu0dgAAAAAAAAAAAAAAAAAAGQw="
+    },
+    {
+      "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+      "method": "last_timestamp",
+      "label": "CBKGPWGK-last_timestamp",
+      "args": [],
+      "time": "2026-11-11T10:13:56.796Z",
+      "ledger": 65421198,
+      "cost": null,
+      "value": "1794391800",
+      "returnXdr": "AAAABQAAAABq9D74",
+      "minResourceFee": "6432",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 768384,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAVRn2MqSsl7oRTsnGOtzDab2RGjGeO0/tZe6Fh8H4O7BAAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAAu5gAAAAAAAAAAAAAAAAAAAGSA="
+    },
+    {
+      "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+      "method": "lastprice",
+      "label": "external-USDC",
+      "args": [
+        "AAAAEAAAAAEAAAACAAAADwAAAAVPdGhlcgAAAAAAAA8AAAAEVVNEQw=="
+      ],
+      "time": "2026-11-11T10:13:57.359Z",
+      "ledger": 65421198,
+      "cost": null,
+      "value": {
+        "price": "100083307783972",
+        "timestamp": "1794391800"
+      },
+      "returnXdr": "AAAAEQAAAAEAAAACAAAADwAAAAVwcmljZQAAAAAAAAoAAAAAAAAAAAAAWwZ2AickAAAADwAAAAl0aW1lc3RhbXAAAAAAAAAFAAAAAGr0Pvg=",
+      "minResourceFee": "6713",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 807059,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAQqcwtIg/YBbNNmtGbhNe8Rgt3pf4V5u9+ryss1eStu+AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAAxQkwAAAAAAAAAAAAAAAAAAGjk="
+    },
+    {
+      "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+      "method": "lastprice",
+      "label": "external-EURC",
+      "args": [
+        "AAAAEAAAAAEAAAACAAAADwAAAAVPdGhlcgAAAAAAAA8AAAAERVVSQw=="
+      ],
+      "time": "2026-11-11T10:13:57.951Z",
+      "ledger": 65421198,
+      "cost": null,
+      "value": {
+        "price": "111482658760255",
+        "timestamp": "1794391800"
+      },
+      "returnXdr": "AAAAEQAAAAEAAAACAAAADwAAAAVwcmljZQAAAAAAAAoAAAAAAAAAAAAAZWSURiY/AAAADwAAAAl0aW1lc3RhbXAAAAAAAAAFAAAAAGr0Pvg=",
+      "minResourceFee": "6718",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 825303,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAQqcwtIg/YBbNNmtGbhNe8Rgt3pf4V5u9+ryss1eStu+AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAAyX1wAAAAAAAAAAAAAAAAAAGj4="
+    },
+    {
+      "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+      "method": "lastprice",
+      "label": "dex-EURC",
+      "args": [
+        "AAAAEAAAAAEAAAACAAAADwAAAAdTdGVsbGFyAAAAABIAAAAB5qfZ63UjAGpGmqdIOtEQckdEPA2C5idj3mcISMTpfJA="
+      ],
+      "time": "2026-11-11T10:13:58.537Z",
+      "ledger": 65421199,
+      "cost": null,
+      "value": {
+        "price": "110599720911274",
+        "timestamp": "1794391800"
+      },
+      "returnXdr": "AAAAEQAAAAEAAAACAAAADwAAAAVwcmljZQAAAAAAAAoAAAAAAAAAAAAAZJcBE8GqAAAADwAAAAl0aW1lc3RhbXAAAAAAAAAFAAAAAGr0Pvg=",
+      "minResourceFee": "6888",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1187914,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAARaNBxTSSetWNC4nLzJBaQ5k76/gKizguw+g4m4KcHT1AAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAABIgSgAAAAAAAAAAAAAAAAAAGug="
+    },
+    {
+      "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+      "method": "lastprice",
+      "label": "forex-EUR",
+      "args": [
+        "AAAAEAAAAAEAAAACAAAADwAAAAVPdGhlcgAAAAAAAA8AAAADRVVSAA=="
+      ],
+      "time": "2026-11-11T10:13:59.135Z",
+      "ledger": 65421199,
+      "cost": null,
+      "value": {
+        "price": "111864410559291",
+        "timestamp": "1794391800"
+      },
+      "returnXdr": "AAAAEQAAAAEAAAACAAAADwAAAAVwcmljZQAAAAAAAAoAAAAAAAAAAAAAZb12dFM7AAAADwAAAAl0aW1lc3RhbXAAAAAAAAAFAAAAAGr0Pvg=",
+      "minResourceFee": "6730",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 863926,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAVRn2MqSsl7oRTsnGOtzDab2RGjGeO0/tZe6Fh8H4O7BAAAAFAAAAAEAAAAHJfwwYGXLubBUYdt47CWYAsuRYFO6Wzq5EbCnLdGoFDkAAAAAAA0utgAAAAAAAAAAAAAAAAAAGko="
+    },
+    {
+      "contract": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "method": "get_slot0",
+      "label": "EURCpool-get_slot0",
+      "args": [],
+      "time": "2026-11-11T10:13:59.702Z",
+      "ledger": 65421199,
+      "cost": null,
+      "value": {
+        "sqrt_price_x96": "75336759151749414060382207238",
+        "tick": -1008
+      },
+      "returnXdr": "AAAAEQAAAAEAAAACAAAADwAAAA5zcXJ0X3ByaWNlX3g5NgAAAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAA820bSQRm93gbH70GAAAADwAAAAR0aWNrAAAABP///BA=",
+      "minResourceFee": "6849",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1440096,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAecieiuKP5drqZEj4nJQjx50pa5pDS6cad48sCiCjlWGAAAAFAAAAAEAAAAHFVoXuZKf+x+ehL1u9cAKTWE8GrX0rUxQLYRRUlDMKQcAAAAAABX5YAAAAAAAAAAAAAAAAAAAGsE="
+    },
+    {
+      "contract": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "method": "get_tokens",
+      "label": "EURCpool-get_tokens",
+      "args": [],
+      "time": "2026-11-11T10:14:00.300Z",
+      "ledger": 65421199,
+      "cost": null,
+      "value": [
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+        "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAAEgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABIAAAAB5qfZ63UjAGpGmqdIOtEQckdEPA2C5idj3mcISMTpfJA=",
+      "minResourceFee": "6880",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1543430,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAecieiuKP5drqZEj4nJQjx50pa5pDS6cad48sCiCjlWGAAAAFAAAAAEAAAAHFVoXuZKf+x+ehL1u9cAKTWE8GrX0rUxQLYRRUlDMKQcAAAAAABeNBgAAAAAAAAAAAAAAAAAAGuA="
+    },
+    {
+      "contract": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "method": "get_fee_fraction",
+      "label": "EURCpool-get_fee_fraction",
+      "args": [],
+      "time": "2026-11-11T10:14:00.885Z",
+      "ledger": 65421199,
+      "cost": null,
+      "value": 30,
+      "returnXdr": "AAAAAwAAAB4=",
+      "minResourceFee": "6619",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1427496,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAAecieiuKP5drqZEj4nJQjx50pa5pDS6cad48sCiCjlWGAAAAFAAAAAEAAAAHFVoXuZKf+x+ehL1u9cAKTWE8GrX0rUxQLYRRUlDMKQcAAAAAABXIKAAAAAAAAAAAAAAAAAAAGds="
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "get_tokens",
+      "label": "AQUApool-get_tokens",
+      "args": [],
+      "time": "2026-11-11T10:14:01.473Z",
+      "ledger": 65421199,
+      "cost": null,
+      "value": [
+        "CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK",
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAAEgAAAAEohS9owZhIjjRvsSEu1QKQU3Ycwk9FM5LjU5ggGwgl5wAAABIAAAABre/OWa7lKWj3YGHUlMJSW3Vln6QpamX0me8p5WR35JY=",
+      "minResourceFee": "6801",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1281113,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAATxgFckVuMNCAaChSQNiWg+um5Jqg6SfCsirbM227W7JAAAAFAAAAAEAAAAH1pETWq3pP/D3wingCc3gQhMKBRJM9yArA9ESRrT5tHMAAAAAABOMWQAAAAAAAAAAAAAAAAAAGpE="
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "get_reserves",
+      "label": "AQUApool-get_reserves",
+      "args": [],
+      "time": "2026-11-11T10:14:02.044Z",
+      "ledger": 65421199,
+      "cost": null,
+      "value": [
+        "8511571616455658",
+        "2078682508388"
+      ],
+      "returnXdr": "AAAAEAAAAAEAAAACAAAACQAAAAAAAAAAAB49OrKt2+oAAAAJAAAAAAAAAAAAAAHj+yHsZA==",
+      "minResourceFee": "9727",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2427428,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAlCiQAAAAAAAAKBAAAAAAAACX/"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "get_fee_fraction",
+      "label": "AQUApool-get_fee_fraction",
+      "args": [],
+      "time": "2026-11-11T10:14:02.616Z",
+      "ledger": 65421199,
+      "cost": null,
+      "value": 30,
+      "returnXdr": "AAAAAwAAAB4=",
+      "minResourceFee": "6554",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1211086,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAATxgFckVuMNCAaChSQNiWg+um5Jqg6SfCsirbM227W7JAAAAFAAAAAEAAAAH1pETWq3pP/D3wingCc3gQhMKBRJM9yArA9ESRrT5tHMAAAAAABJ6zgAAAAAAAAAAAAAAAAAAGZo="
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "get_protocol_fee_fraction",
+      "label": "AQUApool-get_protocol_fee_fraction",
+      "args": [],
+      "time": "2026-11-11T10:14:03.204Z",
+      "ledger": 65421200,
+      "cost": null,
+      "value": 5000,
+      "returnXdr": "AAAAAwAAE4g=",
+      "minResourceFee": "6580",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 1211983,
+        "diskReadBytes": 0,
+        "writeBytes": 0,
+        "uniqueKeys": 2,
+        "writes": 0
+      },
+      "transactionDataXdr": "AAAAAAAAAAIAAAAGAAAAATxgFckVuMNCAaChSQNiWg+um5Jqg6SfCsirbM227W7JAAAAFAAAAAEAAAAH1pETWq3pP/D3wingCc3gQhMKBRJM9yArA9ESRrT5tHMAAAAAABJ+TwAAAAAAAAAAAAAAAAAAGbQ="
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p1_base",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAALty/Qw="
+      ],
+      "time": "2026-11-11T10:14:03.810Z",
+      "ledger": 65421200,
+      "cost": null,
+      "value": "765732",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAALryQ=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p1_maxboost_lp_only",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAAdR7ATc="
+      ],
+      "time": "2026-11-11T10:14:04.374Z",
+      "ledger": 65421200,
+      "cost": null,
+      "value": "1913747",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAAdM5M=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p4_base",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAD8NR6bs="
+      ],
+      "time": "2026-11-11T10:14:04.954Z",
+      "ledger": 65421200,
+      "cost": null,
+      "value": "16484204",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAD7h2w=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p4_maxboost_lp_only",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAJiaa+Nc="
+      ],
+      "time": "2026-11-11T10:14:05.612Z",
+      "ledger": 65421200,
+      "cost": null,
+      "value": "39895945",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAJgw4k=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p5_base",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAA5Z4d28="
+      ],
+      "time": "2026-11-11T10:14:06.181Z",
+      "ledger": 65421200,
+      "cost": null,
+      "value": "3751957",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAA5QBU=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p5_maxboost_lp_only",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAACONAnhg="
+      ],
+      "time": "2026-11-11T10:14:06.857Z",
+      "ledger": 65421200,
+      "cost": null,
+      "value": "9294394",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAACN0jo=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "linear_1_AQUA",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAAACYloA="
+      ],
+      "time": "2026-11-11T10:14:07.421Z",
+      "ledger": 65421200,
+      "cost": null,
+      "value": "2434",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAAACYI=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "linear_10_AQUA",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAAAX14QA="
+      ],
+      "time": "2026-11-11T10:14:08.023Z",
+      "ledger": 65421200,
+      "cost": null,
+      "value": "24348",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAAAXxw=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "linear_100_AQUA",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAADuaygA="
+      ],
+      "time": "2026-11-11T10:14:08.595Z",
+      "ledger": 65421201,
+      "cost": null,
+      "value": "243485",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAADtx0=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    }
+  ],
+  "network": {
+    "passphrase": "Public Global Stellar Network ; September 2015",
+    "protocolVersion": 29
+  }
+}

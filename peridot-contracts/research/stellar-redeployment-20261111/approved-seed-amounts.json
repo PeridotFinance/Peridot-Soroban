@@ -1,0 +1,56 @@
+{
+  "accepted_code_commit": "4c98bdd32b8fd076585b587b756c03b651d53fc0",
+  "quote_time_utc": "2026-11-11T17:54:38Z",
+  "rounding": "floor to seven asset decimals",
+  "execution_status": "NOT_EXECUTED",
+  "markets": {
+    "USDC": {
+      "usd_price": "1",
+      "price_basis": "operator-specified token amount; nominal USD parity",
+      "permanent_raw": 10000000,
+      "permanent_tokens": "1",
+      "deposit_raw": 1000000000,
+      "deposit_tokens": "100",
+      "withdraw_raw": 100000000,
+      "withdraw_tokens": "10",
+      "expected_holder_shares_after_withdraw": 900000000,
+      "expected_backing_after_withdraw_raw": 910000000
+    },
+    "XLM": {
+      "usd_price": "0.1507815",
+      "price_basis": "Coinbase public spot quote",
+      "permanent_raw": 50000000,
+      "permanent_tokens": "5",
+      "deposit_raw": 6632113356,
+      "deposit_tokens": "663.2113356",
+      "withdraw_raw": 663211335,
+      "withdraw_tokens": "66.3211335",
+      "expected_holder_shares_after_withdraw": 5968902021,
+      "expected_backing_after_withdraw_raw": 6018902021
+    },
+    "PYUSD": {
+      "usd_price": "1",
+      "price_basis": "operator-specified token amount; nominal USD parity",
+      "permanent_raw": 10000000,
+      "permanent_tokens": "1",
+      "deposit_raw": 1000000000,
+      "deposit_tokens": "100",
+      "withdraw_raw": 100000000,
+      "withdraw_tokens": "10",
+      "expected_holder_shares_after_withdraw": 900000000,
+      "expected_backing_after_withdraw_raw": 910000000
+    },
+    "EURC": {
+      "usd_price": "1.108598694695612",
+      "price_basis": "Coinbase public spot quote",
+      "permanent_raw": 10000000,
+      "permanent_tokens": "1",
+      "deposit_raw": 902039669,
+      "deposit_tokens": "90.2039669",
+      "withdraw_raw": 90203966,
+      "withdraw_tokens": "9.0203966",
+      "expected_holder_shares_after_withdraw": 811835703,
+      "expected_backing_after_withdraw_raw": 821835703
+    }
+  }
+}

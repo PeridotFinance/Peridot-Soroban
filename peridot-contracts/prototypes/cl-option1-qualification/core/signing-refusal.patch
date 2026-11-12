@@ -1,0 +1,21 @@
+--- a/src/crypto/SecretKey.cpp
++++ b/src/crypto/SecretKey.cpp
+@@ -19,6 +19,7 @@
+ #include "util/RandomEvictionCache.h"
+ #include <Tracy.hpp>
+ #include <chrono>
++#include <cstdlib>
+ #include <memory>
+ #include <mutex>
+ #include <sodium.h>
+@@ -138,6 +139,10 @@
+ Signature
+ SecretKey::sign(ByteSlice const& bin) const
+ {
++    if (std::getenv("CL_CORE_FORBID_SIGNING"))
++    {
++        throw CryptoError("CL local qualification refuses all signing");
++    }
+     ZoneScoped;
+     releaseAssert(mKeyType == PUBLIC_KEY_TYPE_ED25519);
+ 

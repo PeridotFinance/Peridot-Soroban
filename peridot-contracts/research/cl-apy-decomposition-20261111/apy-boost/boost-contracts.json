@@ -1,0 +1,178 @@
+{
+  "time": "2026-11-11T10:16:05.731Z",
+  "endpoint": "https://rpc.lightsail.network/",
+  "contracts": [
+    {
+      "id": "CBKCROE56TU2FTT3C5CVN676PYVLTOQUQDHHH57GLWDY5VOKSCZPGOFN",
+      "ledger": 65421224,
+      "entries": [
+        {
+          "xdr": "AAAABgAAAAAAAAABVCi4nfTpos57F0VW+/5+Krm6FIDOc/fmXYeO1cqQsvMAAAAUAAAAAQAAABMAAAAAP2Be1anl4O06rrh51GN2qby7qajkAj6zPgACKyGBrEAAAAABAAAACAAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAASAAAAAAAAAAAr0oWKHrJeX0w1hthij/qKv7Is8fIcfOqCw8DE8hCv1AAAABAAAAABAAAAAQAAAA8AAAAgRW1BZG1pblRyYW5zZmVyT3duZXJzaGlwRGVhZGxpbmUAAAAFAAAAAAAAAAAAAAAQAAAAAQAAAAEAAAAPAAAADkVtZXJnZW5jeUFkbWluAAAAAAASAAAAAAAAAACNnxOxDRS2h5XPYi90XIMDIKdidWMUisBgrpFvyw/xiwAAABAAAAABAAAAAQAAAA8AAAAURnV0dXJlRW1lcmdlbmN5QWRtaW4AAAASAAAAAAAAAACNnxOxDRS2h5XPYi90XIMDIKdidWMUisBgrpFvyw/xiwAAABAAAAABAAAAAQAAAA8AAAAKRnV0dXJlV0FTTQAAAAAADQAAACA/YF7VqeXg7TquuHnUY3apvLupqOQCPrM+AAIrIYGsQAAAABAAAAABAAAAAQAAAA8AAAAPT3BlcmF0aW9uc0FkbWluAAAAABIAAAAAAAAAAP8QlrYup64Wkmsbhhb913eb79eYdBJSKL4dxCk2mrRYAAAAEAAAAAEAAAABAAAADwAAAAtUb3RhbFN1cHBseQAAAAAJAAAAAAAAAAAIjXUc1M5ufQAAABAAAAABAAAAAQAAAA8AAAAPVXBncmFkZURlYWRsaW5lAAAAAAUAAAAAAAAAAA==",
+          "storage": [
+            [
+              [
+                "Admin"
+              ],
+              "GAV5FBMKD2ZF4X2MGWDNQYUP7KFL7MRM6HZBY7HKQLB4BRHSCCX5J6VS"
+            ],
+            [
+              [
+                "EmAdminTransferOwnershipDeadline"
+              ],
+              "0"
+            ],
+            [
+              [
+                "EmergencyAdmin"
+              ],
+              "GCGZ6E5RBUKLNB4VZ5RC65C4QMBSBJ3COVRRJCWAMCXJC36LB7YYWEKM"
+            ],
+            [
+              [
+                "FutureEmergencyAdmin"
+              ],
+              "GCGZ6E5RBUKLNB4VZ5RC65C4QMBSBJ3COVRRJCWAMCXJC36LB7YYWEKM"
+            ],
+            [
+              [
+                "FutureWASM"
+              ],
+              {
+                "type": "Buffer",
+                "data": [
+                  63,
+                  96,
+                  94,
+                  213,
+                  169,
+                  229,
+                  224,
+                  237,
+                  58,
+                  174,
+                  184,
+                  121,
+                  212,
+                  99,
+                  118,
+                  169,
+                  188,
+                  187,
+                  169,
+                  168,
+                  228,
+                  2,
+                  62,
+                  179,
+                  62,
+                  0,
+                  2,
+                  43,
+                  33,
+                  129,
+                  172,
+                  64
+                ]
+              }
+            ],
+            [
+              [
+                "OperationsAdmin"
+              ],
+              "GD7RBFVWF2T24FUSNMNYMFX5253ZX36XTB2BEURIXYO4IKJWTK2FRX4W"
+            ],
+            [
+              [
+                "TotalSupply"
+              ],
+              "616277490709458557"
+            ],
+            [
+              [
+                "UpgradeDeadline"
+              ],
+              "0"
+            ]
+          ]
+        }
+      ],
+      "wasmSHA": "3f605ed5a9e5e0ed3aaeb879d46376a9bcbba9a8e4023eb33e00022b2181ac40",
+      "spec": [],
+      "wasmError": "S.xdr.ScSpecEntry.fromXDR is not a constructor"
+    },
+    {
+      "id": "CARCKZ66U4AI2545NS4RAF47QVEXG3PRRCDA52H4Q3FDRAGSMP4BRU3W",
+      "ledger": 65421224,
+      "entries": [
+        {
+          "xdr": "AAAABgAAAAAAAAABIiVn3qcAjXedbLkQF5+FSXNt8YiGDuj8hso4gNJj+BgAAAAUAAAAAQAAABMAAAABAAAAAQAAAAMAAAAPAAAACE1FVEFEQVRBAAAAEQAAAAEAAAADAAAADwAAAAdkZWNpbWFsAAAAAAMAAAAHAAAADwAAAARuYW1lAAAADgAAADxJQ0U6R0FYU0daMkpNM0xOV09PNFdSR0FESVNOTVdPNEhRTEc0UUJHVVpSS0g1WkhMM0VRQkdYNzNJQ0UAAAAPAAAABnN5bWJvbAAAAAAADgAAAANJQ0UAAAAAEAAAAAEAAAABAAAADwAAAAVBZG1pbgAAAAAAABIAAAAAAAAAAC8jZ0lm1ts53LRMAaJNZZ3DwWbkAmpmKj9ydeyQCa/9AAAAEAAAAAEAAAABAAAADwAAAAlBc3NldEluZm8AAAAAAAAQAAAAAQAAAAIAAAAPAAAACUFscGhhTnVtNAAAAAAAABEAAAABAAAAAgAAAA8AAAAKYXNzZXRfY29kZQAAAAAADgAAAARJQ0UAAAAADwAAAAZpc3N1ZXIAAAAAAA0AAAAgLyNnSWbW2znctEwBok1lncPBZuQCamYqP3J17JAJr/0=",
+          "storage": [
+            [
+              "METADATA",
+              {
+                "decimal": 7,
+                "name": "ICE:GAXSGZ2JM3LNWOO4WRGADISNMWO4HQLG4QBGUZRKH5ZHL3EQBGX73ICE",
+                "symbol": "ICE"
+              }
+            ],
+            [
+              [
+                "Admin"
+              ],
+              "GAXSGZ2JM3LNWOO4WRGADISNMWO4HQLG4QBGUZRKH5ZHL3EQBGX73ICE"
+            ],
+            [
+              [
+                "AssetInfo"
+              ],
+              [
+                "AlphaNum4",
+                {
+                  "asset_code": "ICE\u0000",
+                  "issuer": {
+                    "type": "Buffer",
+                    "data": [
+                      47,
+                      35,
+                      103,
+                      73,
+                      102,
+                      214,
+                      219,
+                      57,
+                      220,
+                      180,
+                      76,
+                      1,
+                      162,
+                      77,
+                      101,
+                      157,
+                      195,
+                      193,
+                      102,
+                      228,
+                      2,
+                      106,
+                      102,
+                      42,
+                      63,
+                      114,
+                      117,
+                      236,
+                      144,
+                      9,
+                      175,
+                      253
+                    ]
+                  }
+                }
+              ]
+            ]
+          ]
+        }
+      ],
+      "wasmError": "Contract CARCKZ66U4AI2545NS4RAF47QVEXG3PRRCDA52H4Q3FDRAGSMP4BRU3W is a Stellar Asset Contract (SAC), which has no Wasm bytecode. Use contract.Client.from() to build a client from the built-in SAC spec instead."
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "observedAt": "2026-11-11T18:59:08.372742+00:00",
+  "funding": {
+    "hash": "6ba8f1d665b553b5cacd18dd0ab59ede404f48b52514422406197c667b598929",
+    "successful": true,
+    "ledger": 65427468,
+    "created_at": "2026-11-11T18:56:22Z",
+    "source_account": "GDM5XP4ACJPXPYP5G2UYGB6WC3G2MUBCYI2ZUCYWVB5CL2JWGCFWNWA3",
+    "fee_charged": "100"
+  },
+  "deployer": {
+    "account_id": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+    "sequence": "281008835320086528",
+    "balances": [
+      {
+        "balance": "300.0001000",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "asset_type": "native"
+      }
+    ],
+    "subentry_count": 0,
+    "signers": [
+      {
+        "weight": 1,
+        "key": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+        "type": "ed25519_public_key"
+      }
+    ],
+    "thresholds": {
+      "low_threshold": 0,
+      "med_threshold": 0,
+      "high_threshold": 0
+    }
+  }
+}

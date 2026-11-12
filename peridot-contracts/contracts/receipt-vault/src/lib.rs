@@ -42,3 +42,9 @@ mod reward_backing_test;
 
 #[cfg(test)]
 mod lp_lending_test;
+
+#[cfg(test)]
+mod reserve_test;
+
+#[cfg(test)]
+mod rounding_regression_test;

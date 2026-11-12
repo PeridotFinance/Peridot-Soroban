@@ -1,0 +1,1125 @@
+{
+  "scope": "public economics and controlled private test evidence; no release approval",
+  "files": [
+    {
+      "path": "apy-boost/CBKCROE56TU2FTT3C5CVN676PYVLTOQUQDHHH57GLWDY5VOKSCZPGOFN.wasm",
+      "bytes": 7697,
+      "sha256": "3f605ed5a9e5e0ed3aaeb879d46376a9bcbba9a8e4023eb33e00022b2181ac40"
+    },
+    {
+      "path": "apy-boost/amm-rewards.md",
+      "bytes": 2091,
+      "sha256": "b93186fa4eb5ecc3c56a78befbe64d2ffddf3daf836938d0e7b6b9cf06406529"
+    },
+    {
+      "path": "apy-boost/boost-contracts.json",
+      "bytes": 6010,
+      "sha256": "236e669da252b049f7541ace72133881c3072cc3977037fa9f6102879f0ca743"
+    },
+    {
+      "path": "apy-boost/boost-excerpts.txt",
+      "bytes": 38906,
+      "sha256": "30c5ff58f95e2f4225648da8e482c210abae0af0ab37cd9073e794783874b7c7"
+    },
+    {
+      "path": "apy-boost/boost-feed-spec.json",
+      "bytes": 3210,
+      "sha256": "8a6dc519a6dfe1422769f9c954e7c4f68d9daaf00a5f02dc7b8591e4ece81495"
+    },
+    {
+      "path": "apy-boost/boost-getters.cjs",
+      "bytes": 1817,
+      "sha256": "df05e3769e457432cb7624fae1e7fcb9ceb86df9f4060470e67c89d2d5432845"
+    },
+    {
+      "path": "apy-boost/boost-math.json",
+      "bytes": 5774,
+      "sha256": "fdceed3cb71886cb3517c7bc742dc91de18efdfc7e6548d19547f2503b23e342"
+    },
+    {
+      "path": "apy-boost/boost-math.py",
+      "bytes": 1126,
+      "sha256": "1ccbd9d330fed8437bc3c44998aaf277d7e2666a81191d5b15a1c1b7eb2bb6a2"
+    },
+    {
+      "path": "apy-boost/chunk-1177-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-1177-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-1177.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-1975-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-1975-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-1975.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-2105-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-2105-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-2105.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-2610-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-2610-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-2610.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-2950-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-2950-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-2950.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3035-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3035-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3035.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3610-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3610-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3610.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3887-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3887-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3887.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3950-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3950-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-3950.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-4156-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-4156-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-4156.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-5188-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-5188-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-5188.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-6383-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-6383-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-6383.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-8261-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-8261-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-8261.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-8405-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-8405-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-8405.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-9020-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-9020-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-9020.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-934-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-934-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-934.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-9504-actual.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-9504-min.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunk-9504.js",
+      "bytes": 17,
+      "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+    },
+    {
+      "path": "apy-boost/chunks.json",
+      "bytes": 1360,
+      "sha256": "75b3a7314fa01b654930984b0523aa22dc94d54392c9fd20b6cf6869fb96938d"
+    },
+    {
+      "path": "apy-boost/cl-doc-live.md",
+      "bytes": 10298,
+      "sha256": "f2c8ccd844a28dc8b43b3c18ae2371055edca2961ed8964a05a1c9461a9fdc81"
+    },
+    {
+      "path": "apy-boost/cl-doc.md",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "apy-boost/cl-reference.md",
+      "bytes": 19436,
+      "sha256": "eb0a56c4a5392228b46f30ec1dd600f06de253932e2e8d3f6011ce416090ac2e"
+    },
+    {
+      "path": "apy-boost/delegation.md",
+      "bytes": 2443,
+      "sha256": "a8ed57275de41b4bf8fc475cde65e80c01ec7674eaa602e3be1a03fc932711aa"
+    },
+    {
+      "path": "apy-boost/formula-crosschecks.json",
+      "bytes": 2880,
+      "sha256": "8780f358c8c17ada3639d471f120d0793ef10d70dc190f66b2eca016f7e4e167"
+    },
+    {
+      "path": "apy-boost/home-live.html",
+      "bytes": 3688,
+      "sha256": "2ac959a00aeea6263acc1ea8ece18e982d00b2a3021c2bb8e3fcd70bc4f64ebb"
+    },
+    {
+      "path": "apy-boost/home.html",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "apy-boost/ice-lock-live.md",
+      "bytes": 4812,
+      "sha256": "1cf038f3092c934323c706b32a4a021d53c2e944bc004e59884225b107a5570c"
+    },
+    {
+      "path": "apy-boost/ice-lock.md",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "apy-boost/independent-review.json",
+      "bytes": 2775,
+      "sha256": "58e04950e4b6c223b9d007c283adf67b57681b9a7e5d81417635543758811ad9"
+    },
+    {
+      "path": "apy-boost/js-excerpts.txt",
+      "bytes": 9022,
+      "sha256": "7a17ea88b6171cc903948150c0f300e39c0eb68b070bb07cce684dfc3222f9a8"
+    },
+    {
+      "path": "apy-boost/live-chunk-1177.js",
+      "bytes": 114603,
+      "sha256": "e79d062362e6ad7ff3e4566f0d573ea2ce4aa18591453cb9b00c9b4c190a36bb"
+    },
+    {
+      "path": "apy-boost/live-chunk-1975.js",
+      "bytes": 231235,
+      "sha256": "5720fded36472b1d8aad6d34d0f9c84750a89860f3641b133fe36e59d581d8cb"
+    },
+    {
+      "path": "apy-boost/live-chunk-2105.js",
+      "bytes": 26921,
+      "sha256": "5093c3f9dc84236ffd54b3eaa44937131065f5e4297e89d50cee9ecf6706b65b"
+    },
+    {
+      "path": "apy-boost/live-chunk-2610.js",
+      "bytes": 156839,
+      "sha256": "326ae75562f4b66eab2da068ef902145c2e2fdab02d81174836ef272cfabaf2f"
+    },
+    {
+      "path": "apy-boost/live-chunk-2950.js",
+      "bytes": 68663,
+      "sha256": "3780866a46e507bc330f91a538453e42c4868049e23ad6270cac473f7df62f5a"
+    },
+    {
+      "path": "apy-boost/live-chunk-3035.js",
+      "bytes": 40861,
+      "sha256": "c6c4a37149ecadccc5bfb24eb830d81e05043b9ac7852ee78b04d4800dd14da2"
+    },
+    {
+      "path": "apy-boost/live-chunk-3610.js",
+      "bytes": 40556,
+      "sha256": "325dcbf7a1382499116e9db08c7188f30033679066bc1731ab1e209a4fc5a6eb"
+    },
+    {
+      "path": "apy-boost/live-chunk-3887.js",
+      "bytes": 35519,
+      "sha256": "d577f79c95f75d34783f67fcb05b92d268d78ba4c0561f8ff96286ca28aabe32"
+    },
+    {
+      "path": "apy-boost/live-chunk-3950.js",
+      "bytes": 64443,
+      "sha256": "2f4b34bc06131e1d05fb4f52a12813c52e76269257eb75f4f6a2c8543fcb409f"
+    },
+    {
+      "path": "apy-boost/live-chunk-4156.js",
+      "bytes": 46932,
+      "sha256": "107d29f1264eb82b1e2e1283aab04f0b3056287d094102ae24376146bb2a856f"
+    },
+    {
+      "path": "apy-boost/live-chunk-5188.js",
+      "bytes": 4543,
+      "sha256": "76db8381b0163cec84c7ad893587c9963af3e3c9ff5b4478b7365238dfd637ac"
+    },
+    {
+      "path": "apy-boost/live-chunk-6383.js",
+      "bytes": 379316,
+      "sha256": "0e80ddd9dce86a798bc471cdb10c22f6a050e92f80a2aaa17adfe0fc113c8b68"
+    },
+    {
+      "path": "apy-boost/live-chunk-8261.js",
+      "bytes": 20657,
+      "sha256": "e792c6fd7a4f81d493f346ae953fa852c86b4289afe663e293d4c4c0beae385a"
+    },
+    {
+      "path": "apy-boost/live-chunk-8405.js",
+      "bytes": 12082,
+      "sha256": "315f892a51b2e1d596d8bf4031c2112780164a0c7dd480a83ee4404f378b4461"
+    },
+    {
+      "path": "apy-boost/live-chunk-9020.js",
+      "bytes": 13344,
+      "sha256": "7c22a46dc395bc15b0fa5df17d04e63b8e8c866e72a444d886f632b31a414191"
+    },
+    {
+      "path": "apy-boost/live-chunk-934.js",
+      "bytes": 15076,
+      "sha256": "96ade24c3c947b3c1ded879a625953e914f82575446aec624bdba6ad26334cde"
+    },
+    {
+      "path": "apy-boost/live-chunk-9504.js",
+      "bytes": 221531,
+      "sha256": "fe61eb8330f727dbd6784c405a6ae66ef0c9ecffe8e4a7d4599ff4666eef41c5"
+    },
+    {
+      "path": "apy-boost/llms.txt",
+      "bytes": 15502,
+      "sha256": "592d3c49fe17f13529fa723ce1cfb33d16b6eab2f03acf85148c1baa50ea9e3c"
+    },
+    {
+      "path": "apy-boost/main-0.js",
+      "bytes": 5711,
+      "sha256": "363407767151654eb0f992a1728eec30fd4e66d7ef74bc3d31c30b4bf16edde9"
+    },
+    {
+      "path": "apy-boost/main-1.js",
+      "bytes": 1153986,
+      "sha256": "79f755207b6610476e362fc413eaf299be0a8e5cef8d778347aadad31ca21969"
+    },
+    {
+      "path": "apy-boost/main-2.js",
+      "bytes": 852545,
+      "sha256": "995d563ad3e4af8a925537ffec90b5d1867fb73053f6d25949e53d786cf7ca9a"
+    },
+    {
+      "path": "apy-boost/manager-master.rs",
+      "bytes": 14,
+      "sha256": "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed"
+    },
+    {
+      "path": "apy-boost/manager.rs",
+      "bytes": 14,
+      "sha256": "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed"
+    },
+    {
+      "path": "apy-boost/manifest.json",
+      "bytes": 15041,
+      "sha256": "eacce05a58775c524629e11adbb497e3f5aa9aa91a89f3c6d464d13ed4e6a138"
+    },
+    {
+      "path": "apy-boost/p1-detail-live.json",
+      "bytes": 1524,
+      "sha256": "52fff0b80fc4fda641610c91a9c05ba535d6997f7bf6a4a862695f35e2854982"
+    },
+    {
+      "path": "apy-boost/p1-holders.json",
+      "bytes": 950,
+      "sha256": "2841e744e7fa8e9dddac36ba19d85416b29f75cc5b0e193fb405c0ae9da847fb"
+    },
+    {
+      "path": "apy-boost/p4-detail-live.json",
+      "bytes": 1987,
+      "sha256": "2d36befb56b37acc4e7bca69a48cbc962702043a20b6139ca38d74b430388cbb"
+    },
+    {
+      "path": "apy-boost/p4-holders.json",
+      "bytes": 938,
+      "sha256": "228d74c65202feb37d05eb482356ed3916b675dad12335cd146764aa3b559c86"
+    },
+    {
+      "path": "apy-boost/p5-detail-live.json",
+      "bytes": 1453,
+      "sha256": "48ad76188076bf359a0e7bd9238563e3df2e86ac7fa68db08593a2f312770799"
+    },
+    {
+      "path": "apy-boost/p5-holders.json",
+      "bytes": 806,
+      "sha256": "b77c258753ac0a8bbac972b4211d631348a7bfe791c1ea358c911edb04930741"
+    },
+    {
+      "path": "apy-boost/pull.py",
+      "bytes": 653,
+      "sha256": "5d36f34870195e7efae45236928df2aa94c12433caa18264afb7d51e4e9d41a3"
+    },
+    {
+      "path": "apy-boost/report.md",
+      "bytes": 8034,
+      "sha256": "7139007c8b0e12f56576343331a86e3f6a52cea1a0b08464d0fd8c76cf3e732b"
+    },
+    {
+      "path": "apy-boost/reward-views.cjs",
+      "bytes": 1862,
+      "sha256": "5eb786b3349d19f31f24662b5fe8fe671af34e05c47454bb20e363401690f23c"
+    },
+    {
+      "path": "apy-boost/reward-views.json",
+      "bytes": 30554,
+      "sha256": "1174351045c26f002330dd6f8f9c8427afdc334ae6f6abc679ded9f6cb016cd6"
+    },
+    {
+      "path": "apy-boost/sources.json",
+      "bytes": 33418,
+      "sha256": "35eeb52c06efeb812733d9450b2884b5a27303991a163e56b6e583009603f778"
+    },
+    {
+      "path": "apy-boost/tree-master.json",
+      "bytes": 89,
+      "sha256": "3a32eab6ffbfd1cf2684b1a409bf40db46e46c5eaff44de656e499df05d92730"
+    },
+    {
+      "path": "apy-boost/tree.json",
+      "bytes": 89,
+      "sha256": "3a32eab6ffbfd1cf2684b1a409bf40db46e46c5eaff44de656e499df05d92730"
+    },
+    {
+      "path": "execution-evidence/manifest.json",
+      "bytes": 138694,
+      "sha256": "b3cd6e53024c7ce35937e181e68af322502ab1d52c78286679621016a7edbecf"
+    },
+    {
+      "path": "execution-evidence/private-application-evidence.tar.xz",
+      "bytes": 1604004,
+      "sha256": "29a670c9e676908d63a82dcd7939e8bbd60e230812c96acc09d39991df9079de"
+    },
+    {
+      "path": "lead/calculations.json",
+      "bytes": 15911,
+      "sha256": "c58695fa2bab64903d3b64ed2e9125cf34f2ebf13b6087b26a0b16fc4f55afc7"
+    },
+    {
+      "path": "lead/calculations.py",
+      "bytes": 4914,
+      "sha256": "f4b2bafa3b77de81441a68001944718e5e46f6c71143a0829ac0305745c1dab6"
+    },
+    {
+      "path": "lead/execution.md",
+      "bytes": 8917,
+      "sha256": "8ff5995680ff2fd590e1fc64546df7a95a06f3a5cac9039bfcbf0ebbaa87a0f7"
+    },
+    {
+      "path": "lead/pilot-runbook.md",
+      "bytes": 14478,
+      "sha256": "a969883803cc46339520c70026dc871899b8ac0b7f77da1a9bea24a688df11e9"
+    },
+    {
+      "path": "lead/previous-checkpoint-ci-jobs.json",
+      "bytes": 3713,
+      "sha256": "a1a7342eba8d680f9a08af5e82c08a440249f8343f45144859bdba7febaf6cfe"
+    },
+    {
+      "path": "lead/previous-checkpoint-ci.json",
+      "bytes": 1907,
+      "sha256": "6c54cf7f08c5e5c7364dd2d3339e16c8fe494667bb273bea3c899d9321c0f6f4"
+    },
+    {
+      "path": "lead/report.md",
+      "bytes": 13691,
+      "sha256": "5e25be457c8cfc995a9dee92f315f24c24635c0d6c3c7c126f25f678da9cad7a"
+    },
+    {
+      "path": "lead/signed-table.json",
+      "bytes": 29470,
+      "sha256": "40e4c92819b514e66829e3e3b2f533018ab95761b084fe2e6adced58dc1ecedb"
+    },
+    {
+      "path": "lead/signed-table.md",
+      "bytes": 1390,
+      "sha256": "e7e3d2ca98f78ca8d988fa6a8852bf13bf3b8ab6c64cd253925efa1be0dabac4"
+    },
+    {
+      "path": "live-code/aquarius-config.wasm",
+      "bytes": 7096,
+      "sha256": "497976cf49e777e59ee9c87e2b6aba363ae83cf8804db94c48bdab3f77e1eead"
+    },
+    {
+      "path": "live-code/aquarius-current.wasm",
+      "bytes": 110247,
+      "sha256": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907"
+    },
+    {
+      "path": "live-code/aquarius-gaugewasm.wasm",
+      "bytes": 12154,
+      "sha256": "802127e382da37aa26d0be2ef16c053c0606ecceed9daea603d826ead3e168c7"
+    },
+    {
+      "path": "live-code/aquarius-vaultwasm.wasm",
+      "bytes": 3025,
+      "sha256": "803527d495ef4ade60eba3a7f96c7610f9abbaebe46d34d83d4ca466510aa66f"
+    },
+    {
+      "path": "live-code/children-provenance.json",
+      "bytes": 21632,
+      "sha256": "85a2691ae22e4b256619c693d17910e3051538d288595fa70d5a26fec1b1c551"
+    },
+    {
+      "path": "live-code/code-provenance.json",
+      "bytes": 157569,
+      "sha256": "a23067b4a0046bea8b51474e3d43f731be48deba45e42ed25c33c047294f0be3"
+    },
+    {
+      "path": "live-code/config-interface.rs",
+      "bytes": 2834,
+      "sha256": "c01cb75dccd8523e6f40ad3829e2b4656d28341db1732daecf34e6d2156ac5da"
+    },
+    {
+      "path": "live-code/config-provenance.json",
+      "bytes": 14493,
+      "sha256": "6ef0cea242e9d069b2f6e9fdcf9a0999037a38f7ddf2d7842b78281d67f747ee"
+    },
+    {
+      "path": "live-code/interface.rs",
+      "bytes": 23390,
+      "sha256": "4a2ae8ea8dcf2ea45a8dec7587df39bd08157d742669ad1c9d62c7d953712723"
+    },
+    {
+      "path": "sale-fx/amounts-budget.json",
+      "bytes": 289,
+      "sha256": "5474e723018667b24f88d8aa908510786ef61ca18be3785174900d280b559516"
+    },
+    {
+      "path": "sale-fx/amounts.json",
+      "bytes": 305,
+      "sha256": "b3bb707fe8dacea7c5f9004175bc5bdfde89406db6606ac832512d1843432d9c"
+    },
+    {
+      "path": "sale-fx/aqua-usdc-pool.json",
+      "bytes": 1276,
+      "sha256": "dd9d4a68dab497a5d67ec696156af6b62f7174477efc54868d9b5603aae52153"
+    },
+    {
+      "path": "sale-fx/aqua-usdc-swaps.json",
+      "bytes": 46436,
+      "sha256": "55d36fdc615202ac3f3a8999209fb122b8d832d0b3f2eae721ceb19f4c816bf1"
+    },
+    {
+      "path": "sale-fx/budget-reads.json",
+      "bytes": 6849,
+      "sha256": "21e627d9b941e7b68cf54166e8332f1264d4642e79cc5f82256e93ba1298f860"
+    },
+    {
+      "path": "sale-fx/budget-reads.log",
+      "bytes": 2913,
+      "sha256": "cddba44bf3e169afec4bb31c67fde835b4930e7cf6578cbfa6343c87117b257d"
+    },
+    {
+      "path": "sale-fx/calculate.py",
+      "bytes": 3669,
+      "sha256": "3b062422ed66ffbea9d22a051235e341f9fd1a201c2717914f820c93d49e8580"
+    },
+    {
+      "path": "sale-fx/calculated.json",
+      "bytes": 25069,
+      "sha256": "ae8cd84bb193457b5f63cef5f650e0f71f6dbb6bae01e4fcbce3aa5a93d37aae"
+    },
+    {
+      "path": "sale-fx/failed-dns-0.raw",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "sale-fx/failed-dns-1.raw",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "sale-fx/failed-dns-2.raw",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "sale-fx/fetch.py",
+      "bytes": 740,
+      "sha256": "c355bf726df5c5174091929816914fd2b77fffa1c065b4d7c8218c81c6bf3c62"
+    },
+    {
+      "path": "sale-fx/manifest.json",
+      "bytes": 5021,
+      "sha256": "04624dce7f6254189864d5bf5f04aca30321669f1f1d007be91e8c852543ea8d"
+    },
+    {
+      "path": "sale-fx/orderbook.json",
+      "bytes": 33386,
+      "sha256": "27ae8c87458ccf2c5f3fd88400d4d470f6d3fa08056ff94f50b47bd79035ab14"
+    },
+    {
+      "path": "sale-fx/path-base-pyusd.json",
+      "bytes": 1090,
+      "sha256": "2b2e930f3e4dfacf3e85b4a04028dd0c3883647ae9a0097dae4338bfe320d952"
+    },
+    {
+      "path": "sale-fx/path-p1_base.json",
+      "bytes": 1840,
+      "sha256": "ae10cd65db88173e27e279f2fbd3ef670ea455c3f8d8d0421a41fee4b745a7b7"
+    },
+    {
+      "path": "sale-fx/path-p1_maxboost_lp_only.json",
+      "bytes": 1840,
+      "sha256": "96fab708393f59276101a065b4a713af5be72d4bd643cfd11fcd5aed2bcad014"
+    },
+    {
+      "path": "sale-fx/path-p4_base.json",
+      "bytes": 1843,
+      "sha256": "c3b6111bed2b4c711e96118dfc715fc9ba483bc5f7773ab30b46b998923eb33b"
+    },
+    {
+      "path": "sale-fx/path-p4_maxboost_lp_only.json",
+      "bytes": 1094,
+      "sha256": "c99fa6d20110a5c954368051228fa32876253f57ce7bb616034ea017269baa69"
+    },
+    {
+      "path": "sale-fx/path-p5_base.json",
+      "bytes": 1843,
+      "sha256": "e08108401f605365c92cb6aba3f23c55d1a43e03daf4f4e13b530408cf14dbcb"
+    },
+    {
+      "path": "sale-fx/path-p5_maxboost_lp_only.json",
+      "bytes": 1843,
+      "sha256": "10d028b03d3a0e7ab4e7e46c8eeb5caced3dfa37a337594e2c03d0ba368e9ac0"
+    },
+    {
+      "path": "sale-fx/read.cjs",
+      "bytes": 3905,
+      "sha256": "bf44aef4607c1081090f1186ab83e7ca14b94b4d30a914c824dfa4a5c4778248"
+    },
+    {
+      "path": "sale-fx/reads.json",
+      "bytes": 29450,
+      "sha256": "af115b0a89001d2adb8762080a7da20b07a2f52b0c5de6dd9045320c41f404c4"
+    },
+    {
+      "path": "sale-fx/reads.log",
+      "bytes": 15776,
+      "sha256": "f22c22386b9e8d6c087e960c7141e0cc8a042bc0687068d42199b13dc3b29292"
+    },
+    {
+      "path": "sale-fx/reflector-app.js",
+      "bytes": 1506624,
+      "sha256": "437d1768a50df2d3b91804979649710fc8800fee7c590e8d31d3d2cd2a353649"
+    },
+    {
+      "path": "sale-fx/reflector-config.json",
+      "bytes": 12199,
+      "sha256": "2ae38a09a09d22ef06b608f7596450fd2d07db5a4fab3130cd92b762dc4339ee"
+    },
+    {
+      "path": "sale-fx/reflector-doc.md",
+      "bytes": 2988,
+      "sha256": "2b0f0b84dcce22f2f8e3ee6f8252ecdc2fa0697ca1a783eb51c410657f348805"
+    },
+    {
+      "path": "sale-fx/report.md",
+      "bytes": 11446,
+      "sha256": "c8cb47ac0bcba55718d1eb43cff131c74b33849cb2d6fbd6088619203b46dbdf"
+    },
+    {
+      "path": "sale-fx/sources.json",
+      "bytes": 8675,
+      "sha256": "2f135f397933e411dab1f113f483733c190456b11b23e4b0ec75c3c0de6a57ae"
+    },
+    {
+      "path": "sale-fx/swap-large-operations.json",
+      "bytes": 6645,
+      "sha256": "daa40b8241a46313ec697d793663813abee27f2c4f5509d18ef9664058530886"
+    },
+    {
+      "path": "sale-fx/swap-medium-operations.json",
+      "bytes": 7256,
+      "sha256": "b7fac244c21c56ae0febdb6ad98e7b2ec42da2ad3418745b83c3a2817a633012"
+    },
+    {
+      "path": "sale-fx/swap-small-operations.json",
+      "bytes": 7737,
+      "sha256": "821eb52dd83e42299d24cdfcf79c023a1686a274cbf52e7a64ea14190b84da53"
+    },
+    {
+      "path": "sale-fx/verify.py",
+      "bytes": 1779,
+      "sha256": "f15403c205f58db12fab78a4f070ee771873b7cf5a8c5921d2019e38273f1a60"
+    },
+    {
+      "path": "verify.py",
+      "bytes": 2583,
+      "sha256": "8bb80147f0c9f031fa2ade7084ee916a81e766d4f40daea995a1e51e14755abe"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/boost-math.json",
+      "bytes": 2405,
+      "sha256": "b59d6482b2c3c8d18bed2593d4da485a13f0419df64b08644a2f83b3e0553dc2"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/boost-math.py",
+      "bytes": 1551,
+      "sha256": "e315d9b49081f18f730b0e8705ed108d322176e721b082a3ac171a3f23cea4cc"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/detail.json",
+      "bytes": 1882,
+      "sha256": "d21754c590f45a34bfc5b94b39765c5d849438a47be9f51877bf354f45a54c6c"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/formula-crosschecks.json",
+      "bytes": 1292,
+      "sha256": "d90073f78e387dbfddeeeb32ab0079286baeda38a10a12c0249bd219fb5dd047"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/getters.cjs",
+      "bytes": 2760,
+      "sha256": "40c3d1d8840050aa21ffee79c700dc39b3a27f7e1394c1539587010c9d0698e1"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/getters.json",
+      "bytes": 21595,
+      "sha256": "ddfccd8492dc2bc29f6f9f7472629048d0bca9c1006168ba82ca4f70e9b027eb"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/holders.json",
+      "bytes": 655,
+      "sha256": "3ca1044675f9be407a481e60d442496b2a9896c3223ed81c7f0d5a93aa32b270"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/independent-review.json",
+      "bytes": 2162,
+      "sha256": "4aad8a5063ce3c57d3bb094c7a16c8130de0b14c0ad6fc1a3f4773d51080e294"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/manifest.json",
+      "bytes": 2504,
+      "sha256": "195484a9cc02ae3637be0fa36889fac5b33b31eb19b92822681f97ce7bddd2b7"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/pair-pools.json",
+      "bytes": 2667,
+      "sha256": "a83fefd46ceff8e4eb86e84e8f76562b7c58edb3b8c73090826d4623057b59d8"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/pull.py",
+      "bytes": 653,
+      "sha256": "5d36f34870195e7efae45236928df2aa94c12433caa18264afb7d51e4e9d41a3"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/report.md",
+      "bytes": 7270,
+      "sha256": "c2bf914224bd55bb7fd404d2a50a766ac71fa1625b10d6583c098945f674e649"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/review.py",
+      "bytes": 4616,
+      "sha256": "51f9170388c26a4e772879f95125727e1c1c5f5a5a06f09768df4bf4277c13d9"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/reward-views.cjs",
+      "bytes": 1844,
+      "sha256": "748b54834918da8e07c142f2c7ca6de972049534981dd09714ca7cfef6f5784e"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/reward-views.json",
+      "bytes": 10504,
+      "sha256": "af59e8eee903b56a8a0587915c55de79b3990a15b350935608cda529764b1911"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/selected-pools.json",
+      "bytes": 2379,
+      "sha256": "0c5fda8ba78a6db27619a1b9eb09417693a1c70409d6a8e9dad4bc01b7c208bf"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/sources.json",
+      "bytes": 1029,
+      "sha256": "75e36957901a1c4f8b2c15de86dc68a9f09d16efdbd98f93d796e5b2462d42a0"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/summary.json",
+      "bytes": 986,
+      "sha256": "3e66f330772091843d073f945159ab4fe0aae5a1bf2911d2b504d44175d06d92"
+    },
+    {
+      "path": "xlm-yxlm/apy-boost/ui-pools.json",
+      "bytes": 408105,
+      "sha256": "d3ddf26a912cb2334b468436a3bc260a17b3257e9dd3dbdd1e6f066c8da47a89"
+    },
+    {
+      "path": "xlm-yxlm/lead/calculate.py",
+      "bytes": 3978,
+      "sha256": "414850320bfacfe8d3b50f2b36923eb901dd119eee7e0af3fd24e6c9c0973609"
+    },
+    {
+      "path": "xlm-yxlm/lead/calculations.json",
+      "bytes": 5694,
+      "sha256": "15269cc783868ff004afc0f4032f8ca108cff11c61d6a23ab3543c94ab019a0b"
+    },
+    {
+      "path": "xlm-yxlm/lead/events-1.json",
+      "bytes": 129607,
+      "sha256": "196d0eae55dd1f32d8081211becbe82fd2ddced08c751f0eeb2f6df77ce984eb"
+    },
+    {
+      "path": "xlm-yxlm/lead/pull.py",
+      "bytes": 653,
+      "sha256": "5d36f34870195e7efae45236928df2aa94c12433caa18264afb7d51e4e9d41a3"
+    },
+    {
+      "path": "xlm-yxlm/lead/quote.cjs",
+      "bytes": 3039,
+      "sha256": "d694ce8bdf082e425ece7d399b61c35a7fc31d4e03371fa200ea84677a780d32"
+    },
+    {
+      "path": "xlm-yxlm/lead/quote.log",
+      "bytes": 1540,
+      "sha256": "9ba8406a4f5c484c0831716780def69a1b280cd525289a4e12cf104d8efa1d6a"
+    },
+    {
+      "path": "xlm-yxlm/lead/quotes.json",
+      "bytes": 1540,
+      "sha256": "9ba8406a4f5c484c0831716780def69a1b280cd525289a4e12cf104d8efa1d6a"
+    },
+    {
+      "path": "xlm-yxlm/lead/report.md",
+      "bytes": 11919,
+      "sha256": "b453200f4808cce65a931173e5c0c53862f9427e9fc2603e1443011d01e97af6"
+    },
+    {
+      "path": "xlm-yxlm/lead/sources.json",
+      "bytes": 1508,
+      "sha256": "96a024bd7659ac8fe84765ddc643ca463009d1e53704240e2803f97cd2ca30d8"
+    },
+    {
+      "path": "xlm-yxlm/lead/stats.json",
+      "bytes": 79060,
+      "sha256": "474ef44df0c667d2e5b9a28d3faee2edc33c6a23467b99297ff67148b4b00916"
+    },
+    {
+      "path": "xlm-yxlm/lead/tokens-live.json",
+      "bytes": 128314,
+      "sha256": "14667fdad556fb5ac69dc7cc0a4ead68f94b40f6d0f8a52c6c6fb017b79194af"
+    },
+    {
+      "path": "xlm-yxlm/lead/tokens.json",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/amounts-base.json",
+      "bytes": 30,
+      "sha256": "770ca30791c9218777895b1e6424bbfae4d34889d0b121a3ff2d4f904aebcd2a"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/amounts-boost.json",
+      "bytes": 85,
+      "sha256": "ffe8558a90d19a6ed1ad3892f8ee1ebd0b23b54b5e033dc2f7be86427d2d67a2"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/base-quote.json",
+      "bytes": 1408,
+      "sha256": "4a62c260d623bb7fe445ba080ccdf67fea1824af9a740a2644dab5a69b97384d"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/base-quote.log",
+      "bytes": 467,
+      "sha256": "cdf5d1c04ad440e3b77ddd71eb4168760d338fbb4eb10d239f520419c711b2f1"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/boost-quote.json",
+      "bytes": 2501,
+      "sha256": "0115a71125024fb16c786e84219250a8788f2498f132c1cd9bc1585602d29f42"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/boost-quote.log",
+      "bytes": 961,
+      "sha256": "df2482099da55a4b31b0491aa73a53deaad3458da4c7688e5f41a089a3345eec"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/calculate.py",
+      "bytes": 3182,
+      "sha256": "be4b14714c309f08027861f86ce27cd53b7d1f02548a605f099e6c0b1d5dcce2"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/calculated.json",
+      "bytes": 3317,
+      "sha256": "728782ca4c20b5fda1df3eb7761a13237303d1b103e28797b9417bd68a46125e"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/deposit.html",
+      "bytes": 8514,
+      "sha256": "eb9368ad2c70602a69339abeb8c0d39a62199c6cc065292fc4db684c2feab5dc"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/fetch.py",
+      "bytes": 740,
+      "sha256": "c355bf726df5c5174091929816914fd2b77fffa1c065b4d7c8218c81c6bf3c62"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/historical-reference.json",
+      "bytes": 656,
+      "sha256": "dc7f9daf851bd2dd9772665596b7e8eba0ac6b4065669cb26af83c15c8e79559"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/historical-small-operations.json",
+      "bytes": 7737,
+      "sha256": "821eb52dd83e42299d24cdfcf79c023a1686a274cbf52e7a64ea14190b84da53"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/issuer.json",
+      "bytes": 3263,
+      "sha256": "eafbf4b449ceacaf390b41ece88ec5657c2a478784c1c3dc58f47a4b2c3898cb"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/manifest.json",
+      "bytes": 4666,
+      "sha256": "454d6944f2b77e711ae70f460c987ee6643ded405215cf8b54b4e8b9df140f14"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/quote.cjs",
+      "bytes": 3908,
+      "sha256": "99feb3365b75f79aef8c3a4fa8fba78c510258731e47bb10a909e4df81895bde"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/read.cjs",
+      "bytes": 3602,
+      "sha256": "e23ff47196bbd9b95457b7789359186cb3ad0cc557ebb1b422efdbb87e8c9155"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/reads.json",
+      "bytes": 15320,
+      "sha256": "afd2be18a6184574a1cafe0be5a8ae6834ce58a4e44abfca88836b5f3827d3fc"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/reads.log",
+      "bytes": 8872,
+      "sha256": "0206b794bde9484800be24668912e0ba5cfffc86e5323c5a53e92639d2b38122"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/reflector-config.json",
+      "bytes": 12199,
+      "sha256": "2ae38a09a09d22ef06b608f7596450fd2d07db5a4fab3130cd92b762dc4339ee"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/report.md",
+      "bytes": 10089,
+      "sha256": "dffedc5fad4c741ca80079dee7bd3731be878c7f103b687a00e61499f8d4a289"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/sep24-deposit-fee.json",
+      "bytes": 11,
+      "sha256": "11c04d1894c49e87d85e353e1d0e761df691acf9af33edeed8c2ad2f6c719a52"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/sep24-info.json",
+      "bytes": 746,
+      "sha256": "606dbca0b8d512a2e0c2f013a3e7a90e7870a6dfe726d4f215eea89bffc20204"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/sep24-withdraw-fee.json",
+      "bytes": 11,
+      "sha256": "1e6d50e34e9bdddf62f0c9d4f981ab5dd81cce00dcc5463bfe14319c1703a46e"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/sep6-info.json",
+      "bytes": 588,
+      "sha256": "f00b2c146a9d39930cfb45dd3af2affd82013e9ed162096bfa410cf393b41583"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/sources.json",
+      "bytes": 3687,
+      "sha256": "37aa48f36b1d1a21e82f8b76ebe240a730d235b31f187122b673f35f58f41fdf"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/ultra-home.html",
+      "bytes": 26745,
+      "sha256": "d2a7444c1e147943c0614bc57a20378c8178da2824dc044c8fb3a061f4d41b54"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/ultra-old.html",
+      "bytes": 162,
+      "sha256": "340c8464c2007ce3f80682e15dfafa4180b641d53c14201b929906b7b0284d87"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/ultra-toml.txt",
+      "bytes": 6049,
+      "sha256": "8d7ab1099a2c76539db3e9e03b0834ad5ba8093ff346b7c486fd0d9da593bc26"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/ultra-yxlm.html",
+      "bytes": 32836,
+      "sha256": "5f8f5bc76c620f9c0657fa274ed6f3564a625925047d494f74fbe0d058d08a74"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/verify.py",
+      "bytes": 1592,
+      "sha256": "f96e92e5b33c0039e67c64bde928af5e96fe4b34f0e8545a7760891ba891cc82"
+    },
+    {
+      "path": "xlm-yxlm/yield-oracle/withdraw.html",
+      "bytes": 8044,
+      "sha256": "f2e642c23d7219556b5f2c490849acd46542abdecd26db2973cb5d7c4a0789df"
+    }
+  ]
+}

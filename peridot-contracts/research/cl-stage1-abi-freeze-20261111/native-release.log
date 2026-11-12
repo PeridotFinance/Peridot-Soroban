@@ -1,0 +1,31 @@
+   Compiling cl-stage1-interface v1.0.0 (/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/interfaces/cl-stage1-interface)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.06s
+     Running unittests src/lib.rs (target/debug/deps/cl_stage1_interface-c531616999734e02)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/key_catalog.rs (target/debug/deps/key_catalog-a9aafc17dec5f6fe)
+
+running 1 test
+test new_key_namespaces_do_not_alias_existing_contract_keys ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/wire.rs (target/debug/deps/wire-7dc5aebec61b9168)
+
+running 4 tests
+test u128_payload_size_is_bounded_and_round_trips ... ok
+test close_terms_and_binding_commit_every_field ... ok
+test canonical_terms_bind_network_contracts_owner_id_bounds_and_requested_close_shares ... ok
+test frozen_specs_and_wire_vectors ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests cl_stage1_interface
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

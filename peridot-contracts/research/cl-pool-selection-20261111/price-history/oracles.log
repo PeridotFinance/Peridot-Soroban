@@ -1,0 +1,845 @@
+[
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "assets",
+    "label": "assets",
+    "ledger": 65420672,
+    "cost": null,
+    "value": [
+      [
+        "Other",
+        "BTC"
+      ],
+      [
+        "Other",
+        "ETH"
+      ],
+      [
+        "Other",
+        "USDT"
+      ],
+      [
+        "Other",
+        "XRP"
+      ],
+      [
+        "Other",
+        "SOL"
+      ],
+      [
+        "Other",
+        "USDC"
+      ],
+      [
+        "Other",
+        "ADA"
+      ],
+      [
+        "Other",
+        "AVAX"
+      ],
+      [
+        "Other",
+        "DOT"
+      ],
+      [
+        "Other",
+        "MATIC"
+      ],
+      [
+        "Other",
+        "LINK"
+      ],
+      [
+        "Other",
+        "DAI"
+      ],
+      [
+        "Other",
+        "ATOM"
+      ],
+      [
+        "Other",
+        "XLM"
+      ],
+      [
+        "Other",
+        "UNI"
+      ],
+      [
+        "Other",
+        "EURC"
+      ]
+    ],
+    "minResourceFee": "8216",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 745593,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "base",
+    "label": "base",
+    "ledger": 65420672,
+    "cost": null,
+    "value": [
+      "Other",
+      "USD"
+    ],
+    "minResourceFee": "6467",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 711549,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "decimals",
+    "label": "decimals",
+    "ledger": 65420672,
+    "cost": null,
+    "value": 14,
+    "minResourceFee": "6383",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 696945,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "resolution",
+    "label": "resolution",
+    "ledger": 65420672,
+    "cost": null,
+    "value": 300,
+    "minResourceFee": "6391",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 697407,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "history_retention_period",
+    "label": "history_retention_period",
+    "ledger": 65420672,
+    "cost": null,
+    "value": "86400",
+    "minResourceFee": "6429",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 700402,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "assets",
+    "label": "assets",
+    "ledger": 65420672,
+    "cost": null,
+    "value": [
+      [
+        "Stellar",
+        "CBHIQPUXLFLC5O44ZJVUTCL5LMZFLVGU5DEIGSYKBSAPFMOGTKOQEPFM"
+      ],
+      [
+        "Stellar",
+        "CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK"
+      ],
+      [
+        "Stellar",
+        "CDOFW7HNKLUZRLFZST4EW7V3AV4JI5IHMT6BPXXSY2IEFZ4NE5TWU2P4"
+      ],
+      [
+        "Stellar",
+        "CDDQRIGZRK6Z6ILV4P276HL7D3P63GFW6HBA4N4YXDMFHZ2M4VZGVYRW"
+      ],
+      [
+        "Stellar",
+        "CBHBD77PWZ3AXPQVYVDBHDKEMVNOR26UZUZHWCB6QC7J5SETQPRUQAS4"
+      ],
+      [
+        "Stellar",
+        "CCRPYMVKZLWGZHEDZ23FOE22E3T3HOCNP5Y2EFZFVRUVIXU5NJ7UNGV2"
+      ],
+      [
+        "Stellar",
+        "CBVDRT5474OBUEXF5MJB3UGQ5CG7CKGCAH5M4RV5NBCDJUBZ5OXHJLOU"
+      ],
+      [
+        "Stellar",
+        "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+      ],
+      [
+        "Stellar",
+        "CAAV3AE3VKD2P4TY7LWTQMMJHIJ4WOCZ5ANCIJPC3NRSERKVXNHBU2W7"
+      ],
+      [
+        "Stellar",
+        "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV"
+      ],
+      [
+        "Stellar",
+        "CBLLEW7HD2RWATVSMLAGWM4G3WCHSHDJ25ALP4DI6LULV5TU35N2CIZA"
+      ],
+      [
+        "Stellar",
+        "CB226ZOEYXTBPD3QEGABTJYSKZVBP2PASEISLG3SBMTN5CE4QZUVZ3CE"
+      ],
+      [
+        "Stellar",
+        "CAL6ER2TI6CTRAY6BFXWNWA7WTYXUXTQCHUBCIBU5O6KM3HJFG6Z6VXV"
+      ],
+      [
+        "Stellar",
+        "CBLV4ATSIWU67CFSQU2NVRKINQIKUZ2ODSZBUJTJ43VJVRSBTZYOPNUR"
+      ],
+      [
+        "Stellar",
+        "CB23WRDQWGSP6YPMY4UV5C4OW5CBTXKYN3XEATG7KJEZCXMJBYEHOUOV"
+      ],
+      [
+        "Stellar",
+        "CD6M4R2322BYCY2LNWM74PEBQAQ63SA3DUJLI3L4225U4ZVCLMSCBCIS"
+      ],
+      [
+        "Stellar",
+        "CDVIS7WXSDUOTKAH3HEA7EAJGEZNJ5QJYDZ7KM7KN6CPVCJX2TLJJXSK"
+      ],
+      [
+        "Stellar",
+        "CAYRSHFUI5O3DCM7D5Q5X4Z6ERTST46JPUGI5DLMZ5YYFPL3PJSZHN77"
+      ],
+      [
+        "Stellar",
+        "CA67EQNWGPGXHVT6E4HQ65WEV54KFDB6HJDHVCJM33VKZ7XKR5MN3KPJ"
+      ],
+      [
+        "Stellar",
+        "CDANHN6OUDZNFWDCEU6ZWCIC4DPHVFXP3QPARHALFOF26HLC45JWRTWP"
+      ],
+      [
+        "Stellar",
+        "CACXKRVCW7I6CWX6RS6ANFDKVCOUI2PB6LTDUROL3J3FMJCRZ4ZLQRF6"
+      ],
+      [
+        "Stellar",
+        "CDJJQLCW6GFVUXJOXXONVC6KHPTY4RFMDKFBAP6SHWVKICXPRS4RSIKY"
+      ],
+      [
+        "Stellar",
+        "CDOZE45WZ67M6DNO577SKX3AG6N3I3Y6HZNA63APVYEAF2X6Q6P6V5G6"
+      ],
+      [
+        "Stellar",
+        "CDHNIO6IJ7EBFUDVALSE347YYNV3RKFB3Y5NZ3W4RH4QP4IS56MGSI5E"
+      ],
+      [
+        "Stellar",
+        "CBNJ54GNIRXBRB2P7PVKI7LVUBVR4ATTK6QDPZZKHM47VAP3CSJ7VYNB"
+      ],
+      [
+        "Stellar",
+        "CC6EBYOGHV6Y4DRTQC43K5JXVVF5GFJT5X763LTXHCSZKBDYQ2CTU4RL"
+      ],
+      [
+        "Stellar",
+        "CB7VCORLWN5N4ZUTKSK7OQN6JC5ENKBK6NSKUZDEEPFMJGMH3U6AAIK4"
+      ],
+      [
+        "Stellar",
+        "CDV5AXARL6BNJKOT5TF7QRY6VC6NPKC7ORALAEFQ6HZZSF6X3VL5FSAA"
+      ],
+      [
+        "Stellar",
+        "CD2XQB4EVZGM4UTT52PM4335S5BU43DCN2GJESJ5A6OOCWC23D5MD3C5"
+      ],
+      [
+        "Stellar",
+        "CBUQVUWV6TYMA2VPAZVKHHASIFNHKT4RP7D7XMBAEZ5UMGPZYIWUQC3G"
+      ],
+      [
+        "Stellar",
+        "CCD6H4LBTHAPY3NGEE6TLLRUSPJGX4K5XI2J6E4MUNDB5TNXEKC23H5B"
+      ],
+      [
+        "Stellar",
+        "CCFS6UDFSR5OJIN45RQPUCZ5JTTU5TQOTIS6XKYKNWKC4TVR752BOWOF"
+      ],
+      [
+        "Stellar",
+        "CDFMLT27STN32KZTZGT4DAAD6Z6YYDODA5KTGZ2333RFJYM77MOXHOZ6"
+      ],
+      [
+        "Stellar",
+        "CBAANNZVSOH6I42ZVVFTVB2JNVSHVBYUDWGGJHB4BLCXARYTNN3ODU3F"
+      ],
+      [
+        "Stellar",
+        "CDJ2ZXLXJEN4O7JJDC2DKX524LFMKFVWV4M722CBE3KHPFJWQSHM3RQN"
+      ],
+      [
+        "Stellar",
+        "CCZW2OHF4X5G5HWGWXU7LHT5QXIYYMNCZG74YYCLO3DXDTIWF45RJ543"
+      ],
+      [
+        "Stellar",
+        "CAAP5SVCSZBUC4VWR2FQTROXEIC3PGLAXCNFFGA22BJRNNK7AR5RUN3K"
+      ],
+      [
+        "Stellar",
+        "CDRRBUXO43BOQLUVZCRWUVEDIW56WC243RKYVKDCYZ6B5MQOR6N5TLTJ"
+      ],
+      [
+        "Stellar",
+        "CDOYXOTUFLLST7JDECAMP64XSSOSVTHD4E6D7CHCKIO23VSVY5ECQNPA"
+      ],
+      [
+        "Stellar",
+        "CD2GNQFE3GRUY5LRE5WT26OQIUBUQ5YKRVDRQ3FWCW7A7NZAPPFIHFAY"
+      ],
+      [
+        "Stellar",
+        "CBDRPADR3KIBJNUBNRTTO4P7NO5RVPMYKRJB5YCZUZ6B66RKYK324UJY"
+      ],
+      [
+        "Stellar",
+        "CDYBK2X5ZEQ7ZNDN7IPWWMOQ6SWEJW4A4UE2PNDFDVCYNAXB64O4FNXX"
+      ],
+      [
+        "Stellar",
+        "CALZDNKGQPSPD23YW4SLJRJ75AOSWCWIOYKYFIKJBKXSVMWPFYF74PTV"
+      ],
+      [
+        "Stellar",
+        "CBI5PFS3NQ6ZBXFO622DU5BNCPO2J7GW4XYN27DSA4YRTPJU63AQPDC7"
+      ],
+      [
+        "Stellar",
+        "CACFQEH2USDRGSBYFOVJMX4DMX7HMRYAYOV2IWR7XEX3DD3HYQEWPAAL"
+      ],
+      [
+        "Stellar",
+        "CBBEPK2EKUTFPHU3T5MYEOME25P2RTIRSNPR6VSOMU3SZ3HXIMORBNZU"
+      ],
+      [
+        "Stellar",
+        "CC5MUJYOPXGPDXJNOFG7SKLZSPDWJBTTSWUZEYPMTRJBJ3J6G5REPSVN"
+      ],
+      [
+        "Stellar",
+        "CDIA2WBXIDLXYNL4IU55K77BUZHTC5E65ZGCOXEAEJDIW4XLHZHCSC7X"
+      ],
+      [
+        "Stellar",
+        "CDN7CMIQKWF2KVZ4RW5TW34MMALQ66TFAWJKMDQJ24NWBLDIG7MXRAAA"
+      ],
+      [
+        "Stellar",
+        "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN"
+      ],
+      [
+        "Stellar",
+        "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2"
+      ],
+      [
+        "Stellar",
+        "CBSJZEIO5C7KC2SF3MKSNXXJSW5G3VTNBX4ATMKUI3B2MR4JKM4R26YF"
+      ]
+    ],
+    "minResourceFee": "16478",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1218896,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "base",
+    "label": "base",
+    "ledger": 65420672,
+    "cost": null,
+    "value": [
+      "Stellar",
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75"
+    ],
+    "minResourceFee": "6658",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1080247,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "decimals",
+    "label": "decimals",
+    "ledger": 65420672,
+    "cost": null,
+    "value": 14,
+    "minResourceFee": "6493",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1063427,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "resolution",
+    "label": "resolution",
+    "ledger": 65420672,
+    "cost": null,
+    "value": 300,
+    "minResourceFee": "6501",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1063889,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "history_retention_period",
+    "label": "history_retention_period",
+    "ledger": 65420672,
+    "cost": null,
+    "value": "86400",
+    "minResourceFee": "6539",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1066884,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+    "method": "assets",
+    "label": "assets",
+    "ledger": 65420672,
+    "cost": null,
+    "value": [
+      [
+        "Other",
+        "EUR"
+      ],
+      [
+        "Other",
+        "GBP"
+      ],
+      [
+        "Other",
+        "CAD"
+      ],
+      [
+        "Other",
+        "BRL"
+      ],
+      [
+        "Other",
+        "JPY"
+      ],
+      [
+        "Other",
+        "CNY"
+      ],
+      [
+        "Other",
+        "MXN"
+      ],
+      [
+        "Other",
+        "KRW"
+      ],
+      [
+        "Other",
+        "TRY"
+      ],
+      [
+        "Other",
+        "ARS"
+      ],
+      [
+        "Other",
+        "PEN"
+      ],
+      [
+        "Other",
+        "VES"
+      ],
+      [
+        "Other",
+        "CLP"
+      ],
+      [
+        "Other",
+        "CRC"
+      ],
+      [
+        "Other",
+        "CDF"
+      ],
+      [
+        "Other",
+        "COP"
+      ],
+      [
+        "Other",
+        "HKD"
+      ],
+      [
+        "Other",
+        "INR"
+      ],
+      [
+        "Other",
+        "NGN"
+      ],
+      [
+        "Other",
+        "PHP"
+      ],
+      [
+        "Other",
+        "RUB"
+      ],
+      [
+        "Other",
+        "ZAR"
+      ],
+      [
+        "Other",
+        "XAU"
+      ],
+      [
+        "Other",
+        "KES"
+      ]
+    ],
+    "minResourceFee": "9133",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 841043,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+    "method": "base",
+    "label": "base",
+    "ledger": 65420672,
+    "cost": null,
+    "value": [
+      "Other",
+      "USD"
+    ],
+    "minResourceFee": "6487",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 779860,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+    "method": "decimals",
+    "label": "decimals",
+    "ledger": 65420672,
+    "cost": null,
+    "value": 14,
+    "minResourceFee": "6403",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 764684,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+    "method": "resolution",
+    "label": "resolution",
+    "ledger": 65420673,
+    "cost": null,
+    "value": 300,
+    "minResourceFee": "6412",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 767094,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+    "method": "history_retention_period",
+    "label": "history_retention_period",
+    "ledger": 65420673,
+    "cost": null,
+    "value": "86400",
+    "minResourceFee": "6449",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 769279,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "lastprice",
+    "label": "external-USDC",
+    "ledger": 65420673,
+    "cost": null,
+    "value": {
+      "price": "100090113634635",
+      "timestamp": "1794389100"
+    },
+    "minResourceFee": "6713",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 807059,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "lastprice",
+    "label": "external-EURC",
+    "ledger": 65420673,
+    "cost": null,
+    "value": {
+      "price": "111517507041370",
+      "timestamp": "1794389100"
+    },
+    "minResourceFee": "6718",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 825303,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "lastprice",
+    "label": "external-PYUSD",
+    "ledger": 65420673,
+    "cost": null,
+    "value": null,
+    "minResourceFee": "6489",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 744879,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "lastprice",
+    "label": "external-sUSD",
+    "ledger": 65420673,
+    "cost": null,
+    "value": null,
+    "minResourceFee": "6480",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 744927,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "method": "lastprice",
+    "label": "external-USDT0",
+    "ledger": 65420673,
+    "cost": null,
+    "value": null,
+    "minResourceFee": "6490",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 748475,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "lastprice",
+    "label": "dex-PYUSD",
+    "ledger": 65420673,
+    "cost": null,
+    "value": {
+      "price": "99983050930781",
+      "timestamp": "1794389100"
+    },
+    "minResourceFee": "6918",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1289348,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "lastprice",
+    "label": "dex-sUSD",
+    "ledger": 65420673,
+    "cost": null,
+    "value": null,
+    "minResourceFee": "6660",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1141798,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "lastprice",
+    "label": "dex-USDT0",
+    "ledger": 65420673,
+    "cost": null,
+    "value": {
+      "price": "99952269251150",
+      "timestamp": "1794389100"
+    },
+    "minResourceFee": "6919",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1291822,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "lastprice",
+    "label": "dex-EURC",
+    "ledger": 65420673,
+    "cost": null,
+    "value": {
+      "price": "110605026254966",
+      "timestamp": "1794389100"
+    },
+    "minResourceFee": "6888",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1187914,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M",
+    "method": "lastprice",
+    "label": "dex-USDC",
+    "ledger": 65420673,
+    "cost": null,
+    "value": {
+      "price": "100000000000000",
+      "timestamp": "1794389100"
+    },
+    "minResourceFee": "6866",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 1116606,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  },
+  {
+    "contract": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC",
+    "method": "lastprice",
+    "label": "forex-EUR",
+    "ledger": 65420673,
+    "cost": null,
+    "value": {
+      "price": "111881453933434",
+      "timestamp": "1794389100"
+    },
+    "minResourceFee": "6730",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 863926,
+      "diskReadBytes": 0,
+      "writeBytes": 0,
+      "uniqueKeys": 2,
+      "writes": 0
+    }
+  }
+]

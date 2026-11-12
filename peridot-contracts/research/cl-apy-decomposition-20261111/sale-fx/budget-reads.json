@@ -1,0 +1,161 @@
+{
+  "endpoint": "https://rpc.lightsail.network/",
+  "retrievedAt": "2026-11-11T10:19:01.336Z",
+  "scope": "unsigned public read-only getter/estimate simulations; rolling state; not a sale or financial execution",
+  "views": [
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p1_boost_budget_year_prefunded",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAAbzx1O4="
+      ],
+      "time": "2026-11-11T10:19:02.058Z",
+      "ledger": 65421259,
+      "cost": null,
+      "value": "1817603",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAAbvAM=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p4_boost_budget_year_prefunded",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAABZQ5uGU="
+      ],
+      "time": "2026-11-11T10:19:02.641Z",
+      "ledger": 65421259,
+      "cost": null,
+      "value": "5834303",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAABZBj8=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p5_boost_budget_year_prefunded",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAA9IUK/I="
+      ],
+      "time": "2026-11-11T10:19:03.220Z",
+      "ledger": 65421260,
+      "cost": null,
+      "value": "3995457",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAA890E=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p1_boost_budget_day1_min",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAAcPA2Ds="
+      ],
+      "time": "2026-11-11T10:19:03.813Z",
+      "ledger": 65421260,
+      "cost": null,
+      "value": "1845416",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAAcKKg=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p4_boost_budget_day1_min",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAB3/92jw="
+      ],
+      "time": "2026-11-11T10:19:04.376Z",
+      "ledger": 65421260,
+      "cost": null,
+      "value": "7843161",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAB3rVk=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "p5_boost_budget_day1_min",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAABJvh1Z0="
+      ],
+      "time": "2026-11-11T10:19:04.943Z",
+      "ledger": 65421260,
+      "cost": null,
+      "value": "4819822",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAABJi24=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    }
+  ],
+  "network": {
+    "passphrase": "Public Global Stellar Network ; September 2015",
+    "protocolVersion": 29
+  }
+}

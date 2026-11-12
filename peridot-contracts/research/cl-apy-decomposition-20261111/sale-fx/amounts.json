@@ -1,0 +1,11 @@
+{
+  "p1_base": "3144875276",
+  "p1_maxboost_lp_only": "7859798327",
+  "p4_base": "67701434811",
+  "p4_maxboost_lp_only": "163856447703",
+  "p5_base": "15409379183",
+  "p5_maxboost_lp_only": "38172401176",
+  "linear_1_AQUA": "10000000",
+  "linear_10_AQUA": "100000000",
+  "linear_100_AQUA": "1000000000"
+}

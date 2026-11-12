@@ -1,0 +1,125 @@
+{
+  "schema": "cl-proof-map-v1",
+  "sources": {
+    "test::atomic_qualification::compiled_atomic_qualification_swap_close_64_owners_128_changes_8_unresolved_5pct_trade": "prototypes/cl-atomic-qualification/tests/combined.rs",
+    "test::atomic_qualification::compiled_atomic_qualification_8_independent_liquidations_repeated_both_call_outages": "prototypes/cl-atomic-qualification/tests/combined.rs",
+    "test::atomic_qualification::compiled_atomic_qualification_8_independent_pending_recoveries_repeated_both_call_outages": "prototypes/cl-atomic-qualification/tests/combined.rs",
+    "test::atomic_qualification::compiled_atomic_qualification_8_independent_repay_release_and_exited_entitlements": "prototypes/cl-atomic-qualification/tests/combined.rs",
+    "test::repayment_qualification::repayment_cases::compiled_repayment_baseline_aged_partial_route_leaves_residual_and_release_rejects": "prototypes/cl-storage-qualification/repayment-tests-v2.rs",
+    "test::repayment_qualification::repayment_cases::compiled_repayment_candidate_aged_full_max_refund_release_and_beneficiary_claims": "prototypes/cl-storage-qualification/repayment-tests-v2.rs",
+    "test::repayment_qualification::repayment_cases::compiled_repayment_candidate_insufficient_max_unauthorized_and_closed_rollback": "prototypes/cl-storage-qualification/repayment-tests-v2.rs"
+  },
+  "proofs": [
+    {
+      "label": "atomic_qualification_1",
+      "tests": [
+        "test::atomic_qualification::compiled_atomic_qualification_swap_close_64_owners_128_changes_8_unresolved_5pct_trade"
+      ],
+      "assertions": [
+        "Actual claim-first atomic mint/transfer/custody and close, 64 position-ID vector, exact historical reward conservation and retained quarantine."
+      ],
+      "resource_flows": [
+        "atomic_qualification_aged_swap_open",
+        "atomic_qualification_swap_open",
+        "atomic_qualification_activate",
+        "atomic_qualification_prepare_close",
+        "atomic_qualification_swap_close",
+        "atomic_qualification_finish_close"
+      ]
+    },
+    {
+      "label": "atomic_qualification_2",
+      "tests": [
+        "test::atomic_qualification::compiled_atomic_qualification_8_independent_liquidations_repeated_both_call_outages"
+      ],
+      "assertions": [
+        "Independent borrowers, actual accrued debt fully funded and repaid atomically with permitted seizure; historical rewards retained and never waived."
+      ],
+      "resource_flows": [
+        "atomic_qualification_funded_liquidation"
+      ]
+    },
+    {
+      "label": "atomic_qualification_3",
+      "tests": [
+        "test::atomic_qualification::compiled_atomic_qualification_8_independent_pending_recoveries_repeated_both_call_outages"
+      ],
+      "assertions": [
+        "Independent borrowers recover pending collateral during both reward-call outages; actual accrued debt clears, custody exits and unresolved intervals remain quarantined."
+      ],
+      "resource_flows": [
+        "atomic_qualification_pending_recovery"
+      ]
+    },
+    {
+      "label": "atomic_qualification_4",
+      "tests": [
+        "test::atomic_qualification::compiled_atomic_qualification_8_independent_repay_release_and_exited_entitlements"
+      ],
+      "assertions": [
+        "Static-interest full repayment/release and receipt withdrawal during outage, then physical principal exit and exited-holder booked rewards; dynamic repayment is explicitly not qualified."
+      ],
+      "resource_flows": [
+        "atomic_qualification_full_repay",
+        "atomic_qualification_repay_release",
+        "atomic_qualification_principal_exit",
+        "atomic_qualification_exited_entitlement_claim"
+      ]
+    },
+    {
+      "label": "repayment_baseline_regression_reproduced",
+      "tests": [
+        "test::repayment_qualification::repayment_cases::compiled_repayment_baseline_aged_partial_route_leaves_residual_and_release_rejects"
+      ],
+      "assertions": [
+        "Existing amount-only route offers a maximum covering post-accrual debt but transfers the pre-accrual debt amount and leaves a positive interest residual. This expected regression does not qualify full repayment.",
+        "Debt-free release rejects that residual with complete ledger and TTL rollback; historical beneficiary entitlement and exact scaled reward conservation remain intact."
+      ],
+      "resource_flows": [
+        "repayment_baseline_pre_accrual_cap_reproduced",
+        "repayment_baseline_release_rejected"
+      ]
+    },
+    {
+      "label": "repayment_candidate_dynamic_full_repay_release",
+      "tests": [
+        "test::repayment_qualification::repayment_cases::compiled_repayment_candidate_aged_full_max_refund_release_and_beneficiary_claims"
+      ],
+      "assertions": [
+        "Isolated additive V3 full-repayment route handles eight independently aged dynamic debts, with exact maximum or transfer-and-refund maximum: actual token events and payer/receipt net balances equal returned post-accrual debt.",
+        "Every position reaches zero debt; a repeat before release returns zero without another debit; the existing authorized debt-free release and margin-to-spot custody route succeed while both upstream reward calls fail.",
+        "Historically booked beneficiary claims remain payable through outages; custody allocation clears after receipt exit; each unresolved interval remains quarantined without forced waiver; exact scaled reward conservation and zero custodian entitlement hold."
+      ],
+      "resource_flows": [
+        "repayment_candidate_aged_full_max",
+        "repayment_candidate_zero_debt_repeat",
+        "repayment_candidate_debt_free_release",
+        "repayment_candidate_custody_release_both_calls_failed",
+        "repayment_candidate_beneficiary_claim_outage",
+        "repayment_candidate_late_quarantined_rewards",
+        "repayment_candidate_receipt_exit"
+      ]
+    },
+    {
+      "label": "repayment_candidate_adversarial_rollback",
+      "tests": [
+        "test::repayment_qualification::repayment_cases::compiled_repayment_candidate_insufficient_max_unauthorized_and_closed_rollback"
+      ],
+      "assertions": [
+        "Below-debt maximum, zero maximum, absent external authorization, wrong authorized owner and insufficient funds for the full maximum reject without any ledger or TTL changes; diagnostics prove the intended failure instead of setup rejection.",
+        "A subsequent sufficient full repayment clears post-accrual debt and permits release; full repayment and release after Position deletion reject with complete rollback. Exact scaled beneficiary reward conservation persists."
+      ],
+      "resource_flows": [
+        "repayment_candidate_insufficient_max_rollback",
+        "repayment_candidate_zero_max_rollback",
+        "repayment_candidate_unauthorized_rollback",
+        "repayment_candidate_wrong_owner_rollback",
+        "repayment_candidate_unfunded_max_rollback",
+        "repayment_candidate_after_rejections_full_repay",
+        "repayment_candidate_after_rejections_release",
+        "repayment_candidate_closed_repay_rollback",
+        "repayment_candidate_repeated_release_rollback"
+      ]
+    }
+  ]
+}

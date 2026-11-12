@@ -1,0 +1,215 @@
+Independent architecture advice — resource decision refresh
+
+Scope: existing handoffs 12 and 15 and their cited measurements. No tests,
+source edits, resource-profile changes or transaction-stage changes. Advice
+uses the Soroban skill's bounded-storage, explicit-authorization and atomic
+cross-contract principles, with repository evidence controlling actual limits.
+Stage 1 remains incomplete; PR75 remains draft.
+
+RECOMMENDED NEXT PRIORITY
+
+Keep the existing atomic ownership/custody transitions as the reference
+architecture. First determine whether the unchanged baseline can satisfy a
+separately approved bounded policy with credible signed/restored/stressed
+headroom. Do not promote the split prototype or implement a policy increase.
+The useful next engineering work is tightly measured removal of redundant
+within-invocation configuration/serialization work and reduction of genuinely
+touched receipt/controller keys, preserving every claim-first boundary.
+
+If the policy decision remains 100M/100 SDK entries/50 writes, make the next
+feasibility milestone a venue/accounting ABI experiment, not further division
+of the product into transactions. The measured unchanged venue work already
+exceeds 100M in deposit/redeem and margin open/close. A compact/fused venue
+operation and narrower receipt key access need proof and benchmarks before
+promising this target. These are alternatives for an explicit decision, not
+permission to apply either one now.
+
+WHY THE ATOMIC BASELINE DESERVES FIRST EVALUATION
+
+Handoff12's separate proposal is 300M CPU, 300 SDK entry total, 300 unique
+transaction keys, 100 writes and 32MiB modeled memory. Its proposed 20% workload
+reserve means supported worst-case consumption must be <=240M CPU, <=240 SDK
+entries, <=240 unique keys, <=80 writes and <=26,843,545 bytes. This is a
+reserve inside the proposed policy, distinct from unused network capacity.
+
+Dimension                 Observed memo12 max   Distance to 80% boundary
+CPU                       236,694,861           3,305,139
+Modeled memory bytes       24,514,601           2,328,944
+SDK entries                         213                  27
+Unique transaction keys             158                  82
+Writes                               57                  23
+
+These are independent maxima across controlled executions and two builds,
+not quantities from one transaction; neither memory nor key maxima should be
+added together across populations. CPU room is only about 1.38% of the 240M
+workload boundary. Fitting an unsigned sample does not establish headroom for
+real account authorization, larger history/tick crossproducts or new patches.
+The memory proposal is tighter than today's 40MiB policy, not a blanket
+relaxation. A direct switch to captured-network diagnostics is not Option B.
+
+The baseline architecture retains the established atomic share acquisition
+and custody transitions and avoids the prototype's new debt-bearing escrow
+states. This is a smaller correctness change than adopting staged custody.
+It still requires all baseline recovery/reserve/authorization proofs; resource
+fit never cures an accounting or liquidation defect.
+
+Retain every other byte/event/code/fee/rent/restoration check from handoff12.
+SDK read + write + disk-read totals are a separate diagnostic from the union
+of transaction LedgerKeys. A lower unique-key count does not excuse an SDK
+entry failure, and fewer repeated getters need not reduce first-touch keys.
+
+WHAT RETAINING 100M ACTUALLY REQUIRES
+
+Memo12 full SDK CPU: deposit166.915M, redeem139.752M, swap-open235.457M,
+swap-close184.220M. Reaching 100M requires approximately 40.1%, 28.4%, 57.5%
+and 45.7% reductions respectively, before additional safety headroom. The
+corresponding unchanged disjoint venue-subtree sums are134.355M,126.766M,
+147.936M and130.983M. They are floors conditional on keeping those calls,
+not proof that each individual call or every redesigned transaction exceeds
+100M. Handoff15 correctly demonstrates a ~63.7M Aquarius deposit subtree.
+
+Concrete tightly scoped work:
+
+1. Benchmark a reviewed venue primitive that combines fee realization with
+   position mutation, avoiding repeated position/tick/fee-growth traversal.
+   Current collection (~52.9M) plus withdrawal (~62.2M) already consume more
+   than100M before reward and surrounding logic. Share pricing must account
+   for incumbent fees before mint/burn. Prove partial-owner allocation,
+   fractional carry, range crossings, actual receipts and slippage. This
+   requires new venue ABI/bytecode if the pinned ABI cannot support it;
+   presumed savings are zero until measured with actual bytecode.
+2. Preserve actual reward claims at deposit, share transfer and custody
+   assignment. Optimize repeated internal work within each boundary only.
+   Fresh valuation/authorization dependencies after mutations cannot be
+   replaced with stale pre-transaction values. History cannot be pruned or
+   quarantined value reassigned to simplify accounting.
+3. Reduce touched controller/receipt/custody keys with verified minimal read
+   sets or versioned compact configuration. Measure packing's migration,
+   write amplification, rent, entry size and restoration costs. Funded
+   liquidation213 SDK entries/56 writes, activation182 entries, receipt
+   ownership124 entries and close preparation120 entries are independent
+   problems; CPU-only venue work cannot solve them.
+
+Wrapper-only cleanup is not a credible route to the large deficits. Conversely,
+small proven savings may matter to Option B's narrow remaining CPU room, but
+cannot be credited without a same-state, same-runtime comparison and complete
+transaction evidence. Unmeasured signature costs cannot be declared smaller
+than the available3.305M.
+
+STAGED ARCHITECTURE ADMISSION — ALL CONDITIONS REQUIRED
+
+The current split is a negative feasibility experiment, not the next default.
+Its successful conversion/preparation calls do not establish a usable whole
+product. Mint131.9M (136M with another owner), activation181 entries,
+prepare-close120 entries, swap-close~191.5M unsigned CPU/173 SDK entries and
+late minted/delivered recoveries127/123 entries remain failures under current
+policy. Begin at100 entries has zero measured entry headroom. The supplemental
+recovery results supersede any inference that source-level recovery availability
+means policy-executable recovery.
+
+Before any future staged adoption, require:
+
+* Every required complete root fits the selected policy and approved headroom:
+  fund, conversion, preparation, mint, delivery, activation, ordinary direct
+  deposit/redeem, close, each cancellation/retry, every phase's repayment and
+  funded liquidation, including rejection/rollback, restoration and supported
+  authorization. Captured setup of a later stage is not a passing prefix.
+* Every intermediate state with outstanding debt has borrower-independent
+  recovery/liquidation. A third party must be able to fund repayment and seize
+  only independently valued permitted collateral, returning surplus, atomically
+  with debt reduction. Actual interest, custody, rewards, deadline and replay
+  state must be included. Owner external cash or owner signature cannot be the
+  only safety route. No governance attribution, active keeper or waiver may be
+  required for a forced exit. No debt forgiveness or expiry-based seizure.
+* Progress remains feasible while permissionless pool trades continue. The
+  present exact fee/state fence safely rejects stale work but can be invalidated
+  repeatedly between preparation and mint. Same-deadline retry is bounded
+  cancellation behavior, not evidence of progress. A candidate needs a fresh
+  fee-inclusive final valuation/settlement primitive that tolerates intervening
+  admissible trades, or another proved design with a bounded in-policy fallback
+  that can complete safely. It cannot depend on locking the public pool, finding
+  a quiet ledger, a cooperative borrower or unbounded re-preparation fees.
+* Preserve beneficial ownership from mint through escrow, physical delivery and
+  margin custody; all three original actual reward boundaries remain. Preserve
+  exited beneficiaries and unresolved intervals under outages. Demonstrate
+  fractional LP fee carry, ownership/emission changes, stale evidence, donated
+  assets and overlapping jobs without newcomer windfalls or shared-wallet sweeps.
+* Define and test phase-specific pauses, expiry, cancellation and recovery.
+  Current late delivery/activation/permissionless expired resolution must be
+  described accurately. Risk limits cannot silently block repayment or forced
+  recovery, and ordinary progress cannot silently bypass final reserve checks.
+* Fund and measure the new escrow's archival/restoration and persistent history
+  obligations. Baseline restoration costs do not prove new-state costs. Preserve
+  all unresolved entitlements; admission bounds must stop new risk before they
+  make existing debt/reward recovery inoperable.
+
+A design with no debt until a final atomic transition could avoid some new
+liquidation states, but it has not been implemented or measured and must still
+fit final mint, activation, close and recovery. It is not a claimed solution.
+
+EVIDENCE LIMITS / RECONCILIATIONS
+
+Handoff12's numeric proposal uses ac63255 build populations. Handoff15 compares
+the later9cf4308 baseline and a larger prototype binary; the reserve/refund
+patch and additional tests must not inherit older cost approval. Refreshing
+the existing archive analysis is appropriate, not a reason to rerun or change
+source within this advice task. Raw reports for each build stay separate.
+
+The apparent147.9M versus63.7M conflict is a sum of multiple venue calls versus
+one deposit subtree, not contradictory measurements. Direct exit measures in
+the prototype are not byte-identical baseline A/B proofs. A later phase fitting
+captured limits is not an internal-policy lifecycle pass. Handoff15's23-case
+combined outcome comprises the main21 tests plus a separately preserved two-
+case recovery supplement; the original main log must not be relabelled.
+
+Real signed authorization/serialization, combined worst-case history/tick/range/
+restoration workloads, supported asset/oracle conditions and live-state evidence
+remain gates. No-signing restrictions remain intact; unavailable evidence stays
+missing. The verified network capture is pinned historical state, not a guarantee
+that its ceilings or pricing remain suitable at future deployment.
+
+Decision: prioritize atomic-baseline resource reconciliation and bounded
+optimization while explicitly resolving the policy question. If100M remains
+mandatory, require venue/ABI and touched-key feasibility evidence before more
+staging work. Do not adopt the present split merely because early stages fit,
+and do not approve300M merely because current unsigned samples fit240M.
+
+REFRESHED DRAFT REVIEW
+
+Read-only check of target/cl-resource-decision-refresh/12-cl-resource-decision-
+20261102.md and analysis.json. No tests or contract edits. The refreshed9cf
+population supersedes the older numbers in the advice above:236,694,863 CPU
+leaves exactly3,305,137 below240M. The five80% boundaries and remaining amounts
+agree with analysis.json; reductions40.1%,28.6%,57.8%,47.0% correctly use the
+worse of SDK and unsigned full execution. SDK totals and unique footprints
+remain separate. No missing substantive resource or lifecycle constraint was
+identified in this bounded review.
+
+The network refresh is correctly separated from execution: ledger65,270,655
+and SHA4102b600...4f74a describe newly read settings, while saved executions
+retain ledger65,264,920/capturea28fb64...4dcd. Unchanged ceilings/86CPU+86memory
+terms and unchanged derived rent1000 support reuse of the pinned model, not
+fresh venue/account/signature/TTL execution. The state-size window change is
+disclosed. Statement that stored fee estimates remain equal is consistent with
+the reported unchanged derived fee inputs; this review did not independently
+rerun the analysis or its archive/XDR validation.
+
+One minor recommendation wording correction: "identify a small same-transaction
+optimization sufficient to preserve proposed headroom" assumes the unknown
+signed/stressed shortfall will be small. Prefer "determine whether measured
+same-transaction optimization can cover the missing signed/stressed costs while
+preserving proposed headroom." No saving or sufficiency is established yet.
+
+The concrete recommendation is supported: preserve atomic baseline; consider
+the bounded policy separately; do not adopt the split or add stages. If current
+limits remain mandatory, require venue/ABI and touched-key feasibility rather
+than promising wrapper savings. Staged admission correctly includes mint,
+activation, close, all recovery, borrower-independent liquidation in every
+debt-bearing state and progress despite admissible intervening trades. Signed,
+combined-stress and live-state proofs remain missing rather than zero-cost.
+
+The latestbb CI paragraph was intentionally still pending at review. Reconcile
+its actual status before publication as planned; do not attribute prototype
+execution or policy approval to the baseline workflow. Subject to that update
+and the minor wording correction, no additional overclaim identified. This
+is architecture/document review, not audit or release approval.

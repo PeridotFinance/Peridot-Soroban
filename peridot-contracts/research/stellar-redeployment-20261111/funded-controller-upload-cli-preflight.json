@@ -1,0 +1,13 @@
+{
+  "source": "GDBS26DYO2FMMLXGFPZ6JX3ZTHJBM2FVAAKD34J7K6ZWVKGLLANZTOYE",
+  "sequence": "281008835320086529",
+  "feeStroops": "899792066",
+  "resourceFeeStroops": "899791966",
+  "signatures": 0,
+  "op": "hostFunctionTypeUploadContractWasm",
+  "wasmSha256": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+  "instructions": 54309185,
+  "uniqueKeys": 1,
+  "writes": 1,
+  "writeBytes": 63388
+}

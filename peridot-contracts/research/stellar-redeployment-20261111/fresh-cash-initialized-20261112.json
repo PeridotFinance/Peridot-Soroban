@@ -1,0 +1,174 @@
+{
+  "observedAt": "2026-11-12T08:57:09.336Z",
+  "mode": "initialized",
+  "instances": [
+    {
+      "label": "controller",
+      "contract": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+      "ledger": 65437557,
+      "wasmHash": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+      "instance": {
+        "Initialized": true
+      },
+      "values": {
+        "Admin": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "PendingAdmin": null,
+        "PendingUpgradeHash": null,
+        "PendingUpgradeEta": null,
+        "PauseGuardian": null,
+        "Oracle": null,
+        "PeridotToken": null,
+        "SupportedMarkets": {},
+        "PauseBorrow": {},
+        "PauseBorrowUntil": null,
+        "PauseDeposit": {},
+        "PauseRedeem": {}
+      }
+    },
+    {
+      "label": "USDC",
+      "contract": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "ledger": 65437557,
+      "wasmHash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "instance": {
+        "CashBorrowingEnabled": false,
+        "Meta": {
+          "decimals": 6,
+          "name": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+          "symbol": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F"
+        },
+        "MinCashReserveBps": 0
+      },
+      "values": {
+        "Admin": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "PendingAdmin": null,
+        "PendingUpgradeHash": null,
+        "PendingUpgradeEta": null,
+        "Initialized": true,
+        "UnderlyingToken": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+        "RatesReady": false,
+        "InterestModel": null,
+        "BoostedVault": null,
+        "MarginController": null,
+        "Peridottroller": null,
+        "TotalBorrowed": "0",
+        "ManagedCash": "0",
+        "TotalDeposited": "0",
+        "TotalReserves": "0",
+        "TotalAdminFees": "0",
+        "TotalBadDebt": null,
+        "SupplyCap": "0",
+        "BorrowCap": "0"
+      }
+    },
+    {
+      "label": "XLM",
+      "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "ledger": 65437557,
+      "wasmHash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "instance": {
+        "CashBorrowingEnabled": false,
+        "Meta": {
+          "decimals": 6,
+          "name": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+          "symbol": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS"
+        },
+        "MinCashReserveBps": 0
+      },
+      "values": {
+        "Admin": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "PendingAdmin": null,
+        "PendingUpgradeHash": null,
+        "PendingUpgradeEta": null,
+        "Initialized": true,
+        "UnderlyingToken": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+        "RatesReady": false,
+        "InterestModel": null,
+        "BoostedVault": null,
+        "MarginController": null,
+        "Peridottroller": null,
+        "TotalBorrowed": "0",
+        "ManagedCash": "0",
+        "TotalDeposited": "0",
+        "TotalReserves": "0",
+        "TotalAdminFees": "0",
+        "TotalBadDebt": null,
+        "SupplyCap": "0",
+        "BorrowCap": "0"
+      }
+    },
+    {
+      "label": "PYUSD",
+      "contract": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "ledger": 65437557,
+      "wasmHash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "instance": {
+        "CashBorrowingEnabled": false,
+        "Meta": {
+          "decimals": 6,
+          "name": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+          "symbol": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC"
+        },
+        "MinCashReserveBps": 0
+      },
+      "values": {
+        "Admin": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "PendingAdmin": null,
+        "PendingUpgradeHash": null,
+        "PendingUpgradeEta": null,
+        "Initialized": true,
+        "UnderlyingToken": "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2",
+        "RatesReady": false,
+        "InterestModel": null,
+        "BoostedVault": null,
+        "MarginController": null,
+        "Peridottroller": null,
+        "TotalBorrowed": "0",
+        "ManagedCash": "0",
+        "TotalDeposited": "0",
+        "TotalReserves": "0",
+        "TotalAdminFees": "0",
+        "TotalBadDebt": null,
+        "SupplyCap": "0",
+        "BorrowCap": "0"
+      }
+    },
+    {
+      "label": "EURC",
+      "contract": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "ledger": 65437557,
+      "wasmHash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+      "instance": {
+        "CashBorrowingEnabled": false,
+        "Meta": {
+          "decimals": 6,
+          "name": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+          "symbol": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4"
+        },
+        "MinCashReserveBps": 0
+      },
+      "values": {
+        "Admin": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+        "PendingAdmin": null,
+        "PendingUpgradeHash": null,
+        "PendingUpgradeEta": null,
+        "Initialized": true,
+        "UnderlyingToken": "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV",
+        "RatesReady": false,
+        "InterestModel": null,
+        "BoostedVault": null,
+        "MarginController": null,
+        "Peridottroller": null,
+        "TotalBorrowed": "0",
+        "ManagedCash": "0",
+        "TotalDeposited": "0",
+        "TotalReserves": "0",
+        "TotalAdminFees": "0",
+        "TotalBadDebt": null,
+        "SupplyCap": "0",
+        "BorrowCap": "0"
+      }
+    }
+  ],
+  "result": "PASS"
+}

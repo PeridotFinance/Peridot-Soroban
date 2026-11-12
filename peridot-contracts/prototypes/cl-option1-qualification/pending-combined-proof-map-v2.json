@@ -1,0 +1,102 @@
+{
+  "schema": "cl-proof-map-v1",
+  "sources": {
+    "test::pending_qualification::option1_cases::expired_pending::compiled_option1_expired_pending_independent_funding_outage_trade_and_rollback": "prototypes/cl-option1-qualification/pending-recovery-tests.rs",
+    "test::pending_qualification::option1_cases::early_pending::compiled_option1_unhealthy_pending_before_expiry_independent_recovery": "prototypes/cl-option1-qualification/pending-unhealthy-tests.rs",
+    "test::pending_qualification::option1_cases::combined_regressions::compiled_combined_repayment_aged_full_max_refund_release_and_beneficiary_claims": "prototypes/cl-option1-qualification/combined-pending-regression-tests.rs",
+    "test::pending_qualification::option1_cases::combined_regressions::compiled_combined_repayment_insufficient_max_unauthorized_and_closed_rollback": "prototypes/cl-option1-qualification/combined-pending-regression-tests.rs",
+    "test::pending_qualification::option1_cases::combined_regressions::compiled_combined_funded_liquidation_without_borrower_authorization": "prototypes/cl-option1-qualification/combined-pending-regression-tests.rs"
+  },
+  "proofs": [
+    {
+      "label": "option1_pending_open_independent_funded_recovery",
+      "tests": [
+        "test::pending_qualification::option1_cases::expired_pending::compiled_option1_expired_pending_independent_funding_outage_trade_and_rollback"
+      ],
+      "assertions": [
+        "Strict timeout, distinct independent payer, fresh synthetic price reads, accrued debt fully repaid with exact max/refund, zero bonus bounded seizure and residual return, real nested authorization, both upstream reward failures, historical rewards preserved, replay rollback and late quarantine. No Closing/Liquidated or live valuation qualification."
+      ],
+      "resource_flows": [
+        "option1_pending_live_reject",
+        "option1_pending_exact_deadline_reject",
+        "option1_pending_intervening_actual_trade",
+        "option1_pending_disable_test_borrowing",
+        "option1_pending_max_too_small",
+        "option1_pending_min_seize_reject",
+        "option1_pending_missing_auth",
+        "option1_pending_missing_nested_auth",
+        "option1_pending_independent_full_recovery",
+        "option1_pending_repeated_recovery",
+        "option1_pending_late_reward_quarantine"
+      ]
+    },
+    {
+      "label": "option1_pending_bundle_2",
+      "tests": [
+        "test::pending_qualification::option1_cases::early_pending::compiled_option1_unhealthy_pending_before_expiry_independent_recovery"
+      ],
+      "assertions": [
+        "Fresh existing maintenance condition admits an unhealthy swapped PendingOpen before expiry while rejecting healthy state; independent payer full-funds current debt with max/refund, residual return and no waiver. New timing availability remains validation-only."
+      ],
+      "resource_flows": [
+        "option1_pending_healthy_preexpiry_reject",
+        "option1_pending_unhealthy_insufficient_payer_cash",
+        "option1_pending_unhealthy_insufficient_max",
+        "option1_pending_unhealthy_missing_auth",
+        "option1_pending_preexpiry_unhealthy_funded",
+        "option1_pending_unhealthy_replay",
+        "option1_pending_unhealthy_late_quarantine"
+      ]
+    },
+    {
+      "label": "option1_pending_bundle_3",
+      "tests": [
+        "test::pending_qualification::option1_cases::combined_regressions::compiled_combined_repayment_aged_full_max_refund_release_and_beneficiary_claims"
+      ],
+      "assertions": [
+        "Prior combined repayment/max/refund/beneficiary test adapted only for candidate identity; actual assertions remain in generated pinned source."
+      ],
+      "resource_flows": [
+        "combined_repayment_aged_full_max",
+        "combined_repayment_zero_debt_repeat",
+        "combined_repayment_debt_free_release",
+        "combined_repayment_beneficiary_claim_outage",
+        "combined_repayment_late_quarantined_rewards",
+        "combined_repayment_receipt_exit"
+      ]
+    },
+    {
+      "label": "option1_pending_bundle_4",
+      "tests": [
+        "test::pending_qualification::option1_cases::combined_regressions::compiled_combined_repayment_insufficient_max_unauthorized_and_closed_rollback"
+      ],
+      "assertions": [
+        "Prior compiled repayment rejection assertions with complete ledger rollback; candidate identity adapted explicitly."
+      ],
+      "resource_flows": [
+        "combined_repayment_insufficient_max_rollback",
+        "combined_repayment_zero_max_rollback",
+        "combined_repayment_unauthorized_rollback",
+        "combined_repayment_wrong_owner_rollback",
+        "combined_repayment_unfunded_max_rollback",
+        "combined_repayment_closed_repay_rollback",
+        "combined_repayment_repeated_release_rollback",
+        "combined_repayment_after_rejections_full_repay",
+        "combined_repayment_after_rejections_release"
+      ]
+    },
+    {
+      "label": "option1_pending_bundle_5",
+      "tests": [
+        "test::pending_qualification::option1_cases::combined_regressions::compiled_combined_funded_liquidation_without_borrower_authorization"
+      ],
+      "assertions": [
+        "Independent active funded liquidation and historical conservation, with actual measured Aquarius trade in main fixture replacing original separate restoration hook."
+      ],
+      "resource_flows": [
+        "option1_combined_active_independent_trade",
+        "combined_liquidation_without_borrower_auth"
+      ]
+    }
+  ]
+}

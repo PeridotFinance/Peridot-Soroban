@@ -1,0 +1,86 @@
+NETWORK_PASSPHRASE = "Public Global Stellar Network ; September 2015"
+ACCOUNTS = [ "GAVBS6SXMRD7C3IRN5K2SY5C2CAUFHBVOGWTQXADSBUHAFDDUKVTQWWY", "GCBPMB2VK3POXU3QL2IPOUYKEDNZYRCYPFQGLLYVX6D2OLLRO7SWTTBO", "GADFXROGGR74V3MSWU2SUKCEUPQFZEIIF3IUHLRN3NKZ4JN2IPBMCODA", "GD7G6G56JHGQ3LY37ZYHALJRSAJYXWMYMKAF5G2GBXD5ETRPY4U5XS33", "GA3UK3JHOYYD3TAUH5C7NDOUDWBRF5FC4MECXFA2VRPEHIDQUOJIVOAJ", "GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF", "GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD", "GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55", "GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW", "GDVKAVKZDKMLPEXXFXPVKARRO4BNFJXRRPKENEDERK5PBYIWCJ2GQOOF", "GANESLOXBZWPLB5ZM2KFUTBGSBGISB7JTWFXO67G4TGQINWRMI6766GV",]
+TRANSFER_SERVER = "https://ultracapital.xyz/sep6"
+TRANSFER_SERVER_SEP0024 = "https://ultracapital.xyz/sep24"
+WEB_AUTH_ENDPOINT = "https://ultracapital.xyz/auth"
+SIGNING_KEY = "GA3UK3JHOYYD3TAUH5C7NDOUDWBRF5FC4MECXFA2VRPEHIDQUOJIVOAJ"
+VERSION = "2.2.0"
+[[CURRENCIES]]
+code = "yUSDC"
+issuer = "GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF"
+image = "https://ultracapital.xyz/static/images/icons/yUSDC.png"
+desc = "yUSDC is an interest earning USDC tethered token. Earn interest on your USDC by holding yUSDC. yUSDC are liquid tokens that you can trade, redeem or send at any time. 1 yUSDC is always redeemable for 1 USDC through Ultra Capital anchor. SDEX trading is live on yUSDC/USDC pair."
+conditions = "The interest share is distributed daily to yUSDC holders. The APY rates are published at ultracapital.xyz/assets and may change depending on market conditions."
+redemption_instructions = "Redeemable through any SEP-24 compliant Stellar wallet such as LOBSTR, StellarTerm or StellarX."
+is_asset_anchored = true
+anchor_asset_type = "crypto"
+anchor_asset = "USDC"
+status = "live"
+
+[[CURRENCIES]]
+code = "yXLM"
+issuer = "GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"
+image = "https://ultracapital.xyz/static/images/icons/yXLM.png"
+desc = "yXLM is an interest earning XLM tethered token. Earn interest on your XLM by holding yXLM. yXLM are liquid tokens that you can trade, redeem or send at any time. 1 yXLM is always redeemable for 1 XLM through Ultra Capital anchor."
+conditions = "The interest share is distributed daily to yXLM holders. The APY rates are published at ultracapital.xyz/assets and may change depending on market conditions."
+redemption_instructions = "Redeemable through any SEP-24 compliant Stellar wallet such as LOBSTR, StellarTerm or StellarX."
+is_asset_anchored = true
+anchor_asset_type = "crypto"
+anchor_asset = "XLM"
+status = "live"
+
+[[CURRENCIES]]
+code = "yETH"
+issuer = "GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD"
+image = "https://ultracapital.xyz/static/images/icons/yETH.png"
+desc = "yETH is an interest earning ETH tethered token. Earn interest on your ETH by holding yETH. yETH are liquid tokens that you can trade, redeem or send at any time. 1 yETH is always redeemable for 1 ETH through Ultra Capital anchor. SDEX trading is live on yETH/ETH (ultracapital.xyz) pair."
+conditions = "The interest share is distributed daily to yETH holders. The APY rates are published at ultracapital.xyz/assets and may change depending on market conditions."
+redemption_instructions = "Redeemable through any SEP-24 compliant Stellar wallet such as LOBSTR, StellarTerm or StellarX."
+is_asset_anchored = true
+anchor_asset_type = "crypto"
+anchor_asset = "ETH"
+status = "live"
+
+[[CURRENCIES]]
+code = "yBTC"
+issuer = "GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW"
+image = "https://ultracapital.xyz/static/images/icons/yBTC.png"
+desc = "yBTC is an interest earning BTC tethered token. Earn interest on your BTC by holding yBTC. yBTC are liquid tokens that you can trade, redeem or send at any time. 1 yBTC is always redeemable for 1 BTC through Ultra Capital anchor. SDEX trading is live on yBTC/BTC (ultracapital.xyz) pair."
+conditions = "The interest share is distributed daily to yBTC holders. The APY rates are published at ultracapital.xyz/assets and may change depending on market conditions."
+redemption_instructions = "Redeemable through any SEP-24 compliant Stellar wallet such as LOBSTR, StellarTerm or StellarX."
+is_asset_anchored = true
+anchor_asset_type = "crypto"
+anchor_asset = "BTC"
+status = "live"
+
+[[CURRENCIES]]
+code = "ETH"
+issuer = "GBFXOHVAS43OIWNIO7XLRJAHT3BICFEIKOJLZVXNT572MISM4CMGSOCC"
+image = "https://ultracapital.xyz/static/images/icons/ETH.png"
+desc = "This is a tethered ETH token issued by Ultra Capital. For each ETH in circulation on Stellar, Ultra Capital holds the same amount of Ether in reserves. SDEX trading is live on ETH/USDC pair."
+conditions = "To get a 1:1 conversion between ETH on Stellar and native Ether use Deposit / Withdraw functionality supported in most Stellar wallets."
+redemption_instructions = "Redeemable through any SEP-24 compliant Stellar wallet such as LOBSTR, StellarTerm or StellarX."
+is_asset_anchored = true
+anchor_asset_type = "crypto"
+anchor_asset = "ETH"
+status = "live"
+
+[[CURRENCIES]]
+code = "BTC"
+issuer = "GDPJALI4AZKUU2W426U5WKMAT6CN3AJRPIIRYR2YM54TL2GDWO5O2MZM"
+image = "https://ultracapital.xyz/static/images/icons/BTC.png"
+desc = "This is a tethered BTC token issued by Ultra Capital. For each BTC in circulation on Stellar, Ultra Capital holds the same amount of Bitcoin in reserves. SDEX trading is live on BTC/USDC pair."
+conditions = "To get a 1:1 conversion between BTC on Stellar and native Bitcoin use Deposit / Withdraw functionality supported in most Stellar wallets."
+redemption_instructions = "Redeemable through any SEP-24 compliant Stellar wallet such as LOBSTR, StellarTerm or StellarX."
+is_asset_anchored = true
+anchor_asset_type = "crypto"
+anchor_asset = "BTC"
+status = "live"
+
+[DOCUMENTATION]
+ORG_NAME = "Ultra Capital LLC"
+ORG_DBA = "Ultra Capital"
+ORG_URL = "https://ultracapital.xyz/"
+ORG_LOGO = "https://ultracapital.xyz/static/images/org_logo.png"
+ORG_OFFICIAL_EMAIL = "hello@ultracapital.xyz"
+ORG_SUPPORT_EMAIL = "support@ultracapital.xyz"

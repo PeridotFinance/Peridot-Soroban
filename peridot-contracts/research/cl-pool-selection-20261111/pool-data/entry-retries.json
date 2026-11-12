@@ -1,0 +1,545 @@
+{
+  "time": "2026-11-11T09:37:59.660Z",
+  "rows": [
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "50004193802",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "49995806198",
+      "ledger": 65420767,
+      "output": "50378250112",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC7rHF4A=",
+      "resourceFee": "9613"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "50423497381",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50431956736",
+      "ledger": 65420767,
+      "output": "49925814816",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC5/PeiA=",
+      "resourceFee": "8364"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "49930024939",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50069975061",
+      "ledger": 65420768,
+      "output": "50303543794",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC7ZTKfI=",
+      "resourceFee": "9613"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "50498300725",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "50357153392",
+      "ledger": 65420768,
+      "output": "49999862591",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6Q5Wz8=",
+      "resourceFee": "8364"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "34324555271",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "65675444729",
+      "ledger": 65420768,
+      "output": "34583843806",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAACA1bk94=",
+      "resourceFee": "9666"
+    },
+    {
+      "pool": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "66237268025",
+      "prices": [
+        1,
+        0.9915180182905448
+      ],
+      "initial_quantity": "100855454117",
+      "keep_quantity": "34618186092",
+      "ledger": 65420768,
+      "output": "65578717936",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAD0TL0vA=",
+      "resourceFee": "8373"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "4999598455",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5000401545",
+      "ledger": 65420769,
+      "output": "4505653357",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAQyO0G0=",
+      "resourceFee": "9747"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "4521990391",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "9043254525",
+      "keep_quantity": "4521264134",
+      "ledger": 65420769,
+      "output": "4984743839",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASkdJ58=",
+      "resourceFee": "8314"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "5029127727",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "4970872273",
+      "ledger": 65420769,
+      "output": "4532257387",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAQ4kwms=",
+      "resourceFee": "9747"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "4495286319",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "9043254525",
+      "keep_quantity": "4547968206",
+      "ledger": 65420769,
+      "output": "4955315605",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASdcHZU=",
+      "resourceFee": "8314"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "2115135348",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "7884864652",
+      "ledger": 65420769,
+      "output": "1906488545",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAHGitOE=",
+      "resourceFee": "9735"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "7130483795",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "9043254525",
+      "keep_quantity": "1912770730",
+      "ledger": 65420770,
+      "output": "7858846781",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAdRsfD0=",
+      "resourceFee": "8390"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "49995984544",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50004015456",
+      "ledger": 65420770,
+      "output": "44942484014",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAACnbH4i4=",
+      "resourceFee": "11296"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "45219903905",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "90432545251",
+      "keep_quantity": "45212641346",
+      "ledger": 65420770,
+      "output": "49714517535",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC5M3Vh8=",
+      "resourceFee": "9297"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "50291277264",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "49708722736",
+      "ledger": 65420770,
+      "output": "45207189675",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAACoaO+Ks=",
+      "resourceFee": "11278"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "44952863182",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "90432545251",
+      "keep_quantity": "45479682069",
+      "ledger": 65420771,
+      "output": "49421887817",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC4HGKUk=",
+      "resourceFee": "9297"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "21151353475",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "78848646525",
+      "ledger": 65420771,
+      "output": "19043953273",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAABG8bqnk=",
+      "resourceFee": "11287"
+    },
+    {
+      "pool": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "71304837949",
+      "prices": [
+        1,
+        1.1057965881817415
+      ],
+      "initial_quantity": "90432545251",
+      "keep_quantity": "19127707302",
+      "ledger": 65420771,
+      "output": "78233697507",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAEjcXfOM=",
+      "resourceFee": "10195"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "5004255229",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10007693936",
+      "keep_quantity": "5003438707",
+      "ledger": 65420771,
+      "output": "4995924068",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASnHwGQ=",
+      "resourceFee": "1231724"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "4999592054",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5000407946",
+      "ledger": 65420772,
+      "output": "4997321032",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASndEUg=",
+      "resourceFee": "1281876"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "5013580359",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10007693936",
+      "keep_quantity": "4994113577",
+      "ledger": 65420772,
+      "output": "5005233116",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASpVy9w=",
+      "resourceFee": "1231725"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "4990274093",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "5009725907",
+      "ledger": 65420772,
+      "output": "4988007859",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAASlO9bM=",
+      "resourceFee": "1281876"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "6975543811",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10007693936",
+      "keep_quantity": "3032150125",
+      "ledger": 65420772,
+      "output": "6963766829",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAZ8Spi0=",
+      "resourceFee": "1231707"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 1000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "3029819002",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "10000000000",
+      "keep_quantity": "6970180998",
+      "ledger": 65420773,
+      "output": "3028514039",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAALSDdPc=",
+      "resourceFee": "1281845"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "50042552284",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100076939361",
+      "keep_quantity": "50034387077",
+      "ledger": 65420773,
+      "output": "49932375595",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6Azlis=",
+      "resourceFee": "1231719"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "full",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "49995920536",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50004079464",
+      "ledger": 65420773,
+      "output": "49946346483",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6EIw/M=",
+      "resourceFee": "1281848"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "50135803584",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100076939361",
+      "keep_quantity": "49941135777",
+      "ledger": 65420773,
+      "output": "50025365890",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC6W+gYI=",
+      "resourceFee": "1231719"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "wide",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "49902740928",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "50097259072",
+      "ledger": 65420774,
+      "output": "49853314766",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAC5t9Ns4=",
+      "resourceFee": "1281849"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 0,
+      "direction": "entry",
+      "input": "69755438110",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100076939361",
+      "keep_quantity": "30321501251",
+      "ledger": 65420774,
+      "output": "69585482402",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAEDOeMqI=",
+      "resourceFee": "1231730"
+    },
+    {
+      "pool": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "range": "tight",
+      "capital_usd": 10000,
+      "deposited_leg": 1,
+      "direction": "entry",
+      "input": "30298190018",
+      "prices": [
+        0.9992311978991577,
+        1
+      ],
+      "initial_quantity": "100000000000",
+      "keep_quantity": "69701809982",
+      "ledger": 65420774,
+      "output": "30275272044",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAABwyL/Ww=",
+      "resourceFee": "1281875"
+    }
+  ]
+}

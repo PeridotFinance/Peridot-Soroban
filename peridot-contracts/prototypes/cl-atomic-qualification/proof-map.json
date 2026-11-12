@@ -1,0 +1,67 @@
+{
+  "schema": "cl-proof-map-v1",
+  "sources": {
+    "test::atomic_qualification::compiled_atomic_qualification_swap_close_64_owners_128_changes_8_unresolved_5pct_trade": "prototypes/cl-atomic-qualification/tests/combined.rs",
+    "test::atomic_qualification::compiled_atomic_qualification_8_independent_liquidations_repeated_both_call_outages": "prototypes/cl-atomic-qualification/tests/combined.rs",
+    "test::atomic_qualification::compiled_atomic_qualification_8_independent_pending_recoveries_repeated_both_call_outages": "prototypes/cl-atomic-qualification/tests/combined.rs",
+    "test::atomic_qualification::compiled_atomic_qualification_8_independent_repay_release_and_exited_entitlements": "prototypes/cl-atomic-qualification/tests/combined.rs"
+  },
+  "proofs": [
+    {
+      "label": "atomic_qualification_1",
+      "tests": [
+        "test::atomic_qualification::compiled_atomic_qualification_swap_close_64_owners_128_changes_8_unresolved_5pct_trade"
+      ],
+      "assertions": [
+        "Actual claim-first atomic mint/transfer/custody and close, 64 position-ID vector, exact historical reward conservation and retained quarantine."
+      ],
+      "resource_flows": [
+        "atomic_qualification_aged_swap_open",
+        "atomic_qualification_swap_open",
+        "atomic_qualification_activate",
+        "atomic_qualification_prepare_close",
+        "atomic_qualification_swap_close",
+        "atomic_qualification_finish_close"
+      ]
+    },
+    {
+      "label": "atomic_qualification_2",
+      "tests": [
+        "test::atomic_qualification::compiled_atomic_qualification_8_independent_liquidations_repeated_both_call_outages"
+      ],
+      "assertions": [
+        "Independent borrowers, actual accrued debt fully funded and repaid atomically with permitted seizure; historical rewards retained and never waived."
+      ],
+      "resource_flows": [
+        "atomic_qualification_funded_liquidation"
+      ]
+    },
+    {
+      "label": "atomic_qualification_3",
+      "tests": [
+        "test::atomic_qualification::compiled_atomic_qualification_8_independent_pending_recoveries_repeated_both_call_outages"
+      ],
+      "assertions": [
+        "Independent borrowers recover pending collateral during both reward-call outages; actual accrued debt clears, custody exits and unresolved intervals remain quarantined."
+      ],
+      "resource_flows": [
+        "atomic_qualification_pending_recovery"
+      ]
+    },
+    {
+      "label": "atomic_qualification_4",
+      "tests": [
+        "test::atomic_qualification::compiled_atomic_qualification_8_independent_repay_release_and_exited_entitlements"
+      ],
+      "assertions": [
+        "Static-interest full repayment/release and receipt withdrawal during outage, then physical principal exit and exited-holder booked rewards; dynamic repayment is explicitly not qualified."
+      ],
+      "resource_flows": [
+        "atomic_qualification_full_repay",
+        "atomic_qualification_repay_release",
+        "atomic_qualification_principal_exit",
+        "atomic_qualification_exited_entitlement_claim"
+      ]
+    }
+  ]
+}

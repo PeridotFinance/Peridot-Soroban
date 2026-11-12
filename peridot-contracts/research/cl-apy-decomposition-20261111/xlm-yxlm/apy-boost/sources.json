@@ -1,0 +1,32 @@
+[
+  {
+    "file": "ui-pools.json",
+    "url": "https://amm-api.aqua.network/pools/?size=1000",
+    "time": "2026-11-11T10:50:15.437389+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 408105,
+    "sha256": "d3ddf26a912cb2334b468436a3bc260a17b3257e9dd3dbdd1e6f066c8da47a89"
+  },
+  {
+    "file": "detail.json",
+    "url": "https://amm-api.aqua.network/pools/CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F/",
+    "time": "2026-11-11T10:50:15.683733+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1882,
+    "sha256": "d21754c590f45a34bfc5b94b39765c5d849438a47be9f51877bf354f45a54c6c"
+  },
+  {
+    "file": "holders.json",
+    "url": "https://amm-api.aqua.network/pools/CADMDTCQHSC2GCYPDCYQ7FBYVOXED3E3WGCYJHHT524ZBALM7VYHFS7F/balances/?sort=-balance&size=3&page=1",
+    "time": "2026-11-11T10:50:15.965083+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 655,
+    "sha256": "3ca1044675f9be407a481e60d442496b2a9896c3223ed81c7f0d5a93aa32b270"
+  }
+]

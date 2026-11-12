@@ -1,0 +1,17 @@
+{
+  "at": "2026-11-12T13:32:52.234Z",
+  "keys": [
+    "AAAAB0Ipt++fQAKKIOe6ziSE8zDbvqYlqpjyn0U4YeDEmPee"
+  ],
+  "descriptions": [
+    {
+      "group": "shared receipt code",
+      "purpose": "WASM",
+      "kind": "code",
+      "hash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e"
+    }
+  ],
+  "minResourceFee": "305889138",
+  "feeAllowance": "367067066",
+  "error": "The expression evaluated to a falsy value:\n\n  assert(BigInt(tx.fee)<=MAX_TX)\n"
+}

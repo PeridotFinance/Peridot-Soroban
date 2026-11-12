@@ -31,6 +31,15 @@ impl MarginController {
         pool: Address,
         amount_with_slippage: u128,
     ) -> u64 {
+        #[cfg(feature = "funded-liquidation-validation")]
+        if Self::cl_enabled(env, &margin_asset) || Self::cl_enabled(env, &base_asset) {
+            assert!(
+                side == PositionSide::Long
+                    && Self::cl_enabled(env, &base_asset)
+                    && !Self::cl_enabled(env, &margin_asset),
+                "CL validation supports cash-funded long only"
+            );
+        }
         if margin_asset == base_asset {
             panic!("assets must differ");
         }
@@ -292,6 +301,9 @@ impl MarginController {
             panic!("swap failed");
         }
 
+        #[cfg(feature = "funded-liquidation-validation")]
+        Self::cl_assign(env, &token_out, &user, position_amount, false);
+
         set_pending_perps_open_execution(
             env,
             position_id,
@@ -333,6 +345,15 @@ impl MarginController {
         let controller = env.current_contract_address();
         let position_vault_client = ReceiptVaultClient::new(env, &vaults.position_vault);
         let p_before = position_vault_client.get_ptoken_balance(&controller);
+        #[cfg(feature = "funded-liquidation-validation")]
+        Self::cl_prepare(
+            env,
+            &position.collateral_asset,
+            &position.owner,
+            &vaults.position_vault,
+            execution.position_amount,
+            false,
+        );
         Self::authorize_controller_vault_deposit(
             env,
             &vaults.position_vault,
@@ -341,6 +362,14 @@ impl MarginController {
             execution.position_amount,
         );
         position_vault_client.deposit(&controller, &execution.position_amount);
+        #[cfg(feature = "funded-liquidation-validation")]
+        Self::cl_receipt_assign(
+            env,
+            &position.collateral_asset,
+            &vaults.position_vault,
+            &position.owner,
+            execution.position_amount,
+        );
         let p_after = position_vault_client.get_ptoken_balance(&controller);
         let p_delta = p_after.saturating_sub(p_before);
         if p_delta == 0 {
@@ -390,6 +419,33 @@ impl MarginController {
         }
 
         collect_open_fee(env, position_id, &pending.margin_vault);
+        if enforce_open_health {
+            // Origination must use the current policy after every cash cost,
+            // including a governance pause or supplier exit between stages.
+            // The false branch is an atomic liquidation conversion, not a new
+            // open: the borrowing floor must never prevent risk-reducing exits.
+            // Required receipt ABI: a missing entrypoint must trap atomically.
+            // Only a successfully decoded None denotes an unconfigured legacy
+            // market; invocation/decoding failures never opt out of enforcement.
+            let reserve_bps: Option<u32> = env.invoke_contract(
+                &vaults.debt_vault,
+                &Symbol::new(env, "get_min_cash_reserve_bps"),
+                ().into_val(env),
+            );
+            if reserve_bps.is_some() {
+                let enabled: bool = env.invoke_contract(
+                    &vaults.debt_vault,
+                    &Symbol::new(env, "get_cash_borrowing_enabled"),
+                    ().into_val(env),
+                );
+                assert!(enabled, "cash borrowing disabled");
+            }
+            env.invoke_contract::<()>(
+                &vaults.debt_vault,
+                &Symbol::new(env, "assert_borrowing_reserve"),
+                ().into_val(env),
+            );
+        }
         let activated = position.clone();
         clear_pending_perps_open_position(env, position_id);
         clear_pending_perps_open_execution(env, position_id);
@@ -801,6 +857,7 @@ impl MarginController {
             &vaults.position_vault,
             &position.collateral_asset,
             position.collateral_ptokens,
+            &position.owner,
         );
         if collateral_underlying == 0 {
             panic!("no collateral");
@@ -957,6 +1014,17 @@ impl MarginController {
         };
         if amount_with_slippage < pool_min {
             panic!("slippage too high");
+        }
+        #[cfg(feature = "funded-liquidation-validation")]
+        if position.collateral_asset != position.debt_asset {
+            Self::cl_prepare(
+                env,
+                &position.collateral_asset,
+                &position.owner,
+                &perps.pool,
+                swap_amount_in,
+                false,
+            );
         }
         let received_debt_asset = if position.collateral_asset == position.debt_asset {
             swap_amount_in
@@ -1303,6 +1371,7 @@ impl MarginController {
                 &vaults.position_vault,
                 &position.collateral_asset,
                 position.collateral_ptokens,
+                &position.owner,
             )
         };
         if collateral_underlying == 0 {
@@ -1347,6 +1416,15 @@ impl MarginController {
             if amount_with_slippage < pool_min {
                 panic!("slippage too high");
             }
+            #[cfg(feature = "funded-liquidation-validation")]
+            Self::cl_prepare(
+                env,
+                &position.collateral_asset,
+                &position.owner,
+                &perps.pool,
+                collateral_underlying,
+                false,
+            );
             Self::direct_pool_swap_as_controller(
                 env,
                 &perps.pool_tokens,
@@ -1859,7 +1937,10 @@ impl MarginController {
         vault: &Address,
         token: &Address,
         ptokens: u128,
+        owner: &Address,
     ) -> u128 {
+        #[cfg(not(feature = "funded-liquidation-validation"))]
+        let _ = owner;
         if ptokens == 0 {
             return 0;
         }
@@ -1873,9 +1954,15 @@ impl MarginController {
             "withdraw",
             (controller.clone(), ptokens).into_val(env),
         );
+        #[cfg(feature = "funded-liquidation-validation")]
+        Self::cl_receipt_prepare(env, token, vault, owner, ptokens, false);
         Self::begin_margin_withdraw_if_supported(env, vault, &controller, &controller, ptokens);
         vault_client.withdraw(&controller, &ptokens);
         let bal_after = token_client.balance(&controller);
+        #[cfg(feature = "funded-liquidation-validation")]
+        if bal_after > bal_before {
+            Self::cl_assign(env, token, owner, (bal_after - bal_before) as u128, false);
+        }
         if bal_after <= bal_before {
             0u128
         } else {
@@ -2082,6 +2169,7 @@ impl MarginController {
             &vaults.position_vault,
             &position.collateral_asset,
             position.collateral_ptokens,
+            &position.owner,
         );
         if collateral_underlying == 0 {
             panic!("no collateral");
@@ -2139,6 +2227,15 @@ impl MarginController {
         let received_debt_asset = if position.collateral_asset == position.debt_asset {
             collateral_underlying
         } else {
+            #[cfg(feature = "funded-liquidation-validation")]
+            Self::cl_prepare(
+                env,
+                &position.collateral_asset,
+                &position.owner,
+                &perps.pool,
+                collateral_underlying,
+                false,
+            );
             Self::direct_pool_swap_as_controller(
                 env,
                 &perps.pool_tokens,

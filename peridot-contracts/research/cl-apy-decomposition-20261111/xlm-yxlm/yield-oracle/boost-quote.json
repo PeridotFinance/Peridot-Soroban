@@ -1,0 +1,61 @@
+{
+  "endpoint": "https://rpc.lightsail.network/",
+  "retrievedAt": "2026-11-11T10:53:30.452Z",
+  "scope": "unsigned public read-only getter/estimate simulations; rolling state; not a sale or financial execution",
+  "views": [
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "xy_boost_annual_prefunded",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAAb0sSdc="
+      ],
+      "time": "2026-11-11T10:53:31.242Z",
+      "ledger": 65421673,
+      "cost": null,
+      "value": "1842063",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAAcG48=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    },
+    {
+      "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+      "method": "estimate_swap",
+      "label": "xy_boost_day1_min",
+      "args": [
+        "AAAAAwAAAAA=",
+        "AAAAAwAAAAE=",
+        "AAAACQAAAAAAAAAAAAAAAccbmJk="
+      ],
+      "time": "2026-11-11T10:53:31.846Z",
+      "ledger": 65421673,
+      "cost": null,
+      "value": "1883172",
+      "returnXdr": "AAAACQAAAAAAAAAAAAAAAAAcvCQ=",
+      "minResourceFee": "9751",
+      "requiresRestore": false,
+      "resourceDeclaration": {
+        "instructions": 2517629,
+        "diskReadBytes": 0,
+        "writeBytes": 2564,
+        "uniqueKeys": 4,
+        "writes": 1
+      },
+      "transactionDataXdr": "AAAAAAAAAAMAAAAGAAAAAa3vzlmu5Slo92Bh1JTCUlt1ZZ+kKWpl9JnvKeVkd+SWAAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAABAAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABQAAAABAAAAB9aRE1qt6T/w98Ip4AnN4EITCgUSTPcgKwPREka0+bRzAAAAAQAAAAYAAAABPGAVyRW4w0IBoKFJA2JaD66bkmqDpJ8KyKtszbbtbskAAAAUAAAAAQAman0AAAAAAAAKBAAAAAAAACYX"
+    }
+  ],
+  "network": {
+    "passphrase": "Public Global Stellar Network ; September 2015",
+    "protocolVersion": 29
+  }
+}

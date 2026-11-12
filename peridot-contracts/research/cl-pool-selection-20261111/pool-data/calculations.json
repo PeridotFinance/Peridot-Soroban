@@ -1,0 +1,865 @@
+{
+  "window": [
+    "2026-11-04T00:00:00Z",
+    "2026-11-11T00:00:00Z"
+  ],
+  "aqua_price_usdc": 0.00024442824039105313,
+  "xlm_price_usdc": 0.1459906510758864,
+  "pools": [
+    {
+      "address": "CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX",
+      "pair": [
+        "PYUSD:GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5",
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      ],
+      "type": "concentrated",
+      "fee_fraction": 0.001,
+      "lp_fee_share": 0.5,
+      "tvl_usd": 247599.97245785958,
+      "week_volume_historical_indexed_usd": 1404.596354850722,
+      "week_lp_fee_estimate_historical_usd": 0.702298177425361,
+      "week_event_counts": {
+        "claim": 40,
+        "claim_fees": 15,
+        "swap": 39,
+        "withdraw": 6,
+        "deposit": 4
+      },
+      "week_swap_input_tokens": {
+        "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2": "613.3035618",
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": "791.6428708"
+      },
+      "week_lp_fee_tokens_estimate": {
+        "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2": 0.3066517809,
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": 0.3958214354
+      },
+      "week_lp_fee_marked_now_usd_estimate": 0.7033041985587862,
+      "history_stats_first": "2026-10-12 11:00:00",
+      "history_stats_last": "2026-11-11 06:00:00",
+      "ui_fee_apy_percent": 0.01396,
+      "ui_aqua_apy_percent": 7.97485,
+      "ui_total_apy_percent": 7.9888,
+      "aqua_per_second": 2.5651983,
+      "aqua_schedule_end": 1794413719,
+      "raw_active_liquidity": 2091675066835145,
+      "working_liquidity": 2575853465725930,
+      "wasm": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+      "positions": [
+        {
+          "range": "full",
+          "capital_usd": 1000,
+          "tick_lower": -887260,
+          "tick_upper": 887260,
+          "liquidity": 4993233995,
+          "actual_quoted_amounts": [
+            "4993614813",
+            "4992853207"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999998534859,
+          "current_fee_weight_after_dilution": 2.3871882178935864e-06,
+          "current_reward_weight_after_dilution": 1.9384737455706932e-06,
+          "conditional_week_fees_using_current_weight_usd": 1.6765179345979614e-06,
+          "conditional_week_aqua_tokens": 3.007410067911861,
+          "conditional_week_aqua_usd": 0.0007350959510340338,
+          "conditional_week_aqua_maxboost_tokens": 7.51850330814775,
+          "conditional_week_aqua_maxboost_usd": 0.0018377345339848665,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 1000,
+          "tick_lower": -2020,
+          "tick_upper": 2000,
+          "liquidity": 52225174242,
+          "actual_quoted_amounts": [
+            "4973629210",
+            "5012892968"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999998422763,
+          "current_fee_weight_after_dilution": 2.4967487129658598e-05,
+          "current_reward_weight_after_dilution": 2.0274490027524833e-05,
+          "conditional_week_fees_using_current_weight_usd": 1.7534620706050393e-05,
+          "conditional_week_aqua_tokens": 31.454491230473668,
+          "conditional_week_aqua_usd": 0.007688365943860491,
+          "conditional_week_aqua_maxboost_tokens": 78.63383668477762,
+          "conditional_week_aqua_maxboost_usd": 0.019220330336057637,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 1000,
+          "tick_lower": -20,
+          "tick_upper": 0,
+          "liquidity": 10003374051055,
+          "actual_quoted_amounts": [
+            "762925301",
+            "9235007276"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999994929384,
+          "current_fee_weight_after_dilution": 0.00475970722088054,
+          "current_reward_weight_after_dilution": 0.0038684949209785847,
+          "conditional_week_fees_using_current_weight_usd": 0.0033427337063027334,
+          "conditional_week_aqua_tokens": 6001.706548567034,
+          "conditional_week_aqua_usd": 1.4669865710097008,
+          "conditional_week_aqua_maxboost_tokens": 14917.70278523158,
+          "conditional_week_aqua_maxboost_usd": 3.6463078424708675,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "full",
+          "capital_usd": 10000,
+          "tick_lower": -887260,
+          "tick_upper": 887260,
+          "liquidity": 49932339961,
+          "actual_quoted_amounts": [
+            "49936148141",
+            "49928532072"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.99999983784,
+          "current_fee_weight_after_dilution": 2.3871369315130502e-05,
+          "current_reward_weight_after_dilution": 1.9384399274635665e-05,
+          "conditional_week_fees_using_current_weight_usd": 1.676481916266384e-05,
+          "conditional_week_aqua_tokens": 30.073576014205905,
+          "conditional_week_aqua_usd": 0.00735083126741893,
+          "conditional_week_aqua_maxboost_tokens": 75.18175400580803,
+          "conditional_week_aqua_maxboost_usd": 0.018376543841152667,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 10000,
+          "tick_lower": -2020,
+          "tick_upper": 2000,
+          "liquidity": 522251742503,
+          "actual_quoted_amounts": [
+            "49736292107",
+            "50128929688"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999924661,
+          "current_fee_weight_after_dilution": 0.00024961878015312906,
+          "current_reward_weight_after_dilution": 0.00020270791211158,
+          "conditional_week_fees_using_current_weight_usd": 0.00017530681435268443,
+          "conditional_week_aqua_tokens": 314.4875276865215,
+          "conditional_week_aqua_usd": 0.07686963301734906,
+          "conditional_week_aqua_maxboost_tokens": 785.979832720025,
+          "conditional_week_aqua_maxboost_usd": 0.19211566749461,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 10000,
+          "tick_lower": -20,
+          "tick_upper": 0,
+          "liquidity": 100033740562693,
+          "actual_quoted_amounts": [
+            "7629253014",
+            "92350072806"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.99999993047,
+          "current_fee_weight_after_dilution": 0.04564189377030455,
+          "current_reward_weight_after_dilution": 0.037383392068097245,
+          "conditional_week_fees_using_current_weight_usd": 0.03205421880912683,
+          "conditional_week_aqua_tokens": 57997.78817494024,
+          "conditional_week_aqua_usd": 14.176297310173672,
+          "conditional_week_aqua_maxboost_tokens": 137295.60716929476,
+          "conditional_week_aqua_maxboost_usd": 33.558923673811975,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        }
+      ]
+    },
+    {
+      "address": "CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5",
+      "pair": [
+        "PYUSD:GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5",
+        "sUSD:GCHW7CWI7GMIYQYFXMFJNJX5645XGWIINIAEQK3SABQO6CAYL5T7JYIH"
+      ],
+      "type": "concentrated",
+      "fee_fraction": 0.001,
+      "lp_fee_share": 0.5,
+      "tvl_usd": 5965.593128066801,
+      "week_volume_historical_indexed_usd": 25404.63795475037,
+      "week_lp_fee_estimate_historical_usd": 12.702318977375185,
+      "week_event_counts": {
+        "swap": 580,
+        "withdraw": 7,
+        "claim_fees": 8,
+        "deposit": 9,
+        "claim": 2
+      },
+      "week_swap_input_tokens": {
+        "CDFZUVS5YNLXU7VENKOUDEOHCJGKQNVUBWD7KMN6E7ZROKPYPFLRUJFG": "13142.6257523",
+        "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2": "12370.2543690"
+      },
+      "week_lp_fee_tokens_estimate": {
+        "CDFZUVS5YNLXU7VENKOUDEOHCJGKQNVUBWD7KMN6E7ZROKPYPFLRUJFG": 6.57131287615,
+        "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2": 6.185127184500001
+      },
+      "week_lp_fee_marked_now_usd_estimate": 12.7174631108625,
+      "history_stats_first": "2026-10-12 11:00:00",
+      "history_stats_last": "2026-11-11 07:00:00",
+      "ui_fee_apy_percent": 8.142570000000001,
+      "ui_aqua_apy_percent": 42.68168,
+      "ui_total_apy_percent": 50.824250000000006,
+      "aqua_per_second": 0.3308042,
+      "aqua_schedule_end": 1794413719,
+      "raw_active_liquidity": 7544753021076,
+      "working_liquidity": 8983910331192,
+      "wasm": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+      "positions": [
+        {
+          "range": "full",
+          "capital_usd": 1000,
+          "tick_lower": -887260,
+          "tick_upper": 887260,
+          "liquidity": 5014544482,
+          "actual_quoted_amounts": [
+            "4994557314",
+            "5034611636"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999998766364,
+          "current_fee_weight_after_dilution": 0.0006641985251143791,
+          "current_reward_weight_after_dilution": 0.0005578580921919211,
+          "conditional_week_fees_using_current_weight_usd": 0.008436861530304986,
+          "conditional_week_aqua_tokens": 111.61088058016999,
+          "conditional_week_aqua_usd": 0.027280851148706913,
+          "conditional_week_aqua_maxboost_tokens": 278.79391029205965,
+          "conditional_week_aqua_maxboost_usd": 0.06814510492442925,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 1000,
+          "tick_lower": -1940,
+          "tick_upper": 2080,
+          "liquidity": 52448176785,
+          "actual_quoted_amounts": [
+            "4971257281",
+            "5058174670"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999998801864,
+          "current_fee_weight_after_dilution": 0.006903618242961216,
+          "current_reward_weight_after_dilution": 0.005804127485502094,
+          "conditional_week_fees_using_current_weight_usd": 0.08769196102011978,
+          "conditional_week_aqua_tokens": 1161.233992521509,
+          "conditional_week_aqua_usd": 0.2838383814743098,
+          "conditional_week_aqua_maxboost_tokens": 2878.028316420686,
+          "conditional_week_aqua_maxboost_usd": 0.7034713971783334,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 1000,
+          "tick_lower": 60,
+          "tick_upper": 80,
+          "liquidity": 10050616295650,
+          "actual_quoted_amounts": [
+            "60023591",
+            "10024844163"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999864475203,
+          "current_fee_weight_after_dilution": 0.5712080329053381,
+          "current_reward_weight_after_dilution": 0.5280202913728823,
+          "conditional_week_fees_using_current_weight_usd": 7.2556666364026245,
+          "conditional_week_aqua_tokens": 105641.22042716654,
+          "conditional_week_aqua_usd": 25.821697621775694,
+          "conditional_week_aqua_maxboost_tokens": 147376.43156402116,
+          "conditional_week_aqua_maxboost_usd": 36.02296184230615,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "full",
+          "capital_usd": 10000,
+          "tick_lower": -887260,
+          "tick_upper": 887260,
+          "liquidity": 50145444833,
+          "actual_quoted_amounts": [
+            "49945573147",
+            "50346116365"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.99999996402,
+          "current_fee_weight_after_dilution": 0.006602516815476389,
+          "current_reward_weight_after_dilution": 0.005550712335214747,
+          "conditional_week_fees_using_current_weight_usd": 0.0838672746436645,
+          "conditional_week_aqua_tokens": 1110.5331270652157,
+          "conditional_week_aqua_usd": 0.2714456581445245,
+          "conditional_week_aqua_maxboost_tokens": 2753.4077560698006,
+          "conditional_week_aqua_maxboost_usd": 0.6730106128952194,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 10000,
+          "tick_lower": -1940,
+          "tick_upper": 2080,
+          "liquidity": 524481767929,
+          "actual_quoted_amounts": [
+            "49712572814",
+            "50581746707"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999897009,
+          "current_fee_weight_after_dilution": 0.06499770816480019,
+          "current_reward_weight_after_dilution": 0.05515988007872388,
+          "conditional_week_fees_using_current_weight_usd": 0.8256216219076354,
+          "conditional_week_aqua_tokens": 11035.858176930298,
+          "conditional_week_aqua_usd": 2.697475395392288,
+          "conditional_week_aqua_maxboost_tokens": 25481.32518051914,
+          "conditional_week_aqua_maxboost_usd": 6.228355476706527,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 10000,
+          "tick_lower": 60,
+          "tick_upper": 80,
+          "liquidity": 100506164296065,
+          "actual_quoted_amounts": [
+            "600235918",
+            "100248442959"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999997050116,
+          "current_fee_weight_after_dilution": 0.9301740956170567,
+          "current_reward_weight_after_dilution": 0.9179477193546866,
+          "conditional_week_fees_using_current_weight_usd": 11.815368067019339,
+          "conditional_week_aqua_tokens": 183654.14917829714,
+          "conditional_week_aqua_usd": 44.89026052416715,
+          "conditional_week_aqua_maxboost_tokens": 193163.87086389266,
+          "conditional_week_aqua_maxboost_usd": 47.214705062385896,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        }
+      ]
+    },
+    {
+      "address": "CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ",
+      "pair": [
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        "sUSD:GCHW7CWI7GMIYQYFXMFJNJX5645XGWIINIAEQK3SABQO6CAYL5T7JYIH"
+      ],
+      "type": "concentrated",
+      "fee_fraction": 0.001,
+      "lp_fee_share": 0.5,
+      "tvl_usd": 121067.15358046329,
+      "week_volume_historical_indexed_usd": 416125.1247050957,
+      "week_lp_fee_estimate_historical_usd": 208.06256235254787,
+      "week_event_counts": {
+        "swap": 4375,
+        "claim": 40,
+        "deposit": 33,
+        "claim_fees": 32,
+        "withdraw": 15
+      },
+      "week_swap_input_tokens": {
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": "198274.2337107",
+        "CDFZUVS5YNLXU7VENKOUDEOHCJGKQNVUBWD7KMN6E7ZROKPYPFLRUJFG": "219825.9073372"
+      },
+      "week_lp_fee_tokens_estimate": {
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": 99.13711685535,
+        "CDFZUVS5YNLXU7VENKOUDEOHCJGKQNVUBWD7KMN6E7ZROKPYPFLRUJFG": 109.91295366860001
+      },
+      "week_lp_fee_marked_now_usd_estimate": 208.11779086130076,
+      "history_stats_first": "2026-10-12 10:00:00",
+      "history_stats_last": "2026-11-11 09:00:00",
+      "ui_fee_apy_percent": 7.61411,
+      "ui_aqua_apy_percent": 20.234830000000002,
+      "ui_total_apy_percent": 27.84894,
+      "aqua_per_second": 3.1785207,
+      "aqua_schedule_end": 1794413719,
+      "raw_active_liquidity": 215533563344248,
+      "working_liquidity": 268216281879842,
+      "wasm": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+      "positions": [
+        {
+          "range": "full",
+          "capital_usd": 1000,
+          "tick_lower": -887260,
+          "tick_upper": 887260,
+          "liquidity": 5021340791,
+          "actual_quoted_amounts": [
+            "4999580619",
+            "5043195673"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999998544411,
+          "current_fee_weight_after_dilution": 2.3296714128180607e-05,
+          "current_reward_weight_after_dilution": 1.8720887307260433e-05,
+          "conditional_week_fees_using_current_weight_usd": 0.00484717403590406,
+          "conditional_week_aqua_tokens": 35.988459390673505,
+          "conditional_week_aqua_usd": 0.008796595803247197,
+          "conditional_week_aqua_maxboost_tokens": 89.96862203803221,
+          "conditional_week_aqua_maxboost_usd": 0.021990871975163938,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 1000,
+          "tick_lower": -1920,
+          "tick_upper": 2100,
+          "liquidity": 52518815696,
+          "actual_quoted_amounts": [
+            "5006997506",
+            "5035715339"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.999999960058,
+          "current_fee_weight_after_dilution": 0.0002436094907881675,
+          "current_reward_weight_after_dilution": 0.00019576937593874114,
+          "conditional_week_fees_using_current_weight_usd": 0.05068601486678554,
+          "conditional_week_aqua_tokens": 376.3410419748898,
+          "conditional_week_aqua_usd": 0.09198837867685777,
+          "conditional_week_aqua_maxboost_tokens": 940.5764008546975,
+          "conditional_week_aqua_maxboost_usd": 0.22990343461426355,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 1000,
+          "tick_lower": 80,
+          "tick_upper": 100,
+          "liquidity": 10046205830809,
+          "actual_quoted_amounts": [
+            "6567544472",
+            "3461818609"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.999999887701,
+          "current_fee_weight_after_dilution": 0.044535047923614235,
+          "current_reward_weight_after_dilution": 0.03610334225594743,
+          "conditional_week_fees_using_current_weight_usd": 9.266076185480694,
+          "conditional_week_aqua_tokens": 69403.95747918679,
+          "conditional_week_aqua_usd": 16.9642872028131,
+          "conditional_week_aqua_maxboost_tokens": 164596.18509139988,
+          "conditional_week_aqua_maxboost_usd": 40.231955896970966,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "full",
+          "capital_usd": 10000,
+          "tick_lower": -887260,
+          "tick_upper": 887260,
+          "liquidity": 50213407922,
+          "actual_quoted_amounts": [
+            "49995806198",
+            "50431956736"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999939322,
+          "current_fee_weight_after_dilution": 0.00023291830525691245,
+          "current_reward_weight_after_dilution": 0.00018717733598501408,
+          "conditional_week_fees_using_current_weight_usd": 0.04846157941056613,
+          "conditional_week_aqua_tokens": 359.82396797712954,
+          "conditional_week_aqua_usd": 0.08795113934317643,
+          "conditional_week_aqua_maxboost_tokens": 899.307424990762,
+          "conditional_week_aqua_maxboost_usd": 0.21981613146110096,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 10000,
+          "tick_lower": -1920,
+          "tick_upper": 2100,
+          "liquidity": 525188156990,
+          "actual_quoted_amounts": [
+            "50069975061",
+            "50357153392"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999898882,
+          "current_fee_weight_after_dilution": 0.0024307654901310058,
+          "current_reward_weight_after_dilution": 0.001954250517860236,
+          "conditional_week_fees_using_current_weight_usd": 0.505751296354804,
+          "conditional_week_aqua_tokens": 3756.791237877909,
+          "conditional_week_aqua_usd": 0.9182658717910237,
+          "conditional_week_aqua_maxboost_tokens": 9364.52714665597,
+          "conditional_week_aqua_maxboost_usd": 2.2889548925513683,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 10000,
+          "tick_lower": 80,
+          "tick_upper": 100,
+          "liquidity": 100462058321435,
+          "actual_quoted_amounts": [
+            "65675444729",
+            "34618186092"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999975314,
+          "current_fee_weight_after_dilution": 0.31792231104936586,
+          "current_reward_weight_after_dilution": 0.2724924341001116,
+          "conditional_week_fees_using_current_weight_usd": 66.1477306659748,
+          "conditional_week_aqua_tokens": 523831.0950717812,
+          "conditional_week_aqua_usd": 128.03911283051394,
+          "conditional_week_aqua_maxboost_tokens": 929610.1421014081,
+          "conditional_week_aqua_maxboost_usd": 227.22297128352403,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        }
+      ]
+    },
+    {
+      "address": "CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+      "pair": [
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"
+      ],
+      "type": "concentrated",
+      "fee_fraction": 0.003,
+      "lp_fee_share": 0.5,
+      "tvl_usd": 94833.20651059595,
+      "week_volume_historical_indexed_usd": 66652.24087496646,
+      "week_lp_fee_estimate_historical_usd": 99.97836131244969,
+      "week_event_counts": {
+        "swap": 1531,
+        "claim": 15,
+        "deposit": 7,
+        "withdraw": 10,
+        "claim_fees": 13
+      },
+      "week_swap_input_tokens": {
+        "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV": "32073.2986563",
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": "31051.5942481"
+      },
+      "week_lp_fee_tokens_estimate": {
+        "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV": 48.10994798445,
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": 46.57739137215
+      },
+      "week_lp_fee_marked_now_usd_estimate": 99.77720771095586,
+      "history_stats_first": "2026-10-12 10:00:00",
+      "history_stats_last": "2026-11-11 09:00:00",
+      "ui_fee_apy_percent": 4.68,
+      "ui_aqua_apy_percent": 4.14209,
+      "ui_total_apy_percent": 8.822090000000001,
+      "aqua_per_second": 0.5097735,
+      "aqua_schedule_end": 1794413719,
+      "raw_active_liquidity": 16179558248109,
+      "working_liquidity": 21840517812463,
+      "wasm": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+      "positions": [
+        {
+          "range": "full",
+          "capital_usd": 1000,
+          "tick_lower": -887220,
+          "tick_upper": 887220,
+          "liquidity": 4754801379,
+          "actual_quoted_amounts": [
+            "5000401545",
+            "4521264134"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999998645676,
+          "current_fee_weight_after_dilution": 0.0002937907444363492,
+          "current_reward_weight_after_dilution": 0.00021765813881339141,
+          "conditional_week_fees_using_current_weight_usd": 0.02937271719751089,
+          "conditional_week_aqua_tokens": 67.1064012217197,
+          "conditional_week_aqua_usd": 0.016402699569600963,
+          "conditional_week_aqua_maxboost_tokens": 167.71124747732324,
+          "conditional_week_aqua_maxboost_usd": 0.04099336511467057,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 1000,
+          "tick_lower": -3060,
+          "tick_upper": 1020,
+          "liquidity": 49035953102,
+          "actual_quoted_amounts": [
+            "4970872273",
+            "4547968206"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999998353835,
+          "current_fee_weight_after_dilution": 0.0030215773771914804,
+          "current_reward_weight_after_dilution": 0.0022401531628817245,
+          "conditional_week_fees_using_current_weight_usd": 0.30209235475037394,
+          "conditional_week_aqua_tokens": 690.6638904751878,
+          "conditional_week_aqua_usd": 0.1688177594504892,
+          "conditional_week_aqua_maxboost_tokens": 1720.8771834896813,
+          "conditional_week_aqua_maxboost_usd": 0.42063098188949427,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 1000,
+          "tick_lower": -1020,
+          "tick_upper": -960,
+          "liquidity": 3173049333044,
+          "actual_quoted_amounts": [
+            "7884864652",
+            "1912770730"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.99999992079,
+          "current_fee_weight_after_dilution": 0.16395978266691824,
+          "current_reward_weight_after_dilution": 0.12685313192580575,
+          "conditional_week_fees_using_current_weight_usd": 16.39243039218388,
+          "conditional_week_aqua_tokens": 39110.21758089718,
+          "conditional_week_aqua_usd": 9.559641664609929,
+          "conditional_week_aqua_maxboost_tokens": 82145.01526462648,
+          "conditional_week_aqua_maxboost_usd": 20.07856153802885,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "full",
+          "capital_usd": 10000,
+          "tick_lower": -887220,
+          "tick_upper": 887220,
+          "liquidity": 47548013803,
+          "actual_quoted_amounts": [
+            "50004015456",
+            "45212641346"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999909154,
+          "current_fee_weight_after_dilution": 0.0029301597608073797,
+          "current_reward_weight_after_dilution": 0.00217232596888217,
+          "conditional_week_fees_using_current_weight_usd": 0.2929525712692014,
+          "conditional_week_aqua_tokens": 669.752019597803,
+          "conditional_week_aqua_usd": 0.16370630764864513,
+          "conditional_week_aqua_maxboost_tokens": 1668.9418205086408,
+          "conditional_week_aqua_maxboost_usd": 0.4079365125019679,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 10000,
+          "tick_lower": -3060,
+          "tick_upper": 1020,
+          "liquidity": 490359531124,
+          "actual_quoted_amounts": [
+            "49708722736",
+            "45479682069"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999949054,
+          "current_fee_weight_after_dilution": 0.029415833816221853,
+          "current_reward_weight_after_dilution": 0.021958811719720535,
+          "conditional_week_fees_using_current_weight_usd": 2.9409468615852044,
+          "conditional_week_aqua_tokens": 6770.143481191547,
+          "conditional_week_aqua_usd": 1.6548142583026086,
+          "conditional_week_aqua_maxboost_tokens": 16385.644770351315,
+          "conditional_week_aqua_maxboost_usd": 4.0051143188898335,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 10000,
+          "tick_lower": -1020,
+          "tick_upper": -960,
+          "liquidity": 31730493333767,
+          "actual_quoted_amounts": [
+            "78848646524",
+            "19127707302"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999829059,
+          "current_fee_weight_after_dilution": 0.6622930321738664,
+          "current_reward_weight_after_dilution": 0.5923071574503965,
+          "conditional_week_fees_using_current_weight_usd": 66.21497206539668,
+          "conditional_week_aqua_tokens": 182614.8196022208,
+          "conditional_week_aqua_usd": 44.63621902470043,
+          "conditional_week_aqua_maxboost_tokens": 241750.88221855505,
+          "conditional_week_aqua_maxboost_usd": 59.09074275366615,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        }
+      ]
+    },
+    {
+      "address": "CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ",
+      "pair": [
+        "USDT0:GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q",
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      ],
+      "type": "concentrated",
+      "fee_fraction": 0.001,
+      "lp_fee_share": 0.5,
+      "tvl_usd": 64988.604771364175,
+      "week_volume_historical_indexed_usd": 0,
+      "week_lp_fee_estimate_historical_usd": 0.0,
+      "week_event_counts": {
+        "claim": 3
+      },
+      "week_swap_input_tokens": {},
+      "week_lp_fee_tokens_estimate": {},
+      "week_lp_fee_marked_now_usd_estimate": 0,
+      "history_stats_first": "2026-10-12 14:00:00",
+      "history_stats_last": "2026-10-29 13:00:00",
+      "ui_fee_apy_percent": 0.0,
+      "ui_aqua_apy_percent": 4.92225,
+      "ui_total_apy_percent": 4.92225,
+      "aqua_per_second": 0.4155747,
+      "aqua_schedule_end": 1794413719,
+      "raw_active_liquidity": 83595670132997,
+      "working_liquidity": 84808049467833,
+      "wasm": "155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907",
+      "positions": [
+        {
+          "range": "full",
+          "capital_usd": 1000,
+          "tick_lower": -887260,
+          "tick_upper": 887260,
+          "liquidity": 5001923096,
+          "actual_quoted_amounts": [
+            "5003438707",
+            "5000407945"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999997810623,
+          "current_fee_weight_after_dilution": 5.9831135001449415e-05,
+          "current_reward_weight_after_dilution": 5.897586531752789e-05,
+          "conditional_week_fees_using_current_weight_usd": 0.0,
+          "conditional_week_aqua_tokens": 14.82296913411878,
+          "conditional_week_aqua_usd": 0.003623152262823546,
+          "conditional_week_aqua_maxboost_tokens": 37.05414488490967,
+          "conditional_week_aqua_maxboost_usd": 0.009057079433413611,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 1000,
+          "tick_lower": -2020,
+          "tick_upper": 2000,
+          "liquidity": 52315712710,
+          "actual_quoted_amounts": [
+            "4994113577",
+            "5009725907"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999998990157,
+          "current_fee_weight_after_dilution": 0.0006254270462231931,
+          "current_reward_weight_after_dilution": 0.0006164917225927173,
+          "conditional_week_fees_using_current_weight_usd": 0.0,
+          "conditional_week_aqua_tokens": 154.948769742182,
+          "conditional_week_aqua_usd": 0.03787385513884001,
+          "conditional_week_aqua_maxboost_tokens": 387.0140379290893,
+          "conditional_week_aqua_maxboost_usd": 0.09459716029764359,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 1000,
+          "tick_lower": -20,
+          "tick_upper": 0,
+          "liquidity": 10006914245125,
+          "actual_quoted_amounts": [
+            "3032150125",
+            "6970180998"
+          ],
+          "actual_deployed_usd_at_snapshot": 999.9999999613831,
+          "current_fee_weight_after_dilution": 0.10690852513965357,
+          "current_reward_weight_after_dilution": 0.1055415079356023,
+          "conditional_week_fees_using_current_weight_usd": 0.0,
+          "conditional_week_aqua_tokens": 26526.758125121178,
+          "conditional_week_aqua_usd": 6.483888811802441,
+          "conditional_week_aqua_maxboost_tokens": 57253.03745280855,
+          "conditional_week_aqua_maxboost_usd": 13.994259201633056,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "full",
+          "capital_usd": 10000,
+          "tick_lower": -887260,
+          "tick_upper": 887260,
+          "liquidity": 50019230974,
+          "actual_quoted_amounts": [
+            "50034387077",
+            "50004079463"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999810085,
+          "current_fee_weight_after_dilution": 0.0005979893447509198,
+          "current_reward_weight_after_dilution": 0.0005894457856628454,
+          "conditional_week_fees_using_current_weight_usd": 0.0,
+          "conditional_week_aqua_tokens": 148.15105535246767,
+          "conditional_week_aqua_usd": 0.036212301771881186,
+          "conditional_week_aqua_maxboost_tokens": 370.0504513626116,
+          "conditional_week_aqua_maxboost_usd": 0.09045078068247815,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "wide",
+          "capital_usd": 10000,
+          "tick_lower": -2020,
+          "tick_upper": 2000,
+          "liquidity": 523157127173,
+          "actual_quoted_amounts": [
+            "49941135777",
+            "50097259072"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.99999988962,
+          "current_fee_weight_after_dilution": 0.006219263204358927,
+          "current_reward_weight_after_dilution": 0.006130900382740137,
+          "conditional_week_fees_using_current_weight_usd": 0.0,
+          "conditional_week_aqua_tokens": 1540.937918391249,
+          "conditional_week_aqua_usd": 0.3766487439442252,
+          "conditional_week_aqua_maxboost_tokens": 3817.2401176308313,
+          "conditional_week_aqua_maxboost_usd": 0.9330412851026407,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        },
+        {
+          "range": "tight",
+          "capital_usd": 10000,
+          "tick_lower": -20,
+          "tick_upper": 0,
+          "liquidity": 100069142454126,
+          "actual_quoted_amounts": [
+            "30321501251",
+            "69701809982"
+          ],
+          "actual_deployed_usd_at_snapshot": 9999.999999913754,
+          "current_fee_weight_after_dilution": 0.5448465661143304,
+          "current_reward_weight_after_dilution": 0.5412735958060609,
+          "conditional_week_fees_using_current_weight_usd": 0.0,
+          "conditional_week_aqua_tokens": 136043.47745555115,
+          "conditional_week_aqua_usd": 33.25286781114028,
+          "conditional_week_aqua_maxboost_tokens": 187707.23696918288,
+          "conditional_week_aqua_maxboost_usd": 45.880949641043806,
+          "realized_position_week_fees_usd": null,
+          "historical_time_in_range": null,
+          "realized_arbitrage_loss_usd": null
+        }
+      ]
+    }
+  ]
+}

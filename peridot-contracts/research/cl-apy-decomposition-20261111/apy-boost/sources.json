@@ -1,0 +1,912 @@
+[
+  {
+    "file": "ice-lock.md",
+    "url": "https://docs.aqua.network/aqua-and-ice/ice-tokens-locking-aqua-and-getting-benefits.md",
+    "time": "2026-11-11T10:11:00.380833+00:00",
+    "status": "000",
+    "exit": 6,
+    "error": "curl: (6) Could not resolve host: docs.aqua.network\n",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "cl-doc.md",
+    "url": "https://docs.aqua.network/developers/concentrated-liquidity.md",
+    "time": "2026-11-11T10:11:00.425970+00:00",
+    "status": "000",
+    "exit": 6,
+    "error": "curl: (6) Could not resolve host: docs.aqua.network\n",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "home.html",
+    "url": "https://aqua.network/pools/",
+    "time": "2026-11-11T10:11:00.468517+00:00",
+    "status": "000",
+    "exit": 6,
+    "error": "curl: (6) Could not resolve host: aqua.network\n",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "ice-lock-live.md",
+    "url": "https://docs.aqua.network/aqua-and-ice/ice-tokens-locking-aqua-and-getting-benefits.md",
+    "time": "2026-11-11T10:12:48.742318+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 4812,
+    "sha256": "1cf038f3092c934323c706b32a4a021d53c2e944bc004e59884225b107a5570c"
+  },
+  {
+    "file": "chunk-1177.js",
+    "url": "https://aqua.network/js/1177.bb9707fddc423e681de3.js",
+    "time": "2026-11-11T10:13:32.169684+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-934.js",
+    "url": "https://aqua.network/js/934.360b4ad7a310d0e48204.js",
+    "time": "2026-11-11T10:13:32.771210+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-1975.js",
+    "url": "https://aqua.network/js/1975.481ba984d152be702b6d.js",
+    "time": "2026-11-11T10:13:33.133957+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-9020.js",
+    "url": "https://aqua.network/js/9020.ff1a06d500ff8ebfcbef.js",
+    "time": "2026-11-11T10:13:33.477991+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3950.js",
+    "url": "https://aqua.network/js/3950.d59e6f9bbe88b9eb891d.js",
+    "time": "2026-11-11T10:13:33.822890+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-8261.js",
+    "url": "https://aqua.network/js/8261.c1c4833e0d1f3d2b3553.js",
+    "time": "2026-11-11T10:13:34.181415+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-8405.js",
+    "url": "https://aqua.network/js/8405.c2e5d912c26deea8d0ce.js",
+    "time": "2026-11-11T10:13:34.655839+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-4156.js",
+    "url": "https://aqua.network/js/4156.da5622dffd9b1f918e92.js",
+    "time": "2026-11-11T10:13:35.134716+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-9504.js",
+    "url": "https://aqua.network/js/9504.05243dab04e5041b2868.js",
+    "time": "2026-11-11T10:13:35.380423+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3887.js",
+    "url": "https://aqua.network/js/3887.eec279588ed0cbf29f9d.js",
+    "time": "2026-11-11T10:13:35.873026+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-2950.js",
+    "url": "https://aqua.network/js/2950.24300196a10891e6081e.js",
+    "time": "2026-11-11T10:13:36.126683+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-5188.js",
+    "url": "https://aqua.network/js/5188.ec39b72ef3ef105cbea4.js",
+    "time": "2026-11-11T10:13:36.351277+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-2610.js",
+    "url": "https://aqua.network/js/2610.336b2d06635cc2d57d8a.js",
+    "time": "2026-11-11T10:13:36.695731+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3035.js",
+    "url": "https://aqua.network/js/3035.ba85f428dffa436962c3.js",
+    "time": "2026-11-11T10:13:37.058957+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3610.js",
+    "url": "https://aqua.network/js/3610.0b9312f64c720a82d42d.js",
+    "time": "2026-11-11T10:13:37.656513+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-6383.js",
+    "url": "https://aqua.network/js/6383.daa78e93992c74740430.js",
+    "time": "2026-11-11T10:13:38.080640+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-2105.js",
+    "url": "https://aqua.network/js/2105.c69aea28d4e5934f4459.js",
+    "time": "2026-11-11T10:13:38.346615+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-1177-min.js",
+    "url": "https://aqua.network/js/1177.bb9707fddc423e681de3.min.js",
+    "time": "2026-11-11T10:14:00.549350+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-934-min.js",
+    "url": "https://aqua.network/js/934.360b4ad7a310d0e48204.min.js",
+    "time": "2026-11-11T10:14:01.142018+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-1975-min.js",
+    "url": "https://aqua.network/js/1975.481ba984d152be702b6d.min.js",
+    "time": "2026-11-11T10:14:01.398017+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-9020-min.js",
+    "url": "https://aqua.network/js/9020.ff1a06d500ff8ebfcbef.min.js",
+    "time": "2026-11-11T10:14:01.956009+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3950-min.js",
+    "url": "https://aqua.network/js/3950.d59e6f9bbe88b9eb891d.min.js",
+    "time": "2026-11-11T10:14:02.409090+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-8261-min.js",
+    "url": "https://aqua.network/js/8261.c1c4833e0d1f3d2b3553.min.js",
+    "time": "2026-11-11T10:14:02.686723+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-8405-min.js",
+    "url": "https://aqua.network/js/8405.c2e5d912c26deea8d0ce.min.js",
+    "time": "2026-11-11T10:14:03.038849+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-4156-min.js",
+    "url": "https://aqua.network/js/4156.da5622dffd9b1f918e92.min.js",
+    "time": "2026-11-11T10:14:03.595124+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-9504-min.js",
+    "url": "https://aqua.network/js/9504.05243dab04e5041b2868.min.js",
+    "time": "2026-11-11T10:14:04.273166+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3887-min.js",
+    "url": "https://aqua.network/js/3887.eec279588ed0cbf29f9d.min.js",
+    "time": "2026-11-11T10:14:04.614587+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-2950-min.js",
+    "url": "https://aqua.network/js/2950.24300196a10891e6081e.min.js",
+    "time": "2026-11-11T10:14:04.883065+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-5188-min.js",
+    "url": "https://aqua.network/js/5188.ec39b72ef3ef105cbea4.min.js",
+    "time": "2026-11-11T10:14:05.132421+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-2610-min.js",
+    "url": "https://aqua.network/js/2610.336b2d06635cc2d57d8a.min.js",
+    "time": "2026-11-11T10:14:05.369384+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3035-min.js",
+    "url": "https://aqua.network/js/3035.ba85f428dffa436962c3.min.js",
+    "time": "2026-11-11T10:14:05.600362+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3610-min.js",
+    "url": "https://aqua.network/js/3610.0b9312f64c720a82d42d.min.js",
+    "time": "2026-11-11T10:14:05.967996+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-6383-min.js",
+    "url": "https://aqua.network/js/6383.daa78e93992c74740430.min.js",
+    "time": "2026-11-11T10:14:06.184397+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-2105-min.js",
+    "url": "https://aqua.network/js/2105.c69aea28d4e5934f4459.min.js",
+    "time": "2026-11-11T10:14:06.829025+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-1177-actual.js",
+    "url": "https://aqua.network/js/1177.bb9707fddc423e681de3.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:11.064118+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-934-actual.js",
+    "url": "https://aqua.network/js/934.360b4ad7a310d0e48204.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:11.498888+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-1975-actual.js",
+    "url": "https://aqua.network/js/1975.481ba984d152be702b6d.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:11.791353+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-9020-actual.js",
+    "url": "https://aqua.network/js/9020.ff1a06d500ff8ebfcbef.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:12.526487+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3950-actual.js",
+    "url": "https://aqua.network/js/3950.d59e6f9bbe88b9eb891d.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:12.779178+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-8261-actual.js",
+    "url": "https://aqua.network/js/8261.c1c4833e0d1f3d2b3553.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:13.043014+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-8405-actual.js",
+    "url": "https://aqua.network/js/8405.c2e5d912c26deea8d0ce.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:13.485075+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-4156-actual.js",
+    "url": "https://aqua.network/js/4156.da5622dffd9b1f918e92.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:14.092807+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-9504-actual.js",
+    "url": "https://aqua.network/js/9504.05243dab04e5041b2868.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:14.341771+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3887-actual.js",
+    "url": "https://aqua.network/js/3887.eec279588ed0cbf29f9d.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:14.654659+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-2950-actual.js",
+    "url": "https://aqua.network/js/2950.24300196a10891e6081e.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:15.517730+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-5188-actual.js",
+    "url": "https://aqua.network/js/5188.ec39b72ef3ef105cbea4.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:15.926821+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-2610-actual.js",
+    "url": "https://aqua.network/js/2610.336b2d06635cc2d57d8a.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:16.314630+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3035-actual.js",
+    "url": "https://aqua.network/js/3035.ba85f428dffa436962c3.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:16.652922+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-3610-actual.js",
+    "url": "https://aqua.network/js/3610.0b9312f64c720a82d42d.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:16.908492+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-6383-actual.js",
+    "url": "https://aqua.network/js/6383.daa78e93992c74740430.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:17.152012+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "chunk-2105-actual.js",
+    "url": "https://aqua.network/js/2105.c69aea28d4e5934f4459.chunk.js?skew=b4abc6fa08c0b18842d74433e1c264fcde700a71aafdc475573bcfef9a71ca40366166333232343265383631393133653935353264343463",
+    "time": "2026-11-11T10:14:17.510980+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 17,
+    "sha256": "7b9b6987e479a7862077f86d1c81045441f5fe66e6c594d6271c7e2cf1fd5360"
+  },
+  {
+    "file": "home-live.html",
+    "url": "https://aqua.network/pools/",
+    "time": "2026-11-11T10:14:18.695666+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 3688,
+    "sha256": "2ac959a00aeea6263acc1ea8ece18e982d00b2a3021c2bb8e3fcd70bc4f64ebb"
+  },
+  {
+    "file": "main-0.js",
+    "url": "https://aqua.network/js/bundle.22f89c53adb9ecc5871f.min.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:31.126010+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 5711,
+    "sha256": "363407767151654eb0f992a1728eec30fd4e66d7ef74bc3d31c30b4bf16edde9"
+  },
+  {
+    "file": "main-1.js",
+    "url": "https://aqua.network/js/bundle.c93d447b9f594fc1a2dc.min.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:31.463280+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1153986,
+    "sha256": "79f755207b6610476e362fc413eaf299be0a8e5cef8d778347aadad31ca21969"
+  },
+  {
+    "file": "main-2.js",
+    "url": "https://aqua.network/js/bundle.fe4e4d08b706b3fcfe55.min.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:32.001973+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 852545,
+    "sha256": "995d563ad3e4af8a925537ffec90b5d1867fb73053f6d25949e53d786cf7ca9a"
+  },
+  {
+    "file": "live-chunk-1177.js",
+    "url": "https://aqua.network/js/1177.cd7102c5931e6feb5370.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:32.252371+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 114603,
+    "sha256": "e79d062362e6ad7ff3e4566f0d573ea2ce4aa18591453cb9b00c9b4c190a36bb"
+  },
+  {
+    "file": "live-chunk-934.js",
+    "url": "https://aqua.network/js/934.5832367b9b44742dfd66.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:32.510414+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 15076,
+    "sha256": "96ade24c3c947b3c1ded879a625953e914f82575446aec624bdba6ad26334cde"
+  },
+  {
+    "file": "live-chunk-1975.js",
+    "url": "https://aqua.network/js/1975.ceeae0588dca5edc3a96.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:32.777582+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 231235,
+    "sha256": "5720fded36472b1d8aad6d34d0f9c84750a89860f3641b133fe36e59d581d8cb"
+  },
+  {
+    "file": "live-chunk-9020.js",
+    "url": "https://aqua.network/js/9020.0e6aff09c69cc4e6df1c.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:33.131477+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 13344,
+    "sha256": "7c22a46dc395bc15b0fa5df17d04e63b8e8c866e72a444d886f632b31a414191"
+  },
+  {
+    "file": "live-chunk-3950.js",
+    "url": "https://aqua.network/js/3950.fd8532c166a229630e7a.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:33.267494+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 64443,
+    "sha256": "2f4b34bc06131e1d05fb4f52a12813c52e76269257eb75f4f6a2c8543fcb409f"
+  },
+  {
+    "file": "live-chunk-8261.js",
+    "url": "https://aqua.network/js/8261.bf62b57bf6541f24e5f8.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:33.423784+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 20657,
+    "sha256": "e792c6fd7a4f81d493f346ae953fa852c86b4289afe663e293d4c4c0beae385a"
+  },
+  {
+    "file": "live-chunk-8405.js",
+    "url": "https://aqua.network/js/8405.ff5cee6945bb64589906.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:33.634436+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 12082,
+    "sha256": "315f892a51b2e1d596d8bf4031c2112780164a0c7dd480a83ee4404f378b4461"
+  },
+  {
+    "file": "live-chunk-4156.js",
+    "url": "https://aqua.network/js/4156.72afdc374da66b095db0.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:33.907412+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 46932,
+    "sha256": "107d29f1264eb82b1e2e1283aab04f0b3056287d094102ae24376146bb2a856f"
+  },
+  {
+    "file": "live-chunk-9504.js",
+    "url": "https://aqua.network/js/9504.e47e00b4104950702913.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:34.196012+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 221531,
+    "sha256": "fe61eb8330f727dbd6784c405a6ae66ef0c9ecffe8e4a7d4599ff4666eef41c5"
+  },
+  {
+    "file": "live-chunk-3887.js",
+    "url": "https://aqua.network/js/3887.15f7b1b547904c46eff4.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:34.518087+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 35519,
+    "sha256": "d577f79c95f75d34783f67fcb05b92d268d78ba4c0561f8ff96286ca28aabe32"
+  },
+  {
+    "file": "live-chunk-2950.js",
+    "url": "https://aqua.network/js/2950.95eef37391356040c8e7.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:34.897208+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 68663,
+    "sha256": "3780866a46e507bc330f91a538453e42c4868049e23ad6270cac473f7df62f5a"
+  },
+  {
+    "file": "live-chunk-5188.js",
+    "url": "https://aqua.network/js/5188.62800a6a602302660d51.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:35.130467+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 4543,
+    "sha256": "76db8381b0163cec84c7ad893587c9963af3e3c9ff5b4478b7365238dfd637ac"
+  },
+  {
+    "file": "live-chunk-2610.js",
+    "url": "https://aqua.network/js/2610.65a563c78cccb61e9102.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:35.477435+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 156839,
+    "sha256": "326ae75562f4b66eab2da068ef902145c2e2fdab02d81174836ef272cfabaf2f"
+  },
+  {
+    "file": "live-chunk-3035.js",
+    "url": "https://aqua.network/js/3035.6936948fbbc0d6b92064.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:35.714975+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 40861,
+    "sha256": "c6c4a37149ecadccc5bfb24eb830d81e05043b9ac7852ee78b04d4800dd14da2"
+  },
+  {
+    "file": "live-chunk-3610.js",
+    "url": "https://aqua.network/js/3610.0fffe2e53046f604a517.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:36.201138+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 40556,
+    "sha256": "325dcbf7a1382499116e9db08c7188f30033679066bc1731ab1e209a4fc5a6eb"
+  },
+  {
+    "file": "live-chunk-6383.js",
+    "url": "https://aqua.network/js/6383.27cc5e5b26dfcc18cff8.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:36.903910+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 379316,
+    "sha256": "0e80ddd9dce86a798bc471cdb10c22f6a050e92f80a2aaa17adfe0fc113c8b68"
+  },
+  {
+    "file": "live-chunk-2105.js",
+    "url": "https://aqua.network/js/2105.aaded8e09bcabe09f5d8.chunk.js?skew=3fdc29ffb919a6cf2b5727ffb75dea2fa1d2ecefbff28f4b1b48ebca5f52f469366166343336333866363432316434303162646236623632",
+    "time": "2026-11-11T10:14:37.156631+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 26921,
+    "sha256": "5093c3f9dc84236ffd54b3eaa44937131065f5e4297e89d50cee9ecf6706b65b"
+  },
+  {
+    "file": "cl-doc-live.md",
+    "url": "https://docs.aqua.network/developers/concentrated-liquidity.md",
+    "time": "2026-11-11T10:14:38.871157+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 10298,
+    "sha256": "f2c8ccd844a28dc8b43b3c18ae2371055edca2961ed8964a05a1c9461a9fdc81"
+  },
+  {
+    "file": "manager.rs",
+    "url": "https://raw.githubusercontent.com/AquaToken/soroban-amm/main/rewards/src/manager.rs",
+    "time": "2026-11-11T10:15:22.519756+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 14,
+    "sha256": "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed"
+  },
+  {
+    "file": "tree.json",
+    "url": "https://api.github.com/repos/AquaToken/soroban-amm/git/trees/main?recursive=1",
+    "time": "2026-11-11T10:15:22.868140+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 89,
+    "sha256": "3a32eab6ffbfd1cf2684b1a409bf40db46e46c5eaff44de656e499df05d92730"
+  },
+  {
+    "file": "delegation.md",
+    "url": "https://docs.aqua.network/aqua-and-ice/overview/tokens-for-delegated-voting-dice-and-gdice.md",
+    "time": "2026-11-11T10:15:23.229799+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 2443,
+    "sha256": "a8ed57275de41b4bf8fc475cde65e80c01ec7674eaa602e3be1a03fc932711aa"
+  },
+  {
+    "file": "p1-detail-live.json",
+    "url": "https://amm-api.aqua.network/pools/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/",
+    "time": "2026-11-11T10:15:23.410196+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1524,
+    "sha256": "52fff0b80fc4fda641610c91a9c05ba535d6997f7bf6a4a862695f35e2854982"
+  },
+  {
+    "file": "p4-detail-live.json",
+    "url": "https://amm-api.aqua.network/pools/CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA/",
+    "time": "2026-11-11T10:15:23.537954+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1987,
+    "sha256": "2d36befb56b37acc4e7bca69a48cbc962702043a20b6139ca38d74b430388cbb"
+  },
+  {
+    "file": "p5-detail-live.json",
+    "url": "https://amm-api.aqua.network/pools/CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ/",
+    "time": "2026-11-11T10:15:23.650111+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1453,
+    "sha256": "48ad76188076bf359a0e7bd9238563e3df2e86ac7fa68db08593a2f312770799"
+  },
+  {
+    "file": "manager-master.rs",
+    "url": "https://raw.githubusercontent.com/AquaToken/soroban-amm/master/rewards/src/manager.rs",
+    "time": "2026-11-11T10:15:34.267716+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 14,
+    "sha256": "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed"
+  },
+  {
+    "file": "tree-master.json",
+    "url": "https://api.github.com/repos/AquaToken/soroban-amm/git/trees/master?recursive=1",
+    "time": "2026-11-11T10:15:34.587157+00:00",
+    "status": "404",
+    "exit": 0,
+    "error": "",
+    "bytes": 89,
+    "sha256": "3a32eab6ffbfd1cf2684b1a409bf40db46e46c5eaff44de656e499df05d92730"
+  },
+  {
+    "file": "cl-reference.md",
+    "url": "https://docs.aqua.network/developers/concentrated-liquidity/contract-interface-reference.md",
+    "time": "2026-11-11T10:16:56.876904+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 19436,
+    "sha256": "eb0a56c4a5392228b46f30ec1dd600f06de253932e2e8d3f6011ce416090ac2e"
+  },
+  {
+    "file": "amm-rewards.md",
+    "url": "https://docs.aqua.network/voting-and-rewards/aquarius-amm-rewards.md",
+    "time": "2026-11-11T10:16:57.225484+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 2091,
+    "sha256": "b93186fa4eb5ecc3c56a78befbe64d2ffddf3daf836938d0e7b6b9cf06406529"
+  },
+  {
+    "file": "llms.txt",
+    "url": "https://docs.aqua.network/llms.txt",
+    "time": "2026-11-11T10:16:57.594926+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 15502,
+    "sha256": "592d3c49fe17f13529fa723ce1cfb33d16b6eab2f03acf85148c1baa50ea9e3c"
+  },
+  {
+    "file": "p1-holders.json",
+    "url": "https://amm-api.aqua.network/pools/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/balances/?sort=-balance&size=5&page=1",
+    "time": "2026-11-11T10:17:20.242782+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 950,
+    "sha256": "2841e744e7fa8e9dddac36ba19d85416b29f75cc5b0e193fb405c0ae9da847fb"
+  },
+  {
+    "file": "p4-holders.json",
+    "url": "https://amm-api.aqua.network/pools/CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA/balances/?sort=-balance&size=5&page=1",
+    "time": "2026-11-11T10:17:20.401596+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 938,
+    "sha256": "228d74c65202feb37d05eb482356ed3916b675dad12335cd146764aa3b559c86"
+  },
+  {
+    "file": "p5-holders.json",
+    "url": "https://amm-api.aqua.network/pools/CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ/balances/?sort=-balance&size=5&page=1",
+    "time": "2026-11-11T10:17:20.552530+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 806,
+    "sha256": "b77c258753ac0a8bbac972b4211d631348a7bfe791c1ea358c911edb04930741"
+  }
+]

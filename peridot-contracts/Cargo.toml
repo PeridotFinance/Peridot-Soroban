@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "interfaces/cl-stage1-interface",
   "contracts/receipt-vault",
   "contracts/lp-receipt-vault",
   "contracts/lp-lending-vault",
@@ -10,6 +11,9 @@ members = [
   "contracts/peridot-token",
   "contracts/swap-adapter",
   "contracts/aquarius-lp-vault",
+  "contracts/cl-share-vault",
+  "contracts/cl-integration-fixtures",
+  "contracts/cl-share-pool-facade",
   "contracts/price-router",
   "contracts/margin-controller",
   "contracts/smart-account-basic",

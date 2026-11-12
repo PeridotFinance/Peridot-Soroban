@@ -1,0 +1,90 @@
+# Three-pool decomposition and pilot choice — 2026-11-11
+
+Recommendation: **PYUSD/USDC for the capped open-deposit prototype intended for team use; USDC/EURC second, conditional on resolving its primary-valuation basis.** EURC has the stronger conditional wide-range fee income, but presently fails the proposed 50bp new-exposure comparison. PYUSD is not a demonstrated yield improvement over lending. USDT0 remains deferred until trading resumes. sUSD is excluded as instructed. One vault per pair, same frozen ABI; Option1 remains closed.
+
+These are public captures around 10:13–10:19 UTC, not executed vault returns. No Mainnet transaction was signed or submitted. The current reward schedule for **each pool ends November 11, 2026 at 16:15:19 UTC**. All weekly/annual reward continuations below require renewed allocations. [Aquarius reward cycles](https://docs.aqua.network/voting-and-rewards/reward-cycle) confirm daily vote-dependent allocation refreshes; owning ICE does not guarantee a pool's future allocation.
+
+## Reconciliation table
+
+Values called APY by the API are rendered as APR in the detailed UI tooltip. The deployed UI labels `apy` **Swap Fees**, `rewards_apy` **AQUA Rewards (Base)**; its unconnected maximum is fees + 2.5×rewards. It does not boost fees. No extra incentive stream appeared in these captures.
+
+|Pool|UI fees / base AQUA / total|UI max AQUA / max total|Realized completed-week volume → ordinary LP fees → pool-wide annual simple fee rate¹|Window the page annualizes|$10k wide base AQUA/week → sale quote²|3-year lock for a full $10k LP at day-one max³|
+|---|---:|---:|---:|---|---:|---:|
+|PYUSD/USDC CL, CAPIO…DQYX|0.01396% / 7.97230% / 7.98625%|19.93075% / 19.94471%|$1,404.60 → $0.70230 → 0.01474%|Backend fee window **unverified**; UI volume is 24h|314.4875 AQUA → 0.0765732 USDC|1,515,619.89 AQUA → 15,156,198.91 ICE; $370.46 additional lock capital|
+|USDC/EURC CL, CDTSE…N5CA|4.68243% / 4.14357% / 8.82600%|10.358925% / 15.041355%|$66,652.24 → $99.97836 → 5.48633%|Same unresolved backend window|6,770.1435 AQUA → 1.6484204 USDC|176,582,948.63 AQUA → 1,765,829,486.31 ICE; $43,161.86 additional capital|
+|USDT0/USDC CL, CCJHU…6HSQ|0 / 4.92068% / 4.92068%|12.30170% / 12.30170%|$0 → $0 → 0%|Same; no trades in completed week|1,540.9379 AQUA → 0.3751957 USDC|38,567,137.47 AQUA → 385,671,374.74 ICE; $9,426.90 additional capital|
+
+¹ November 4–11 completed week from accepted report29. Realized indexed volume, fee tiers 10/30/10bp, **50% ordinary LP share**. Simple annualization divides by this capture's TVL ($248,515.87 / $95,020.92 / $65,229.00), not historical average liquidity. It is a pool-level normalization, not a finite-position return. Actual per-position realized fees remain dependent on ordered active-liquidity/range history. Using today's API 24h volume instead gives 0.00930569% / 3.68812517% / 0, also not the displayed fee values. The PYUSD display happens to match a 75% share of this 24h volume; EURC does not. **That coincidence is not proof of a backend fee-share bug or its lookback.** Exact backend window/mark methodology remains missing. This table reconciles the visible components and states the numerical residual; it does not invent an exact historical UI reproduction.
+
+² Current unsigned `estimate_swap` quotes on actual Aquarius AQUA/USDC constant-product pool `CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O`, including its 30bp fee and size-dependent impact. Not our realized sale. Net price is about 0.00024348 USDC/AQUA. Independent successful historical third-party sale legs provide **realized price benchmarks**: 0.0002426827 (534.43 AQUA), 0.0002429282 (26,808.16 AQUA), 0.0002414734 (2,764.68 AQUA). We use those three respective observed prices in the annual table below, not an optimistic spot mark. A weekly sale of our exact amount has not occurred. Weekly collection/sale transaction fees remain unmeasured and must be subtracted; the routed historical transaction fee cannot be assigned entirely to its AQUA leg.
+
+³ This column answers the cost of boosting a full $10k LP; its lock is **extra** and is not the capital basis of the annual table. ICE is nontransferable boost weight produced by locking AQUA, not an independently purchasable asset. Current total ICE is 61,627,749,070.9458557. For new liquidity L, existing raw total T, existing ICE I, full boost needs new ICE x=I×L/T, accounting for x entering total supply. Emissions use `2.5L/(W+2.5L)`, not 2.5×the finite entrant's unboosted income. Live getter comparisons reproduce the published working-weight formula for eight in-range holders within two raw rounding units; an out-of-range case is explicitly excluded from that simplified formula. See [boost evidence](../../peridot-contracts/research/cl-apy-decomposition-20261111/apy-boost/report.md).
+
+The enormous difference between pool UI APR and this simple wide position is concentration and reward competition, not confusion with the stable-swap pool. All three identifiers above are confirmed **concentrated** pools. We do not use the UI field as measured position revenue.
+
+## $10,000 total-capital conditional annual result
+
+Same report29 method: constant current marks, accepted wide ranges PYUSD/USDT0 [-2020,2000], EURC [-3060,1020], prior independent entry quotes from each leg, residual cash retained, completed-week fee flow repeated, current reward weights held constant, and one warm in-kind lifecycle anchor deducted: **0.5642323 XLM PYUSD /0.5642217 XLM EURC** from the newly signed current-code roots; USDT0 retains the accepted **0.5744714 XLM** old-code anchor. These sum independently applied private roots, not a continuous live journey or final oracle/guard artifact fee. Entry quantities limit liquidity using both token amounts. Current-weight fee allocation is a **conditional sensitivity, not realized fee history**; realized arbitrage/FX path loss remains unmeasured.
+
+Boost rows keep the lock **inside $10,000**, not outside the denominator. A 3-year lock starts at 10 ICE/AQUA and melts to 7 after one year. Annual rows prefund that end-of-year requirement, holding other ICE/weights unchanged. Smaller LP entry costs are prorated from report29's quote and clearly remain sensitivities; no new exact smaller-size entry/large ICE-purchase execution is claimed.
+
+|Pool|Income case|LP / locked AQUA capital|Annual net vs holding/depositing first leg|Annual net vs second leg|First-leg rate on total $10k|
+|---|---|---:|---:|---:|---:|
+|PYUSD/USDC|Fees only|$10,000 / $0|−$19.50|+$9.08|−0.1950%|
+|PYUSD/USDC|Fees + base AQUA|$10,000 / $0|−$15.54|+$13.06|−0.1554%|
+|PYUSD/USDC|Fees + hypothetical boosted AQUA|$9,497.37 / $502.63|−$9.12|+$18.07|−0.0912%|
+|USDC/EURC|Fees only|$10,000 / $0|+$122.24|+$123.72|1.2224%|
+|USDC/EURC|Fees + base AQUA|$10,000 / $0|+$207.50|+$209.00|2.0750%|
+|USDC/EURC|Fees + hypothetical boosted AQUA|$1,395.48 / $8,604.52|+$47.71|+$47.92|0.4771%|
+|USDT0/USDC|Fees only|$10,000 / $0|−$7.27|−$8.86|−0.0727%|
+|USDT0/USDC|Fees + base AQUA|$10,000 / $0|+$12.10|+$10.51|0.1210%|
+|USDT0/USDC|Fees + hypothetical boosted AQUA|$4,261.30 / $5,738.70|+$17.48|+$16.80|0.1748%|
+
+**Every row is before the explicitly unmeasured recurring costs and price-path losses.** Subtract `(365/7) × weekly claim/sale transaction cost`, keeper/restoration/hosting, new-WASM fee difference, and lock acquisition/transaction costs where relevant. Locked AQUA remains an asset, not an expense; its terminal price change and opportunity cost are separate. AQUA lock purchases may have material slippage at these sizes. No future rewards fund day-one reserves. Negative entry “cost” reflects pool/index basis, not realized arbitrage profit. All cases remain below the requested **$307/year Blend 3.07% comparison**, before its own costs/rate changes.
+
+Annual-prefunded lock quantities: PYUSD 2,056,343.60 AQUA (20,563,436.05 ICE initially →14,394,405.23 after a year); EURC 35,202,632.22 AQUA (352,026,322.24→246,418,425.57 ICE); USDT0 23,478,041.06 AQUA (234,780,410.56→164,346,287.39 ICE). These assume $0.00024442824/AQUA acquisition mark, **not an executable purchase price**. The corresponding fullboost weekly sale estimates after capital allocation are 0.1817603 / 0.5834303 / 0.3995457 USDC.
+
+**Vault boost support is unproven.** The LP owner is the vault contract. Personal team ICE and voting delegation do not establish ICE ownership or boost for that contract. Captured feed ABI exposes no beneficiary-delegation path. Boosted rows are eligible-account hypotheticals, not launch returns. Base AQUA requires no ICE. Buying/locking AQUA is neither recommended nor authorized by this report.
+
+## EURC oracle and the remaining basis
+
+Primary external/USD contract: `CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN`, `lastprice(Other(EURC))`, divided by `lastprice(Other(USDC))`; both 14 decimals. Snapshot EURC/USD 1.11482658760255 and USDC/USD 1.00083307783972 produce **1.11389862334 USDC/EURC**. Aquarius marginal price is **1.10597497444**. That is −71.13438bp in this orientation, or **+71.64402bp in the previous EURC-per-USDC orientation** (~74bp earlier). It remains unresolved.
+
+The same provider's issuer-specific Stellar DEX feed `CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M`, `Stellar(CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV)`, gives 1.10599720911 USDC/EURC, within 0.201bp of the pool but about 70.935bp below external. Fiat EUR/USD feed `CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC`, `Other(EUR)`, gives 1.11864410559. External EURC is itself 34.126bp below EUR. This points to a local Stellar EURC basis; merely correcting decimals or substituting FX does not remove it. Exact active upstream source weights were not disclosed in the captured provider configuration.
+
+Resolution means either genuine convergence inside the fresh independent bound, or an explicitly qualified issuer-specific primary valuation policy supported by redemption/execution capacity, local-basis and feed manipulation evidence. Switching to a nearly matching DEX feed solely to pass, or widening the proposed guard, is not a demonstrated resolution. No such change was made. EURC exposes depositors to EUR/USD as well as issuer/local-market risk. The guard limits new exposure; **it cannot recover losses already incurred**. PYUSD requires its explicit exact-asset primary mapping too; the old external feed's missing PYUSD quote is not silently treated as $1.
+
+## Parallel remeasurement and rollout
+
+Both current candidate pools use WASM `155a17b9929ffb1f9e84bd6ef5c00a4d613c1ab5f4ad4c502d84515250cc2907` (110,247 bytes), not the accepted `12fca5…` fixture. The live initializer adds `config_storage_addr`; real configuration/gauge/reward-vault dependencies are captured and loaded in the isolated reused harness. Both pair/range vault builds pass `stellar contract build`. After explicit fixture fixes, both compiled open/converted-close and open/in-kind-close journeys pass under the unchanged invocation profile. Unsigned SDK investment is 96,994,386 CPU (PYUSD) /98,387,241 (EURC), 61 SDK entries and18 writes. These are small controlled workloads, not $1,000 capacity qualification. Actual private signed application is proceeding, with all failed runs retained. **[All18 current-code private source-signature applications pass](../../peridot-contracts/research/cl-apy-decomposition-20261111/lead/signed-table.md), with fee/debit/sequence/replay checks and invocation gates. Conservative signed investment maxima are97,823,368CPU(PYUSD) and99,068,647CPU(EURC); remaining CPU2,176,632/931,353. SDK61,unique43,writes18. This does not qualify real-primary reads, detached-account variants, new-code cold restoration or the final pilot-cap workload.** The current fixture uses real code with controlled state and captured numeric prices served by the existing test oracle; it does not qualify the final primary guard, access-policy/cap artifact or a live-state close fork.
+
+The [ceremony plan](../../peridot-contracts/research/cl-apy-decomposition-20261111/lead/pilot-runbook.md) preserves receipt + vault only, no facade, borrowing disabled, keeper investment/finalization, private signed rows and cold journeys, close rehearsal before the operator's first Mainnet signature, and exact post-transaction reconciliation. During this checkpoint the operator selected a **1,000 USDC-equivalent aggregate cap**, targeting 500 per leg, and expressly chose **unrestricted on-chain deposits with a frontend password** after the limitation was explained. This supersedes the on-chain team allowlist. It is an open-deposit prototype intended for team use; the frontend password cannot restrict direct calls. G1–G4 remain unresolved proofs but cannot gate public access without an on-chain restriction. No configuration has been changed. Mainnet signatures/submissions are not performed here. Prototype API and missing release methods are identified rather than invented.
+
+After the pilot is live: the next milestone is **2× margin on vault shares plus conventional take-profit**. A keeper observes the oracle trigger and closes through the V3 close path, using the same registry interface as the EVM chains. Begin with the build plan's narrow fresh-risk/recovery ABI and key inventory; activation and recovery still exceed entry/write limits. This milestone is recorded only, not built before the pilot.
+
+Reproduce offline: `python3 research/cl-apy-decomposition-20261111/apy-boost/boost-math.py`; `python3 research/cl-apy-decomposition-20261111/sale-fx/verify.py`; `python3 research/cl-apy-decomposition-20261111/lead/calculations.py`. Raw public sources, failures, hashes, quote amounts and arithmetic remain beside the report. No handoff00, production limits, borrowing, cap or maintenance-margin setting changed.
+
+## Current-code private signed table
+
+Every row below passes its measured invocation limits; see [execution scope, failures and remaining proofs](../../peridot-contracts/research/cl-apy-decomposition-20261111/lead/execution.md). Core29.0.0 application, SDK/preflight29.0.1, controlled state, source-account signatures. No live/cold/final-guard qualification.
+
+|Pair / root|CPU max|Memory max|SDK total|Unique keys|Writes|Signed bytes|Fee XLM|
+|---|---:|---:|---:|---:|---:|---:|---:|
+|pyusd-usdc / stage_prepare|7471763|4827509|16|13|3|1460|0.0960448|
+|pyusd-usdc / stage_fund|3759889|3008081|17|12|5|1856|0.0190776|
+|pyusd-usdc / stage_convert|33353687|6821875|32|23|9|1972|0.0198507|
+|pyusd-usdc / stage_mint|75343809|9137028|70|54|16|4840|0.2029447|
+|pyusd-usdc / stage_invest|97823368|10704826|61|43|18|3804|0.00717|
+|pyusd-usdc / stage_prepare_close|2724860|2898212|13|10|3|1300|0.0845736|
+|pyusd-usdc / stage_withdraw_in_kind|82614821|9538244|81|55|26|5032|0.1345709|
+|pyusd-usdc / stage_withdraw|81947610|9520355|77|53|24|4856|0.1339916|
+|pyusd-usdc / stage_close_convert|25705897|6617490|34|24|10|2068|0.0054816|
+|usdc-eurc / stage_prepare|7470559|4827509|16|13|3|1460|0.0960448|
+|usdc-eurc / stage_fund|3756975|3007751|17|12|5|1848|0.0190755|
+|usdc-eurc / stage_convert|33664783|6837467|32|23|9|1972|0.0198507|
+|usdc-eurc / stage_mint|76154134|9184093|70|54|16|4840|0.2029447|
+|usdc-eurc / stage_invest|99068647|10770453|61|43|18|3796|0.0071658|
+|usdc-eurc / stage_prepare_close|2724860|2898212|13|10|3|1300|0.0845736|
+|usdc-eurc / stage_withdraw_in_kind|83427398|9586828|81|55|26|5024|0.1345666|
+|usdc-eurc / stage_withdraw|82747353|9568971|77|53|24|4856|0.1339897|
+|usdc-eurc / stage_close_convert|26653097|6659100|36|26|10|2228|0.005516|

@@ -1,0 +1,342 @@
+[
+  {
+    "file": "supplied-pools.json",
+    "url": "https://amm-api.aqua.network/api/external/v1/pools/?address__in=CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX,CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ,CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA",
+    "time": "2026-11-11T09:26:18.437037+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1626,
+    "sha256": "27fdddc7f868fbce9546560dbb88643b681bcf0d1cd17fc18db1eee8e74c3745"
+  },
+  {
+    "file": "all-pools.json",
+    "url": "https://amm-api.aqua.network/api/external/v1/pools/?limit=1000",
+    "time": "2026-11-11T09:26:18.638069+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 5170,
+    "sha256": "5ab2257e05b7b4b21dc7507335d94a50a6a107b3908095cc8decf51969d1c175"
+  },
+  {
+    "file": "all-tokens.json",
+    "url": "https://amm-api.aqua.network/tokens/?pooled=true&size=500",
+    "time": "2026-11-11T09:26:18.986720+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 128314,
+    "sha256": "54d086d954fce5fe281b9811fc07c572d4baad6797cc8b9ad550e71cc5fbee10"
+  },
+  {
+    "file": "ui-pools.json",
+    "url": "https://amm-api.aqua.network/pools/?size=1000",
+    "time": "2026-11-11T09:26:52.825054+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 408086,
+    "sha256": "876e6c6e46b096017846b4aec446607944ac3b37e5f25728e87aff4e283daaf6"
+  },
+  {
+    "file": "capio-detail.json",
+    "url": "https://amm-api.aqua.network/pools/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/",
+    "time": "2026-11-11T09:26:52.969518+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1524,
+    "sha256": "c9de294286d37616fea7c378a077d39b00d1808a474e76121c7425216c71a678"
+  },
+  {
+    "file": "cbv6-detail.json",
+    "url": "https://amm-api.aqua.network/pools/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/",
+    "time": "2026-11-11T09:26:53.103143+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1918,
+    "sha256": "2630a6efaf2e055a25db6765d121a48ab221cbc403221c2a49f9b606577491db"
+  },
+  {
+    "file": "cdt-detail.json",
+    "url": "https://amm-api.aqua.network/pools/CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA/",
+    "time": "2026-11-11T09:26:53.244685+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1987,
+    "sha256": "548cb4a51ca566019dfaad4e6f2aeef0d914518430d5d8031ff1863f81bc4048"
+  },
+  {
+    "file": "p1-detail.json",
+    "url": "https://amm-api.aqua.network/pools/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/",
+    "time": "2026-11-11T09:28:29.486417+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1524,
+    "sha256": "c9de294286d37616fea7c378a077d39b00d1808a474e76121c7425216c71a678"
+  },
+  {
+    "file": "p1-stats.json",
+    "url": "https://amm-api.aqua.network/statistics/pool/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/?size=1000",
+    "time": "2026-11-11T09:28:29.644234+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 48145,
+    "sha256": "18b1c1dda9086d93fafc1b4d41ff737d706d6fb707fa1714dfb90bd8d4457883"
+  },
+  {
+    "file": "p2-detail.json",
+    "url": "https://amm-api.aqua.network/pools/CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5/",
+    "time": "2026-11-11T09:28:29.771280+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1568,
+    "sha256": "adb5d4cf00256da937f193a0c01f75b6ade8541d0461bc42ea9a1db63e01581e"
+  },
+  {
+    "file": "p2-stats.json",
+    "url": "https://amm-api.aqua.network/statistics/pool/CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5/?size=1000",
+    "time": "2026-11-11T09:28:29.932568+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 110643,
+    "sha256": "172f26ded27685a94a4b1f1eaf26161b7af5d599e237351e9845ef6aa6d54e1d"
+  },
+  {
+    "file": "p3-detail.json",
+    "url": "https://amm-api.aqua.network/pools/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/",
+    "time": "2026-11-11T09:28:30.074692+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1918,
+    "sha256": "2630a6efaf2e055a25db6765d121a48ab221cbc403221c2a49f9b606577491db"
+  },
+  {
+    "file": "p3-stats.json",
+    "url": "https://amm-api.aqua.network/statistics/pool/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/?size=1000",
+    "time": "2026-11-11T09:28:30.358089+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 178968,
+    "sha256": "a0136d4f3a557addf133340a93c03faa066f26c6933e6934f25ac3a32fcb5f61"
+  },
+  {
+    "file": "p4-detail.json",
+    "url": "https://amm-api.aqua.network/pools/CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA/",
+    "time": "2026-11-11T09:28:30.493143+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1987,
+    "sha256": "548cb4a51ca566019dfaad4e6f2aeef0d914518430d5d8031ff1863f81bc4048"
+  },
+  {
+    "file": "p4-stats.json",
+    "url": "https://amm-api.aqua.network/statistics/pool/CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA/?size=1000",
+    "time": "2026-11-11T09:28:30.620822+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 63773,
+    "sha256": "78fd3440c8c8925de70ce178e1a591392042cce164d461c59077e751391321c2"
+  },
+  {
+    "file": "p5-detail.json",
+    "url": "https://amm-api.aqua.network/pools/CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ/",
+    "time": "2026-11-11T09:28:30.734167+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1453,
+    "sha256": "267012a10c3e1f5c49937a881ae1a4bde68d16d04ba5a1f7e4e6c0ffa7f2dbdb"
+  },
+  {
+    "file": "p5-stats.json",
+    "url": "https://amm-api.aqua.network/statistics/pool/CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ/?size=1000",
+    "time": "2026-11-11T09:28:30.857043+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 14531,
+    "sha256": "29c3571f63f7d7ff293c22c45dd74e358cec5b249c8e786b97fe71408106e04e"
+  },
+  {
+    "file": "p3-events-first.json",
+    "url": "https://amm-api.aqua.network/events/pool/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/?size=1000&page=1",
+    "time": "2026-11-11T09:29:05.827873+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 458097,
+    "sha256": "b543dbc2e876016363398e723588af82abf784ed7456237f5e70b82aa6c44024"
+  },
+  {
+    "file": "p1-events-first.json",
+    "url": "https://amm-api.aqua.network/events/pool/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/?size=1000&page=1",
+    "time": "2026-11-11T09:29:06.148551+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 436638,
+    "sha256": "e2491ee5cfca10b32dfed230f5bcbb4ecce0e2de1a26c3d5b6bdda8a865fb2ce"
+  },
+  {
+    "file": "p3-week-events-test.json",
+    "url": "https://amm-api.aqua.network/events/pool/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/?size=1000&page=1&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:09.551560+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 458201,
+    "sha256": "d747521f2edda3d50d427568b3165c0eee8994ef22781208c72a43d9ed9c2ed0"
+  },
+  {
+    "file": "p1-week-events-1.json",
+    "url": "https://amm-api.aqua.network/events/pool/CAPIOQNULTKVYOJT6X2W2XKGNIVUWZDY72Y42YG6HQKJ7DU7YTHIDQYX/?size=1000&page=1&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:45.678811+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 44021,
+    "sha256": "ac85fa1114037714c4ba74f3ab662f8d4d4e9acdc517dc71ed2b2ac2a3888f04"
+  },
+  {
+    "file": "p2-week-events-1.json",
+    "url": "https://amm-api.aqua.network/events/pool/CC7IGNJ4CDAKZPOZJCTTWGAVKTQXKYQGUSVJ5CDUPES3QULCQW6UNAH5/?size=1000&page=1&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:45.906820+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 277566,
+    "sha256": "9251c18070a6c255dab5b0acb3b4b21622c3e23881d1cb413b388591a7f6370d"
+  },
+  {
+    "file": "p3-week-events-1.json",
+    "url": "https://amm-api.aqua.network/events/pool/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/?size=1000&page=1&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:46.309856+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 458201,
+    "sha256": "d747521f2edda3d50d427568b3165c0eee8994ef22781208c72a43d9ed9c2ed0"
+  },
+  {
+    "file": "p3-week-events-2.json",
+    "url": "https://amm-api.aqua.network/events/pool/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/?size=1000&page=2&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:46.717344+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 458137,
+    "sha256": "46fda81b3e5164f6f2cf650bbd4e0ff0ed2201f0d0c8a039339dad5a3ffb37f5"
+  },
+  {
+    "file": "p3-week-events-3.json",
+    "url": "https://amm-api.aqua.network/events/pool/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/?size=1000&page=3&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:47.213258+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 459428,
+    "sha256": "9ec2a54432fb59e1b4317cadff3d341320ffb2505e334df795b790c26060c9ac"
+  },
+  {
+    "file": "p3-week-events-4.json",
+    "url": "https://amm-api.aqua.network/events/pool/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/?size=1000&page=4&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:47.718579+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 459738,
+    "sha256": "25190891b89e589eccaeb4d47d644930ae6f6984167640a8325a7d06a5e8b5c4"
+  },
+  {
+    "file": "p3-week-events-5.json",
+    "url": "https://amm-api.aqua.network/events/pool/CBV6LZABOAJRXHLIEKILTWBPC2AXLYVR4CGGPKZQ3PWJ5QFTPIWSWGWQ/?size=1000&page=5&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:48.078326+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 227727,
+    "sha256": "c8cdc633c3741cb339b33dd881804a22a6ebe27001278de3af62076cf8209374"
+  },
+  {
+    "file": "p4-week-events-1.json",
+    "url": "https://amm-api.aqua.network/events/pool/CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA/?size=1000&page=1&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:48.298520+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 456441,
+    "sha256": "2dc2637609416d83233bfc74a24134399724a0d68d457c8f78dd6903d6eeabe8"
+  },
+  {
+    "file": "p4-week-events-2.json",
+    "url": "https://amm-api.aqua.network/events/pool/CDTSE6RLRI7ZO25JSER6E4SQR4PHJJNONEGS5HDJ3Y6LAKECRZKYN5CA/?size=1000&page=2&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:48.623530+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 264392,
+    "sha256": "0f98e577bcaa6b020066b9c6043c25fd0498a8979635524b817622dace0c3631"
+  },
+  {
+    "file": "p5-week-events-1.json",
+    "url": "https://amm-api.aqua.network/events/pool/CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ/?size=1000&page=1&ledger_close_at__gte=2026-11-04T00%3A00%3A00Z&ledger_close_at__lte=2026-11-11T00%3A00%3A00Z",
+    "time": "2026-11-11T09:30:48.899404+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 1202,
+    "sha256": "3ab7065fc897dca25bc4cf5eb9362232dc5e96f1b237d3553e13b9d8712bd7ff"
+  },
+  {
+    "file": "voting.md",
+    "url": "https://docs.aqua.network/voting-and-rewards/aquarius-voting.md",
+    "time": "2026-11-11T09:32:54.370719+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 3783,
+    "sha256": "7c54a89bdbd1915cd85b726fa4013760e181b3e54c3c5ddce398fde5aa784cd2"
+  },
+  {
+    "file": "reward-cycle.md",
+    "url": "https://docs.aqua.network/voting-and-rewards/reward-cycle.md",
+    "time": "2026-11-11T09:32:54.777411+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 4177,
+    "sha256": "4eed5d77fed76b74f0468721526f9722f7ca966648a25e3bf890b7f9e0212d2a"
+  },
+  {
+    "file": "cl-guide.md",
+    "url": "https://docs.aqua.network/user-guides/pools/manage-concentrated-liquidity-pool-positions.md",
+    "time": "2026-11-11T09:32:55.198189+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 6461,
+    "sha256": "bdc6753babdd1e3b9cdf20458cea554fcaae126d1df7d18a59edbab3afb883ad"
+  },
+  {
+    "file": "p5-last-swap.json",
+    "url": "https://amm-api.aqua.network/events/pool/CCJHUCHZ2DC6MP7LMGQJYSENNTGIFWU4J4TCGFYYDLAC5LTD4YMF6HSQ/?size=1&event_type__in=swap",
+    "time": "2026-11-11T09:36:19.493058+00:00",
+    "status": "200",
+    "exit": 0,
+    "error": "",
+    "bytes": 664,
+    "sha256": "d1a6d002ed0f74148dd54a196b4d2900d1f7c94aa067ead442b52951dba3678b"
+  }
+]

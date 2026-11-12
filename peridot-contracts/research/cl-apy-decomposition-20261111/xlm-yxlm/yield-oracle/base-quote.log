@@ -1,0 +1,20 @@
+[
+  {
+    "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+    "method": "estimate_swap",
+    "label": "xy_base",
+    "time": "2026-11-11T10:53:21.479Z",
+    "ledger": 65421671,
+    "cost": null,
+    "value": "795011",
+    "minResourceFee": "9751",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 2517629,
+      "diskReadBytes": 0,
+      "writeBytes": 2564,
+      "uniqueKeys": 4,
+      "writes": 1
+    }
+  }
+]

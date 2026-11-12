@@ -1,0 +1,1 @@
+These exact read-only source snapshots make the scoping evidence replayable because the local handoff files are Git-ignored. They are evidence copies, not replacement policy. Original handoff00 and02 are unchanged; the active shared00 remains authoritative. inventory.json retains each original source path and exact hash.

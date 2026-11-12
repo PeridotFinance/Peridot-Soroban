@@ -1,0 +1,240 @@
+{
+  "schema": "private-signed-cold-v1",
+  "rows": [
+    {
+      "journey": "cold-invest-v2",
+      "archive_scope": "touched existing persistent code/instance/data; controlled hot archive genesis",
+      "restoration": [
+        {
+          "batch": 0,
+          "ledger": 105,
+          "fee_charged": 1279250781,
+          "keys": 30,
+          "bytes": 110760,
+          "live_until": 2073704,
+          "sequence": 1,
+          "application_ns": 114562750,
+          "fees": {
+            "non_refundable": 138669,
+            "refundable": 0,
+            "rent": 1279112012,
+            "inclusion": 100,
+            "total": 1279250781
+          },
+          "signed_envelope_bytes": 2640,
+          "fee_ceiling": 4000000000,
+          "refund": 2720749219,
+          "resource_limits_pass": true,
+          "native_cpu": null,
+          "native_memory": null
+        },
+        {
+          "batch": 1,
+          "ledger": 106,
+          "fee_charged": 1182822484,
+          "keys": 1,
+          "bytes": 101136,
+          "live_until": 2073705,
+          "sequence": 2,
+          "application_ns": 55123666,
+          "fees": {
+            "non_refundable": 68335,
+            "refundable": 0,
+            "rent": 1182754049,
+            "inclusion": 100,
+            "total": 1182822484
+          },
+          "signed_envelope_bytes": 240,
+          "fee_ceiling": 4000000000,
+          "refund": 2817177516,
+          "resource_limits_pass": true,
+          "native_cpu": null,
+          "native_memory": null
+        },
+        {
+          "batch": 2,
+          "ledger": 107,
+          "fee_charged": 1097530155,
+          "keys": 1,
+          "bytes": 94936,
+          "live_until": 2073706,
+          "sequence": 3,
+          "application_ns": 57668334,
+          "fees": {
+            "non_refundable": 64339,
+            "refundable": 0,
+            "rent": 1097465716,
+            "inclusion": 100,
+            "total": 1097530155
+          },
+          "signed_envelope_bytes": 240,
+          "fee_ceiling": 4000000000,
+          "refund": 2902469845,
+          "resource_limits_pass": true,
+          "native_cpu": null,
+          "native_memory": null
+        }
+      ],
+      "financial": {
+        "core_cpu": 93648704,
+        "cpu_max": 95205766,
+        "memory_max": 10935171,
+        "sdk_total": 61,
+        "unique_keys": 43,
+        "writes": 18,
+        "core_actual_writes": 18,
+        "core_application": {
+          "ledger": 108,
+          "fee_charged": 607279567,
+          "source_debit": 607279567,
+          "sequence": 4,
+          "envelope_signatures": 1,
+          "validation_ns": 4278500,
+          "application_ns": 90971166,
+          "replay_rejected": true
+        },
+        "preflight_fees": {
+          "inclusion": 100,
+          "non_refundable": 67113,
+          "refundable": 3428,
+          "rent": 607207330,
+          "total": 607277971
+        },
+        "signed_envelope_bytes": 3840,
+        "charged_fee_components": {
+          "non_refundable": 68709,
+          "refundable": 3428,
+          "rent": 607207330,
+          "inclusion": 100,
+          "total": 607279567
+        }
+      },
+      "total_charged_stroops": 4166882987,
+      "preparation_count": 3,
+      "signature_count": 4,
+      "passed": true
+    },
+    {
+      "journey": "cold-withdraw-v1",
+      "archive_scope": "touched existing persistent code/instance/data; controlled hot archive genesis",
+      "restoration": [
+        {
+          "batch": 0,
+          "ledger": 107,
+          "fee_charged": 1281879811,
+          "keys": 36,
+          "bytes": 112324,
+          "live_until": 2073706,
+          "sequence": 1,
+          "application_ns": 118042667,
+          "fees": {
+            "non_refundable": 153407,
+            "refundable": 0,
+            "rent": 1281726304,
+            "inclusion": 100,
+            "total": 1281879811
+          },
+          "signed_envelope_bytes": 3348,
+          "fee_ceiling": 4000000000,
+          "refund": 2718120189,
+          "resource_limits_pass": true,
+          "native_cpu": null,
+          "native_memory": null
+        },
+        {
+          "batch": 1,
+          "ledger": 108,
+          "fee_charged": 1182822484,
+          "keys": 1,
+          "bytes": 101136,
+          "live_until": 2073707,
+          "sequence": 2,
+          "application_ns": 50951000,
+          "fees": {
+            "non_refundable": 68335,
+            "refundable": 0,
+            "rent": 1182754049,
+            "inclusion": 100,
+            "total": 1182822484
+          },
+          "signed_envelope_bytes": 240,
+          "fee_ceiling": 4000000000,
+          "refund": 2817177516,
+          "resource_limits_pass": true,
+          "native_cpu": null,
+          "native_memory": null
+        },
+        {
+          "batch": 2,
+          "ledger": 109,
+          "fee_charged": 1097530155,
+          "keys": 1,
+          "bytes": 94936,
+          "live_until": 2073708,
+          "sequence": 3,
+          "application_ns": 50897042,
+          "fees": {
+            "non_refundable": 64339,
+            "refundable": 0,
+            "rent": 1097465716,
+            "inclusion": 100,
+            "total": 1097530155
+          },
+          "signed_envelope_bytes": 240,
+          "fee_ceiling": 4000000000,
+          "refund": 2902469845,
+          "resource_limits_pass": true,
+          "native_cpu": null,
+          "native_memory": null
+        }
+      ],
+      "financial": {
+        "core_cpu": 76920464,
+        "cpu_max": 78791924,
+        "memory_max": 9907085,
+        "sdk_total": 78,
+        "unique_keys": 52,
+        "writes": 26,
+        "core_actual_writes": 25,
+        "core_application": {
+          "ledger": 110,
+          "fee_charged": 608553121,
+          "source_debit": 608553121,
+          "sequence": 4,
+          "envelope_signatures": 1,
+          "validation_ns": 20015500,
+          "application_ns": 89607625,
+          "replay_rejected": true
+        },
+        "preflight_fees": {
+          "inclusion": 100,
+          "non_refundable": 75952,
+          "refundable": 7344,
+          "rent": 608463205,
+          "total": 608546601
+        },
+        "signed_envelope_bytes": 4864,
+        "charged_fee_components": {
+          "non_refundable": 82472,
+          "refundable": 7344,
+          "rent": 608463205,
+          "inclusion": 100,
+          "total": 608553121
+        }
+      },
+      "total_charged_stroops": 4170785571,
+      "preparation_count": 3,
+      "signature_count": 4,
+      "passed": true
+    }
+  ],
+  "release_approval": false,
+  "core_binary_sha256": "b24ef8aa54a6460198eda799654d7fc5995eb6e88a61fa20cc0007a8b0b83ff7",
+  "limitations": [
+    "independent cold probes, not additive normal lifecycle",
+    "no live archive discovery",
+    "no interruption/reexpiry/trade scenario",
+    "no complete financial poststate differential",
+    "native CPU/memory are not Soroban metered"
+  ]
+}

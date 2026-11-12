@@ -54,6 +54,11 @@ pub enum DataKey {
     TotalBadDebt,       // u128 cumulative unreserved debt absorbed by margin controller
     BoostedAssetCount,  // u32 expected min_amounts_out length for boosted redemptions
     BoostedHealthCache, // BoostedHealthCache live quote used by account health
+    MinCashReserveBps, // optional INSTANCE u32; presence opts into cash-only borrowing
+    ClCustody, // INSTANCE bool; opt-in dedicated nonborrowing CL share custody market
+    ClCustodyContext, // INSTANCE exact controller-owned withdrawal/transfer context
+    CashBorrowingEnabled, // INSTANCE bool; opt-in markets default disabled until explicit approval
+    PermanentMinimumSupply, // INSTANCE u128; explicit admin-funded, immutable own-address share floor
 }
 
 const TTL_THRESHOLD: u32 = 500_000;
@@ -481,4 +486,22 @@ pub fn to_i128(amount: u128) -> i128 {
         panic!("amount exceeds i128");
     }
     amount as i128
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub(crate) struct ClCustodyContext {
+    pub owner: Address,
+    pub recipient: Address,
+    pub ptokens: u128,
+    pub recovery: bool,
+    pub withdrawal: bool,
+    pub ledger: u32,
+}
+
+/// The authorization-binding getter should not load unrelated lending state.
+pub fn bump_margin_controller_ttl(env: &Env) {
+    if env.storage().persistent().has(&DataKey::MarginController) {
+        env.storage().persistent().extend_ttl(&DataKey::MarginController, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
 }

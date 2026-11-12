@@ -1,0 +1,69 @@
+flow,ok,instructions,memory_bytes,sdk_entry_total,write_entries,read_bytes,write_bytes,contract_events_size_bytes,validation_errors
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+wrong_caller,True,463456,1243226,2,0,0,0,0,
+controller_impersonation,True,467989,1243282,2,0,0,0,0,
+unauthorized_vault_recovery,True,874540,1343592,3,0,0,0,0,
+unauthorized_receipt_recovery,True,3265720,1354279,32,0,0,0,0,
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+unauthorized_pending_recovery,True,752432,1331571,2,0,0,0,0,
+cancel_pending_open_v3,True,10941749,2838638,87,17,0,764,172,
+cancel_before_execute,True,10941749,2838638,87,17,0,764,172,
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+transfer,True,410337,149725,9,3,92,520,236,
+transfer_spot_to_margin,True,27154131,5579381,78,9,0,1148,388,
+begin_open_position_v3,True,28801958,8414020,100,15,0,3656,228,
+begin_open,True,28801958,8414020,100,15,0,3656,228,
+swap_open_position_v3,False,100001509,16779406,136,30,276,4460,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+execute_before_swap_rejected,True,946964,1404679,6,1,0,0,0,
+swap_open_position_v3,False,100000040,16797614,136,30,276,4476,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+premature_pending_expiry_rejected,True,3780671,1383408,27,0,0,0,0,
+expired_unswapped_open_rejected,True,1972783,1422370,10,1,0,0,0,
+expired_pending_before_swap,True,10860129,2770444,84,16,0,692,172,
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed
+deposit_underlying,False,100001295,9991903,63,18,276,3164,0,invocation/proof failed
+transfer_spot_to_margin,True,27124326,5576117,78,9,0,1148,388,
+begin_open_position_v3,True,28793890,8410076,100,15,0,3656,228,
+swap_open_position_v3,False,100004098,16784045,136,30,276,4236,0,invocation/proof failed

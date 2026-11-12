@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="susd-yield" content="7.35">
+    <title>synt.tech</title>
+    <style>
+        @font-face {
+            font-family: '8-bit Operator';
+            src: url('8bitOperatorPlus8-Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        body {
+            min-height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #121212;
+            font-family: '8-bit Operator', monospace;
+            text-align: left;
+            line-height: 1.6;
+            font-size: 23px;
+            display: flex;
+            flex-direction: column;
+            position: relative;  /* Added for absolute positioning context */
+            overflow-x: hidden;  /* Prevent horizontal scroll */
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 80px 50px 20px 50px;
+            flex-grow: 1;
+            position: relative;  /* For z-index stacking */
+            z-index: 2;         /* Place above background text */
+            animation: slow-rotate 21600s linear infinite;
+        }
+
+        @keyframes slow-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+
+        .background-text {
+            position: fixed;    /* Fixed positioning */
+            pointer-events: none; /* Don't interfere with clicks */
+            z-index: 1;         /* Behind main content */
+            opacity: 0.15;       /* Make it subtle */
+            /* Inherit the same text style as other paragraphs */
+            color: transparent;
+            text-shadow: 0 0 0 #C1A100,
+                -0.4px -0.4px 0 #a020f0,
+                0.4px -0.4px 0 #a020f0,
+                -0.4px 0.4px 0 #a020f0,
+                0.4px 0.4px 0 #a020f0,
+                -0.4px 0 0 #a020f0,
+                0.4px 0 0 #a020f0,
+                0 -0.4px 0 #a020f0,
+                0 0.4px 0 #a020f0;
+            /* Add transform-origin for better rotation */
+            transform-origin: center center;
+            /* Add width and height for collision detection */
+            width: 300px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo {
+            max-width: 43%;
+            height: auto;
+            margin-bottom: 0px;
+        }
+
+
+        p {
+            color: transparent;
+            text-shadow: 0 0 0 #C1A100,
+                /* #ffd700 */
+                -0.4px -0.4px 0 #a020f0,
+                0.4px -0.4px 0 #a020f0,
+                -0.4px 0.4px 0 #a020f0,
+                0.4px 0.4px 0 #a020f0,
+                -0.4px 0 0 #a020f0,
+                0.4px 0 0 #a020f0,
+                0 -0.4px 0 #a020f0,
+                0 0.4px 0 #a020f0;
+        }
+
+        .token-text {
+            position: relative;
+            height: 150px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: left;
+            margin-top: 0em;
+        }
+
+        .center {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            margin: 0;
+        }
+
+        .left {
+            left: 120px;
+        }
+
+        .token-text img {
+            height: 100px;
+            /* 4 times the line-height of the text */
+            width: auto;
+            margin-right: 0.5em;
+            align-self: center;
+            width: 100px;
+            object-fit: cover;
+            object-position: center;
+            border-radius: 250px;
+        }
+
+        .site-frame {
+            position: absolute;
+            inset: 15px;
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: 9999;
+            box-sizing: border-box;
+            border: 2px solid #C1A100;
+            box-shadow: 0 0 15px #C1A100, inset 0 0 15px #C1A100;
+            animation: halogen-pulse 4s infinite ease-in-out;
+        }
+
+        @keyframes halogen-pulse {
+            0%, 100% {
+                box-shadow: 0 0 10px #C1A100, inset 0 0 10px #C1A100;
+                opacity: 0.7;
+            }
+            50% {
+                box-shadow: 0 0 30px #C1A100, inset 0 0 30px #C1A100;
+                opacity: 1;
+            }
+        }
+
+        /* Tooltip Styles */
+        .tooltip-container {
+            position: relative;
+            cursor: help;
+            border-bottom: 2px dotted #C1A100; /* Hint that it is interactive */
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            width: 400px;
+            background-color: rgba(18, 18, 18, 0.95);
+            color: #C1A100;
+            text-align: center;
+            border-radius: 6px;
+            padding: 15px;
+            position: absolute;
+            z-index: 1001;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -200px; /* Center the tooltip */
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 2px solid #a020f0;
+            box-shadow: 0 0 15px rgba(160, 32, 240, 0.3);
+            
+            /* Font styles matching the theme */
+            font-family: '8-bit Operator', monospace;
+            font-size: 18px;
+            line-height: 1.4;
+            text-shadow: 0 0 0 #C1A100,
+                -0.4px -0.4px 0 #a020f0,
+                0.4px -0.4px 0 #a020f0,
+                -0.4px 0.4px 0 #a020f0,
+                0.4px 0.4px 0 #a020f0,
+                -0.4px 0 0 #a020f0,
+                0.4px 0 0 #a020f0,
+                0 -0.4px 0 #a020f0,
+                0 0.4px 0 #a020f0;
+        }
+
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Edge Tooltip Styles */
+        #edgeTooltip {
+            position: fixed;
+            display: none;
+            background-color: rgba(18, 18, 18, 0.95);
+            color: #C1A100;
+            padding: 10px 15px;
+            border: 2px solid #a020f0;
+            border-radius: 6px;
+            font-family: '8-bit Operator', monospace;
+            font-size: 14px;
+            z-index: 10002;
+            pointer-events: none;
+            white-space: nowrap;
+            box-shadow: 0 0 15px rgba(160, 32, 240, 0.3);
+            text-shadow: 0 0 0 #C1A100,
+                -0.4px -0.4px 0 #a020f0,
+                0.4px -0.4px 0 #a020f0,
+                -0.4px 0.4px 0 #a020f0,
+                0.4px 0.4px 0 #a020f0,
+                -0.4px 0 0 #a020f0,
+                0.4px 0 0 #a020f0,
+                0 -0.4px 0 #a020f0,
+                0 0.4px 0 #a020f0;
+            
+            /* Ensure flex alignment for when image is present */
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        /* Image style for the cookie in the tooltip */
+        .cookie-img {
+            height: 65px; /* Increased size by ~30% */
+            width: auto;
+            vertical-align: middle;
+            margin-left: 15px; /* Space between text and image */
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            body {
+                font-size: 20px;
+            }
+
+            .container {
+                padding: 80px 20px 20px 20px;
+            }
+
+            .token-text {
+                height: auto;
+                flex-direction: column;
+                align-items: center;
+                margin-bottom: 40px;
+                text-align: center;
+            }
+
+            .token-text img {
+                margin-right: 0;
+                margin-bottom: 20px;
+            }
+
+            .center.left {
+                position: static;
+                transform: none;
+                left: auto;
+                text-align: center;
+            }
+            
+            .logo {
+                max-width: 90%; /* Slightly larger on mobile for readability */
+            }
+            
+            /* Adjust tooltip position for mobile */
+            .tooltip-text {
+                width: 280px;
+                margin-left: -140px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="site-frame"></div>
+    <!-- Background text container -->
+    <div id="backgroundTextContainer"></div>
+
+    <div class="container">
+        <img src="synt_tech_100c.png"
+            alt="synt.tech" class="logo">
+        <p>synthetic tokens pegged to tradfi assets. </p>
+        <br>
+        <p>synt.tech tokens are hard-pegged to tradfi assets by centralised algorithmic market making, though will be
+            pegged by a decentralized algo in the future.</p>
+        <p>our tokens are <b>not backed by the tradfi assets they track, nor redeemable</b>, and never will be.</p>
+
+        <div class="token-text">
+            <img src="sUSD_100c.png"
+                alt="sUSD">
+            <p class="center left">
+                <u>synthetic USD</u> <br>
+                Stellar DEX:
+                <a href="https://stellar.expert/explorer/public/asset/sUSD-GCHW7CWI7GMIYQYFXMFJNJX5645XGWIINIAEQK3SABQO6CAYL5T7JYIH">Stellar Expert</a>,
+                <a href="https://www.stellarx.com/markets/sUSD:GCHW7CWI7GMIYQYFXMFJNJX5645XGWIINIAEQK3SABQO6CAYL5T7JYIH/AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA">StellarX</a>,
+                <a href="https://lobstr.co/trade/sUSD:GCHW7CWI7GMIYQYFXMFJNJX5645XGWIINIAEQK3SABQO6CAYL5T7JYIH/AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA/">Lobstr</a>,
+                <a href="https://aqua.network/pools/?tab=top&filter=all&sort=-liquidity&search=susd">Aquarius DEX</a><br>
+                <span class="tooltip-container">
+                    <b>🚀<span id="susdYieldValue"></span>% yield!🚀</b>
+                    <span class="tooltip-text">yield is generated from various EVM protocols and sUSD market making. it gets sent out weekly as sUSD to all Stellar wallets with an sUSD trustline holding more than 1 sUSD. balances in wallets, classic AMM's and AQUA AMM's are all counted</span>
+                </span><br>
+                support for another blockchain coming soon...
+            </p>
+        </div>
+
+        <div class="token-text">
+            <img src="next_c_35p.png"
+                alt="next synt.tech token">
+            <p class="center left">next synt.tech token coming soon...</p>
+        </div>
+        <p>meanwhile, please do stalk us on <a href="https://x.com/synt_tech">Xitter</a> </p><br>
+        <br>
+        
+    </div>
+
+    <div id="edgeTooltip"></div>
+    
+    <script src="script.js"></script>
+</body>
+
+
+</html>

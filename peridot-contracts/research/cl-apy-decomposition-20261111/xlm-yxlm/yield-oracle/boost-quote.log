@@ -1,0 +1,38 @@
+[
+  {
+    "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+    "method": "estimate_swap",
+    "label": "xy_boost_annual_prefunded",
+    "time": "2026-11-11T10:53:31.242Z",
+    "ledger": 65421673,
+    "cost": null,
+    "value": "1842063",
+    "minResourceFee": "9751",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 2517629,
+      "diskReadBytes": 0,
+      "writeBytes": 2564,
+      "uniqueKeys": 4,
+      "writes": 1
+    }
+  },
+  {
+    "contract": "CA6GAFOJCW4MGQQBUCQUSA3CLIH25G4SNKB2JHYKZCVWZTNW5VXMSC4O",
+    "method": "estimate_swap",
+    "label": "xy_boost_day1_min",
+    "time": "2026-11-11T10:53:31.846Z",
+    "ledger": 65421673,
+    "cost": null,
+    "value": "1883172",
+    "minResourceFee": "9751",
+    "requiresRestore": false,
+    "resourceDeclaration": {
+      "instructions": 2517629,
+      "diskReadBytes": 0,
+      "writeBytes": 2564,
+      "uniqueKeys": 4,
+      "writes": 1
+    }
+  }
+]

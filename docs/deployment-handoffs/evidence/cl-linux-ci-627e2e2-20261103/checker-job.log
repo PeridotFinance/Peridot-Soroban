@@ -1,0 +1,225 @@
+﻿2026-11-03T09:47:14.2119416Z Current runner version: '2.338.2'
+2026-11-03T09:47:14.2146447Z ##[group]Runner Image Provisioner
+2026-11-03T09:47:14.2147431Z Hosted Compute Agent
+2026-11-03T09:47:14.2147973Z Version: 20261021.618
+2026-11-03T09:47:14.2148539Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-11-03T09:47:14.2149249Z Build Date: 2026-10-21T00:45:21Z
+2026-11-03T09:47:14.2149905Z Worker ID: {96b65fc6-6a12-482b-9bd6-ee0aebea756a}
+2026-11-03T09:47:14.2150584Z Region: westus3
+2026-11-03T09:47:14.2151108Z Cloud: Azure
+2026-11-03T09:47:14.2151613Z ##[endgroup]
+2026-11-03T09:47:14.2153524Z ##[group]Operating System
+2026-11-03T09:47:14.2154157Z Ubuntu
+2026-11-03T09:47:14.2154712Z 24.04.5
+2026-11-03T09:47:14.2155231Z LTS
+2026-11-03T09:47:14.2155715Z ##[endgroup]
+2026-11-03T09:47:14.2156390Z ##[group]Runner Image
+2026-11-03T09:47:14.2156987Z Image: ubuntu-24.04
+2026-11-03T09:47:14.2157505Z Version: 20261025.353.1
+2026-11-03T09:47:14.2158753Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-03T09:47:14.2160171Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353
+2026-11-03T09:47:14.2161067Z ##[endgroup]
+2026-11-03T09:47:14.2162146Z ##[group]GITHUB_TOKEN Permissions
+2026-11-03T09:47:14.2164212Z Contents: read
+2026-11-03T09:47:14.2164751Z Metadata: read
+2026-11-03T09:47:14.2165359Z ##[endgroup]
+2026-11-03T09:47:14.2167761Z Secret source: Actions
+2026-11-03T09:47:14.2168798Z Cache mode: write
+2026-11-03T09:47:14.2169442Z Prepare workflow directory
+2026-11-03T09:47:14.2509804Z Prepare all required actions
+2026-11-03T09:47:14.2561483Z Getting action download info
+2026-11-03T09:47:14.5743802Z Download action repository 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' (SHA:11bd71901bbe5b1630ceea73d27597364c9af683)
+2026-11-03T09:47:14.7154109Z Download action repository 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-11-03T09:47:14.9141408Z Complete job name: checker-tests
+2026-11-03T09:47:15.0155637Z ##[group]Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+2026-11-03T09:47:15.0157209Z with:
+2026-11-03T09:47:15.0157656Z   persist-credentials: false
+2026-11-03T09:47:15.0158181Z   repository: PeridotFinance/Peridot-Soroban
+2026-11-03T09:47:15.0161672Z   token: ***
+2026-11-03T09:47:15.0162075Z   ssh-strict: true
+2026-11-03T09:47:15.0162482Z   ssh-user: git
+2026-11-03T09:47:15.0162875Z   clean: true
+2026-11-03T09:47:15.0163290Z   sparse-checkout-cone-mode: true
+2026-11-03T09:47:15.0163773Z   fetch-depth: 1
+2026-11-03T09:47:15.0164174Z   fetch-tags: false
+2026-11-03T09:47:15.0164590Z   show-progress: true
+2026-11-03T09:47:15.0165005Z   lfs: false
+2026-11-03T09:47:15.0165395Z   submodules: false
+2026-11-03T09:47:15.0165811Z   set-safe-directory: true
+2026-11-03T09:47:15.0166812Z ##[endgroup]
+2026-11-03T09:47:15.2978993Z Syncing repository: PeridotFinance/Peridot-Soroban
+2026-11-03T09:47:15.2982097Z ##[group]Getting Git version info
+2026-11-03T09:47:15.2983455Z Working directory is '/home/runner/work/Peridot-Soroban/Peridot-Soroban'
+2026-11-03T09:47:15.2985160Z [command]/usr/bin/git version
+2026-11-03T09:47:15.3118835Z git version 2.56.0
+2026-11-03T09:47:15.3187902Z ##[endgroup]
+2026-11-03T09:47:15.3194946Z Temporarily overriding HOME='/home/runner/work/_temp/9ee476bc-d5ae-44a7-b66b-e9eb89f11445' before making global git config changes
+2026-11-03T09:47:15.3197412Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-03T09:47:15.3199361Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Peridot-Soroban/Peridot-Soroban
+2026-11-03T09:47:15.3262268Z Deleting the contents of '/home/runner/work/Peridot-Soroban/Peridot-Soroban'
+2026-11-03T09:47:15.3270688Z ##[group]Initializing the repository
+2026-11-03T09:47:15.3275808Z [command]/usr/bin/git init /home/runner/work/Peridot-Soroban/Peridot-Soroban
+2026-11-03T09:47:15.3361272Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-03T09:47:15.3363334Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-03T09:47:15.3365001Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-03T09:47:15.3366485Z hint: call:
+2026-11-03T09:47:15.3367213Z hint:
+2026-11-03T09:47:15.3368102Z hint: 	git config --global init.defaultBranch <name>
+2026-11-03T09:47:15.3369172Z hint:
+2026-11-03T09:47:15.3370183Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-03T09:47:15.3371776Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-03T09:47:15.3372948Z hint:
+2026-11-03T09:47:15.3373690Z hint: 	git branch -m <name>
+2026-11-03T09:47:15.3374529Z hint:
+2026-11-03T09:47:15.3375627Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-03T09:47:15.3377756Z Initialized empty Git repository in /home/runner/work/Peridot-Soroban/Peridot-Soroban/.git/
+2026-11-03T09:47:15.3383154Z [command]/usr/bin/git remote add origin https://github.com/PeridotFinance/Peridot-Soroban
+2026-11-03T09:47:15.3424910Z ##[endgroup]
+2026-11-03T09:47:15.3426466Z ##[group]Disabling automatic garbage collection
+2026-11-03T09:47:15.3429112Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-03T09:47:15.3459069Z ##[endgroup]
+2026-11-03T09:47:15.3460452Z ##[group]Setting up auth
+2026-11-03T09:47:15.3466289Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-03T09:47:15.3501549Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-03T09:47:15.3846679Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-03T09:47:15.3887311Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-03T09:47:15.4088512Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-03T09:47:15.4130979Z ##[endgroup]
+2026-11-03T09:47:15.4133059Z ##[group]Fetching the repository
+2026-11-03T09:47:15.4146810Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +1728feeebe092280ffc650c11b8cda1b2e4df3d6:refs/remotes/pull/75/merge
+2026-11-03T09:47:20.0231969Z From https://github.com/PeridotFinance/Peridot-Soroban
+2026-11-03T09:47:20.0234756Z  * [new ref]         1728feeebe092280ffc650c11b8cda1b2e4df3d6 -> pull/75/merge
+2026-11-03T09:47:20.0239833Z ##[endgroup]
+2026-11-03T09:47:20.0241297Z ##[group]Determining the checkout info
+2026-11-03T09:47:20.0243271Z ##[endgroup]
+2026-11-03T09:47:20.0244426Z [command]/usr/bin/git sparse-checkout disable
+2026-11-03T09:47:20.0289593Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-03T09:47:20.0317890Z ##[group]Checking out the ref
+2026-11-03T09:47:20.0321342Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/75/merge
+2026-11-03T09:47:20.1936912Z Note: switching to 'refs/remotes/pull/75/merge'.
+2026-11-03T09:47:20.1937931Z 
+2026-11-03T09:47:20.1938717Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-03T09:47:20.1940660Z changes and commit them, and you can discard any commits you make in this
+2026-11-03T09:47:20.1942496Z state without impacting any branches by switching back to a branch.
+2026-11-03T09:47:20.1943594Z 
+2026-11-03T09:47:20.1944303Z If you want to create a new branch to retain commits you create, you may
+2026-11-03T09:47:20.1945943Z do so (now or later) by using -c with the switch command. Example:
+2026-11-03T09:47:20.1947187Z 
+2026-11-03T09:47:20.1947603Z   git switch -c <new-branch-name>
+2026-11-03T09:47:20.1948259Z 
+2026-11-03T09:47:20.1948678Z Or undo this operation with:
+2026-11-03T09:47:20.1949353Z 
+2026-11-03T09:47:20.1950101Z   git switch -
+2026-11-03T09:47:20.1950759Z 
+2026-11-03T09:47:20.1951615Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-03T09:47:20.1952977Z 
+2026-11-03T09:47:20.1954404Z HEAD is now at 1728fee Merge 627e2e2c926b2f62dbb1b1cd0ef6f9949caf2d6d into 47858c1a13c2588970395faa2212e7b68bd33060
+2026-11-03T09:47:20.1960191Z ##[endgroup]
+2026-11-03T09:47:20.2004419Z [command]/usr/bin/git log -1 --format=%H
+2026-11-03T09:47:20.2029480Z 1728feeebe092280ffc650c11b8cda1b2e4df3d6
+2026-11-03T09:47:20.2039500Z ##[group]Removing auth
+2026-11-03T09:47:20.2043844Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-03T09:47:20.2075650Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-03T09:47:20.2267254Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-03T09:47:20.2292228Z http.https://github.com/.extraheader
+2026-11-03T09:47:20.2299926Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-03T09:47:20.2332221Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-03T09:47:20.2524970Z ##[endgroup]
+2026-11-03T09:47:20.2874622Z ##[group]Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+2026-11-03T09:47:20.2876291Z with:
+2026-11-03T09:47:20.2877060Z   node-version: 22
+2026-11-03T09:47:20.2877908Z   always-auth: false
+2026-11-03T09:47:20.2878785Z   check-latest: false
+2026-11-03T09:47:20.2887826Z   token: ***
+2026-11-03T09:47:20.2888630Z ##[endgroup]
+2026-11-03T09:47:20.4402191Z Found in cache @ /opt/hostedtoolcache/node/22.23.4/x64
+2026-11-03T09:47:20.4411030Z (node:2348) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-03T09:47:20.4413203Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-03T09:47:20.4415726Z ##[group]Environment details
+2026-11-03T09:47:23.2624753Z node: v22.23.4
+2026-11-03T09:47:23.2625303Z npm: 10.9.9
+2026-11-03T09:47:23.2625633Z yarn: 1.22.22
+2026-11-03T09:47:23.2626881Z ##[endgroup]
+2026-11-03T09:47:23.2751207Z ##[group]Run npm ci --prefix bots/margin-liquidator --ignore-scripts
+2026-11-03T09:47:23.2751847Z [36;1mnpm ci --prefix bots/margin-liquidator --ignore-scripts[0m
+2026-11-03T09:47:23.2778082Z shell: /usr/bin/bash -e {0}
+2026-11-03T09:47:23.2778437Z ##[endgroup]
+2026-11-03T09:47:26.4001106Z 
+2026-11-03T09:47:26.4011836Z added 57 packages, and audited 58 packages in 3s
+2026-11-03T09:47:26.4013110Z 
+2026-11-03T09:47:26.4014066Z 14 packages are looking for funding
+2026-11-03T09:47:26.4014492Z   run `npm fund` for details
+2026-11-03T09:47:26.4022976Z 
+2026-11-03T09:47:26.4023273Z 1 high severity vulnerability
+2026-11-03T09:47:26.4023714Z 
+2026-11-03T09:47:26.4023991Z To address all issues, run:
+2026-11-03T09:47:26.4024483Z   npm audit fix
+2026-11-03T09:47:26.4024732Z 
+2026-11-03T09:47:26.4024985Z Run `npm audit` for details.
+2026-11-03T09:47:26.4299900Z ##[group]Run PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p 'test_cl*py' -v
+2026-11-03T09:47:26.4300672Z [36;1mPYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p 'test_cl*py' -v[0m
+2026-11-03T09:47:26.4314369Z shell: /usr/bin/bash -e {0}
+2026-11-03T09:47:26.4314660Z ##[endgroup]
+2026-11-03T09:47:26.6301357Z test_changed_bound_log (test_cl_checkpoint_summary.SummaryTests.test_changed_bound_log) ... ok
+2026-11-03T09:47:26.6353510Z test_completed_failed_run_remains_failed (test_cl_checkpoint_summary.SummaryTests.test_completed_failed_run_remains_failed) ... ok
+2026-11-03T09:47:26.6385699Z test_limit_failure_has_no_fabricated_zero (test_cl_checkpoint_summary.SummaryTests.test_limit_failure_has_no_fabricated_zero) ... ok
+2026-11-03T09:47:26.6498138Z test_missing_required_files (test_cl_checkpoint_summary.SummaryTests.test_missing_required_files) ... ok
+2026-11-03T09:47:26.6530950Z test_no_terminal_status (test_cl_checkpoint_summary.SummaryTests.test_no_terminal_status) ... ok
+2026-11-03T09:47:26.6563085Z test_success_missing_measurement_rejected (test_cl_checkpoint_summary.SummaryTests.test_success_missing_measurement_rejected) ... ok
+2026-11-03T09:47:26.6594970Z test_wrong_run_path (test_cl_checkpoint_summary.SummaryTests.test_wrong_run_path) ... ok
+2026-11-03T09:47:26.6647268Z test_zero_status_cannot_hide_failures (test_cl_checkpoint_summary.SummaryTests.test_zero_status_cannot_hide_failures) ... ok
+2026-11-03T09:47:26.6648698Z test_both_captures_remain_independently_pinned (test_cl_ci_captures.CaptureTests.test_both_captures_remain_independently_pinned) ... ok
+2026-11-03T09:47:26.6650497Z test_missing_profile_and_release_claim_rejected (test_cl_ci_captures.CaptureTests.test_missing_profile_and_release_claim_rejected) ... ok
+2026-11-03T09:47:26.6652201Z test_mixed_identity_is_rejected (test_cl_ci_captures.CaptureTests.test_mixed_identity_is_rejected) ... ok
+2026-11-03T09:47:26.6653385Z test_unknown_capture_rejected (test_cl_ci_captures.CaptureTests.test_unknown_capture_rejected) ... ok
+2026-11-03T09:47:26.8047015Z test_after_entry_cannot_be_overridden (test_cl_recording_projection.RecordingProjectionTests.test_after_entry_cannot_be_overridden) ... ok
+2026-11-03T09:47:27.1934550Z test_duplicate_missing_unknown_marker_fields_reject (test_cl_recording_projection.RecordingProjectionTests.test_duplicate_missing_unknown_marker_fields_reject) ... ok
+2026-11-03T09:47:27.3411729Z test_missing_marker_does_not_silently_repair_legacy_rw (test_cl_recording_projection.RecordingProjectionTests.test_missing_marker_does_not_silently_repair_legacy_rw) ... ok
+2026-11-03T09:47:27.7427883Z test_mutated_initial_entry_rejects (test_cl_recording_projection.RecordingProjectionTests.test_mutated_initial_entry_rejects) ... ok
+2026-11-03T09:47:28.0095348Z test_mutated_key_rejects (test_cl_recording_projection.RecordingProjectionTests.test_mutated_key_rejects) ... ok
+2026-11-03T09:47:28.6628154Z test_mutated_rent_sizes_ttl_and_new_value_reject (test_cl_recording_projection.RecordingProjectionTests.test_mutated_rent_sizes_ttl_and_new_value_reject) ... ok
+2026-11-03T09:47:29.0483636Z test_mutated_restoration_index_and_access_reject (test_cl_recording_projection.RecordingProjectionTests.test_mutated_restoration_index_and_access_reject) ... ok
+2026-11-03T09:47:29.5550210Z test_unknown_null_or_malformed_repair_rejects (test_cl_recording_projection.RecordingProjectionTests.test_unknown_null_or_malformed_repair_rejects) ... ok
+2026-11-03T09:47:29.6964924Z test_v3_live_real_xdr_keeps_legacy_projection (test_cl_recording_projection.RecordingProjectionTests.test_v3_live_real_xdr_keeps_legacy_projection) ... ok
+2026-11-03T09:47:29.8413582Z test_v4_archived_real_xdr_retains_exact_prior_data (test_cl_recording_projection.RecordingProjectionTests.test_v4_archived_real_xdr_retains_exact_prior_data) ... ok
+2026-11-03T09:47:29.8415092Z test_approval_and_wrong_status_rejected (test_cl_replay_summary.ReplaySummaryTests.test_approval_and_wrong_status_rejected) ... ok
+2026-11-03T09:47:29.8416812Z test_changed_error_is_rejected (test_cl_replay_summary.ReplaySummaryTests.test_changed_error_is_rejected) ... ok
+2026-11-03T09:47:29.8417935Z test_changed_gate_is_not_hidden_by_exit_one (test_cl_replay_summary.ReplaySummaryTests.test_changed_gate_is_not_hidden_by_exit_one) ... ok
+2026-11-03T09:47:29.8419250Z test_declared_log_relocation_only (test_cl_replay_summary.ReplaySummaryTests.test_declared_log_relocation_only) ... ok
+2026-11-03T09:47:29.8420313Z test_expected_failure_is_verified (test_cl_replay_summary.ReplaySummaryTests.test_expected_failure_is_verified) ... ok
+2026-11-03T09:47:29.8421177Z test_invocation_errors_are_bound (test_cl_replay_summary.ReplaySummaryTests.test_invocation_errors_are_bound) ... ok
+2026-11-03T09:47:29.8422063Z test_missing_summary_field_is_rejected (test_cl_replay_summary.ReplaySummaryTests.test_missing_summary_field_is_rejected) ... ok
+2026-11-03T09:47:29.8440231Z test_all_limits_and_evidence_fail_closed (test_cl_resource_profiles.ResourceProfileTests.test_all_limits_and_evidence_fail_closed) ... ok
+2026-11-03T09:47:29.8639761Z test_checkpoint_gate_can_pass_complete_evidence_without_release_approval (test_cl_resource_profiles.ResourceProfileTests.test_checkpoint_gate_can_pass_complete_evidence_without_release_approval) ... ok
+2026-11-03T09:47:29.8655014Z test_complete_fee_formula_includes_return_history_bandwidth_and_per_entry_rent (test_cl_resource_profiles.ResourceProfileTests.test_complete_fee_formula_includes_return_history_bandwidth_and_per_entry_rent) ... ok
+2026-11-03T09:47:29.8684755Z test_complete_transaction_evidence_is_accepted_and_tampering_rejected (test_cl_resource_profiles.ResourceProfileTests.test_complete_transaction_evidence_is_accepted_and_tampering_rejected) ... ok
+2026-11-03T09:47:29.8729842Z test_independent_invocation_gate_cannot_grant_checkpoint_or_release (test_cl_resource_profiles.ResourceProfileTests.test_independent_invocation_gate_cannot_grant_checkpoint_or_release) ... ok
+2026-11-03T09:47:29.8741528Z test_internal_policy_caps_are_not_network_caps (test_cl_resource_profiles.ResourceProfileTests.test_internal_policy_caps_are_not_network_caps) ... ok
+2026-11-03T09:47:29.8760749Z test_missing_flows_never_pass (test_cl_resource_profiles.ResourceProfileTests.test_missing_flows_never_pass) ... ok
+2026-11-03T09:47:29.8790954Z test_partial_fees_support_both_window_shapes_and_actual_runtime (test_cl_resource_profiles.ResourceProfileTests.test_partial_fees_support_both_window_shapes_and_actual_runtime) ... ok
+2026-11-03T09:47:29.8804769Z test_profiles_keep_distinct_limits (test_cl_resource_profiles.ResourceProfileTests.test_profiles_keep_distinct_limits) ... ok
+2026-11-03T09:47:29.8858096Z test_proof_mapping_requires_completed_assertions_and_bound_source_log_report (test_cl_resource_profiles.ResourceProfileTests.test_proof_mapping_requires_completed_assertions_and_bound_source_log_report) ... ok
+2026-11-03T09:47:29.8958178Z test_rejected_mapping_cannot_reuse_another_case_success_or_another_test (test_cl_resource_profiles.ResourceProfileTests.test_rejected_mapping_cannot_reuse_another_case_success_or_another_test) ... ok
+2026-11-03T09:47:29.8991962Z test_rejected_transaction_requires_measured_error_costs_and_complete_rollback (test_cl_resource_profiles.ResourceProfileTests.test_rejected_transaction_requires_measured_error_costs_and_complete_rollback) ... ok
+2026-11-03T09:47:29.9057146Z test_tampering_config_and_profile_is_rejected (test_cl_resource_profiles.ResourceProfileTests.test_tampering_config_and_profile_is_rejected) ... ok
+2026-11-03T09:47:29.9067047Z 
+2026-11-03T09:47:29.9068002Z ----------------------------------------------------------------------
+2026-11-03T09:47:29.9068582Z Ran 42 tests in 3.281s
+2026-11-03T09:47:29.9068758Z 
+2026-11-03T09:47:29.9068850Z OK
+2026-11-03T09:47:29.9299332Z Post job cleanup.
+2026-11-03T09:47:30.0542938Z (node:2565) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-03T09:47:30.0543737Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-03T09:47:30.0744696Z Post job cleanup.
+2026-11-03T09:47:30.1643289Z [command]/usr/bin/git version
+2026-11-03T09:47:30.1693172Z git version 2.56.0
+2026-11-03T09:47:30.1740294Z Temporarily overriding HOME='/home/runner/work/_temp/fd2a50a9-78cb-4815-ae7f-8dd917347fde' before making global git config changes
+2026-11-03T09:47:30.1741296Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-03T09:47:30.1747662Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Peridot-Soroban/Peridot-Soroban
+2026-11-03T09:47:30.1790309Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-03T09:47:30.1829341Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-03T09:47:30.2064089Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-03T09:47:30.2100678Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-03T09:47:30.2490079Z Cleaning up orphan processes
+2026-11-03T09:47:30.2949356Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683, actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+

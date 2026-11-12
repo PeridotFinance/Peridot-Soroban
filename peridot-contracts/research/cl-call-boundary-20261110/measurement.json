@@ -1,0 +1,313 @@
+{
+  "schema": "cl-report21-individual-venue-calls-v1",
+  "compiled_artifacts": {
+    "cl_integration_fixtures.wasm": {
+      "sha256": "bff4b6856c0199893515ca688c674847c23eedd097fe143c1b7734691bcd7f7f",
+      "bytes": 3168
+    },
+    "cl_share_pool_facade.wasm": {
+      "sha256": "3209295684c883f829949d7258a01031818fe6d2da2911d8e2517b7783706ef5",
+      "bytes": 7298
+    },
+    "cl_share_vault.wasm": {
+      "sha256": "5e52ff4e87cfc70b8f2ff5839a7625b0ef510d0433806661a41b998805bf4e1f",
+      "bytes": 85750
+    },
+    "jump_rate_model.wasm": {
+      "sha256": "b00c583659ebc1d3322cb52acf5ecc620aaaeacc5141a829cce4c60db944c800",
+      "bytes": 7644
+    },
+    "margin_controller.wasm": {
+      "sha256": "46c186e3bb333b929dabb3a4a4bec4376457081f2e1e404a467c8ada62f078c2",
+      "bytes": 92246
+    },
+    "receipt_vault.wasm": {
+      "sha256": "fc1ac7d397428438c58c50ce8930907c5965587aac7cc0f9988025235dcde362",
+      "bytes": 88329
+    },
+    "simple_peridottroller.wasm": {
+      "sha256": "a55d5740007553d955c26e08efad4289b093c0d85c34a2b0e2af7262eaba0052",
+      "bytes": 63411
+    },
+    "swap_adapter.wasm": {
+      "sha256": "55c8a55f27fb5f41d4eea8ed5f0090ad8258289a99886aad9a7c940b9b95674d",
+      "bytes": 10876
+    },
+    "aquarius-pool.wasm": {
+      "sha256": "12fca5a7a96577273b6d4184cf9c984036cda0e8f0594747e7b2933dced37ee6",
+      "identity_source": "archived source-before manifest; bytecode not rerun"
+    }
+  },
+  "new_contract_execution": false,
+  "source_calls_sha256": "5dff4666d05ea57ae3ae38a9f0030e91cd3fff081e04069c0b8d4d7f3f3885c5",
+  "source_profile_sha256": "4a8c9c6dacd48f2921a3eb4e86acf16bd67e9e43996c8a0e279808b597897056",
+  "archive_index_sha256": "08acbf6c9d4cced8c78f441c3f3ef3c5a6e7fd6f04f3c9413d12f4356fec4b1c",
+  "config_sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+  "source_archive_sha256": "8cae9a7e6f6fea99131bba036264f2265e32c60723feb9b956ce27cea3125709",
+  "runtime_protocol": 29,
+  "selected_profile": {
+    "schema": "cl-resource-profile-v1",
+    "name": "captured-network-diagnostic",
+    "mode": "acceptance",
+    "network_config_path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-restoration-final-v7-open-close/checkpoint/network-config.json",
+    "network_sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+    "captured_ledger": 65270655,
+    "target_protocol": 29,
+    "limits": {
+      "instructions": 400000000,
+      "mem_bytes": 41943040,
+      "disk_read_entries": 200,
+      "write_entries": 200,
+      "ledger_entries": 400,
+      "disk_read_bytes": 200000,
+      "write_bytes": 132096,
+      "contract_events_size_bytes": 16384,
+      "max_contract_data_key_size_bytes": 250,
+      "max_contract_data_entry_size_bytes": 65536,
+      "max_contract_code_entry_size_bytes": 131072,
+      "transaction_size_bytes": 132096
+    },
+    "release_approval": false
+  },
+  "comparison_cpu_limit": 100000000,
+  "all_captured_rows_maximum_venue_call": {
+    "flow": "swap_open_position_v3",
+    "path": "0.8.5.20",
+    "function": "deposit_position",
+    "inclusive_cpu": 64233503,
+    "exclusive_cpu": 62549781
+  },
+  "all_observed_venue_calls_below_100m": true,
+  "observed_venue_call_count": 84,
+  "cases": {
+    "atomic_qualification_aged_swap_open": {
+      "case": "open_with_actual_deposit",
+      "root_cpu": 223150467,
+      "aquarius_exclusive_cpu": 162817228,
+      "aquarius_inclusive_cpu": 167831028,
+      "calls": [
+        {
+          "path": "0.8.0.0",
+          "function": "get_is_killed_swap",
+          "inclusive_cpu": 1087231,
+          "exclusive_cpu": 1087231
+        },
+        {
+          "path": "0.8.0.1",
+          "function": "get_is_killed_deposit",
+          "inclusive_cpu": 1063738,
+          "exclusive_cpu": 1063738
+        },
+        {
+          "path": "0.8.5.3",
+          "function": "claim",
+          "inclusive_cpu": 6196410,
+          "exclusive_cpu": 5363417
+        },
+        {
+          "path": "0.8.5.5",
+          "function": "claim_all_position_fees",
+          "inclusive_cpu": 53952286,
+          "exclusive_cpu": 53275588
+        },
+        {
+          "path": "0.8.5.6",
+          "function": "estimate_withdraw_position",
+          "inclusive_cpu": 4770986,
+          "exclusive_cpu": 4770986
+        },
+        {
+          "path": "0.8.5.11",
+          "function": "get_is_killed_deposit",
+          "inclusive_cpu": 1067269,
+          "exclusive_cpu": 1067269
+        },
+        {
+          "path": "0.8.5.12",
+          "function": "estimate_swap",
+          "inclusive_cpu": 8785882,
+          "exclusive_cpu": 8785882
+        },
+        {
+          "path": "0.8.5.14",
+          "function": "swap",
+          "inclusive_cpu": 10778299,
+          "exclusive_cpu": 10220469
+        },
+        {
+          "path": "0.8.5.19",
+          "function": "estimate_deposit_position",
+          "inclusive_cpu": 4538505,
+          "exclusive_cpu": 4538505
+        },
+        {
+          "path": "0.8.5.20",
+          "function": "deposit_position",
+          "inclusive_cpu": 64233503,
+          "exclusive_cpu": 62549781
+        },
+        {
+          "path": "0.8.7.1",
+          "function": "claim",
+          "inclusive_cpu": 5684682,
+          "exclusive_cpu": 5050928
+        },
+        {
+          "path": "0.10.1",
+          "function": "claim",
+          "inclusive_cpu": 5672237,
+          "exclusive_cpu": 5043434
+        }
+      ],
+      "largest_call": {
+        "path": "0.8.5.20",
+        "function": "deposit_position",
+        "inclusive_cpu": 64233503,
+        "exclusive_cpu": 62549781
+      }
+    },
+    "atomic_qualification_swap_open": {
+      "case": "later_open_without_deposit",
+      "root_cpu": 157058149,
+      "aquarius_exclusive_cpu": 100785452,
+      "aquarius_inclusive_cpu": 103955308,
+      "calls": [
+        {
+          "path": "0.8.0.0",
+          "function": "get_is_killed_swap",
+          "inclusive_cpu": 1194688,
+          "exclusive_cpu": 1194688
+        },
+        {
+          "path": "0.8.0.1",
+          "function": "get_is_killed_deposit",
+          "inclusive_cpu": 1062468,
+          "exclusive_cpu": 1062468
+        },
+        {
+          "path": "0.8.5.3",
+          "function": "claim",
+          "inclusive_cpu": 6552699,
+          "exclusive_cpu": 5769158
+        },
+        {
+          "path": "0.8.5.5",
+          "function": "claim_all_position_fees",
+          "inclusive_cpu": 53919030,
+          "exclusive_cpu": 53263516
+        },
+        {
+          "path": "0.8.5.6",
+          "function": "estimate_withdraw_position",
+          "inclusive_cpu": 4570289,
+          "exclusive_cpu": 4570289
+        },
+        {
+          "path": "0.8.5.11",
+          "function": "get_is_killed_deposit",
+          "inclusive_cpu": 1066119,
+          "exclusive_cpu": 1066119
+        },
+        {
+          "path": "0.8.5.12",
+          "function": "estimate_swap",
+          "inclusive_cpu": 9167680,
+          "exclusive_cpu": 9167680
+        },
+        {
+          "path": "0.8.5.14",
+          "function": "swap",
+          "inclusive_cpu": 11100517,
+          "exclusive_cpu": 10588471
+        },
+        {
+          "path": "0.8.5.19",
+          "function": "estimate_deposit_position",
+          "inclusive_cpu": 4114540,
+          "exclusive_cpu": 4114540
+        },
+        {
+          "path": "0.8.7.1",
+          "function": "claim",
+          "inclusive_cpu": 5596172,
+          "exclusive_cpu": 4983794
+        },
+        {
+          "path": "0.10.1",
+          "function": "claim",
+          "inclusive_cpu": 5611106,
+          "exclusive_cpu": 5004729
+        }
+      ],
+      "largest_call": {
+        "path": "0.8.5.5",
+        "function": "claim_all_position_fees",
+        "inclusive_cpu": 53919030,
+        "exclusive_cpu": 53263516
+      }
+    },
+    "atomic_qualification_swap_close": {
+      "case": "close",
+      "root_cpu": 183245406,
+      "aquarius_exclusive_cpu": 137759524,
+      "aquarius_inclusive_cpu": 141545386,
+      "calls": [
+        {
+          "path": "0.4.0.0",
+          "function": "get_is_killed_swap",
+          "inclusive_cpu": 1081735,
+          "exclusive_cpu": 1081735
+        },
+        {
+          "path": "0.9.0.0",
+          "function": "get_is_killed_swap",
+          "inclusive_cpu": 1069738,
+          "exclusive_cpu": 1069738
+        },
+        {
+          "path": "0.9.3.1",
+          "function": "claim",
+          "inclusive_cpu": 5946047,
+          "exclusive_cpu": 5225045
+        },
+        {
+          "path": "0.9.5.3",
+          "function": "claim",
+          "inclusive_cpu": 5720808,
+          "exclusive_cpu": 5076474
+        },
+        {
+          "path": "0.9.5.5",
+          "function": "claim_all_position_fees",
+          "inclusive_cpu": 53254436,
+          "exclusive_cpu": 52890781
+        },
+        {
+          "path": "0.9.5.8",
+          "function": "withdraw_position",
+          "inclusive_cpu": 62561356,
+          "exclusive_cpu": 61064024
+        },
+        {
+          "path": "0.9.5.12",
+          "function": "estimate_swap",
+          "inclusive_cpu": 4957303,
+          "exclusive_cpu": 4957303
+        },
+        {
+          "path": "0.9.5.14",
+          "function": "swap",
+          "inclusive_cpu": 6953963,
+          "exclusive_cpu": 6394424
+        }
+      ],
+      "largest_call": {
+        "path": "0.9.5.8",
+        "function": "withdraw_position",
+        "inclusive_cpu": 62561356,
+        "exclusive_cpu": 61064024
+      }
+    }
+  },
+  "scope": "SDK call-boundary attribution only; no per-call official-host tree, no signed or live-state qualification; original full transactions still fail internal limits"
+}

@@ -1,0 +1,1102 @@
+{
+  "schema": "cl-atomic-negative-experiments-archive-v1",
+  "scope": "Standalone historical negative evidence only; not a pass proof, replay result, feasibility approval or release approval",
+  "stage1_complete": false,
+  "release_approval": false,
+  "archive_sha256": "da9d73e1527985b6fbbc9edb2385afb9eb6d1573e3e5e3e8804f7c85e7009b24",
+  "archive_bytes": 3326776,
+  "members_count": 165,
+  "uncompressed_bytes": 380508588,
+  "compression": "xz preset 3",
+  "member_path_base": "peridot-contracts/target",
+  "groups": {
+    "cl-atomic-baseline-captured": {
+      "failure_type": "budget_exceeded_fixture_or_invocation",
+      "test_exit_code": 101,
+      "test_terminal_summaries": [
+        "test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 491.04s"
+      ],
+      "source_snapshot": "cl-atomic-v1-sources",
+      "recorded_gates": {
+        "invocation": true,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "gate_error_counts": {
+        "missing_required_flows": 44,
+        "lifecycle_errors": 2,
+        "transaction_errors": 138
+      },
+      "budget_exit_code": 0
+    },
+    "cl-atomic-optimized-captured": {
+      "failure_type": "budget_exceeded_fixture_or_invocation",
+      "test_exit_code": 101,
+      "test_terminal_summaries": [
+        "test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 417.55s"
+      ],
+      "source_snapshot": "cl-atomic-v1-sources",
+      "recorded_gates": {
+        "invocation": true,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "gate_error_counts": {
+        "missing_required_flows": 44,
+        "lifecycle_errors": 2,
+        "transaction_errors": 138
+      },
+      "budget_exit_code": 0
+    },
+    "cl-atomic-baseline-archived": {
+      "failure_type": "budget_exceeded_fixture_or_invocation",
+      "test_exit_code": 101,
+      "test_terminal_summaries": [
+        "test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 416.64s"
+      ],
+      "source_snapshot": "cl-atomic-v1-sources",
+      "recorded_gates": {
+        "invocation": true,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "gate_error_counts": {
+        "missing_required_flows": 44,
+        "lifecycle_errors": 2,
+        "transaction_errors": 138
+      },
+      "budget_exit_code": 0
+    },
+    "cl-atomic-v2-baseline-captured": {
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value",
+      "test_exit_code": 101,
+      "test_terminal_summaries": [],
+      "source_snapshot": "cl-atomic-v2-failed-sources"
+    },
+    "cl-atomic-v2-optimized-captured": {
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value",
+      "test_exit_code": 101,
+      "test_terminal_summaries": [],
+      "source_snapshot": "cl-atomic-v2-failed-sources"
+    },
+    "cl-atomic-v2-baseline-archived": {
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value",
+      "test_exit_code": 101,
+      "test_terminal_summaries": [],
+      "source_snapshot": "cl-atomic-v2-failed-sources",
+      "recorded_gates": {
+        "invocation": false,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "gate_error_counts": {
+        "missing_required_flows": 46,
+        "lifecycle_errors": 20,
+        "transaction_errors": 46
+      },
+      "budget_exit_code": 1
+    },
+    "cl-atomic-v2-baseline-internal": {
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value",
+      "test_exit_code": 101,
+      "test_terminal_summaries": [],
+      "source_snapshot": "cl-atomic-v2-failed-sources",
+      "recorded_gates": {
+        "invocation": false,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "gate_error_counts": {
+        "missing_required_flows": 46,
+        "lifecycle_errors": 20,
+        "transaction_errors": 46
+      },
+      "budget_exit_code": 1
+    },
+    "cl-atomic-v3-baseline-archived": {
+      "failure_type": "archive_exporter_false_touched_state_mismatch",
+      "test_exit_code": 0,
+      "test_terminal_summaries": [
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 899.04s"
+      ],
+      "source_snapshot": null,
+      "recorded_gates": {
+        "invocation": true,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "gate_error_counts": {
+        "missing_required_flows": 46,
+        "lifecycle_errors": 2,
+        "transaction_errors": 94
+      },
+      "budget_exit_code": 0
+    },
+    "cl-atomic-v3-optimized-archived": {
+      "failure_type": "archive_exporter_false_touched_state_mismatch",
+      "test_exit_code": 0,
+      "test_terminal_summaries": [
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 874.42s"
+      ],
+      "source_snapshot": null,
+      "recorded_gates": {
+        "invocation": true,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "gate_error_counts": {
+        "missing_required_flows": 46,
+        "lifecycle_errors": 2,
+        "transaction_errors": 94
+      },
+      "budget_exit_code": 0
+    },
+    "cl-atomic-open-diagnostic": {
+      "failure_type": "budget_exceeded_fixture_or_invocation",
+      "test_exit_code": 101,
+      "test_terminal_summaries": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 41 filtered out; finished in 39.96s"
+      ],
+      "source_snapshot": "cl-atomic-v1-sources",
+      "recorded_gates": {
+        "invocation": false,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "gate_error_counts": {
+        "missing_required_flows": 46,
+        "lifecycle_errors": 2,
+        "transaction_errors": 1
+      },
+      "budget_exit_code": 1
+    },
+    "cl-atomic-open-diagnostic2": {
+      "failure_type": "budget_exceeded_fixture_or_invocation",
+      "test_exit_code": 101,
+      "test_terminal_summaries": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 41 filtered out; finished in 63.05s"
+      ],
+      "source_snapshot": "cl-atomic-v1-sources",
+      "recorded_gates": {
+        "invocation": false,
+        "lifecycle": false,
+        "transaction": false,
+        "checkpoint": false
+      },
+      "gate_error_counts": {
+        "missing_required_flows": 45,
+        "lifecycle_errors": 2,
+        "transaction_errors": 1
+      },
+      "budget_exit_code": 1
+    },
+    "cl-atomic-v1-sources": {
+      "failure_type": "historical_prototype_source_snapshot_only",
+      "files": [
+        "assess.py",
+        "authorization-and-workloads.md",
+        "combined.rs",
+        "compare.cjs",
+        "optimization-review.md",
+        "optimization.patch",
+        "prepare.py",
+        "run.sh",
+        "tests/combined.rs"
+      ],
+      "scope": "Only explicitly named prototype files and failure reason; no Cargo trees or production sources"
+    },
+    "cl-atomic-v2-failed-sources": {
+      "failure_type": "historical_prototype_source_snapshot_only",
+      "files": [
+        "prototype/archive-counts.cjs",
+        "prototype/assess.py",
+        "prototype/authorization-and-workloads.md",
+        "prototype/compare.cjs",
+        "prototype/optimization-review.md",
+        "prototype/optimization.patch",
+        "prototype/prepare.py",
+        "prototype/proof-map.json",
+        "prototype/run.sh",
+        "prototype/tests/combined.rs",
+        "reason.txt"
+      ],
+      "scope": "Only explicitly named prototype files and failure reason; no Cargo trees or production sources"
+    },
+    "cl-atomic-v3-differential-live.json": {
+      "failure_type": "js_comparison_normalizer_false_difference",
+      "transactions": 151,
+      "matched": 92,
+      "differences": 59,
+      "release_approval": false,
+      "scope": "Historical failed comparator output; subsequent corrected final comparison is outside this negative archive"
+    },
+    "cl-atomic-v3-differential-live-corrected.json": {
+      "failure_type": "js_comparison_normalizer_false_difference",
+      "transactions": 151,
+      "matched": 92,
+      "differences": 59,
+      "release_approval": false,
+      "scope": "Historical failed comparator output; subsequent corrected final comparison is outside this negative archive"
+    },
+    "cl-atomic-v3-differential-known-peak.json": {
+      "failure_type": "js_comparison_normalizer_false_difference",
+      "transactions": 17,
+      "matched": 13,
+      "differences": 4,
+      "release_approval": false,
+      "scope": "Historical failed comparator output; subsequent corrected final comparison is outside this negative archive"
+    },
+    "cl-atomic-v3-differential-known-peak-corrected.json": {
+      "failure_type": "js_comparison_normalizer_false_difference",
+      "transactions": 17,
+      "matched": 13,
+      "differences": 4,
+      "release_approval": false,
+      "scope": "Historical failed comparator output; subsequent corrected final comparison is outside this negative archive"
+    }
+  },
+  "members": {
+    "cl-atomic-baseline-archived/budget-exit-code.txt": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/budget.log": {
+      "sha256": "e3011c817b8fa6b3504d3c4535cfaf29243b746de587407a4782a0e5be044b9b",
+      "bytes": 166346,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/calls.jsonl": {
+      "sha256": "2f435681613b1036f28f9fb09d8205fcb97c762619ef264a6dac62aa622d9a64",
+      "bytes": 2727540,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/gates.json": {
+      "sha256": "16e37f30ce5f6fe93fb49dc85ab2a6f4149cdb4373dab34f217e4c55bc53e3cd",
+      "bytes": 11879,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/profile.json": {
+      "sha256": "1297407211c18de571604c2371e0ba072c993e66a9c22ccecfc815d572a0b614",
+      "bytes": 858,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/resources.jsonl": {
+      "sha256": "9a5f99797d3cb979cb6f98fd82efea3fcdd3dbc2d6d0f1ccb9621ae50ce2c314",
+      "bytes": 170659,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/run-configuration.json": {
+      "sha256": "4391803965fad7a1ac4de5a9cb1862437a449ce6e0b25f8d0b1bd046b3c4b75d",
+      "bytes": 474,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/setup-profile.json": {
+      "sha256": "1297407211c18de571604c2371e0ba072c993e66a9c22ccecfc815d572a0b614",
+      "bytes": 858,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/source-before.json": {
+      "sha256": "512d3765f91b45153b56cada723fff830cc9c3d17defdd905908109629ca427f",
+      "bytes": 4162,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/test-exit-code.txt": {
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "bytes": 4,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/tests.log": {
+      "sha256": "a0f86d51e0a92cc7279dd97973d0a7affc450bfab18701f751a3be12cdd966f0",
+      "bytes": 183520,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-archived/transactions.jsonl": {
+      "sha256": "5afd79cbcc80acb61134a5c31955c777df7977c3b78c94ffbfa9d4dfb7dd7b8b",
+      "bytes": 75781808,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/budget-exit-code.txt": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/budget.log": {
+      "sha256": "e3011c817b8fa6b3504d3c4535cfaf29243b746de587407a4782a0e5be044b9b",
+      "bytes": 166346,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/calls.jsonl": {
+      "sha256": "2f435681613b1036f28f9fb09d8205fcb97c762619ef264a6dac62aa622d9a64",
+      "bytes": 2727540,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/gates.json": {
+      "sha256": "16e37f30ce5f6fe93fb49dc85ab2a6f4149cdb4373dab34f217e4c55bc53e3cd",
+      "bytes": 11879,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/profile.json": {
+      "sha256": "f45b00924de13977cf22fcd13573a52419bac1575b3edfbc9446ffd7c565c49b",
+      "bytes": 858,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/resources.jsonl": {
+      "sha256": "9a5f99797d3cb979cb6f98fd82efea3fcdd3dbc2d6d0f1ccb9621ae50ce2c314",
+      "bytes": 170659,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/run-configuration.json": {
+      "sha256": "8bf461143a00be58b5debab4b8bcf7af01264907e92682c278c1091ca006b739",
+      "bytes": 413,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/setup-profile.json": {
+      "sha256": "f45b00924de13977cf22fcd13573a52419bac1575b3edfbc9446ffd7c565c49b",
+      "bytes": 858,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/source-before.json": {
+      "sha256": "30ac0685fd843745f933554afbf17427f1b953112e1571b9b3367d7e88a89fc9",
+      "bytes": 3988,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/test-exit-code.txt": {
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "bytes": 4,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/tests.log": {
+      "sha256": "30e3c694fef6f527fa50b44847a45584b14261c52dfb9468d6ae3f42c7bfdf4e",
+      "bytes": 183670,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-baseline-captured/transactions.jsonl": {
+      "sha256": "6527e5739362d8ab390face33f44d6565560e8e455aeb110d998502df3ca999d",
+      "bytes": 45903658,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/budget-exit-code.txt": {
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "bytes": 2,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/budget.log": {
+      "sha256": "0e0f568524f8d2f9462e07a4b5b54b2ff71a25b862d02c5cd00e1752a1b8017f",
+      "bytes": 3162,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/calls.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/gates.json": {
+      "sha256": "7d59073aa3238d11ca88a0f82399243fcdee6bcc17bff5b67dff8c7007109371",
+      "bytes": 3300,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/profile.json": {
+      "sha256": "c4917731b4c776fa4ed3d848bd305f37c0faf1b587b1a39e1712f7eb7c46f876",
+      "bytes": 856,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/resources.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/run-configuration.json": {
+      "sha256": "d247124e3f3fe785c66fe6120e74ea33b9241f7361c9277090c83686dffc579c",
+      "bytes": 421,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/setup-profile.json": {
+      "sha256": "c4917731b4c776fa4ed3d848bd305f37c0faf1b587b1a39e1712f7eb7c46f876",
+      "bytes": 856,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/source-before.json": {
+      "sha256": "812f10462d12f51ab2e47165d3ab2d2c4ef853d4c1e8a2b816f3676275cb007a",
+      "bytes": 4314,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/test-exit-code.txt": {
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "bytes": 4,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/tests.log": {
+      "sha256": "4c7e919e82fae0bca0d7a6eb723aa9d67fe035b0a83c222b152b59b52f6873b8",
+      "bytes": 5882,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic/transactions.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/budget-exit-code.txt": {
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "bytes": 2,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/budget.log": {
+      "sha256": "7f69c6764c7f3a3b485fdf337a40fff6578ccf14218b7ec66d8c3ad0a6e08345",
+      "bytes": 9197,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/calls.jsonl": {
+      "sha256": "da24f79fb4e79c3c3268ed129ef88558ec83dc077da04b5d8ee9811632166470",
+      "bytes": 139912,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/gates.json": {
+      "sha256": "3342adc0fb0b2135427cd8cee4326ee98672ffe078feabc0f516be746a10ef27",
+      "bytes": 3248,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/profile.json": {
+      "sha256": "db983bd588cf6e820ca1fd8efbd8236c1a84cc26a61b87f423cf5b079d31d853",
+      "bytes": 857,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/resources.jsonl": {
+      "sha256": "574c7558ceda067ded71bb715abc4aa2d43df792d83d0c94367b84588d007287",
+      "bytes": 6719,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/run-configuration.json": {
+      "sha256": "d07412d6870b08fc9300403e6e944890a1c8cf817b55dccaf2a7d719239f2807",
+      "bytes": 422,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/setup-profile.json": {
+      "sha256": "db983bd588cf6e820ca1fd8efbd8236c1a84cc26a61b87f423cf5b079d31d853",
+      "bytes": 857,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/source-before.json": {
+      "sha256": "995709ad23153da66151d74a2b922d5d002f53603b66f1ff9ced46bf9300abe0",
+      "bytes": 4327,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/test-exit-code.txt": {
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "bytes": 4,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/tests.log": {
+      "sha256": "b2074d059b5f4aef6eb230604aef065141a7d15b34f0cef038e2915dd4f5a108",
+      "bytes": 56343,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-open-diagnostic2/transactions.jsonl": {
+      "sha256": "7e5a8083440a6ac0517d45646302405bfa36c82d6a9daf63f929157d80350c47",
+      "bytes": 2466688,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/budget-exit-code.txt": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/budget.log": {
+      "sha256": "e340d5fb9d59163a77cf523c4ff9a2108a64b0bcf81d51e4a2bdb403a2358100",
+      "bytes": 166346,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/calls.jsonl": {
+      "sha256": "e6b1135f84bb9ab12ea4eb38561206860a7601e59b31dd434ffa08bc6e5c34e6",
+      "bytes": 2727540,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/gates.json": {
+      "sha256": "16e37f30ce5f6fe93fb49dc85ab2a6f4149cdb4373dab34f217e4c55bc53e3cd",
+      "bytes": 11879,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/profile.json": {
+      "sha256": "f75ee8e5339e369bd73a15f20782ea17c1e721cf1871d281c50b1ff3aead42f0",
+      "bytes": 859,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/resources.jsonl": {
+      "sha256": "5c47604cbc8c0668459c80a1cb965b13c5dba85f6a836da0465433ec26aeb298",
+      "bytes": 170659,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/run-configuration.json": {
+      "sha256": "c64fa5944919db8831690c83ec4a84cf31cadd8a07eb96f10863f42126da9844",
+      "bytes": 414,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/setup-profile.json": {
+      "sha256": "f75ee8e5339e369bd73a15f20782ea17c1e721cf1871d281c50b1ff3aead42f0",
+      "bytes": 859,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/source-before.json": {
+      "sha256": "b7752a2d1e83d2655eda5c6c28810cd701e0dc6d18adc133779c747e6879aaef",
+      "bytes": 4000,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/test-exit-code.txt": {
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "bytes": 4,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/tests.log": {
+      "sha256": "c8e9a2f6488fdb5706fbbf3d9494aff74ecbb332397b9c061ac2222b15693b8f",
+      "bytes": 183527,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-optimized-captured/transactions.jsonl": {
+      "sha256": "bfc71071452ee67705cf2cdce4e3e3328de38c57e79b8d32d54179e484394747",
+      "bytes": 45906538,
+      "failure_type": "budget_exceeded_fixture_or_invocation"
+    },
+    "cl-atomic-v1-sources/assess.py": {
+      "sha256": "e42a53e2367c78e7b48f31ef54c5d8f28925271f19f873a9197657645b607236",
+      "bytes": 7935,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v1-sources/authorization-and-workloads.md": {
+      "sha256": "f17f5eddbb82eeaeaece3973fb8d2f0394ccb8079ff4bc3804e9075193052c8f",
+      "bytes": 13467,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v1-sources/combined.rs": {
+      "sha256": "8f11be98c68f479235bc9cf282a6173fa83552d177e8cadfc484399d087b2168",
+      "bytes": 28707,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v1-sources/compare.cjs": {
+      "sha256": "fdf3989f2833c3826a76cb0a49438796248011d20f6c4751fbbb029c23c034f3",
+      "bytes": 4422,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v1-sources/optimization-review.md": {
+      "sha256": "69831af4f7b51d9cd0c14b4ac460bd26bc20151c827ac359291b76d3b77b8f47",
+      "bytes": 13065,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v1-sources/optimization.patch": {
+      "sha256": "bffb4dcf73404f5e98f7f57c90ae5f896dbcd289f6d7734f4687b16121cdd20e",
+      "bytes": 2025,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v1-sources/prepare.py": {
+      "sha256": "97666a1ff6953bb086f14846a24f4cf2c296298e021462f08e044cecdd09176d",
+      "bytes": 6745,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v1-sources/run.sh": {
+      "sha256": "88c1f7da4d91d37579b68819cd0d1ebc52211d0c2dba6b400145da98717258e7",
+      "bytes": 3717,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v1-sources/tests/combined.rs": {
+      "sha256": "8f11be98c68f479235bc9cf282a6173fa83552d177e8cadfc484399d087b2168",
+      "bytes": 28707,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-baseline-archived/budget-exit-code.txt": {
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "bytes": 2,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/budget.log": {
+      "sha256": "2cce4341d27d0e8b310f0138930d5c5ac66a850511406333f2a573bbb3fc1e62",
+      "bytes": 10233,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/calls.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/gates.json": {
+      "sha256": "15346bfcde58fa4ab77cc206a438681ebf4db9aecd11e2d6b6f76d224ecdf5ef",
+      "bytes": 9903,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/profile.json": {
+      "sha256": "08e5d36673eb6de1a17aa4e30dd5056ef718abc400e65543c909d1fa51132c19",
+      "bytes": 861,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/proof-manifest.json": {
+      "sha256": "a3bd75e8d6cb9568bf7bd14f7c9aca27f3e93ae817de0cec7120168c1f708f66",
+      "bytes": 4786,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/resources.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/run-configuration.json": {
+      "sha256": "67715cc41e31b5bedd170c87c8d3f03089135c50eed0398bd9b65202a2932058",
+      "bytes": 477,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/setup-profile.json": {
+      "sha256": "08e5d36673eb6de1a17aa4e30dd5056ef718abc400e65543c909d1fa51132c19",
+      "bytes": 861,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/source-before.json": {
+      "sha256": "525f6515f6dbaeb33b31e689f440244fcebd3268589591a2bcaa3f02d7d1ad1c",
+      "bytes": 32023,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/test-exit-code.txt": {
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "bytes": 4,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/tests.log": {
+      "sha256": "669d99c0be6e52921d782aedd7ca97f07cc62a34b295a15c645a753760e9b1c3",
+      "bytes": 7674,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-archived/transactions.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/calls.jsonl": {
+      "sha256": "91a8879d06714b0d127c215af14f9e858c3d959cb7a6ed3f947a968f3ecd9955",
+      "bytes": 290453,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/profile.json": {
+      "sha256": "a8fcda5419f7dbc94420e36e364e669d562b6fd8be856bce7bb8af8c2da83857",
+      "bytes": 861,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/resources.jsonl": {
+      "sha256": "86398f032306599158af687462d71121fa228a0a82fabcbddb2aa7f6293dc038",
+      "bytes": 21197,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/run-configuration.json": {
+      "sha256": "95b72e5275e80446404013644ef7305fbfeaa3c874c19f863bfd0a5cb00ab514",
+      "bytes": 416,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/setup-profile.json": {
+      "sha256": "a8fcda5419f7dbc94420e36e364e669d562b6fd8be856bce7bb8af8c2da83857",
+      "bytes": 861,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/source-before.json": {
+      "sha256": "329c95b3bcf42d14b7f7e93e1d58e10893d6f81add902dcd65ec5d671e24215c",
+      "bytes": 32023,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/test-exit-code.txt": {
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "bytes": 4,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/tests.log": {
+      "sha256": "a2b76ea3fdf1f7358a15f4700582982ece8424064fc8f16872653039ee441e1b",
+      "bytes": 32188,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-captured/transactions.jsonl": {
+      "sha256": "24505127074d86f6aafe39afe8dd540176febd8d8ae37c89d86831b87ea95940",
+      "bytes": 6247134,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/budget-exit-code.txt": {
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "bytes": 2,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/budget.log": {
+      "sha256": "e3580837453991f7daafee9e92529636c681f629871f0dfe847b3d7856e0d334",
+      "bytes": 10209,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/calls.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/gates.json": {
+      "sha256": "1e8d638f36ddf179dead8e340d15b0805a7f6017e9a6395a8845ae08546677b1",
+      "bytes": 9891,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/profile.json": {
+      "sha256": "d6e095ef3a2ae969fc4e616e2ff8ea483744e703003cde5e5ecfe3a55e01fb16",
+      "bytes": 848,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/proof-manifest.json": {
+      "sha256": "55e2978608a7585d3cabafdc08bb0d33ffc486c53e1030f33ee416baf9727d62",
+      "bytes": 4774,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/resources.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/run-configuration.json": {
+      "sha256": "95b72e5275e80446404013644ef7305fbfeaa3c874c19f863bfd0a5cb00ab514",
+      "bytes": 416,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/setup-profile.json": {
+      "sha256": "ed84b2f1a666d783e7922815f7190d9e11d56b48a87d8b0aedf72bc34d068bb4",
+      "bytes": 861,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/source-before.json": {
+      "sha256": "85b6d37eee5f78e4ad96b165787cdfea50b74188fba750ae241b25f290d45c62",
+      "bytes": 32023,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/test-exit-code.txt": {
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "bytes": 4,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/tests.log": {
+      "sha256": "f60c8098d827acfbd02004a777cd79c6b281ada547fcdbb8ec3c434f45baa76f",
+      "bytes": 7620,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-baseline-internal/transactions.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-failed-sources/prototype/archive-counts.cjs": {
+      "sha256": "c6b19408d21811659c1dc404b1a2f2f29a0a0a1b776b46a5da1b8ee123bba557",
+      "bytes": 2410,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/prototype/assess.py": {
+      "sha256": "e42a53e2367c78e7b48f31ef54c5d8f28925271f19f873a9197657645b607236",
+      "bytes": 7935,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/prototype/authorization-and-workloads.md": {
+      "sha256": "f17f5eddbb82eeaeaece3973fb8d2f0394ccb8079ff4bc3804e9075193052c8f",
+      "bytes": 13467,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/prototype/compare.cjs": {
+      "sha256": "7a9a1f73c97029db6eeb0bc06068f4c38924a6a473364292b09709aa2653047c",
+      "bytes": 5264,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/prototype/optimization-review.md": {
+      "sha256": "69831af4f7b51d9cd0c14b4ac460bd26bc20151c827ac359291b76d3b77b8f47",
+      "bytes": 13065,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/prototype/optimization.patch": {
+      "sha256": "bffb4dcf73404f5e98f7f57c90ae5f896dbcd289f6d7734f4687b16121cdd20e",
+      "bytes": 2025,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/prototype/prepare.py": {
+      "sha256": "93398f366eae19716ff620c9c7d4d1affb8d1cf096bc6eb98c530e0e33499299",
+      "bytes": 8694,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/prototype/proof-map.json": {
+      "sha256": "32149bf2ec07712a6bd606cce551f9836affced4a46bab227e8c1b6f8e41ff81",
+      "bytes": 3094,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/prototype/run.sh": {
+      "sha256": "3556d64f6381c416ed262affdf5f5b7fdb565ec3c224fe2450d6f1d10855b3ad",
+      "bytes": 4984,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/prototype/tests/combined.rs": {
+      "sha256": "c6385f1e920aef246fbd3111b3dbcfa9c4975ef86f34c049ca47bab018d482db",
+      "bytes": 35886,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-failed-sources/reason.txt": {
+      "sha256": "abcec36a36d1316d46a84dc3e674ca22963b6257343760d8e791da1da5a8fad2",
+      "bytes": 297,
+      "failure_type": "historical_prototype_source_snapshot_only"
+    },
+    "cl-atomic-v2-optimized-captured/calls.jsonl": {
+      "sha256": "b11167106510fde6d5fe090e66fbd80ce3786fbba6c24668cfd441ee4e4afdd0",
+      "bytes": 294232,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-optimized-captured/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-optimized-captured/profile.json": {
+      "sha256": "aa8d6f3332de458043ca7c6db0bfe7e950e77c1017601891adbba0ab5bfcba26",
+      "bytes": 862,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-optimized-captured/resources.jsonl": {
+      "sha256": "3d05f44e39343fdfa1258ca7243bcac2d47ce53b474609b705fa9ca0e2448676",
+      "bytes": 22032,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-optimized-captured/run-configuration.json": {
+      "sha256": "1d3f852d2ef3c8f4081e50f84d959b745ef27546fd2823bdb0381ebe0797c0ed",
+      "bytes": 417,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-optimized-captured/setup-profile.json": {
+      "sha256": "aa8d6f3332de458043ca7c6db0bfe7e950e77c1017601891adbba0ab5bfcba26",
+      "bytes": 862,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-optimized-captured/source-before.json": {
+      "sha256": "16808001a25a52f5c9e71115b3eea3f3ad4ec3dc5613dbe4204af7cd5aad8780",
+      "bytes": 32040,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-optimized-captured/test-exit-code.txt": {
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "bytes": 4,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-optimized-captured/tests.log": {
+      "sha256": "af089841469ec48026adba52e91c3c5e5a7fec01c9457470d6cfb3b327b3e271",
+      "bytes": 33129,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v2-optimized-captured/transactions.jsonl": {
+      "sha256": "bd6434eee3960f10fd38567a9945d259243dd682abf875be7d07460e092d2f8e",
+      "bytes": 6376398,
+      "failure_type": "snapshot_mock_nonce_generator_reset_auth_existing_value"
+    },
+    "cl-atomic-v3-baseline-archived/budget-exit-code.txt": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/budget.log": {
+      "sha256": "7279ad74dcd610225693eb2f9ebfc68ef58f7025bb96f46286041c1b05f396db",
+      "bytes": 183359,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/calls.jsonl": {
+      "sha256": "500e9f76e9dbfdc801c17d83739d99305a76b28a20798425aba5a9cef0e8ae19",
+      "bytes": 3467989,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/gates.json": {
+      "sha256": "3e60f2a0e631c814da3615709201fac307830b046a494993ead9d916ea50bc54",
+      "bytes": 12115,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/profile.json": {
+      "sha256": "e4fceca24b8a762c7a8c31ee98514f65289e4cb9f86c8002ef24897c11ea475d",
+      "bytes": 861,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/proof-manifest.json": {
+      "sha256": "6cf67cf310b131c27729e8123ca44c3e506a4c59abad00fd992afb073b3e5885",
+      "bytes": 5956,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/resources.jsonl": {
+      "sha256": "5751e2cc4ae50ac3fd78ce55ff2d3911983c7f311bd1fdf22c6e26052ce96d7f",
+      "bytes": 189682,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/run-configuration.json": {
+      "sha256": "6df01b7bad43c910c51936e459e1db0f73a5045d655b373592267b221de1e68f",
+      "bytes": 477,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/setup-profile.json": {
+      "sha256": "e4fceca24b8a762c7a8c31ee98514f65289e4cb9f86c8002ef24897c11ea475d",
+      "bytes": 861,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/source-before.json": {
+      "sha256": "78ca75562a270c5c1d8c5883e63111a7b230048e83c533d373cbca28b22057ec",
+      "bytes": 32023,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/test-exit-code.txt": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/tests.log": {
+      "sha256": "6ed3b4f89c157973e582bfa0b48a99eb6134e1d53b8fd366736566588ac8db9c",
+      "bytes": 213782,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-baseline-archived/transactions.jsonl": {
+      "sha256": "87416e34be862a5d419bad910e6bc080783979ced5311fd3e3efe448f2eea599",
+      "bytes": 88657473,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-differential-known-peak-corrected.json": {
+      "sha256": "416a9a197a892be4d2a7bd8e213c8604b6b83389895dc7a2d1274f3edb0f5054",
+      "bytes": 37448,
+      "failure_type": "js_comparison_normalizer_false_difference"
+    },
+    "cl-atomic-v3-differential-known-peak.json": {
+      "sha256": "416a9a197a892be4d2a7bd8e213c8604b6b83389895dc7a2d1274f3edb0f5054",
+      "bytes": 37448,
+      "failure_type": "js_comparison_normalizer_false_difference"
+    },
+    "cl-atomic-v3-differential-live-corrected.json": {
+      "sha256": "89b2482194a36186db74891549dace4752caf7eb2444667e94620df21b890360",
+      "bytes": 361156,
+      "failure_type": "js_comparison_normalizer_false_difference"
+    },
+    "cl-atomic-v3-differential-live.json": {
+      "sha256": "89b2482194a36186db74891549dace4752caf7eb2444667e94620df21b890360",
+      "bytes": 361156,
+      "failure_type": "js_comparison_normalizer_false_difference"
+    },
+    "cl-atomic-v3-optimized-archived/budget-exit-code.txt": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/budget.log": {
+      "sha256": "386f0b2fd2afaf8d320b586e15eaf26292b1986450e98c0cdea0cba44d960b23",
+      "bytes": 183347,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/calls.jsonl": {
+      "sha256": "f97766949ec51462544536c6ea21617dbe9d3b7070435a4fd034b9a036bdd66b",
+      "bytes": 3467987,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/gates.json": {
+      "sha256": "3e60f2a0e631c814da3615709201fac307830b046a494993ead9d916ea50bc54",
+      "bytes": 12115,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/network-config.json": {
+      "sha256": "4102b600e1e910b88b80efb772be4e2d99ad24bf624de1e57250e24daff4f74a",
+      "bytes": 32384,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/profile.json": {
+      "sha256": "d70675f395d3c7e5769f229d286d269e1211339badff2516f47c97735e38ddba",
+      "bytes": 862,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/proof-manifest.json": {
+      "sha256": "b73ca8634035373fdf5afbfb7b99176d1e07ce7986226d215812c799c86aeede",
+      "bytes": 5958,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/resources.jsonl": {
+      "sha256": "736d1b21872519194e340fcd50b4216e8d607ba0f0852ce0329cddf2568aa551",
+      "bytes": 189682,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/run-configuration.json": {
+      "sha256": "4cc7b19542902be2dae2a0fffcd164ffdaa297f3452e8e926d51b2243876d237",
+      "bytes": 478,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/setup-profile.json": {
+      "sha256": "d70675f395d3c7e5769f229d286d269e1211339badff2516f47c97735e38ddba",
+      "bytes": 862,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/source-before.json": {
+      "sha256": "4f8cf27de68f5a49bc69a3a4f10832ebad9e06e054188b49e465ef4691da5656",
+      "bytes": 32040,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/test-exit-code.txt": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/tests.log": {
+      "sha256": "5641c73db6809b7879acb48b0b29b7b7c09cd30cb5b6d0c4df1c269ecdc419be",
+      "bytes": 213745,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    },
+    "cl-atomic-v3-optimized-archived/transactions.jsonl": {
+      "sha256": "db3b57879da58ab563d21b40c402306a3c1e037b0f50f5483fbb43aca3595ff9",
+      "bytes": 88661013,
+      "failure_type": "archive_exporter_false_touched_state_mismatch"
+    }
+  },
+  "exclusions": [
+    "active v4 runs",
+    "successful final v3 live sources and run files",
+    "*-final.json differential outputs",
+    "Cargo caches/build trees",
+    "unrelated target paths",
+    "signed artifacts and secrets"
+  ],
+  "source_mutation_check": "Every original selected file rehashed after packaging and matched; each archived member independently rehashed and matched"
+}
