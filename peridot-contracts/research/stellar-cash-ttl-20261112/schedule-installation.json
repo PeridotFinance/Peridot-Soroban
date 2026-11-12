@@ -1,0 +1,13 @@
+{
+  "label": "gui/501/finance.peridot.fresh-cash-ttl-20261112",
+  "configuration": [
+    "program = /opt/homebrew/bin/node",
+    "runs = 1",
+    "last exit code = 0",
+    "run interval = 3600 seconds"
+  ],
+  "installed": true,
+  "state": "WAITING_FOR_USDC_ROUNDTRIP",
+  "signedOrSubmitted": false,
+  "unrelatedCredentialRemovedFromJobEnvironment": true
+}

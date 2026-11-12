@@ -1,0 +1,65 @@
+{
+  "observedAt": "2026-11-12T13:19:52.071912+00:00",
+  "sources": {
+    "XLM": "https://api.coinbase.com/v2/prices/XLM-USD/spot",
+    "EURC": "https://api.coinbase.com/v2/prices/EURC-USD/spot"
+  },
+  "quotes": {
+    "XLM": {
+      "data": {
+        "amount": "0.143417",
+        "base": "XLM",
+        "currency": "USD"
+      }
+    },
+    "EURC": {
+      "data": {
+        "amount": "1.1080586256352148",
+        "base": "EURC",
+        "currency": "USD"
+      }
+    }
+  },
+  "amounts": {
+    "USDC": {
+      "basis": "exact token amount",
+      "priceUSD": "1",
+      "totalRaw": "59000000000",
+      "firstRaw": "29500000000",
+      "secondRaw": "29500000000",
+      "totalUnits": "5900",
+      "firstUnits": "2950",
+      "secondUnits": "2950"
+    },
+    "XLM": {
+      "basis": "USD quote",
+      "priceUSD": "0.143417",
+      "totalRaw": "202207548616",
+      "firstRaw": "101103774308",
+      "secondRaw": "101103774308",
+      "totalUnits": "20220.7548616",
+      "firstUnits": "10110.3774308",
+      "secondUnits": "10110.3774308"
+    },
+    "PYUSD": {
+      "basis": "exact token amount",
+      "priceUSD": "1",
+      "totalRaw": "19000000000",
+      "firstRaw": "9500000000",
+      "secondRaw": "9500000000",
+      "totalUnits": "1900",
+      "firstUnits": "950",
+      "secondUnits": "950"
+    },
+    "EURC": {
+      "basis": "USD quote",
+      "priceUSD": "1.1080586256352148",
+      "totalRaw": "17147107166",
+      "firstRaw": "8573553583",
+      "secondRaw": "8573553583",
+      "totalUnits": "1714.7107166",
+      "firstUnits": "857.3553583",
+      "secondUnits": "857.3553583"
+    }
+  }
+}

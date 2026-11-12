@@ -1,0 +1,4 @@
+{
+  "at": "2026-11-12T13:32:52.240Z",
+  "error": "The expression evaluated to a falsy value:\n\n  assert(BigInt(tx.fee)<=MAX_TX)\n"
+}

@@ -1,0 +1,5 @@
+{
+  "result": "EXPECTED_REJECTION",
+  "reason": "first-halves-confirmed.json absent; no second-half authorization granted",
+  "scope": "read-only negative gate test"
+}
