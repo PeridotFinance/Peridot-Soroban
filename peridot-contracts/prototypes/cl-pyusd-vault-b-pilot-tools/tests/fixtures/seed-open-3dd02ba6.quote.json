@@ -1,0 +1,23 @@
+{
+  "admissible": true,
+  "composition_dirty": false,
+  "deposits_paused": false,
+  "guard_ready": false,
+  "in_band": true,
+  "invest0": "4313787926",
+  "invest1": "3672591430",
+  "ledger": 65507064,
+  "min_reserve": "25728",
+  "min_shares": "7980455341",
+  "min_swap": "3674577517",
+  "oracle_fresh": true,
+  "reserve": "38592",
+  "shares": "7996448238",
+  "swap_in": "3686212074",
+  "swap_out": "3681941400",
+  "tick": -2,
+  "timestamp": "1794821362",
+  "valid": true,
+  "vault_divergence_bps": 200,
+  "vault_slippage_bps": 100
+}
