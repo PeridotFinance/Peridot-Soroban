@@ -54,7 +54,8 @@ c.write_text(c.read_text() + '\n// StgV2 CL collateral class (prototype overlay;
     '#[cfg(not(feature = "lp-engine"))]\n#[path = "staged_v2.rs"]\nmod staged_v2;\n#[cfg(not(feature = "lp-engine"))]\npub use staged_v2::*;\n')
 st = dst / 'src/staged.rs'
 # Exit guard: prepare-close and emergency exit both start from the owner's available units.
-patch(st, [('        let available = stg_units(&e, &owner);\n', '        super::staged_v2::stg2_exit_check(&e, &owner, available, shares);\n', 2)])
+patch(st, [('        stg_deadline_ok(&e, deadline);\n        let available = stg_units(&e, &owner);\n', '        super::staged_v2::stg2_exit_check(&e, &owner, available, shares);\n', 1),
+            ('        assert!(shares > 0, "invalid emergency exit");\n        let available = stg_units(&e, &owner);\n', '        super::staged_v2::stg2_emergency_check(&e, &owner);\n', 1)])
 st.write_text(st.read_text() + '''
 // ---- StgV2 accessors (appended; base code above unchanged) ----
 pub(super) fn stg_vault(e: &Env) -> Address { stg_config(e).vault }
@@ -67,7 +68,7 @@ pub(super) fn stg_require_idle(e: &Env) {
 }
 ''')
 patch(dst / 'Cargo.toml', [('stg-mainnet-accepted = []\n',
-    '# Explicit Mainnet acceptance of the StgV2 collateral class. Default builds refuse activation on Mainnet.\nstg2-mainnet-accepted = []\n', 1)])
+    '# Explicit Mainnet acceptance of the StgV2 collateral class. Default builds refuse activation on Mainnet.\nstg2-mainnet-accepted = []\n# Measurement-only D3 chain seeding (never a deployment candidate).\nstg2-measure = []\n', 1)])
 diff = subprocess.run(['diff', '-ruN', str(src0), str(dst)], capture_output=True, text=True).stdout.replace(str(base) + '/', 'base/').replace(str(out) + '/', 'stgv2/')
 (out / 'stgv2.diff').write_text(diff)
 removed = [l for l in diff.splitlines() if l.startswith('-') and not l.startswith('---')]

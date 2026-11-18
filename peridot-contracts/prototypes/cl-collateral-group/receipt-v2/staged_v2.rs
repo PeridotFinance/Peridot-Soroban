@@ -61,6 +61,7 @@ pub enum Stg2Error {
     ChainBroken = 2113,
     Inactive = 2114,
     SeizeRejected = 2115,
+    EnteredMarket = 2116,
 }
 
 #[contracttype]
@@ -161,8 +162,18 @@ fn put_chain(e: &Env, c: d3::Chain) { i(e).set(&Stg2Key::StgV2Blk, &Stg2Blk { si
 #[allow(deprecated)]
 fn ev(e: &Env, name: &str, data: impl IntoVal<Env, Val>) { e.events().publish((Symbol::new(e, name),), data); }
 
-/// Exit guard (prepare-close and emergency exit). Owners without group debt are unaffected,
-/// so the dependency-free emergency exit stays dependency-free for them.
+/// Exit guards. The emergency exit is refused while the owner is ENTERED in this market (its
+/// units are collateral): exit the market first (the controller checks health there), then exit.
+/// Reason: the no-claim extraction plus any health read exceeds the 100-entry limit (rows RD5/RD8).
+/// The check reads only the controller's UserMarkets entry, so a non-entered owner keeps the
+/// dependency-free path. Prepare-close of an owner with group debt needs a fresh NAV checkpoint
+/// and remaining cover; owners without debt are unaffected.
+pub(super) fn stg2_emergency_check(e: &Env, owner: &Address) {
+    if !stg2_active(e) { return; }
+    let c = cfg(e);
+    let m: Vec<Address> = call(e, &c.controller, "get_user_markets", (owner.clone(),).into_val(e));
+    if m.contains(e.current_contract_address()) { panic_with_error!(e, Stg2Error::EnteredMarket); }
+}
 pub(super) fn stg2_exit_check(e: &Env, owner: &Address, available: u128, shares: u128) {
     if !stg2_active(e) { return; }
     let c = cfg(e);
@@ -329,3 +340,16 @@ pub(super) fn stg2_exchange_rate(e: &Env) -> u128 { nav_rate(e) }
 pub(super) fn stg2_units(e: &Env, user: &Address) -> u128 { units(e, user) }
 pub(super) fn stg2_numeraire(e: &Env) -> Address { cfg(e).usdc }
 pub(super) fn stg2_total_units(e: &Env) -> u128 { super::staged::stg_total_units(e) }
+
+/// MEASUREMENT BUILDS ONLY (`--features stg2-measure`, never a deployment candidate): seed the D3
+/// chain so footprint rows on a frozen-oracle capture need not wait 10 minutes. The time-edge
+/// logic is proven by the d3-chain unit tests. Refuses Mainnet even in a measurement build.
+#[cfg(feature = "stg2-measure")]
+#[contractimpl]
+impl ReceiptVault {
+    pub fn stage2_measure_set_chain(e: Env, b: Option<Stg2Blk>) {
+        let public = e.ledger().network_id() == e.crypto().sha256(&Bytes::from_slice(&e, b"Public Global Stellar Network ; September 2015")).to_bytes();
+        assert!(!public, "measurement build");
+        match b { Some(x) => i(&e).set(&Stg2Key::StgV2Blk, &x), None => i(&e).remove(&Stg2Key::StgV2Blk) }
+    }
+}
