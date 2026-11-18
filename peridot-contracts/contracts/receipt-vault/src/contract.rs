@@ -1051,13 +1051,16 @@ impl ReceiptVault {
         }
     }
 
+    /// Exact ceil(amount * fee_scaled / 1e6) without a widening product.
+    /// amount = q * 1e6 + r, so the result is q * fee + ceil(r * fee / 1e6).
+    /// The previous saturating form undercharged above u128::MAX / 1e6.
     fn compute_flash_loan_fee(amount: u128, fee_scaled: u128) -> u128 {
-        let fee_numerator = amount.saturating_mul(fee_scaled);
-        if fee_numerator == 0 {
-            0u128
-        } else {
-            fee_numerator.saturating_sub(1) / SCALE_1E6 + 1
-        }
+        let q = amount / SCALE_1E6;
+        let r = amount % SCALE_1E6;
+        let whole = q.checked_mul(fee_scaled).expect("flash fee overflow");
+        let part = r.checked_mul(fee_scaled).expect("flash fee overflow");
+        let part_ceil = if part == 0 { 0 } else { (part - 1) / SCALE_1E6 + 1 };
+        whole.checked_add(part_ceil).expect("flash fee overflow")
     }
 
     fn ensure_user_borrow_flag(env: &Env, user: &Address) {
@@ -1656,6 +1659,20 @@ impl ReceiptVault {
         admin.require_auth();
         assert!(Self::minimum_cash_reserve_bps(&env).is_some(), "reserve not configured");
         env.storage().instance().set(&DataKey::CashBorrowingEnabled, &enabled);
+    }
+
+    /// Admin: flash-loan switch. Immediate in both directions; default false.
+    pub fn set_flash_loans_enabled(env: Env, admin: Address, enabled: bool) {
+        ensure_initialized(&env);
+        let expected: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin missing");
+        assert!(admin == expected, "invalid admin");
+        admin.require_auth();
+        env.storage().instance().set(&DataKey::FlashLoansEnabled, &enabled);
+    }
+
+    pub fn get_flash_loans_enabled(env: Env) -> bool {
+        ensure_initialized(&env);
+        env.storage().instance().get(&DataKey::FlashLoansEnabled).unwrap_or(false)
     }
 
     pub fn get_cash_borrowing_enabled(env: Env) -> bool {
@@ -2480,6 +2497,23 @@ impl ReceiptVault {
             .persistent()
             .remove(&DataKey::PendingUpgradeEta);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
+
+    /// Admin: cancel a staged upgrade (removes the pending hash and ETA).
+    pub fn cancel_upgrade(env: Env) {
+        let _ = ensure_initialized(&env);
+        let admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .expect("admin not set");
+        admin.require_auth();
+        let persistent = env.storage().persistent();
+        if !persistent.has(&DataKey::PendingUpgradeHash) {
+            panic!("pending upgrade not set");
+        }
+        persistent.remove(&DataKey::PendingUpgradeHash);
+        persistent.remove(&DataKey::PendingUpgradeEta);
     }
 
     /// Admin: transfer admin to new address
@@ -4616,6 +4650,11 @@ impl ReceiptVault {
 
     /// Execute a flash loan to `receiver`. Receiver must return `amount + fee` within the callback.
     pub fn flash_loan(env: Env, initiator: Address, receiver: Address, amount: u128, data: Bytes) {
+        // Separate durable switch: borrowing being enabled never enables flash loans.
+        assert!(
+            env.storage().instance().get::<_, bool>(&DataKey::FlashLoansEnabled).unwrap_or(false),
+            "flash loans disabled"
+        );
         if amount == 0 {
             panic!("invalid flash amount");
         }

@@ -48,3 +48,9 @@ mod reserve_test;
 
 #[cfg(test)]
 mod rounding_regression_test;
+
+#[cfg(test)]
+mod flash_reentry_test;
+
+#[cfg(test)]
+mod upgrade_cancel_test;

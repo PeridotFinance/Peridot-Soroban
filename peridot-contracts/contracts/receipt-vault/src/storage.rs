@@ -58,6 +58,7 @@ pub enum DataKey {
     ClCustody, // INSTANCE bool; opt-in dedicated nonborrowing CL share custody market
     ClCustodyContext, // INSTANCE exact controller-owned withdrawal/transfer context
     CashBorrowingEnabled, // INSTANCE bool; opt-in markets default disabled until explicit approval
+    FlashLoansEnabled, // INSTANCE bool; flash loans default disabled, independent of borrowing
     PermanentMinimumSupply, // INSTANCE u128; explicit admin-funded, immutable own-address share floor
 }
 
