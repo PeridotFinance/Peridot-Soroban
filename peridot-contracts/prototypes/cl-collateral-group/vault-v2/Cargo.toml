@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+  "contracts/cl-share-vault",
+  "contracts/mocks/mock-token",
+  "contracts/mocks/mock-aquarius-pool",
+]
+
+[workspace.dependencies]
+soroban-sdk = { version = "25.3.0", features = ["experimental_spec_shaking_v2"] }
+stellar-tokens = { path = "/Users/joshua/Peridot/Peridot-Soroban/openzeppelin-stellar-contracts/packages/tokens" }
+stellar-contract-utils = { path = "/Users/joshua/Peridot/Peridot-Soroban/openzeppelin-stellar-contracts/packages/contract-utils" }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+# For more information about this profile see https://soroban.stellar.org/docs/basic-tutorials/logging#cargotoml-profile
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true
