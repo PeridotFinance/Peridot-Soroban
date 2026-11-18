@@ -155,6 +155,7 @@ fn group_inner() {
     if want("jrm") { group_suite(&base, avail, false, &mut results, &mut log); }
     if want("static") { group_suite(&base, avail, true, &mut results, &mut log); }
     if want("d3") { d3_suite(&base, avail, &mut results, &mut log); }
+    if want("real") { real_suite(&base, &mut results, &mut log); }
     finish(&log, json!({"results": results}));
 }
 
