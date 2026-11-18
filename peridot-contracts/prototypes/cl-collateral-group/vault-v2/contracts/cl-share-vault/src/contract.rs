@@ -3363,6 +3363,9 @@ impl ClShareVault {
         e.events().publish((Symbol::new(&e,"seizesync"),),(from,to,n,opened));opened
     }
     pub fn stage_last_claim(e:Env)->Option<u64> {crate::stage_storage::last_claim(&e)}
+    /// StgV2 fallback input: booked idle [token0, token1] (command liabilities and unbooked
+    /// donations excluded, as in NAV). No pool, oracle or reward call.
+    pub fn stage_idle(e:Env)->Vec<u128> {soroban_sdk::vec![&e,Self::balance_of_token(&e,&Self::token(&e,0)),Self::balance_of_token(&e,&Self::token(&e,1))]}
     pub fn stage_allocation(e:Env,id:u64)->StageAllocation {e.storage().persistent().get(&StageVaultKey::StgV1Allocation(id)).unwrap()}
     // Shared by the claim-first close and the no-claim emergency extraction; the caller
     // has already performed its reward boundary for `owner`. Fees are allocated at the
