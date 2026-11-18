@@ -155,6 +155,16 @@ impl F {
             invoke: &MockAuthInvoke { contract: &self.lev.address, fn_name: f, args, sub_invokes: &[] },
         }]);
     }
+    /// collect (if closing) -> deficit swap (if needed) -> settle.
+    fn finish(&self, pid: u64) {
+        if self.pos(pid).phase == LevPhaseV1::Closing {
+            self.lev.collect_v1(&pid);
+        }
+        if self.lev.try_swap_deficit_v1(&pid).is_ok() {
+            assert!(self.lev.try_swap_deficit_v1(&pid).is_err(), "one swap covers the deficit");
+        }
+        self.as_keeper_settle(pid);
+    }
     fn as_keeper_settle(&self, pid: u64) {
         let args: SVec<Val> = (self.keeper.clone(), pid).into_val(&self.e);
         self.e.mock_auths(&[MockAuth {
@@ -294,6 +304,8 @@ fn open_take_profit_close() {
     f.rc.withdraw_close(&p.cmd.unwrap());
     assert_eq!((f.bal(&f.t0, &f.owner), f.bal(&f.t1, &f.owner)), (o0, o1));
     let debt = f.mkt.get_margin_borrow_balance(&pid);
+    f.lev.collect_v1(&pid);
+    lev_err(f.lev.try_swap_deficit_v1(&pid), LevError::NoDeficit); // ~1.9x mid-range: USDC leg covers debt
     f.as_keeper_settle(pid);
     let p = f.pos(pid);
     assert_eq!(p.phase, LevPhaseV1::Closed);
@@ -338,6 +350,11 @@ fn health_exit_unwinds_and_repays_with_deficit_swap() {
     lev_err(f.lev.try_cancel_v1(&pid), LevError::HealthExitNotCancellable);
     f.rc.withdraw_close(&f.pos(pid).cmd.unwrap());
     let swap_before = f.bal(&f.t0, &f.swp.address);
+    f.lev.collect_v1(&pid);
+    let args: SVec<Val> = (f.keeper.clone(), pid).into_val(&f.e);
+    f.e.mock_auths(&[MockAuth { address: &f.keeper, invoke: &MockAuthInvoke { contract: &f.lev.address, fn_name: "settle_v1", args, sub_invokes: &[] } }]);
+    lev_err(f.lev.try_settle_v1(&f.keeper, &pid), LevError::SwapRequired);
+    f.lev.swap_deficit_v1(&pid);
     f.as_keeper_settle(pid);
     assert!(f.bal(&f.t0, &f.swp.address) > swap_before, "USDC leg short: deficit swapped from PYUSD");
     assert_eq!(f.pos(pid).phase, LevPhaseV1::Closed);
@@ -382,7 +399,7 @@ fn bad_debt_is_recorded_not_hidden() {
     f.tick(61, P1);
     assert_eq!(f.lev.trigger_exit_v1(&pid), REASON_HEALTH);
     f.rc.withdraw_close(&f.pos(pid).cmd.unwrap());
-    f.as_keeper_settle(pid);
+    f.finish(pid);
     let p = f.pos(pid);
     assert_eq!(p.phase, LevPhaseV1::Defaulted);
     assert!(p.shortfall > 0);
@@ -403,6 +420,8 @@ fn refund_when_fund_rejected() {
     assert!(f.lev.try_cancel_v1(&pid).is_err());
     f.as_owner("cancel_v1", (pid,).into_val(&f.e));
     f.lev.cancel_v1(&pid);
+    assert_eq!(f.pos(pid).phase, LevPhaseV1::Settling);
+    f.finish(pid);
     let p = f.pos(pid);
     assert_eq!(p.phase, LevPhaseV1::Refunded);
     assert_eq!(f.mkt.get_margin_borrow_balance(&pid), 0);
@@ -424,7 +443,7 @@ fn refund_on_failed_convert_after_expiry() {
     let p = f.pos(pid);
     assert_eq!(p.phase, LevPhaseV1::Settling);
     assert_eq!(p.reason, REASON_REFUND);
-    f.as_keeper_settle(pid);
+    f.finish(pid);
     let p = f.pos(pid);
     assert_eq!(p.phase, LevPhaseV1::Refunded);
     assert_eq!(f.mkt.get_margin_borrow_balance(&pid), 0);

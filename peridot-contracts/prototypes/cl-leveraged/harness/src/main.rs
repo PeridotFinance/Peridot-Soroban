@@ -311,7 +311,7 @@ fn cmd(n: u64) -> impl Fn(&Env, &Ids) -> SVec<Val> {
     move |e, _| (n,).into_val(e)
 }
 fn settle(label: &'static str, p: u64) -> Call {
-    c(label, lev, "settle_v1", move |e, i| (a(e, &i.keeper), p).into_val(e)).dep("market repay (X4), receipt job/beneficiary (X2/X3)")
+    c(label, lev, "settle_v1", move |e, i| (a(e, &i.keeper), p).into_val(e)).dep("market repay (X4)")
 }
 fn knob(label: &'static str, f: &'static str, args: impl Fn(&Env, &Ids) -> SVec<Val> + 'static) -> Call {
     c(label, rcp, f, args).setup()
@@ -347,7 +347,10 @@ fn main() {
         c("trigger_exit_v1 TP (inline refresh) + prepare_close", lev, "trigger_exit_v1", pid(0)).dep("inline L1a (G1) + receipt prepare_close (doc27 C1)"),
         c("R withdraw_close (MOCK)", rcp, "withdraw_close", cmd(1)).dep("MOCK: cite doc27 C2a 78 entries"),
     ], &ids, r);
-    seq("A", &s_closing, vec![settle("settle_v1 TP, USDC leg covers debt (no swap)", 0)], &ids, r);
+    seq("A", &s_closing, vec![
+        c("collect_v1 (read paid exit, release beneficiary)", lev, "collect_v1", pid(0)).dep("receipt job result (X2), beneficiary (X3)"),
+        settle("settle_v1 TP, USDC leg covers debt (repay, fee, incentive, payout)", 0),
+    ], &ids, r);
 
     // ---- B: warm variants from the armed state (stored NAV fresh)
     seq("B", &s_armed, vec![
@@ -377,8 +380,12 @@ fn main() {
     let s_hclose = seq("H", &s_loss, vec![
         c("trigger_exit_v1 Health (inline refresh) + prepare_close", lev, "trigger_exit_v1", pid(0)).dep("inline L1a (G1), CF (G3), market debt (X4)"),
         c("R withdraw_close (MOCK)", rcp, "withdraw_close", cmd(1)).setup(),
+        c("collect_v1 (setup)", lev, "collect_v1", pid(0)).setup(),
     ], &ids, r);
-    seq("H", &s_hclose, vec![settle("settle_v1 Health, deficit swap PYUSD->USDC", 0)], &ids, r);
+    seq("H", &s_hclose, vec![
+        c("swap_deficit_v1 PYUSD->USDC (oracle-bounded min)", lev, "swap_deficit_v1", pid(0)).dep("swap adapter + Aquarius pool (real swap not measured)"),
+        settle("settle_v1 Health after swap (repay, fee, incentive, payout)", 0),
+    ], &ids, r);
     seq("H", &s_loss, vec![
         c("R checkpoint_nav (MOCK)", rcp, "checkpoint_nav", |e, _| SVec::new(e)).setup(),
         c("trigger_exit_v1 Health (fresh stored NAV) + prepare_close", lev, "trigger_exit_v1", pid(0)).dep("NAV view (G1)"),
@@ -392,10 +399,13 @@ fn main() {
     ], &ids, r);
 
     // ---- R: refunds
-    seq("R", &s_open, vec![c("cancel_v1 PendingFund by owner (inline refund + swap)", lev, "cancel_v1", pid(0)).dep("market repay (X4)")], &ids, r);
+    seq("R", &s_open, vec![c("cancel_v1 PendingFund by owner (reserve back, -> Settling)", lev, "cancel_v1", pid(0))], &ids, r);
     let s_funded = seq("R", &s_open, vec![c("fund_v1", lev, "fund_v1", pid(0)).setup(), knob("convert guard fails (setup)", "mock_fail", |e, _| (1u32,).into_val(e)), oracle_now().after(1_801)], &ids, r);
     let s_settling = seq("R", &s_funded, vec![c("cancel_v1 Opening after expiry (receipt cancel + sync)", lev, "cancel_v1", pid(0)).dep("receipt cancel/job (doc27 cancel, X2)")], &ids, r);
-    seq("R", &s_settling, vec![settle("settle_v1 refund (swap for fee+interest deficit)", 0)], &ids, r);
+    seq("R", &s_settling, vec![
+        c("swap_deficit_v1 (open fee + interest deficit)", lev, "swap_deficit_v1", pid(0)).dep("swap adapter + Aquarius pool"),
+        settle("settle_v1 refund (repay, payout)", 0),
+    ], &ids, r);
 
     let _ = ctl;
     let out = json!({

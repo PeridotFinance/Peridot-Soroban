@@ -191,4 +191,6 @@ pub enum LevError {
     InvalidRisk = 1822,
     NoCollateralFactor = 1823,
     NoTakeProfit = 1824,
+    SwapRequired = 1825,
+    NoDeficit = 1826,
 }

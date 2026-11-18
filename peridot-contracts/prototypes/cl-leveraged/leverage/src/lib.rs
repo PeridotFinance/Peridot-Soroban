@@ -24,6 +24,9 @@ const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND: u32 = 1_000_000;
 const RISK_TIMELOCK_SECS: u64 = 86_400;
 const RECEIPT_MAX_DEADLINE: u64 = 3_600;
+/// Interest cover for the ledgers between the deficit swap and settlement (cf. margin-controller
+/// CLOSE_DEBT_BUFFER_BPS). Unused USDC is returned to the owner.
+const SETTLE_DEBT_BUFFER_BPS: u128 = 10;
 
 #[contract]
 pub struct LeveragedCl;
@@ -171,29 +174,42 @@ fn validate_open(e: &Env, r: &LevRiskV1, t: &OpenLevV1) {
 }
 
 // ------------------------------------------------------------------------------------ settlement
-/// Proceeds-bound settlement: repay from the USDC leg, swap PYUSD only for a deficit (oracle-bounded
-/// minimum), then close fee, exit incentive, and the residual in kind to the fixed owner.
-fn settle_inner(e: &Env, c: &LevConfigV1, r: &LevRiskV1, pid: u64, p: &mut PositionV1, keeper: Option<Address>) {
-    let me = e.current_contract_address();
+/// Settlement amounts at the current debt: (debt, exit incentive, close fee).
+fn settle_terms(e: &Env, c: &LevConfigV1, r: &LevRiskV1, pid: u64, p: &PositionV1) -> (u128, u128, u128) {
     let d = debt(e, c, pid);
     let paid_exit = matches!(p.reason, REASON_TAKE_PROFIT | REASON_STOP | REASON_HEALTH);
-    let inc = if paid_exit && keeper.is_some() { d * r.exit_incentive_bps as u128 / BPS } else { 0 };
+    let inc = if paid_exit { d * r.exit_incentive_bps as u128 / BPS } else { 0 };
     let fee = if p.reason == REASON_REFUND { 0 } else { d * r.close_fee_bps as u128 / BPS };
-    let want = d + inc + fee;
-    if p.escrow1 < want && p.escrow0 > 0 {
-        let (price, _) = oracle_price(e, c, r, false);
-        let keep = BPS - r.max_slippage_bps as u128;
-        let deficit = want - p.escrow1;
-        let mut amount_in = (deficit * PRICE_SCALE * BPS + price * keep - 1) / (price * keep);
-        if amount_in > p.escrow0 {
-            amount_in = p.escrow0;
-        }
-        let min_out = amount_in * price / PRICE_SCALE * keep / BPS;
-        auth_transfers(e, &[(&c.token0, &c.swap, amount_in)]);
-        let out = SwapAdapterClient::new(e, &c.swap).swap_pool(&me, &c.pool, &0, &1, &amount_in, &min_out);
-        p.escrow0 -= amount_in;
-        p.escrow1 += out;
+    (d, inc, fee)
+}
+/// Separate light stage: swap escrowed PYUSD for the USDC deficit only, with an oracle-bounded
+/// minimum (pool spot never sets the price) and a small interest buffer for the next ledgers.
+fn swap_deficit_inner(e: &Env, c: &LevConfigV1, r: &LevRiskV1, pid: u64, p: &mut PositionV1) {
+    let (d, inc, fee) = settle_terms(e, c, r, pid, p);
+    let want = d + d * SETTLE_DEBT_BUFFER_BPS / BPS + inc + fee;
+    need(e, p.escrow1 < want && p.escrow0 > 0, LevError::NoDeficit);
+    let (price, _) = oracle_price(e, c, r, false);
+    let keep = BPS - r.max_slippage_bps as u128;
+    let deficit = want - p.escrow1;
+    let mut amount_in = (deficit * PRICE_SCALE * BPS + price * keep - 1) / (price * keep);
+    if amount_in > p.escrow0 {
+        amount_in = p.escrow0;
     }
+    let min_out = amount_in * price / PRICE_SCALE * keep / BPS;
+    auth_transfers(e, &[(&c.token0, &c.swap, amount_in)]);
+    let me = e.current_contract_address();
+    let out = SwapAdapterClient::new(e, &c.swap).swap_pool(&me, &c.pool, &0, &1, &amount_in, &min_out);
+    p.escrow0 -= amount_in;
+    p.escrow1 += out;
+    event(e, "lev_swap", pid, amount_in, out);
+}
+/// Proceeds-bound settlement (no swap): repay the lender first from the USDC leg, then the close
+/// fee, then the exit incentive, then the residual in kind to the fixed owner. If USDC cannot
+/// cover the debt while PYUSD remains, it refuses (`SwapRequired`) instead of forgiving debt.
+fn settle_inner(e: &Env, c: &LevConfigV1, r: &LevRiskV1, pid: u64, p: &mut PositionV1, keeper: &Address) {
+    let me = e.current_contract_address();
+    let (d, inc, fee) = settle_terms(e, c, r, pid, p);
+    need(e, p.escrow1 >= d || p.escrow0 == 0, LevError::SwapRequired);
     let repay = core::cmp::min(p.escrow1, d);
     if repay > 0 {
         auth_transfers(e, &[(&c.token1, &c.market, repay)]);
@@ -210,9 +226,7 @@ fn settle_inner(e: &Env, c: &LevConfigV1, r: &LevRiskV1, pid: u64, p: &mut Posit
     pay(e, &c.token1, &c.treasury, fee_paid);
     p.escrow1 -= fee_paid;
     let inc_paid = core::cmp::min(inc, p.escrow1);
-    if let Some(k) = keeper {
-        pay(e, &c.token1, &k, inc_paid);
-    }
+    pay(e, &c.token1, keeper, inc_paid);
     p.escrow1 -= inc_paid;
     pay(e, &c.token0, &p.owner, p.escrow0);
     pay(e, &c.token1, &p.owner, p.escrow1);
@@ -562,33 +576,45 @@ impl LeveragedCl {
         save(&e, pid, &p);
         reason
     }
+    /// C2 follow-up: read the paid in-kind exit, release the beneficiary label, -> Settling.
+    pub fn collect_v1(e: Env, pid: u64) {
+        let c = cfg(&e);
+        let mut p = load(&e, pid);
+        need(&e, p.phase == LevPhaseV1::Closing, LevError::BadPhase);
+        let rc = GroupReceiptClient::new(&e, &c.receipt);
+        let job = rc.stage1_job(&p.cmd.unwrap()).unwrap();
+        let exit = match (job.phase, job.result) {
+            (PhaseV1::Paid, ResultV1::Exit(x)) => x,
+            _ => panic_with_error!(&e, LevError::CommandNotSettled),
+        };
+        rc.assign_beneficiary(&e.current_contract_address(), &p.owner, &p.shares, &false);
+        p.shares = 0;
+        p.escrow0 += exit.amounts.token0;
+        p.escrow1 += exit.amounts.token1;
+        p.cmd = None;
+        p.phase = LevPhaseV1::Settling;
+        save(&e, pid, &p);
+        event(&e, "lev_collect", pid, exit.amounts.token0, exit.amounts.token1);
+    }
+    pub fn swap_deficit_v1(e: Env, pid: u64) {
+        let (c, r) = (cfg(&e), risk(&e));
+        let mut p = load(&e, pid);
+        need(&e, p.phase == LevPhaseV1::Settling, LevError::BadPhase);
+        swap_deficit_inner(&e, &c, &r, pid, &mut p);
+        save(&e, pid, &p);
+    }
+    /// The caller signs (it receives the exit incentive on Health/Stop/TakeProfit exits).
     pub fn settle_v1(e: Env, keeper: Address, pid: u64) {
         keeper.require_auth();
         let (c, r) = (cfg(&e), risk(&e));
         let mut p = load(&e, pid);
-        match p.phase {
-            LevPhaseV1::Closing => {
-                let rc = GroupReceiptClient::new(&e, &c.receipt);
-                let job = rc.stage1_job(&p.cmd.unwrap()).unwrap();
-                let exit = match (job.phase, job.result) {
-                    (PhaseV1::Paid, ResultV1::Exit(x)) => x,
-                    _ => panic_with_error!(&e, LevError::CommandNotSettled),
-                };
-                rc.assign_beneficiary(&e.current_contract_address(), &p.owner, &p.shares, &false);
-                p.shares = 0;
-                p.escrow0 += exit.amounts.token0;
-                p.escrow1 += exit.amounts.token1;
-                p.cmd = None;
-            }
-            LevPhaseV1::Settling => {}
-            _ => panic_with_error!(&e, LevError::BadPhase),
-        }
-        settle_inner(&e, &c, &r, pid, &mut p, Some(keeper));
+        need(&e, p.phase == LevPhaseV1::Settling, LevError::BadPhase);
+        settle_inner(&e, &c, &r, pid, &mut p, &keeper);
         save(&e, pid, &p);
     }
     /// Owner before the deadline; anyone strictly after. Health exits only after expiry.
     pub fn cancel_v1(e: Env, pid: u64) {
-        let (c, r) = (cfg(&e), risk(&e));
+        let c = cfg(&e);
         let mut p = load(&e, pid);
         let now = e.ledger().timestamp();
         match p.phase {
@@ -603,7 +629,7 @@ impl LeveragedCl {
                 p.pending = PendingV1::None;
                 if p.shares == 0 {
                     p.reason = REASON_REFUND;
-                    settle_inner(&e, &c, &r, pid, &mut p, None);
+                    p.phase = LevPhaseV1::Settling;
                 } else {
                     absorb_escrow(&e, &c, pid, &mut p);
                 }

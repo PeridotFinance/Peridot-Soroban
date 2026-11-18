@@ -127,7 +127,7 @@ Entry points (O = owner, P = permissionless, E = anyone strictly after the store
 | Entry point | Caller | Required phase | Effect / next phase |
 |---|---|---|---|
 | `initialize(admin, cfg)` | A | — | Store config once |
-| `open_v1(owner, terms) -> pid` | O | — | Pull `equity0 + reserve0` PYUSD; borrow `borrow1` USDC into escrow (`borrow_for_margin_to_controller(pid)`); admission (§4); charge open fee; → PendingFund |
+| `open_v1(owner, terms) -> pid` | O | — | Pull `equity0 + reserve0` PYUSD; borrow `borrow1` USDC into escrow (`borrow_for_margin_to_controller(pid)`); open fee to treasury out of the borrowed USDC (financed by the debt); admission (§4); → PendingFund |
 | `add_v1(owner, pid, terms)` | O | Active | Same as open for the increment; health on fresh NAV checkpoint over existing shares + new escrow; → PendingFund |
 | `fund_v1(pid) -> cmd` | P | PendingFund | `prepare_open_pair` + `fund_open` on the receipt, owner = `cl-leveraged`, exact nested transfer authorized as current contract; escrow → command; → Opening |
 | (receipt) `convert_open`, `mint_cash`, `invest_cash` | P | — | Unchanged staged rows; `cl-leveraged` not invoked |
@@ -137,12 +137,17 @@ Entry points (O = owner, P = permissionless, E = anyone strictly after the store
 | `trigger_exit_v1(pid) -> reason` | P | Active | Reason `Health` (HF < 1, NAV else fallback), `Stop` (HF < stop), `TakeProfit` (armed ≥ delay, ≤ window, fresh later checkpoint, still true). `prepare_close(cl-leveraged, shares, InKind)` → Closing |
 | `close_v1(owner, pid, deadline)` | O | Active | Voluntary close, same command → Closing |
 | (receipt) `withdraw_close` | P | — | Unchanged C2a row: in-kind mixture paid to `cl-leveraged` |
-| `settle_v1(pid)` | P | Closing / Settling | Read `stage1_job(cmd).result` amounts; repay debt from USDC leg; swap PYUSD→USDC only for a deficit (oracle min-out); fees, incentive; residual in kind to owner → Closed, or → Defaulted with recorded shortfall |
-| `cancel_v1(pid)` | O, or E | PendingFund / Opening / Closing | PendingFund: repay from escrow, refund → Refunded. Opening/Closing: receipt `cancel(cmd)` (fixed owner = `cl-leveraged`) → Opening is then synced; Closing → back to Active |
+| `collect_v1(pid)` | P | Closing | Read `stage1_job(cmd).result` (`Exit` amounts), release the beneficiary label, shares → escrow; → Settling |
+| `swap_deficit_v1(pid)` | P | Settling | Only if escrowed USDC < debt (+10 bps interest buffer) + fee + incentive: swap PYUSD→USDC for the deficit, min-out `p_CALI · (1 − max_slippage)`; `NoDeficit` otherwise |
+| `settle_v1(keeper, pid)` | P (keeper signs: incentive recipient) | Settling | Repay lender first, then close fee, then exit incentive, residual in kind to owner → Closed / Refunded; USDC < debt with PYUSD left → `SwapRequired`; nothing left → Defaulted with recorded shortfall |
+| `cancel_v1(pid)` | O, or E | PendingFund / Opening / Closing | PendingFund: reserve back, → Settling (refund via swap/settle); add-path with shares repays inline → Active. Opening: receipt `cancel(cmd)` (fixed owner = `cl-leveraged`) then synced. Closing: receipt `cancel` → Active; a Health exit only after its deadline |
 | `repay_v1(payer, pid, amount)` | payer | any with debt | External top-up / deleverage; payer authorizes |
 | `position_v1(pid)`, `health_v1(pid)`, `config_v1()` | read | — | Views |
 
-Errors are a reserved block **1800–1829** (`src/types.rs`), checked against 1700–1718 of the stage-1 freeze.
+Errors are a reserved block **1800–1829** (1800–1826 used, `leverage/src/types.rs`), disjoint from 1700–1718 of the stage-1 freeze.
+Optional records are enums (`TakeProfitV1::None`, `ArmV1::Off`, `PendingV1::None`): `Option<UDT>` struct fields do not
+convert under SDK 25.3.1 testutils. For the same reason the frozen crate itself (`TransitionV1.before: Option<PhaseV1>`) does
+not compile with `testutils`, so the prototype carries a wire-identical copy of `PhaseV1..CommandV1` (`interface/src/stage1.rs`).
 
 ### State machine over the staged vault commands
 
@@ -156,13 +161,15 @@ Errors are a reserved block **1800–1829** (`src/types.rs`), checked against 17
                                                                                                    │  │ arm_exit_v1 (P)
                                      trigger_exit_v1 (P: Health / Stop / TakeProfit) or close_v1 (O)│
                                                                                                    ▼
-                    Closed / Defaulted ◀── settle_v1 (P) ◀── cmd Paid ◀── withdraw_close (P) ◀── Closing[cmd CloseLocked]
+  Closed / Defaulted ◀── settle_v1 ◀── [swap_deficit_v1] ◀── Settling ◀── collect_v1 ◀── cmd Paid ◀── withdraw_close ◀── Closing[cmd CloseLocked]
                                                                                 cancel_v1 → Active (cmd Cancelled, shares unlocked)
 ```
 
 Doc 23 mapping: PendingFund = O0/O1 (cash and debt committed together, held by the margin escrow instead of the vault);
 Opening = O1–O4 inside the receipt; `sync_open_v1` = O5 delivery + A activation (no separate deliver: shares are already
-owned by `cl-leveraged`); Closing = C0; `withdraw_close` = C1; `settle_v1` = C2 + R0 + R1 in one light transaction.
+owned by `cl-leveraged`); Closing = C0; `withdraw_close` = C1; `collect_v1` + `swap_deficit_v1` = C2; `settle_v1` = R0 + R1.
+Settlement was first prototyped as one transaction; projected on real dependencies it is ~89 entries without and ~122 with the
+swap (§7.2), so it is split into three light stages, each projected ≤ 63 entries.
 
 ---
 
@@ -249,14 +256,14 @@ expressible; AQUA keeps accruing to the owner as beneficiary and is claimed sepa
 |---|---|---:|
 | Open | `open_v1` (O) → `fund_v1` (P) → `convert_open` → `mint_cash` → `invest_cash` (P, receipt; pilot bytes add `stage_checkpoint_investment` + `stage_finalise`) → `sync_open_v1` (P) | 6 (8 on pilot bytes) |
 | Add | `add_v1` (O, may refresh NAV inline) → same as open from `fund_v1` | 6 |
-| Take-profit | `arm_exit_v1` (P, refresh inline) → ≥ delay → `trigger_exit_v1` (P, refresh inline) → `withdraw_close` (P) → `settle_v1` (P) | 4 |
-| Health / stop exit | `trigger_exit_v1` (P; NAV, else `checkpoint_fallback` inline for Health) → `withdraw_close` → `settle_v1` | 3 |
-| Voluntary close | `close_v1` (O) → `withdraw_close` → `settle_v1` | 3 |
-| Refund, before fund | `cancel_v1` (O, or E) | 1 |
-| Refund, failed stage | receipt rejects → `cancel_v1` (O / E: receipt `cancel`) → `sync_open_v1` → `settle_v1` | 3 |
+| Take-profit | `arm_exit_v1` (P, refresh inline) → ≥ delay → `trigger_exit_v1` (P, refresh inline) → `withdraw_close` (P) → `collect_v1` → [`swap_deficit_v1`] → `settle_v1` | 5–6 |
+| Health / stop exit | `trigger_exit_v1` (P; NAV, else `checkpoint_fallback` inline for Health) → `withdraw_close` → `collect_v1` → [`swap_deficit_v1`] → `settle_v1` | 4–5 |
+| Voluntary close | `close_v1` (O) → `withdraw_close` → `collect_v1` → [`swap_deficit_v1`] → `settle_v1` | 4–5 |
+| Refund, before fund | `cancel_v1` (O, or E) → `swap_deficit_v1` (fee + interest) → `settle_v1` | 3 |
+| Refund, failed stage | `cancel_v1` (O / E: receipt `cancel` + sync in one tx) → [`swap_deficit_v1`] → `settle_v1` | 2–3 |
 
-**Fees** (all symbols; decision U5): open fee `open_fee_bps` on borrowed notional, taken from equity at `open_v1` to
-the treasury; close fee `close_fee_bps` on repaid debt at `settle_v1`; exit incentive `exit_incentive_bps` of repaid debt
+**Fees** (all symbols; decision U5): open fee `open_fee_bps` on borrowed notional, paid to the treasury out of the
+borrowed USDC at `open_v1` (so it is financed by the debt and counted in the LTV check); close fee `close_fee_bps` on repaid debt at `settle_v1`; exit incentive `exit_incentive_bps` of repaid debt
 to the `settle_v1` caller on Health/Stop/TP exits only (voluntary and refund paths pay none); receipt execution reserve
 `reserve0` (doc 27) prepaid by the owner and refunded through the command. Keeper XLM fees are an operating cost, as for
 the 1× keeper. Interest is the USDC market's (STATIC 8% APR proposed by the group, D8).
@@ -268,8 +275,11 @@ the 1× keeper. Interest is the USDC market's (STATIC 8% APR proposed by the gro
   (swapping PYUSD for any accrued-interest deficit) and refunds the rest.
 - A receipt stage fails or expires: only `cancel` on the receipt can move funds, always back to `cl-leveraged`.
   `sync_open_v1` reads the `Released` result: mixture → Settling → `settle_v1` repays and refunds; locked shares → Active.
-- `settle_v1` swap fails its oracle minimum (pool pushed or illiquid): it reverts and is retried. The owner or anyone
-  may `repay_v1` the deficit to settle without a swap. Debt is never forgiven by a failed swap.
+- `swap_deficit_v1` fails its oracle minimum (pool pushed or illiquid): it reverts and is retried; `settle_v1` refuses
+  (`SwapRequired`) while PYUSD remains and USDC cannot cover the debt. Anyone may `repay_v1` the deficit instead.
+  Debt is never forgiven by a failed swap. Interest keeps accruing in Settling; the swap adds a 10 bps buffer.
+- Add path: while an `add_v1` command is pending, the position (which already has shares) is not health-exitable until
+  the command finishes or is cancelled (≤ the open deadline). Decision U9.
 - Mixture worth less than debt after swapping everything: repay all, record `shortfall`, → Defaulted (lender loss
   visible; no protocol backstop is assumed — decision U6).
 - Oracle stale (> 600 s): health uses only the fallback (which also needs CALI) → no trigger; position is repay-only
@@ -283,20 +293,128 @@ Limits: internal 100 SDK entries (memory reads + disk reads + writes), 100 uniqu
 97M), 41,943,040 memory. Live Mainnet (spike, ledger 65527300): 400M CPU, 41,943,040 mem, 400 footprint, 200 disk reads,
 200 writes, 200,000 read bytes, 132,096 write bytes, 132,096 tx bytes.
 
-The measured table is in §7.1 (filled from `results.json`). Rows that run unchanged receipt code cite the accepted rows.
+**Evidence class.** Local host only: soroban-env-host / SDK **29.0.1** testutils, default cost model (the spike found
+the live model adds +0.2M..+0.6M CPU per row; not applied here). `cl-leveraged` and all mocks are the compiled WASMs from
+`stellar contract build` (contracts on SDK 25.3.1; `cl_leveraged.wasm` 43,683 bytes ≤ 131,072). One `Env` per transaction,
+chained by ledger snapshot (+1 ledger, +6 s). Entries = memory reads + disk reads + writes; keys = unique ledger keys
+requested from a recording snapshot source. `mock_all_auths` (recording; nonces created and counted). Users are
+C-addresses: a G-account user adds about 1 account + 1 trustline disk read (spike). Not Core, not signed, no fees or tx
+size. Reproduce: `bash prototypes/cl-leveraged/run.sh` (offline). Full rows: `rows.md`, `results.json`.
 
-### 7.1 Measured (local host, mocks) and cited rows
+**Cold / warm.** *Inline* = the stored NAV checkpoint is older than 60 s and `cl-leveraged` refreshes it inside the same
+transaction (`checkpoint_nav()`, no auth); *fresh* = a separate `checkpoint_nav` transaction ran ≤ 60 s earlier. For
+`open_v1`, *first* = first position in the contract (counter and issuer accounts first touched, 2 disk reads), *second* =
+same owner again. Archived (TTL-expired) entries are not measured: restoration stays native RestoreFootprint batches run
+by the keeper (doc 27 §5).
 
-MEASURED_TABLE_PLACEHOLDER
+#### 7.1 Measured: `cl-leveraged` stages on mocks
+
+| Stage (tx) | Caller | CPU | Mem | Entries (m+d+w) | Keys | Writes | Group-dependent subtree |
+|---|---|---:|---:|---|---:|---:|---|
+| `open_v1` first | O | 3,128,612 | 3,892,525 | **32** (21+2+9) | 23 | 9 | market borrow X4, controller pause G3 |
+| `open_v1` second | O | 3,188,275 | 3,893,666 | **30** (21+0+9) | 21 | 9 | same |
+| `fund_v1` (pair open + fund, 2 nested transfers) | P | 3,194,889 | 2,836,543 | **21** (13+0+8) | 13 | 8 | receipt X1 + `fund_open` |
+| `sync_open_v1` | P | 2,242,098 | 2,633,245 | **14** (10+0+4) | 10 | 4 | job result X2, beneficiary X3 |
+| `set_exit_v1` (fresh NAV) | O | 2,138,397 | 2,705,228 | **14** (12+0+2) | 12 | 2 | NAV view G1, market view X4 |
+| `arm_exit_v1` inline / fresh | P | 2,758,228 / 1,757,640 | 3,836,178 / 2,604,522 | **12** (10+0+2) / **9** (8+0+1) | 10 / 8 | 2 / 1 | inline L1a G1 |
+| `trigger_exit_v1` TP inline / fresh | P | 5,230,451 / 4,224,584 | 3,939,858 / 3,192,358 | **20** (16+0+4) / **18** (14+0+4) | 16 / 14 | 4 | L1a G1, receipt `prepare_close` |
+| `trigger_exit_v1` Health inline / fresh | P | 4,288,639 / 3,319,311 | 3,935,887 / 2,969,971 | **20** / **18** | 16 / 14 | 4 | L1a G1, CF G3 |
+| `trigger_exit_v1` Health on fallback (NAV try fails) inline / stored | P | 5,650,456 / 4,683,408 | 4,276,681 / 3,939,857 | **20** / **20** | 16 | 4 | L1a try G1 + L1b G2 |
+| `close_v1` | O | 2,074,988 | 2,646,883 | **15** (10+0+5) | 10 | 5 | receipt `prepare_close` |
+| `collect_v1` | P | 2,026,175 | 2,635,191 | **9** (7+0+2) | 7 | 2 | job result X2, beneficiary X3 |
+| `swap_deficit_v1` | P | 2,449,023 | 2,736,572 | **21** (16+0+5) | 16 | 5 | swap adapter + Aquarius pool |
+| `settle_v1` (repay, fee, incentive, payout) | P (signs) | 2,684,825 | 2,613,558 | **28** (17+1+10) | 18 | 10 | market repay X4 |
+| `add_v1` (fresh NAV) | O | 4,176,636 | 4,027,061 | **31** (23+0+8) | 23 | 8 | market borrow X4, NAV G1 |
+| `repay_v1` | payer | 1,432,771 | 2,516,001 | **15** (11+0+4) | 11 | 4 | market repay X4 |
+| `cancel_v1` PendingFund (owner) | O | 1,043,395 | 1,308,023 | **12** (8+0+4) | 8 | 4 | — |
+| `cancel_v1` Opening after expiry (receipt cancel + sync) | E | 3,296,916 | 2,830,163 | **18** (12+0+6) | 12 | 6 | receipt `cancel` |
+| `settle_v1` refund | P (signs) | 2,298,380 | 2,613,309 | **23** (15+0+8) | 15 | 8 | market repay X4 |
+| `health_v1` (view) | — | 1,963,666 | 2,695,811 | **11** (11+0+0) | 11 | 0 | G1, X4 |
+
+Mock receipt stages were also run (convert 7, mint 11, invest 11, checkpoint_nav 5, withdraw 19 entries); they are **not
+representative** and are replaced by the cited rows below. Every measured row is ≤ 32 entries, ≤ 23 keys, ≤ 10 writes,
+≤ 5.7M CPU and ≤ 4.3 MB memory, i.e. far inside both the internal and the live limits **on mocks**.
+
+#### 7.2 Projected per transaction on real dependencies (estimate; replace when the group contracts exist)
+
+Projection = measured row + Δ for each real subtree, without subtracting key overlap (conservative). Δ sources:
+L1a real 18 entries / 17 keys / 15.71M vs mock 5 / 4 / 1.00M → **+13 / +13 / +14.7M** (DESIGN §5.2);
+L1b real 13 / 12 / 8.95M vs mock 5 / 4 / 1.03M → **+8 / +8 / +7.9M**; failed NAV attempt inside `try` real GF0 17 / 17 / 15.64M
+→ **+14 / +14 / +14.6M**; `prepare_close` doc 27 C1 13 / 10 / 2.72M → **+8 / +6 / +1.9M**; pair open + fund doc 27 O1 + O2
+(16 + 17 entries, 7.40M + 3.75M) → **+12 / +10 / +10M**; beneficiary assign/release with reward settle ≈ group L5 25 / 15 / 3.1M
+→ **+20 / +13 / +3M**; real receipt code load **+0.43M CPU, +79 KB** per load (DESIGN §5.4). **Not measured anywhere yet
+(estimates):** margin-namespace borrow on the real USDC market ≈ **+40 / +33 / +15M** (the market contributes 36 keys to
+the spike's S1a borrow and 35 to group L3); repay ≈ **+35 / +30 / +12M**; margin debt view ≈ **+6 / +6 / +2M**; adapter +
+Aquarius pool swap ≈ **+25 / +20 / +12M** (doc 27 C3 is 32 entries / 23.8M including its receipt work).
+
+| Transaction | Projected entries | Projected keys | Projected CPU | vs 100 / 100 / 50 / 97M | Basis |
+|---|---:|---:|---:|---|---|
+| `open_v1` | ~72 | ~56 | ~19M | fits; **kill line 85** | measured 32 + borrow |
+| `fund_v1` | ~33 | ~23 | ~15M | fits | measured 21 + O1/O2 |
+| receipt `convert_open` (O3) | 30 (pilot 28) | 22 (19) | 31.2M (36.1M) | fits | doc 27 accepted / spike pilot bytes |
+| receipt `mint_cash` (O4) | 69 (pilot 44) | 50 (32) | 72.1M (18.4M) | fits | same |
+| receipt `invest_cash` (O5) | 61 (pilot 56 + finalise 26) | 43 (39) | **95.1M, cold 95.2M** (57.7M) | **tightest: 1.8M under the 97M keeper stop** | same; unchanged by leverage |
+| `sync_open_v1` | ~34 | ~23 | ~6M | fits | measured 14 + X2/X3 |
+| `set_exit_v1` | ~20 | ~18 | ~4M | fits | + market view |
+| `arm_exit_v1` inline | ~31 | ~29 | ~20M | fits | + L1a + view |
+| `trigger_exit_v1` TP / Health inline | ~47 | ~41 | ~24M | fits | + L1a + C1 + view |
+| `trigger_exit_v1` Health on fallback inline | ~56 | ~50 | ~33M | fits | + failed L1a + L1b + C1 + view |
+| receipt `withdraw_close` (C2a) | 78 | 52 | 78.7M | fits (accepted) | doc 27; unchanged |
+| `collect_v1` | ~29 | ~20 | ~6M | fits | + X2/X3 release |
+| `swap_deficit_v1` | ~46 | ~36 | ~15M | fits | + adapter/pool swap |
+| `settle_v1` | ~63 | ~48 | ~15M | fits | + repay |
+| `add_v1` | ~77 | ~62 | ~22M | fits; near kill line | + borrow + view |
+| `repay_v1` | ~50 | ~41 | ~14M | fits | + repay |
+| `cancel_v1` Opening (receipt cancel + sync) | ~38 | ~28 | ~8M | fits; doc 27 has no accepted cancel bound | + cancel + X2/X3 |
+| **Rejected single-tx settle** (collect + swap + repay + payout) | ~89 no swap / **~122 with swap** | — | ~35M | **OVER 100 with swap** | why settlement is split |
+
+Against the live Mainnet limits every row is at most ~24% of 400M CPU, ~10% of memory, well under 400 footprint entries
+and 200 writes; measured write bytes ≤ 3,676 of 132,096 and events ≤ 1 KB. The binding constraint is the internal 100-entry
+limit, and only through real-dependency subtrees that do not exist yet. **Gate:** re-measure open, add and settle on the
+real group USDC market margin path before anything else; stop if any exceeds 85 entries.
+
 
 ---
 
 ## 8. Estimate and order of work
 
-ESTIMATE_PLACEHOLDER
+Assumptions as in DESIGN §6: one engineer who knows the codebase, with AI assistance; existing harnesses reused; audit
+calendar, approval waits and on-chain fees excluded. Estimates, not measurements. **Excludes** the CL collateral group
+itself (37 / 59 / 93, DESIGN §6) and the stage-1 1× receipt/vault build (doc 27: 31–48 + 6–10 contingency), both of which
+this depends on.
+
+| # | Work | Low | Likely | High | Depends on |
+|---|---|---:|---:|---:|---|
+| 1 | Freeze the leverage ABI and the X1–X5 interfaces with the group engineer (names, result records, custodian beneficiary, margin namespace config) | 2 | 3 | 5 | user decisions §9 |
+| 2 | Vault/receipt: X1 pair-funded open (either swap direction), X2 typed results kept in StgV2, X3 custodian-labelled beneficiary; re-measure O2/O3. **Kill point:** the vault's 7,642-byte code headroom (DESIGN §6 item 1) | 4 | 7 | 12 | 1, group vault v2 |
+| 3 | `cl-leveraged` production contract from the prototype: reentry guard, upgrade timelock/freeze, terms hashing, typed events, TTL policy, full error map | 4 | 6 | 9 | 1 |
+| 4 | Real-dependency measurement: compiled real USDC market margin path, real StgV2 receipt, Aquarius swap, live-state rerun (gate: ≤ 85 entries) | 3 | 5 | 8 | 2, 3, group 2–3 |
+| 5 | Keeper: open stages, TP arm/confirm loop, health monitor from simulated checkpoints, collect/swap/settle, resumable journal | 4 | 6 | 9 | 3; extends the group liquidator bot |
+| 6 | Adversarial and mutation tests: pool push vs TP, CALI flat/stale, fallback griefing window, interest in Settling, bad debt, add-cancel, interrupted/expired stages, restoration | 4 | 6 | 10 | 3, 4 |
+| 7 | Parameters: leverage LT vs sleeve CF, open buffer, incentive, fees, TP gap/delay, backtest worst moves, net return with AQUA −50% / −80% at L | 3 | 5 | 8 | group capacity tool |
+| 8 | Qualification: signed / Core rows with real auth, security scan, review, runbook, upload simulation | 4 | 7 | 11 | all |
+| | **Total** | **28** | **45** | **72** | |
+
+Order of work: 0 user decisions → 1 → (2 ∥ 3) → 4 (stop if a row > 85 entries) → (5 ∥ 6 ∥ 7) → 8. With the group's
+own work running in parallel on another engineer, the critical path is group vault v2 + receipt StgV2 → item 2 → item 4.
+
 
 ---
 
 ## 9. Decisions for the user
 
-DECISIONS_PLACEHOLDER
+| ID | Decision | Proposal |
+|---|---|---|
+| U1 | Topology: **M** (`cl-leveraged` custodies shares and borrows in the USDC market's per-position margin namespace; it, not the group controller, enforces per-position health) vs **U** (user is the group account; no permissionless TP/stop) | M. It needs `set_margin_controller(cl-leveraged)` on the group USDC market, a review of that trust grant, and the market borrow cap as the aggregate bound |
+| U2 | Pair-funded open (vault change X1) vs the frozen single-token open plus an extra USDC→PYUSD swap of the whole borrow | Pair-funded: zero swap at 2×, smaller exposure to the pool |
+| U3 | Leverage liquidation threshold: the sleeve CF itself, or a separate lower LT for leveraged positions; open buffer b | Separate, ≤ sleeve CF, from backtests; b ≥ fallback haircut. No values proposed here |
+| U4 | Take-profit kinds: `EquityAtLeast` (NAV checkpoint), `PriceAtLeast` (CALI), both; arm/confirm delay and window; minimum TP gap; USD-denominated TP (needs CAFJ, +2 keys) | Both kinds, USDC only; gap ≥ L × 5 bps with margin |
+| U5 | Fees: open fee on borrowed notional (financed by the debt), close fee on repaid debt, exit incentive on Health/Stop/TP only, priority lender → fee → incentive; keeper XLM budget | As prototyped; values open |
+| U6 | Bad debt: Defaulted with a recorded shortfall borne by USDC lenders, or a funded reserve/backstop | Recorded shortfall, no backstop, small caps first |
+| U7 | Allow health exits on the cause-gated fallback checkpoint (inherits the group's out-of-band griefing window, DESIGN D3), or require a minimum out-of-band duration for leveraged positions | Allow, with the group's D3 mitigation applied identically |
+| U8 | Owner may cancel own Stop/TP/voluntary closes before execution; Health exits only after expiry | Accept |
+| U9 | Positions with a pending `add_v1` are not health-exitable until it finishes or expires (≤ deadline) | Accept with a short add deadline, or forbid adds below an HF floor |
+| U10 | Command deadline horizon (receipt test prototype: 3,600 s) and TP confirm window | ≤ 1,800 s open, 600 s confirm window |
+| U11 | Single-pass leverage vs explicit k-round borrow loops | Single pass (same bound, fewer transactions); `add_v1` for later rounds |
+| U12 | Whether leveraged borrowing shares the group market's borrow cap with plain group borrowers or gets its own market | Own cap accounting: add an aggregate leveraged-debt cap in `cl-leveraged` (not prototyped) |
+
