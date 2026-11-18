@@ -1,0 +1,74 @@
+{
+ "observedAt": "2026-11-18T09:32:51.561Z",
+ "method": "simulateTransaction footprint (read-only)",
+ "CALI_lastprice_Stellar_USDC": {
+  "ledger": 65541665,
+  "cpu": 1116606,
+  "readOnly": 2,
+  "readWrite": 0,
+  "keys": [
+   "contractData:CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M:persistent",
+   "contractCode"
+  ]
+ },
+ "CALI_lastprice_Stellar_PYUSD": {
+  "ledger": 65541665,
+  "cpu": 1289348,
+  "readOnly": 2,
+  "readWrite": 0,
+  "keys": [
+   "contractData:CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M:persistent",
+   "contractCode"
+  ]
+ },
+ "CAFJ_lastprice_Other_USDC": {
+  "ledger": 65541665,
+  "cpu": 807059,
+  "readOnly": 2,
+  "readWrite": 0,
+  "keys": [
+   "contractData:CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN:persistent",
+   "contractCode"
+  ]
+ },
+ "CALI_decimals": {
+  "ledger": 65541665,
+  "cpu": 1063427,
+  "readOnly": 2,
+  "readWrite": 0,
+  "keys": [
+   "contractData:CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M:persistent",
+   "contractCode"
+  ]
+ },
+ "CALI_resolution": {
+  "ledger": 65541665,
+  "cpu": 1063889,
+  "readOnly": 2,
+  "readWrite": 0,
+  "keys": [
+   "contractData:CALI2BYU2JE6WVRUFYTS6MSBNEHGJ35P4AVCZYF3B6QOE3QKOB2PLE6M:persistent",
+   "contractCode"
+  ]
+ },
+ "CAFJ_decimals": {
+  "ledger": 65541665,
+  "cpu": 696945,
+  "readOnly": 2,
+  "readWrite": 0,
+  "keys": [
+   "contractData:CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN:persistent",
+   "contractCode"
+  ]
+ },
+ "CAFJ_resolution": {
+  "ledger": 65541665,
+  "cpu": 697407,
+  "readOnly": 2,
+  "readWrite": 0,
+  "keys": [
+   "contractData:CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN:persistent",
+   "contractCode"
+  ]
+ }
+}

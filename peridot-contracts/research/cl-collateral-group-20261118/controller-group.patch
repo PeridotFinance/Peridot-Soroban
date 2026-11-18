@@ -1,0 +1,153 @@
+diff --git a/contracts/simple-peridottroller/src/contract.rs b/prototypes/cl-collateral-group/controller/src/contract.rs
+index eac1089..766b539 100644
+--- a/contracts/simple-peridottroller/src/contract.rs
++++ b/prototypes/cl-collateral-group/controller/src/contract.rs
+@@ -11,6 +11,14 @@ use crate::storage::*;
+ #[cfg(all(feature = "test-default-admin", target_arch = "wasm32"))]
+ compile_error!("simple-peridottroller test-default-admin must not be enabled for Wasm builds");
+ 
++#[soroban_sdk::contracttype]
++#[derive(Clone)]
++pub enum GroupKey {
++    /// The single CL sleeve market whose liquidation-only valuation is dispatched.
++    Sleeve,
++    /// Liquidation reads only a fresh cached price (cold oracle path unreachable).
++    LiqCacheOnly,
++}
+ #[contract]
+ pub struct SimplePeridottroller;
+ 
+@@ -226,7 +234,7 @@ impl SimplePeridottroller {
+             .get(&DataKey::UserMarkets(user.clone()))
+             .unwrap_or(Vec::new(env));
+         if !entered.contains(market.clone()) {
+-            if entered.len() >= MAX_USER_MARKETS {
++            if entered.len() >= (if cfg!(feature = "group") { 2 } else { MAX_USER_MARKETS }) {
+                 panic!("too many entered markets");
+             }
+             entered.push_back(market.clone());
+@@ -794,6 +802,18 @@ impl SimplePeridottroller {
+     }
+ 
+     // Market collateral factor admin setter/getter
++    pub fn group_set_sleeve(env: Env, market: Address) {
++        assert!(cfg!(feature = "group"), "group build only");
++        require_admin(env.clone());
++        Self::require_market_supported(&env, &market);
++        assert!(!env.storage().instance().has(&GroupKey::Sleeve), "sleeve fixed");
++        env.storage().instance().set(&GroupKey::Sleeve, &market);
++    }
++    pub fn group_set_liq_cache_only(env: Env, on: bool) {
++        assert!(cfg!(feature = "group"), "group build only");
++        require_admin(env.clone());
++        env.storage().instance().set(&GroupKey::LiqCacheOnly, &on);
++    }
+     pub fn set_market_cf(env: Env, market: Address, cf_scaled: u128) {
+         bump_core_ttl(&env);
+         require_admin(env.clone());
+@@ -2277,6 +2297,9 @@ impl SimplePeridottroller {
+     pub fn get_collateral_excl_usd(env: Env, user: Address, exclude_market: Address) -> u128 {
+         let (collateral_usd, _borrows, indeterminate, _collateral_indeterminate) =
+             Self::sum_positions_usd(env, user, Some(exclude_market));
++        if indeterminate && cfg!(feature = "group") {
++            panic!("collateral valuation invalid");
++        }
+         if indeterminate {
+             0u128
+         } else {
+@@ -2701,7 +2724,12 @@ impl SimplePeridottroller {
+         }
+         let (shortfall_for_ctx, liquidity_for_ctx) = if require_account_shortfall {
+             let (known_collateral_usd, known_borrow_usd, indeterminate, collateral_indeterminate) =
+-                Self::sum_positions_usd(env.clone(), borrower.clone(), None);
++                if cfg!(feature = "group") {
++                    let markets = Self::get_user_markets(env.clone(), borrower.clone());
++                    Self::sum_positions_usd_for_markets_ctx(env.clone(), borrower.clone(), None, markets, false, true)
++                } else {
++                    Self::sum_positions_usd(env.clone(), borrower.clone(), None)
++                };
+             let account_shortfall = known_borrow_usd.saturating_sub(known_collateral_usd);
+             let account_liquidity = known_collateral_usd.saturating_sub(known_borrow_usd);
+             // Ensure borrower is undercollateralized using known (deterministic) positions.
+@@ -2762,7 +2790,7 @@ impl SimplePeridottroller {
+         // Fresh LP receipts batch the same balance/live-NAV/underlying reads.
+         // No cached rate or stale-price fallback is introduced for liquidation.
+         let lp_collateral_snapshot: Option<(u128, u128, Address)> =
+-            if cfg!(feature = "lp-zero-peri") {
++            if cfg!(feature = "lp-zero-peri") || Self::group_sleeve(&env).as_ref() == Some(&collateral_market) {
+                 Some(env.invoke_contract(
+                     &collateral_market,
+                     &Symbol::new(&env, "get_liquidation_snapshot"),
+@@ -2786,8 +2814,9 @@ impl SimplePeridottroller {
+                 ().into_val(&env),
+             )
+         };
+-        let (pb, sb) = Self::require_price(env.clone(), borrow_token.clone());
+-        let (pc, sc) = Self::require_price(env.clone(), coll_token.clone());
++        let cache_only = Self::group_liq_cache_only(&env);
++        let (pb, sb) = if cache_only { Self::try_cached_price(&env, &borrow_token).expect("liquidation: fresh cached price required") } else { Self::require_price(env.clone(), borrow_token.clone()) };
++        let (pc, sc) = if cache_only { Self::try_cached_price(&env, &coll_token).expect("liquidation: fresh cached price required") } else { Self::require_price(env.clone(), coll_token.clone()) };
+         // Checked math throughout: on overflow these would otherwise saturate to
+         // u128::MAX, inflating seize_ptokens and (via the rescale below) letting a
+         // liquidator seize full collateral for a negligible repay. Fail closed instead.
+@@ -2869,7 +2898,7 @@ impl SimplePeridottroller {
+         // pool cash. Every later withdrawal performs its own live liquidity and
+         // health checks. Zero is the conservative "no redeem preview" value and
+         // avoids another full strategy/pool quote inside an already heavy call.
+-        let max_redeem_ptokens = if cfg!(feature = "lp-zero-peri") {
++        let max_redeem_ptokens = if cfg!(feature = "lp-zero-peri") || Self::group_sleeve(&env).as_ref() == Some(&collateral_market) {
+             0
+         } else {
+             Self::liquidation_redeem_max_ptokens(
+@@ -3192,6 +3221,33 @@ impl SimplePeridottroller {
+         markets: Vec<Address>,
+         refresh_market_state: bool,
+     ) -> (u128, u128, bool, bool) {
++        Self::sum_positions_usd_for_markets_ctx(env, user, exclude_market, markets, refresh_market_state, false)
++    }
++    fn group_sleeve(env: &Env) -> Option<Address> {
++        if cfg!(feature = "group") { env.storage().instance().get(&GroupKey::Sleeve) } else { None }
++    }
++    fn group_liq_cache_only(env: &Env) -> bool {
++        cfg!(feature = "group") && env.storage().instance().get(&GroupKey::LiqCacheOnly).unwrap_or(false)
++    }
++    fn try_cached_price(env: &Env, token: &Address) -> Option<(u128, u128)> {
++        storage::bump_price_cache_ttl(env, token);
++        let cached = env.storage().persistent().get::<_, CachedPrice>(&DataKey::PriceCache(token.clone()))?;
++        if cached.price > 0 && cached.scale > 0 && Self::cached_price_fresh(env, cached.timestamp, cached.resolution) {
++            Some((cached.price, cached.scale))
++        } else {
++            None
++        }
++    }
++    fn sum_positions_usd_for_markets_ctx(
++        env: Env,
++        user: Address,
++        exclude_market: Option<Address>,
++        markets: Vec<Address>,
++        refresh_market_state: bool,
++        liq: bool,
++    ) -> (u128, u128, bool, bool) {
++        let liq_sleeve = if liq { Self::group_sleeve(&env) } else { None };
++        let liq_cache_only = liq && Self::group_liq_cache_only(&env);
+         let mut collateral_total: u128 = 0u128;
+         let mut borrow_total: u128 = 0u128;
+         let mut indeterminate = false;
+@@ -3230,6 +3286,8 @@ impl SimplePeridottroller {
+                     &env,
+                     if accrued_snapshot {
+                         "get_accrued_account_snapshot"
++                    } else if liq_sleeve.as_ref() == Some(&m) {
++                        "get_liquidation_account_snapshot"
+                     } else {
+                         "get_account_snapshot"
+                     },
+@@ -3377,7 +3435,7 @@ impl SimplePeridottroller {
+             };
+ 
+             // Get price — fail-closed.
+-            let (price, scale) = match Self::try_require_price(&env, &token) {
++            let (price, scale) = match if liq_cache_only { Self::try_cached_price(&env, &token) } else { Self::try_require_price(&env, &token) } {
+                 Some((p, s)) if p > 0 => (p, s),
+                 _ => {
+                     // Missing/invalid price. If the account holds priced collateral here
