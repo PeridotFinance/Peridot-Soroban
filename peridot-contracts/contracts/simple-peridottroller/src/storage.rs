@@ -57,6 +57,19 @@ pub enum DataKey {
     PendingLiqIncentiveEta,      // u64: earliest timestamp for staged liquidation incentive update
     PendingMarketCF(Address),    // u128: staged market collateral factor
     PendingMarketCFEta(Address), // u64: earliest timestamp for staged market CF update
+    // INSTANCE keys (no extra footprint entries). Unset = strict default.
+    MaxUserMarkets,                  // u32, default DEFAULT_MAX_USER_MARKETS
+    PendingMaxUserMarkets,           // u32 staged raise
+    PendingMaxUserMarketsEta,        // u64
+    MaxPriceAgeSecs,                 // u64, default DEFAULT_MAX_PRICE_AGE_SECS
+    PendingMaxPriceAgeSecs,          // u64 staged loosening
+    PendingMaxPriceAgeSecsEta,       // u64
+    PriceBand(Address),              // Option<(u128, u128)> USD 1e6 [min, max]
+    PendingPriceBand(Address),       // Option<(u128, u128)> staged loosening/removal
+    PendingPriceBandEta(Address),    // u64
+    FallbackPricesEnabled,           // bool, default false (fallback prices ignored)
+    PendingFallbackPricesEnabled,    // bool staged enable
+    PendingFallbackPricesEnabledEta, // u64
 }
 
 #[contracttype]

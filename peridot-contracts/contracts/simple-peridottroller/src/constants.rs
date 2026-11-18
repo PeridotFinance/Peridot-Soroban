@@ -17,3 +17,14 @@ pub const MAX_FALLBACK_SCALE: u128 = 1_000_000_000_000_000_000u128; // 1e18
 pub const MAX_PAUSE_DURATION_SECS: u64 = 72 * 60 * 60;
 pub const UPGRADE_TIMELOCK_SECS: u64 = 24 * 60 * 60;
 pub const ADMIN_PARAM_CHANGE_DELAY_SECS: u64 = 24 * 60 * 60;
+// Upgrade-candidate bounds (cash-borrow upgrade checks, 2026-11-18).
+// An unset MaxUserMarkets key means this strict default; no migration runs on upgrade.
+pub const DEFAULT_MAX_USER_MARKETS: u32 = 2;
+pub const MIN_MAX_USER_MARKETS: u32 = 2;
+// Absolute price-age bound, independent of the oracle-reported resolution.
+pub const DEFAULT_MAX_PRICE_AGE_SECS: u64 = 900;
+pub const MIN_MAX_PRICE_AGE_SECS: u64 = 60;
+pub const MAX_MAX_PRICE_AGE_SECS: u64 = 3600;
+// Price bands are USD prices scaled 1e6 (980_000 = $0.98), independent of oracle decimals.
+pub const PRICE_BAND_SCALE: u128 = 1_000_000u128;
+pub const MAX_PRICE_BAND_BOUND: u128 = 1_000_000_000_000_000_000u128;

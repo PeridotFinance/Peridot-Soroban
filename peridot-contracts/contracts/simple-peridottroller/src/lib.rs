@@ -16,3 +16,8 @@ pub use events::*;
 pub use storage::*;
 
 mod test;
+
+#[cfg(test)]
+mod deployed_price_behaviour_test;
+#[cfg(test)]
+mod upgrade_checks_test;

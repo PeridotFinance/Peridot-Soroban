@@ -231,3 +231,19 @@ pub struct BorrowSpeedOverflowDisabled {
     #[topic]
     pub market: Address,
 }
+
+// Upgrade-candidate parameters (cash-borrow upgrade checks, 2026-11-18).
+#[contractevent(topics = ["param_change_staged"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParamChangeStaged {
+    #[topic]
+    pub param: Symbol,
+    pub execute_after: u64,
+}
+
+#[contractevent(topics = ["param_changed"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParamChanged {
+    #[topic]
+    pub param: Symbol,
+}

@@ -1,6 +1,7 @@
 use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
 use soroban_sdk::{
-    contract, contractimpl, vec, Address, Env, IntoVal, InvokeError, Map, String, Symbol, Val, Vec,
+    contract, contractimpl, vec, Address, Env, IntoVal, InvokeError, Map, String, Symbol,
+    TryFromVal, Val, Vec,
 };
 
 use crate::constants::*;
@@ -226,7 +227,7 @@ impl SimplePeridottroller {
             .get(&DataKey::UserMarkets(user.clone()))
             .unwrap_or(Vec::new(env));
         if !entered.contains(market.clone()) {
-            if entered.len() >= MAX_USER_MARKETS {
+            if entered.len() >= Self::max_user_markets_cap(env) {
                 panic!("too many entered markets");
             }
             entered.push_back(market.clone());
@@ -246,6 +247,107 @@ impl SimplePeridottroller {
                 .set(&DataKey::MarketUserCounts, &counts);
         }
         storage::bump_user_markets_ttl(env, user);
+    }
+
+    // --- Upgrade-candidate parameters (instance storage; unset = strict default) ---
+
+    fn max_user_markets_cap(env: &Env) -> u32 {
+        env.storage()
+            .instance()
+            .get(&DataKey::MaxUserMarkets)
+            .unwrap_or(DEFAULT_MAX_USER_MARKETS)
+    }
+
+    fn max_price_age_secs(env: &Env) -> u64 {
+        env.storage()
+            .instance()
+            .get(&DataKey::MaxPriceAgeSecs)
+            .unwrap_or(DEFAULT_MAX_PRICE_AGE_SECS)
+    }
+
+    fn fallback_prices_enabled(env: &Env) -> bool {
+        env.storage()
+            .instance()
+            .get(&DataKey::FallbackPricesEnabled)
+            .unwrap_or(false)
+    }
+
+    fn price_band(env: &Env, token: &Address) -> Option<(u128, u128)> {
+        env.storage()
+            .instance()
+            .get::<_, Option<(u128, u128)>>(&DataKey::PriceBand(token.clone()))
+            .flatten()
+    }
+
+    /// Band check in a decimals-independent USD 1e6 representation. Overflow fails closed.
+    fn price_in_band(env: &Env, token: &Address, price: u128, scale: u128) -> bool {
+        let Some((lo, hi)) = Self::price_band(env, token) else {
+            return true;
+        };
+        match (
+            price.checked_mul(PRICE_BAND_SCALE),
+            lo.checked_mul(scale),
+            hi.checked_mul(scale),
+        ) {
+            (Some(p), Some(l), Some(h)) => p >= l && p <= h,
+            _ => false,
+        }
+    }
+
+    fn require_in_band(env: &Env, token: &Address, price: u128, scale: u128) {
+        if !Self::price_in_band(env, token, price, scale) {
+            panic!("price out of band");
+        }
+    }
+
+    fn param_timelock_delay_secs() -> u64 {
+        // Deliberately not test-zeroed so unit tests exercise the real 24 h timelock.
+        ADMIN_PARAM_CHANGE_DELAY_SECS
+    }
+
+    /// Tightening applies immediately. Loosening is staged and applies only when the
+    /// same value is submitted again after the delay. Returns true when applied.
+    fn apply_or_stage_param<V>(
+        env: &Env,
+        param: Symbol,
+        active: DataKey,
+        pending: DataKey,
+        eta: DataKey,
+        value: V,
+        immediate: bool,
+    ) -> bool
+    where
+        V: IntoVal<Env, Val> + TryFromVal<Env, Val> + PartialEq + Clone,
+    {
+        let inst = env.storage().instance();
+        let now = env.ledger().timestamp();
+        let staged: Option<V> = inst.get(&pending);
+        let staged_eta: Option<u64> = inst.get(&eta);
+        let matured = match (staged, staged_eta) {
+            (Some(v), Some(t)) if v == value => {
+                if now < t {
+                    panic!("parameter timelocked");
+                }
+                true
+            }
+            _ => false,
+        };
+        if immediate || matured {
+            inst.set(&active, &value);
+            inst.remove(&pending);
+            inst.remove(&eta);
+            ParamChanged { param }.publish(env);
+            return true;
+        }
+        let execute_after = now.saturating_add(Self::param_timelock_delay_secs());
+        inst.set(&pending, &value);
+        inst.set(&eta, &execute_after);
+        ParamChangeStaged {
+            param,
+            execute_after,
+        }
+        .publish(env);
+        false
     }
 
     fn require_market_supported(env: &Env, market: &Address) {
@@ -637,6 +739,18 @@ impl SimplePeridottroller {
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
+    /// Admin: cancel a staged upgrade (removes the pending hash and ETA).
+    pub fn cancel_upgrade(env: Env) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        let persistent = env.storage().persistent();
+        if !persistent.has(&DataKey::PendingUpgradeHash) {
+            panic!("pending upgrade not set");
+        }
+        persistent.remove(&DataKey::PendingUpgradeHash);
+        persistent.remove(&DataKey::PendingUpgradeEta);
+    }
+
     // Admin parameters
     pub fn set_close_factor(env: Env, close_factor_scaled: u128) {
         bump_core_ttl(&env);
@@ -966,6 +1080,125 @@ impl SimplePeridottroller {
             .persistent()
             .set(&DataKey::OracleMaxAgeMultiplier, &k);
         OracleMaxAgeMultiplierUpdated { multiplier: k }.publish(&env);
+    }
+
+    /// Admin: per-account cap on entered markets (2..=MAX_USER_MARKETS).
+    /// Lowering is immediate; raising is timelocked (call again after the ETA).
+    /// Existing accounts above a lowered cap keep their markets and can still
+    /// exit, repay, withdraw and be liquidated, but cannot enter or borrow.
+    pub fn set_max_user_markets(env: Env, max_markets: u32) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        if max_markets < MIN_MAX_USER_MARKETS || max_markets > MAX_USER_MARKETS {
+            panic!("invalid max user markets");
+        }
+        let current = Self::max_user_markets_cap(&env);
+        if current == max_markets {
+            return;
+        }
+        Self::apply_or_stage_param(
+            &env,
+            Symbol::new(&env, "max_user_markets"),
+            DataKey::MaxUserMarkets,
+            DataKey::PendingMaxUserMarkets,
+            DataKey::PendingMaxUserMarketsEta,
+            max_markets,
+            max_markets < current,
+        );
+    }
+
+    pub fn get_max_user_markets(env: Env) -> u32 {
+        Self::max_user_markets_cap(&env)
+    }
+
+    /// Admin: absolute maximum observation age for any served price, in seconds.
+    /// Effective freshness is min(k * oracle resolution, this bound).
+    /// Tightening is immediate; loosening is timelocked.
+    pub fn set_max_price_age_secs(env: Env, secs: u64) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        if secs < MIN_MAX_PRICE_AGE_SECS || secs > MAX_MAX_PRICE_AGE_SECS {
+            panic!("invalid max price age");
+        }
+        let current = Self::max_price_age_secs(&env);
+        if current == secs {
+            return;
+        }
+        Self::apply_or_stage_param(
+            &env,
+            Symbol::new(&env, "max_price_age"),
+            DataKey::MaxPriceAgeSecs,
+            DataKey::PendingMaxPriceAgeSecs,
+            DataKey::PendingMaxPriceAgeSecsEta,
+            secs,
+            secs < current,
+        );
+    }
+
+    pub fn get_max_price_age_secs(env: Env) -> u64 {
+        Self::max_price_age_secs(&env)
+    }
+
+    /// Admin: USD price band (1e6 scale) for `token`. Outside the band, actions that
+    /// add risk revert ("price out of band"): new borrows (of the token, or by an account
+    /// with a position in it) and redeems/collateral transfers by accounts with debt.
+    /// Repay and liquidation keep using the live oracle price. Debt-free redeems read no
+    /// price and stay allowed. The public `get_price_usd` view returns None out of band.
+    /// A band nested in the current one (or a first band) is immediate; widening or
+    /// removal (`None`) is timelocked.
+    pub fn set_price_band(env: Env, token: Address, band: Option<(u128, u128)>) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        if let Some((lo, hi)) = band {
+            if lo == 0 || lo > hi || hi > MAX_PRICE_BAND_BOUND {
+                panic!("invalid price band");
+            }
+        }
+        let current = Self::price_band(&env, &token);
+        if current == band {
+            return;
+        }
+        let tightening = match (band, current) {
+            (Some(_), None) => true,
+            (Some((lo, hi)), Some((clo, chi))) => lo >= clo && hi <= chi,
+            (None, _) => false,
+        };
+        Self::apply_or_stage_param(
+            &env,
+            Symbol::new(&env, "price_band"),
+            DataKey::PriceBand(token.clone()),
+            DataKey::PendingPriceBand(token.clone()),
+            DataKey::PendingPriceBandEta(token),
+            band,
+            tightening,
+        );
+    }
+
+    pub fn get_price_band(env: Env, token: Address) -> Option<(u128, u128)> {
+        Self::price_band(&env, &token)
+    }
+
+    /// Admin: allow static fallback prices to be served. Default false: fallback
+    /// entries are ignored. Disabling is immediate; enabling is timelocked.
+    pub fn set_fallback_prices_enabled(env: Env, enabled: bool) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        if Self::fallback_prices_enabled(&env) == enabled {
+            return;
+        }
+        Self::apply_or_stage_param(
+            &env,
+            Symbol::new(&env, "fallback_prices"),
+            DataKey::FallbackPricesEnabled,
+            DataKey::PendingFallbackPricesEnabled,
+            DataKey::PendingFallbackPricesEnabledEta,
+            enabled,
+            !enabled,
+        );
+    }
+
+    pub fn get_fallback_prices_enabled(env: Env) -> bool {
+        Self::fallback_prices_enabled(&env)
     }
 
     pub fn set_oracle_asset_symbol(env: Env, token: Address, symbol: Option<Symbol>) {
@@ -2267,6 +2500,8 @@ impl SimplePeridottroller {
                     break;
                 }
             };
+            // Only reached for markets with debt; debt-free redeems read no price.
+            Self::require_in_band(&env, &token, price, scale);
             let usd = (debt.saturating_mul(price)) / scale;
             total = total.saturating_add(usd);
         }
@@ -2274,9 +2509,10 @@ impl SimplePeridottroller {
     }
 
     // Sum collateral in USD across markets excluding a specific market
+    // Redeem/transfer-with-debt path: reverts if any position token is outside its band.
     pub fn get_collateral_excl_usd(env: Env, user: Address, exclude_market: Address) -> u128 {
         let (collateral_usd, _borrows, indeterminate, _collateral_indeterminate) =
-            Self::sum_positions_usd(env, user, Some(exclude_market));
+            Self::sum_positions_usd_banded(env, user, Some(exclude_market));
         if indeterminate {
             0u128
         } else {
@@ -2316,6 +2552,10 @@ impl SimplePeridottroller {
         if !markets.contains(market.clone()) {
             panic!("market not entered");
         }
+        // New debt only for accounts within the entered-market cap.
+        if markets.len() > Self::max_user_markets_cap(&env) {
+            panic!("too many entered markets");
+        }
         // Exclude current market to avoid re-entry from that market during borrow path
         let (collateral_usd, mut borrow_usd, indeterminate, _collateral_indeterminate) =
             Self::sum_positions_usd_for_markets(
@@ -2324,12 +2564,14 @@ impl SimplePeridottroller {
                 Some(market.clone()),
                 markets,
                 false,
+                true,
             );
         if indeterminate {
             return (0u128, u128::MAX);
         }
         // Add hypothetical borrow in USD using provided underlying token
         let (price, scale) = Self::require_price(env.clone(), underlying.clone());
+        Self::require_in_band(&env, &underlying, price, scale);
         let extra = (borrow_amount.saturating_mul(price)) / scale;
         borrow_usd = borrow_usd.saturating_add(extra);
         if collateral_usd >= borrow_usd {
@@ -2355,6 +2597,10 @@ impl SimplePeridottroller {
         if !markets.contains(market.clone()) {
             panic!("market not entered");
         }
+        // New debt only for accounts within the entered-market cap.
+        if markets.len() > Self::max_user_markets_cap(&env) {
+            panic!("too many entered markets");
+        }
         // Exclude current market, then add hinted collateral and debt.
         let (mut collateral_usd, mut borrow_usd, indeterminate, _collateral_indeterminate) =
             Self::sum_positions_usd_for_markets(
@@ -2363,11 +2609,13 @@ impl SimplePeridottroller {
                 Some(market.clone()),
                 markets,
                 true,
+                true,
             );
         if indeterminate {
             return (0u128, u128::MAX);
         }
-        let (price, scale) = Self::require_price(env.clone(), underlying);
+        let (price, scale) = Self::require_price(env.clone(), underlying.clone());
+        Self::require_in_band(&env, &underlying, price, scale);
         if hint.ptoken_balance > 0 {
             let cf: u128 = Self::get_market_cf(env.clone(), market);
             let underlying_amount =
@@ -3191,6 +3439,7 @@ impl SimplePeridottroller {
         exclude_market: Option<Address>,
         markets: Vec<Address>,
         refresh_market_state: bool,
+        enforce_band: bool,
     ) -> (u128, u128, bool, bool) {
         let mut collateral_total: u128 = 0u128;
         let mut borrow_total: u128 = 0u128;
@@ -3396,6 +3645,9 @@ impl SimplePeridottroller {
                     continue;
                 }
             };
+            if enforce_band {
+                Self::require_in_band(&env, &token, price, scale);
+            }
 
             // Collateral: pToken balance * exchange rate * collateral factor * price
             if pbal > 0 && market_cf > 0 {
@@ -3445,7 +3697,18 @@ impl SimplePeridottroller {
         exclude_market: Option<Address>,
     ) -> (u128, u128, bool, bool) {
         let markets = Self::get_user_markets(env.clone(), user.clone());
-        Self::sum_positions_usd_for_markets(env, user, exclude_market, markets, false)
+        Self::sum_positions_usd_for_markets(env, user, exclude_market, markets, false, false)
+    }
+
+    /// As `sum_positions_usd`, but reverts when any position token is outside its price band.
+    /// Used only on the redeem/transfer-with-debt path; health and liquidation stay unbanded.
+    fn sum_positions_usd_banded(
+        env: Env,
+        user: Address,
+        exclude_market: Option<Address>,
+    ) -> (u128, u128, bool, bool) {
+        let markets = Self::get_user_markets(env.clone(), user.clone());
+        Self::sum_positions_usd_for_markets(env, user, exclude_market, markets, false, true)
     }
 
     fn liquidation_redeem_max_ptokens(
@@ -3497,7 +3760,18 @@ impl SimplePeridottroller {
     // Note: we avoid calling back into the current market during hypothetical checks to prevent re-entry
 
     // Price quotation via cached oracle data or fallback (no on-chain oracle call).
+    // Out of band this public view returns None, so receipt redeem-with-debt of the
+    // token reverts ("Price unavailable"). Internal health/liquidation pricing is unbanded.
     pub fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)> {
+        let (price, scale) = Self::get_price_usd_unbanded(env.clone(), token.clone())?;
+        if Self::price_in_band(&env, &token, price, scale) {
+            Some((price, scale))
+        } else {
+            None
+        }
+    }
+
+    fn get_price_usd_unbanded(env: Env, token: Address) -> Option<(u128, u128)> {
         if cfg!(feature = "lp-zero-peri") {
             return Self::cache_price(env, token);
         }
@@ -3531,7 +3805,8 @@ impl SimplePeridottroller {
                 .storage()
                 .persistent()
                 .get(&DataKey::FallbackPriceSetAt(token.clone()));
-            if fallback.price > 0
+            if Self::fallback_prices_enabled(&env)
+                && fallback.price > 0
                 && fallback.scale > 0
                 && set_at
                     .map(|t| Self::fallback_price_fresh(&env, t))
@@ -3596,6 +3871,7 @@ impl SimplePeridottroller {
                 || resolution == 0
                 || pd.timestamp > now
                 || now - pd.timestamp > (resolution as u64).saturating_mul(k)
+                || now - pd.timestamp > Self::max_price_age_secs(&env)
             {
                 return None;
             }
@@ -3670,6 +3946,9 @@ impl SimplePeridottroller {
                 if pd.timestamp + max_age < now {
                     return None;
                 }
+                if now - pd.timestamp > Self::max_price_age_secs(&env) {
+                    return None;
+                }
                 let Ok(price) = u128::try_from(pd.price) else {
                     return None;
                 };
@@ -3730,7 +4009,8 @@ impl SimplePeridottroller {
                 .storage()
                 .persistent()
                 .get(&DataKey::FallbackPriceSetAt(token.clone()));
-            if fallback.price > 0
+            if Self::fallback_prices_enabled(env)
+                && fallback.price > 0
                 && fallback.scale > 0
                 && set_at
                     .map(|t| Self::fallback_price_fresh(env, t))
@@ -3776,7 +4056,8 @@ impl SimplePeridottroller {
                 .storage()
                 .persistent()
                 .get(&DataKey::FallbackPriceSetAt(token.clone()));
-            if fallback.price > 0
+            if Self::fallback_prices_enabled(&env)
+                && fallback.price > 0
                 && fallback.scale > 0
                 && set_at
                     .map(|t| Self::fallback_price_fresh(&env, t))
@@ -3801,7 +4082,7 @@ impl SimplePeridottroller {
         storage::bump_oracle_max_age_multiplier_ttl(env);
         let res = cached_resolution as u64;
         let grace = res.saturating_mul(k);
-        cached_timestamp + grace >= now
+        cached_timestamp + grace >= now && now - cached_timestamp <= Self::max_price_age_secs(env)
     }
 
     fn fallback_price_fresh(env: &Env, set_at: u64) -> bool {
