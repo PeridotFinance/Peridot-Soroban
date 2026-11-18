@@ -330,9 +330,41 @@ fn price_take_profit_uses_oracle_only() {
     lev_err(f.lev.try_arm_exit_v1(&pid), LevError::NoExitCondition);
     f.tick(10, P1 * 1_007 / 1_000);
     f.lev.arm_exit_v1(&pid);
+    // Pool now out of band: NAV refused, no fallback cause beyond that, position healthy.
+    f.rc.mock_nav_fail(&true);
     f.tick(40, P1 * 1_007 / 1_000);
-    f.rc.checkpoint_nav();
-    assert_eq!(f.lev.trigger_exit_v1(&pid), REASON_TAKE_PROFIT);
+    assert_eq!(f.lev.trigger_exit_v1(&pid), REASON_TAKE_PROFIT, "price TP does not need the NAV checkpoint");
+}
+
+#[test]
+fn pool_push_blocks_stop_but_health_survives_on_fallback() {
+    let f = setup();
+    let pid = f.opened(1_000 * U, 900 * U);
+    let exit = ExitPolicyV1 { take_profit: TakeProfitV1::None, stop_hf_bps: Some(10_400) };
+    f.as_owner("set_exit_v1", (f.owner.clone(), pid, exit.clone()).into_val(&f.e));
+    f.lev.set_exit_v1(&f.owner, &pid, &exit);
+    f.rc.mock_loss(&200); // stop condition true on NAV
+    f.rc.mock_nav_fail(&true); // ...but NAV is refused: the stop cannot be evaluated
+    f.tick(61, P1);
+    lev_err(f.lev.try_trigger_exit_v1(&pid), LevError::NoExitCondition);
+    f.rc.mock_nav_fail(&false);
+    f.tick(61, P1);
+    assert_eq!(f.lev.trigger_exit_v1(&pid), REASON_STOP);
+}
+
+#[test]
+fn collateral_disabled_lets_every_indebted_position_exit_but_blocks_opens() {
+    let f = setup();
+    let pid = f.opened(1_000 * U, 500 * U);
+    f.tick(61, P1);
+    lev_err(f.lev.try_trigger_exit_v1(&pid), LevError::NoExitCondition);
+    f.ctrl.mock_set_cf(&f.rc.address, &0);
+    assert_eq!(f.lev.trigger_exit_v1(&pid), REASON_HEALTH);
+    let t = f.terms(1_000 * U, 100 * U);
+    let args: SVec<Val> = (f.owner.clone(), t.clone()).into_val(&f.e);
+    let xfer: SVec<Val> = (f.owner.clone(), f.lev.address.clone(), (t.equity0 + t.reserve0) as i128).into_val(&f.e);
+    f.e.mock_auths(&[MockAuth { address: &f.owner, invoke: &MockAuthInvoke { contract: &f.lev.address, fn_name: "open_v1", args, sub_invokes: &[MockAuthInvoke { contract: &f.t0, fn_name: "transfer", args: xfer, sub_invokes: &[] }] } }]);
+    lev_err(f.lev.try_open_v1(&f.owner, &t), LevError::NoCollateralFactor);
 }
 
 // ------------------------------------------------------------------------------------ health exit

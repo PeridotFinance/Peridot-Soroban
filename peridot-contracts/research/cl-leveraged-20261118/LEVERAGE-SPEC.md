@@ -58,7 +58,8 @@ Under M:
 
 The close command's owner and fixed payout recipient is `cl-leveraged` itself (doc 27's fixed-owner rule holds: the
 owner of the receipt command is the margin escrow). `withdraw_close` pays the in-kind mixture to `cl-leveraged`, and
-`settle_v1` repays the margin debt from that mixture **before** anything reaches the user. No health-checked redeem
+`collect_v1` books that mixture into the position's escrow and `settle_v1` repays the margin debt from it **before**
+anything reaches the user. No health-checked redeem
 (group GR5, error #6) is involved, so a position at the exit threshold, with no free collateral, still unwinds in one
 pass. There is no iterative deleverage. Health exit is therefore the same transaction count as a normal close.
 
@@ -88,7 +89,7 @@ on a fresh NAV checkpoint. That is the "repeat" path, used when a single command
 
 ```
 user (owner) ──open_v1/add_v1/set_exit_v1/close_v1/cancel_v1/repay_v1──▶ cl-leveraged (margin escrow, position ledger)
-keeper (anyone) ──fund_v1/sync_open_v1/arm_exit_v1/trigger_exit_v1/settle_v1/cancel_v1(after deadline)──▶ cl-leveraged
+keeper (anyone) ──fund_v1/sync_open_v1/arm_exit_v1/trigger_exit_v1/collect_v1/swap_deficit_v1/settle_v1/cancel_v1(after deadline)──▶ cl-leveraged
 keeper (anyone) ──convert_open/mint_cash/invest_cash/withdraw_close/convert_close/cancel(after deadline)──▶ group receipt
 
 cl-leveraged ──prepare_open_pair/fund_open/prepare_close/cancel/stage1_job──────────▶ group receipt (StgV2 sleeve class)
@@ -96,7 +97,7 @@ cl-leveraged ──prepare_open_pair/fund_open/prepare_close/cancel/stage1_job�
              ──get_market_cf/get_liquidation_incentive_scaled/is_borrow_paused──────▶ group controller
              ──borrow_for_margin_to_controller/repay_for_margin/get_margin_borrow_balance─▶ group USDC market
              ──lastprice(Stellar(PYUSD))─────────────────────────────────────────────▶ Reflector CALI (USDC base)
-             ──swap_pool (only when the USDC leg cannot cover debt)────────────────▶ swap adapter → Aquarius pool
+             ──swap_pool (swap_deficit_v1 only: USDC leg cannot cover debt)──────▶ swap adapter → Aquarius pool
              ──transfer──────────────────────────────────────────────────────────────▶ PYUSD / USDC SACs
 ```
 
@@ -108,25 +109,26 @@ O5) and the 78-entry withdraw row (C2a) unchanged.
 
 ## 2. Refined ABI (prototype names; versioned `_v1`)
 
-Types (prototype `src/types.rs`):
+Types (prototype `leverage/src/types.rs`):
 
 - `LevConfigV1`: bound addresses (receipt, group controller, USDC market, swap adapter, pool, CALI oracle, PYUSD, USDC,
-  treasury) and `LevRiskV1`. Set once at `initialize`; risk changes go through a 24 h timelocked proposal
-  (`propose_risk_v1` / `execute_risk_v1`) and bump `revision`. **No defaults in code.**
+  treasury, admin). Set once at `initialize`. `LevRiskV1` changes go through a 24 h timelocked proposal
+  (`propose_risk_v1` / `execute_risk_v1`) and bump `revision`; `pause_new_risk_v1` stops opens/adds immediately.
+  **No defaults in code.** The prototype does not yet stamp the risk revision on positions (production item 3).
 - `LevRiskV1`: `open_buffer_bps` (b), `max_ckpt_age_secs` (group DESIGN: 60), `max_oracle_age_secs` (600),
   `max_depeg_bps` (100), `max_slippage_bps`, `open_fee_bps`, `close_fee_bps`, `exit_incentive_bps`, `tp_min_gap_bps`,
   `tp_confirm_delay_secs`, `tp_confirm_window_secs`, `max_deadline_secs`, `new_risk_enabled`, `revision`.
 - `OpenLevV1{equity0, borrow1, swap_in, swap_dir, min_swap, min_shares, reserve0, deadline, max_ltv_bps, exit}`.
-- `ExitPolicyV1{take_profit: Option<TakeProfitV1>, stop_hf_bps: Option<u32>}`;
-  `TakeProfitV1 = EquityAtLeast(u128 USDC) | PriceAtLeast(u128 PYUSD/USDC, 14 dp)`.
-- `PositionV1{owner, phase, cmd, shares, escrow0, escrow1, reserve0, equity_in, exit, armed, reason, revision}`.
+- `ExitPolicyV1{take_profit: TakeProfitV1, stop_hf_bps: Option<u32>}`;
+  `TakeProfitV1 = None | EquityAtLeast(u128 USDC) | PriceAtLeast(u128 PYUSD/USDC, 14 dp)`.
+- `PositionV1{owner, phase, cmd, shares, escrow0, escrow1, reserve0, pending, exit, armed, reason, equity_in, shortfall}`.
 - `LevPhaseV1`: `PendingFund`, `Opening`, `Active`, `Closing`, `Settling`, `Closed`, `Refunded`, `Defaulted`.
 
 Entry points (O = owner, P = permissionless, E = anyone strictly after the stored deadline, A = admin):
 
 | Entry point | Caller | Required phase | Effect / next phase |
 |---|---|---|---|
-| `initialize(admin, cfg)` | A | — | Store config once |
+| `initialize(cfg, risk)` | A (`cfg.admin`) | — | Store config and risk once |
 | `open_v1(owner, terms) -> pid` | O | — | Pull `equity0 + reserve0` PYUSD; borrow `borrow1` USDC into escrow (`borrow_for_margin_to_controller(pid)`); open fee to treasury out of the borrowed USDC (financed by the debt); admission (§4); → PendingFund |
 | `add_v1(owner, pid, terms)` | O | Active | Same as open for the increment; health on fresh NAV checkpoint over existing shares + new escrow; → PendingFund |
 | `fund_v1(pid) -> cmd` | P | PendingFund | `prepare_open_pair` + `fund_open` on the receipt, owner = `cl-leveraged`, exact nested transfer authorized as current contract; escrow → command; → Opening |
@@ -134,8 +136,8 @@ Entry points (O = owner, P = permissionless, E = anyone strictly after the store
 | `sync_open_v1(pid)` | P | Opening | Read `stage1_job(cmd)`: Invested → add shares, assign beneficiary, → Active. Cancelled before mint → mixture returned to escrow → Settling (repay, refund). Cancelled after mint → shares released → Active |
 | `set_exit_v1(owner, pid, exit)` | O | PendingFund..Active | Replace TP / stop; TP must clear `tp_min_gap_bps` above current equity; disarms |
 | `arm_exit_v1(pid)` | P | Active | TP condition true on a fresh checkpoint → record `armed{ts, ckpt_ts}` |
-| `trigger_exit_v1(pid) -> reason` | P | Active | Reason `Health` (HF < 1, NAV else fallback), `Stop` (HF < stop), `TakeProfit` (armed ≥ delay, ≤ window, fresh later checkpoint, still true). `prepare_close(cl-leveraged, shares, InKind)` → Closing |
-| `close_v1(owner, pid, deadline)` | O | Active | Voluntary close, same command → Closing |
+| `trigger_exit_v1(pid) -> reason` | P | Active | Reason `Health` (HF < 1 on NAV, else on the fallback; or CF = 0 with debt), `Stop` (HF < stop, NAV only), `TakeProfit` (armed ≥ delay, ≤ window, strictly newer checkpoint/oracle round, still true; evaluated independently of the NAV for `PriceAtLeast`). `prepare_close(cl-leveraged, shares, InKind)` → Closing |
+| `close_v1(owner, pid)` | O | Active | Voluntary close, same command → Closing |
 | (receipt) `withdraw_close` | P | — | Unchanged C2a row: in-kind mixture paid to `cl-leveraged` |
 | `collect_v1(pid)` | P | Closing | Read `stage1_job(cmd).result` (`Exit` amounts), release the beneficiary label, shares → escrow; → Settling |
 | `swap_deficit_v1(pid)` | P | Settling | Only if escrowed USDC < debt (+10 bps interest buffer) + fee + incentive: swap PYUSD→USDC for the deficit, min-out `p_CALI · (1 − max_slippage)`; `NoDeficit` otherwise |
@@ -208,8 +210,10 @@ L_max   = 1 / (1 − x_open)
 ```
 
 **Lender solvency condition.** A forced exit starts at `V = D/CF` and recovers `V · (1 − c)` where
-`c = c_withdraw + c_swap + incentive + close_fee`, then loses up to `Δ` of value during the exit window (§6: 3 transactions
-after trigger, ≈ 3 ledgers + keeper latency). The debt is covered iff `CF ≤ (1 − c)(1 − Δ)`. On the fallback path the
+`c = c_withdraw + c_swap + incentive + close_fee`, then loses up to `Δ` of value during the exit window. After the trigger
+only `withdraw_close` is price-exposed for the position's shares (in-kind payout); `collect_v1`/`swap_deficit_v1`/`settle_v1`
+follow, so Δ covers ≥ 1 ledger to the withdrawal plus the PYUSD leg's exposure until the deficit swap (≥ 3 more ledgers +
+keeper latency). The debt is covered iff `CF ≤ (1 − c)(1 − Δ)`. On the fallback path the
 value is already `≈ 97.9%` of NAV (DESIGN §2.2), so the fallback trigger is conservative by `h`.
 
 Illustration only (test arithmetic, **not** proposed values): with `b = 2%`, CF 50% → `x_open` 49%, `L_max` 1.96;
@@ -217,8 +221,8 @@ CF 70% → 68.6%, 3.18; CF 80% → 78.4%, 4.63. The group has not chosen a sleev
 The spec COLLATERAL-BORROWING-SPEC §7 requires the CF to come from backtested worst moves and funded exit capacity.
 
 **Swap-free unwind at L ≤ 2.** In the middle of the range the mixture is about half USDC, so the USDC leg covers debt iff
-`D ≤ V/2`, i.e. `L ≤ 2`. At the lower band edge the position is all PYUSD and `settle_v1` must swap; the swap row is
-measured separately. Leverage above 2 always needs the swap on exit.
+`D ≤ V/2`, i.e. `L ≤ 2`. At the lower band edge the position is all PYUSD and `swap_deficit_v1` must run before `settle_v1`;
+the swap row is measured separately. Leverage above 2 always needs the swap on exit.
 
 ---
 
@@ -227,14 +231,15 @@ measured separately. Leverage above 2 always needs the swap on exit.
 **Trigger must only change state.** `arm_exit_v1` / `trigger_exit_v1` read the stored NAV checkpoint (or refresh it
 inline through `checkpoint_nav()`, no auth) and the oracle, never pool spot or a pool quote, and their only effect is to
 lock the shares into a close command. Execution protection is separate: the in-kind withdrawal needs no price, and the
-only swap (`settle_v1`, deficit only) is bounded by `p_CALI · (1 − max_slippage)`.
+only swap (`swap_deficit_v1`, deficit only) is bounded by `p_CALI · (1 − max_slippage)`.
 
 | Kind | Condition | Price source | Persistence |
 |---|---|---|---|
 | Health (protocol) | `HF < 1` | NAV checkpoint ≤ 60 s, else fallback checkpoint ≤ 60 s (cause-gated by the group) | None: immediate |
 | Stop (owner) | `HF < stop_hf_bps / 1e4` (stop > 1) | NAV checkpoint ≤ 60 s only | None |
 | TP `EquityAtLeast(T)` | `V − D ≥ T` | NAV checkpoint ≤ 60 s | Armed, then confirmed on a **later** checkpoint ≥ `tp_confirm_delay_secs` and ≤ `tp_confirm_window_secs` after arming |
-| TP `PriceAtLeast(P)` | `p_CALI ≥ P` | CALI only, age ≤ `max_oracle_age_secs` | Same arm/confirm |
+| TP `PriceAtLeast(P)` | `p_CALI ≥ P` | CALI only, age ≤ `max_oracle_age_secs`; does not need the NAV checkpoint | Same arm/confirm; the confirm needs a strictly newer CALI round, so the window must exceed the 300 s resolution (enforced in `check_risk`) |
+| Collateral disabled | group CF = 0 (`emergency_disable_collateral`) with debt | none | Immediate Health exit for every indebted position; opens/adds refused (decision U13) |
 
 **Why a pool push cannot fire a TP.** Inside the guarded band (pool within 50 bps of oracle, tick in [−20, 20)) a push
 inflates the NAV only to second order: DESIGN §1.3 bounds it at about 0.05% of one leg at δ = 0.2%. Equity amplifies it by
@@ -243,6 +248,13 @@ chosen ≥ `L × 5 bps` with margin (test value 50 bps). A push beyond the band 
 checkpoint exists and nothing triggers. The arm/confirm rule makes the attacker hold the push against arbitrage across
 two checkpoints. `PriceAtLeast` is pool-independent; its residual risk is the CALI feed itself (DESIGN §1.3: flat,
 re-timestamps; DEX-trade driven). The only harm of an early TP is an early, user-chosen exit at oracle-bounded prices.
+
+**A pool push can block a trigger, though.** Out of band means no NAV checkpoint, so an owner Stop and an equity TP
+cannot be evaluated while the push lasts (test `pool_push_blocks_stop_but_health_survives_on_fallback`). Health still
+works through the cause-gated fallback, and a price TP still works on CALI alone (`price_take_profit_uses_oracle_only`, run
+with the NAV refused). The real `checkpoint_nav` also refuses when the pool tick leaves the position's range (about
+±0.2%), so an equity TP set above that move can only fire after the pool returns into range; a `PriceAtLeast` TP has no such
+limit. The mock has no tick guard, so this range limit is stated, not tested.
 
 **Granularity.** Equity TP thresholds are honoured to about `L · 5 bps` of position value plus the NAV checkpoint
 rounding (rate is 1e6-scaled per unit: ≤ 1 µUSDC per unit). AQUA is not in NAV: a TP on "profit including AQUA" is not
@@ -271,10 +283,12 @@ the 1× keeper. Interest is the USDC market's (STATIC 8% APR proposed by the gro
 **Failure / refund paths.**
 
 - `fund_v1` rejected by the receipt (pause, cap, admission): the whole transaction reverts; escrow and debt unchanged;
-  keeper retries or the owner (anytime) / anyone (after deadline) runs `cancel_v1`, which repays from escrowed USDC
-  (swapping PYUSD for any accrued-interest deficit) and refunds the rest.
+  keeper retries, or the owner (anytime) / anyone (after deadline) runs `cancel_v1`: the reserve goes back and the
+  position moves to Settling; `swap_deficit_v1` covers the open fee + accrued interest from PYUSD; `settle_v1` repays
+  and refunds the rest (→ Refunded).
 - A receipt stage fails or expires: only `cancel` on the receipt can move funds, always back to `cl-leveraged`.
-  `sync_open_v1` reads the `Released` result: mixture → Settling → `settle_v1` repays and refunds; locked shares → Active.
+  `sync_open_v1` (or `cancel_v1` in the same transaction) reads the `Released` result: mixture → Settling →
+  [`swap_deficit_v1`] → `settle_v1` repays and refunds; locked (minted) shares → Active, never a second cash refund.
 - `swap_deficit_v1` fails its oracle minimum (pool pushed or illiquid): it reverts and is retried; `settle_v1` refuses
   (`SwapRequired`) while PYUSD remains and USDC cannot cover the debt. Anyone may `repay_v1` the deficit instead.
   Debt is never forgiven by a failed swap. Interest keeps accruing in Settling; the swap adds a 10 bps buffer.
@@ -295,7 +309,7 @@ Limits: internal 100 SDK entries (memory reads + disk reads + writes), 100 uniqu
 
 **Evidence class.** Local host only: soroban-env-host / SDK **29.0.1** testutils, default cost model (the spike found
 the live model adds +0.2M..+0.6M CPU per row; not applied here). `cl-leveraged` and all mocks are the compiled WASMs from
-`stellar contract build` (contracts on SDK 25.3.1; `cl_leveraged.wasm` 43,683 bytes ≤ 131,072). One `Env` per transaction,
+`stellar contract build` (contracts on SDK 25.3.1; `cl_leveraged.wasm` 43,304 bytes ≤ 131,072). One `Env` per transaction,
 chained by ledger snapshot (+1 ledger, +6 s). Entries = memory reads + disk reads + writes; keys = unique ledger keys
 requested from a recording snapshot source. `mock_all_auths` (recording; nonces created and counted). Users are
 C-addresses: a G-account user adds about 1 account + 1 trustline disk read (spike). Not Core, not signed, no fees or tx
@@ -311,29 +325,29 @@ by the keeper (doc 27 §5).
 
 | Stage (tx) | Caller | CPU | Mem | Entries (m+d+w) | Keys | Writes | Group-dependent subtree |
 |---|---|---:|---:|---|---:|---:|---|
-| `open_v1` first | O | 3,128,612 | 3,892,525 | **32** (21+2+9) | 23 | 9 | market borrow X4, controller pause G3 |
-| `open_v1` second | O | 3,188,275 | 3,893,666 | **30** (21+0+9) | 21 | 9 | same |
+| `open_v1` first | O | 3,128,900 | 3,892,525 | **32** (21+2+9) | 23 | 9 | market borrow X4, controller pause G3 |
+| `open_v1` second | O | 3,188,563 | 3,893,666 | **30** (21+0+9) | 21 | 9 | same |
 | `fund_v1` (pair open + fund, 2 nested transfers) | P | 3,194,889 | 2,836,543 | **21** (13+0+8) | 13 | 8 | receipt X1 + `fund_open` |
 | `sync_open_v1` | P | 2,242,098 | 2,633,245 | **14** (10+0+4) | 10 | 4 | job result X2, beneficiary X3 |
 | `set_exit_v1` (fresh NAV) | O | 2,138,397 | 2,705,228 | **14** (12+0+2) | 12 | 2 | NAV view G1, market view X4 |
 | `arm_exit_v1` inline / fresh | P | 2,758,228 / 1,757,640 | 3,836,178 / 2,604,522 | **12** (10+0+2) / **9** (8+0+1) | 10 / 8 | 2 / 1 | inline L1a G1 |
-| `trigger_exit_v1` TP inline / fresh | P | 5,230,451 / 4,224,584 | 3,939,858 / 3,192,358 | **20** (16+0+4) / **18** (14+0+4) | 16 / 14 | 4 | L1a G1, receipt `prepare_close` |
-| `trigger_exit_v1` Health inline / fresh | P | 4,288,639 / 3,319,311 | 3,935,887 / 2,969,971 | **20** / **18** | 16 / 14 | 4 | L1a G1, CF G3 |
-| `trigger_exit_v1` Health on fallback (NAV try fails) inline / stored | P | 5,650,456 / 4,683,408 | 4,276,681 / 3,939,857 | **20** / **20** | 16 | 4 | L1a try G1 + L1b G2 |
+| `trigger_exit_v1` TP inline / fresh | P | 5,228,349 / 4,221,997 | 4,032,058 / 3,192,333 | **20** (16+0+4) / **18** (14+0+4) | 16 / 14 | 4 / 4 | L1a G1, receipt `prepare_close` |
+| `trigger_exit_v1` Health inline / fresh | P | 4,286,841 / 3,317,028 | 4,028,087 / 2,969,946 | **20** (16+0+4) / **18** (14+0+4) | 16 / 14 | 4 / 4 | L1a G1, CF G3 |
+| `trigger_exit_v1` Health on fallback (NAV try fails) inline / stored | P | 5,649,574 / 4,680,828 | 4,369,493 / 4,032,057 | **20** (16+0+4) / **20** (16+0+4) | 16 / 16 | 4 / 4 | L1a try G1 + L1b G2 |
 | `close_v1` | O | 2,074,988 | 2,646,883 | **15** (10+0+5) | 10 | 5 | receipt `prepare_close` |
 | `collect_v1` | P | 2,026,175 | 2,635,191 | **9** (7+0+2) | 7 | 2 | job result X2, beneficiary X3 |
 | `swap_deficit_v1` | P | 2,449,023 | 2,736,572 | **21** (16+0+5) | 16 | 5 | swap adapter + Aquarius pool |
 | `settle_v1` (repay, fee, incentive, payout) | P (signs) | 2,684,825 | 2,613,558 | **28** (17+1+10) | 18 | 10 | market repay X4 |
-| `add_v1` (fresh NAV) | O | 4,176,636 | 4,027,061 | **31** (23+0+8) | 23 | 8 | market borrow X4, NAV G1 |
+| `add_v1` (fresh NAV) | O | 4,176,924 | 4,027,061 | **31** (23+0+8) | 23 | 8 | market borrow X4, NAV G1 |
 | `repay_v1` | payer | 1,432,771 | 2,516,001 | **15** (11+0+4) | 11 | 4 | market repay X4 |
 | `cancel_v1` PendingFund (owner) | O | 1,043,395 | 1,308,023 | **12** (8+0+4) | 8 | 4 | — |
 | `cancel_v1` Opening after expiry (receipt cancel + sync) | E | 3,296,916 | 2,830,163 | **18** (12+0+6) | 12 | 6 | receipt `cancel` |
 | `settle_v1` refund | P (signs) | 2,298,380 | 2,613,309 | **23** (15+0+8) | 15 | 8 | market repay X4 |
-| `health_v1` (view) | — | 1,963,666 | 2,695,811 | **11** (11+0+0) | 11 | 0 | G1, X4 |
+| `health_v1` (view) | — | 1,963,642 | 2,695,811 | **11** (11+0+0) | 11 | 0 | G1, X4 |
 
 Mock receipt stages were also run (convert 7, mint 11, invest 11, checkpoint_nav 5, withdraw 19 entries); they are **not
 representative** and are replaced by the cited rows below. Every measured row is ≤ 32 entries, ≤ 23 keys, ≤ 10 writes,
-≤ 5.7M CPU and ≤ 4.3 MB memory, i.e. far inside both the internal and the live limits **on mocks**.
+≤ 5.7M CPU and ≤ 4.4 MB memory, i.e. far inside both the internal and the live limits **on mocks**.
 
 #### 7.2 Projected per transaction on real dependencies (estimate; replace when the group contracts exist)
 
@@ -343,30 +357,31 @@ L1b real 13 / 12 / 8.95M vs mock 5 / 4 / 1.03M → **+8 / +8 / +7.9M**; failed N
 → **+14 / +14 / +14.6M**; `prepare_close` doc 27 C1 13 / 10 / 2.72M → **+8 / +6 / +1.9M**; pair open + fund doc 27 O1 + O2
 (16 + 17 entries, 7.40M + 3.75M) → **+12 / +10 / +10M**; beneficiary assign/release with reward settle ≈ group L5 25 / 15 / 3.1M
 → **+20 / +13 / +3M**; real receipt code load **+0.43M CPU, +79 KB** per load (DESIGN §5.4). **Not measured anywhere yet
-(estimates):** margin-namespace borrow on the real USDC market ≈ **+40 / +33 / +15M** (the market contributes 36 keys to
+(estimates):** margin-namespace borrow on the real USDC market (existing `receipt-vault` code, so measurable now and not
+group-dependent; skipped here because the worktree lacks the OpenZeppelin submodule it builds against) ≈ **+40 / +33 / +15M** (the market contributes 36 keys to
 the spike's S1a borrow and 35 to group L3); repay ≈ **+35 / +30 / +12M**; margin debt view ≈ **+6 / +6 / +2M**; adapter +
 Aquarius pool swap ≈ **+25 / +20 / +12M** (doc 27 C3 is 32 entries / 23.8M including its receipt work).
 
-| Transaction | Projected entries | Projected keys | Projected CPU | vs 100 / 100 / 50 / 97M | Basis |
-|---|---:|---:|---:|---|---|
-| `open_v1` | ~72 | ~56 | ~19M | fits; **kill line 85** | measured 32 + borrow |
-| `fund_v1` | ~33 | ~23 | ~15M | fits | measured 21 + O1/O2 |
-| receipt `convert_open` (O3) | 30 (pilot 28) | 22 (19) | 31.2M (36.1M) | fits | doc 27 accepted / spike pilot bytes |
-| receipt `mint_cash` (O4) | 69 (pilot 44) | 50 (32) | 72.1M (18.4M) | fits | same |
-| receipt `invest_cash` (O5) | 61 (pilot 56 + finalise 26) | 43 (39) | **95.1M, cold 95.2M** (57.7M) | **tightest: 1.8M under the 97M keeper stop** | same; unchanged by leverage |
-| `sync_open_v1` | ~34 | ~23 | ~6M | fits | measured 14 + X2/X3 |
-| `set_exit_v1` | ~20 | ~18 | ~4M | fits | + market view |
-| `arm_exit_v1` inline | ~31 | ~29 | ~20M | fits | + L1a + view |
-| `trigger_exit_v1` TP / Health inline | ~47 | ~41 | ~24M | fits | + L1a + C1 + view |
-| `trigger_exit_v1` Health on fallback inline | ~56 | ~50 | ~33M | fits | + failed L1a + L1b + C1 + view |
-| receipt `withdraw_close` (C2a) | 78 | 52 | 78.7M | fits (accepted) | doc 27; unchanged |
-| `collect_v1` | ~29 | ~20 | ~6M | fits | + X2/X3 release |
-| `swap_deficit_v1` | ~46 | ~36 | ~15M | fits | + adapter/pool swap |
-| `settle_v1` | ~63 | ~48 | ~15M | fits | + repay |
-| `add_v1` | ~77 | ~62 | ~22M | fits; near kill line | + borrow + view |
-| `repay_v1` | ~50 | ~41 | ~14M | fits | + repay |
-| `cancel_v1` Opening (receipt cancel + sync) | ~38 | ~28 | ~8M | fits; doc 27 has no accepted cancel bound | + cancel + X2/X3 |
-| **Rejected single-tx settle** (collect + swap + repay + payout) | ~89 no swap / **~122 with swap** | — | ~35M | **OVER 100 with swap** | why settlement is split |
+| Transaction | Measured entries (mocks) | Projected entries | Projected keys | Projected CPU | vs 100 / 100 / 50 / 97M | Basis |
+|---|---:|---:|---:|---:|---|---|
+| `open_v1` | 32 | ~72 | ~56 | ~19M | fits; **kill line 85** | measured 32 + borrow |
+| `fund_v1` | 21 | ~33 | ~23 | ~15M | fits | measured 21 + O1/O2 |
+| receipt `convert_open` (O3) | cited | 30 (pilot 28) | 22 (19) | 31.2M (36.1M) | fits | doc 27 accepted / spike pilot bytes |
+| receipt `mint_cash` (O4) | cited | 69 (pilot 44) | 50 (32) | 72.1M (18.4M) | fits | same |
+| receipt `invest_cash` (O5) | cited | 61 (pilot 56 + finalise 26) | 43 (39) | **95.1M, cold 95.2M** (57.7M) | **tightest: 1.8M under the 97M keeper stop** | same; unchanged by leverage |
+| `sync_open_v1` | 14 | ~34 | ~23 | ~6M | fits | measured 14 + X2/X3 |
+| `set_exit_v1` | 14 | ~20 | ~18 | ~4M | fits | + market view |
+| `arm_exit_v1` inline | 12 | ~31 | ~29 | ~20M | fits | + L1a + view |
+| `trigger_exit_v1` TP / Health inline | 20 | ~47 | ~41 | ~24M | fits | + L1a + C1 + view |
+| `trigger_exit_v1` Health on fallback inline | 20 | ~56 | ~50 | ~33M | fits | + failed L1a + L1b + C1 + view |
+| receipt `withdraw_close` (C2a) | cited | 78 | 52 | 78.7M | fits (accepted) | doc 27; unchanged |
+| `collect_v1` | 9 | ~29 | ~20 | ~6M | fits | + X2/X3 release |
+| `swap_deficit_v1` | 21 | ~46 | ~36 | ~15M | fits | + adapter/pool swap |
+| `settle_v1` | 28 | ~63 | ~48 | ~15M | fits | + repay |
+| `add_v1` | 31 | ~77 | ~62 | ~22M | fits; near kill line | + borrow + view |
+| `repay_v1` | 15 | ~50 | ~41 | ~14M | fits | + repay |
+| `cancel_v1` Opening (receipt cancel + sync) | 18 | ~38 | ~28 | ~8M | fits; doc 27 has no accepted cancel bound | + cancel + X2/X3 |
+| **Rejected single-tx settle** (collect + swap + repay + payout) | 33 / 41 (pre-split run) | ~89 no swap / **~122 with swap** | — | ~35M | **OVER 100 with swap** | why settlement is split |
 
 Against the live Mainnet limits every row is at most ~24% of 400M CPU, ~10% of memory, well under 400 footprint entries
 and 200 writes; measured write bytes ≤ 3,676 of 132,096 and events ≤ 1 KB. The binding constraint is the internal 100-entry
@@ -417,4 +432,5 @@ own work running in parallel on another engineer, the critical path is group vau
 | U10 | Command deadline horizon (receipt test prototype: 3,600 s) and TP confirm window | ≤ 1,800 s open, 600 s confirm window |
 | U11 | Single-pass leverage vs explicit k-round borrow loops | Single pass (same bound, fewer transactions); `add_v1` for later rounds |
 | U12 | Whether leveraged borrowing shares the group market's borrow cap with plain group borrowers or gets its own market | Own cap accounting: add an aggregate leveraged-debt cap in `cl-leveraged` (not prototyped) |
+| U13 | Behaviour when the group sets the sleeve CF to 0 (`emergency_disable_collateral`): every indebted leveraged position becomes Health-exitable (prototyped), or freeze to repay-only | Exit-eligible: positions self-unwind in kind with their own assets; no seizure discount is involved |
 

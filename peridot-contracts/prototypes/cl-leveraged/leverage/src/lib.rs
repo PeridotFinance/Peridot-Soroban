@@ -23,6 +23,8 @@ use soroban_sdk::{
 const TTL_THRESHOLD: u32 = 500_000;
 const TTL_EXTEND: u32 = 1_000_000;
 const RISK_TIMELOCK_SECS: u64 = 86_400;
+/// Reflector round length (DESIGN §1.1). A price TP confirm needs a strictly newer round.
+const ORACLE_RESOLUTION_SECS: u64 = 300;
 const RECEIPT_MAX_DEADLINE: u64 = 3_600;
 /// Interest cover for the ledgers between the deficit swap and settlement (cf. margin-controller
 /// CLOSE_DEBT_BUFFER_BPS). Unused USDC is returned to the owner.
@@ -143,9 +145,16 @@ fn value(shares: u128, rate: u128, escrow0: u128, escrow1: u128, p: u128) -> u12
 fn debt(e: &Env, c: &LevConfigV1, pid: u64) -> u128 {
     MarginMarketClient::new(e, &c.market).get_margin_borrow_balance(&pid)
 }
-fn cf(e: &Env, c: &LevConfigV1) -> u128 {
+/// Sleeve CF as the liquidation threshold. 0 is legal (group emergency disable): exits treat it as
+/// HF = 0; admission (`cf`) refuses it.
+fn cf_raw(e: &Env, c: &LevConfigV1) -> u128 {
     let cf = GroupControllerClient::new(e, &c.controller).get_market_cf(&c.receipt);
-    need(e, cf > 0 && cf < SCALE_1E6, LevError::NoCollateralFactor);
+    need(e, cf < SCALE_1E6, LevError::NoCollateralFactor);
+    cf
+}
+fn cf(e: &Env, c: &LevConfigV1) -> u128 {
+    let cf = cf_raw(e, c);
+    need(e, cf > 0, LevError::NoCollateralFactor);
     cf
 }
 /// Open/add admission: debt <= CF * (1 - b) * value and debt <= owner's max LTV * value.
@@ -335,7 +344,8 @@ fn check_risk(e: &Env, r: &LevRiskV1) {
         && r.max_ckpt_age_secs > 0
         && r.max_oracle_age_secs > 0
         && r.max_deadline_secs > 0
-        && r.tp_confirm_window_secs > r.tp_confirm_delay_secs;
+        && r.tp_confirm_window_secs > r.tp_confirm_delay_secs
+        && r.tp_confirm_window_secs > ORACLE_RESOLUTION_SECS;
     need(e, ok, LevError::InvalidRisk);
 }
 
@@ -543,35 +553,42 @@ impl LeveragedCl {
         let mut p = load(&e, pid);
         need(&e, p.phase == LevPhaseV1::Active, LevError::BadPhase);
         let d = debt(&e, &c, pid);
-        let reason = match nav_rate(&e, &c, &r) {
-            Some((rate, ts)) => {
-                let price = if p.escrow0 > 0 { core::cmp::min(oracle_price(&e, &c, &r, false).0, PRICE_SCALE) } else { 0 };
-                let v = value(p.shares, rate, p.escrow0, p.escrow1, price);
-                let lt = cf(&e, &c);
-                if d > 0 && v * lt < d * SCALE_1E6 {
-                    REASON_HEALTH
-                } else if d > 0 && p.exit.stop_hf_bps.map_or(false, |s| v * lt * BPS < d * SCALE_1E6 * s as u128) {
-                    REASON_STOP
-                } else if let ArmV1::On(a) = p.armed.clone() {
-                    let now = e.ledger().timestamp();
-                    need(&e, now >= a.ts + r.tp_confirm_delay_secs, LevError::ConfirmTooEarly);
-                    need(&e, now <= a.ts + r.tp_confirm_window_secs, LevError::ConfirmWindowPassed);
-                    let cts = tp_condition(&e, &c, &r, pid, &p).unwrap_or_else(|| panic_with_error!(&e, LevError::NoExitCondition));
-                    let _ = ts;
-                    need(&e, cts > a.ckpt_ts, LevError::CheckpointNotNewer);
-                    REASON_TAKE_PROFIT
-                } else {
-                    panic_with_error!(&e, LevError::NoExitCondition)
-                }
-            }
-            None => {
-                let (rate, _) = fallback_rate(&e, &c, &r).unwrap_or_else(|| panic_with_error!(&e, LevError::CheckpointStale));
-                let price = if p.escrow0 > 0 { core::cmp::min(oracle_price(&e, &c, &r, false).0, PRICE_SCALE) } else { 0 };
-                let v = value(p.shares, rate, p.escrow0, p.escrow1, price);
-                need(&e, d > 0 && v * cf(&e, &c) < d * SCALE_1E6, LevError::NoExitCondition);
-                REASON_HEALTH
-            }
+        let lt = cf_raw(&e, &c);
+        // Health and Stop need a value: NAV if refreshable, else (Health only) the cause-gated fallback.
+        let nav = nav_rate(&e, &c, &r);
+        let rate = match nav {
+            Some((rate, _)) => Some((rate, false)),
+            None => fallback_rate(&e, &c, &r).map(|(rate, _)| (rate, true)),
         };
+        let mut reason = REASON_NONE;
+        if d > 0 && lt == 0 {
+            // Group emergency_disable_collateral (CF -> 0): collateral is worth nothing to the
+            // lender, so every indebted position may unwind (in kind, own assets; no seizure).
+            reason = REASON_HEALTH;
+        } else if let Some((rate, on_fallback)) = rate {
+            let price = if p.escrow0 > 0 { core::cmp::min(oracle_price(&e, &c, &r, false).0, PRICE_SCALE) } else { 0 };
+            let v = value(p.shares, rate, p.escrow0, p.escrow1, price);
+            if d > 0 && v * lt < d * SCALE_1E6 {
+                reason = REASON_HEALTH;
+            } else if !on_fallback && d > 0 && p.exit.stop_hf_bps.map_or(false, |s| v * lt * BPS < d * SCALE_1E6 * s as u128) {
+                reason = REASON_STOP;
+            }
+        }
+        // Take-profit is evaluated independently of the Health/Stop value: a PriceAtLeast TP reads
+        // CALI only and fires even while the NAV checkpoint is refused (pool out of band).
+        if reason == REASON_NONE {
+            if let ArmV1::On(a) = p.armed.clone() {
+                let now = e.ledger().timestamp();
+                need(&e, now >= a.ts + r.tp_confirm_delay_secs, LevError::ConfirmTooEarly);
+                need(&e, now <= a.ts + r.tp_confirm_window_secs, LevError::ConfirmWindowPassed);
+                let cts = tp_condition(&e, &c, &r, pid, &p).unwrap_or_else(|| panic_with_error!(&e, LevError::NoExitCondition));
+                need(&e, cts > a.ckpt_ts, LevError::CheckpointNotNewer);
+                reason = REASON_TAKE_PROFIT;
+            } else if rate.is_none() {
+                panic_with_error!(&e, LevError::CheckpointStale);
+            }
+        }
+        need(&e, reason != REASON_NONE, LevError::NoExitCondition);
         begin_close(&e, &c, &r, pid, &mut p, reason);
         save(&e, pid, &p);
         reason
@@ -692,7 +709,7 @@ impl LeveragedCl {
         let price = if p.escrow0 > 0 { core::cmp::min(oracle_price(&e, &c, &r, false).0, PRICE_SCALE) } else { 0 };
         let v = value(p.shares, rate, p.escrow0, p.escrow1, price);
         let d = debt(&e, &c, pid);
-        let hf = if d == 0 { u128::MAX } else { v * cf(&e, &c) / d };
+        let hf = if d == 0 { u128::MAX } else { v * cf_raw(&e, &c) / d };
         HealthV1 { value: v, debt: d, hf, fallback: fb }
     }
 }
