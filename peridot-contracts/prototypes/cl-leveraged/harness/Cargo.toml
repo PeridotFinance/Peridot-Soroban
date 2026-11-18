@@ -1,0 +1,20 @@
+[package]
+name = "cl-leveraged-harness"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Local measurement harness for cl-leveraged (18 Nov 2026). Isolated workspace pinned to host
+# 29.0.1 (live Mainnet protocol 29), as in prototypes/cl-collateral-group/harness. Loads the
+# compiled WASMs built by `stellar contract build`; no network access, no keys, no signing.
+[workspace]
+
+[dependencies]
+soroban-sdk = { version = "=29.0.1", features = ["testutils"] }
+soroban-env-host = { version = "=29.0.1", features = ["testutils"] }
+soroban-ledger-snapshot = "=29.0.1"
+serde_json = "1"
+
+[profile.release]
+debug = 0
+overflow-checks = true
