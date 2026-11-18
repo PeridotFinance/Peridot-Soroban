@@ -556,6 +556,10 @@ fn flash_guard_fixture(seeded: bool) -> (F, Address, Address) {
         f.seed();
     }
     flash_guard_supply(&f, 1_000_000);
+    // Upgrade candidate: flash loans have their own switch (default off). These
+    // fixtures test the cash-borrowing policy, so turn the flash switch on.
+    f.auth(&f.admin, &f.vault, "set_flash_loans_enabled", (&f.admin, true).into_val(&f.env));
+    f.c().set_flash_loans_enabled(&f.admin, &true);
     (f, controller, receiver)
 }
 
