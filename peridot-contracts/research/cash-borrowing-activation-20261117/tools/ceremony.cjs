@@ -19,6 +19,9 @@
 //   upload <controller|receipt> --out F            upload the reviewed upgrade WASM (hash-pinned; fee capped 130/160 XLM)
 //   propose-upgrade <controller|USDC|XLM|PYUSD|EURC> --out F   propose_upgrade_wasm(reviewed hash); 24 h timelock
 //   cancel-proposal <controller|USDC|XLM|PYUSD|EURC> --out F   CANCEL: re-propose the currently deployed hash
+//   execute-upgrade <controller|USDC|XLM|PYUSD|EURC> --out F   upgrade_wasm(reviewed hash) after the ETA
+//   pause <deposit|redeem|borrow> <USDC|XLM|PYUSD|EURC> <on|off> --out F   admin set_pause_*
+//   set-usdc-band --out F                          set_price_band(USDC, 0.98..1.02)
 //   pending <controller|USDC|XLM|PYUSD|EURC>       read PendingUpgradeHash / ETA;  code-exists <sha256>
 //   fund <liquidator|pause-guardian> <G...> <XLM> --out F   owner XLM to a role account (create-account if new)
 //   withdraw <USDC|XLM|EURC|PYUSD> <ptokens raw> --out F   owner redeems its own pTokens from one cash market
@@ -329,6 +332,32 @@ async function main(argv) {
     return write(cfg, opt('--out'), res, {step: `${cmd}.${kind}`, call: `propose_upgrade_wasm(${hash})`, target,
       meaning: cmd === 'cancel-proposal' ? 'CANCEL: re-propose the currently deployed hash; overwrites the pending upgrade' : 'stage the reviewed upgrade; executable after 24 h',
       readback: `node ceremony.cjs pending ${kind}`});
+  }
+  if (cmd === 'execute-upgrade' || cmd === 'pause' || cmd === 'set-usdc-band') {
+    const PIN2 = {controller: 'f41e5260513390abcb3c18d74f4c0e9e9d65b0638bc797d11ddaec45de5fe2d8', receipt: '5630a701bc7f29ea1334cfd1c12e349664da7376fd86df080d587ea9f685e452'};
+    let op, summary;
+    if (cmd === 'execute-upgrade') {
+      // upgrade_wasm(reviewed hash) on controller or one receipt. Receipts require deposit+redeem+borrow paused first.
+      const kind = argv[1], isCtl = kind === 'controller';
+      assert(isCtl || cfg.markets[kind], 'target: controller|' + Object.keys(cfg.markets).join('|'));
+      const target = isCtl ? cfg.controller : cfg.markets[kind].receipt, hash = PIN2[isCtl ? 'controller' : 'receipt'];
+      op = new S.Contract(target).call('upgrade_wasm', S.xdr.ScVal.scvBytes(Buffer.from(hash, 'hex')));
+      summary = {step: `execute-upgrade.${kind}`, call: `upgrade_wasm(${hash})`, target, readback: 'stellar contract info / read-state wasm hash'};
+    } else if (cmd === 'pause') {
+      // pause <deposit|redeem|borrow> <USDC|XLM|PYUSD|EURC> <on|off>: admin set_pause_* on the controller
+      const what = argv[1], n = argv[2], onoff = argv[3];
+      assert(['deposit', 'redeem', 'borrow'].includes(what), 'pause deposit|redeem|borrow');
+      assert(cfg.markets[n], 'market: ' + Object.keys(cfg.markets).join('|'));
+      assert(onoff === 'on' || onoff === 'off', 'on|off');
+      op = new S.Contract(cfg.controller).call(`set_pause_${what}`, addr(cfg.markets[n].receipt), bool(onoff === 'on'));
+      summary = {step: `pause.${what}.${n}.${onoff}`, call: `set_pause_${what}(${n}, ${onoff === 'on'})`, target: cfg.controller};
+    } else {
+      // set_price_band(USDC underlying, Some((980000, 1020000))) — first set is immediate after the upgrade
+      op = new S.Contract(cfg.controller).call('set_price_band', addr(cfg.markets.USDC.underlying), S.xdr.ScVal.scvVec([u128(980000), u128(1020000)]));
+      summary = {step: 'set-usdc-band', call: 'set_price_band(USDC, Some((980000, 1020000)))', target: cfg.controller, readback: 'get_price_band(USDC)'};
+    }
+    const res = await build(cfg, c, op);
+    return write(cfg, opt('--out'), res, summary);
   }
   if (cmd === 'code-exists') {
     const codeKey = S.xdr.LedgerKey.contractCode(new S.xdr.LedgerKeyContractCode({hash: Buffer.from(argv[1], 'hex')}));
