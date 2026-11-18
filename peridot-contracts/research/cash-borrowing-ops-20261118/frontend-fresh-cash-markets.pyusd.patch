@@ -1,0 +1,53 @@
+--- a/docs/frontend-fresh-cash-markets.md	2026-11-18 10:22:47
++++ b/docs/frontend-fresh-cash-markets.md	2026-11-18 10:33:18
+@@ -10,6 +10,7 @@
+ - Collateral factors are 0, so there is no borrowing power, health factor or liquidation.
+ - No yield source is attached. **The supply APY is 0%.** Do not show a projected or historical APY.
+ - No rewards, no PERI token, no leverage or margin, no boosted or vault markets.
++- **The PYUSD cash market earns nothing, and will keep earning nothing when borrowing is switched on for USDC, XLM and EURC.** PYUSD is deposit-only. The controller has no PYUSD price, so PYUSD cannot be collateral and cannot be borrowed, and nobody pays interest into this market. Show its APY as 0% with no projection; this stays true after borrowing is switched on for the other three markets. To earn on PYUSD, point users to the PYUSD concentrated-liquidity vault (§10), shown only behind its feature flag.
+ 
+ ## 2. Configuration
+ 
+@@ -143,6 +144,14 @@
+ 
+ The user receives `shares * rate / 1e6` of the underlying. For USDC, PYUSD and EURC the receiving account needs the trustline for that asset; a user who deposited from the same account already has it.
+ 
++### 7.1 PYUSD withdrawal while the user has a loan (after borrowing is enabled)
++
++PYUSD has no price on the controller. A withdrawal by an account that has **any** outstanding borrow on any market needs a price for the withdrawn token, so a PYUSD withdrawal fails in simulation with `Price unavailable` until every borrow is repaid. Accounts with no debt are unaffected.
++
++- Before building the transaction, if `get_account_snapshot(user)` on any borrowable market shows debt > 0, disable PYUSD withdraw and show: *"Repay your loans first. PYUSD has no price on Peridot, so it can't be withdrawn while you have an open borrow."*
++- Map the simulation error `Price unavailable` on the PYUSD market to the same message.
++- On the deposit screen for PYUSD, when the user has debt, warn before deposit: *"While you have an open borrow, you won't be able to withdraw this PYUSD until you repay."*
++
+ ## 8. Submitting transactions
+ 
+ - **Inclusion fee.** Do not hard-code the 100-stroop minimum. On 12 November a transaction bidding 100 stroops was accepted for submission and then never included, because Soroban transactions were clearing at 200. Call RPC `getFeeStats`, take `sorobanInclusionFee.p99`, and bid a multiple of it (we use 5×, with a floor of 1,000 stroops and a ceiling of 100,000). Use `p99`, not `max`: a single outlier bid of about 1 XLM appeared in `max` the same day.
+@@ -156,7 +165,7 @@
+ - Rewards and anything PERI.
+ - Margin and leverage.
+ - Boosted, DeFindex and Aquarius LP vault markets.
+-- Any APY figure other than 0% for these four markets.
++- Any APY figure other than 0% for these four markets. PYUSD stays at 0% (deposit-only); USDC, XLM and EURC show a supply APY only after borrowing is enabled (separate borrow-UI handoff).
+ 
+ Remove these retired Stellar contract IDs from all configuration and never call them:
+ 
+@@ -175,13 +184,17 @@
+ 
+ ## 10. Not ready — do not build yet
+ 
+-Concentrated-liquidity vaults (PYUSD first) are in development. No vault is deployed, the contract interface is not final, and existing cash deposits will not move into a vault automatically. Do not ship anything against prototype code. The planned split-deposit flow (cash market plus vault market, one combined position, change allocation, failure handling) is specified in `frontend-split-allocation.md`; its cash half can be built now and its vault half must stay behind a feature flag until an interface is frozen.
++Concentrated-liquidity vaults (PYUSD first): the PYUSD pilot vault `CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63` and its staged receipt `CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI` are deployed on Mainnet but **not yet invested** (see `addresses.md`). Keep every vault link and deposit path behind the `pyusdClVault` feature flag, off by default, until the team announces the first completed cycle; never show a projected vault APY. Existing cash deposits will not move into a vault automatically.
+ 
++PYUSD cash-market card, while the flag is off: *"Deposit-only. This market earns no interest."* While the flag is on, add: *"Want PYUSD to earn? Try the PYUSD vault →"* (links to the vault page; the vault provides liquidity to the Aquarius PYUSD/USDC pool and its returns vary and can be negative). The planned split-deposit flow (cash market plus vault market, one combined position, change allocation, failure handling) is specified in `frontend-split-allocation.md`; its cash half can be built now and its vault half must stay behind a feature flag until an interface is frozen.
++
+ ## 11. Acceptance checklist
+ 
+ - [ ] No request goes to any retired contract ID.
+ - [ ] All four markets show the live `get_total_underlying` and the user's `get_user_balance`, formatted with 7 decimals.
+ - [ ] APY shows 0% and no reward figures appear.
++- [ ] The PYUSD market says it earns nothing, and its vault pointer appears only with `pyusdClVault` on.
++- [ ] With an open borrow, PYUSD withdraw is disabled with the repay-first message, and `Price unavailable` maps to it.
+ - [ ] Deposit and withdraw each work end to end with a small amount on every market, including "max" withdraw.
+ - [ ] Deposit and withdraw buttons disable when the controller reports the matching pause.
+ - [ ] A stale or missing price shows "price unavailable" and does not block actions.
