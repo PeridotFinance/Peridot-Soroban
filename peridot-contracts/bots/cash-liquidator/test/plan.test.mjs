@@ -57,3 +57,16 @@ test('depeg alerts', () => {
 test('borrower merge is unique and sorted', () => {
   assert.deepEqual(mergeBorrowers(['B'], [{borrower: 'A'}, {borrower: 'B'}, {}]), ['A', 'B']);
 });
+
+import {cachedPriceForLiquidation as cpl} from '../src/plan.mjs';
+test('out-of-band liquidation price: controller cache used under the contract freshness rule', () => {
+  const now = 1_800_000_000;
+  const c = {price: 97_000_000_000_000n, scale: 100_000_000_000_000n, timestamp: BigInt(now - 300), resolution: 300};
+  assert.deepEqual(cpl(c, now), [97_000_000_000_000n, 100_000_000_000_000n]);
+  assert.equal(cpl({...c, timestamp: BigInt(now - 601)}, now), null);          // k*resolution = 600 s
+  assert.deepEqual(cpl({...c, timestamp: BigInt(now - 800)}, now, {k: 4n}), [c.price, c.scale]);
+  assert.equal(cpl({...c, timestamp: BigInt(now - 901)}, now, {k: 4n}), null); // absolute 900 s cap
+  assert.equal(cpl({...c, price: 0n}, now), null);
+  assert.equal(cpl(null, now), null);
+  assert.equal(cpl({...c, timestamp: BigInt(now + 5)}, now), null);
+});

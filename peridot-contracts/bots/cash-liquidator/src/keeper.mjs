@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as S from '@stellar/stellar-sdk';
-import {planLiquidation, seizeIsProfitable, depegAlerts, mergeBorrowers, netInventory, refreshDecision, budgetFor, inventoryShortfalls} from './plan.mjs';
+import {planLiquidation, seizeIsProfitable, depegAlerts, mergeBorrowers, netInventory, refreshDecision, budgetFor, inventoryShortfalls, cachedPriceForLiquidation} from './plan.mjs';
 
 const log = (level, msg, extra = {}) => console.log(JSON.stringify({t: new Date().toISOString(), level, msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
 
@@ -33,7 +33,17 @@ async function positionsOf(cfg, c, user, entered, priceCache) {
   for (const [market, m] of Object.entries(cfg.pins.markets)) {
     if (!entered.includes(m.receipt)) continue;
     const [pbal, debt, rate] = await c.view(m.receipt, 'get_account_snapshot', [c.addr(user)]);
-    if (!priceCache.has(m.underlying)) priceCache.set(m.underlying, await c.view(cfg.pins.controller, 'get_price_usd', [c.addr(m.underlying)]));
+    if (!priceCache.has(m.underlying)) {
+      let pr = await c.view(cfg.pins.controller, 'get_price_usd', [c.addr(m.underlying)]);
+      if (pr == null) {
+        // Out-of-band (or unset) public view: use the controller's own unbanded cache, as liquidate() does.
+        const cached = await c.raw(cfg.pins.controller, S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('PriceCache'), c.addr(m.underlying)]));
+        const kRaw = await c.raw(cfg.pins.controller, S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('OracleMaxAgeMultiplier')]));
+        pr = cachedPriceForLiquidation(cached, Math.floor(Date.now() / 1000), {k: kRaw == null ? 2n : BigInt(kRaw), maxAgeSecs: 900n});
+        if (pr) log('info', 'using controller price cache (public view returned None, e.g. out of band)', {market});
+      }
+      priceCache.set(m.underlying, pr);
+    }
     const pr = priceCache.get(m.underlying);
     const cf = BigInt(await c.view(cfg.pins.controller, 'get_market_cf', [c.addr(m.receipt)]));
     out.push({market, receipt: m.receipt, pbal: BigInt(pbal), debt: BigInt(debt), rate: BigInt(rate), price: pr ? BigInt(pr[0]) : null, scale: pr ? BigInt(pr[1]) : null, cf});

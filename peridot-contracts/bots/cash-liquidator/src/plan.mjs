@@ -135,3 +135,15 @@ export function inventoryShortfalls(inv, minRaw = {}) {
   for (const [n, m] of Object.entries(minRaw)) { const have = inv[n] ?? 0n, need = BigInt(m); if (have < need) out.push({asset: n, haveRaw: have, minRaw: need}); }
   return out;
 }
+
+// get_price_usd returns None for a banded token outside its band (cash-borrow upgrade f41e5260), but the contract's
+// health check and liquidation keep using the unbanded cached price. Mirror the contract's cache freshness rule:
+// usable iff price > 0, scale > 0, cached.timestamp + k * resolution >= now and now - timestamp <= maxAgeSecs.
+export function cachedPriceForLiquidation(cached, nowSec, {k = 2n, maxAgeSecs = 900n} = {}) {
+  if (!cached) return null;
+  const price = BigInt(cached.price ?? 0), scale = BigInt(cached.scale ?? 0), ts = BigInt(cached.timestamp ?? 0), res = BigInt(cached.resolution ?? 0);
+  const now = BigInt(nowSec);
+  if (price <= 0n || scale <= 0n || res <= 0n || ts > now) return null;
+  if (ts + BigInt(k) * res < now || now - ts > BigInt(maxAgeSecs)) return null;
+  return [price, scale];
+}
