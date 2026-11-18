@@ -16,6 +16,11 @@
 //   unpause-borrow <USDC|XLM|EURC> --out F admin set_pause_borrow(market, false): the Ledger lifts a (watcher) pause
 //   revoke-guardian --out F                emergency: set_pause_guardian(admin): retire a compromised pause key
 //   caps                                   offline: borrow cap x close factor x buffer <= liquidator inventory
+//   upload <controller|receipt> --out F            upload the reviewed upgrade WASM (hash-pinned; fee capped 130/160 XLM)
+//   propose-upgrade <controller|USDC|XLM|PYUSD|EURC> --out F   propose_upgrade_wasm(reviewed hash); 24 h timelock
+//   cancel-proposal <controller|USDC|XLM|PYUSD|EURC> --out F   CANCEL: re-propose the currently deployed hash
+//   pending <controller|USDC|XLM|PYUSD|EURC>       read PendingUpgradeHash / ETA;  code-exists <sha256>
+//   withdraw <USDC|XLM|EURC|PYUSD> <ptokens raw> --out F   owner redeems its own pTokens from one cash market
 //   renew-cl-pause --out F                 admin set_pause_borrow(CL staged receipt, true): re-arm its 72 h pause
 //
 // Options: --config cfg.json (Testnet rehearsal addresses), --params params.json (default ../params.proposed.json).
@@ -276,6 +281,80 @@ async function main(argv) {
     const res = await build(cfg, c, op);
     return write(cfg, opt('--out'), res, {step: n ? `${cmd}.${n}` : cmd, call: `${ic.functionName().toString()}(${ic.args().map(a => JSON.stringify(S.scValToNative(a))).join(', ')})`,
       target: S.Address.fromScAddress(ic.contractAddress()).toString(), emergency: true});
+  }
+  if (cmd === 'upload' || cmd === 'propose-upgrade' || cmd === 'cancel-proposal') {
+    // Upgrade steps for the reviewed cash-borrow upgrade. Artifacts and hashes come ONLY from the upgrade folder.
+    const up = path.join(__dirname, '..', '..', 'cash-borrowing-upgrade-20261118');
+    const bh = JSON.parse(fs.readFileSync(path.join(up, 'build-hashes-upgrade.json'), 'utf8'));
+    const PIN = {controller: 'd603108a5172d6a7a322b96b4f09edbb95961db98c4086782ce76216ecd38efe', receipt: 'e5b41059e92f2028fbdf5b6a45e71e9961316d42a338a5334deb390ae0eda16b'};
+    const LIVE = {controller: cfg.controllerWasm, receipt: cfg.marketWasm};
+    assert(JSON.stringify(bh).includes(PIN.controller) && JSON.stringify(bh).includes(PIN.receipt), 'build-hashes-upgrade.json does not pin the reviewed hashes');
+    const kind = argv[1];
+    if (cmd === 'upload') {
+      assert(kind === 'controller' || kind === 'receipt', 'upload controller|receipt');
+      const file = path.join(up, 'artifacts', kind === 'controller' ? 'simple_peridottroller.wasm' : 'receipt_vault.wasm');
+      const wasm = fs.readFileSync(file), sha = require('node:crypto').createHash('sha256').update(wasm).digest('hex');
+      assert.equal(sha, PIN[kind], `artifact hash ${sha} is not the reviewed ${PIN[kind]}`);
+      const codeKey = S.xdr.LedgerKey.contractCode(new S.xdr.LedgerKeyContractCode({hash: Buffer.from(sha, 'hex')}));
+      const have = await c.rpc.getLedgerEntries(codeKey);
+      assert(!(have.entries && have.entries.length), `code ${sha} is already on chain: skip this upload`);
+      const acc = await c.rpc.getAccount(cfg.admin), latest = await c.rpc.getLatestLedger();
+      const tx = new S.TransactionBuilder(acc, {fee: String(LIMITS.bidStroops), networkPassphrase: cfg.network})
+        .addOperation(S.Operation.uploadContractWasm({wasm})).setLedgerbounds(latest.sequence + 1, latest.sequence + LIMITS.window).setTimeout(LIMITS.timeout).build();
+      const sim = await c.rpc.simulateTransaction(tx);
+      assert(S.rpc.Api.isSimulationSuccess(sim), 'simulation failed: ' + String(sim.error || '').split('\n')[0].slice(0, 240));
+      assert.equal((sim.result.auth || []).length, 0, 'upload must need no authorization entries');
+      const prepared = S.rpc.assembleTransaction(tx, padResourceFee(sim)).build();
+      const data = prepared.toEnvelope().v1().tx().ext().sorobanData(), metrics = checkResources(data);
+      const capStroops = kind === 'controller' ? 1_300_000_000n : 1_600_000_000n; // 130 / 160 XLM (quote 99.07 / 120.20 + 20% pad)
+      assert(u(prepared.fee) <= capStroops, `fee ${prepared.fee} above the ${capStroops} stroop cap`);
+      assert.equal(prepared.signatures.length, 0); assert.equal(prepared.source, cfg.admin);
+      return write(cfg, opt('--out'), {prepared, metrics, simulatedLedger: sim.latestLedger, validLedgers: {min: latest.sequence + 1, maxExclusive: latest.sequence + LIMITS.window}},
+        {step: `upload.${kind}`, call: `uploadContractWasm(${sha}, ${wasm.length} B)`, maxFeeXlm: Number(prepared.fee) / 1e7,
+          readback: `node ceremony.cjs code-exists ${sha}`});
+    }
+    // propose-upgrade / cancel-proposal <controller|USDC|XLM|PYUSD|EURC>
+    const isCtl = kind === 'controller';
+    assert(isCtl || cfg.markets[kind], 'target: controller|' + Object.keys(cfg.markets).join('|'));
+    const target = isCtl ? cfg.controller : cfg.markets[kind].receipt;
+    const hash = cmd === 'propose-upgrade' ? PIN[isCtl ? 'controller' : 'receipt'] : LIVE[isCtl ? 'controller' : 'receipt'];
+    if (cmd === 'propose-upgrade') {
+      const codeKey = S.xdr.LedgerKey.contractCode(new S.xdr.LedgerKeyContractCode({hash: Buffer.from(hash, 'hex')}));
+      const have = await c.rpc.getLedgerEntries(codeKey);
+      assert(have.entries && have.entries.length, `code ${hash} is not uploaded yet`);
+    }
+    const op = new S.Contract(target).call('propose_upgrade_wasm', S.xdr.ScVal.scvBytes(Buffer.from(hash, 'hex')));
+    const res = await build(cfg, c, op);
+    return write(cfg, opt('--out'), res, {step: `${cmd}.${kind}`, call: `propose_upgrade_wasm(${hash})`, target,
+      meaning: cmd === 'cancel-proposal' ? 'CANCEL: re-propose the currently deployed hash; overwrites the pending upgrade' : 'stage the reviewed upgrade; executable after 24 h',
+      readback: `node ceremony.cjs pending ${kind}`});
+  }
+  if (cmd === 'code-exists') {
+    const codeKey = S.xdr.LedgerKey.contractCode(new S.xdr.LedgerKeyContractCode({hash: Buffer.from(argv[1], 'hex')}));
+    const have = await c.rpc.getLedgerEntries(codeKey); const ok = !!(have.entries && have.entries.length);
+    if (!ok) process.exitCode = 1; return {hash: argv[1], onChain: ok, liveUntil: ok ? have.entries[0].liveUntilLedgerSeq : null};
+  }
+  if (cmd === 'pending') {
+    const kind = argv[1], target = kind === 'controller' ? cfg.controller : cfg.markets[kind].receipt;
+    const rd = async k => { const lk = S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: S.Address.fromString(target).toScAddress(),
+      key: S.xdr.ScVal.scvVec([sym(k)]), durability: S.xdr.ContractDataDurability.persistent()}));
+      const r = await c.rpc.getLedgerEntries(lk); if (!r.entries || !r.entries.length) return null;
+      return S.scValToNative(r.entries[0].val.contractData().val()); };
+    const h = await rd('PendingUpgradeHash'), eta = await rd('PendingUpgradeEta');
+    return {target, pendingHash: h ? Buffer.from(h).toString('hex') : null, eta: eta == null ? null : String(eta),
+      etaUtc: eta == null ? null : new Date(Number(eta) * 1000).toISOString()};
+  }
+  if (cmd === 'withdraw') {
+    // Owner redeem of its own pTokens from ONE cash market (receipt.withdraw(admin, ptoken_amount)). Prepare-only.
+    const n = argv[1], amt = argv[2];
+    assert(cfg.markets[n], 'market must be one of ' + Object.keys(cfg.markets).join('/'));
+    assert(/^[1-9][0-9]*$/.test(String(amt || '')), 'ptoken amount (raw integer) required');
+    const bal = u((await c.view(cfg.markets[n].receipt, 'balance', [addr(cfg.admin)])).value);
+    assert(u(amt) <= bal, `amount above owner pToken balance ${bal}`);
+    const op = new S.Contract(cfg.markets[n].receipt).call('withdraw', addr(cfg.admin), u128(amt));
+    const res = await build(cfg, c, op);
+    return write(cfg, opt('--out'), res, {step: `withdraw.${n}`, call: `withdraw(${cfg.admin}, ${amt})`, target: cfg.markets[n].receipt,
+      ownerPTokensBefore: String(bal), readback: `balance of ${cfg.admin} in ${n} receipt drops by ${amt}`});
   }
   if (cmd === 'renew-cl-pause') {
     // The ONLY transaction that may name the CL staged receipt: re-arm its 72 h controller borrow pause (paused=true, admin).
