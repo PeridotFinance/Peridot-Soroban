@@ -1,5 +1,6 @@
 import {execFileSync} from 'node:child_process';
 import * as S from '@stellar/stellar-sdk';
+import {loadKeyFile} from './keyfile.mjs';
 
 const addr = a => S.nativeToScVal(a, {type: 'address'});
 const u128 = x => S.nativeToScVal(BigInt(x), {type: 'u128'});
@@ -11,8 +12,10 @@ export function makeChain(cfg) {
   const call = async (method, params) => { const r = await (await fetch(cfg.rpcUrl, {method: 'POST', headers: {'content-type': 'application/json'},
     body: JSON.stringify({jsonrpc: '2.0', id: 1, method, params})})).json(); if (r.error) throw Error(JSON.stringify(r.error)); return r.result; };
   rpc.getLatestLedger = async () => ({sequence: (await call('getLatestLedger')).sequence});
-  rpc.getTransaction = async hash => { const r = await call('getTransaction', {hash}); return {status: r.status, ledger: r.ledger}; };
-  const tx = (account, op) => new S.TransactionBuilder(account, {fee: String(cfg.inclusionFee), networkPassphrase: cfg.network}).addOperation(op).setTimeout(120).build();
+  rpc.getTransaction = async hash => { const r = await call('getTransaction', {hash});
+    let feeCharged; try { if (r.resultXdr) feeCharged = String(S.xdr.TransactionResult.fromXDR(r.resultXdr, 'base64').feeCharged().toString()); } catch { /* undecodable: caller falls back to max fee */ }
+    return {status: r.status, ledger: r.ledger, feeCharged}; };
+  const tx = (account, op, fee = cfg.inclusionFee, timeoutSec = 120) => new S.TransactionBuilder(account, {fee: String(fee), networkPassphrase: cfg.network}).addOperation(op).setTimeout(timeoutSec).build();
   async function view(contract, method, args = []) {
     const sim = await rpc.simulateTransaction(tx(new S.Account(cfg.publicKey, '0'), new S.Contract(contract).call(method, ...args)));
     if (!S.rpc.Api.isSimulationSuccess(sim)) throw Error(`${method}: ${String(sim.error).split('\n')[0].slice(0, 200)}`);
@@ -22,10 +25,19 @@ export function makeChain(cfg) {
     const k = S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: new S.Address(c).toScAddress(), key: S.xdr.ScVal.scvLedgerKeyContractInstance(), durability: S.xdr.ContractDataDurability.persistent()}));
     const r = await rpc.getLedgerEntries(k); return r.entries[0].val.contractData().val().instance().executable().wasmHash().toString('hex');
   }
-  // Simulate an invocation from the liquidator account; returns the assembled tx, return value and resource metrics.
-  async function prepare(contract, method, args) {
+  // Raw persistent contract-data read (e.g. controller PauseGuardian, PriceCache(token)); null when absent.
+  async function raw(contract, scKey, durability = 'persistent') {
+    const k = S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: new S.Address(contract).toScAddress(), key: scKey,
+      durability: S.xdr.ContractDataDurability[durability]()}));
+    const r = await rpc.getLedgerEntries(k);
+    return r.entries.length ? S.scValToNative(r.entries[0].val.contractData().val()) : null;
+  }
+  // Simulate an invocation from the signer account; returns the assembled tx, return value and resource metrics.
+  // opts.inclusionFee / opts.maxFeeStroops override the liquidation caps (the price refresher and pause watcher use their own).
+  async function prepare(contract, method, args, opts = {}) {
+    const maxFee = opts.maxFeeStroops ?? cfg.maxFeeStroops;
     const acc = await rpc.getAccount(cfg.publicKey);
-    const t = tx(acc, new S.Contract(contract).call(method, ...args));
+    const t = tx(acc, new S.Contract(contract).call(method, ...args), opts.inclusionFee ?? cfg.inclusionFee, opts.timeoutSec ?? 120);
     const sim = await rpc.simulateTransaction(t);
     if (!S.rpc.Api.isSimulationSuccess(sim)) return {ok: false, error: String(sim.error).split('\n')[0].slice(0, 300)};
     if (sim.restorePreamble) return {ok: false, error: 'restore required'};
@@ -35,16 +47,23 @@ export function makeChain(cfg) {
     const d = prepared.toEnvelope().v1().tx().ext().sorobanData(), r = d.resources(), fp = r.footprint();
     const metrics = {cpu: Number(r.instructions()), readOnly: fp.readOnly().length, readWrite: fp.readWrite().length, fee: String(prepared.fee)};
     if (metrics.cpu > cfg.cpuStop) return {ok: false, error: `cpu ${metrics.cpu} above stop`, metrics};
-    if (BigInt(prepared.fee) > BigInt(cfg.maxFeeStroops)) return {ok: false, error: `fee ${prepared.fee} above cap`, metrics};
-    return {ok: true, prepared, retval: sim.result ? S.scValToNative(sim.result.retval) : undefined, metrics};
+    if (BigInt(prepared.fee) > BigInt(maxFee)) return {ok: false, error: `fee ${prepared.fee} above cap`, metrics};
+    return {ok: true, prepared, auth: sim.result ? sim.result.auth || [] : [], retval: sim.result ? S.scValToNative(sim.result.retval) : undefined, metrics};
   }
+  let keypair = null;   // loaded lazily from cfg.keyFile at the first signature, kept in memory only
   function sign(prepared) {
+    if (cfg.keyFile) {
+      if (!keypair) keypair = loadKeyFile(cfg.keyFile, {expectedPublicKey: cfg.publicKey});
+      if (prepared.source !== cfg.publicKey) throw Error('refused: transaction source is not the configured signer');
+      prepared.sign(keypair); return prepared;
+    }
     if (cfg.signerCliAlias) {
       // Testnet rehearsal: the Stellar CLI holds the Testnet-only identity; this process never sees the secret.
       const out = execFileSync('stellar', ['tx', 'sign', '--sign-with-key', cfg.signerCliAlias, '--rpc-url', cfg.rpcUrl, '--network-passphrase', cfg.network], {input: prepared.toXDR()}).toString().trim();
       return S.TransactionBuilder.fromXDR(out, cfg.network);
     }
-    const secret = process.env.LIQUIDATOR_SECRET;
+    // Legacy App Platform path only; the pause watcher sets allowEnvSecret=false and never reads this variable.
+    const secret = cfg.allowEnvSecret === false ? null : process.env.LIQUIDATOR_SECRET;
     if (!secret) throw Error('no signer configured');
     const kp = S.Keypair.fromSecret(secret);
     if (kp.publicKey() !== cfg.publicKey) throw Error('secret does not match LIQUIDATOR_PUBLIC_KEY');
@@ -57,7 +76,7 @@ export function makeChain(cfg) {
     const end = Date.now() + timeoutMs;
     while (Date.now() < end) {
       const g = await rpc.getTransaction(hash);
-      if (g.status !== 'NOT_FOUND') return {hash, status: g.status, ledger: g.ledger};
+      if (g.status !== 'NOT_FOUND') return {hash, status: g.status, ledger: g.ledger, feeCharged: g.feeCharged};
       await new Promise(res => setTimeout(res, 2000));
     }
     return {hash, status: 'UNKNOWN'};
@@ -69,5 +88,5 @@ export function makeChain(cfg) {
     const events = r.events.map(e => ({ledger: e.ledger, contract: e.contractId?.toString?.() ?? String(e.contractId), borrower: S.scValToNative(e.topic[1])}));
     return {events, cursor: r.cursor, latestLedger: r.latestLedger, oldestLedger: r.oldestLedger};
   }
-  return {rpc, view, codeHash, prepare, sign, submit, borrowEvents, addr, u128, sym};
+  return {rpc, view, raw, codeHash, prepare, sign, submit, borrowEvents, addr, u128, sym};
 }
