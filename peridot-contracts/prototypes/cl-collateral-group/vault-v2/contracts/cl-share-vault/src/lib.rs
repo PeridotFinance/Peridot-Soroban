@@ -51,3 +51,6 @@ pub(crate) fn require_pilot_release_network(e:&soroban_sdk::Env) {
     }
     require_validation_network(e);
 }
+
+#[cfg(test)]
+mod seize_tests;

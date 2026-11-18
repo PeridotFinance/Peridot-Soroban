@@ -3355,6 +3355,14 @@ impl ClShareVault {
         assert!(j.kind==1 && j.shares>0 && j.shares<=crate::stage_storage::available(&e,&j.owner));
         crate::stage_storage::lock(&e,&j.owner,j.shares);
     }
+    // StgV2: settle-only seizure reassign, called by the bound receipt's permissionless
+    // sync of a queued seizure. No venue claim, no pool or oracle call, no share moves.
+    pub fn stage_seize_reassign(e:Env,r:Address,from:Address,to:Address,n:u128)->bool {
+        assert_eq!(r,Self::stage_receipt(e.clone()));r.require_auth();
+        let opened=crate::custody::stage_seize_reassign(&e,&from,&to,n);
+        e.events().publish((Symbol::new(&e,"seizesync"),),(from,to,n,opened));opened
+    }
+    pub fn stage_last_claim(e:Env)->Option<u64> {crate::stage_storage::last_claim(&e)}
     pub fn stage_allocation(e:Env,id:u64)->StageAllocation {e.storage().persistent().get(&StageVaultKey::StgV1Allocation(id)).unwrap()}
     // Shared by the claim-first close and the no-claim emergency extraction; the caller
     // has already performed its reward boundary for `owner`. Fees are allocated at the

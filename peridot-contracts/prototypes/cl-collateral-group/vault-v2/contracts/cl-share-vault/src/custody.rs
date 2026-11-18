@@ -225,3 +225,22 @@ pub fn stage_debit(e: &Env, owner: &Address, n: u128) {
     let k = Key::Beneficial(owner.clone());
     write(e, &k, read(e, &k).checked_sub(n).expect("beneficiary short"));
 }
+
+// ---- StgV2 settle-only seizure reassign (CL collateral group, vault v2) ----
+/// Moves `n` custody shares' beneficiary `from` -> `to` WITHOUT a venue claim. Both holders are
+/// settled at the STORED index first, so everything indexed before the move stays with `from`.
+/// Unindexed accrual since the last claim is handled by `rewards::seize_gap` (D6).
+pub fn stage_seize_reassign(e: &Env, from: &Address, to: &Address, n: u128) -> bool {
+    assert!(n > 0 && from != to, "invalid seizure");
+    require_direct_holder(e, from);
+    require_direct_holder(e, to);
+    assert!(crate::stage_storage::available(e, from) >= n, "shares locked by command");
+    let opened = rewards::seize_gap(e, from);
+    rewards::settle(e, from);
+    rewards::settle(e, to);
+    stage_debit(e, from, n);
+    stage_credit(e, to, n);
+    rewards::reset_debt(e, from);
+    rewards::reset_debt(e, to);
+    opened
+}

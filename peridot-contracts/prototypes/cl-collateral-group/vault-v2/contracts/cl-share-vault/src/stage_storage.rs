@@ -2,7 +2,7 @@ use soroban_sdk::{contracttype,Address,Env};
 // Every key this overlay adds is a StgV1* symbol; none equals a base vault key symbol.
 #[contracttype]
 #[derive(Clone)]
-enum StageStorageKey { StgV1Reserved(Address), StgV1Locked(Address), StgV1Dirty }
+enum StageStorageKey { StgV1Reserved(Address), StgV1Locked(Address), StgV1Dirty, StgV2LastClaim }
 pub fn reserved(e:&Env,t:&Address)->u128 {e.storage().instance().get(&StageStorageKey::StgV1Reserved(t.clone())).unwrap_or(0)}
 pub fn adjust(e:&Env,t:&Address,add:u128,sub:u128) {
     let n=reserved(e,t).checked_add(add).unwrap().checked_sub(sub).expect("command liability underflow");
@@ -17,3 +17,8 @@ pub fn available(e:&Env,a:&Address)->u128 {crate::storage::shares_of(e,a).checke
 
 pub fn composition_dirty(e:&Env)->bool {e.storage().instance().get(&StageStorageKey::StgV1Dirty).unwrap_or(false)}
 pub fn set_composition_dirty(e:&Env,dirty:bool) {e.storage().instance().set(&StageStorageKey::StgV1Dirty,&dirty);}
+
+// ---- StgV2 (CL collateral group, vault v2; prototypes/cl-collateral-group/vault-v2) ----
+// Ledger time of the last SUCCESSFUL venue reward claim. Absent = never seen by v2 = stale.
+pub fn last_claim(e:&Env)->Option<u64> {e.storage().instance().get(&StageStorageKey::StgV2LastClaim)}
+pub fn set_last_claim(e:&Env) {e.storage().instance().set(&StageStorageKey::StgV2LastClaim,&e.ledger().timestamp());}

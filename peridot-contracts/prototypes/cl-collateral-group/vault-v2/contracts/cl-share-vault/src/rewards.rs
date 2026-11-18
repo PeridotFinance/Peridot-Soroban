@@ -154,6 +154,7 @@ pub fn checkpoint(e: &Env) -> bool {
         .unwrap()
         .try_into()
         .unwrap();
+    crate::stage_storage::set_last_claim(e);
     let mut t = totals(e);
     t.received = t.received.checked_add(delta).unwrap();
     if open || state(e).total_shares == 0 {
@@ -417,6 +418,35 @@ pub fn boundary_no_claim(e: &Env, a: &Address, accept_waiver: bool) -> (Option<u
     e.storage().instance().set(&Key::Count, &id.checked_add(1).unwrap());
     e.storage().instance().set(&Key::Open, &true);
     (reading, proven, waived)
+}
+
+// ---- StgV2 seizure boundary (CL collateral group, vault v2) ----
+/// D6 gap rule for the settle-only seizure reassign. Venue accrual since the last successful
+/// claim is not yet in the index; if that claim is older than SEIZE_CLAIM_FRESH seconds (or was
+/// never observed by v2), open a no-claim, no-reading boundary for the seized-from holder. The
+/// next successful claim then seals that interval into quarantine; release is only by the
+/// existing governed, timelocked attribution. No venue call. Returns whether a boundary opened.
+pub const SEIZE_CLAIM_FRESH: u64 = 60;
+pub fn seize_gap(e: &Env, from: &Address) -> bool {
+    if matches!(crate::stage_storage::last_claim(e), Some(t) if e.ledger().timestamp().saturating_sub(t) <= SEIZE_CLAIM_FRESH) {
+        return false;
+    }
+    let id: u64 = e.storage().instance().get(&Key::Count).unwrap_or(0);
+    let b = Boundary {
+        holder: from.clone(),
+        shares: crate::custody::effective(e, from),
+        index: index(e),
+        reading: None,
+        timestamp: e.ledger().timestamp(),
+        interval: e.storage().instance().get(&Key::Interval).unwrap_or(0),
+        waived: false,
+        proven: false,
+    };
+    e.storage().persistent().set(&Key::Boundary(id), &b);
+    e.storage().persistent().extend_ttl(&Key::Boundary(id), 500_000, 1_000_000);
+    e.storage().instance().set(&Key::Count, &id.checked_add(1).unwrap());
+    e.storage().instance().set(&Key::Open, &true);
+    true
 }
 
 #[cfg(test)]
