@@ -1,0 +1,21 @@
+[package]
+name = "cl-leveraged"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+cl-lev-interface = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+cl-lev-mock-receipt = { path = "../mocks/mock-receipt" }
+cl-lev-mock-controller = { path = "../mocks/mock-controller" }
+cl-lev-mock-market = { path = "../mocks/mock-market" }
+cl-lev-mock-oracle = { path = "../mocks/mock-oracle" }
+cl-lev-mock-swap = { path = "../mocks/mock-swap" }

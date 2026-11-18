@@ -1,0 +1,21 @@
+# Leveraged CL prototype (18 Nov 2026). Isolated workspace; NOT production code, never deployed.
+# Contracts and mocks use the production SDK line (25.3.x); the measurement harness is a separate
+# workspace under harness/ pinned to host 29.0.1 (live protocol 29), as in the CL group harness.
+[workspace]
+resolver = "2"
+members = ["interface", "leverage", "mocks/mock-receipt", "mocks/mock-controller", "mocks/mock-market", "mocks/mock-oracle", "mocks/mock-swap"]
+exclude = ["harness"]
+
+[workspace.dependencies]
+soroban-sdk = { version = "=25.3.1" }
+cl-lev-interface = { path = "interface" }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
