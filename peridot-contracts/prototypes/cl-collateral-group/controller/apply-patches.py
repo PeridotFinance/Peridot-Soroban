@@ -166,5 +166,66 @@ rep('''        let (collateral_usd, _borrows, indeterminate, _collateral_indeter
         }
         if indeterminate {
             0u128''')
+
+# ---- 18 Nov 2026 build (feat/cl-collateral-group): structural isolation, condition (c) and D2 ----
+# G6. Condition (c): only the bound CL sleeve may carry a collateral factor, so no account can mix CL
+#     collateral with cash collateral (the USDC lending market stays CF 0, debt-only).
+rep('''    pub fn set_market_cf(env: Env, market: Address, cf_scaled: u128) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());''',
+    '''    pub fn set_market_cf(env: Env, market: Address, cf_scaled: u128) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        if cfg!(feature = "group") {
+            assert!(Self::group_sleeve(&env).as_ref() == Some(&market), "group: only the CL sleeve is collateral");
+        }''')
+# G7. The group lists at most two markets: the CL sleeve and one USDC lending market.
+rep('''        markets.set(market.clone(), true);
+        env.storage()
+            .persistent()
+            .set(&DataKey::SupportedMarkets, &markets);''',
+    '''        if cfg!(feature = "group") {
+            assert!(markets.contains_key(market.clone()) || markets.len() < 2, "group is limited to two markets");
+        }
+        markets.set(market.clone(), true);
+        env.storage()
+            .persistent()
+            .set(&DataKey::SupportedMarkets, &markets);''')
+# G8. D2: no static price fallback in the group; USDC is priced only by the configured feed.
+rep('''    pub fn set_price_fallback(env: Env, token: Address, price: Option<(u128, u128)>) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());''',
+    '''    pub fn set_price_fallback(env: Env, token: Address, price: Option<(u128, u128)>) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        assert!(!(cfg!(feature = "group") && price.is_some()), "group: no price fallback");''')
+# G9. No margin liquidation controller in the group.
+rep('''    pub fn set_margin_liquidation_ctrl(env: Env, controller: Address, allowed: bool) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());''',
+    '''    pub fn set_margin_liquidation_ctrl(env: Env, controller: Address, allowed: bool) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        assert!(!(cfg!(feature = "group") && allowed), "group: no margin liquidation");''')
+# G10. Emergency-exit path: an account with NO debt in any entered group market may exit the CL
+#      sleeve while holding units (oracle-free: only borrow balances are read). The StgV2 receipt
+#      refuses the no-claim emergency exit while the owner is entered (100-entry limit).
+rep('''        if pbal > 0 && market_cf > 0 {
+            panic!("Cannot exit with collateral in market");
+        }''',
+    '''        if pbal > 0 && market_cf > 0 && !(cfg!(feature = "group") && Self::group_no_debt(&env, &user, &entered)) {
+            panic!("Cannot exit with collateral in market");
+        }''')
+rep('''    fn group_liq_cache_only(env: &Env) -> bool {''',
+    '''    fn group_no_debt(env: &Env, user: &Address, entered: &Vec<Address>) -> bool {
+        for m in entered.iter() {
+            match env.try_invoke_contract::<u128, soroban_sdk::InvokeError>(&m, &Symbol::new(env, "get_user_borrow_balance"), (user.clone(),).into_val(env)) {
+                Ok(Ok(0)) => {}
+                _ => return false,
+            }
+        }
+        true
+    }
+    fn group_liq_cache_only(env: &Env) -> bool {''')
 open(p, 'w').write(s)
 print('patched', p)
