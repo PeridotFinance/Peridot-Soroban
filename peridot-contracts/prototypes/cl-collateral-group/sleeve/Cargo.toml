@@ -1,0 +1,24 @@
+[package]
+name = "cl-collateral-group-sleeve"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# CL collateral group measurement double (18 Nov 2026). Not production code.
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+soroban-sdk = "=25.3.1"
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true

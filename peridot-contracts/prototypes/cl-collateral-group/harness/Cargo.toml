@@ -1,0 +1,23 @@
+[package]
+name = "cl-collateral-group"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Isolated from the production workspace: live Mainnet is protocol 29. CL collateral group measurements (18 Nov 2026).
+[workspace]
+
+[dependencies]
+soroban-sdk = { version = "=29.0.1", features = ["testutils"] }
+soroban-env-host = { version = "=29.0.1", features = ["testutils"] }
+soroban-ledger-snapshot = "=29.0.1"
+serde_json = "1"
+sha2 = "0.10"
+hex = "0.4"
+
+[profile.dev]
+overflow-checks = true
+debug = 0
+[profile.release]
+debug = 0
+overflow-checks = true
