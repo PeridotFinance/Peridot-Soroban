@@ -1,3 +1,4 @@
+# SUPERSEDED 2026-11-18 by research/cash-borrowing-ops-20261118/droplet/ (Droplet + volume, key created on host). Kept for reference.
 # DigitalOcean App Platform spec for the cash-market liquidator. NOT applied by the agent.
 # The operator creates the Mainnet key, funds it (see ../README.md "Funding"), stores LIQUIDATOR_SECRET as an
 # encrypted RUN_TIME secret in the DO console, and creates the app with:

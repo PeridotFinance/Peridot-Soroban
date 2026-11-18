@@ -12,7 +12,10 @@
 //   verify-signed F.unsigned.xdr F.signed.xdr   same hash, exactly one valid admin signature
 //   status <hash>                          RPC outcome (read-only)
 //   kill <USDC|XLM|EURC> --out F           emergency: set_cash_borrowing_enabled(false) (durable, immediate)
-//   pause-borrow <USDC|XLM|EURC> --out F   emergency: guardian pause_borrow_g (expires after 72 h)
+//   pause-borrow <USDC|XLM|EURC> --out F   emergency: admin set_pause_borrow(market, true) (expires after 72 h)
+//   unpause-borrow <USDC|XLM|EURC> --out F admin set_pause_borrow(market, false): the Ledger lifts a (watcher) pause
+//   revoke-guardian --out F                emergency: set_pause_guardian(admin): retire a compromised pause key
+//   caps                                   offline: borrow cap x close factor x buffer <= liquidator inventory
 //   renew-cl-pause --out F                 admin set_pause_borrow(CL staged receipt, true): re-arm its 72 h pause
 //
 // Options: --config cfg.json (Testnet rehearsal addresses), --params params.json (default ../params.proposed.json).
@@ -23,6 +26,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const {S, MAINNET, u, json, addr, u128, u32, bool, sym, key, chain, padResourceFee} = require('./lib.cjs');
 
+const STRKEY = S.StrKey;
 const LIMITS = Object.freeze({cpu: 97_000_000, keys: 100, writes: 50, maxFeeStroops: 5_000_000n, bidStroops: 10_000n, window: 40, timeout: 240});
 
 // ---------------------------------------------------------------- pure step model (unit-tested)
@@ -56,6 +60,13 @@ function steps(cfg, p) {
     why: 'first set is immediate; later changes are 24 h timelocked, so this value must be right'});
   for (const n of borrowable) rx(n, 'set_min_cash_reserve_bps', () => [addr(cfg.admin), u32(p.markets[n].minCashReserveBps)],
     st => st.markets[n].get_min_cash_reserve_bps === p.markets[n].minCashReserveBps, `max utilisation ${(10000 - p.markets[n].minCashReserveBps) / 100}%`);
+  // D2: a separate hot pause-only key becomes PauseGuardian (Ledger-signed). Only when params carry the field, so the
+  // Testnet rehearsal params (no pauseGuardian) keep their historical step list.
+  if ('pauseGuardian' in p) out.push({id: 'controller.set_pause_guardian', kind: 'tx', target: cfg.controller, method: 'set_pause_guardian',
+    args: () => [addr(assertPauseKey(cfg, p))],
+    done: st => !!st.controller.PauseGuardian && st.controller.PauseGuardian.value === (p.pauseGuardian && p.pauseGuardian.publicKey),
+    pre: () => assertPauseKey(cfg, p),
+    why: 'D2: hot pause-only key (watcher) may call pause_*_g for 72 h; it cannot unpause or change parameters; the Ledger unpauses'});
   out.push({id: 'gate.liquidator-ready', kind: 'gate', gate: 'liquidator', why: 'funded liquidator inventory and live keeper before the switch'});
   for (const n of borrowable) rx(n, 'set_cash_borrowing_enabled', () => [addr(cfg.admin), bool(true)],
     st => st.markets[n].get_cash_borrowing_enabled === true, 'THE SWITCH: last, one market at a time');
@@ -63,6 +74,57 @@ function steps(cfg, p) {
   for (const s of out.filter(x => x.method === 'set_cash_borrowing_enabled'))
     s.pre = st => assert.equal(st.markets[s.market].is_borrow_paused, false, `${s.market}: controller borrow pause still active (expires after 72 h, or set_pause_borrow(false))`);
   return out;
+}
+// The pause key must be a plain G-address distinct from the admin Ledger and the liquidator.
+function assertPauseKey(cfg, p) {
+  const k = p.pauseGuardian && p.pauseGuardian.publicKey;
+  assert(k, 'params.pauseGuardian.publicKey not set (fill in the pause key public key printed on its host)');
+  assert(STRKEY.isValidEd25519PublicKey(k), 'pause key is not a valid G-address');
+  assert.notEqual(k, cfg.admin, 'pause key must not be the admin Ledger');
+  assert.notEqual(k, p.liquidator && p.liquidator.publicKey, 'pause key must not be the liquidator key');
+  return k;
+}
+// Per-asset borrow cap must be repayable by the liquidator at the close factor, with a buffer for accrued interest
+// (caps bound principal, debt includes interest). Aggregate per market == the cap, so the worst single position and the
+// all-borrowers-at-once correlated case need the same first-round inventory. Returns rows; throws on a violation.
+function checkCapsVsInventory(p) {
+  const cf = u(p.controller.closeFactorScaled), buf = u(p.liquidator.capCoverage.bufferScaled), rows = {};
+  for (const [n, m] of Object.entries(p.markets)) if (m.borrowable) {
+    const need = (u(m.borrowCapRaw) * cf / 1_000_000n) * buf / 1_000_000n, inv = u(p.liquidator.minInventoryRaw[n]);
+    rows[n] = {borrowCapRaw: m.borrowCapRaw, firstRoundRepayRaw: String(u(m.borrowCapRaw) * cf / 1_000_000n), withBufferRaw: String(need), inventoryRaw: String(inv), ok: need <= inv};
+    assert(need <= inv, `${n}: cap x close factor x buffer ${need} exceeds liquidator inventory ${inv}`);
+  }
+  return rows;
+}
+// D1 pins: the live feed must be the USD-based external feed with the decimals/resolution the ceremony expects, and the
+// controller's max age (k x resolution) must equal the pinned staleness bound. Pure; inputs come from feedMeta().
+function checkFeedMeta(meta, p) {
+  const o = p.oracle, errs = [];
+  if (!Array.isArray(meta.base) || meta.base[0] !== 'Other' || meta.base[1] !== o.base) errs.push(`base ${JSON.stringify(meta.base)} != Other(${o.base})`);
+  if (Number(meta.decimals) !== o.decimals) errs.push(`decimals ${meta.decimals} != ${o.decimals}`);
+  if (Number(meta.resolution) !== o.resolution) errs.push(`resolution ${meta.resolution} != ${o.resolution}`);
+  if (Number(meta.k) !== o.maxAgeMultiplier) errs.push(`stored max-age multiplier ${meta.k} != ${o.maxAgeMultiplier}`);
+  if (Number(meta.k) * Number(meta.resolution) !== o.maxAgeSeconds) errs.push(`max age ${Number(meta.k) * Number(meta.resolution)} s != ${o.maxAgeSeconds} s`);
+  for (const [n, s] of Object.entries(o.symbols)) { const lp = meta.prices && meta.prices[n]; if (!lp || !lp.price) errs.push(`no live Other(${s}) price`); }
+  for (const n of o.unpriced) if (meta.prices && meta.prices[n]) errs.push(`${n} unexpectedly priced`);
+  return {ok: errs.length === 0, errs};
+}
+async function feedMeta(cfg, c, p, st) {
+  const F = p.oracle.feed, meta = {feed: F, prices: {}};
+  for (const m of ['base', 'decimals', 'resolution']) meta[m] = (await c.view(F, m)).value;
+  for (const [n, s] of Object.entries(p.oracle.symbols)) meta.prices[n] = (await c.view(F, 'lastprice', [S.xdr.ScVal.scvVec([sym('Other'), sym(s)])])).value;
+  for (const n of p.oracle.unpriced) meta.prices[n] = (await c.view(F, 'lastprice', [S.xdr.ScVal.scvVec([sym('Stellar'), addr(cfg.markets[n].underlying)])])).value;
+  const kv = st.controller.OracleMaxAgeMultiplier; meta.k = kv ? Number(kv.value) : 2;
+  return meta;
+}
+// Emergency builders (pure). The admin's own pause path is used for K2 because after D2 the guardian is the hot key.
+function emergencyOp(cfg, p, cmd, n) {
+  if (cmd === 'revoke-guardian') return new S.Contract(cfg.controller).call('set_pause_guardian', addr(cfg.admin));
+  assert(cfg.markets[n] && p.markets[n].borrowable, 'borrowable market required');
+  if (cmd === 'kill') return new S.Contract(cfg.markets[n].receipt).call('set_cash_borrowing_enabled', addr(cfg.admin), bool(false));
+  if (cmd === 'pause-borrow') return new S.Contract(cfg.controller).call('set_pause_borrow', addr(cfg.markets[n].receipt), bool(true));
+  if (cmd === 'unpause-borrow') return new S.Contract(cfg.controller).call('set_pause_borrow', addr(cfg.markets[n].receipt), bool(false));
+  throw Error('unknown emergency command');
 }
 // Every address in the operation and the target must not be the CL staged receipt.
 function assertNotCl(cfg, op) {
@@ -137,6 +199,7 @@ async function gate(cfg, c, p, name, st) {
     // No static/fallback price may exist for any market token (set_price_fallback is never part of this plan).
     const st2 = st || await stateOf(cfg, c);
     for (const [n] of Object.entries(cfg.markets)) { const fb = st2.markets[n] && st2.markets[n].fallbackPrice; rows[n].fallbackPrice = fb ? fb.value : null; if (fb) ok = false; }
+    if (p.oracle.maxAgeSeconds != null) { const fm = checkFeedMeta(await feedMeta(cfg, c, p, st2), p); rows.feed = fm; ok = ok && fm.ok; }
     return {gate: 'prices', ok, rows};
   }
   if (name === 'liquidator') {
@@ -144,12 +207,18 @@ async function gate(cfg, c, p, name, st) {
     const rows = {}; let ok = true;
     for (const [n, min] of Object.entries(p.liquidator.minInventoryRaw)) {
       const bal = await c.tryView(cfg.markets[n].underlying, 'balance', [addr(lq)]);
-      const good = typeof bal !== 'object' || bal === null ? u(bal || 0) >= u(min) : false;
+      // XLM is both repay inventory and the fee/reserve balance: require inventory + fee floor + account reserves.
+      const need = n === 'XLM' ? u(min) + u(p.liquidator.minFeeXlmRaw) + u(p.liquidator.accountReserveXlmRaw || 0) : u(min);
+      const good = typeof bal !== 'object' || bal === null ? u(bal || 0) >= need : false;
       // repay_on_behalf pulls with transfer_from: the liquidator must have approved each repay market.
       const alw = await c.tryView(cfg.markets[n].underlying, 'allowance', [addr(lq), addr(cfg.markets[n].receipt)]);
       const alwOk = typeof alw === 'bigint' && alw >= u(min);
-      rows[n] = {balanceRaw: String(bal), minRaw: min, allowanceRaw: String(alw), ok: good && alwOk}; ok = ok && good && alwOk;
+      rows[n] = {balanceRaw: String(bal), minRaw: String(need), allowanceRaw: String(alw), ok: good && alwOk}; ok = ok && good && alwOk;
     }
+    // Role separation: the liquidator holds no admin or guardian power.
+    const st3 = await stateOf(cfg, c), guardian = st3.controller.PauseGuardian && st3.controller.PauseGuardian.value;
+    rows.roles = {admin: cfg.admin, guardian, ok: lq !== cfg.admin && lq !== guardian && (!('pauseGuardian' in p) || guardian === p.pauseGuardian.publicKey)};
+    ok = ok && rows.roles.ok;
     return {gate: 'liquidator', ok, liquidator: lq, rows, manual: 'also confirm keeper heartbeat/log shows DRY_RUN=false, cursor before activation ledger, zero errors'};
   }
   throw Error('unknown gate');
@@ -168,6 +237,9 @@ async function main(argv) {
   const cfg = opt('--config') ? JSON.parse(fs.readFileSync(opt('--config'), 'utf8')) : MAINNET;
   const p = JSON.parse(fs.readFileSync(opt('--params', path.join(__dirname, '..', 'params.proposed.json')), 'utf8'));
   const c = chain(cfg), cmd = argv[0], list = steps(cfg, p);
+  if (cmd === 'caps') return {caps: checkCapsVsInventory(p)};
+  // Planning commands refuse params whose caps the liquidator cannot cover; emergency and renew commands are never blocked.
+  if (p.liquidator.capCoverage && ['list', 'simulate-all', 'prepare', 'gate', 'readback'].includes(cmd)) checkCapsVsInventory(p);
   const find = id => { const s = list.find(x => x.id === id); assert(s, `unknown step ${id}`); return s; };
   if (cmd === 'list' || cmd === 'simulate-all') {
     const st = await stateOf(cfg, c), rows = [];
@@ -191,16 +263,19 @@ async function main(argv) {
     }
     assert(!s.done(st), `${s.id} already done`);
     if (s.pre) s.pre(st);
+    // set_oracle is immediate on first set and 24 h to correct: verify the live feed against the D1 pins first.
+    if (s.id === 'controller.set_oracle' && p.oracle.maxAgeSeconds != null) { const fm = checkFeedMeta(await feedMeta(cfg, c, p, st), p); assert(fm.ok, 'feed check failed: ' + fm.errs.join('; ')); }
     const op = new S.Contract(s.target).call(s.method, ...s.args());
     const res = await build(cfg, c, op);
     return write(cfg, opt('--out'), res, {step: s.id, call: s.method, target: s.target, why: s.why, readback: `node ceremony.cjs readback ${s.id}`});
   }
-  if (cmd === 'kill' || cmd === 'pause-borrow') {
-    const n = argv[1]; assert(cfg.markets[n] && p.markets[n].borrowable, 'borrowable market required');
-    const op = cmd === 'kill' ? new S.Contract(cfg.markets[n].receipt).call('set_cash_borrowing_enabled', addr(cfg.admin), bool(false))
-      : new S.Contract(cfg.controller).call('pause_borrow_g', addr(cfg.guardian || cfg.admin), addr(cfg.markets[n].receipt), bool(true));
-    const res = await build(cfg, c, op, {source: cmd === 'kill' ? cfg.admin : (cfg.guardian || cfg.admin)});
-    return write(cfg, opt('--out'), res, {step: `${cmd}.${n}`, call: cmd === 'kill' ? 'set_cash_borrowing_enabled(false)' : 'pause_borrow_g', emergency: true});
+  if (['kill', 'pause-borrow', 'unpause-borrow', 'revoke-guardian'].includes(cmd)) {
+    const n = cmd === 'revoke-guardian' ? null : argv[1];
+    const op = emergencyOp(cfg, p, cmd, n);
+    const ic = op.body().invokeHostFunctionOp().hostFunction().invokeContract();
+    const res = await build(cfg, c, op);
+    return write(cfg, opt('--out'), res, {step: n ? `${cmd}.${n}` : cmd, call: `${ic.functionName().toString()}(${ic.args().map(a => JSON.stringify(S.scValToNative(a))).join(', ')})`,
+      target: S.Address.fromScAddress(ic.contractAddress()).toString(), emergency: true});
   }
   if (cmd === 'renew-cl-pause') {
     // The ONLY transaction that may name the CL staged receipt: re-arm its 72 h controller borrow pause (paused=true, admin).
@@ -220,5 +295,5 @@ async function main(argv) {
   if (cmd === 'status') { const r = await c.rpc.getTransaction(argv[1]); return {hash: argv[1], status: r.status, ledger: r.ledger}; }
   throw Error('usage: see header');
 }
-module.exports = {steps, assertNotCl, renewClPauseOp, checkAuth, checkResources, LIMITS};
+module.exports = {steps, assertNotCl, renewClPauseOp, checkAuth, checkResources, LIMITS, assertPauseKey, checkCapsVsInventory, checkFeedMeta, emergencyOp};
 if (require.main === module) main(process.argv.slice(2)).then(r => console.log(json(r))).catch(e => { console.error('REFUSED/FAILED:', e.message); process.exit(1); });

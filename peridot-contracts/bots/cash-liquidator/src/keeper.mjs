@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as S from '@stellar/stellar-sdk';
-import {planLiquidation, seizeIsProfitable, depegAlerts, mergeBorrowers} from './plan.mjs';
+import {planLiquidation, seizeIsProfitable, depegAlerts, mergeBorrowers, netInventory, refreshDecision, budgetFor, inventoryShortfalls} from './plan.mjs';
 
 const log = (level, msg, extra = {}) => console.log(JSON.stringify({t: new Date().toISOString(), level, msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
 
@@ -21,6 +21,13 @@ export async function verifyPins(cfg, c) {
   for (const [n, m] of Object.entries(cfg.pins.markets)) if (cfg.pins.marketWasm && (await c.codeHash(m.receipt)) !== cfg.pins.marketWasm) throw Error(`${n} code changed`);
 }
 
+// Role separation: the liquidator key is never the admin Ledger nor the pause guardian.
+export async function verifyRoles(cfg, c) {
+  if (cfg.pins.admin && cfg.publicKey === cfg.pins.admin) throw Error('refused: liquidator key is the admin');
+  const g = await c.raw(cfg.pins.controller, S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('PauseGuardian')]));
+  if (g && g === cfg.publicKey) throw Error('refused: liquidator key is the pause guardian');
+}
+
 async function positionsOf(cfg, c, user, entered, priceCache) {
   const out = [];
   for (const [market, m] of Object.entries(cfg.pins.markets)) {
@@ -34,10 +41,16 @@ async function positionsOf(cfg, c, user, entered, priceCache) {
   return out;
 }
 
+// SAC balance; a missing trustline (SAC error #13, e.g. a fresh account before src/trustlines.mjs) reads as 0.
+export async function balanceOf(cfg, c, token) {
+  try { return BigInt(await c.view(token, 'balance', [c.addr(cfg.publicKey)])); }
+  catch (e) { if (/Error\(Contract, #13\)/.test(e.message)) return 0n; throw e; }
+}
+
 async function inventoryOf(cfg, c) {
   const inv = {};
-  for (const [n, m] of Object.entries(cfg.pins.markets)) inv[n] = BigInt(await c.view(m.underlying, 'balance', [c.addr(cfg.publicKey)]));
-  return inv;
+  for (const [n, m] of Object.entries(cfg.pins.markets)) inv[n] = await balanceOf(cfg, c, m.underlying);
+  return netInventory(inv, {feeFloorXlmRaw: cfg.minFeeXlmRaw, accountReserveXlmRaw: cfg.accountReserveXlmRaw ?? 0n});
 }
 
 export async function discover(cfg, c, st) {
@@ -64,7 +77,7 @@ export async function discover(cfg, c, st) {
 // ceremony gate G2 can read the allowances. In DRY_RUN this only reports what it would approve.
 export async function ensureAllAllowances(cfg, c) {
   for (const [n, m] of Object.entries(cfg.pins.markets)) if (m.borrowable && !cfg.neverTouch.has(m.receipt)) {
-    const bal = BigInt(await c.view(m.underlying, 'balance', [c.addr(cfg.publicKey)]));
+    const bal = await balanceOf(cfg, c, m.underlying);
     if (bal > 0n) await ensureAllowance(cfg, c, m, bal);
   }
 }
@@ -73,12 +86,14 @@ export async function cycle(cfg, c, st) {
   await discover(cfg, c, st); saveState(cfg.stateFile, st);
   const closeFactor = BigInt(await c.view(cfg.pins.controller, 'get_close_factor_scaled'));
   const li = BigInt(await c.view(cfg.pins.controller, 'get_liquidation_incentive_scaled'));
-  const xlm = BigInt(await c.view(cfg.pins.markets.XLM.underlying, 'balance', [c.addr(cfg.publicKey)]));
+  const xlm = await balanceOf(cfg, c, cfg.pins.markets.XLM.underlying);
   if (xlm < cfg.minFeeXlmRaw) log('alert', 'liquidator XLM below fee floor', {xlm});
   if (cfg.pins.depeg) await depegCheck(cfg, c);
-  if (cfg.pins.oracle) await refreshDriftedPrices(cfg, c);
+  if (cfg.pins.oracle) { await refreshPrices(cfg, c, st); saveState(cfg.stateFile, st); }
   const priceCache = new Map(), results = [];
   let inventory = await inventoryOf(cfg, c);
+  // Funded minimums (funding.md): alert in live mode; informational while still in dry run (before T1 funding).
+  for (const sh of inventoryShortfalls(inventory, cfg.pins.minInventoryRaw)) log(cfg.dryRun ? 'info' : 'alert', 'liquidator inventory below funded minimum: top up within 24 h', sh);
   for (const user of st.borrowers) {
     let liq;
     try { liq = await c.view(cfg.pins.controller, 'account_liquidity', [c.addr(user)]); } catch (e) { log('warn', 'account_liquidity failed', {user, err: e.message}); continue; }
@@ -112,6 +127,7 @@ export async function cycle(cfg, c, st) {
     if (res.status === 'SUCCESS' && cfg.withdrawSeized) await withdrawSeized(cfg, c, cm, plan.collateralMarket, results);
     inventory = await inventoryOf(cfg, c);
   }
+  saveState(cfg.stateFile, st);
   return results;
 }
 
@@ -120,7 +136,7 @@ export async function cycle(cfg, c, st) {
 async function ensureAllowance(cfg, c, m, need) {
   const have = BigInt(await c.view(m.underlying, 'allowance', [c.addr(cfg.publicKey), c.addr(m.receipt)]));
   if (have >= need) return true;
-  const bal = BigInt(await c.view(m.underlying, 'balance', [c.addr(cfg.publicKey)]));
+  const bal = await balanceOf(cfg, c, m.underlying);
   const expiry = (await c.rpc.getLatestLedger()).sequence + 500_000;
   const amt = S.nativeToScVal(bal > need ? bal : need, {type: 'i128'});
   const sim = await c.prepare(m.underlying, 'approve', [c.addr(cfg.publicKey), c.addr(m.receipt), amt, S.nativeToScVal(expiry, {type: 'u32'})]);
@@ -149,24 +165,40 @@ async function withdrawSeized(cfg, c, cm, market, results) {
 
 // The controller serves its cached price until it is k*resolution old (600 s), even when the feed has a newer round
 // (simple-peridottroller 3504-3516). cache_price(token) is permissionless and rewrites the cache from the live feed.
-// Refresh only when the feed has drifted from the cached value, so a fast move is visible to liquidate() at once.
-async function refreshDriftedPrices(cfg, c) {
+// Refresh every token on every new Reflector round (user decision 2026-11-18), with its own inclusion bid, per-tx max fee
+// and a persisted daily budget. Skips while the controller oracle is unset (cache_price returns None, nothing to write).
+// Never throws: a refresh problem must not block the liquidation pass that follows.
+export async function refreshPrices(cfg, c, st, now = Date.now()) {
   const other = s => S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('Other'), S.xdr.ScVal.scvSymbol(s)]);
+  const R = cfg.refresh, out = [];
+  let oracle;
+  try { oracle = await c.view(cfg.pins.controller, 'get_oracle'); } catch (e) { log('warn', 'get_oracle failed', {err: e.message}); return out; }
+  const oracleMatches = oracle === cfg.pins.oracle.feed;
+  if (!oracleMatches) { if (!st.refreshIdleLogged) log('info', 'price refresher idle: controller oracle not set to pinned feed', {oracle}); st.refreshIdleLogged = true; return out; }
+  st.refreshIdleLogged = false;
   for (const [n, symbol] of Object.entries(cfg.pins.oracle.symbols)) {
     const tok = cfg.pins.markets[n].underlying;
     try {
+      st.refreshBudget = budgetFor(st.refreshBudget, now);
       const live = await c.view(cfg.pins.oracle.feed, 'lastprice', [other(symbol)]);
-      const cached = await c.view(cfg.pins.controller, 'get_price_usd', [c.addr(tok)]);
-      if (!live || !cached) continue;
-      const drift = Number(((BigInt(live.price) - BigInt(cached[0])) * 10_000n) / BigInt(cached[0]));
-      if (Math.abs(drift) < (cfg.pins.oracle.refreshDriftBps ?? 30)) continue;
-      const sim = await c.prepare(cfg.pins.controller, 'cache_price', [c.addr(tok)]);
-      if (!sim.ok) { log('warn', 'cache_price simulation failed', {market: n, err: sim.error}); continue; }
-      if (cfg.dryRun) { log('info', 'DRY_RUN would refresh price cache', {market: n, drift}); continue; }
-      const res = await c.submit(c.sign(sim.prepared));
-      log('info', 'refreshed price cache', {market: n, drift, ...res, metrics: sim.metrics});
-    } catch (e) { log('warn', 'price refresh check failed', {market: n, err: e.message}); }
+      const cached = await c.raw(cfg.pins.controller, S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('PriceCache'), c.addr(tok)]));
+      const d = refreshDecision({oracleMatches, live, cached, spentTodayStroops: st.refreshBudget.spentStroops, dailyBudgetStroops: R.dailyBudgetStroops, maxFeeStroops: R.maxFeeStroops});
+      if (!d.refresh) { if (d.alert) log('alert', 'price refresh skipped', {market: n, reason: d.reason, budget: st.refreshBudget}); out.push({market: n, skipped: d.reason}); continue; }
+      // Short validity and a short wait so a refresh can never hold the sequence (and the liquidation pass) for long.
+      const sim = await c.prepare(cfg.pins.controller, 'cache_price', [c.addr(tok)], {inclusionFee: R.inclusionFee, maxFeeStroops: R.maxFeeStroops, timeoutSec: R.timeoutSec ?? 30});
+      if (!sim.ok) { log(/above cap/.test(sim.error) ? 'alert' : 'warn', 'cache_price simulation failed', {market: n, err: sim.error, metrics: sim.metrics}); out.push({market: n, skipped: 'simulation failed'}); continue; }
+      if (sim.retval == null) { out.push({market: n, skipped: 'cache_price returned None (stale/unset)'}); continue; }
+      const round = {market: n, feedTs: String(live.timestamp), cachedTs: cached ? String(cached.timestamp) : null, metrics: sim.metrics};
+      if (cfg.dryRun) { log('info', 'DRY_RUN would refresh price cache', round); out.push({...round, dryRun: true}); continue; }
+      const signed = c.sign(sim.prepared);
+      const res = await c.submit(signed, R.submitWaitMs ?? 35_000);
+      // Charge the actual fee when the result decodes; otherwise (unknown outcome, undecodable) the full max fee.
+      st.refreshBudget = {...st.refreshBudget, spentStroops: String(BigInt(st.refreshBudget.spentStroops) + BigInt(res.feeCharged ?? signed.fee))};
+      log(res.status === 'SUCCESS' ? 'info' : 'warn', 'refreshed price cache', {...round, ...res});
+      out.push({...round, ...res});
+    } catch (e) { log('warn', 'price refresh failed', {market: n, err: e.message}); out.push({market: n, error: e.message}); }
   }
+  return out;
 }
 
 async function depegCheck(cfg, c) {

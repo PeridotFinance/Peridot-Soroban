@@ -66,3 +66,72 @@ export function mergeBorrowers(known, events) {
   for (const e of events) if (e.borrower) s.add(e.borrower);
   return [...s].sort();
 }
+
+/** XLM is both repay inventory and the fee/reserve balance: never plan a repay out of the fee floor or account reserves. */
+export function netInventory(inv, {feeFloorXlmRaw = 0n, accountReserveXlmRaw = 0n} = {}) {
+  const out = {...inv};
+  if (out.XLM != null) { const x = out.XLM - feeFloorXlmRaw - accountReserveXlmRaw; out.XLM = x > 0n ? x : 0n; }
+  return out;
+}
+
+/**
+ * Price-cache refresher (every Reflector round). Refresh a token when the feed has a round newer than the controller's
+ * cached observation, the controller is wired to that feed, and today's fee budget still covers one max-fee refresh.
+ * live/cached: {timestamp} | null. Budget accounting is conservative: each submitted refresh is charged its max fee.
+ */
+export function refreshDecision({oracleMatches, live, cached, spentTodayStroops, dailyBudgetStroops, maxFeeStroops}) {
+  if (!oracleMatches) return {refresh: false, reason: 'controller oracle not set to the pinned feed'};
+  if (!live) return {refresh: false, reason: 'no live feed price'};
+  if (cached && BigInt(cached.timestamp) >= BigInt(live.timestamp)) return {refresh: false, reason: 'cache already holds the latest round'};
+  if (BigInt(spentTodayStroops) + BigInt(maxFeeStroops) > BigInt(dailyBudgetStroops)) return {refresh: false, reason: 'daily refresh fee budget exhausted', alert: true};
+  return {refresh: true};
+}
+
+/** Rolls the per-UTC-day refresh spend; returns the (possibly reset) budget record. */
+export function budgetFor(record, nowMs) {
+  const day = new Date(nowMs).toISOString().slice(0, 10);
+  return record && record.day === day ? record : {day, spentStroops: '0'};
+}
+
+/**
+ * Staleness signal for the pause watcher. A feed observation older than staleAfterSeconds (or missing) for a borrowable
+ * symbol is an alert. A failed READ is not staleness (our RPC may be down) and is reported separately by the caller.
+ */
+export function stalenessAlerts(prices, nowSec, staleAfterSeconds) {
+  const out = [];
+  for (const [asset, p] of Object.entries(prices)) {
+    if (p == null) { out.push({asset, kind: 'stale', reason: 'no price'}); continue; }
+    const age = nowSec - Number(p.timestamp);
+    if (age > staleAfterSeconds) out.push({asset, kind: 'stale', ageSeconds: age});
+    else if (age < -60) out.push({asset, kind: 'stale', reason: 'future timestamp', ageSeconds: age});
+  }
+  return out;
+}
+
+/**
+ * Pause watcher state machine (pure). An incident opens after `confirmations` alerting observations: depeg alerts count
+ * once per NEW feed round (roundKey), staleness alerts count every cycle. While the incident is open and some target market
+ * is not yet done (submitted or already paused), the action is 'pause'; once all are done it is 'latched', so a Ledger
+ * unpause is not overridden and the 72 h is not extended. `clearCycles` consecutive clean cycles close the incident.
+ */
+export function pauseStep(state, alerts, {confirmations = 2, clearCycles = 20} = {}, {roundKey = null, allDone = false} = {}) {
+  const s = {streak: 0, clean: 0, incident: false, done: {}, lastRound: null, ...state};
+  if (alerts.length) {
+    const counts = alerts.some(a => a.kind === 'stale') || roundKey == null || String(roundKey) !== String(s.lastRound);
+    if (counts) s.streak += 1;
+    s.lastRound = roundKey == null ? s.lastRound : String(roundKey); s.clean = 0;
+    if (!s.incident && s.streak >= confirmations) { s.incident = true; s.incidentAt = new Date().toISOString(); }
+    if (!s.incident) return {state: s, action: 'confirming'};
+    return {state: s, action: allDone ? 'latched' : 'pause'};
+  }
+  s.streak = 0; s.clean += 1;
+  if (s.incident && s.clean >= clearCycles) { s.incident = false; s.done = {}; delete s.incidentAt; return {state: s, action: 'rearmed'}; }
+  return {state: s, action: 'none'};
+}
+
+/** Per-asset shortfall of (net) inventory against the funded minimums. */
+export function inventoryShortfalls(inv, minRaw = {}) {
+  const out = [];
+  for (const [n, m] of Object.entries(minRaw)) { const have = inv[n] ?? 0n, need = BigInt(m); if (have < need) out.push({asset: n, haveRaw: have, minRaw: need}); }
+  return out;
+}
