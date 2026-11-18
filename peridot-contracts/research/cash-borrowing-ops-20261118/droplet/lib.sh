@@ -38,7 +38,7 @@ install_node() {
 # the service user. Dependencies come from the committed package-lock.json with install scripts disabled.
 install_code() {
   echo "$SRC_SHA256  $SRC_TARBALL" | sha256sum -c - || die "source tarball checksum mismatch"
-  local root=/opt/peridot-cash-liquidator rel="$root/releases/${SRC_SHA256:0:16}"
+  local root=/opt/peridot-cash-liquidator; local rel="$root/releases/${SRC_SHA256:0:16}"
   if [ ! -d "$rel" ]; then
     mkdir -p "$rel.tmp"; tar -xzf "$SRC_TARBALL" -C "$rel.tmp" --strip-components=1 --no-same-owner
     find "$rel.tmp" -name '._*' -delete          # macOS AppleDouble files (node --test would try to run test/._*.mjs)

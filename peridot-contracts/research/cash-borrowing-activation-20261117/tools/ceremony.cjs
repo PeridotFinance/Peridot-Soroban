@@ -20,6 +20,7 @@
 //   propose-upgrade <controller|USDC|XLM|PYUSD|EURC> --out F   propose_upgrade_wasm(reviewed hash); 24 h timelock
 //   cancel-proposal <controller|USDC|XLM|PYUSD|EURC> --out F   CANCEL: re-propose the currently deployed hash
 //   pending <controller|USDC|XLM|PYUSD|EURC>       read PendingUpgradeHash / ETA;  code-exists <sha256>
+//   fund <liquidator|pause-guardian> <G...> <XLM> --out F   owner XLM to a role account (create-account if new)
 //   withdraw <USDC|XLM|EURC|PYUSD> <ptokens raw> --out F   owner redeems its own pTokens from one cash market
 //   renew-cl-pause --out F                 admin set_pause_borrow(CL staged receipt, true): re-arm its 72 h pause
 //
@@ -286,7 +287,7 @@ async function main(argv) {
     // Upgrade steps for the reviewed cash-borrow upgrade. Artifacts and hashes come ONLY from the upgrade folder.
     const up = path.join(__dirname, '..', '..', 'cash-borrowing-upgrade-20261118');
     const bh = JSON.parse(fs.readFileSync(path.join(up, 'build-hashes-upgrade.json'), 'utf8'));
-    const PIN = {controller: 'd603108a5172d6a7a322b96b4f09edbb95961db98c4086782ce76216ecd38efe', receipt: 'e5b41059e92f2028fbdf5b6a45e71e9961316d42a338a5334deb390ae0eda16b'};
+    const PIN = {controller: 'f41e5260513390abcb3c18d74f4c0e9e9d65b0638bc797d11ddaec45de5fe2d8', receipt: '5630a701bc7f29ea1334cfd1c12e349664da7376fd86df080d587ea9f685e452'};
     const LIVE = {controller: cfg.controllerWasm, receipt: cfg.marketWasm};
     assert(JSON.stringify(bh).includes(PIN.controller) && JSON.stringify(bh).includes(PIN.receipt), 'build-hashes-upgrade.json does not pin the reviewed hashes');
     const kind = argv[1];
@@ -343,6 +344,23 @@ async function main(argv) {
     const h = await rd('PendingUpgradeHash'), eta = await rd('PendingUpgradeEta');
     return {target, pendingHash: h ? Buffer.from(h).toString('hex') : null, eta: eta == null ? null : String(eta),
       etaUtc: eta == null ? null : new Date(Number(eta) * 1000).toISOString()};
+  }
+  if (cmd === 'fund') {
+    // Owner XLM to a role account: create-account if it does not exist, else payment. Refuses the admin and unknown roles.
+    const role = argv[1], dest = argv[2], xlm = argv[3];
+    assert(['liquidator', 'pause-guardian'].includes(role), 'role: liquidator|pause-guardian');
+    assert(S.StrKey.isValidEd25519PublicKey(dest || ''), 'destination must be a G... public key');
+    assert.notEqual(dest, cfg.admin, 'refused: destination is the admin');
+    assert(/^[0-9]+(\.[0-9]{1,7})?$/.test(String(xlm || '')) && Number(xlm) > 0 && Number(xlm) <= 50, 'amount in XLM, 0 < x <= 50');
+    const exists = await fetch(`${cfg.horizon}/accounts/${dest}`).then(r => r.status === 200);
+    const acc = await c.rpc.getAccount(cfg.admin), latest = await c.rpc.getLatestLedger();
+    const op = exists ? S.Operation.payment({destination: dest, asset: S.Asset.native(), amount: String(xlm)})
+      : S.Operation.createAccount({destination: dest, startingBalance: String(xlm)});
+    const prepared = new S.TransactionBuilder(acc, {fee: '10000', networkPassphrase: cfg.network}).addOperation(op)
+      .setLedgerbounds(latest.sequence + 1, latest.sequence + LIMITS.window).setTimeout(LIMITS.timeout).build();
+    return write(cfg, opt('--out'), {prepared, metrics: {classic: true}, simulatedLedger: latest.sequence,
+      validLedgers: {min: latest.sequence + 1, maxExclusive: latest.sequence + LIMITS.window}},
+      {step: `fund.${role}`, call: `${exists ? 'payment' : 'createAccount'}(${dest}, ${xlm} XLM)`, readback: `curl -s ${cfg.horizon}/accounts/${dest}`});
   }
   if (cmd === 'withdraw') {
     // Owner redeem of its own pTokens from ONE cash market (receipt.withdraw(admin, ptoken_amount)). Prepare-only.
