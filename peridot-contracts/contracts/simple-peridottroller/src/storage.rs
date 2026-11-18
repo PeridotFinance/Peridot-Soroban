@@ -132,6 +132,9 @@ const TTL_EXTEND_TO: u32 = 1_000_000;
 const MAX_DECIMALS: u32 = 38;
 
 pub fn bump_core_ttl(env: &Env) {
+    // Instance-stored parameters (MarketUserCounts, MaxUserMarkets, MaxPriceAgeSecs,
+    // FallbackPricesEnabled, PriceBand, pending values) share the instance lifetime.
+    env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
     let persistent = env.storage().persistent();
     if persistent.has(&DataKey::Admin) {
         persistent.extend_ttl(&DataKey::Admin, TTL_THRESHOLD, TTL_EXTEND_TO);

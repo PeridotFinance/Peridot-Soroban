@@ -58,8 +58,9 @@ pub enum DataKey {
     ClCustody, // INSTANCE bool; opt-in dedicated nonborrowing CL share custody market
     ClCustodyContext, // INSTANCE exact controller-owned withdrawal/transfer context
     CashBorrowingEnabled, // INSTANCE bool; opt-in markets default disabled until explicit approval
-    FlashLoansEnabled, // INSTANCE bool; flash loans default disabled, independent of borrowing
     PermanentMinimumSupply, // INSTANCE u128; explicit admin-funded, immutable own-address share floor
+    // Appended (upgrade 2026-11-18). contracttype keys encode as the variant-name Symbol, so order is cosmetic.
+    FlashLoansEnabled, // INSTANCE bool; flash loans default disabled, independent of borrowing
 }
 
 const TTL_THRESHOLD: u32 = 500_000;

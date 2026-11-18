@@ -397,3 +397,16 @@ fn upg_repropose_overwrites_pending_hash_and_eta() {
     assert!(p.cc().try_upgrade_wasm(&h1).is_err(), "old hash no longer pending");
     assert!(p.cc().try_upgrade_wasm(&h2).is_err(), "ETA restarted");
 }
+
+#[test]
+fn upg_bump_core_ttl_extends_controller_instance() {
+    use soroban_sdk::testutils::storage::Instance as _;
+    let p = Px::new(1);
+    let before = p.env.as_contract(&p.comp, || p.env.storage().instance().get_ttl());
+    p.env.ledger().with_mut(|l| l.sequence_number += 600_000); // below the 500k threshold now
+    let low = p.env.as_contract(&p.comp, || p.env.storage().instance().get_ttl());
+    assert!(low < 500_000, "precondition: instance TTL {low} (was {before}) is under threshold");
+    p.cc().set_max_user_markets(&2u32); // any bump_core_ttl path (no-op setter)
+    let after = p.env.as_contract(&p.comp, || p.env.storage().instance().get_ttl());
+    assert!(after >= 1_000_000 - 1, "instance extended to {after}");
+}
