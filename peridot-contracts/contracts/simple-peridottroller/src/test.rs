@@ -202,6 +202,12 @@ fn test_enter_market_enforces_max_user_markets() {
     let id = env.register(SimplePeridottroller, ());
     let client = SimplePeridottrollerClient::new(&env, &id);
     client.initialize(&admin);
+    // Upgrade candidate: default cap is 2; raise (timelocked) to the hard maximum.
+    client.set_max_user_markets(&MAX_USER_MARKETS);
+    env.ledger()
+        .with_mut(|l| l.timestamp += ADMIN_PARAM_CHANGE_DELAY_SECS);
+    client.set_max_user_markets(&MAX_USER_MARKETS);
+    assert_eq!(client.get_max_user_markets(), MAX_USER_MARKETS);
 
     // Entering MAX_USER_MARKETS distinct markets is allowed.
     for _ in 0..MAX_USER_MARKETS {
@@ -3805,6 +3811,10 @@ fn test_fallback_price_has_max_age() {
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
+    // Upgrade-candidate fixture shortcut (setter is timelocked; see upgrade_checks_test).
+    env.as_contract(&comp_id, || {
+        env.storage().instance().set(&DataKey::FallbackPricesEnabled, &true);
+    });
 
     comp.set_price_fallback(&token, &Some((1_000_000u128, 1_000_000u128)));
     assert_eq!(
@@ -3881,6 +3891,10 @@ fn test_get_price_usd_uses_fallback_when_oracle_refresh_fails() {
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
+    // Upgrade-candidate fixture shortcut (setter is timelocked; see upgrade_checks_test).
+    env.as_contract(&comp_id, || {
+        env.storage().instance().set(&DataKey::FallbackPricesEnabled, &true);
+    });
     comp.add_market(&vault_id);
 
     let oracle_id = env.register(MockOracle, ());
@@ -4007,6 +4021,10 @@ fn test_backfill_fallback_price_set_at_restores_legacy_fallback() {
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
+    // Upgrade-candidate fixture shortcut (setter is timelocked; see upgrade_checks_test).
+    env.as_contract(&comp_id, || {
+        env.storage().instance().set(&DataKey::FallbackPricesEnabled, &true);
+    });
 
     // Simulate legacy fallback without set-at metadata.
     env.as_contract(&comp_id, || {
@@ -6099,6 +6117,10 @@ fn test_hypothetical_liquidity_with_hint_refreshes_debt_market_not_collateral_on
     let comp_id = env.register(SimplePeridottroller, ());
     let comp = SimplePeridottrollerClient::new(&env, &comp_id);
     comp.initialize(&admin);
+    // Upgrade-candidate fixture shortcut (setter is timelocked; see upgrade_checks_test).
+    env.as_contract(&comp_id, || {
+        env.storage().instance().set(&DataKey::MaxUserMarkets, &3u32);
+    });
     comp.add_market(&current_market_id);
     comp.add_market(&debt_market_id);
     comp.add_market(&coll_only_id);
