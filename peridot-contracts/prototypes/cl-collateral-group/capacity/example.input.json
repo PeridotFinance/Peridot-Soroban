@@ -1,0 +1,10 @@
+{
+  "_note": "ILLUSTRATIVE values only, not measured. Replace position with live vault views (get_position_liquidity, stage_idle, total_supply, pool get_slot0) and quotes with simulated PYUSD->USDC swaps taken after liquidity removal, at a pinned ledger.",
+  "oraclePrice": 0.9998,
+  "position": {"liquidityRaw": 1.0e13, "decimals": 7, "tickLower": -20, "tickUpper": 20, "tick": 0,
+               "idlePyusd": 12.5, "idleUsdc": 8.0, "totalUnits": 10000},
+  "closeUnits": [100, 1000],
+  "quotes": [{"in": 100, "out": 99.93}, {"in": 1000, "out": 998.2}, {"in": 5000, "out": 4960}, {"in": 20000, "out": 19300}],
+  "pool": {"activeLiquidity": 5.0e6, "ourLiquidity": 1.0e6, "thirdPartyHaircut": 0.5, "tick": 0, "tickLower": -200, "tickUpper": 200, "feeBps": 5},
+  "params": {"closeFactor": 0.5, "incentive": 0.08, "safetyFactor": 2, "collateralFactor": 0.8, "slippageBudgetsBps": [100, 200]}
+}

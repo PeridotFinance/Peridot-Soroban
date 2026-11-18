@@ -1,0 +1,13 @@
+{
+  "name": "@peridot/cl-liquidator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "start": "node src/main.mjs",
+    "check": "for f in src/*.mjs; do node --check $f || exit 1; done",
+    "test": "node --test"
+  },
+  "comment": "@stellar/stellar-sdk 16.3.1 is resolved at run time from STELLAR_SDK_DIR (default: the main checkout's bots/cash-liquidator); no install here."
+}

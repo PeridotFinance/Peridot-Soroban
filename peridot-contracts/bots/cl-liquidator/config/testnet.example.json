@@ -1,0 +1,25 @@
+{
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "contracts": {
+    "receipt": "C...RECEIPT_STGV2",
+    "vault": "C...CL_SHARE_VAULT_V2",
+    "controller": "C...GROUP_CONTROLLER",
+    "usdcMarket": "C...USDC_LENDING_MARKET",
+    "usdc": "C...USDC_SAC",
+    "pyusd": "C...PYUSD_SAC",
+    "oracle": "C...REFLECTOR_STELLAR_DEX_FEED"
+  },
+  "borrowers": ["G...BORROWER1"],
+  "liquidator": "G...LIQUIDATOR_PUBLIC_ADDRESS",
+  "executorIdentity": "cl-liq-testnet",
+  "repayCapRaw": "1000000000",
+  "submitMarginSec": 10,
+  "watchIntervalSec": 10,
+  "dataDir": "./data",
+  "watcher": {
+    "depegBps": 100,
+    "feedMaxAgeSec": 600,
+    "reference": {"enabled": false, "url": "", "path": "", "divPath": ""}
+  }
+}
