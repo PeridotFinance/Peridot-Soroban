@@ -8,7 +8,7 @@
 'use strict';
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 const ROOT = path.resolve(__dirname, '../..');
-const S = require(path.join(ROOT, 'bots/margin-liquidator/node_modules/@stellar/stellar-sdk'));
+const S = require(process.env.STELLAR_SDK_DIR || path.join(ROOT, 'bots/margin-liquidator/node_modules/@stellar/stellar-sdk'));
 const URL = 'https://soroban-rpc.mainnet.stellar.gateway.fm';
 const rpc = new S.rpc.Server(URL, {timeout: 60});
 const R = 'CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI', V = 'CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63';

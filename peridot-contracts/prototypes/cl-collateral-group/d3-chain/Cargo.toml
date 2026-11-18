@@ -1,0 +1,12 @@
+[package]
+name = "cl-group-d3-chain"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Pure D3 continuous-block chain logic (no SDK). Included by #[path] into the sleeve double and
+# the StgV2 receipt so one tested source defines the rule. CL collateral group, 18 Nov 2026.
+[workspace]
+
+[lib]
+path = "src/lib.rs"

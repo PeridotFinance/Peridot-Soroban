@@ -18,7 +18,9 @@ fn p0() -> Prm { Prm { max_age: 60, oracle_max_age: 600, depeg_bps: 100, band_bp
 struct G { ctrl: String, usdc_m: String, extra_m: String, gs: String, liquidator: String, reserve: String }
 
 fn deploy_group(snap: &LedgerSnapshot, log: &mut StdVec<Value>, static_rates: bool) -> (LedgerSnapshot, G) {
-    let t0: u8 = if static_rates { 0xd0 } else { 0xc0 };
+    deploy_group_with(snap, log, static_rates, "group-sleeve.wasm", if static_rates { 0xd0 } else { 0xc0 })
+}
+fn deploy_group_with(snap: &LedgerSnapshot, log: &mut StdVec<Value>, static_rates: bool, sleeve_wasm: &str, t0: u8) -> (LedgerSnapshot, G) {
     let s = step_env(snap); let env = &s.env;
     let o = a(env, O);
     let usdc = soroban_sdk::token::StellarAssetClient::new(env, &a(env, USDC));
@@ -34,7 +36,7 @@ fn deploy_group(snap: &LedgerSnapshot, log: &mut StdVec<Value>, static_rates: bo
     let usdc_m = env.register_at(&caddr(t0 + 2), wasm("market.wasm").as_slice(), ());
     let extra_m = env.register_at(&caddr(t0 + 3), wasm("market.wasm").as_slice(), ());
     let jrm = env.register_at(&caddr(t0 + 4), wasm("jrm.wasm").as_slice(), ());
-    let gs = env.register_at(&caddr(t0 + 5), wasm("group-sleeve.wasm").as_slice(), ());
+    let gs = env.register_at(&caddr(t0 + 5), wasm(sleeve_wasm).as_slice(), ());
     let inv = |c: &Address, f: &str, args: Vec<Val>| { let r = env.try_invoke_contract::<Val, soroban_sdk::Error>(c, &Symbol::new(env, f), args); assert!(matches!(r, Ok(Ok(_))), "group setup {f} failed: {r:?}"); };
     inv(&ctrl, "initialize", (o.clone(),).into_val(env));
     // Same Reflector feed object the vault uses. USDC is CALI's base (price 1e14). See DESIGN.md §1
@@ -64,7 +66,7 @@ fn deploy_group(snap: &LedgerSnapshot, log: &mut StdVec<Value>, static_rates: bo
     inv(&ctrl, "group_set_liq_cache_only", (true,).into_val(env));
     inv(&usdc_m, "deposit", (supplier.clone(), 50_000_000_000u128).into_val(env));
     let g = G { ctrl: astr(&ctrl), usdc_m: astr(&usdc_m), extra_m: astr(&extra_m), gs: astr(&gs), liquidator: TREASURY.into(), reserve: KEEPER.into() };
-    log.push(json!({"deploy_group": {"static_rates": static_rates, "ctrl": g.ctrl, "usdc_market": g.usdc_m, "extra_market_unlisted": g.extra_m, "group_sleeve": g.gs, "jrm": astr(&jrm), "liquidator": g.liquidator}}));
+    log.push(json!({"deploy_group": {"static_rates": static_rates, "sleeve_wasm": sleeve_wasm, "ctrl": g.ctrl, "usdc_market": g.usdc_m, "extra_market_unlisted": g.extra_m, "group_sleeve": g.gs, "jrm": astr(&jrm), "liquidator": g.liquidator}}));
     let mut next = env.to_ledger_snapshot();
     strip_nonces(&mut next);
     for (k, _) in next.ledger_entries.iter() { let x = k.to_xdr_base64(Limits::none()).unwrap(); CREATED.with(|c| c.borrow_mut().insert(x)); }
@@ -147,9 +149,12 @@ fn group_inner() {
         results.push(seq("REG S3h-t ckpt, liquidate + custody read, warm", &lb, &[mode(2, 1, false), touch(true), ckpt("checkpoint_nav"), liquidate("liquidate")]).0);
     }
 
-    // Group stack with the release JRM (as the spike), then with static rates (cash-borrowing choice).
-    group_suite(&base, avail, false, &mut results, &mut log);
-    group_suite(&base, avail, true, &mut results, &mut log);
+    // Group stack with the release JRM (as the spike), then with static rates (cash-borrowing choice),
+    // then the D3 continuous-block suite (static rates). GROUP_SUITES=jrm,static,d3 selects.
+    let want = |k: &str| std::env::var("GROUP_SUITES").map(|v| v.split(',').any(|x| x == k)).unwrap_or(true);
+    if want("jrm") { group_suite(&base, avail, false, &mut results, &mut log); }
+    if want("static") { group_suite(&base, avail, true, &mut results, &mut log); }
+    if want("d3") { d3_suite(&base, avail, &mut results, &mut log); }
     finish(&log, json!({"results": results}));
 }
 
@@ -294,6 +299,68 @@ fn group_suite(base: &LedgerSnapshot, avail: u128, static_rates: bool, results: 
 }
 
 impl Call { fn fails_if(self, f: bool) -> Self { if f { self.fails() } else { self } } }
+
+#[soroban_sdk::contracttype]
+#[derive(Clone)]
+pub struct Blk { pub since: u64, pub last: u64, pub n: u32 }
+
+/// D3 rows (user decision: fallback only after the normal checkpoint has been CONTINUOUSLY blocked
+/// for 10 minutes; heartbeat chain, prototypes/cl-collateral-group/d3-chain). Static-rate stack with
+/// the D3 sleeve double. The capture's oracle prices are frozen, so the chain is SEEDED by a
+/// measurement-only setter instead of waiting 10 minutes; the time-edge logic itself is proven by
+/// the d3-chain unit tests. `ago(x)` = seconds before the NEXT step (each step adds 6 s).
+fn d3_suite(base: &LedgerSnapshot, avail: u128, results: &mut StdVec<Value>, log: &mut StdVec<Value>) {
+    let borrow_amt: u128 = 3_000_000_000;
+    let (gb0, g) = deploy_group_with(base, log, true, "group-sleeve-d3.wasm", 0xe0);
+    let (gsx, gct, gum, gliqa) = (g.gs.clone(), g.ctrl.clone(), g.usdc_m.clone(), g.liquidator.clone());
+    let (r, gbase, ok) = {
+        let (s1, s2, c1, c2, m1) = (gsx.clone(), gsx.clone(), gct.clone(), gct.clone(), gum.clone());
+        seq("D3 group bind (setup)", &gb0, &[
+            call("set_units", &s1, "spike_set_units", move |e| (a(e, O), avail).into_val(e), false),
+            call("enter_sleeve", &c1, "enter_market", move |e| (a(e, O), a(e, &s2)).into_val(e), false),
+            call("enter_usdc", &c2, "enter_market", move |e| (a(e, O), a(e, &m1)).into_val(e), false),
+        ])
+    };
+    log.push(r); assert!(ok, "d3 bind failed");
+    let gckpt = |m: bool| { let s = gsx.clone(); call("L1a checkpoint_nav (D3: blocked = chain observation, no revert)", &s, "checkpoint_nav", |e| Vec::new(e), m) };
+    let gfb = || { let s = gsx.clone(); call("L1b checkpoint_fallback (D3 chain admission)", &s, "checkpoint_fallback", |e| Vec::new(e), true) };
+    let gwarm = || { let c = gct.clone(); call("L2 cache_price(USDC)", &c, "cache_price", |e| (a(e, USDC),).into_val(e), true) };
+    let gborrow = |label: &str, amt: u128, m: bool| { let x = gum.clone(); call(label, &x, "borrow", move |e| (a(e, O), amt).into_val(e), m) };
+    let gliq = |label: &str| { let (c, m, s, l) = (gct.clone(), gum.clone(), gsx.clone(), gliqa.clone());
+        call(label, &c, "liquidate", move |e| (a(e, O), a(e, &m), a(e, &s), 1_000_000_000u128, a(e, &l)).into_val(e), true) };
+    let gclaim = || call("L4 vault.checkpoint_rewards (real AQUA claim, separate tx)", V, "checkpoint_rewards", |e| Vec::new(e), true);
+    let emu = |d: u128| { let s = gsx.clone(); call(&format!("emu_claim({d}) [unmeasured]"), &s, "emu_claim", move |e| (d,).into_val(e), false) };
+    let gsync = |id: u64| { let s = gsx.clone(); call(&format!("L5 sync_seized({id})"), &s, "sync_seized", move |e| (id,).into_val(e), true) };
+    let gparams = |p: Prm| { let s = gsx.clone(); call("set params (unmeasured)", &s, "spike_set_params", move |e| (p.clone(),).into_val(e), false) };
+    // seed chain: since/last given as seconds before the NEXT step
+    let seed = |since_ago: u64, last_ago: u64, n: u32| { let s = gsx.clone();
+        call(&format!("seed chain since -{since_ago}s last -{last_ago}s (unmeasured)"), &s, "spike_set_chain", move |e| {
+            let t = e.ledger().timestamp() + 6; (Some(Blk { since: t - since_ago, last: t - last_ago, n }),).into_val(e) }, false) };
+    let shrink = |n: u128| { let s = gsx.clone(); call("shrink units to 40% (setup)", &s, "spike_set_units", move |e| (a(e, O), n).into_val(e), false) };
+    let approve = || { let (l, m) = (gliqa.clone(), gum.clone()); call("liquidator approves USDC market (setup)", USDC, "approve", move |e| (a(e, &l), a(e, &m), 20_000_000_000i128, e.ledger().sequence() + 100_000).into_val(e), false) };
+    let gcold = |s: &LedgerSnapshot| drop_price_cache(s, &gct);
+    let mut push = |name: &str, b: &LedgerSnapshot, calls: &[Call]| { let r = seq(&format!("D3 {name}"), b, calls); results.push(r.0); (r.1, r.2) };
+    let (r, gl, okl) = seq("D3 GL setup: ckpt, borrow 300 USDC, shrink units to 40%, approve", &gbase, &[gckpt(false), gborrow("borrow (setup)", borrow_amt, false), shrink(avail * 2 / 5), approve()]);
+    log.push(r); assert!(okl, "d3 liquidation setup failed");
+    let glc = gcold(&gl);
+    let mut pb = p0(); pb.band_bps = 0; // emulates "pool pushed out of band"
+    let mut pd = p0(); pd.depeg_bps = 0; // emulates "PYUSD depeg beyond guard"
+    push("GD1 blocked checkpoint_nav starts a chain (returns 0, no revert)", &gl, &[gparams(pb.clone()), gckpt(true)]);
+    push("GD1b blocked by depeg starts a chain", &gl, &[gparams(pd.clone()), gckpt(true)]);
+    push("GD2 blocked checkpoint_nav 60 s after the last observation extends the chain", &gl, &[gparams(pb.clone()), gckpt(false), gckpt(true).after(54)]);
+    push("GD3 blocked checkpoint_nav 61 s after the last observation restarts the chain", &gl, &[gparams(pb.clone()), gckpt(false), gckpt(true).after(55)]);
+    push("GD4 fallback at 9:59 of continuous block -> revert #12 BlockTooRecent", &gl, &[gparams(pb.clone()), seed(599, 59, 10), gfb().fails()]);
+    let (fbs, okfb) = push("GD5 fallback at 10:00 -> ok, then L3 liquidate on fallback, WARM", &gl, &[gparams(pb.clone()), seed(600, 60, 10), gfb(), gliq("L3 liquidate on fallback")]);
+    if okfb { log.push(json!({"d3_views_after_GD5": gviews(&fbs, &g)})); }
+    push("GD5c fallback at 10:00, L2, L3 from COLD", &glc, &[gparams(pb.clone()), seed(600, 60, 10), gfb(), gwarm(), gliq("L3 liquidate on fallback")]);
+    push("GD5d depeg cause: fallback at 10:00, L3, WARM", &gl, &[gparams(pd.clone()), seed(600, 60, 10), gfb(), gliq("L3 liquidate on fallback (depeg)")]);
+    push("GD6 fallback 61 s after the last observation -> revert #13 ChainBroken", &gl, &[gparams(pb.clone()), seed(900, 61, 15), gfb().fails()]);
+    push("GD7 clear: healthy checkpoint_nav deletes the chain", &gl, &[gparams(pb.clone()), seed(900, 30, 15), gparams(p0()), gckpt(true)]);
+    push("GD7b after clear: blocked again, fallback -> revert #11 NotBlocked (chain deleted)", &gl, &[gparams(pb.clone()), seed(900, 30, 15), gparams(p0()), gckpt(false), gparams(pb.clone()), gfb().fails()]);
+    push("GD7c no chain at all: fallback -> revert #11 NotBlocked", &gl, &[gparams(pb.clone()), gfb().fails()]);
+    push("GD8 cause absent now (NAV refreshable) with a 10-min chain -> revert #4", &gl, &[seed(600, 60, 10), gfb().fails()]);
+    push("GD9 full D3 sequence from COLD: fallback, L2, L3, L4 claim, L5 sync", &glc, &[gparams(pb.clone()), seed(600, 60, 10), gfb(), gwarm(), gliq("L3 liquidate on fallback"), gclaim(), emu(0), gsync(0)]);
+}
 
 // ---------------------------------------------------------------------------------------------
 // Q3 model test: who accrues AQUA on units held as collateral; seizure settles without a claim.
