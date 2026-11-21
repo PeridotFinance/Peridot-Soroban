@@ -20,6 +20,7 @@
 //   reward-route-a <propose|attribute> <boundaryId> <raw> <evidenceHex> --out F   REFUSED for seize-opened boundaries (F4)
 //   reward-route-b <propose|attribute> <segmentId> <raw> <evidenceHex> --out F    the release path after a seizure
 //   reward-prepare <segmentId> [limit] / reward-settle <holder> <segmentId> <checkpoint> --out F   route B, permissionless
+//   trust-liquidator --out F          unsigned changeTrust USDC + PYUSD for the CL liquidator (signed on its host)
 //   status <hash>                     RPC outcome (read-only)
 //
 // Refusals: any retired pre-incident contract as target or argument; the pilot vault/receipt except their two
@@ -337,6 +338,17 @@ async function classicBuild(cfg, c, ops, source) {
   return {prepared, metrics: {classic: true, ops: ops.length}, simulatedLedger: latest.sequence, validLedgers: {min: latest.sequence + 1, maxExclusive: latest.sequence + L.window}};
 }
 const assetOf = (cfg, code) => { const [cd, iss] = cfg.classicAssets[code].split(':'); return new S.Asset(cd, iss); };
+// Pure (unit-tested): the liquidator must hold BOTH trustlines with the exact issuers, authorized. Without PYUSD,
+// stage_emergency_pay of seized units reverts with SAC error #13 (no trustline).
+function checkTrustlines(balances, cfg, codes = ['USDC', 'PYUSD']) {
+  const rows = {};
+  for (const code of codes) {
+    const [cd, iss] = cfg.classicAssets[code].split(':');
+    const b = (balances || []).find(x => x.asset_code === cd && x.asset_issuer === iss);
+    rows[code] = {present: !!b, authorized: !!b && b.is_authorized !== false, limit: b ? b.limit : null};
+  }
+  return {ok: codes.every(c => rows[c].present && rows[c].authorized), rows};
+}
 async function horizonAccount(cfg, g) { const r = await fetch(`${cfg.horizon}/accounts/${g}`); return r.status === 200 ? r.json() : null; }
 
 async function opFor(cfg, c, s) {
@@ -429,15 +441,15 @@ async function gate(cfg, c, name) {
   if (name === 'liquidator') {
     const lq = cfg.liquidator.publicKey; if (!lq) return {gate: name, ok: false, reason: 'liquidator.publicKey not set'};
     const bal = await c.tryView(cfg.deps.usdc, 'balance', [addr(lq)]), alw = await c.tryView(cfg.deps.usdc, 'allowance', [addr(lq), addr(I.usdcMarket)]);
-    const acct = await horizonAccount(cfg, lq), trust = acct ? acct.balances.map(b => b.asset_code).filter(Boolean) : [];
+    const acct = await horizonAccount(cfg, lq), tl = checkTrustlines(acct ? acct.balances : [], cfg);
     const hbk = cfg.heartbeat && cfg.heartbeat.publicKey, hba = hbk ? await horizonAccount(cfg, hbk) : null;
     const hbXlm = hba ? Number((hba.balances.find(b => b.asset_type === 'native') || {}).balance || 0) : 0;
     const others = [cfg.admin, cfg.signers.team3.publicKey, 'GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G', 'GBSK3FYCGNYZLHHPSYRJNE53NZXDFL6ED24KLT3GUUETLFKDAUD7PQX3'];
-    const rows = {usdcRaw: String(bal), minRaw: P.funding.liquidatorUsdcRaw, allowanceRaw: String(alw), trustlines: trust,
+    const rows = {usdcRaw: String(bal), minRaw: P.funding.liquidatorUsdcRaw, allowanceRaw: String(alw), trustlines: tl.rows,
       heartbeat: {account: hbk, xlm: hbXlm, minXlm: Number(cfg.heartbeat.minXlm)},
       roles: !others.includes(lq) && !!hbk && hbk !== lq && !others.includes(hbk)};
     // The allowance is reported only: the bot's APPROVE stage sets it right before its first L3 (bots/cl-liquidator README).
-    const ok = typeof bal === 'bigint' && bal >= u(P.funding.liquidatorUsdcRaw) && trust.includes('USDC') && trust.includes('PYUSD') && rows.roles
+    const ok = typeof bal === 'bigint' && bal >= u(P.funding.liquidatorUsdcRaw) && tl.ok && rows.roles
       && hbXlm >= Number(cfg.heartbeat.minXlm);
     return {gate: name, ok, liquidator: lq, rows, manual: 'also: bot dry-run log >= 2 h, zero errors, every borrower planned, D3 status read; heartbeat tests pass and the Testnet heartbeat gap stats (p95 <= 20 s, 0 gaps > 60 s) are recorded (LAUNCH.md section 6.4)'};
   }
@@ -604,8 +616,16 @@ async function main(argv) {
     const {res, summary} = await buildStep(cfg, c, s);
     return write(cfg, opt('--out'), res, summary);
   }
+  if (cmd === 'trust-liquidator') {
+    // Unsigned changeTrust USDC + PYUSD (one tx, two ops) with the CL LIQUIDATOR as source. It is signed ON THE
+    // LIQUIDATOR HOST (stellar tx sign --sign-with-key <its alias>), never on the Mac or the Ledger.
+    const lq = need(cfg.liquidator.publicKey, 'liquidator.publicKey');
+    assert(await horizonAccount(cfg, lq), 'liquidator account does not exist yet (G43 first)');
+    const res = await classicBuild(cfg, c, ['USDC', 'PYUSD'].map(a => S.Operation.changeTrust({asset: assetOf(cfg, a)})), lq);
+    return write(cfg, opt('--out'), res, {step: 'liquidator.trust', call: 'changeTrust(USDC) + changeTrust(PYUSD)', signer: 'liquidator (host key)', hdPath: null});
+  }
   if (cmd === 'status') { const r = await c.rpc.getTransaction(argv[1]); return {hash: argv[1], status: r.status, ledger: r.ledger}; }
   throw Error('usage: see header');
 }
-module.exports = {uploadCpuMax, contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY, assertRouteAAllowed, decodeSeizeEvents, readSeizeEvents};
+module.exports = {uploadCpuMax, contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY, assertRouteAAllowed, decodeSeizeEvents, readSeizeEvents, checkTrustlines};
 if (require.main === module) main(process.argv.slice(2)).then(r => console.log(json(r))).catch(e => { console.error('REFUSED/FAILED:', e.message); process.exit(1); });

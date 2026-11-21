@@ -298,7 +298,7 @@ Specific failure actions:
 ```bash
 step g42-supply prepare usdcMarket.deposit.admin
 step g43-liq-acct prepare fund.liquidator.xlm
-# on the liquidator host: trustlines USDC + PYUSD, signed by the liquidator key (§6.2)
+node clg-ceremony.cjs trust-liquidator --out $U/liq-trust.unsigned.xdr   # sign + send ON THE HOST (§6.2): USDC + PYUSD
 step g44-liq-usdc prepare fund.liquidator.usdc
 # §6.3 dry-run soak >= 2 h, then:
 gate liquidator
@@ -310,7 +310,7 @@ step g45-switch prepare usdcMarket.set_cash_borrowing_enabled
 | G42 | `rb usdcMarket.deposit.admin` true (admin pTokens ≥ 4,000,000,000) |
 | G43 | m: the liquidator account exists with 25 XLM, and the heartbeat account with 12 XLM |
 | G44 | m: liquidator USDC balance 200 |
-| gate | `"ok": true`: balance ≥ 200 USDC, trustlines USDC + PYUSD, no role overlap. The allowance is only reported; the bot's APPROVE stage sets it right before its first L3. Manual: dry-run log ≥ 2 h, zero errors |
+| gate | `"ok": true`: balance ≥ 200 USDC, **both** trustlines USDC and PYUSD (exact issuers, authorized; a missing PYUSD trustline means SAC #13 on `stage_emergency_pay` after a seizure; test "liquidator gate needs BOTH trustlines"), no role overlap. The allowance is only reported; the bot's APPROVE stage sets it right before its first L3. Manual: dry-run log ≥ 2 h, zero errors |
 | G45 | `rb usdcMarket.set_cash_borrowing_enabled` true |
 
 - **If G45 must be undone:** `step k1-kill emergency kill-borrow` (§9).
@@ -383,7 +383,11 @@ HG4: the bot cannot send on Mainnet today. Commands marked **[after HG4]** use t
 - **Host.** Run it as a second systemd service on Droplet `peridot-cashliq` (fra1, 165.245.249.83, context `peridot-liq2`), with its own data directory `/mnt/cashliq/cl-liquidator`, its own key file and its own journal. It never uses the cash liquidator key.
 - **Key.** Generate the key on the host; it never leaves it. The command depends on HG4's signer design; mirror the cash `bootstrap-liquidator.sh`. Print only the public key and enter it in `clg-mainnet.json` `liquidator.publicKey` (HG6).
 - **Heartbeat key.** A second key generated on the same host, for the fee-only D3 heartbeat (§6.4); see the commands there.
-- **Trustlines.** USDC (GA5Z…KZVN) and PYUSD (GDQE…U2V5), signed by the liquidator key on its host. **PLACEHOLDER:** the cash `trustlines.mjs` equivalent for this key. They are needed before G44, and PYUSD is needed to receive in-kind exits.
+- **Trustlines (required, both).** The CL liquidator must hold **USDC** (GA5Z…KZVN) and **PYUSD** (GDQE…U2V5). A missing PYUSD trustline makes `stage_emergency_pay` (and the in-kind exit) of seized units revert with **SAC error #13** after a seizure. USDC is the repay asset.
+  - **Mac:** `cd $T/research/cl-collateral-group-20261118/tools && node clg-ceremony.cjs trust-liquidator --out /Users/joshua/Peridot/clg-launch-20261122/liq-trust.unsigned.xdr`. This prepares one unsigned transaction with two `changeTrust` operations and the liquidator as source; it is never signed on the Mac or the Ledger.
+  - **Host:** copy the file over with `scp`, then `stellar tx sign --sign-with-key <liquidator alias> --rpc-url … --network-passphrase "Public Global Stellar Network ; September 2015" liq-trust.unsigned.xdr > liq-trust.signed.xdr` and `stellar tx send … liq-trust.signed.xdr`. The fee is 0.002 XLM, from the liquidator's 25 XLM; each trustline adds 0.5 XLM of reserve.
+  - **When:** after G43 and **before G44** (the USDC payment needs the trustline). It must be done before G45.
+  - **Read-back:** `gate liquidator` shows `trustlines.USDC` and `trustlines.PYUSD` both `present: true, authorized: true` with the exact issuers. Otherwise the gate is false.
 
 ### 6.3 Config, dry run, gate, live
 Copy `config/testnet.example.json` to `config/mainnet.local.json` (git-ignored) and set:

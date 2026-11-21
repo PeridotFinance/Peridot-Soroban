@@ -57,3 +57,14 @@ test('F4: route A is refused for a boundary opened by a seize sync, or when even
   assert.throws(() => m.assertRouteAAllowed('1', {holder: from, timestamp: String(ts - 2000)}, [], cov), /older than the RPC event window/);
   assert.throws(() => m.assertRouteAAllowed('9', null, [], cov), /does not exist/);
 });
+test('liquidator gate needs BOTH trustlines with the exact issuers (PYUSD missing -> SAC #13 on emergency pay)', () => {
+  const cfg = base(), U = {asset_code: 'USDC', asset_issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN', is_authorized: true};
+  const P = {asset_code: 'PYUSD', asset_issuer: 'GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5', is_authorized: true};
+  assert.equal(m.checkTrustlines([{asset_type: 'native'}, U, P], cfg).ok, true);
+  assert.equal(m.checkTrustlines([U], cfg).ok, false);
+  assert.equal(m.checkTrustlines([U], cfg).rows.PYUSD.present, false);
+  assert.equal(m.checkTrustlines([P], cfg).ok, false);
+  assert.equal(m.checkTrustlines([U, {...P, asset_issuer: 'GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA'}], cfg).ok, false);
+  assert.equal(m.checkTrustlines([U, {...P, is_authorized: false}], cfg).ok, false);
+  assert.equal(m.checkTrustlines([], cfg).ok, false);
+});
