@@ -6,3 +6,4 @@ extern crate std;
 include!("common.rs");
 include!("group.rs");
 include!("real.rs");
+include!("fresh.rs");

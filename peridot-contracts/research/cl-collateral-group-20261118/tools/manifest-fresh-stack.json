@@ -1,0 +1,13 @@
+{
+  "note": "Fresh-stack (option A) live Mainnet quote. Upload rows simulate the EXACT frozen bytes. Create rows for new code use an on-chain PROXY of similar size (create cost does not depend on code size beyond the code-entry read); the USDC market create uses its REAL on-chain code. Re-run with the final bytes once the upgradeability change lands.",
+  "steps": [
+    {"step": "U1 upload vault v2", "kind": "upload", "file": "../../../target/clg/freeze/art/vault-v2/cl_share_vault.wasm"},
+    {"step": "U2 upload receipt StgV2", "kind": "upload", "file": "../../../target/clg/freeze/art/receipt-v2/receipt_vault.wasm"},
+    {"step": "U3 upload group controller", "kind": "upload", "file": "../../../target/clg/freeze/art/ctrl-group/simple_peridottroller.wasm"},
+    {"step": "C1 create vault v2", "kind": "create", "proxyFor": "vault v2 (proxy: live vault code e6638030, 123,430 B)", "wasmHash": "e66380303e50c6177492d1c9e880edcc84b4258da2cd46be46a1b3f8fe12e3e9"},
+    {"step": "C2 create receipt StgV2", "kind": "create", "proxyFor": "receipt StgV2 (proxy: live StgV1 code 140dcaab, 112,328 B)", "wasmHash": "140dcaab08680be910f9ea65f6682b72c1c4029bd991bca9397b516af9b66823"},
+    {"step": "C3 create group controller", "kind": "create", "proxyFor": "group controller (proxy: live controller code 847894a6, 63,285 B)", "wasmHash": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902"},
+    {"step": "C4 create USDC group market (real code 4229b7ef)", "kind": "create", "wasmHash": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e"},
+    {"step": "C4b create USDC group market (alternative real code 5630a701)", "kind": "create", "wasmHash": "5630a701bc7f29ea1334cfd1c12e349664da7376fd86df080d587ea9f685e452"}
+  ]
+}
