@@ -78,3 +78,14 @@ cash_topup EURC 2
 ```
 
 These use the existing `ledger_call`, `read_fresh`, `expect_read` and `check_admin` terminal helpers. Every deposit has before/after accounting checks and requires Ledger approval. Stop on a failed readback or unknown submission; reconcile before resuming individual remaining markets. DefiLlama preparation follows the approved top-up sequence and points only at fresh addresses; no PR is opened here.
+
+## Keeper repair, 2026-11-21 (user approval "TTL: a, b, c")
+
+- **Upgrade code on hold.** The reviewed upgrade code is not extended for now: controller `f41e5260…` and receipt `5630a701…`. `guards()` still accepts it as live code. On 2026-11-21 each entry had about 2,019,000 ledgers left (about 117 days).
+  - **Re-add on or after 2026-12-21.** The user decides, then a reviewed commit sets `UPGRADE_CODE_HOLD.enabled=true`. Nothing re-enables it automatically.
+  - **Alerts.** `LIVE_CODE_TTL_LOW` fires below 1,500,000 ledgers, which is expected around 2026-12-21. `UPGRADE_CODE_HOLD_REVIEW_DUE` fires from 2026-12-21.
+  - **Cost.** Re-adding then costs about 115 XLM to bring both entries back to 150 days. After that, ongoing cost is about 55 XLM per month.
+- **Old code dropped automatically.** The old code `847894a6…` and `4229b7ef…` is dropped from extension on chain. That happens only when all five instance reads succeed, none of the instances runs it, and no `PendingUpgradeHash` targets it.
+- **Discovery.** Discovery now uses a contract-event index, a walk of each matching transaction's metadata, and a state probe of every storage template. It no longer needs history older than RPC retention. A gap is recorded as `HISTORY_GAP` and the state probe rebuilds the inventory, so maintenance does not halt.
+- **Market state.** Borrowing and reserve state are recorded, not asserted. Signing is still limited to one native TTL operation on allowlisted keys, enforced in `validate()`.
+- **Spending.** Runs extend the most urgent keys first, under a rolling 24-hour cap of 80 XLM. An unaffordable batch, or one whose quote fails, is deferred; the run then ends `DEGRADED` and retries hourly.
