@@ -4,6 +4,51 @@ Stream 2. Read-only throughout: nothing was signed, sent, uploaded, deployed or 
 used only for `getLatestLedger`, `getAccount`, `getLedgerEntries` and `simulateTransaction` on
 `https://soroban-rpc.mainnet.stellar.gateway.fm`, plus Horizon reads of pilot transactions.
 
+## FINAL: release candidates of commit 6e83fd7 (this section supersedes the figures in §1, §2 and §4)
+
+Artifacts are in `target/clg/upg/` (SHA256SIZES.txt there). All are under 131,072 B, and every upload
+write stays under the live 132,096 B per-transaction write limit.
+
+| Contract | Bytes | sha256 |
+|---|---:|---|
+| Vault v2 (upgradeable) | 125,559 | `6fd8599a9b369ab84ba9ee8fd95642cde50621c07d5cc37cd278e8f225a4870e` |
+| Receipt StgV2 (Mainnet features) | 125,589 | `bf8864e11a6f40740fc15b2832b07eaa58523310c8d3c4fc931162ebe6f41da6` |
+| Group controller (G0–G11) | 64,931 | `719914b17f2ceeffe4e77fe0e0a5369066da4ccb8201691e09fea5333710234d` |
+| USDC group market | 89,808 | `5630a701…e452`, already on chain |
+
+**Live RPC quote.** Ledgers 65592556–65592557 (`sims/quote-final-20261121T081351Z.json`, manifest
+`tools/manifest-final.json`). The payer and source of every step is the admin GC4T…7FP.
+
+| Step | min resource (XLM) | cap (XLM) | CPU | write B |
+|---|---:|---:|---:|---:|
+| U1 upload vault v2 | 167.6576637 | 201.1911964 | 106,660,682 | 125,660 |
+| U2 upload receipt StgV2 | 162.7074984 | 195.2509980 | 106,685,953 | 125,692 |
+| U3 upload group controller | 92.3864607 | 110.8657528 | 55,692,865 | 65,032 |
+| C1–C4 create ×4 | 4 × 0.0209 | 4 × 0.0271 | ≤ 1.94M | 104 |
+| Configuration, 30 transactions (§4 basis) | ≈ 2.5 expected | ≤ 5 | — | — |
+| First command | ≈ 1 | ≤ 2 | — | — |
+| **Total** | **≈ 372 expected** (uploads at about 87% of min resource) | **≈ 514.5** | | |
+
+**Withdrawal.** Recommend **400 XLM = 4,000,000,000 raw pTokens** from XLM market CBHMG4CN….
+- The worst case is 514.5 + 3 reserve + buffer against 172.29 XLM held.
+- The strict minimum, relying on the refunds between sequential uploads, is about 230 XLM.
+
+**Emulation on these exact bytes.** Public network id, live state at ledger 65592376,
+`target/clg/fresh/state/fresh-result-final.json`, sha256 `de1e2c75…a669`.
+- All 30 ceremony rows pass, then the first command (8), borrow and repay (8), and every vault
+  upgrade-gate row: cancel, timelock, unpaused refused, wrong hash refused, then `upgrade_wasm` to the
+  d3ea4f91 marker succeeds.
+- **State is preserved** across the upgrade.
+- The post-upgrade second command passes P1–P8; P9 is the frozen-oracle artefact described in §3c.
+- **Maxima:** 74 entries (second `stage_mint`), 59.6M CPU.
+
+**Reproducibility note on the receipt.** bf8864e1 was built at `target/clg/ws/receipt-v2`. That tree's
+Cargo.toml points the OpenZeppelin dependency at `../openzeppelin-stellar-contracts` (the ws copy), not at
+the canonical absolute path `/Users/joshua/Peridot/Peridot-Soroban/openzeppelin-stellar-contracts`.
+The receipt bytes depend on that path, as shown by e6695dbd versus dbc42f12 on the same pre-upgradeability
+source. The rule from the cash release is "canonical path only". Either rebuild at the canonical OZ path
+before upload, or record the exact tree path as part of the reproduction recipe.
+
 ## 0. Why the plan is a fresh stack
 
 The live vault CD6N cannot be upgraded.
