@@ -192,6 +192,42 @@ Findings:
   at post-move weights is covered natively by `seize_tests.rs`
   `route_b_segment_release_pays_every_holder_once_at_post_move_weights`.
 
+### In-kind exit footprint on live Mainnet pool state (compiled release bytes, public network id)
+
+Setup and evidence:
+- **Harness:** `fresh_close_rows` with `FRESH_ONLY_CLOSE=1`. Evidence: `target/clg/fresh/state/fresh-result-96e7b3c-close.json`, sha256 `90133de0…82bd`.
+- **Position:** the fresh vault holds one concentrated position, range [-20, 20], from the owner's ≈ 100 PYUSD.
+- **Pool:** the live Aquarius PYUSD/USDC pool and its live reward and gauge contracts.
+- **Pool states:** the base state (tick −2), then real swaps:
+  - 200,000 PYUSD→USDC moves the pool to tick −561;
+  - 2,000,000 PYUSD→USDC also stops at tick −561, its liquidity limit;
+  - 2,000,000 USDC→PYUSD moves it to tick +420.
+  Both pushed states cross several initialised ticks and leave the position's range.
+
+Worst case per row over the four pool states. Entries are memory + disk + writes.
+
+| Row | Not entered, no debt | Entered, no debt | Entered, 10 USDC debt |
+|---|---|---|---|
+| `stage_prepare_close` 10 / 50 / 100 % | 22 (15+1+6), 16 keys, 4.64M CPU | 57 (50+1+6), 51 keys, 8.78M | 68 (56+1+11), 57 keys, 25.86M; **100 % → #2106** (cover rule, correct) |
+| `stage_withdraw` in kind, 10 / 50 % | **84** (53+3+28), 56–57 keys, ≤ **81.0M** | 84, ≤ 81.0M | 84, ≤ **81.04M** |
+| `stage_withdraw` in kind, 100 % | **86** (54+3+29 base; 55+3+28 after the USDC push), 56–57 keys, ≤ 76.6M | 86 | — |
+| `stage_emergency_exit` (extract) 10 / 50 / 100 % | **88–91** (59+1+31 at 100 % base), 59–60 keys, ≤ 77.6M, ≤ 9.7 MB | (refused while entered, #2116) | — |
+| `stage_emergency_pay` | 18–21, 12–13 keys, ≤ 6.0M | — | — |
+
+Against the rules and limits:
+- **85-entry stop line:** exceeded by `stage_withdraw` at 100 % (86, in two pool states) and by every emergency extract (88–91).
+- **100-entry internal limit:** never exceeded.
+- **97M CPU stop:** never reached (peak 81.04M).
+- **Network limits:** CPU at most about 20 % of 400M; footprint at most 60 of 400 keys; writes at most 31 of 200; write bytes at most 20.6 KB of 132 KB; memory at most 9.7 MB of 40 MB.
+- **Fraction does not matter.** 10 % and 50 % are identical, and 100 % adds one write (position removal) while using less CPU.
+- **Mainnet runs below Stream A's Testnet figure.** Stream A measured 91 entries / 91.3M on Testnet R2. Mainnet stays at or below 86 / 81.0M for the in-kind withdraw.
+
+**What drives the growth: the Aquarius venue, not Peridot code.**
+- Withdraw-in-kind keys by owner: **pool 19–21**, vault 11, receipt 2, the Aquarius reward and gauge contracts 2 + 2 + 1 + 1, SAC token entries 3 + 3 + 3, code entries 6, plus account and trustline entries.
+- Pushing the price across initialised ticks adds 2 pool keys (tick and bitmap chunks plus a reward-plane chunk) and +9–13M CPU, but fewer writes (25–27 against 28).
+- **Can a narrower range bound it?** No. The position is already the narrowest Mainnet-legal one: [-20, 20], two ticks at spacing 20, asserted by `stage_bind`. The touched pool chunks depend on the pool's own tick, bitmap and reward-plane layout, not on Peridot's range, so a narrower range or fewer chunks is not available without a contract change.
+- **What actually bounds the risk** is the measured headroom: at least 9 entries and at least 16M CPU against our internal limits.
+
 ### Coverage limit
 
 After the liquidation, D3 and route B rows above, the remaining gaps under the public network id on Mainnet-feature bytes are these. Route B is exercised only with an empty bucket. `stage_prepare_close` with debt is covered only as the F2a refusal. Signed and Core application with real authorization trees is not covered at all, because every row uses `mock_all_auths`.

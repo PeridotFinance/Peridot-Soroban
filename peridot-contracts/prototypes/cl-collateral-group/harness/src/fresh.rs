@@ -133,7 +133,11 @@ fn fresh_inner() {
                 ];
                 let (rows, s3, ok3) = seq("FRESH borrow path on the fresh stack (CAFJ USDC price)", &s2, &bl);
                 results.push(rows);
-                if ok3 { fresh_exit_rows(&s2, &s3, &f, &mut results); fresh_liq_rows(&s2, &f, &mut results, &mut log); }
+                if ok3 {
+                    let only_close = std::env::var("FRESH_ONLY_CLOSE").map(|v| v == "1").unwrap_or(false);
+                    if !only_close { fresh_exit_rows(&s2, &s3, &f, &mut results); fresh_liq_rows(&s2, &f, &mut results, &mut log); }
+                    fresh_close_rows(&s2, &s3, &f, &mut results, &mut log);
+                }
                 if ok3 && std::path::Path::new(&format!("{}/vault-v2-marker.wasm", wdir())).exists() {
                     fresh_upgrade_rows(&s3, &f, &mut results, &mut log);
                 }
@@ -536,4 +540,68 @@ fn fresh_liq_rows(s2: &LedgerSnapshot, f: &Fresh, results: &mut StdVec<Value>, l
 }
 fn rows_last_result(results: &StdVec<Value>) -> Value {
     results.last().and_then(|s| s["rows"].as_array()).and_then(|r| r.last()).map(|r| r["result"].clone()).unwrap_or(Value::Null)
+}
+
+/// In-kind exit footprint on the COMPILED release bytes, public network id, live pool state:
+/// stage_prepare_close + stage_withdraw (min_swap 0 = in kind) at 10 / 50 / 100 % of the owner's units,
+/// and the emergency extract/pay pair, for (a) not entered, no debt; (b) entered, no debt; (c) entered with
+/// 10 USDC debt (fresh NAV first). Repeated after real swaps move the live pool across initialised ticks.
+fn fresh_close_rows(s2: &LedgerSnapshot, s3: &LedgerSnapshot, f: &Fresh, results: &mut StdVec<Value>, log: &mut StdVec<Value>) {
+    let (r, c, m) = (f.r.clone(), f.c.clone(), f.m.clone());
+    let units = |snap: &LedgerSnapshot| { let r = r.clone(); u(&read(snap, move |env| tv(env, &r, "stage_units", (a(env, O),).into_val(env)))) };
+    let next_id = |snap: &LedgerSnapshot| { let r = r.clone(); u(&read(snap, move |env| tv(env, &r, "stage_state", Vec::new(env)))["next_id"]) as u64 };
+    let slot = |snap: &LedgerSnapshot| read(snap, |env| tv(env, POOL, "get_slot0", Vec::new(env)));
+    // debt branch base: s2 + supplier liquidity + enter both + price + borrow 10 USDC
+    let (sup, r1, m1) = (f.supplier.clone(), r.clone(), m.clone());
+    let (rows, sd, okd) = seq("FRESH CLOSE setup: borrower with 10 USDC debt", s2, &[
+        call("setup supplier deposit", &m, "deposit", move |e| (a(e, &sup), 10_000_000_000u128).into_val(e), false),
+        call("setup checkpoint_nav", &r, "checkpoint_nav", |e| Vec::new(e), false),
+        call("setup enter receipt", &c, "enter_market", move |e| (a(e, O), a(e, &r1)).into_val(e), false),
+        call("setup enter usdc", &c, "enter_market", move |e| (a(e, O), a(e, &m1)).into_val(e), false),
+        call("setup cache_price(USDC)", &c, "cache_price", |e| (a(e, USDC),).into_val(e), false),
+        call("setup borrow 10 USDC", &m, "borrow", |e| (a(e, O), 100_000_000u128).into_val(e), false)]);
+    results.push(rows);
+    // pool states: base, then real swaps by a fresh trader
+    let push = |snap: &LedgerSnapshot, pyusd_in: bool, amount: u128| -> Option<LedgerSnapshot> {
+        let trader = { let s = step_env(snap); let x = Address::generate(&s.env); astr(&x) };
+        let (t1, t2) = (trader.clone(), trader.clone());
+        let tok = if pyusd_in { PYUSD } else { USDC };
+        let (rows, x, ok) = seq(&format!("FRESH CLOSE pool push: swap {} {}", amount, if pyusd_in { "PYUSD->USDC" } else { "USDC->PYUSD" }), snap, &[
+            call("setup mint to trader", tok, "mint", move |e| (a(e, &t1), amount as i128).into_val(e), false),
+            call("setup trader swap", POOL, "swap", move |e| {
+                let toks: Vec<Address> = e.invoke_contract(&a(e, POOL), &Symbol::new(e, "get_tokens"), Vec::new(e));
+                let pyusd_idx: u32 = if toks.get(0).unwrap() == a(e, PYUSD) { 0 } else { 1 };
+                let i_in = if pyusd_in { pyusd_idx } else { 1 - pyusd_idx };
+                (a(e, &t2), i_in, 1 - i_in, amount, 0u128).into_val(e) }, false)]);
+        let _ = rows; if ok { Some(x) } else { None }
+    };
+    let states: StdVec<(&str, bool, u128)> = vec![("base (live pool)", true, 0), ("after 200,000 PYUSD->USDC", true, 2_000_000_000_000), ("after 2,000,000 PYUSD->USDC", true, 20_000_000_000_000), ("after 2,000,000 USDC->PYUSD", false, 20_000_000_000_000)];
+    for (name, dir, amt) in states {
+        let pick = |b: &LedgerSnapshot| -> Option<LedgerSnapshot> { if amt == 0 { Some(b.clone()) } else { push(b, dir, amt) } };
+        let (Some(p2), Some(p3)) = (pick(s2), pick(s3)) else { log.push(json!({"close_push_failed": name})); continue };
+        let pd = if okd { pick(&sd) } else { None };
+        log.push(json!({"close_pool_state": name, "slot0": slot(&p2)}));
+        for (scen, base, debt) in [("not entered, no debt", Some(p2.clone()), false), ("entered, no debt", Some(p3.clone()), false), ("entered, 10 USDC debt", pd.clone(), true)] {
+            let Some(base) = base else { continue };
+            let n = units(&base);
+            for pct in [10u128, 50, 100] {
+                let sh = n * pct / 100; let id = next_id(&base); let dl = base.timestamp + 3000;
+                let mut calls = StdVec::new();
+                if debt { calls.push(call("setup checkpoint_nav (fresh NAV for the health check)", &r, "checkpoint_nav", |e| Vec::new(e), false)); }
+                calls.push(call(&format!("prepare_close {pct}% [{scen}; {name}]"), &r, "stage_prepare_close", move |e| (a(e, O), sh, 0u128, dl).into_val(e), true));
+                calls.push(call(&format!("withdraw in kind {pct}% [{scen}; {name}]"), &r, "stage_withdraw", move |e| (id,).into_val(e), true));
+                let (rows, _, _) = seq(&format!("FRESH CLOSE {name} | {scen} | {pct}%"), &base, &calls);
+                results.push(rows);
+            }
+            if !debt && scen.starts_with("not entered") {
+                for pct in [10u128, 50, 100] {
+                    let sh = n * pct / 100; let id = next_id(&base);
+                    let (rows, _, _) = seq(&format!("FRESH EMERG {name} | {scen} | {pct}%"), &base, &[
+                        call(&format!("emergency extract {pct}% [{name}]"), &r, "stage_emergency_exit", move |e| (a(e, O), sh, true).into_val(e), true),
+                        call(&format!("emergency pay {pct}% [{name}]"), &r, "stage_emergency_pay", move |e| (id,).into_val(e), true)]);
+                    results.push(rows);
+                }
+            }
+        }
+    }
 }
