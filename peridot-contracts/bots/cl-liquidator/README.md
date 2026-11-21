@@ -80,3 +80,30 @@ slowed. That broke the D3 chain 7 times in 20 min. Setting `heartbeatIdentity` p
 - CLI sends now journal the transaction hash parsed from the CLI's stderr.
 
 On-chain gap distribution: `prototypes/cl-collateral-group/testnet-real/gaps.py`.
+
+## Mainnet signer (HG4, 21 Nov 2026)
+
+A config with the exact Mainnet passphrase takes a separate path (`src/mainnet.mjs`); the Testnet CLI-alias executor
+above is unchanged and still refuses Mainnet. Review notes and operator steps:
+`research/cl-collateral-group-20261118/SIGNER-KEEPER-V6.md`.
+- **Keys:** two 0600 key files created ON the Droplet by `src/keygen.mjs` (only the public key is printed): the
+  liquidator (`executorKeyFile`) and the fee-only heartbeat account (`heartbeatKeyFile`, `cl-hb-main`). CLI aliases
+  (`executorIdentity`, `heartbeatIdentity`) are refused on Mainnet. A key file is refused if it is a symlink, has
+  group/other bits, has a foreign owner or does not match the configured public key.
+- **Live = `--live` AND `DRY_RUN=false`.** Anything else is a dry run.
+- **Start checks:** RPC passphrase; code pins of receipt, vault, controller and USDC market (`pins`, re-read before
+  every signature); role separation (admin, cash liquidator, cash pause key, investment keeper, T3, on-chain guardians,
+  keeper and admins); one process per data directory (`run.lock`); live mode also needs BOTH the USDC and PYUSD
+  trustlines (`src/trustlines.mjs`; without PYUSD an in-kind exit payout reverts with SAC #13) and a passed dry-run
+  gate (`dryRunGateHours`, default 12, of error-free `--watch` dry-run cycles on the same config and source).
+- **Every send:** allowlisted call and arguments (APPROVE and L3 bounded by `repayCapRaw`, L3 only for listed
+  borrowers), source-account-only authorisation with no nested call, no restore, CPU <= 97M, a per-call RESOURCE fee
+  ceiling (`fees.resourceCeilingStroops`: 0.5 XLM for L1a/L1b/L2/APPROVE, 2 XLM for L3/L4/L5 and exits; heartbeat
+  0.5 XLM), a per-transaction fee cap and a persisted per-UTC-day budget per account. Above a ceiling the call is
+  refused with an `alert` and never signed. The hash is journalled before sending; an unknown outcome leaves the
+  intent unresolved. Nothing is re-sent automatically.
+- **Heartbeat:** `src/heartbeat.mjs` unchanged; on Mainnet its `sign` is the key-file signer, which accepts only
+  `receipt.checkpoint_nav()` from `heartbeatAccount` with no auth.
+- **Seized units:** `src/exit-seized.mjs` (manual, service stopped): `show`, `prepare-close`, `withdraw` (in kind),
+  or the `emergency-exit` / `emergency-pay` fallback. Dry run unless `CONFIRM_EXIT=yes`.
+- Config template: `config/mainnet.example.json`. Droplet: `research/cl-collateral-group-20261118/droplet/`.

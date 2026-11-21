@@ -91,7 +91,7 @@ async function send(cfg, exec, j, s, obs) {
   const res = await exec(call.contract, call.fn, call.args, {onSigned: hash => j.note({of: seq, stage: s.stage, key, hash, signed: true})});
   if (res.unknown) { out({level: 'alert', msg: `${s.stage} outcome unknown (timeout/signal/no final status): intent left unresolved`, hash: res.hash ?? null, stderr: res.stderr}); return false; }
   j.result(seq, s.stage, key, obs.now, res.ok, {hash: res.hash ?? hashFromCli(res.stderr), retval: res.stdout === 'false' ? false : res.stdout === 'true' ? true : res.stdout.slice(0, 200), stderr: res.ok ? undefined : res.stderr});
-  out({level: res.ok ? 'info' : 'warn', msg: `sent ${s.stage}`, ok: res.ok, hash: res.hash ?? hashFromCli(res.stderr), stdout: res.stdout, stderr: res.ok ? undefined : res.stderr});
+  out({level: res.ok ? 'info' : res.refused ? 'alert' : 'warn', msg: res.refused ? `${s.stage} refused before signing` : `sent ${s.stage}`, ok: res.ok, hash: res.hash ?? hashFromCli(res.stderr), stdout: res.stdout, stderr: res.ok ? undefined : res.stderr});
   return res.ok;
 }
 
@@ -167,7 +167,9 @@ async function mainMainnet(cfg, liveFlag, env = process.env) {
   if (live) {
     const armed = gate.requireArmed();
     exec = makeSender(cfg, {rpc, S, account: cfg.liquidator, keyFile: cfg.executorKeyFile, kind: 'liquidator', allow: botAllow, budget});
-    if (has('--watch') && cfg.heartbeatAccount) hb = makeHeartbeat({S, rpc, cfg, journal: j, sign: makeHeartbeatSigner(cfg, {S, budget}), out}).start();
+    // A signer refusal (resource ceiling, fee cap, daily budget) surfaces from heartbeat.mjs as 'heartbeat failed': raise it to an alert.
+    const hbOut = o => out(o?.msg === 'heartbeat failed' && /^refused/.test(o.err ?? '') ? {...o, level: 'alert', msg: 'heartbeat refused by the Mainnet signer'} : o);
+    if (has('--watch') && cfg.heartbeatAccount) hb = makeHeartbeat({S, rpc, cfg, journal: j, sign: makeHeartbeatSigner(cfg, {S, budget}), out: hbOut}).start();
     out({level: 'info', msg: 'dry-run gate passed', since: armed.since, last: armed.last, armedAt: armed.armedAt, cycles: armed.cycles});
   }
   out({msg: 'start', live, watch: has('--watch'), network: MAINNET, signer: live ? 'key file' : 'none (dry run)', trustlines, code: checks.code, pendingUpgrades: checks.pendingUpgrades,
