@@ -9,6 +9,7 @@ U=/Users/joshua/Peridot/clg-launch-20261122
 RPC=https://soroban-rpc.mainnet.stellar.gateway.fm
 NET="Public Global Stellar Network ; September 2015"
 mkdir -p "$U"
+export CLG_RUN_DIR="$U"
 
 _sign_send() {
   local n=$1 tool=$2 hd=$3 okpat=${4:-'"ok": true'}
@@ -45,8 +46,20 @@ step() {
     || { echo "PREPARE FAILED $n"; cat "$U/$n.unsigned.json"; return 1; }
   local hd; hd=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1])).hdPath)' "$U/$n.unsigned.json")
   echo "== $n: $(grep -o '"n": "G[0-9]*"' "$U/$n.unsigned.json") $(grep -o '"call": "[^"]*"' "$U/$n.unsigned.json") $(grep -o '"maxFeeXlm": [0-9.]*' "$U/$n.unsigned.json")"
-  _sign_send "$n" "$T/clg-ceremony.cjs" "$hd"
+  _sign_send "$n" "$T/clg-ceremony.cjs" "$hd"; local rc=$?
+  grep -q '"mandatoryReset"' "$U/$n.unsigned.json" && echo "!! RATE RAISED. Reset within 30 min, whatever happens:  step g56-rate-down prepare rate.down"
+  _ratewin
+  return $rc
 }
+
+# After the first-liquidation raise: print the window (warns at 25 min, OVERDUE at 30) until the 8 % reset lands.
+_ratewin() {
+  ls "$U"/*rate-up.send.json >/dev/null 2>&1 || return 0
+  ( cd "$T" && node clg-ceremony.cjs rate-window 2>/dev/null ) | node -e '
+    const j=JSON.parse(require("fs").readFileSync(0,"utf8")); if (!j.raised || j.reset) process.exit(0);
+    console.log((j.level==="ok"?"   ":"!! ")+"rate raised "+j.minutes+" min ago ("+j.level+"); reset by "+j.resetBy+": "+j.next);' || true
+}
+rwin() { ( cd "$T" && node clg-ceremony.cjs rate-window ); }
 
 # Pilot close (CCGK/CD6N) with the existing owner tool; admin account (path 0) only.
 pstep() {

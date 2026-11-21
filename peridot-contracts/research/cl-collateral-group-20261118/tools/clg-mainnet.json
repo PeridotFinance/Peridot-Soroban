@@ -193,6 +193,14 @@
         "writes": 17,
         "source": "BUILD-REPORT.md section 2 (candidate bytes); PLACEHOLDER: replace with MAINNET-SIMS.md on the frozen upgradeable bytes"
       }
+    },
+    "firstLiquidation": {
+      "path": "rate-raise (primary, user-approved 21 Nov); CF-0 is the fallback after 15 min without a shortfall",
+      "raisedRateScaled": "10000000",
+      "maxRaiseMinutes": 30,
+      "warnMinutes": 25,
+      "fallbackAfterMinutes": 15,
+      "proof": "5630a701 live sims by the coordinator: set_borrow_rate(10000000) and (80000) accepted, immediate; 10000001 refused (cap)"
     }
   },
   "heartbeat": {

@@ -19,10 +19,12 @@ test('launch caps pass; a larger borrow cap or smaller inventory is refused', ()
   const c4 = base(); c4.params.controller.liquidationFeeScaled = '50000'; assert.throws(() => m.checkCaps(c4), /fee must be 0/);
   const c5 = base(); c5.params.receipt.cfScaled = '600000'; assert.throws(() => m.checkCaps(c5), /50 %/);
 });
-test('steps are numbered G1..G61 in order, switch after the liquidator gate, latches last', () => {
+test('steps are numbered G1..G60 (+FB1-FB3 fallback) in order, switch after the liquidator gate, latches last', () => {
   const st = m.steps(base()), signed = st.filter(s => s.n);
-  assert.equal(signed.length, 61);
-  signed.forEach((s, i) => assert.equal(s.n, `G${i + 1}`));
+  const main = signed.filter(s => !s.fallback), fbs = signed.filter(s => s.fallback);
+  assert.equal(main.length, 60);
+  main.forEach((s, i) => assert.equal(s.n, `G${i + 1}`));
+  assert.deepEqual(fbs.map(s => s.n), ['FB1', 'FB2', 'FB3']);
   const idx = id => st.findIndex(s => s.id === id);
   assert(idx('gate.liquidator') < idx('usdcMarket.set_cash_borrowing_enabled'));
   assert(idx('gate.first-liquidation') < idx('pilot.close'));
@@ -67,4 +69,33 @@ test('liquidator gate needs BOTH trustlines with the exact issuers (PYUSD missin
   assert.equal(m.checkTrustlines([U, {...P, asset_issuer: 'GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA'}], cfg).ok, false);
   assert.equal(m.checkTrustlines([U, {...P, is_authorized: false}], cfg).ok, false);
   assert.equal(m.checkTrustlines([], cfg).ok, false);
+});
+test('first liquidation: raise, exact-limit borrow, mandatory reset next to it, fallback after', () => {
+  const cfg = base(), st = m.steps(cfg), idx = id => st.findIndex(s => s.id === id), get = id => st[idx(id)];
+  assert(idx('rate.up') < idx('team.checkpoint_nav') && idx('team.checkpoint_nav') < idx('team.borrow'));
+  assert(idx('team.borrow') < idx('team.repay') && idx('team.repay') < idx('rate.down') && idx('rate.down') < idx('pilot.close'));
+  assert.equal(get('rate.up').n, 'G52'); assert.equal(get('rate.down').n, 'G56');
+  assert.equal(get('rate.up').resetCommand, 'step g56-rate-down prepare rate.down');
+  assert.equal(get('rate.up').preSim, 'rate-both-directions');
+  assert.equal(get('rate.down').fast, true, 'the reset never waits for the liquidation gate');
+  assert.equal(get('team.borrow').amount, 'account_liquidity');
+  for (const id of ['liq.disable_cf', 'cf.propose', 'cf.execute']) assert.equal(get(id).fallback, true);
+});
+test('rate plan: cap 1000 %, reset exactly 8 %, supply rate must allow the reset, window <= 30 min', () => {
+  const P = base().params;
+  assert.equal(m.checkRatePlan(P, 0n), true);
+  assert.throws(() => m.checkRatePlan(P, 80001n), /supply rate/);
+  assert.throws(() => m.checkRatePlan({...P, firstLiquidation: {...P.firstLiquidation, raisedRateScaled: '10000001'}}, 0n), /cap/);
+  assert.throws(() => m.checkRatePlan({...P, firstLiquidation: {...P.firstLiquidation, maxRaiseMinutes: 45}}, 0n), /30 min/);
+  assert.throws(() => m.checkRatePlan({...P, usdcMarket: {...P.usdcMarket, borrowRateScaled: '90000'}}, 0n), /8 %/);
+  assert.equal(m.rateWindow(0, 24 * 60, P).level, 'ok');
+  assert.equal(m.rateWindow(0, 25 * 60, P).level, 'WARN');
+  assert.equal(m.rateWindow(0, 30 * 60, P).level, 'OVERDUE');
+});
+test('exact-limit borrow: USD value never exceeds the liquidity, leftover below one raw unit', () => {
+  for (const [liq, price, scale] of [[249_900_000n, 100_172_340_000_000n, 100_000_000_000_000n], [1n, 99_990_000_000_000n, 100_000_000_000_000n], [123_456_789n, 100_000_000_000_000n, 100_000_000_000_000n]]) {
+    const a = m.borrowAtLimit(liq, price, scale);
+    assert(a * price / scale <= liq);
+    assert((a + 1n) * price / scale > liq);
+  }
 });

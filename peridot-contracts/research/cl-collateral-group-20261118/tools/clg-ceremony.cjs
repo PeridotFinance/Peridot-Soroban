@@ -23,6 +23,7 @@
 //   first-touch <cache-price|nav> --out F   G41a / G49a: admin pays the first (rent-bearing) cache_price / checkpoint_nav
 //   trust-liquidator --out F          FALLBACK only: unsigned changeTrust USDC + PYUSD for the liquidator. The normal path
 //                                     is src/trustlines.mjs on the host (LAUNCH.md section 6.3a)
+//   rate-window [hash]                minutes since the first-liquidation rate raise: ok / WARN (25) / OVERDUE (30)
 //   status <hash>                     RPC outcome (read-only)
 //
 // Refusals: any retired pre-incident contract as target or argument; the pilot vault/receipt except their two
@@ -89,7 +90,8 @@ function checkCaps(cfg) {
 function steps(cfg) {
   const I = ids(cfg), D = cfg.deps, A = cfg.admin, P = cfg.params, out = [];
   let n = 0;
-  const add = s => { s.n = s.kind === 'gate' ? null : `G${++n}`; out.push(s); };
+  let fb = 0;
+  const add = s => { s.n = s.kind === 'gate' ? null : s.fallback ? `FB${++fb}` : `G${++n}`; out.push(s); };
   const tx = (id, target, method, args, done, why, extra = {}) => add({id, kind: 'tx', signer: 'admin', target, method, args, done, why, auth: 'root', ...extra});
   // A. funding (owner's own cash-market pTokens)
   for (const [m, k] of [['XLM', 'withdrawXlmPTokensRaw'], ['USDC', 'withdrawUsdcPTokensRaw'], ['PYUSD', 'withdrawPyusdPTokensRaw']])
@@ -128,7 +130,8 @@ function steps(cfg) {
   tx('usdcMarket.set_min_cash_reserve_bps', M, 'set_min_cash_reserve_bps', () => [addr(A), u32(P.usdcMarket.minCashReserveBps)], eq(view(M, 'get_min_cash_reserve_bps'), P.usdcMarket.minCashReserveBps), `max utilisation ${(10000 - P.usdcMarket.minCashReserveBps) / 100} %`);
   for (const [m, k, rk] of [['set_supply_cap', 'supplyCapRaw', 'SupplyCap'], ['set_borrow_cap', 'borrowCapRaw', 'BorrowCap'], ['set_reserve_factor', 'reserveFactorScaled', 'ReserveFactorScaled'],
     ['set_flash_loan_fee', 'flashLoanFeeScaled', 'FlashLoanFeeScaled'], ['set_borrow_rate', 'borrowRateScaled', 'BorrowYearlyRateScaled']])
-    tx(`usdcMarket.${m}`, M, m, () => [u128(P.usdcMarket[k])], async x => String(await raw(M, key(rk))(x)) === String(P.usdcMarket[k]), `${k} = ${P.usdcMarket[k]}`);
+    tx(`usdcMarket.${m}`, M, m, () => [u128(P.usdcMarket[k])], async x => String(await raw(M, key(rk))(x)) === String(P.usdcMarket[k]), `${k} = ${P.usdcMarket[k]}`,
+      m === 'set_borrow_rate' ? {historical: true} : {}); // the first-liquidation raise changes it for <= 30 min
   tx('usdcMarket.enable_static_rates', M, 'enable_static_rates', () => [addr(A)], async x => (await raw(M, key('RatesReady'))(x)) === true && (await raw(M, key('InterestModel'))(x)) == null, 'static 8 % APR, no JRM (D8)');
   tx('usdcMarket.seed_minimum_supply', M, 'seed_minimum_supply', () => [addr(A), u128(P.usdcMarket.seedRaw)], async x => String(await inst(M, 'PermanentMinimumSupply')(x)) === P.usdcMarket.seedRaw, '1 USDC permanent floor', {auth: 'root+transfer', transferMax: P.usdcMarket.seedRaw});
   tx('usdcMarket.set_peridottroller', M, 'set_peridottroller', () => [addr(C)], eq(raw(M, key('Peridottroller')), C), 'bind to the group controller');
@@ -156,18 +159,25 @@ function steps(cfg) {
   add({id: 'team.open', kind: 'open', signer: 'team3', amount: P.team.openPyusdRaw, why: 'T3 stage_open on the new receipt; keeper session runs convert/mint/invest/finalise'});
   tx('team.enter.receipt', C, 'enter_market', () => [addr(T()), addr(R)], async x => ((await view(C, 'get_user_markets', [addr(T())])(x)) || []).includes(R), 'T3 enters the CL market', {signer: 'team3'});
   tx('team.enter.usdcMarket', C, 'enter_market', () => [addr(T()), addr(M)], async x => ((await view(C, 'get_user_markets', [addr(T())])(x)) || []).includes(M), 'T3 enters the USDC market', {signer: 'team3'});
+  // G. first liquidation, PRIMARY path (user-approved 21 Nov): temporary static-rate raise, then T3 borrows exactly 100 %.
+  tx('rate.up', M, 'set_borrow_rate', () => [u128(P.firstLiquidation.raisedRateScaled)], eq(raw(M, key('BorrowYearlyRateScaled')), u(P.firstLiquidation.raisedRateScaled)),
+    `RAISE static rate to ${Number(P.firstLiquidation.raisedRateScaled) / 1e4} % APR for <= ${P.firstLiquidation.maxRaiseMinutes} min; the 8 % reset (rate.down) is MANDATORY`,
+    {historical: true, preSim: 'rate-both-directions', resetCommand: 'step g56-rate-down prepare rate.down'});
   tx('team.checkpoint_nav', R, 'checkpoint_nav', () => [], async () => false, 'L1a (no auth) right before the borrow; repeatable', {signer: 'team3', auth: 'none', repeatable: true, fast: true});
   tx('team.borrow', M, 'borrow', () => [addr(T()), u128(P.team.borrowUsdcRaw)], async x => u((await view(M, 'get_user_borrow_balance', [addr(T())])(x)) || 0) > 0n, `T3 borrows ${fmt7(P.team.borrowUsdcRaw)} USDC within 60 s of the checkpoint`, {signer: 'team3', historical: true, fast: true,
-      pre: async x => { const st = await view(R, 'stage2_status')(x); assert(st && st.nav, 'no NAV checkpoint: run G52 first');
+      amount: 'account_liquidity',
+    pre: async x => { const st = await view(R, 'stage2_status')(x); assert(st && st.nav, 'no NAV checkpoint: run G52 first');
         const l = await x.rpc.getLatestLedger(); const age = Math.floor(Date.now() / 1000) - Number(st.nav.ts);
         assert(age <= 40, `NAV checkpoint ${age} s old (> 40 s): run G52 again with a new step name`); }});
-  // G. first liquidation (shortfall by the CF kill switch; the bot liquidates)
-  tx('liq.disable_cf', C, 'emergency_disable_collateral', () => [addr(R), bool(true)], eq(raw(C, key('MarketCF', addr(R))), 0n), 'CF -> 0 (durable, immediate): T3 becomes liquidatable; bot runs L1a..L5', {historical: true});
-  add({id: 'gate.first-liquidation', kind: 'gate', gate: 'first-liquidation', historical: true, why: 'one L3 + L5 landed for T3; liquidator holds the seized units'});
-  add({id: 'team.repay', kind: 'repay', signer: 'team3', why: 'T3 repays the remaining debt (repay never depends on the sleeve)'});
-  tx('cf.propose', C, 'set_market_cf', () => [addr(R), u128(P.receipt.cfScaled)], eq(raw(C, key('PendingMarketCF', addr(R))), u(P.receipt.cfScaled)), 'PROPOSE CF restore; executable 24 h later; cancel = emergency disable-cf (removes the pending CF)', {historical: true});
-  add({id: 'gate.cf-eta', kind: 'gate', gate: 'cf-eta', historical: true, why: 'PendingMarketCFEta + 30 s has passed'});
-  tx('cf.execute', C, 'set_market_cf', () => [addr(R), u128(P.receipt.cfScaled)], eq(raw(C, key('MarketCF', addr(R))), u(P.receipt.cfScaled)), 'EXECUTE CF restore (same call after the ETA)');
+  add({id: 'gate.first-liquidation', kind: 'gate', gate: 'first-liquidation', historical: true, why: 'one L3 + L5 landed for T3; liquidator holds the seized units (15 min without a shortfall -> reset the rate, then the CF-0 fallback FB1-FB3)'});
+  add({id: 'team.repay', kind: 'repay', signer: 'team3', fast: true, why: 'T3 repays the remaining debt (repay never depends on the sleeve)'});
+  tx('rate.down', M, 'set_borrow_rate', () => [u128(P.usdcMarket.borrowRateScaled)], eq(raw(M, key('BorrowYearlyRateScaled')), u(P.usdcMarket.borrowRateScaled)),
+    'MANDATORY reset to 8 % APR, <= 30 min after rate.up, whether or not the liquidation happened', {fast: true});
+  add({id: 'gate.rate-reset', kind: 'gate', gate: 'rate-reset', historical: true, why: 'BorrowYearlyRateScaled = 80000 and T3 debt = 0'});
+  // FALLBACK only (no shortfall 15 min after the borrow): CF -> 0, liquidate, then the 24 h CF restore. Numbered FB1-FB3.
+  tx('liq.disable_cf', C, 'emergency_disable_collateral', () => [addr(R), bool(true)], eq(raw(C, key('MarketCF', addr(R))), 0n), 'FALLBACK: CF -> 0 (durable, immediate)', {historical: true, fallback: true, fast: true});
+  tx('cf.propose', C, 'set_market_cf', () => [addr(R), u128(P.receipt.cfScaled)], eq(raw(C, key('PendingMarketCF', addr(R))), u(P.receipt.cfScaled)), 'FALLBACK: PROPOSE CF restore (24 h); cancel = emergency disable-cf', {historical: true, fallback: true, fast: true});
+  tx('cf.execute', C, 'set_market_cf', () => [addr(R), u128(P.receipt.cfScaled)], eq(raw(C, key('MarketCF', addr(R))), u(P.receipt.cfScaled)), 'FALLBACK: EXECUTE CF restore after the ETA', {historical: true, fallback: true, fast: true});
   // H. migration (pilot close is ledger-owner-call.cjs + keeper v5, outside this tool)
   add({id: 'pilot.close', kind: 'external', signer: 'admin', why: 'owner stage_prepare_close of ALL pilot units on CCGK via prototypes/cl-pyusd-vault-b-pilot-tools/ledger-owner-call.cjs (A3); keeper v5 runs A4 stage_withdraw + A5 stage_close_convert'});
   add({id: 'gate.pilot-closed', kind: 'gate', gate: 'pilot-closed', why: 'CCGK owner units 0, no open command, PYUSD back in the owner wallet'});
@@ -360,6 +370,17 @@ async function opFor(cfg, c, s) {
     const op = new S.Contract(target).call(method, ...args); assertNoRetiredArgs(cfg, op);
     return {op, cpuMax: L.invokeCpuMax, feeCapStroops: BigInt(L.invokeMaxFeeStroops), policy: s.auth, ...extra};
   };
+  if (s.kind === 'tx' && s.amount === 'account_liquidity') {
+    // Borrow EXACTLY 100 % of the limit: liquidity from the controller at the live state; the sim proves shortfall == 0.
+    const t = s.args()[0], [liq, short] = (await c.view(I.controller, 'account_liquidity', [t])).value.map(x => u(x));
+    assert.equal(short, 0n, 'T3 already in shortfall'); assert(liq > 0n, 'no borrowing power: checkpoint (G53) first');
+    // account_liquidity is USD-valued: amount x price / scale (controller). Borrow = floor(liq x scale / price), so the
+    // hypothetical extra debt is <= liq (shortfall stays 0) and the leftover is < 1 raw unit.
+    const [price, scale] = (await c.view(I.controller, 'get_price_usd', [addr(cfg.deps.usdc)])).value.map(x => u(x));
+    const amt = borrowAtLimit(liq, price, scale);
+    assert(amt > 0n && amt <= u(cfg.params.usdcMarket.borrowCapRaw), 'borrow outside (0, borrow cap]');
+    const o = inv(s.target, s.method, [t, u128(amt)]); o.summary = {borrowRaw: String(amt), liquidityUsd: String(liq), price: String(price), scale: String(scale), note: 'exactly 100 % of the limit'}; return o;
+  }
   if (s.kind === 'tx') {
     const o = inv(s.target, s.method, s.args());
     if (s.auth === 'root+transfer') o.authOpts = {token: s.target === I.receipt ? cfg.deps.pyusd : cfg.deps.usdc, to: s.target, max: s.transferMax};
@@ -430,6 +451,39 @@ async function openAmountFromWallet(cfg, c, owner) {
   return amount;
 }
 
+// Before the raise: the raise AND the 8 % reset must both simulate OK now on the group USDC market (5630a701,
+// immediate setter, cap 1000 % APR, supply rate <= new borrow rate). Refuses otherwise; nothing is written.
+async function rateBothDirections(cfg, c) {
+  const I = ids(cfg), M = I.usdcMarket, P = cfg.params, sup = await c.raw(M, key('YearlyRateScaled'));
+  checkRatePlan(P, sup ? sup.value : 0n);
+  for (const r of [P.firstLiquidation.raisedRateScaled, P.usdcMarket.borrowRateScaled]) {
+    const op = new S.Contract(M).call('set_borrow_rate', u128(r));
+    await simulateBuild(cfg, c, op, cfg.admin, {cpuMax: cfg.limits.invokeCpuMax, feeCapStroops: BigInt(cfg.limits.invokeMaxFeeStroops), policy: 'root'});
+  }
+}
+// Pure (unit-tested).
+function checkRatePlan(P, supplyRate) {
+  const up = u(P.firstLiquidation.raisedRateScaled), down = u(P.usdcMarket.borrowRateScaled);
+  assert(up <= 10_000_000n, 'raise above the 1000 % APR cap (MAX_YEARLY_RATE_SCALED)');
+  assert(up > down, 'raise must be above the normal rate');
+  assert.equal(String(down), '80000', 'reset must be the approved 8 % APR');
+  assert(u(supplyRate) <= down, `supply rate ${supplyRate} above 80000: the reset would be refused`);
+  assert(Number(P.firstLiquidation.maxRaiseMinutes) <= 30 && Number(P.firstLiquidation.warnMinutes) < Number(P.firstLiquidation.maxRaiseMinutes), 'raise window must be <= 30 min with an earlier warning');
+  return true;
+}
+// Pure (unit-tested): largest borrow whose USD value (floor(amount x price / scale)) does not exceed the liquidity.
+function borrowAtLimit(liq, price, scale) {
+  let a = u(liq) * u(scale) / u(price);
+  while (a > 0n && a * u(price) / u(scale) > u(liq)) a -= 1n;
+  while ((a + 1n) * u(price) / u(scale) <= u(liq)) a += 1n;
+  return a;
+}
+// Pure (unit-tested): minutes since the raise -> ok | warn | overdue.
+function rateWindow(raisedAtSec, nowSec, P) {
+  const m = (nowSec - raisedAtSec) / 60, w = Number(P.firstLiquidation.warnMinutes), max = Number(P.firstLiquidation.maxRaiseMinutes);
+  return {minutes: Math.round(m * 10) / 10, level: m >= max ? 'OVERDUE' : m >= w ? 'WARN' : 'ok', resetBy: new Date((raisedAtSec + max * 60) * 1000).toISOString()};
+}
+
 async function gate(cfg, c, name) {
   const I = ids(cfg), P = cfg.params;
   if (name === 'prices') {
@@ -454,6 +508,11 @@ async function gate(cfg, c, name) {
     const ok = typeof bal === 'bigint' && bal >= u(P.funding.liquidatorUsdcRaw) && tl.ok && rows.roles
       && hbXlm >= Number(cfg.heartbeat.minXlm);
     return {gate: name, ok, liquidator: lq, rows, manual: 'also: bot dry-run log >= 2 h, zero errors, every borrower planned, D3 status read; heartbeat tests pass and the Testnet heartbeat gap stats (p95 <= 20 s, 0 gaps > 60 s) are recorded (LAUNCH.md section 6.4)'};
+  }
+  if (name === 'rate-reset') {
+    const I = ids(cfg), r = await c.raw(I.usdcMarket, key('BorrowYearlyRateScaled'));
+    const t3 = cfg.signers.team3.publicKey, debt = t3 ? await c.tryView(I.usdcMarket, 'get_user_borrow_balance', [addr(t3)]) : null;
+    return {gate: name, ok: !!r && String(r.value) === String(cfg.params.usdcMarket.borrowRateScaled) && debt === 0n, rate: r ? String(r.value) : null, t3Debt: String(debt)};
   }
   if (name === 'cf-eta') {
     const eta = await c.raw(I.controller, key('PendingMarketCFEta', addr(I.receipt)));
@@ -549,8 +608,10 @@ async function main(argv) {
     }
     if (!s.repeatable) assert.notEqual(await isDone(cfg, c, s), true, `${s.id} already done`);
     if (s.pre) await s.pre(c);
+    if (s.preSim === 'rate-both-directions') await rateBothDirections(cfg, c);
     const {res, summary} = await buildStep(cfg, c, s);
-    return write(cfg, opt('--out'), res, {...summary, readback: `node clg-ceremony.cjs readback ${s.id}`});
+    const extra = s.resetCommand ? {mandatoryReset: s.resetCommand, resetDeadlineMinutes: cfg.params.firstLiquidation.maxRaiseMinutes} : {};
+    return write(cfg, opt('--out'), res, {...summary, ...extra, readback: `node clg-ceremony.cjs readback ${s.id}`});
   }
   if (cmd === 'emergency') {
     const name = argv[1], e = EMERGENCY[name]; assert(e, 'emergency: ' + Object.keys(EMERGENCY).join('|'));
@@ -636,8 +697,22 @@ async function main(argv) {
     const res = await classicBuild(cfg, c, ['USDC', 'PYUSD'].map(a => S.Operation.changeTrust({asset: assetOf(cfg, a)})), lq);
     return write(cfg, opt('--out'), res, {step: 'liquidator.trust', call: 'changeTrust(USDC) + changeTrust(PYUSD)', signer: 'liquidator (host key)', hdPath: null});
   }
+  if (cmd === 'rate-window') {
+    // Raise time = ledger close time of the rate.up transaction (hash from clg-run.sh's send file, or argv[1]).
+    const dir = process.env.CLG_RUN_DIR || '/Users/joshua/Peridot/clg-launch-20261122';
+    let hash = argv[1];
+    if (!hash) { const f = fs.readdirSync(dir).filter(x => /rate-up\.send\.json$/.test(x)).map(x => path.join(dir, x)).find(x => /"status": "SUCCESS"/.test(fs.readFileSync(x, 'utf8')));
+      if (!f) return {raised: false}; hash = (fs.readFileSync(f, 'utf8').match(/"tx_hash": "([0-9a-f]{64})"/) || [])[1]; }
+    const t = await c.rpc.getTransaction(hash), at = Number(t.raw.createdAt);
+    const r = await c.raw(ids(cfg).usdcMarket, key('BorrowYearlyRateScaled'));
+    const w = rateWindow(at, Math.floor(Date.now() / 1000), cfg.params);
+    const reset = r && String(r.value) === String(cfg.params.usdcMarket.borrowRateScaled);
+    if (!reset && w.level !== 'ok') process.exitCode = 2;
+    return {raised: true, hash, raisedAt: new Date(at * 1000).toISOString(), ...w, currentRate: r ? String(r.value) : null, reset,
+      next: reset ? 'rate is back at 8 %' : 'step g56-rate-down prepare rate.down'};
+  }
   if (cmd === 'status') { const r = await c.rpc.getTransaction(argv[1]); return {hash: argv[1], status: r.status, ledger: r.ledger}; }
   throw Error('usage: see header');
 }
-module.exports = {uploadCpuMax, contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY, assertRouteAAllowed, decodeSeizeEvents, readSeizeEvents, checkTrustlines};
+module.exports = {uploadCpuMax, contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY, assertRouteAAllowed, decodeSeizeEvents, readSeizeEvents, checkTrustlines, checkRatePlan, rateWindow, borrowAtLimit};
 if (require.main === module) main(process.argv.slice(2)).then(r => console.log(json(r))).catch(e => { console.error('REFUSED/FAILED:', e.message); process.exit(1); });
