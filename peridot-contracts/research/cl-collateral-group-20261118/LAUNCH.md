@@ -256,8 +256,9 @@ On Testnet the fresh 120,960-ledger TTL is below the 500,000 threshold, so the f
 **Step T1 (scheduled, admin; not part of the Sunday ceremony):** `extendFootprintTtl`, read-only footprint = {code 6fd8599a, code 424454b9, code 642421f1, the three new instances}.
 - **When:** run it while every entry still has more than 500,000 ledgers left, at the latest about day 85 after G4.
 - **Extend to:** `extendTo` = 3,110,399, the network maximum. Each run then restarts the clock by about 2.6M ledgers.
-- **Expected price** at today's rate, for the ≈ 1.57M ledgers the run adds at day 85: ≈ 127 XLM (vault) + ≈ 127 XLM (receipt) + ≈ 66 XLM (controller) + ≤ 1 XLM (instances) ≈ **321 XLM**.
-- **Long-run cost:** rent per ledger is the same whenever it is paid, about **1.3 XLM per day** for the three codes.
+- **Expected price** at today's rate. Rent is linear in ledgers × bytes. At day 85, with 5 s per ledger, each code has about 604,800 ledgers left, so extending to 3,110,399 adds about 2.5M ledgers. That costs ≈ 203 XLM (vault) + ≈ 203 XLM (receipt) + ≈ 105 XLM (controller) + ≤ 1 XLM (instances), **≈ 511 XLM**.
+- **A cheaper single run.** Extending only to 1,000,000 (+≈ 395k ledgers) costs ≈ 81 XLM and buys about 29 days.
+- **Long-run cost to budget.** About 1.65 × 10⁻⁴ XLM per ledger for the three codes, i.e. **≈ 2.5–2.9 XLM per day** at 5–6 s per ledger, or roughly 900–1,050 XLM per year. The total is the same however the payments are split. It exists only while the codes are kept alive; the instances are negligible.
 - **Before signing:** re-quote with `node tools/ttl-quote.cjs '<rows>' 3110399` against the live entries, which shows the exact min fee.
 - **Monitoring:** add the three codes and instances to the TTL keeper inventory (`scripts/cash_ttl_keeper.cjs` pattern) with alert threshold 600,000 ledgers.
 - **Tooling gap (P12):** `clg-ceremony.cjs` has no `ttl-extend` prepare mode yet. Until it does, T1 is quote-only and must be prepared with the reviewed cash TTL tooling.
