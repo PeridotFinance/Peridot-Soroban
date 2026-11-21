@@ -1,4 +1,10 @@
 // Bounded foreground supervisor. No service installation or key provisioning.
+// v6 (2026-11-21): copy of keeper-loop-v5.cjs (1467595f, unchanged) driving keeper-worker-v6.cjs (scope
+// cl-vault-b-keeper-v6) and keeper-streak-probe-v6.cjs. ONLY changes: (1) the probe is configured from the v6 config
+// (no compiled-in pilot pins); (2) before every streak attempt the vault/receipt PendingUpgradeHash entries are read and a
+// pending upgrade refuses (refusalCode PENDING_UPGRADE; the worker refuses the same way for every other step);
+// (3) supervisor scope 'cl-vault-b-keeper-v6-foreground-supervisor'; refusal codes PENDING_UPGRADE, PLACEHOLDER_CONFIG,
+// RETIRED_PILOT_TARGET, STATE_DIRECTORY_REFUSED added. Cadence, caps, streak rules and every v5 safety property unchanged.
 // v3 (2026-11-15): identical to keeper-loop-v2.cjs except that it drives keeper-worker-v3.cjs (97M host-preflight stop,
 // AT-LIMIT label). v2 reviews and approvals do not transfer.
 // v4 (2026-11-16): drives keeper-worker-v4.cjs. ONLY addition: when the plan's first step is an investment observation,
@@ -22,8 +28,8 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const {performance} = require('node:perf_hooks');
-const worker = require('./keeper-worker-v5.cjs');
-const probe = require('./keeper-streak-probe.cjs');
+const worker = require('./keeper-worker-v6.cjs');
+const probe = require('./keeper-streak-probe-v6.cjs');
 const path = require('node:path');
 const S = require('../../bots/margin-liquidator/node_modules/@stellar/stellar-sdk');
 
@@ -44,11 +50,11 @@ function validateStreak(s) {
 }
 function supervisorBinding(schedule) {
   validateSchedule(schedule);
-  return {scope: 'cl-vault-b-pilot-foreground-supervisor', sha256: sourceHash(), streakProbeSha256: probe.sourceSha256(), schedule: {...schedule}};
+  return {scope: 'cl-vault-b-keeper-v6-foreground-supervisor', sha256: sourceHash(), streakProbeSha256: probe.sourceSha256(), schedule: {...schedule}};
 }
 function validateApproval(approval, schedule) {
   assert.equal(approval?.status, 'OPERATOR_APPROVED');
-  assert.equal(approval.scope, 'cl-vault-b-pilot-keeper-v5');
+  assert.equal(approval.scope, 'cl-vault-b-keeper-v6');
   validateStreak(approval.streak);
   assert.deepEqual(approval.supervisor, supervisorBinding(schedule), 'supervisor source or cadence differs from approval');
   assert(Number.isSafeInteger(approval.expiresAt), 'missing execution approval expiry');
@@ -66,6 +72,7 @@ function productionDependencies(config, shouldStop = () => false) {
   const rpc = new S.rpc.Server(worker.rpcUrlOf(config), {timeout: 30});
   const streakStore = probe.journal;
   const workerDeps = worker.productionDependencies(config, {rpc});
+  probe.configure(probe.pinsFromConfig(config));   // v6: pins from the validated v6 config
   return {
     monotonicMs: () => performance.now(), epochSeconds: () => Math.floor(Date.now() / 1000),
     sleep: ms => new Promise(resolve => setTimeout(resolve, ms)), shouldStop,
@@ -78,6 +85,7 @@ function productionDependencies(config, shouldStop = () => false) {
       try {
         assert(!store.j.halted, 'streak journal halted; operator review');
         const caps = {...approval.streak, expiresAt: approval.expiresAt}, chain = probe.makeChain(streakRpc(rpc, config));
+        assert.equal((await chain.pendingUpgrades()).length, 0, 'pending upgrade on the vault or receipt: refuse');   // v6
         if (!(await probe.inBand(chain)).inside) return 'OUT_OF_BAND_WAIT';   // read-only check; no fee while out of band
         const a = await probe.attempt({chain, store, approval: caps, sign: probe.cliSigner(config.signer, config.network), pollMs: 200}, store.j.attempts.length + 1);
         return a.result;
@@ -93,7 +101,8 @@ const REFUSAL_PATTERNS = [['keeper simulation failed', 'SIMULATION_FAILED'], ['h
   ['transaction fee exceeds ceiling', 'FEE_CEILING'], ['cumulative approved fee budget', 'FEE_BUDGET'], ['keeper balance floor', 'BALANCE_FLOOR'],
   ['submission window nearly closed', 'WINDOW_CLOSED_AFTER_SIGNING'], ['stale ledger clock', 'STALE_LEDGER_CLOCK'], ['executable identity mismatch', 'CODE_HASH_MISMATCH'],
   ['streak journal halted', 'STREAK_JOURNAL_HALTED'], ['unrecognized worker result', 'UNRECOGNIZED_WORKER_RESULT'], ['active journal hash changed', 'PENDING_HASH_CHANGED'],
-  ['pending journal reservation disappeared', 'PENDING_RESERVATION_DISAPPEARED'], ['invalid public ledger', 'INVALID_PUBLIC_LEDGER'], ['EEXIST', 'WORKER_LOCK_HELD']];
+  ['pending journal reservation disappeared', 'PENDING_RESERVATION_DISAPPEARED'], ['pending upgrade', 'PENDING_UPGRADE'],
+  ['placeholder left', 'PLACEHOLDER_CONFIG'], ['retired pilot', 'RETIRED_PILOT_TARGET'], ['v6 state directory', 'STATE_DIRECTORY_REFUSED'], ['invalid public ledger', 'INVALID_PUBLIC_LEDGER'], ['EEXIST', 'WORKER_LOCK_HELD']];
 function refusalCode(error) {
   if (error?.code === 'ERR_ASSERTION' || error instanceof Error) {
     const text = String(error?.message ?? '');
@@ -213,7 +222,7 @@ async function runSupervisor(config, {execute = false, approval = null, schedule
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help')) {
-    console.log('Usage: node keeper-loop-v5.cjs <public-config.json> [--execute --approval <approval.json>] [--poll-ms N --max-run-seconds N --pending-timeout-seconds N --max-attempts N]\nDefault: bounded read-only foreground inspection. --binding prints supervisor source/cadence binding only, without RPC/key access. Approval must include supervisor binding in addition to the existing worker approval. No daemon, service, automatic expiry release, retry, fee escalation, restore or owner recovery. Ctrl-C requests stop between operations; in-flight outcomes remain in the worker journal. Mainnet consecutive-ledger liveness is unproven.');
+    console.log('Usage: node keeper-loop-v6.cjs <public-config.json> [--execute --approval <approval.json>] [--poll-ms N --max-run-seconds N --pending-timeout-seconds N --max-attempts N]\nDefault: bounded read-only foreground inspection. --binding prints supervisor source/cadence binding only, without RPC/key access. Approval must include supervisor binding in addition to the existing worker approval. No daemon, service, automatic expiry release, retry, fee escalation, restore or owner recovery. Ctrl-C requests stop between operations; in-flight outcomes remain in the worker journal. Mainnet consecutive-ledger liveness is unproven.');
     return;
   }
   const schedule = {...DEFAULT_SCHEDULE};

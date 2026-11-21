@@ -1,3 +1,13 @@
+// Keeper streak probe v6 (21 Nov 2026): copy of keeper-streak-probe.cjs (df713150, unchanged and still used by keeper v5)
+// for the fresh-stack vault v2 / receipt StgV2. v6 changes ONLY:
+//  (1) no compiled-in pilot pins: configure(pins) must be called once per process with the network, vault, receipt,
+//      keeper, admin and vault code hash from the v6 config. Every entrypoint refuses before that; a second configure
+//      with different pins refuses; the retired pilot pair CCGK/CD6N and placeholders are refused.
+//  (2) pending-upgrade refusal: pendingUpgrades(chain) reads the vault's and the receipt's persistent PendingUpgradeHash
+//      entries (one getLedgerEntries). runProbe refuses at start and before every attempt while either is present.
+//  (3) approval scope 'cl-vault-b-keeper-streak-probe-v6'.
+// Everything else (windows, bid rule, journal, follow/expiry proof, 97M stop, auth checks) is the v5-era text.
+//
 // Keeper streak probe (16 Nov 2026). Measures on Mainnet how often the dedicated keeper lands three
 // `stage_checkpoint_investment` observations in CONSECUTIVE ledgers, as the frozen vault requires
 // (vault.rs:150-153: count+1 only when ledger == previous.observed_ledger + 1; any gap restarts at 1).
@@ -31,19 +41,29 @@ const cp = require('node:child_process');
 const assert = require('node:assert/strict');
 const S = require('../../bots/margin-liquidator/node_modules/@stellar/stellar-sdk');
 
-const SCOPE = 'cl-vault-b-keeper-streak-probe-v1';
+const SCOPE = 'cl-vault-b-keeper-streak-probe-v6';
 const METHOD = 'stage_checkpoint_investment';
 const WINDOW = 11;                 // ledgers a submission stays valid: [L+1, L+11)
 const MARGIN_PCT = 20n;            // resource margin on the once-per-attempt simulation
 const HOST_STOP = 97000000;        // user rule: refuse above 97M declared instructions
-const PINS = Object.freeze({
-  network: S.Networks.PUBLIC,
-  vault: 'CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63',
-  receipt: 'CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI',
-  keeper: 'GBHWPV6QTQIAPJI7WHLHWZJB4GELG3B5NAR2NJ27FQNKSIGYGBYFZON4',
-  admin: 'GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP',
-  vaultWasm: 'e66380303e50c6177492d1c9e880edcc84b4258da2cd46be46a1b3f8fe12e3e9',
-});
+// Retired pilot contracts (keeper v5 scope). v6 never targets them.
+const RETIRED = Object.freeze(['CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI', 'CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63']);
+let PINS = null;
+/** v6: pins come from the v6 config (worker-v6 validateConfig has already checked it); once per process. */
+function configure(p) {
+  assert.equal(p?.network, S.Networks.PUBLIC, 'streak probe v6: public network only');
+  for (const f of ['vault', 'receipt']) { assert(S.StrKey.isValidContract(p[f]), `streak probe v6: invalid ${f}`); assert(!RETIRED.includes(p[f]), `streak probe v6: retired pilot ${f}`); }
+  assert.notEqual(p.vault, p.receipt);
+  for (const f of ['keeper', 'admin']) assert(S.StrKey.isValidEd25519PublicKey(p[f]), `streak probe v6: invalid ${f}`);
+  assert.notEqual(p.keeper, p.admin);
+  assert(/^[0-9a-f]{64}$/.test(p.vaultWasm ?? ''), 'streak probe v6: vault code pin required');
+  const next = Object.freeze({network: p.network, vault: p.vault, receipt: p.receipt, keeper: p.keeper, admin: p.admin, vaultWasm: p.vaultWasm});
+  if (PINS) { assert.deepEqual(next, PINS, 'streak probe v6: already configured with different pins'); return PINS; }
+  PINS = next; return PINS;
+}
+/** The probe's pins from a keeper v6 config (the same object keeper-worker-v6 validateConfig accepts). */
+function pinsFromConfig(c) { return {network: c.network, vault: c.vault, receipt: c.receipt, keeper: c.keeperPublicAddress, admin: c.admin, vaultWasm: c.wasmSha256?.vault}; }
+function pins() { assert(PINS, 'streak probe v6 not configured'); return PINS; }
 const stringify = v => JSON.stringify(v, (_, x) => typeof x === 'bigint' ? String(x) : x, 2) + '\n';
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const sourceSha256 = () => sha(fs.readFileSync(__filename));
@@ -51,12 +71,13 @@ const uint = (v, label) => { assert(/^(0|[1-9][0-9]*)$/.test(String(v)), `${labe
 
 // ---------------------------------------------------------------- approval
 function validateApproval(a, now) {
+  pins();   // v6: refuse before anything else while unconfigured
   assert.equal(a?.status, 'OPERATOR_APPROVED', 'operator approval required');
   assert.equal(a.scope, SCOPE, 'wrong approval scope');
   assert.equal(a.sourceSha256, sourceSha256(), 'probe source changed after approval');
   assert(Number.isSafeInteger(a.expiresAt) && a.expiresAt > now, 'approval expired or absent');
   assert(a.expiresAt - now <= 6 * 3600, 'approval longer than 6 hours');
-  assert.equal(a.keeperPublicAddress, PINS.keeper); assert.equal(a.vault, PINS.vault); assert.equal(a.receipt, PINS.receipt);
+  assert.equal(a.keeperPublicAddress, pins().keeper); assert.equal(a.vault, pins().vault); assert.equal(a.receipt, pins().receipt);
   assert.deepEqual(a.methods, [METHOD], 'only stage_checkpoint_investment is in scope');
   assert(/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(a.signer?.alias) && path.isAbsolute(a.signer.configDirectory), 'secure-store alias required');
   assert(path.isAbsolute(a.stateDirectory), 'absolute probe state directory required');
@@ -110,13 +131,13 @@ function makeChain(rpc, deps = {}) {
     network: () => quiet(() => rpc.getNetwork(), 'rpc:getNetwork'),
     feeStats: () => quiet(() => rpc.getFeeStats(), 'rpc:getFeeStats'),
     account: () => quiet(async () => {
-      const key = S.xdr.LedgerKey.account(new S.xdr.LedgerKeyAccount({accountId: S.xdr.AccountId.publicKeyTypeEd25519(S.StrKey.decodeEd25519PublicKey(PINS.keeper))}));
+      const key = S.xdr.LedgerKey.account(new S.xdr.LedgerKeyAccount({accountId: S.xdr.AccountId.publicKeyTypeEd25519(S.StrKey.decodeEd25519PublicKey(pins().keeper))}));
       const r = await rpc.getLedgerEntries(key); assert.equal(r.entries.length, 1);
       const a = r.entries[0].val.account();
       return {sequence: BigInt(a.seqNum().toString()), balance: BigInt(a.balance().toString()), subEntries: a.numSubEntries(), signers: a.signers().length, ledger: r.latestLedger};
     }, 'rpc:account'),
     view: (contract, method, args = []) => quiet(async () => {
-      const tx = new S.TransactionBuilder(new S.Account(PINS.keeper, '0'), {fee: '100', networkPassphrase: PINS.network})
+      const tx = new S.TransactionBuilder(new S.Account(pins().keeper, '0'), {fee: '100', networkPassphrase: pins().network})
         .addOperation(new S.Contract(contract).call(method, ...args)).setTimeout(0).build();
       const sim = await rpc.simulateTransaction(tx);
       // Keep the contract's reason (e.g. a panic message); never any URL (the endpoint file holds a key).
@@ -127,6 +148,13 @@ function makeChain(rpc, deps = {}) {
       const k = S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: new S.Address(contract).toScAddress(), key: S.xdr.ScVal.scvLedgerKeyContractInstance(), durability: S.xdr.ContractDataDurability.persistent()}));
       const r = await rpc.getLedgerEntries(k); return r.entries[0].val.contractData().val().instance().executable().wasmHash().toString('hex');
     }, 'rpc:codeHash'),
+    // v6: persistent PendingUpgradeHash entries of the vault and the receipt (absent = nothing pending).
+    pendingUpgrades: () => quiet(async () => {
+      const key = id => S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: new S.Address(id).toScAddress(),
+        key: S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('PendingUpgradeHash')]), durability: S.xdr.ContractDataDurability.persistent()}));
+      const r = await rpc.getLedgerEntries(key(pins().vault), key(pins().receipt));
+      return r.entries.map(e => S.Address.fromScAddress(e.val.contractData().contract()).toString());
+    }, 'rpc:pendingUpgrades'),
     simulate: tx => quiet(() => rpc.simulateTransaction(tx), 'rpc:simulate'),
     send: tx => quiet(() => rpc.sendTransaction(tx), 'rpc:send'),
     status: hash => quiet(() => rpc.getTransaction(hash), 'rpc:getTransaction'),
@@ -135,7 +163,7 @@ function makeChain(rpc, deps = {}) {
 
 // ---------------------------------------------------------------- building and signing
 function observationArgs() {
-  return new S.xdr.InvokeContractArgs({contractAddress: new S.Address(PINS.vault).toScAddress(), functionName: METHOD, args: [new S.Address(PINS.keeper).toScVal()]});
+  return new S.xdr.InvokeContractArgs({contractAddress: new S.Address(pins().vault).toScAddress(), functionName: METHOD, args: [new S.Address(pins().keeper).toScVal()]});
 }
 // The single authorization the observation needs: the keeper (transaction source) authorizes exactly this call, nothing nested.
 // 16 Nov fix: be05d42d... was sent WITHOUT this entry and failed on chain with "Unauthorized function call for address".
@@ -147,7 +175,7 @@ function observationOp(withAuth = true) {
   return S.Operation.invokeHostFunction({func: S.xdr.HostFunction.hostFunctionTypeInvokeContract(observationArgs()), auth: withAuth ? [sourceAuth()] : []});
 }
 function build(seq, sorobanData, bid, minLedger, nowSec) {
-  const tx = new S.TransactionBuilder(new S.Account(PINS.keeper, String(seq - 1n)), {fee: String(bid), networkPassphrase: PINS.network, sorobanData})
+  const tx = new S.TransactionBuilder(new S.Account(pins().keeper, String(seq - 1n)), {fee: String(bid), networkPassphrase: pins().network, sorobanData})
     .addOperation(observationOp()).setLedgerbounds(minLedger, minLedger + WINDOW).setTimebounds(0, nowSec + 180).build();
   assert.equal(BigInt(tx.sequence), seq);
   assert.equal(BigInt(tx.fee), BigInt(bid) + BigInt(sorobanData.resourceFee().toString()), 'fee is not bid + resource fee');
@@ -159,7 +187,7 @@ function build(seq, sorobanData, bid, minLedger, nowSec) {
 // One simulation per attempt; the observation's footprint is fixed (vault instance, pool slot, keeper account).
 async function prepareResources(chain, approval) {
   const latest = await chain.latest(), acc = await chain.account();
-  const raw = new S.TransactionBuilder(new S.Account(PINS.keeper, acc.sequence.toString()), {fee: '1000', networkPassphrase: PINS.network})
+  const raw = new S.TransactionBuilder(new S.Account(pins().keeper, acc.sequence.toString()), {fee: '1000', networkPassphrase: pins().network})
     .addOperation(observationOp(false)).setTimeout(0).build();
   const sim = await chain.simulate(raw);
   assert(S.rpc.Api.isSimulationSuccess(sim), 'observation simulation failed');
@@ -195,10 +223,10 @@ function cliSigner(signer, network) {
   };
 }
 function verifySigned(text, unsigned) {
-  const signed = S.TransactionBuilder.fromXDR(text, PINS.network);
+  const signed = S.TransactionBuilder.fromXDR(text, pins().network);
   assert.equal(signed.hash().toString('hex'), unsigned.hash().toString('hex'), 'signer changed the transaction');
   assert.equal(signed.signatures.length, 1);
-  assert(S.Keypair.fromPublicKey(PINS.keeper).verify(signed.hash(), signed.signatures[0].signature()), 'wrong signer');
+  assert(S.Keypair.fromPublicKey(pins().keeper).verify(signed.hash(), signed.signatures[0].signature()), 'wrong signer');
   return signed;
 }
 
@@ -308,10 +336,10 @@ function score(j, attempts = 20, passMark = 18) {
 // So: wait read-only until a ledger after the stored observation has closed; retry only that panic; bounded at 60 s.
 async function inBand(chain) {
   for (let i = 0; ; i++) {
-    const stored = await chain.view(PINS.vault, 'stage_investment_guard'), latest = (await chain.latest()).sequence;
+    const stored = await chain.view(pins().vault, 'stage_investment_guard'), latest = (await chain.latest()).sequence;
     if (stored && latest <= Number(stored.observed_ledger)) { assert(i < 60, 'band check: no ledger closed after the last observation within 60 s'); await chain.sleep(1000); continue; }
     try {
-      const g = await chain.view(PINS.vault, METHOD, [new S.Address(PINS.keeper).toScVal()]);
+      const g = await chain.view(pins().vault, METHOD, [new S.Address(pins().keeper).toScVal()]);
       return {inside: g.inside, ledger: Number(g.observed_ledger), tick: Number(g.observed_tick)};
     } catch (e) {
       // Release WASM often traps without the panic text, and backends behind one endpoint can lag each other by a ledger:
@@ -335,9 +363,10 @@ async function bandWait(chain, approval, pollMs, knownExitLedger = null) {
 }
 async function runProbe({approval, chain, sign, pollMs = 200, prepare, verify}) {
   validateApproval(approval, Math.floor(chain.now() / 1000));
-  const n = await chain.network(); assert.equal(n.passphrase, PINS.network); assert.equal(n.protocolVersion, 29, 'protocol changed: requalify');
-  assert.equal(await chain.codeHash(PINS.vault), PINS.vaultWasm, 'vault code differs from the frozen pilot code');
-  assert.equal(await chain.view(PINS.vault, 'stage_investment_keeper'), PINS.keeper, 'keeper not bound');
+  const n = await chain.network(); assert.equal(n.passphrase, pins().network);
+  assert.equal((await chain.pendingUpgrades()).length, 0, 'pending upgrade on the vault or receipt: refuse'); assert.equal(n.protocolVersion, 29, 'protocol changed: requalify');
+  assert.equal(await chain.codeHash(pins().vault), pins().vaultWasm, 'vault code differs from the frozen pilot code');
+  assert.equal(await chain.view(pins().vault, 'stage_investment_keeper'), pins().keeper, 'keeper not bound');
   const acc = await chain.account(); assert.equal(acc.subEntries, 0); assert.equal(acc.signers, 0);
   const store = journal(approval.stateDirectory);
   try {
@@ -345,7 +374,8 @@ async function runProbe({approval, chain, sign, pollMs = 200, prepare, verify}) 
     assert(!store.j.txs.some(t => ['SUBMITTING', 'UNKNOWN'].includes(t.status)), 'unresolved transaction in journal; reconcile first');
     store.j.outOfBand ??= [];
     while (store.j.attempts.filter(a => a.result && a.result !== 'VOID_BAND').length < approval.attempts) {
-      const st = await chain.view(PINS.receipt, 'stage_state');
+      if ((await chain.pendingUpgrades()).length) { store.j.stoppedReason = 'PENDING_UPGRADE'; store.save(); break; }
+      const st = await chain.view(pins().receipt, 'stage_state');
       if (Number(st.open_jobs) !== 0) { store.j.stoppedReason = 'OPEN_COMMAND_PRESENT'; store.save(); break; }   // scope: idle vault only
       // Never spend fees while the pool is out of band: wait read-only (and measure) first.
       const before = await bandWait(chain, approval, pollMs);
@@ -367,7 +397,7 @@ async function runProbe({approval, chain, sign, pollMs = 200, prepare, verify}) 
 async function methods(rpc) {
   const out = {};
   const check = async (name, f) => { const t0 = Date.now(); try { const v = await f(); out[name] = {ok: true, ms: Date.now() - t0, ...(v || {})}; } catch (_) { out[name] = {ok: false, ms: Date.now() - t0}; } };
-  await check('getNetwork', async () => { const n = await rpc.getNetwork(); assert.equal(n.passphrase, PINS.network); return {protocolVersion: n.protocolVersion}; });
+  await check('getNetwork', async () => { const n = await rpc.getNetwork(); assert.equal(n.passphrase, pins().network); return {protocolVersion: n.protocolVersion}; });
   await check('getVersionInfo', async () => { const v = await rpc.getVersionInfo(); return {version: v.version, protocolVersion: v.protocolVersion ?? v.protocol_version}; });
   let latest; await check('getLatestLedger', async () => { latest = await rpc.getLatestLedger(); return {sequence: latest.sequence, hasCloseTime: latest.closeTime !== undefined}; });
   await check('getLedgers', async () => { const r = await rpc.getLedgers({startLedger: latest.sequence, pagination: {limit: 1}}); assert.equal(r.ledgers.length, 1); return {}; });
@@ -390,7 +420,8 @@ async function latency(chain, seconds) {
     note: 'lag = first time this endpoint reported the ledger minus its close time (whole seconds, up to 1 s overstatement)'};
 }
 
-module.exports = {sourceAuth, inBand, bandWait, methods, endpoint, journal, cliSigner, verifySigned, SCOPE, METHOD, WINDOW, PINS, validateApproval, build, prepareResources, follow, attempt, runProbe, score, latency, makeChain, sourceSha256};
+module.exports = {configure, pinsFromConfig, RETIRED, sourceAuth, inBand, bandWait, methods, endpoint, journal, cliSigner, verifySigned, SCOPE, METHOD, WINDOW, validateApproval, build, prepareResources, follow, attempt, runProbe, score, latency, makeChain, sourceSha256};
+Object.defineProperty(module.exports, 'PINS', {get: () => PINS, enumerable: true});
 
 if (require.main === module) {
   const [mode, ...args] = process.argv.slice(2), opt = n => { const i = args.indexOf(n); return i < 0 ? null : args[i + 1]; };
@@ -398,6 +429,9 @@ if (require.main === module) {
     if (mode === 'score') { const j = JSON.parse(fs.readFileSync(path.join(opt('--state'), 'probe-journal.json'))); return score(j); }
     if (mode === 'source-hash') return {sourceSha256: sourceSha256()};
     const approval = opt('--approval') ? JSON.parse(fs.readFileSync(opt('--approval'))) : null;
+    // v6: pins from the v6 keeper config (--config), never compiled in.
+    assert(opt('--config'), 'v6 requires --config <keeper-config-v6.json> for the contract pins');
+    configure(pinsFromConfig(JSON.parse(fs.readFileSync(opt('--config')))));
     const {rpc, label} = endpoint(opt('--rpc-file') || approval?.rpcEndpointFile, opt('--rpc-host') || approval?.rpcHost);
     const chain = makeChain(rpc);
     if (mode === 'methods') return {endpoint: label, ...(await methods(rpc))};
@@ -406,14 +440,14 @@ if (require.main === module) {
       validateApproval({...approval, status: 'OPERATOR_APPROVED'}, Math.floor(Date.now() / 1000));
       const n = await chain.network(), res = await prepareResources(chain, approval), acc = await chain.account(), latest = await chain.latest();
       const tx = build(acc.sequence + 1n, res.sorobanData, res.bid, latest.sequence + 1, Math.floor(Date.now() / 1000));
-      const st = await chain.view(PINS.receipt, 'stage_state');
+      const st = await chain.view(pins().receipt, 'stage_state');
       return {endpoint: label, protocol: n.protocolVersion, signing: false, submission: false, keeperBalanceStroops: String(acc.balance), openJobs: Number(st.open_jobs),
         declaredInstructions: res.declaredInstructions, bidStroops: String(res.bid), maxFeePerTxStroops: String(res.maxFee), simulatedGuard: res.simulatedGuard, unsignedHash: tx.hash().toString('hex')};
     }
     if (mode === 'run') {
       assert(args.includes('--execute'), 'run requires --execute');
-      return runProbe({approval, chain, sign: cliSigner(approval.signer, PINS.network)});
+      return runProbe({approval, chain, sign: cliSigner(approval.signer, pins().network)});
     }
-    throw Error('usage: methods | latency | dry-run | run --execute | score | source-hash');
+    throw Error('usage (all but score/source-hash need --config <keeper-config-v6.json>): methods | latency | dry-run | run --execute | score | source-hash');
   })().then(r => console.log(stringify(r)), e => { console.error('probe refused/halted: ' + (e.message || 'error').split('\n')[0].slice(0, 200)); process.exitCode = 1; });
 }

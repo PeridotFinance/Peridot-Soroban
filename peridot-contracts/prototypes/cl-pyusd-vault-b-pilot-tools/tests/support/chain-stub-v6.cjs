@@ -1,5 +1,6 @@
 'use strict';
-// Offline Stellar RPC + vault world for keeper v5 tests. Public identifiers only; no key material anywhere.
+// Offline Stellar RPC + vault world for keeper v6 tests (copy of chain-stub-v5.cjs; v6 adds `pendingUpgrade`: a list of
+// contract ids (vault/receipt) whose persistent PendingUpgradeHash entry exists, or a function (ledger) -> list). Public identifiers only; no key material anywhere.
 //  - virtual clock (discrete events; nothing waits in real time) and a seeded RNG;
 //  - ledgers close every `ledgerMs` (with jitter); every RPC call takes a sampled latency, reads the world state of the
 //    ledger that is latest at a sampled instant inside the call, and reports that ledger as latestLedger (stellar-rpc
@@ -45,7 +46,7 @@ const PROFILES = {
 };
 
 function makeWorld({config, seed = 1, profile = 'MEASURED', ledgerMs = 5500, jitterMs = 600, startLedger = 1000, baseTime = 1794920000,
-  commands = [], guard = null, boundaries = [], sealed = [], claim = true, lag = null, hook = null, tweak = null, failMethods = [], memoryLimit = 41943040, missingInterval = false, absentInstances = false} = {}) {
+  commands = [], guard = null, boundaries = [], sealed = [], claim = true, lag = null, hook = null, tweak = null, failMethods = [], memoryLimit = 41943040, missingInterval = false, absentInstances = false, pendingUpgrade = []} = {}) {
   const clock = makeClock(), random = rng(seed), lat = PROFILES[profile];
   assert(lat, 'unknown latency profile');
   // close instants of ledgers startLedger+1, +2, ... (startLedger itself closed at t=0)
@@ -130,9 +131,13 @@ function makeWorld({config, seed = 1, profile = 'MEASURED', ledgerMs = 5500, jit
     if (kind === 'configSetting') { const name = key.configSetting().configSettingId().name;
       return {val: {switch: () => ({name: 'configSetting'}), configSetting: () => ({switch: () => ({name}), toXDR: () => Buffer.from(name),
         contractCompute: () => ({txMemoryLimit: () => memoryLimit}), contractEvents: () => ({txMaxContractEventsSizeBytes: () => 16384})})}}; }
+    if (kind === 'contractData' && key.contractData().key().switch().name !== 'scvLedgerKeyContractInstance') {
+      const contract = key.contractData().contract(), k = key.contractData().key();
+      return {val: {switch: () => ({name: 'contractData'}), contractData: () => ({contract: () => contract, key: () => k, val: () => S.xdr.ScVal.scvBytes(Buffer.alloc(32, 9))})}};
+    }
     if (kind === 'contractData') { const contract = key.contractData().contract(), id = S.Address.fromScAddress(contract).toString();
       const hash = id === config.receipt ? config.wasmSha256.receipt : config.wasmSha256.vault;
-      return {val: {switch: () => ({name: 'contractData'}), contractData: () => ({contract: () => contract, val: () => ({instance: () => ({executable: () => S.xdr.ContractExecutable.contractExecutableWasm(Buffer.from(hash, 'hex'))})})})}}; }
+      return {val: {switch: () => ({name: 'contractData'}), contractData: () => ({contract: () => contract, key: () => S.xdr.ScVal.scvLedgerKeyContractInstance(), val: () => ({instance: () => ({executable: () => S.xdr.ContractExecutable.contractExecutableWasm(Buffer.from(hash, 'hex'))})})})}}; }
     throw Error('unexpected key');
   };
   const header = s => ({ledgerSeq: () => s, scpValue: () => ({closeTime: () => BigInt(closeTimeOf(s))}), baseFee: () => 100, baseReserve: () => 5000000});
@@ -142,7 +147,16 @@ function makeWorld({config, seed = 1, profile = 'MEASURED', ledgerMs = 5500, jit
     getLatestLedger: () => call('getLatestLedger', L => ({sequence: L, closeTime: String(closeTimeOf(L))})),
     getLedgers: ({startLedger}) => call('getLedgers', L => startLedger > L ? Error('start after latest') : ({latestLedger: L, ledgers: [{sequence: startLedger, headerXdr: {header: () => header(startLedger)}}]})),
     getEvents: ({startLedger}) => call('getEvents', L => startLedger > L ? Error('start after latest') : ({latestLedger: L, latestLedgerCloseTime: String(closeTimeOf(L)), events: []})),
-    getLedgerEntries: (...keys) => call('getLedgerEntries', L => ({latestLedger: L, entries: keys.filter(k => !(absentInstances && k.switch().name === 'contractData')).map(entry)}), keys),
+    getLedgerEntries: (...keys) => call('getLedgerEntries', L => {
+      const pending = new Set(typeof pendingUpgrade === 'function' ? pendingUpgrade(L) : pendingUpgrade);
+      const present = k => {
+        if (k.switch().name !== 'contractData') return true;
+        const isInstance = k.contractData().key().switch().name === 'scvLedgerKeyContractInstance';
+        if (isInstance) return !absentInstances;
+        return pending.has(S.Address.fromScAddress(k.contractData().contract()).toString());
+      };
+      return {latestLedger: L, entries: keys.filter(present).map(entry)};
+    }, keys),
     getAccount: id => call('getAccount', () => new S.Account(id, '7')),
     simulateTransaction: tx => call('simulateTransaction', (L, s) => {
       assert.equal(tx.signatures.length, 0);

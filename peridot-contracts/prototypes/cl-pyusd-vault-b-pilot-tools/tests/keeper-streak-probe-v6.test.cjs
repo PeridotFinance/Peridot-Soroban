@@ -7,7 +7,24 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const S = require('../../../bots/margin-liquidator/node_modules/@stellar/stellar-sdk');
-const P = require('../keeper-streak-probe.cjs');
+const P = require('../keeper-streak-probe-v6.cjs');
+// v6: the probe has no compiled-in pins; this file configures fresh-stack-shaped test ids once (public identifiers only).
+const T = {network: S.Networks.PUBLIC, vault: S.StrKey.encodeContract(Buffer.alloc(32, 0x41)), receipt: S.StrKey.encodeContract(Buffer.alloc(32, 0x42)),
+  keeper: 'GBHWPV6QTQIAPJI7WHLHWZJB4GELG3B5NAR2NJ27FQNKSIGYGBYFZON4', admin: 'GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP',
+  vaultWasm: '6fd8599a9b369ab84ba9ee8fd95642cde50621c07d5cc37cd278e8f225a4870e'};
+test('v6 unconfigured probe refuses every pinned entrypoint; configure validates and is once-only', () => {
+  assert.equal(P.PINS, null);
+  assert.throws(() => P.build(1001n, new S.SorobanDataBuilder().setResourceFee('1').build(), 1000n, 500, 1), /not configured/);
+  assert.throws(() => P.validateApproval({status: 'OPERATOR_APPROVED', scope: P.SCOPE, sourceSha256: P.sourceSha256(), expiresAt: 2e9}, 2e9 - 3600), /not configured/);
+  for (const bad of [{vault: 'CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63'}, {receipt: 'CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI'},
+    {network: S.Networks.TESTNET}, {vaultWasm: 'PLACEHOLDER'}, {keeper: T.admin}, {receipt: T.vault}])
+    assert.throws(() => P.configure({...T, ...bad}));
+  assert.equal(P.PINS, null);
+  assert.deepEqual(P.configure(T), T); assert.deepEqual(P.configure({...T}), T);
+  assert.throws(() => P.configure({...T, vault: S.StrKey.encodeContract(Buffer.alloc(32, 0x43))}), /different pins/);
+  assert.deepEqual(P.pinsFromConfig({network: T.network, vault: T.vault, receipt: T.receipt, keeperPublicAddress: T.keeper, admin: T.admin, wasmSha256: {vault: T.vaultWasm}}), T);
+  assert.equal(P.SCOPE, 'cl-vault-b-keeper-streak-probe-v6');
+});
 
 const guardVal = g => S.xdr.ScVal.scvMap([
   new S.xdr.ScMapEntry({key: S.xdr.ScVal.scvSymbol('healthy_count'), val: S.nativeToScVal(g.healthy_count, {type: 'u32'})}),
@@ -16,7 +33,7 @@ const guardVal = g => S.xdr.ScVal.scvMap([
   new S.xdr.ScMapEntry({key: S.xdr.ScVal.scvSymbol('observed_tick'), val: S.nativeToScVal(g.tick ?? -2, {type: 'i32'})})]);
 
 // delays: per submission, how many ledgers after the "current" ledger it lands (1 = next ledger); null = never lands.
-function fakeChain({delays = [], inside = () => true, ledgerMs = 5000, balance = 199400000n, openJobs = 0} = {}) {
+function fakeChain({delays = [], inside = () => true, ledgerMs = 5000, balance = 199400000n, openJobs = 0, pendingUpg = () => []} = {}) {
   let t = 1794830000000, seq = 1000n, guard = null, sends = 0;
   const pending = new Map(), done = new Map();
   const ledger = () => 65510000 + Math.floor((t - 1794830000000) / ledgerMs);
@@ -47,6 +64,7 @@ function fakeChain({delays = [], inside = () => true, ledgerMs = 5000, balance =
       return {open_jobs: openJobs};
     },
     codeHash: async () => P.PINS.vaultWasm,
+    pendingUpgrades: async () => pendingUpg(ledger()),
     send: async tx => {
       const d = delays[sends++]; t += 150;   // submission round trip
       const h = tx.hash().toString('hex'), lb = tx.ledgerBounds;
@@ -94,7 +112,12 @@ test('build: matches the on-chain failed envelope except for the missing authori
   assert.equal(fop.auth().length, 0);
   const tx = P.build(BigInt(failed.sequence), failed.toEnvelope().v1().tx().ext().sorobanData(), 1000n, failed.ledgerBounds.minLedger, 1794830000);
   const op = tx.toEnvelope().v1().tx().operations()[0].body().invokeHostFunctionOp();
-  assert.equal(op.hostFunction().toXDR('base64'), fop.hostFunction().toXDR('base64'));
+  // v6: the pilot envelope targets CD6N; the v6 build targets the configured vault. Same function and argument (keeper).
+  const a = op.hostFunction().invokeContract(), b = fop.hostFunction().invokeContract();
+  assert.equal(a.functionName().toString(), b.functionName().toString());
+  assert.deepEqual(a.args().map(x => x.toXDR('base64')), b.args().map(x => x.toXDR('base64')));
+  assert.equal(S.Address.fromScAddress(b.contractAddress()).toString(), 'CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63');
+  assert.equal(S.Address.fromScAddress(a.contractAddress()).toString(), P.PINS.vault);
   assert.equal(op.auth().length, 1);
 });
 
@@ -209,4 +232,25 @@ test('band check also retries a message-less trap while our own observation is t
   chain.view = async (c, m, a) => { if (m === P.METHOD) throw Error(`rpc:view:${m}: UnreachableCodeReached`); return real(c, m, a); };
   await chain.sleep(60000);   // own observation no longer recent: an unexplained failure halts immediately
   await assert.rejects(P.inBand(chain), /UnreachableCodeReached/);
+});
+
+
+// ---- v6: pending upgrade ----
+test('v6 runProbe refuses at start while an upgrade is pending; an upgrade proposed mid-run stops before the next attempt', async t => {
+  let d = dir(t);
+  await assert.rejects(P.runProbe({approval: approval(d), chain: fakeChain({delays: Array(50).fill(1), pendingUpg: () => [P.PINS.vault]}), sign, prepare, verify}), /pending upgrade/);
+  d = dir(t); let n = 0;
+  const c = fakeChain({delays: Array(50).fill(1), pendingUpg: () => (++n > 2 ? [P.PINS.receipt] : [])});
+  const s = await P.runProbe({approval: approval(d), chain: c, sign, prepare, verify});
+  const j = JSON.parse(fs.readFileSync(path.join(d, 'probe-journal.json')));
+  assert.equal(j.stoppedReason, 'PENDING_UPGRADE'); assert.equal(j.attempts.length, 1, 'one attempt ran before the proposal was seen');
+  assert.equal(s.halted, null);
+});
+test('v6 makeChain.pendingUpgrades: one getLedgerEntries for both persistent PendingUpgradeHash keys; returns the contracts present', async () => {
+  const seen = [];
+  const key = id => S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: new S.Address(id).toScAddress(),
+    key: S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('PendingUpgradeHash')]), durability: S.xdr.ContractDataDurability.persistent()}));
+  const rpc = {getLedgerEntries: async (...keys) => { seen.push(keys.map(k => k.toXDR('base64'))); return {latestLedger: 9, entries: [{val: {contractData: () => ({contract: () => new S.Address(P.PINS.receipt).toScAddress()})}}]}; }};
+  assert.deepEqual(await P.makeChain(rpc).pendingUpgrades(), [P.PINS.receipt]);
+  assert.deepEqual(seen, [[key(P.PINS.vault).toXDR('base64'), key(P.PINS.receipt).toXDR('base64')]]);
 });

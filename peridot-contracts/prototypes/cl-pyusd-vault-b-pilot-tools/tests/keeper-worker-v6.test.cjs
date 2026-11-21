@@ -1,5 +1,7 @@
 'use strict';
-// v5: the v4 suite against keeper-worker-v5.cjs (scope v5; prepared.simulationLedger; production-adapter tests moved onto
+// v6: the v5 suite against keeper-worker-v6.cjs (scope cl-vault-b-keeper-v6, state-v6 directory, fakes answer
+// pendingUpgrades); the v4 comparison in the LEDGER_MOVED test stays in the v5 suite. v6 tests are appended at the end.
+// v5: the v4 suite against keeper-worker-v6.cjs (scope v5; prepared.simulationLedger; production-adapter tests moved onto
 // the offline world stub because v5 reads ledger/account/config/instances in one call and needs getEvents). Was v4: the v3 suite against keeper-worker-v4.cjs (scope v4; windows: observation 11, steps 21). Was: v2 suite run against keeper-worker-v3.cjs (source binding renamed); the 97M host-preflight tests are appended.
 // Every signer, CLI and RPC is an injected fake. 'OPERATOR_APPROVED' appears only in in-memory test approvals.
 const test = require('node:test');
@@ -9,8 +11,8 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const S = require('../../../bots/margin-liquidator/node_modules/@stellar/stellar-sdk');
-const W = require('../keeper-worker-v5.cjs');
-const {harness} = require('./support/keeper-v5-harness.cjs');
+const W = require('../keeper-worker-v6.cjs');
+const {harness} = require('./support/keeper-v6-harness.cjs');
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const publicKey = byte => S.StrKey.encodeEd25519PublicKey(Buffer.alloc(32, byte));
 const contract = byte => S.StrKey.encodeContract(Buffer.alloc(32, byte));
@@ -24,7 +26,7 @@ function fixture(t) {
     receipt: contract(1), vault: contract(2), fundingAsset: contract(3),
     wasmSha256: {receipt: '1'.repeat(64), vault: '2'.repeat(64)}, pilotOwners: [publicKey(1)],
     signer: {alias: 'pilot-keeper-test', storage: 'os-secure-store', configDirectory: path.join(temp, 'identities')},
-    stateDirectory: path.join(temp, 'state'), protocolVersion: 29,
+    stateDirectory: path.join(temp, 'state-v6'), protocolVersion: 29,
     costModelXdrSha256: {cpu: '3'.repeat(64), memory: '4'.repeat(64)},
     feeBudgetStroops: '100000', maxTransactionFeeStroops: '10000', feeFloorXlm: '2.0000000',
     inclusionFeeStroops: '1000', inclusionFeeCapStroops: '5000', maxSnapshotAgeSeconds: 15, transactionTimeoutSeconds: 30};
@@ -45,6 +47,7 @@ function fixture(t) {
     now: () => 1001,
     runtimeBindings: () => ({testOnly: 'injected public runtime provenance; no real CLI calls'}),
     assertNetwork: async () => {},
+    pendingUpgrades: async () => { calls.pending = (calls.pending || 0) + 1; return []; },
     inspect: async c => { calls.inspect++; assert.equal(c.readOnly, true); return structuredClone(report); },
     publicAddress: async () => { calls.identity++; return config.keeperPublicAddress; },
     prepare: async () => { calls.prepare++; return structuredClone(prepared); },
@@ -60,7 +63,7 @@ function fixture(t) {
     },
     reconcile: async () => { calls.reconcile++; return {status: 'UNKNOWN'}; },
   };
-  const approval = () => ({status: 'OPERATOR_APPROVED', scope: 'cl-vault-b-pilot-keeper-v5',
+  const approval = () => ({status: 'OPERATOR_APPROVED', scope: 'cl-vault-b-keeper-v6',
     configDigestSha256: W.configDigest(config), sourceSha256: W.sourceBindings(), runtimeProvenance: deps.runtimeBindings(), expiresAt: 2000,
     secureStoreProvisioning: {alias: config.signer.alias, publicAddress: config.keeperPublicAddress,
       configDirectory: config.signer.configDirectory, reviewed: true}});
@@ -83,7 +86,7 @@ test('explicit execution also requires exact, unexpired, separately reviewed con
   await assert.rejects(W.runSingleStep(f.config, {execute: true, approval, deps: f.deps}), /configuration differs/);
   const expired = f.approval(); expired.expiresAt = 1000;
   await assert.rejects(W.runSingleStep(f.config, {execute: true, approval: expired, deps: f.deps}), /expired/);
-  const changed = f.approval(); changed.sourceSha256['keeper-worker-v5.cjs'] = '0'.repeat(64);
+  const changed = f.approval(); changed.sourceSha256['keeper-worker-v6.cjs'] = '0'.repeat(64);
   await assert.rejects(W.runSingleStep(f.config, {execute: true, approval: changed, deps: f.deps}), /changed after approval/);
   const runtime = f.approval(); runtime.runtimeProvenance = {unexpected: 'runtime'};
   await assert.rejects(W.runSingleStep(f.config, {execute: true, approval: runtime, deps: f.deps}), /runtime differs/);
@@ -261,7 +264,7 @@ test('v2 single step with injected fakes journals checkpoint_rewards (no argumen
 test('v2 default mode stays read-only and reports the v2 source bindings', async t => {
   const f = checkpointFixture(t), result = await W.runSingleStep(f.config, {deps: f.deps});
   assert.equal(result.executionEnabled, false); assert.equal(result.signing, false); assert.equal(result.submission, false);
-  assert.deepEqual(Object.keys(result.sourceSha256), ['keeper-worker-v5.cjs', 'keeper-plan-v4.cjs', 'keeper-inspect-v5.cjs']);
+  assert.deepEqual(Object.keys(result.sourceSha256), ['keeper-worker-v6.cjs', 'keeper-plan-v4.cjs', 'keeper-inspect-v5.cjs']);
   assert.equal(f.calls.identity + f.calls.sign + f.calls.submit, 0); assert(!fs.existsSync(f.config.stateDirectory));
 });
 
@@ -296,10 +299,10 @@ test('v4 dedicated RPC: endpoint file + pinned host; exactly one of rpcUrl or rp
 });
 
 
-// ---- v5: production adapter on the offline world stub (tests/support/chain-stub-v5.cjs); no keys, no network ----
+// ---- v5: production adapter on the offline world stub (tests/support/chain-stub-v6.cjs); no keys, no network ----
 const START = 1000, BASE = 1794920000, DL = BASE + 3600;
 const cmd = (kind, phase, extra = {}) => ({id: 5, kind, phase, deadline: DL, ...extra});
-const fixed = (t, options = {}, version = 5) => harness(t, {profile: 'FIXED', jitterMs: 0, startLedger: START, baseTime: BASE, ...options}, {version});
+const fixed = (t, options = {}) => harness(t, {profile: 'FIXED', jitterMs: 0, startLedger: START, baseTime: BASE, ...options});
 const txOf = h => { const [r] = [...h.world.landed.values()]; return r && S.TransactionBuilder.fromXDR(r.envelope.toXDR('base64'), h.config.network); };
 const nothingSigned = h => { assert.equal(h.calls.sign + h.calls.submit, 0); const j = h.journal(); assert(!j || (j.entries.length === 0 && j.active === null && j.halted === false)); };
 // Delay every call matching `when` by `ms` once the snapshot exists (after inspect).
@@ -312,7 +315,7 @@ function afterInspect(h, when, ms = 6000) {
   h.hook = async (method, payload) => { if (when(method, payload, state)) await h.world.clock.sleep(ms); };
   return state;
 }
-const hooked = (t, options = {}, version = 5) => { let h; const hookRef = (m, p) => h.hook ? h.hook(m, p) : undefined; h = fixed(t, {...options, hook: hookRef}, version); return h; };
+const hooked = (t, options = {}) => { let h; const hookRef = (m, p) => h.hook ? h.hook(m, p) : undefined; h = fixed(t, {...options, hook: hookRef}); return h; };
 const isStepSim = (h, tx) => tx && tx.source === h.config.keeperPublicAddress;
 
 test('v5 production adapter: unsigned observation with exact source auth, bounds anchored at the snapshot ledger', async t => {
@@ -427,9 +430,6 @@ test('v5 a ledger closing during the freshness check is harmless (v4 threw LEDGE
   const h = hooked(t, {commands: [cmd(0, 1)]});
   afterInspect(h, (m, p, s) => s.prepared && m === 'getLedgerEntries');
   assert.equal((await h.step()).status, 'SUBMITTED_RECONCILE_NEXT_INVOCATION');
-  const v4 = hooked(t, {commands: [cmd(0, 1)]}, 4);
-  afterInspect(v4, (m, p, s) => s.prepared && m === 'getLedgerEntries');
-  await assert.rejects(v4.step(), /ledger moved during preparation/); assert.equal(v4.calls.sign, 0);
 });
 test('v5 NEGATIVE a failed simulation in a proven snapshot is still a hard refusal (not read-again)', async t => {
   const h = fixed(t, {commands: [cmd(0, 1)], failMethods: ['stage_convert']});
@@ -479,4 +479,53 @@ test('v5 NEGATIVE (lead decision) owner commands re-read one ledger after the si
   const r = await h.step(); assert.equal(r.status, 'LEDGER_CHANGED_READ_AGAIN'); assert.equal(r.reason, 'COMMANDS_NOT_AT_REFERENCE_LEDGER'); nothingSigned(h);
   assert(W.SOFT_CODES.has('COMMANDS_NOT_AT_REFERENCE_LEDGER'));
   h.hook = null; assert.equal((await h.step()).status, 'SUBMITTED_RECONCILE_NEXT_INVOCATION');
+});
+
+
+// ---- v6 ----
+const RETIRED_RECEIPT = 'CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI', RETIRED_VAULT = 'CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63';
+test('v6 config: retired pilot CCGK/CD6N, placeholders and earlier/oddly named state directories are refused at start', t => {
+  const f = fixture(t);
+  assert.doesNotThrow(() => W.validateConfig(f.config));
+  for (const over of [{receipt: RETIRED_RECEIPT}, {vault: RETIRED_VAULT}]) assert.throws(() => W.validateConfig({...f.config, ...over}), /retired pilot/);
+  for (const over of [{receipt: 'PLACEHOLDER_receipt_after_G9'}, {keeperPublicAddress: '<keeper>'}, {wasmSha256: {receipt: 'PLACEHOLDER', vault: '2'.repeat(64)}}, {pilotOwners: ['PLACEHOLDER_T3']}])
+    assert.throws(() => W.validateConfig({...f.config, ...over}), /placeholder left/);
+  for (const dir of ['/Users/joshua/Peridot/keeper-pyusd-vaultb/state-v5', '/Users/joshua/Peridot/keeper-pyusd-vaultb/state-v5/state-v6',
+    '/Users/joshua/Peridot/keeper-pyusd-vaultb/state/state-v6x', path.join(f.temp, 'state-v5'), 'state-v6'])
+    assert.throws(() => W.validateConfig({...f.config, stateDirectory: dir}), /v6 state directory/);
+  assert.doesNotThrow(() => W.validateConfig({...f.config, stateDirectory: '/Users/joshua/Peridot/keeper-pyusd-vaultb/state-v6'}));
+});
+test('v6 approvals: a v5 scope or v5 source bindings never authorise v6', async t => {
+  const f = fixture(t);
+  await assert.rejects(W.runSingleStep(f.config, {execute: true, approval: {...f.approval(), scope: 'cl-vault-b-pilot-keeper-v5'}, deps: f.deps}));
+  const v5Bindings = {...f.approval().sourceSha256}; delete v5Bindings['keeper-worker-v6.cjs']; v5Bindings['keeper-worker-v5.cjs'] = '205e9785ba83958514fb9c266770e4cd72a9762a77d5f024209a34ff8c0d2427';
+  await assert.rejects(W.runSingleStep(f.config, {execute: true, approval: {...f.approval(), sourceSha256: v5Bindings}, deps: f.deps}), /changed after approval/);
+  assert.equal(f.calls.sign + f.calls.submit, 0);
+});
+test('v6 NEGATIVE pending upgrade (fakes): execution refuses before inspecting, journaling or signing; read-only reports it', async t => {
+  const f = fixture(t);
+  f.deps.pendingUpgrades = async () => [f.config.vault];
+  await assert.rejects(f.run(), /pending upgrade/);
+  assert.equal(f.calls.inspect + f.calls.prepare + f.calls.sign + f.calls.submit, 0);
+  assert(!fs.existsSync(path.join(f.config.stateDirectory, 'journal.json')) || f.journal().entries.length === 0);
+  const ro = await W.runSingleStep(f.config, {deps: f.deps});
+  assert.deepEqual(ro.pendingUpgrades, [f.config.vault]); assert.equal(ro.executionWouldRefuse, 'PENDING_UPGRADE'); assert.equal(ro.signing, false);
+});
+test('v6 NEGATIVE pending upgrade on the production adapter: either contract, before journaling; absent entries pass', async t => {
+  for (const which of ['vault', 'receipt']) {
+    const probe = fixed(t, {commands: [cmd(0, 1)]});
+    const h = fixed(t, {commands: [cmd(0, 1)], pendingUpgrade: [probe.config[which]]});
+    await assert.rejects(h.step(), /pending upgrade/); nothingSigned(h);
+  }
+  const ok = fixed(t, {commands: [cmd(0, 1)]});
+  assert.equal((await ok.step()).status, 'SUBMITTED_RECONCILE_NEXT_INVOCATION');
+  assert.deepEqual(await ok.world.clock.drive(ok.base.pendingUpgrades()), []);
+});
+test('v6 NEGATIVE an upgrade proposed between the execution check and prepare is caught by the burst-1 re-read (same getLedgerEntries)', async t => {
+  let armed = false;
+  const h = fixed(t, {commands: [cmd(0, 1)], pendingUpgrade: () => (armed ? [h.config.receipt] : [])});
+  const inspect = h.deps.inspect; h.deps.inspect = async c => { const r = await inspect(c); armed = true; return r; };
+  const calls = h.world.stats.calls;
+  await assert.rejects(h.step(), /pending upgrade/); nothingSigned(h);
+  assert(calls.getLedgerEntries >= 2);
 });

@@ -1,5 +1,20 @@
 // Operator-run, single-step pilot keeper. Defaults to public inspection only.
 //
+// v6 (2026-11-21). Copy of keeper-worker-v5.cjs (205e9785, unchanged; its approvals do not transfer) for the fresh-stack
+// CL collateral group: vault v2 (upgrade-gated) and receipt StgV2. The contract interface the keeper uses is identical
+// (`stellar contract info interface`: every called function and every user type equal between CD6N/CCGK and the 96e7b3c
+// candidates). ONLY changes:
+//  (1) validateConfig refuses the retired pilot pair CCGK/CD6N, any PLACEHOLDER/<...> value, and a stateDirectory that is
+//      not named state-v6* or lies inside an earlier keeper state directory (state, state-v4, state-v5).
+//  (2) pending upgrade -> refuse. Execution reads the vault's and the receipt's persistent PendingUpgradeHash entries
+//      before inspecting, and prepare re-reads them in the SAME burst-1 getLedgerEntries as the code instances (no extra
+//      round trip on the job-2 latency path). Either entry present: hard refusal before anything is journaled or signed.
+//      Read-only inspection reports them.
+//  (3) approval scope 'cl-vault-b-keeper-v6'; bindings name keeper-worker-v6, keeper-plan-v4 (unchanged), keeper-inspect-v5
+//      (unchanged).
+// Everything else (allowlist, journal, approval gates, fee/CPU/resource ceilings incl. the 97M stop, auth checks, windows,
+// signing path) is the v5 text.
+//
 // v5 (2026-11-17). Successor of keeper-worker-v4.cjs (unchanged; its approvals do not transfer). Liveness fix only; the
 // allowlist, journal, approval gates, fee/CPU/resource ceilings, auth checks, windows and signing path are v4's.
 // 17 Nov on Alchemy, v4 prepared almost nothing: getLatestLedger/getLedgers took 2-21 s (full ledger metadata), and v4
@@ -98,7 +113,7 @@ function xlm(value) {
   return BigInt(whole) * 10000000n + BigInt(frac.padEnd(7, '0'));
 }
 function sourceBindings() {
-  return Object.fromEntries(['keeper-worker-v5.cjs', 'keeper-plan-v4.cjs', 'keeper-inspect-v5.cjs'].map(name => [name, sha(fs.readFileSync(path.join(__dirname, name)))]));
+  return Object.fromEntries(['keeper-worker-v6.cjs', 'keeper-plan-v4.cjs', 'keeper-inspect-v5.cjs'].map(name => [name, sha(fs.readFileSync(path.join(__dirname, name)))]));
 }
 function configDigest(config) { return sha(canonical(config)); }
 // v5: soft refusals. Raised only before anything is journaled or signed; runSingleStep turns them into a read-again
@@ -141,7 +156,23 @@ function runtimeBindings() {
     trustBoundary: 'Operator-controlled installed runtime and dependencies must remain immutable during the invocation; package-lock pins transitive dependencies but is not a recursive installed-file attestation.'};
   return structuredClone(cachedRuntime);
 }
+// v6: the keeper v5 scope. v6 never targets these contracts nor shares their state directories.
+const RETIRED_CONTRACTS = Object.freeze(['CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI', 'CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63']);
+const EARLIER_STATE_DIRECTORIES = Object.freeze(['/Users/joshua/Peridot/keeper-pyusd-vaultb/state', '/Users/joshua/Peridot/keeper-pyusd-vaultb/state-v4',
+  '/Users/joshua/Peridot/keeper-pyusd-vaultb/state-v5']);
+function assertNoPlaceholder(value, where = 'config') {
+  if (typeof value === 'string') assert(!/PLACEHOLDER|<[^>]*>|FILL[_ ]?ME/i.test(value), `placeholder left in ${where}`);
+  else if (Array.isArray(value)) value.forEach((v, i) => assertNoPlaceholder(v, `${where}[${i}]`));
+  else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) if (k !== 'operatorFillsOnKeeperHost' && k !== 'notes') assertNoPlaceholder(v, `${where}.${k}`);
+}
 function validateConfig(config) {
+  assertNoPlaceholder(config);
+  for (const field of ['receipt', 'vault']) assert(!RETIRED_CONTRACTS.includes(config[field]), `retired pilot ${field}: keeper v6 targets the fresh stack only`);
+  assert(typeof config.stateDirectory === 'string' && path.isAbsolute(config.stateDirectory) && /^state-v6/.test(path.basename(config.stateDirectory)), 'v6 state directory must be absolute and named state-v6*');
+  for (const earlier of EARLIER_STATE_DIRECTORIES) {
+    const rel = path.relative(earlier, config.stateDirectory);
+    assert(rel !== '' && (rel.startsWith('..') || path.isAbsolute(rel)), 'v6 state directory must not be (inside) an earlier keeper state directory');
+  }
   assert.equal(config.network, S.Networks.PUBLIC, 'only the explicitly approved public network is supported');
   // v4: exactly one of rpcUrl (no credentials) or rpcEndpointFile + rpcHost (URL with key kept out of the config).
   assert((config.rpcUrl === undefined) !== (config.rpcEndpointFile === undefined), 'configure exactly one of rpcUrl or rpcEndpointFile');
@@ -163,7 +194,7 @@ function validateApproval(config, approval, now, runtime = runtimeBindings()) {
   assert.equal(config.status, 'CONFIGURED_FOR_PILOT_EXECUTION', 'draft configuration cannot execute');
   assert.equal(config.readOnly, false, 'execution configuration must be explicit');
   assert.equal(approval?.status, 'OPERATOR_APPROVED');
-  assert.equal(approval.scope, 'cl-vault-b-pilot-keeper-v5');
+  assert.equal(approval.scope, 'cl-vault-b-keeper-v6');
   assert.equal(approval.configDigestSha256, configDigest(config), 'approved configuration differs');
   assert.deepEqual(approval.sourceSha256, sourceBindings(), 'worker/planner/inspector changed after approval');
   assert.deepEqual(approval.runtimeProvenance, runtime, 'Node/CLI/SDK runtime differs from approval');
@@ -354,9 +385,11 @@ async function runSingleStep(config, {execute = false, reconcileOnly = false, ap
   }
   if (!execute) {
     const report = await deps.inspect({...config, readOnly: true});
+    let pendingUpgrades;
+    try { pendingUpgrades = await deps.pendingUpgrades(); } catch (_) { pendingUpgrades = null; }
     let runtimeProvenance;
     try { runtimeProvenance = deps.runtimeBindings(); } catch (_) { runtimeProvenance = null; }
-    return {...report, configDigestSha256: configDigest(config), signing: false, submission: false,
+    return {...report, pendingUpgrades, ...(pendingUpgrades?.length ? {executionWouldRefuse: 'PENDING_UPGRADE'} : {}), configDigestSha256: configDigest(config), signing: false, submission: false,
       executionEnabled: false, sourceSha256: sourceBindings(), runtimeProvenance};
   }
   validateApproval(config, approval, now(), deps.runtimeBindings());
@@ -366,6 +399,7 @@ async function runSingleStep(config, {execute = false, reconcileOnly = false, ap
     if (store.journal.active !== null) return await reconcile(store, deps); // Never sign while outcome is unknown.
     if (store.journal.halted) return {status: 'HALTED_REQUIRES_OPERATOR_REVIEW', signing: false, submission: false};
     assert.equal(await deps.publicAddress(config.signer), config.keeperPublicAddress, 'secure-store alias public key differs');
+    assert.equal((await deps.pendingUpgrades()).length, 0, 'pending upgrade on the vault or receipt: refuse');
     const report = await deps.inspect({...config, readOnly: true});
     if (report.status !== 'UNSIGNED_PLAN_REQUIRES_FRESH_SIMULATION') return {status: report.status, ...(report.reason ? {reason: report.reason} : {}), signing: false, submission: false};
     const plan = report.plan.plans[0];
@@ -415,6 +449,12 @@ function productionDependencies(config, injected = {}) {
   const instanceKey = id => S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({
     contract: new S.Address(id).toScAddress(), key: S.xdr.ScVal.scvLedgerKeyContractInstance(),
     durability: S.xdr.ContractDataDurability.persistent()}));
+  // v6: vault v2 and receipt StgV2 keep a proposed upgrade in persistent DataKey::PendingUpgradeHash (+ ...Eta).
+  const pendingKey = id => S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({
+    contract: new S.Address(id).toScAddress(), key: S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('PendingUpgradeHash')]),
+    durability: S.xdr.ContractDataDurability.persistent()}));
+  const isInstanceRow = row => row.val.contractData().key().switch().name === 'scvLedgerKeyContractInstance';
+  const pendingOf = rows => rows.filter(row => !isInstanceRow(row)).map(row => S.Address.fromScAddress(row.val.contractData().contract()).toString());
   const names = ['configSettingContractComputeV0', 'configSettingContractEventsV0',
     'configSettingContractCostParamsCpuInstructions', 'configSettingContractCostParamsMemoryBytes'];
   const configKey = name => S.xdr.LedgerKey.configSetting(new S.xdr.LedgerKeyConfigSetting({configSettingId: S.xdr.ConfigSettingId[name]()}));
@@ -473,7 +513,7 @@ function productionDependencies(config, injected = {}) {
     assert(Array.isArray(report.decisionLabels) && report.decisions && report.viewSource && report.planInput, 'v5 snapshot required');
     // Burst 1 (parallel).
     const [network, entries, events, params] = await Promise.all([rpc.getNetwork(),
-      rpc.getLedgerEntries(accountKey(), ...names.map(configKey), instanceKey(config.receipt), instanceKey(config.vault)),
+      rpc.getLedgerEntries(accountKey(), ...names.map(configKey), instanceKey(config.receipt), instanceKey(config.vault), pendingKey(config.receipt), pendingKey(config.vault)),
       rpc.getEvents({startLedger: Math.max(1, R - 5), filters: [{type: 'contract', contractIds: [config.vault]}], limit: 1}), // margin: a lagging backend answers instead of erroring
       networkParameters(R)]);
     checkNetwork(network);
@@ -482,8 +522,10 @@ function productionDependencies(config, injected = {}) {
     const rows = byKind(entries.entries);
     assert.equal(rows.account.length, 1, 'keeper account missing');
     const a = parseAccount(rows.account[0].val.account());
-    assert.equal(rows.contractData.length, 2, 'code instance missing');
-    for (const row of rows.contractData) {
+    assert.equal(pendingOf(rows.contractData).length, 0, 'pending upgrade on the vault or receipt: refuse');
+    const instances = rows.contractData.filter(isInstanceRow);
+    assert.equal(instances.length, 2, 'code instance missing');
+    for (const row of instances) {
       const id = S.Address.fromScAddress(row.val.contractData().contract()).toString();
       const role = id === config.receipt ? 'receipt' : id === config.vault ? 'vault' : null; assert(role, 'unexpected instance');
       assert.equal(row.val.contractData().val().instance().executable().wasmHash().toString('hex'), config.wasmSha256[role], 'executable identity mismatch');
@@ -603,6 +645,8 @@ function productionDependencies(config, injected = {}) {
       return {status: result.status, hash: record.hash, source: tx.source, sequence: tx.sequence,
         ledger: result.ledger, feeChargedStroops: result.resultXdr.feeCharged().toString()};
     },
+    // v6: contracts (vault/receipt) with a pending upgrade proposal; [] when none.
+    pendingUpgrades: async () => pendingOf(byKind((await rpc.getLedgerEntries(pendingKey(config.receipt), pendingKey(config.vault))).entries).contractData),
     // v5 (loop): public head ledger without getLatestLedger (slow on Alchemy), and a read-only header warm-up.
     headLedger: async () => (await rpc.getLedgerEntries(instanceKey(config.vault))).latestLedger,
     warmNetworkParameters: async () => { const latest = (await rpc.getLedgerEntries(instanceKey(config.vault))).latestLedger;
@@ -616,7 +660,7 @@ async function main() {
     console.log(stringify({sourceSha256: sourceBindings(), runtimeProvenance: runtimeBindings()})); return;
   }
   if (args.includes('--help')) {
-    console.log('Usage: node keeper-worker-v5.cjs <public-config.json> [--execute --approval <approved.json> | --reconcile]\nPublic runtime pins only: --runtime-provenance\nDefault: public read-only inspection. Explicit execution advances at most one step, or only reconciles a pending hash. --reconcile only reads public transaction status and updates the original journal; it cannot sign or submit and does not need a renewed execution approval.\nRequired execution config: status=CONFIGURED_FOR_PILOT_EXECUTION, readOnly=false, dedicated keeperPublicAddress, signer={alias,storage:"os-secure-store",configDirectory}, stateDirectory, protocolVersion=29, costModelXdrSha256={cpu,memory}, feeBudgetStroops, feeFloorXlm, maxTransactionFeeStroops, inclusionFeeStroops, inclusionFeeCapStroops, maxSnapshotAgeSeconds<=30, transactionTimeoutSeconds<=60.\nApproval: status=OPERATOR_APPROVED, scope=cl-vault-b-pilot-keeper-v5, configDigestSha256, exact sourceSha256 and runtimeProvenance from read-only report, expiresAt, secureStoreProvisioning={alias,publicAddress,configDirectory,reviewed:true}.\nUnknown/failed outcomes and stale locks require operator review. No automatic expiry release, restoration, fee bumps, public-owner indexing, cron, or TTL maintenance. No signed XDR is written or logged. Memory/event ceilings are enforced by simulation under verified network limits, not represented as independently measured RPC metrics.');
+    console.log('Usage: node keeper-worker-v6.cjs <public-config.json> [--execute --approval <approved.json> | --reconcile]\nPublic runtime pins only: --runtime-provenance\nDefault: public read-only inspection. Explicit execution advances at most one step, or only reconciles a pending hash. --reconcile only reads public transaction status and updates the original journal; it cannot sign or submit and does not need a renewed execution approval.\nRequired execution config: status=CONFIGURED_FOR_PILOT_EXECUTION, readOnly=false, dedicated keeperPublicAddress, signer={alias,storage:"os-secure-store",configDirectory}, stateDirectory, protocolVersion=29, costModelXdrSha256={cpu,memory}, feeBudgetStroops, feeFloorXlm, maxTransactionFeeStroops, inclusionFeeStroops, inclusionFeeCapStroops, maxSnapshotAgeSeconds<=30, transactionTimeoutSeconds<=60.\nApproval: status=OPERATOR_APPROVED, scope=cl-vault-b-keeper-v6, configDigestSha256, exact sourceSha256 and runtimeProvenance from read-only report, expiresAt, secureStoreProvisioning={alias,publicAddress,configDirectory,reviewed:true}.\nUnknown/failed outcomes and stale locks require operator review. No automatic expiry release, restoration, fee bumps, public-owner indexing, cron, or TTL maintenance. No signed XDR is written or logged. Memory/event ceilings are enforced by simulation under verified network limits, not represented as independently measured RPC metrics.');
     return;
   }
   assert(args[0] && !args[0].startsWith('--'), 'public configuration file required');
@@ -633,5 +677,5 @@ async function main() {
   console.log(stringify(await runSingleStep(config, {execute, reconcileOnly, approval})));
 }
 if (require.main === module) main().catch(() => { console.error('Keeper refused or halted. Inspect the public configuration and journal; no sensitive CLI/RPC output is printed.'); process.exitCode = 1; });
-module.exports = {soft, softStatus, SOFT_CODES, HEADER_MAX_AGE_LEDGERS, LAST_LEDGER_MAX_FRESH_MS, OBSERVATION_WINDOW, STEP_WINDOW, rpcUrlOf, HOST_STOP, AT_LIMIT, cpuLabel, METHODS, RELEASE_METHODS, runSingleStep, validateConfig, validateApproval, validatePlan, validatePrepared,
+module.exports = {RETIRED_CONTRACTS, EARLIER_STATE_DIRECTORIES, assertNoPlaceholder, soft, softStatus, SOFT_CODES, HEADER_MAX_AGE_LEDGERS, LAST_LEDGER_MAX_FRESH_MS, OBSERVATION_WINDOW, STEP_WINDOW, rpcUrlOf, HOST_STOP, AT_LIMIT, cpuLabel, METHODS, RELEASE_METHODS, runSingleStep, validateConfig, validateApproval, validatePlan, validatePrepared,
   productionDependencies, configDigest, sourceBindings, runtimeBindings, LIMITS};

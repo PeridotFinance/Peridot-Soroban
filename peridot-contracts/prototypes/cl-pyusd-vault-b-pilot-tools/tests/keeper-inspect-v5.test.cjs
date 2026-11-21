@@ -1,13 +1,13 @@
 'use strict';
-// keeper-inspect-v5.cjs on the offline world stub (support/chain-stub-v5.cjs). Read-only; public identifiers only.
+// keeper-inspect-v5.cjs on the offline world stub (support/chain-stub-v6.cjs). Read-only; public identifiers only.
 // Ports the v4 inspector tests (reward boundary search, checkpoint-first, venue unavailable, fail-closed cases) and adds
 // the v5 snapshot rule: mixed read ledgers are accepted only when every decision input is proven at the snapshot ledger.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const S = require('../../../bots/margin-liquidator/node_modules/@stellar/stellar-sdk');
 const {inspect, knownAt} = require('../keeper-inspect-v5.cjs');
-const {makeWorld} = require('./support/chain-stub-v5.cjs');
-const {configFor, publicKey, tempDir} = require('./support/keeper-v5-harness.cjs');
+const {makeWorld} = require('./support/chain-stub-v6.cjs');
+const {configFor, publicKey, tempDir} = require('./support/keeper-v6-harness.cjs');
 const START = 1000, BASE = 1794920000;
 function fixture(t, options = {}) {
   const config = {...configFor(tempDir(t)), readOnly: true};

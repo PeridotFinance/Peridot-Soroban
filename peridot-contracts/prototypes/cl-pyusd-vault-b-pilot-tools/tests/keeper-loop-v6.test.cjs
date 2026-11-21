@@ -1,14 +1,17 @@
 'use strict';
-// v5: the v4 loop suite against keeper-loop-v5.cjs (scope v5). Changed on purpose: a lower head ledger waits instead of
+// v6: the v5 loop suite against keeper-loop-v6.cjs (scope cl-vault-b-keeper-v6). The fixed config no longer names the
+// retired pilot pair (v6 refuses it) and carries a state-v6 directory; v6 tests are appended.
+// v5: the v4 loop suite against keeper-loop-v6.cjs (scope v5). Changed on purpose: a lower head ledger waits instead of
 // refusing; the streak is triggered by the worker's OBSERVATION_STREAK_REQUIRED (deferObservation) instead of a separate
 // read-only inspection; refusals carry a fixed refusalCode.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {runSupervisor, supervisorBinding} = require('../keeper-loop-v5.cjs');
+const {runSupervisor, supervisorBinding} = require('../keeper-loop-v6.cjs');
+const {StrKey} = require('../../../bots/margin-liquidator/node_modules/@stellar/stellar-sdk');
 const config = {network: 'Public Global Stellar Network ; September 2015', rpcUrl: 'https://example.invalid',
   admin: 'GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP',
-  receipt: 'CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI',
-  vault: 'CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63',
+  receipt: StrKey.encodeContract(Buffer.alloc(32, 0x31)), vault: StrKey.encodeContract(Buffer.alloc(32, 0x32)),
+  stateDirectory: '/var/empty/keeper-v6-test/state-v6',
   fundingAsset: 'CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2',
   wasmSha256: {receipt: 'a'.repeat(64), vault: 'b'.repeat(64)},
   pilotOwners: ['GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP']};
@@ -18,7 +21,7 @@ function setup(options = {}) {
   let time = 0, active = options.existing ? {hash: 'f'.repeat(64), at: 0} : null, inFlight = 0;
   const calls = [], executions = [], events = [];
   const settings = {...schedule, ...options.schedule};
-  const approval = {status: 'OPERATOR_APPROVED', scope: 'cl-vault-b-pilot-keeper-v5',
+  const approval = {status: 'OPERATOR_APPROVED', scope: 'cl-vault-b-keeper-v6',
     expiresAt: options.expiresAt ?? 2000, supervisor: supervisorBinding(settings), streak: STREAK};
   const deps = {
     monotonicMs: () => time, epochSeconds: () => 1000 + Math.floor(time / 1000),
@@ -180,17 +183,40 @@ test('v5 soft statuses never stop the loop; refusals carry a fixed code and no e
   const g = setup({invoke: args => { if (args.reconcileOnly) return {status: 'NOTHING_TO_RECONCILE'}; throw Error('keeper simulation failed https://secret.example/key'); }});
   const r = await g.run(); assert.equal(r.status, 'SAFETY_REFUSAL_OPERATOR_REVIEW_REQUIRED'); assert.equal(r.refusalCode, 'SIMULATION_FAILED');
   assert(!JSON.stringify(r).includes('secret'));
-  const {refusalCode} = require('../keeper-loop-v5.cjs');
+  const {refusalCode} = require('../keeper-loop-v6.cjs');
   assert.equal(refusalCode({response: {status: 429}, message: 'https://x/key'}), 'UNCLASSIFIED'); // not an Error: nothing inspected
   assert.equal(refusalCode(Object.assign(Error('Request failed https://x/key'), {response: {status: 429}})), 'RPC_HTTP_429');
 });
 test('v5 streakRpc: the unchanged probe gets the same RPC methods; getLatestLedger answers from getLedgerEntries (no ledger metadata)', async () => {
-  const {streakRpc} = require('../keeper-loop-v5.cjs'); const seen = [];
+  const {streakRpc} = require('../keeper-loop-v6.cjs'); const seen = [];
   const fake = new Proxy({}, {get: (_, m) => async (...a) => { seen.push(m); return m === 'getLedgerEntries' ? {latestLedger: 777, entries: []} : {m, a}; }});
   const r = streakRpc(fake, config);
   assert.deepEqual(await r.getLatestLedger(), {sequence: 777}); assert.deepEqual(seen, ['getLedgerEntries']);
   for (const m of ['getNetwork', 'getFeeStats', 'simulateTransaction', 'sendTransaction', 'getTransaction']) assert.equal((await r[m]('x')).m, m);
   assert.equal(r.getLedgers, undefined, 'nothing else is exposed');
-  const probe = require('../keeper-streak-probe.cjs'); const chain = probe.makeChain(r);
+  const probe = require('../keeper-streak-probe-v6.cjs'); const chain = probe.makeChain(r);
   assert.equal((await chain.latest()).sequence, 777);
+});
+
+
+// ---- v6 ----
+test('v6 the supervisor refuses the retired pilot pair, placeholders and a v5 state directory before any call', async () => {
+  const deps = new Proxy({}, {get: () => () => { throw Error('no dependency may be used'); }});
+  for (const over of [{receipt: 'CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI'}, {vault: 'CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63'},
+    {vault: 'PLACEHOLDER_vault_after_G7'}, {stateDirectory: '/Users/joshua/Peridot/keeper-pyusd-vaultb/state-v5'}])
+    await assert.rejects(runSupervisor({...config, ...over}, {deps}));
+});
+test('v6 refusal codes: pending upgrade and v6 config refusals map to fixed codes', () => {
+  const {refusalCode} = require('../keeper-loop-v6.cjs');
+  const A = m => Object.assign(Error(m), {code: 'ERR_ASSERTION'});
+  assert.equal(refusalCode(A('pending upgrade on the vault or receipt: refuse')), 'PENDING_UPGRADE');
+  assert.equal(refusalCode(A('placeholder left in config.vault')), 'PLACEHOLDER_CONFIG');
+  assert.equal(refusalCode(A('retired pilot vault: keeper v6 targets the fresh stack only')), 'RETIRED_PILOT_TARGET');
+  assert.equal(refusalCode(A('v6 state directory must be absolute and named state-v6*')), 'STATE_DIRECTORY_REFUSED');
+});
+test('v6 a streak that refuses with a pending upgrade stops the session (no observation is sent)', async () => {
+  const f = setup({workerStatus: 'OBSERVATION_STREAK_REQUIRED'});
+  f.deps.streak = async () => { throw Object.assign(Error('pending upgrade on the vault or receipt: refuse'), {code: 'ERR_ASSERTION'}); };
+  const r = await f.run();
+  assert.equal(r.status, 'SAFETY_REFUSAL_OPERATOR_REVIEW_REQUIRED'); assert.equal(r.refusalCode, 'PENDING_UPGRADE');
 });
