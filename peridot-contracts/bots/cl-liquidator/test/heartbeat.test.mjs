@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {heartbeatDue, gapStats, makeHeartbeat, HEARTBEAT_PERIOD_MS} from '../src/heartbeat.mjs';
+import {heartbeatDue, gapStats, makeHeartbeat, failoverRpc, HEARTBEAT_PERIOD_MS} from '../src/heartbeat.mjs';
 import {normalize} from '../src/config.mjs';
 import {hashFromCli} from '../src/main.mjs';
 
@@ -92,4 +92,16 @@ test('makeHeartbeat: TRY_AGAIN_LATER keeps the local sequence and retries after 
   const run = async t => { now = t; hb.observe(true); await hb.tick(); for (let k = 0; k < 5; k++) await new Promise(r => setImmediate(r)); };
   await run(0); await run(12_000); await run(13_000); await run(14_100);
   assert.deepEqual(f.sent, ['101', '102', '102']); assert.equal(calls, 1, 'no network resync on TRY_AGAIN_LATER');
+});
+
+test('failoverRpc: a transport failure moves to the next server and stays; answers never rotate', async () => {
+  const calls = [];
+  const a = {getAccount: async () => { calls.push('a'); throw Error('fetch failed'); }, sendTransaction: async () => { calls.push('a-send'); return {status: 'ERROR'}; }};
+  const b = {getAccount: async () => { calls.push('b'); return 'B'; }, sendTransaction: async () => { calls.push('b-send'); return {status: 'TRY_AGAIN_LATER'}; }};
+  const r = failoverRpc([a, b]);
+  assert.equal(await r.getAccount('G'), 'B');
+  assert.equal((await r.sendTransaction({})).status, 'TRY_AGAIN_LATER');
+  assert.deepEqual(calls, ['a', 'b', 'b-send']);
+  b.getAccount = async () => { throw Error('down'); };
+  await assert.rejects(() => r.getAccount('G'), /fetch failed|down/);
 });

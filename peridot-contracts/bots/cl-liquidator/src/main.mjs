@@ -8,7 +8,7 @@ import {loadConfig} from './config.mjs';
 import {makeReader, makeExecutor, assertLiveAllowed, loadSdk} from './chain.mjs';
 import {openJournal, unresolvedL3, lastL4Failure, lastL2CacheTs} from './journal.mjs';
 import {assessDepeg, fetchReference, httpJson} from './watcher.mjs';
-import {makeHeartbeat} from './heartbeat.mjs';
+import {makeHeartbeat, failoverRpc} from './heartbeat.mjs';
 import {execFile} from 'node:child_process';
 import {cliEnv, assertIdentityName, MAINNET} from './chain.mjs';
 import {isMainnet, makeRpc, startChecks, makeSender, botAllow, makeHeartbeatSigner, openBudget, openGate, acquireRunLock, trustlineStatus, requireTrustlines} from './mainnet.mjs';
@@ -129,7 +129,7 @@ async function main() {
   const exec = live ? makeExecutor(cfg) : null, j = openJournal(cfg.dataDir);
   let hb = null;
   if (live && has('--watch') && cfg.heartbeatIdentity) {
-    const S = loadSdk(), rpc = new S.rpc.Server(cfg.rpcUrl);
+    const S = loadSdk(), rpc = failoverRpc([cfg.rpcUrl, ...(cfg.heartbeatRpcUrls ?? [])].map(u => new S.rpc.Server(u)), out);
     hb = makeHeartbeat({S, rpc, cfg, journal: j, sign: makeCliSigner(cfg, cfg.heartbeatIdentity), out}).start();
   }
   out({msg: 'start', live, watch: has('--watch'), network: cfg.networkPassphrase, heartbeat: hb ? {account: cfg.heartbeatAccount, periodMs: cfg.heartbeatPeriodMs ?? 12000} : null});

@@ -31,6 +31,25 @@ export function gapStats(times) {
  * makeHeartbeat({S, rpc, cfg, journal, sign, out, clock}) -> {observe(blocked), tick(), stop(), stats()}
  * `sign(xdr) -> Promise<signedXdr>` (CLI). `observe` is called by the plan loop after each observation.
  */
+/**
+ * RPC failover: the live soak lost a single RPC for ~220 s (fetch failed), which broke the chain. `rpcs` is an
+ * ordered list; a call that THROWS (transport failure) moves to the next server and stays there. Contract or
+ * submission results (ERROR, TRY_AGAIN_LATER) are answers, not failures, and do not rotate.
+ */
+export function failoverRpc(rpcs, out = () => {}) {
+  let i = 0;
+  const call = async (name, ...args) => {
+    let last;
+    for (let k = 0; k < rpcs.length; k++) {
+      const j = (i + k) % rpcs.length;
+      try { const r = await rpcs[j][name](...args); if (j !== i) { out({level: 'warn', msg: 'heartbeat RPC failover', to: j}); i = j; } return r; }
+      catch (e) { last = e; }
+    }
+    throw last;
+  };
+  return new Proxy({}, {get: (_, name) => (...args) => call(name, ...args)});
+}
+
 export function makeHeartbeat({S, rpc, cfg, journal, sign, out, clock = () => Date.now()}) {
   const st = {blocked: false, obsAtMs: null, lastSubmitMs: null, submitting: false, seq: null, pending: new Map(), included: [], retryAtMs: null};
   const period = cfg.heartbeatPeriodMs ?? HEARTBEAT_PERIOD_MS, fee = String(cfg.heartbeatFeeStroops ?? 10_000), RETRY_MS = 2_000;
