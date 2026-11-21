@@ -2470,7 +2470,10 @@ impl ClShareVault {
     /// Pauses new deposits. Withdrawals are deliberately never pausable: the
     /// market above must always be able to pull its cash back.
     pub fn set_paused(env: Env, admin_addr: Address, paused: bool) {
-        pilot_require_unbound_configuration(&env);
+        // v2 upgrade gate: the reversible admin pause stays available while bound.
+        // It blocks new deposits/investment and swaps only; in-kind close, emergency
+        // exit and seizure sync do not read it. The guardian pause stays one-way.
+        pilot_require_pinned_admin(&env,&admin_addr);
 
         Self::require_admin(&env, &admin_addr);
         let mut p = params(&env);
@@ -2920,11 +2923,10 @@ impl ClShareVault {
     // Upgrade (timelocked, same shape as the other Peridot contracts)
     // ─────────────────────────────────────────────────────────────────────
 
+    // v2: upgradeable while bound, on Mainnet only by the pinned Ledger admin (set_admin
+    // stays frozen there). 24 h timelock; cancel; execution requires the admin pause.
     pub fn propose_upgrade_wasm(env: Env, admin_addr: Address, new_wasm_hash: BytesN<32>) {
-        assert!(!pilot_public_network(&env),"pilot Ledger authority and code are fixed");
-
-        pilot_require_unbound_configuration(&env);
-
+        pilot_require_pinned_admin(&env,&admin_addr);
         Self::require_admin(&env, &admin_addr);
         let eta = env
             .ledger()
@@ -2937,14 +2939,27 @@ impl ClShareVault {
             .persistent()
             .set(&DataKey::PendingUpgradeEta, &eta);
         bump_pending_upgrade_ttl(&env);
+        env.events().publish((Symbol::new(&env,"upgrade_proposed"),),(new_wasm_hash,eta));
+    }
+
+    pub fn cancel_upgrade(env: Env, admin_addr: Address) {
+        pilot_require_pinned_admin(&env,&admin_addr);
+        Self::require_admin(&env, &admin_addr);
+        let h: BytesN<32> = env.storage().persistent().get(&DataKey::PendingUpgradeHash).expect("pending upgrade not set");
+        env.storage().persistent().remove(&DataKey::PendingUpgradeHash);
+        env.storage().persistent().remove(&DataKey::PendingUpgradeEta);
+        env.events().publish((Symbol::new(&env,"upgrade_cancelled"),),h);
+    }
+
+    pub fn get_pending_upgrade(env: Env) -> Option<(BytesN<32>, u64)> {
+        let h: Option<BytesN<32>> = env.storage().persistent().get(&DataKey::PendingUpgradeHash);
+        h.map(|h| (h, env.storage().persistent().get(&DataKey::PendingUpgradeEta).unwrap()))
     }
 
     pub fn upgrade_wasm(env: Env, admin_addr: Address, new_wasm_hash: BytesN<32>) {
-        assert!(!pilot_public_network(&env),"pilot Ledger authority and code are fixed");
-
-        pilot_require_unbound_configuration(&env);
-
+        pilot_require_pinned_admin(&env,&admin_addr);
         Self::require_admin(&env, &admin_addr);
+        assert!(params(&env).paused, "pause vault before upgrade");
         bump_pending_upgrade_ttl(&env);
         let pending: BytesN<32> = env
             .storage()
@@ -2968,6 +2983,7 @@ impl ClShareVault {
         env.storage()
             .persistent()
             .remove(&DataKey::PendingUpgradeEta);
+        env.events().publish((Symbol::new(&env,"upgraded"),),new_wasm_hash.clone());
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
@@ -3653,4 +3669,11 @@ fn pilot_require_pinned_admin(e:&Env,admin:&Address) {
     if pilot_public_network(e) {
         assert_eq!(*admin,Address::from_str(e,"GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"),"pilot Ledger admin required");
     }
+}
+
+// Test-only v2' build (`--features upgrade-marker`): proves a state-preserving upgrade.
+#[cfg(feature="upgrade-marker")]
+#[contractimpl]
+impl ClShareVault {
+    pub fn upgrade_marker(_e:Env)->u32 {2}
 }

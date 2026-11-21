@@ -210,10 +210,12 @@ rep('''    pub fn set_margin_liquidation_ctrl(env: Env, controller: Address, all
 # G10. Emergency-exit path: an account with NO debt in any entered group market may exit the CL
 #      sleeve while holding units (oracle-free: only borrow balances are read). The StgV2 receipt
 #      refuses the no-claim emergency exit while the owner is entered (100-entry limit).
+#      F2 (21 Nov 2026): the sleeve is guarded REGARDLESS of its CF, so CF 0 (emergency_disable_collateral)
+#      cannot let an indebted account leave the sleeve and then emergency-exit its units.
 rep('''        if pbal > 0 && market_cf > 0 {
             panic!("Cannot exit with collateral in market");
         }''',
-    '''        if pbal > 0 && market_cf > 0 && !(cfg!(feature = "group") && Self::group_no_debt(&env, &user, &entered)) {
+    '''        if pbal > 0 && (market_cf > 0 || Self::group_sleeve(&env).as_ref() == Some(&market)) && !(cfg!(feature = "group") && Self::group_no_debt(&env, &user, &entered)) {
             panic!("Cannot exit with collateral in market");
         }''')
 rep('''    fn group_liq_cache_only(env: &Env) -> bool {''',
@@ -227,5 +229,48 @@ rep('''    fn group_liq_cache_only(env: &Env) -> bool {''',
         true
     }
     fn group_liq_cache_only(env: &Env) -> bool {''')
+# ---- 21 Nov 2026 (UPGRADEABILITY.md): G11 cancel path + pending view + events, same 24 h shape as
+#      the cash-market controller (.wt-cash-upgrade). Not feature-gated: upgrade governance is generic.
+rep('''            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        storage::bump_pending_upgrade_ttl(&env);
+    }''',
+    '''            .set(&DataKey::PendingUpgradeEta, &execute_after);
+        storage::bump_pending_upgrade_ttl(&env);
+        env.events().publish((Symbol::new(&env, "upgrade_proposed"),), (new_wasm_hash, execute_after));
+    }
+
+    /// Admin: cancel a staged upgrade (removes the pending hash and ETA).
+    pub fn cancel_upgrade(env: Env) {
+        bump_core_ttl(&env);
+        require_admin(env.clone());
+        let persistent = env.storage().persistent();
+        let h: soroban_sdk::BytesN<32> = persistent.get(&DataKey::PendingUpgradeHash).expect("pending upgrade not set");
+        persistent.remove(&DataKey::PendingUpgradeHash);
+        persistent.remove(&DataKey::PendingUpgradeEta);
+        env.events().publish((Symbol::new(&env, "upgrade_cancelled"),), h);
+    }
+
+    pub fn get_pending_upgrade(env: Env) -> Option<(soroban_sdk::BytesN<32>, u64)> {
+        let persistent = env.storage().persistent();
+        let h: Option<soroban_sdk::BytesN<32>> = persistent.get(&DataKey::PendingUpgradeHash);
+        h.map(|h| (h, persistent.get(&DataKey::PendingUpgradeEta).unwrap()))
+    }''')
+rep('''            .remove(&DataKey::PendingUpgradeEta);
+        env.deployer().update_current_contract_wasm(new_wasm_hash);''',
+    '''            .remove(&DataKey::PendingUpgradeEta);
+        env.events().publish((Symbol::new(&env, "upgraded"),), new_wasm_hash.clone());
+        env.deployer().update_current_contract_wasm(new_wasm_hash);''')
+# Test-only v2' marker in its own contractimpl block (a cfg'd fn inside #[contractimpl] breaks builds).
+s = s.rstrip('\n') + '''
+
+/// Test-only v2' build (`--features upgrade-marker`) for the upgrade state-survival test.
+#[cfg(feature = "upgrade-marker")]
+#[contractimpl]
+impl SimplePeridottroller {
+    pub fn upgrade_marker(_env: Env) -> u32 {
+        2
+    }
+}
+'''
 open(p, 'w').write(s)
 print('patched', p)

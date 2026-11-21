@@ -10,6 +10,8 @@ cl-pyusd-vault-b = []
 hybrid-rewards = []
 hybrid-validation = []
 test-default-admin = []
+# Test-only v2-prime marker build for the upgrade state-survival test. Never a release feature.
+upgrade-marker = []
 [dependencies]
 soroban-sdk = { workspace = true }
 [dev-dependencies]

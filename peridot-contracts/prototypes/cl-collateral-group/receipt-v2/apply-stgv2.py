@@ -49,9 +49,38 @@ patch(dst / 'src/contract.rs', [
     ('    pub fn set_peridottroller(env: Env, peridottroller: Address) {\n',
      G + '        assert!(!staged_v2::stg2_active(&env), "StgV2: controller binding is fixed");\n', 1),
 ])
+# Upgradeability (21 Nov 2026, UPGRADEABILITY.md): cancel path, pending view and events, same 24 h
+# propose/execute shape as the cash markets (.wt-cash-upgrade receipt-vault). Additive anchors only.
+patch(dst / 'src/contract.rs', [
+    ('    }\n\n    /// Admin: execute a staged upgrade once timelock has elapsed.\n',
+     '        env.events().publish((Symbol::new(&env, "upgrade_proposed"),), (new_wasm_hash, execute_after));\n', 1),
+    ('        env.deployer().update_current_contract_wasm(new_wasm_hash);\n',
+     '        env.events().publish((Symbol::new(&env, "upgraded"),), new_wasm_hash.clone());\n', 1),
+    ('    /// Admin: transfer admin to new address\n', '''    /// Admin: cancel a staged upgrade (removes the pending hash and ETA).
+    pub fn cancel_upgrade(env: Env) {
+        let _ = ensure_initialized(&env);
+        let admin: Address = env.storage().persistent().get(&DataKey::Admin).expect("admin not set");
+        admin.require_auth();
+        let persistent = env.storage().persistent();
+        let h: soroban_sdk::BytesN<32> = persistent.get(&DataKey::PendingUpgradeHash).expect("pending upgrade not set");
+        persistent.remove(&DataKey::PendingUpgradeHash);
+        persistent.remove(&DataKey::PendingUpgradeEta);
+        env.events().publish((Symbol::new(&env, "upgrade_cancelled"),), h);
+    }
+
+    pub fn get_pending_upgrade(env: Env) -> Option<(soroban_sdk::BytesN<32>, u64)> {
+        let persistent = env.storage().persistent();
+        let h: Option<soroban_sdk::BytesN<32>> = persistent.get(&DataKey::PendingUpgradeHash);
+        h.map(|h| (h, persistent.get(&DataKey::PendingUpgradeEta).unwrap()))
+    }
+
+''', 1),
+], prepend=True)
 c = dst / 'src/contract.rs'
 c.write_text(c.read_text() + '\n// StgV2 CL collateral class (prototype overlay; see prototypes/cl-collateral-group/receipt-v2).\n'
-    '#[cfg(not(feature = "lp-engine"))]\n#[path = "staged_v2.rs"]\nmod staged_v2;\n#[cfg(not(feature = "lp-engine"))]\npub use staged_v2::*;\n')
+    '#[cfg(not(feature = "lp-engine"))]\n#[path = "staged_v2.rs"]\nmod staged_v2;\n#[cfg(not(feature = "lp-engine"))]\npub use staged_v2::*;\n'
+    + '// Test-only v2\' build (`--features stg2-upgrade-marker`) for the upgrade state-survival test.\n'
+    '#[cfg(all(feature = "stg2-upgrade-marker", not(feature = "lp-engine")))]\n#[contractimpl]\nimpl ReceiptVault {\n    pub fn upgrade_marker(_env: Env) -> u32 {\n        2\n    }\n}\n')
 st = dst / 'src/staged.rs'
 # Exit guard: prepare-close and emergency exit both start from the owner's available units.
 patch(st, [('        stg_deadline_ok(&e, deadline);\n        let available = stg_units(&e, &owner);\n', '        super::staged_v2::stg2_exit_check(&e, &owner, available, shares);\n', 1),
@@ -68,7 +97,7 @@ pub(super) fn stg_require_idle(e: &Env) {
 }
 ''')
 patch(dst / 'Cargo.toml', [('stg-mainnet-accepted = []\n',
-    '# Explicit Mainnet acceptance of the StgV2 collateral class. Default builds refuse activation on Mainnet.\nstg2-mainnet-accepted = []\n# Measurement-only D3 chain seeding (never a deployment candidate).\nstg2-measure = []\n', 1)])
+    '# Explicit Mainnet acceptance of the StgV2 collateral class. Default builds refuse activation on Mainnet.\nstg2-mainnet-accepted = []\n# Measurement-only D3 chain seeding (never a deployment candidate).\nstg2-measure = []\n# Test-only v2-prime marker build (upgrade state-survival test). Never a release feature.\nstg2-upgrade-marker = []\n', 1)])
 diff = subprocess.run(['diff', '-ruN', str(src0), str(dst)], capture_output=True, text=True).stdout.replace(str(base) + '/', 'base/').replace(str(out) + '/', 'stgv2/')
 (out / 'stgv2.diff').write_text(diff)
 removed = [l for l in diff.splitlines() if l.startswith('-') and not l.startswith('---')]

@@ -16,6 +16,8 @@ test-default-admin = []
 lp-zero-peri = []
 # Patch switch: OFF reproduces the generic controller source exactly.
 group = []
+# Test-only v2-prime marker build (upgrade state-survival test). Never a release feature.
+upgrade-marker = []
 
 [dependencies]
 soroban-sdk = { version = "25.3.0", features = ["experimental_spec_shaking_v2"] }
