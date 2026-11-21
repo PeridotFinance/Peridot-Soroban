@@ -171,7 +171,14 @@ fn ev(e: &Env, name: &str, data: impl IntoVal<Env, Val>) { e.events().publish((S
 pub(super) fn stg2_emergency_check(e: &Env, owner: &Address) {
     if !stg2_active(e) { return; }
     let c = cfg(e);
-    let m: Vec<Address> = call(e, &c.controller, "get_user_markets", (owner.clone(),).into_val(e));
+    // F1 (21 Nov 2026): a holder can always emergency-exit while the controller is broken. Fail
+    // OPEN only when the controller call itself errors or traps (bad upgrade, unreachable); an
+    // answer that lists this market always refuses. Trade-off: an entered borrower can then exit
+    // only once the controller is dead, when liquidation is impossible anyway (TESTS-STGV2.md).
+    let m = match e.try_invoke_contract::<Vec<Address>, soroban_sdk::InvokeError>(&c.controller, &Symbol::new(e, "get_user_markets"), (owner.clone(),).into_val(e)) {
+        Ok(Ok(m)) => m,
+        _ => return,
+    };
     if m.contains(e.current_contract_address()) { panic_with_error!(e, Stg2Error::EnteredMarket); }
 }
 pub(super) fn stg2_exit_check(e: &Env, owner: &Address, available: u128, shares: u128) {
