@@ -133,7 +133,7 @@ fn fresh_inner() {
                 ];
                 let (rows, s3, ok3) = seq("FRESH borrow path on the fresh stack (CAFJ USDC price)", &s2, &bl);
                 results.push(rows);
-                if ok3 { fresh_exit_rows(&s2, &s3, &f, &mut results); }
+                if ok3 { fresh_exit_rows(&s2, &s3, &f, &mut results); fresh_liq_rows(&s2, &f, &mut results, &mut log); }
                 if ok3 && std::path::Path::new(&format!("{}/vault-v2-marker.wasm", wdir())).exists() {
                     fresh_upgrade_rows(&s3, &f, &mut results, &mut log);
                 }
@@ -355,4 +355,185 @@ fn fresh_exit_rows(s2: &LedgerSnapshot, s3: &LedgerSnapshot, f: &Fresh, results:
         }
     }
     let _ = v;
+}
+
+/// EMULATION-ONLY oracle roll: the captured Reflector instance (CALI / CAFJ) re-timestamps its latest
+/// round to `t` (same prices). Models a flat feed that keeps publishing (as CALI does); needed because
+/// a frozen capture otherwise goes stale 600 s after its last round. Nothing else in the instance changes.
+fn roll_oracle(snap: &LedgerSnapshot, contract: &str, t: u64) -> LedgerSnapshot {
+    use soroban_sdk::xdr::{ScMapEntry, ScVec};
+    let mut next = snap.clone(); let mut done = false;
+    let ms = t * 1000;
+    for (k, (e, _)) in next.ledger_entries.iter_mut() {
+        let LedgerKey::ContractData(d) = &**k else { continue };
+        if d.contract.to_string() != contract || !matches!(d.key, ScVal::LedgerKeyContractInstance) { continue; }
+        let LedgerEntryData::ContractData(cd) = &mut e.data else { continue };
+        let ScVal::ContractInstance(inst) = &mut cd.val else { continue };
+        let Some(map) = inst.storage.as_mut() else { continue };
+        let name = |k: &ScVal| match k { ScVal::Symbol(s) => s.0.to_utf8_string_lossy(), ScVal::String(s) => s.0.to_utf8_string_lossy(), _ => String::new() };
+        let mut entries: StdVec<ScMapEntry> = map.0.to_vec();
+        let last = entries.iter().find(|x| name(&x.key) == "last_timestamp").and_then(|x| if let ScVal::U64(v) = x.val { Some(v) } else { None }).expect("last_timestamp");
+        for x in entries.iter_mut() {
+            if name(&x.key) == "last_timestamp" { x.val = ScVal::U64(ms); }
+            if name(&x.key) == "cache" {
+                if let ScVal::Vec(Some(v)) = &x.val {
+                    let mut items: StdVec<ScVal> = v.0.to_vec();
+                    for it in items.iter_mut() {
+                        if let ScVal::Vec(Some(pair)) = it { let mut p: StdVec<ScVal> = pair.0.to_vec();
+                            if p.first() == Some(&ScVal::U64(last)) { p[0] = ScVal::U64(ms); *it = ScVal::Vec(Some(ScVec(p.try_into().unwrap()))); } }
+                    }
+                    x.val = ScVal::Vec(Some(ScVec(items.try_into().unwrap())));
+                }
+            }
+        }
+        map.0 = entries.try_into().unwrap(); done = true;
+    }
+    assert!(done, "oracle instance {contract} not found");
+    next
+}
+fn at_time(snap: &LedgerSnapshot, t: u64, roll_cali: bool, roll_cafj: bool) -> LedgerSnapshot {
+    let mut s = snap.clone(); s.timestamp = t;
+    if roll_cali { s = roll_oracle(&s, ORACLE, t); }
+    if roll_cafj { s = roll_oracle(&s, CAFJ, t); }
+    s
+}
+
+/// Liquidation L1-L5 (NAV path) and the D3 fallback path on the COMPILED release bytes, public network
+/// id, live state. Shortfall via the admin's immediate emergency_disable_collateral (a CF cut is
+/// timelocked), as in BUILD-REPORT/Testnet. Liquidator = TREASURY (G account with a live USDC trustline).
+fn fresh_liq_rows(s2: &LedgerSnapshot, f: &Fresh, results: &mut StdVec<Value>, log: &mut StdVec<Value>) {
+    let (v, r, c, m) = (f.v.clone(), f.r.clone(), f.c.clone(), f.m.clone());
+    let (sup, m1, m2, r1, r2, m3) = (f.supplier.clone(), m.clone(), m.clone(), r.clone(), r.clone(), m.clone());
+    let units_of = |snap: &LedgerSnapshot, who: &'static str| { let r = r.clone(); u(&read(snap, move |env| tv(env, &r, "stage_units", (a(env, who),).into_val(env)))) };
+    let ck = |label: &str| call(label, &r, "checkpoint_nav", |e| Vec::new(e), true);
+    let fb = |label: &str| call(label, &r, "checkpoint_fallback", |e| Vec::new(e), true);
+    let l2 = || call("L2 ctrl.cache_price(USDC) via CAFJ", &c, "cache_price", |e| (a(e, USDC),).into_val(e), true);
+    let l3 = |label: &str| { let (mm, rr) = (m.clone(), r.clone()); call(label, &c, "liquidate", move |e| (a(e, O), a(e, &mm), a(e, &rr), 100_000_000u128, a(e, TREASURY)).into_val(e), true) };
+    let l4 = |label: &str| call(label, &v, "checkpoint_rewards", |e| Vec::new(e), true);
+    let l5 = |id: u64| call(&format!("L5 receipt.sync_seized({id})"), &r, "sync_seized", move |e| (id,).into_val(e), true);
+    let ee_liq = |label: &str, n: u128| call(label, &r, "stage_emergency_exit", move |e| (a(e, TREASURY), n, true).into_val(e), true);
+    let ee_own = |label: &str, n: u128| call(label, &r, "stage_emergency_exit", move |e| (a(e, O), n, true).into_val(e), true);
+    // setup: lender liquidity, NAV, enter both, price, borrow 40 USDC, liquidator funds + approval, CF 0
+    let (rows, sl, ok) = seq("FRESH LIQ setup: borrow 40 USDC, liquidator funded and approved, emergency CF 0", s2, &[
+        call("setup supplier deposit 1,000 USDC", &m, "deposit", move |e| (a(e, &sup), 10_000_000_000u128).into_val(e), false),
+        call("setup checkpoint_nav", &r, "checkpoint_nav", |e| Vec::new(e), false),
+        call("setup enter receipt", &c, "enter_market", move |e| (a(e, O), a(e, &r1)).into_val(e), false),
+        call("setup enter usdc", &c, "enter_market", move |e| (a(e, O), a(e, &m1)).into_val(e), false),
+        call("setup cache_price(USDC)", &c, "cache_price", |e| (a(e, USDC),).into_val(e), false),
+        call("setup borrow 40 USDC", &m, "borrow", |e| (a(e, O), 400_000_000u128).into_val(e), false),
+        call("setup mint 100 USDC to liquidator", USDC, "mint", |e| (a(e, TREASURY), 1_000_000_000i128).into_val(e), false),
+        call("setup liquidator approves USDC market", USDC, "approve", move |e| (a(e, TREASURY), a(e, &m2), 1_000_000_000i128, e.ledger().sequence() + 100_000).into_val(e), false),
+        call("setup ctrl.emergency_disable_collateral(receipt)", &c, "emergency_disable_collateral", move |e| (a(e, &r2), true).into_val(e), false)]);
+    results.push(rows);
+    if !ok { return; }
+    let n0 = units_of(&sl, O);
+    // ---- NAV path: L1a -> L2 -> L3 -> (liquidator exit before L5 refused) -> L4 -> L5 -> exits
+    let (rows, sn, ok) = seq("FRESH LIQ-N NAV path: L1a, L2, L3 liquidate 10 USDC", &sl, &[ck("L1a receipt.checkpoint_nav()"), l2(), l3("L3 ctrl.liquidate(owner, usdc, receipt, 10 USDC, liquidator)")]);
+    results.push(rows);
+    if ok {
+        let seized = units_of(&sn, TREASURY);
+        log.push(json!({"nav_path": {"borrower_units_before": n0.to_string(), "borrower_units_after": units_of(&sn, O).to_string(), "liquidator_units": seized.to_string()}}));
+        let (rows, _, _) = seq("FRESH LIQ-N liquidator emergency exit BEFORE L5 refused (vault beneficiary not moved)", &sn, &[ee_liq("EXL0 liquidator stage_emergency_exit before L5 -> revert", seized).fails()]);
+        results.push(rows);
+        let (rows, s5, ok5) = seq("FRESH LIQ-N L4 claim then L5 sync within 60 s (no boundary)", &sn, &[l4("L4 vault.checkpoint_rewards()"), l5(0)]);
+        results.push(rows);
+        if ok5 {
+            let id = { let r = r.clone(); u(&read(&s5, move |env| tv(env, &r, "stage_state", Vec::new(env)))["next_id"]) as u64 };
+            let left = units_of(&s5, O);
+            let (rows, _, _) = seq("FRESH LIQ-N after L5: liquidator (not entered) emergency-exits seized units; pay", &s5, &[ee_liq("EXL1 liquidator stage_emergency_exit(seized)", seized), call("EXL2 stage_emergency_pay", &r, "stage_emergency_pay", move |e| (id,).into_val(e), true)]);
+            results.push(rows);
+            let (rows, _, _) = seq("FRESH LIQ-N after L5: entered borrower with debt refused (#2116)", &s5, &[ee_own("EXL3 borrower stage_emergency_exit -> #2116", left).fails()]);
+            results.push(rows);
+            log.push(json!({"nav_path_after_l5": read(&s5, { let (v, r) = (v.clone(), r.clone()); move |env| json!({
+                "vault_beneficial_owner": tv(env, &v, "stage_beneficial", (a(env, O),).into_val(env)), "vault_beneficial_liq": tv(env, &v, "stage_beneficial", (a(env, TREASURY),).into_val(env)),
+                "receipt_units_owner": tv(env, &r, "stage_units", (a(env, O),).into_val(env)), "receipt_units_liq": tv(env, &r, "stage_units", (a(env, TREASURY),).into_val(env)),
+                "pending_0": tv(env, &r, "stage2_pending", (0u64,).into_val(env)), "last_claim": tv(env, &v, "stage_last_claim", Vec::new(env)) }) })}));
+        }
+    }
+    // ---- D3 path: real pool push, heartbeat chain on the real clock, 9:59 refused, 10:00 admitted, L2, L3, L4, L5, route B
+    let trader = { let s = step_env(&sl); let x = Address::generate(&s.env); astr(&x) };
+    let (t1, t2) = (trader.clone(), trader.clone());
+    let t0 = sl.timestamp + 6;
+    let (rows, sp, ok) = seq("FRESH LIQ-D setup: real swap of 2,000,000 PYUSD into the live pool", &at_time(&sl, t0, true, true), &[
+        call("setup mint 2,000,000 PYUSD to trader", PYUSD, "mint", move |e| (a(e, &t1), 20_000_000_000_000i128).into_val(e), false),
+        call("setup trader swaps PYUSD->USDC", POOL, "swap", move |e| {
+            let toks: Vec<Address> = e.invoke_contract(&a(e, POOL), &Symbol::new(e, "get_tokens"), Vec::new(e));
+            let i_in: u32 = if toks.get(0).unwrap() == a(e, PYUSD) { 0 } else { 1 };
+            (a(e, &t2), i_in, 1 - i_in, 20_000_000_000_000u128, 0u128).into_val(e) }, false)]);
+    results.push(rows);
+    if !ok { return; }
+    let since = sp.timestamp; // first observation lands here
+    let oracle_t = since;     // both feeds re-timestamped to the chain start (CALI age reaches exactly 600 s at admission)
+    let mut cur = roll_oracle(&roll_oracle(&sp, ORACLE, oracle_t), CAFJ, oracle_t);
+    let mut obs = StdVec::new();
+    for k in 0..12u64 { // observations at since + 0, 50, ..., 550
+        let mut x = cur.clone(); x.timestamp = since + 50 * k;
+        let (rows, nx, ok) = seq(&format!("FRESH LIQ-D heartbeat checkpoint_nav at chain t+{}", 50 * k), &x, &[ck(&format!("D3 heartbeat {k}: checkpoint_nav (blocked -> 0)"))]);
+        obs.push(rows["rows"][0]["result"].clone());
+        if k == 0 || k == 11 { results.push(rows); }
+        if !ok { results.push(json!({"sequence": "FRESH LIQ-D heartbeat failed", "ok": false, "k": k})); return; }
+        cur = nx;
+    }
+    log.push(json!({"d3_heartbeat_results": obs, "d3_status": read(&cur, { let r = r.clone(); move |env| tv(env, &r, "stage2_status", Vec::new(env)) })}));
+    // chain-gap branch: a 61 s gap after the last observation -> #2113
+    { let x = at_time(&cur, since + 550 + 61, true, false); // CALI re-timestamped so the gap, not oracle age, decides
+      let (rows, _, _) = seq("FRESH LIQ-D fallback 61 s after the last observation -> #2113 ChainBroken", &x, &[fb("L1b checkpoint_fallback after a 61 s gap -> #2113").fails()]); results.push(rows); }
+    // 9:59 refused
+    { let mut x = cur.clone(); x.timestamp = since + 599;
+      let (rows, _, _) = seq("FRESH LIQ-D fallback at 9:59 -> #2112 BlockTooRecent", &x, &[fb("L1b checkpoint_fallback at 599 s -> #2112").fails()]); results.push(rows); }
+    // 10:00 admitted, then L2 (CAFJ re-timestamped to the admission instant), L3
+    let mut x = cur.clone(); x.timestamp = since + 600;
+    let (rows, sf, ok) = seq("FRESH LIQ-D fallback at 10:00 admitted", &x, &[fb("L1b checkpoint_fallback at 600 s")]);
+    results.push(rows);
+    if !ok { return; }
+    let sf = roll_oracle(&sf, CAFJ, sf.timestamp);
+    let (rows, sq, ok) = seq("FRESH LIQ-D L2, L3 liquidate on the fallback", &sf, &[l2(), l3("L3 ctrl.liquidate on the fallback (10 USDC)")]);
+    results.push(rows);
+    if !ok { return; }
+    let seized = units_of(&sq, TREASURY);
+    // L4 claim, then L5 MORE than 60 s later -> D6 boundary opens
+    let (rows, s4, ok) = seq("FRESH LIQ-D L4 claim, then L5 71 s later (opens the D6 boundary)", &sq, &[l4("L4 vault.checkpoint_rewards()"), l5(0).after(65)]);
+    results.push(rows);
+    if !ok { return; }
+    let opened = rows_last_result(results);
+    log.push(json!({"d3_l5_opened_boundary": opened, "d3_seized_units": seized.to_string(), "fallback_status": read(&s4, { let r = r.clone(); move |env| tv(env, &r, "stage2_status", Vec::new(env)) })}));
+    // liquidator emergency exit after L5 on the D3 path
+    { let id = { let r = r.clone(); u(&read(&s4, move |env| tv(env, &r, "stage_state", Vec::new(env)))["next_id"]) as u64 };
+      let (rows, _, _) = seq("FRESH LIQ-D after L5: liquidator emergency-exits seized units; pay", &s4, &[ee_liq("EXL4 liquidator stage_emergency_exit(seized)", seized), call("EXL5 stage_emergency_pay", &r, "stage_emergency_pay", move |e| (id,).into_val(e), true)]);
+      results.push(rows); }
+    // route B: a claim one hour later seals the quarantined interval; propose -> 24 h -> attribute -> prepare -> settle each holder
+    let mut x = s4.clone(); x.timestamp += 3_600; x.sequence_number += 720; // venue rewards accrue per ledger
+    let (rows, sc, ok) = seq("FRESH LIQ-D route B: claim 1 h later seals quarantine", &x, &[l4("L4' vault.checkpoint_rewards() 1 h later")]);
+    results.push(rows);
+    if !ok { return; }
+    let info = read(&sc, { let v = v.clone(); move |env| {
+        let cnt: u64 = env.invoke_contract::<Option<u64>>(&a(env, &v), &Symbol::new(env, "stage_last_claim"), Vec::new(env)).unwrap_or(0);
+        json!({"totals": tv(env, &v, "reward_totals", Vec::new(env)), "boundary0": tv(env, &v, "reward_boundary", (0u64,).into_val(env)), "last_claim": cnt.to_string()}) } });
+    log.push(json!({"route_b_before": info}));
+    let interval = info["boundary0"]["interval"].as_str().map(|x| x.parse::<u64>().unwrap()).or_else(|| info["boundary0"]["interval"].as_u64());
+    let Some(interval) = interval else { log.push(json!({"route_b": "no boundary 0"})); return; };
+    let iv = read(&sc, { let v = v.clone(); move |env| tv(env, &v, "reward_interval", (interval,).into_val(env)) });
+    log.push(json!({"route_b_interval": iv}));
+    let (Some(seg), Some(recv)) = (iv["first_segment"].as_str().map(|x| x.parse::<u64>().unwrap()), iv["received"].as_str().map(|x| x.parse::<u128>().unwrap())) else { return; };
+    if recv == 0 { log.push(json!({"route_b": "quarantine empty: nothing to release"})); }
+    let ev = [5u8; 32];
+    let (rows, sr, ok) = seq("FRESH LIQ-D route B propose", &sc, &[call("RB1 vault.propose_reward_segment(seg, received, evidence)", &v, "propose_reward_segment", move |e| (seg, recv, soroban_sdk::BytesN::<32>::from_array(e, &ev)).into_val(e), true),
+        call("RB2 attribute before 24 h -> revert", &v, "attribute_reward_segment", move |e| (seg, recv, soroban_sdk::BytesN::<32>::from_array(e, &ev)).into_val(e), true).fails()]);
+    results.push(rows);
+    if !ok { return; }
+    let mut x = sr.clone(); x.timestamp += 86_400;
+    let cnt = |snap: &LedgerSnapshot, who: &'static str| { let v = v.clone(); u(&read(snap, move |env| tv(env, &v, "reward_history_count", (a(env, who),).into_val(env)))) as u32 };
+    let (co, cl) = (cnt(&x, O).saturating_sub(1), cnt(&x, TREASURY).saturating_sub(1));
+    let (rows, sz, _) = seq("FRESH LIQ-D route B attribute (24 h), prepare, settle every holder", &x, &[
+        call("RB3 vault.attribute_reward_segment", &v, "attribute_reward_segment", move |e| (seg, recv, soroban_sdk::BytesN::<32>::from_array(e, &ev)).into_val(e), true),
+        call("RB4 vault.prepare_reward_segment(seg, 4)", &v, "prepare_reward_segment", move |e| (seg, 4u32).into_val(e), true),
+        call("RB5 settle_reward_segment(borrower)", &v, "settle_reward_segment", move |e| (a(e, O), seg, co).into_val(e), true),
+        call("RB6 settle_reward_segment(liquidator)", &v, "settle_reward_segment", move |e| (a(e, TREASURY), seg, cl).into_val(e), true)]);
+    results.push(rows);
+    log.push(json!({"route_b_after": read(&sz, { let v = v.clone(); move |env| json!({"totals": tv(env, &v, "reward_totals", Vec::new(env)),
+        "pending_owner": tv(env, &v, "reward_account", (a(env, O),).into_val(env)), "pending_liq": tv(env, &v, "reward_account", (a(env, TREASURY),).into_val(env))}) })}));
+    let _ = m3;
+}
+fn rows_last_result(results: &StdVec<Value>) -> Value {
+    results.last().and_then(|s| s["rows"].as_array()).and_then(|r| r.last()).map(|r| r["result"].clone()).unwrap_or(Value::Null)
 }

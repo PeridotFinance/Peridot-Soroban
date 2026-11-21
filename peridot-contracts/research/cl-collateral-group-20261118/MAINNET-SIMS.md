@@ -141,10 +141,60 @@ call to it fails with a recoverable VM error.
   the footprint. An archived controller entry cannot be skipped either: the transaction fails before
   execution.
 
+### Liquidation L1–L5, D3 fallback and route B on the compiled release bytes
+
+Setup and evidence:
+- **Bytes and state:** the same emulation (public network id, live state, bytes 6fd8599a / 424454b9 /
+  642421f1 / 5630a701), with `fresh_liq_rows` added.
+- **Evidence:** `target/clg/fresh/state/fresh-result-96e7b3c-liq.json`, sha256 `3907b076…db8e`. It holds 45
+  sequences and 169 rows.
+- **Shortfall:** created by the admin's immediate `emergency_disable_collateral`, as on Testnet, because a
+  CF cut is timelocked. The borrower holds about 100 PYUSD of units and borrowed 40 USDC.
+- **Liquidator:** TREASURY, a G account with a live USDC trustline, repaying 10 USDC per liquidation.
+- **Pool push:** a real swap of 2,000,000 PYUSD into the live pool.
+- **Oracle roll (emulation-only).** The captured CALI and CAFJ instances re-timestamp their latest round to
+  a chosen time with unchanged prices (`roll_oracle`). This models a flat feed that keeps publishing. Without
+  it, a frozen capture would go stale 600 s after its last round, which a 10-minute chain cannot survive.
+
+| Stage | Row | Result | Entries (m+d+w) | Keys | CPU |
+|---|---|---|---|---:|---:|
+| L1a | `checkpoint_nav` | rate 999,808 | 20 (19+0+1) | 19 | 15.27M |
+| L2 | `cache_price(USDC)` via CAFJ | ok | 17 | 16 | 3.80M |
+| L3 | `liquidate` on NAV, 10 USDC | 108,020,738 units moved to the liquidator mirror, 1 pending | **80** (61+2+17) | 63 | 32.70M |
+| — | Liquidator emergency exit **before** L5 | reverts (vault beneficiary not yet moved) | 22 | 20 | 5.68M |
+| L4 | `checkpoint_rewards` (real AQUA claim) | true | 29 | 22 | 9.90M |
+| L5 | `sync_seized(0)` within 60 s of L4 | no boundary; vault beneficial now 891,533,926 / 108,020,738 | 29 (19+0+10) | 19 | 4.96M |
+| — | Liquidator (not entered) emergency exit after L5 | ok, command HELD | 89 (58+1+30) | 59 | 61.91M |
+| — | Entered borrower with remaining debt, emergency exit after seizure | **#2116** | 9 | 8 | 2.84M |
+| D3 | 12 heartbeat `checkpoint_nav` calls at t+0…550 s, pool out of band | each returns 0 (blocked); chain since = t, n = 12 | 20 | 19 | 14.5M |
+| D3 | `checkpoint_fallback` 61 s after the last observation (CALI fresh) | **#2113** ChainBroken | 10 | 10 | 5.04M |
+| D3 | `checkpoint_fallback` at 9:59 | **#2112** BlockTooRecent | 10 | 10 | 5.04M |
+| L1b | `checkpoint_fallback` at 10:00 | admitted, rate **978,443** (97.86% of NAV) | 15 (14+0+1) | 14 | 7.90M |
+| L2, L3 | `cache_price`, `liquidate` on the fallback | ok | 17 / **80** | 16 / 63 | 3.80M / 32.79M |
+| L4, L5 | claim, then `sync_seized` 71 s later | L5 returns **true**: the D6 boundary opens | 29 / 31 (20+0+11) | 22 / 20 | 9.70M / 5.29M |
+| — | Liquidator emergency exit after L5 (pool pushed) | ok, HELD | 87 | 60 | **71.72M** |
+| Route B | Claim 1 h later (+720 ledgers), seals the interval | sealed, 1 segment; venue paid **0** in that hour (no transfer event) | 28 | 21 | 14.12M |
+| Route B | `propose_reward_segment`; `attribute` before 24 h | propose ok; attribute **reverts** (timelock) | 9 / 6 | 7 / 5 | — |
+| Route B | +24 h: attribute → `prepare_reward_segment` → `settle_reward_segment` for borrower and liquidator | all ok; each settles 0 (empty bucket) | 11 / 5 / 16 / 16 | ≤ 10 | ≤ 2.6M |
+
+**Peak entries across all 169 rows: 91.** That is `stage_emergency_exit` (EX1c, 59 keys, 31 writes, 60.7M
+CPU). The peak liquidation stage is L3 at 80 entries / 63 keys / 17 writes. The CPU peak is the liquidator
+emergency exit on the pushed pool, 71.7M, within the 97M stop.
+
+Findings:
+- **The liquidator needs PYUSD and USDC trustlines to be paid an in-kind exit.**
+  `stage_emergency_pay` reverted with SAC error #13 (trustline missing). TREASURY holds USDC but no PYUSD
+  trustline. The exit command stays HELD, and `stage_emergency_pay` only acts on a HELD command, so it can be
+  paid once the trustline exists. The liquidator gate must check both trustlines.
+- **Route B was exercised mechanically, with an empty bucket.** The live venue paid no further AQUA to the
+  fresh position after the first claim, so the governed release distributed 0. This run covers the
+  propose → timelock → attribute → prepare → per-holder settle path on compiled bytes. Non-zero distribution
+  at post-move weights is covered natively by `seize_tests.rs`
+  `route_b_segment_release_pays_every_holder_once_at_post_move_weights`.
+
 ### Coverage limit
 
-These rows do **not** exercise, under the public network id on Mainnet-feature bytes: liquidation (L1a–L5),
-seizure, `sync_seized` and `checkpoint_fallback`/D3. `stage_prepare_close` with debt is covered only as the F2a refusal. The emergency exit is now covered above.
+After the liquidation, D3 and route B rows above, the remaining gaps under the public network id on Mainnet-feature bytes are these. Route B is exercised only with an empty bucket. `stage_prepare_close` with debt is covered only as the F2a refusal. Signed and Core application with real authorization trees is not covered at all, because every row uses `mock_all_auths`.
 Those were measured only on Testnet-id and default builds (BUILD-REPORT §2). The manual review did not
 re-read the receipt or controller parts of 6e83fd7 and 137de32 in depth. Almanax has not scanned anything,
 because the subscription has expired.
