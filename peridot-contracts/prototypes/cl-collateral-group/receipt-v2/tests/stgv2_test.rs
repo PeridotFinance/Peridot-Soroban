@@ -551,6 +551,27 @@ fn d3_fallback_requires_a_cause_now_and_is_refused_while_nav_is_refreshable() {
     assert!(t.c().checkpoint_fallback() > 0, "pool unreachable cause");
 }
 
+/// FINDING F5 (low, liveness; reported). `checkpoint_nav` treats a venue answer of 0 or of the
+/// wrong shape as cause 1 (blocked), but `checkpoint_fallback` treats ANY successful answer as
+/// "NAV refreshable" (#2104). With such an answer neither checkpoint can be written, so the
+/// account is not liquidatable (fail closed). Pins CURRENT behaviour.
+#[test]
+fn finding_f5_zero_or_misshaped_venue_answer_blocks_nav_and_fallback() {
+    let t = G::new();
+    t.stake(&t.alice);
+    for f in ["quote_zero", "quote_shape"] {
+        let u = G::new();
+        u.stake(&u.alice);
+        u.flag(f, if f == "quote_zero" { 1 } else { 2 });
+        u.chain_600();
+        assert_eq!(code(u.c().try_checkpoint_fallback()), 2104, "{f}: fallback refused although NAV is blocked");
+    }
+    // Control: a REVERTING venue quote admits the fallback.
+    t.flag("quote_fail", 1);
+    t.chain_600();
+    assert!(t.c().checkpoint_fallback() > 0);
+}
+
 #[test]
 fn fallback_value_is_the_lower_bound_formula_with_2_pct_haircut() {
     let t = G::new();
@@ -1008,4 +1029,47 @@ fn stage2_activate_guards() {
     assert!(fails(c.try_stage2_activate(&t.admin, &cfg(&t.ctl, &t.pool, &t.usdc))), "staged mode inactive");
     let stranger = Address::generate(&t.env);
     assert!(fails(c.try_stage2_activate(&stranger, &cfg(&t.ctl, &t.pool, &t.usdc))), "not admin");
+}
+
+// ================================================================== mutation-testing killers (TESTS-STGV2.md §4)
+/// The blocked observation carries its named cause (1 venue, 2 depeg, 3 pool) in `stg2_blocked`;
+/// a pool sqrt price so large that spot would overflow u128 is a blocked observation, not a trap.
+#[test]
+fn mutation_blocked_event_names_the_cause_and_huge_pool_price_never_traps() {
+    use soroban_sdk::testutils::Events as _;
+    let t = G::new();
+    t.stake(&t.alice);
+    let last_blocked = |t: &G| -> std::string::String {
+        let evs = t.env.events().all().filter_by_contract(&t.receipt);
+        let e = evs.events().iter().rev().find(|e| std::format!("{e:?}").contains("stg2_blocked")).expect("stg2_blocked event");
+        std::format!("{e:?}")
+    };
+    t.pool().set(&U256::from_u128(&t.env, X96).shl(40), &0); // sqrt price 2^40: spot ~1e42 > u128::MAX
+    assert_eq!(t.c().checkpoint_nav(), 0, "spot beyond u128: blocked, no trap");
+    assert!(last_blocked(&t).contains("U32(3)"), "pool cause");
+    t.set_pool(X96, 0);
+    t.set_p(98_000_000_000_000);
+    assert_eq!(t.c().checkpoint_nav(), 0);
+    assert!(last_blocked(&t).contains("U32(2)"), "depeg cause");
+    t.set_p(P1);
+    t.flag("quote_fail", 1);
+    assert_eq!(t.c().checkpoint_nav(), 0);
+    assert!(last_blocked(&t).contains("U32(1)"), "venue cause");
+}
+
+/// The exit cover is priced in USD: with USDC at 2.0 both debt and cover double, so the same
+/// close is allowed (kills the `* p` -> `+ p` mutant, equivalent only at a price of exactly 1).
+#[test]
+fn mutation_exit_cover_scales_with_the_usdc_price() {
+    let t = G::new();
+    t.o().set(&t.usdc, &(2 * P1), &0, &true);
+    t.ctl().cache_price(&t.usdc); // replace the 1.0 cached during setup
+    assert_eq!(t.ctl().get_price_usd(&t.usdc), Some((2 * P1 as u128, P1 as u128)));
+    let n = t.borrower(200_000_000);
+    let r = t.c().checkpoint_nav();
+    t.m().update_interest();
+    let debt = t.m().get_user_borrow_balance(&t.alice);
+    let min_left = debt * 1_000_000 / CF * 1_000_000 / r + 1;
+    t.c().stage_prepare_close(&t.alice, &(n - min_left - n / 1_000), &0, &t.deadline());
+    assert_eq!(code(t.c().try_stage_prepare_close(&t.alice, &(n / 100), &0, &t.deadline())), 2106);
 }

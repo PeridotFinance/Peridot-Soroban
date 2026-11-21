@@ -87,6 +87,7 @@ fn g10_debt_free_account_can_always_exit_and_an_indebted_or_unreadable_one_canno
     let t = G::new();
     t.borrower(100_000_000);
     assert!(fails(t.ctl().try_exit_market(&t.alice, &t.receipt)), "debt: refused (CF > 0)");
+    assert!(fails(t.ctl().try_exit_market(&t.alice, &t.usdc_m)), "the debt market itself cannot be exited with debt");
     // A debt-free account exits with units, oracle trapping, no checkpoint.
     t.stake(&t.bob);
     t.ctl().enter_market(&t.bob, &t.receipt);
@@ -126,9 +127,11 @@ fn cf_changes_are_timelocked_both_ways_and_only_emergency_disable_is_immediate()
     assert!(fails(t.ctl().try_emergency_disable_collateral(&t.receipt, &false)), "ack required");
     t.ctl().emergency_disable_collateral(&t.receipt, &true);
     assert_eq!(t.ctl().get_market_cf(&t.receipt), 0);
-    // Out of range.
+    // Range [1 %, 100 %] inclusive at both ends (proposals; executing them is timelocked).
     assert!(fails(t.ctl().try_set_market_cf(&t.receipt, &1_000_001)));
     assert!(fails(t.ctl().try_set_market_cf(&t.receipt, &9_999)));
+    assert!(t.ctl().try_set_market_cf(&t.receipt, &1_000_000).is_ok());
+    assert!(t.ctl().try_set_market_cf(&t.receipt, &10_000).is_ok());
 }
 
 #[test]
