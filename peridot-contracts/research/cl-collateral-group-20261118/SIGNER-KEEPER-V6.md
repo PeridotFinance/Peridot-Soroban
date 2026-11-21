@@ -353,3 +353,52 @@ Builds on stream A's 5f48b0d (`failoverRpc`, plus self-observation of `checkpoin
 3. **The CL bot dry-run gate stays at 12 h** (the code default). The 2 h option in §1.4-1 is therefore withdrawn. Start the dry run at least 12 h before the first live cycle, which moves that cycle to Mon (LAUNCH §4/§7).
 
 Tests: 59/59 (+5). They cover the URL-file rules and redaction, a secret URL in a server error being redacted, a duplicate or empty file being refused, no heartbeat while debt-free, start on the first cycle with debt, stop at zero debt, restart, and a real heartbeat timer sending nothing while gated off.
+
+---
+
+## 6. Borrower discovery (needed before public go-live; `src/discovery.mjs`)
+
+The contracts keep no enumerable borrower list (only `MarketUserCounts`), so the watched set combines events with a completeness check.
+
+- **Events.**
+  - **Sources:** the controller's `market_entered(account, market)` and the USDC market's `borrow_event(borrower)`. Borrowing auto-enters the USDC market through `track_borrow_market`, which emits no `market_entered`, so `borrow_event` is needed.
+  - **Paging:** results are paged with a cursor persisted in `<dataDir>/discovery.json`. stellar-rpc scans at most about 10,000 ledgers per call; a full 7-day backfill on Mainnet took 13 pages in 0.47 s.
+  - **Startup:** the bot backfills from `discovery.startLedger` (set it to the USDC market's deploy ledger, G10), clamped to the RPC window.
+  - **Gaps:** a start ledger before the window, or a cursor older than the window after downtime, is recorded as a **gap** and alerted, then the scan restarts at the window start. Nothing is skipped silently.
+- **Seed from current state, and completeness.**
+  - **Screen:** every cycle one batched `getLedgerEntries` reads, for every known account, USDC-market `BorrowSnapshots(user)` and controller `UserMarkets(user)`, plus the controller instance holding `MarketUserCounts`.
+  - **Count:** every borrower is entered in the USDC market, and `MarketUserCounts[usdcMarket]` is the exact on-chain number of such accounts.
+  - **Alert:** if fewer known accounts are entered than that number, the bot alerts every cycle with the missing count. The fix is to add those accounts to `borrowers`. This does not depend on history older than the window.
+- **Watched set.** The listed `borrowers` are always watched (the minimum), plus every known account with a nonzero USDC borrow principal. Each cycle this set becomes the plan's borrower set, the L3 allowlist and the heartbeat debt gate.
+  - A discovered borrower in shortfall can be liquidated under exactly the same `repayCapRaw` bound, resource-fee ceilings, fee cap and daily budget.
+  - Bot accounts are never liquidation targets.
+  - A discovery failure keeps the previous set; it is a warning, raised to an alert after 6 consecutive failures.
+- **RPC cost per steady cycle**, measured in the test with a counting fake and live against the cash stack:
+  - Discovery: `getLatestLedger` 1 + `getEvents` 1 + `ceil((1 + 2N) / 200)` `getLedgerEntries`, where N is the number of known accounts.
+
+    | N | getLedgerEntries | Discovery calls |
+    |---:|---:|---:|
+    | 1–99 | 1 | 3 |
+    | 100 | 2 | 4 |
+    | 500 | 6 | 8 |
+    | 1000 | 11 | 13 |
+
+    Live on Mainnet (cash controller and USDC market, read-only): a steady cycle took 142 ms at N=1, 464 ms at N=100 and 661 ms at N=256. Startup backfill (12 pages) took 0.6–1.8 s.
+  - Plan: 2 simulations per **debtor** only (D), unchanged from listed borrowers. They now run 8 at a time instead of sequentially, with order preserved. Live: 148 ms per borrower sequentially; 20 borrowers in 2.2 s at concurrency 8. Fixed per-cycle plan reads (status, checkpoint simulation, price cache, CF, factors, balances) are unchanged at about 14 calls.
+  - **Total per cycle:** about 17 + `ceil((1 + 2N) / 200)` + 2D calls.
+  - Above about 50 debtors the plan reads would take a large share of the 60 s checkpoint window. Revisit at that scale, for example with a dedicated RPC or by splitting watched and active borrowers.
+- **Limits.**
+  - A debtor whose `BorrowSnapshots` entry is archived is not seen until it is restored. Any action of that borrower restores it.
+  - Event decoding relies on the contract event names (`market_entered`, `borrow_event`). These were verified against the source and against live Mainnet event names from the same code family.
+
+**Config:** `discovery: {startLedger: <G10 ledger>}` (or `enabled: false` to watch only the listed set). It is part of the dry-run gate binding, so set it before the soak.
+
+**Tests:** 66/66. The 7 new tests cover:
+- event parsing and listed-minimum rules;
+- backfill paging and restart from the persisted cursor;
+- automatic inclusion of a new borrower;
+- the out-of-window gap plus the coverage alert for missed borrowers;
+- start-before-window;
+- liquidation allowed for a discovered debtor within `repayCapRaw` and refused for unknown or bot accounts;
+- the RPC cost table;
+- bounded concurrency.

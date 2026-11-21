@@ -9,6 +9,7 @@ import {makeReader, makeExecutor, assertLiveAllowed, loadSdk} from './chain.mjs'
 import {openJournal, unresolvedL3, lastL4Failure, lastL2CacheTs} from './journal.mjs';
 import {assessDepeg, fetchReference, httpJson} from './watcher.mjs';
 import {makeHeartbeat, failoverRpc} from './heartbeat.mjs';
+import {makeDiscovery} from './discovery.mjs';
 import {execFile} from 'node:child_process';
 import {cliEnv, assertIdentityName, MAINNET} from './chain.mjs';
 import {isMainnet, makeRpc, startChecks, makeSender, botAllow, makeHeartbeatSigner, makeHeartbeatRpc, makeDebtGatedHeartbeat, applyDebtGate, openBudget, openGate, acquireRunLock, trustlineStatus, requireTrustlines} from './mainnet.mjs';
@@ -52,6 +53,12 @@ const TYPES = {id: 'u64', expiration_ledger: 'u32', amount: 'i128', repay_amount
 const scArgs = call => Object.entries(call.args).map(([k, v]) =>
   loadSdk().nativeToScVal(TYPES[k] === 'u32' ? Number(v) : TYPES[k] ? BigInt(v) : v, {type: TYPES[k] ?? 'address'}));
 
+/** Map with at most `n` promises in flight; results in input order; the first rejection rejects. */
+export async function mapLimit(items, n, f) {
+  const out = new Array(items.length); let next = 0;
+  await Promise.all(Array.from({length: Math.min(n, items.length)}, async () => { while (next < items.length) { const i = next++; out[i] = await f(items[i], i); } }));
+  return out;
+}
 async function observe(cfg, r, j, st) {
   const c = cfg.contracts, {now, sequence} = await r.ledgerNow();
   const status = await r.view(c.receipt, 'stage2_status');
@@ -60,11 +67,11 @@ async function observe(cfg, r, j, st) {
   let fallbackPreview = null;
   if (navSim === 'blocked' && status.chain) { const f = await r.simulate(c.receipt, 'checkpoint_fallback'); fallbackPreview = f.ok ? f.retval : null; if (!f.ok) out({level: 'info', msg: 'fallback not admissible now', err: f.error}); }
   const pc = await r.data(c.controller, ['PriceCache', c.usdc]), k = await r.data(c.controller, ['OracleMaxAgeMultiplier']);
-  const borrowers = [];
-  for (const user of cfg.borrowers) {
-    const snap = await r.view(c.receipt, 'get_liquidation_account_snapshot', [r.addr(user)]);
-    borrowers.push({user, units: BigInt(snap[0]), debt: BigInt(await r.view(c.usdcMarket, 'get_user_borrow_balance', [r.addr(user)]))});
-  }
+  // Discovery can make this set large: read the borrowers 8 at a time (2 simulations each), order preserved.
+  const borrowers = await mapLimit(cfg.borrowers, 8, async user => {
+    const [snap, debt] = await Promise.all([r.view(c.receipt, 'get_liquidation_account_snapshot', [r.addr(user)]), r.view(c.usdcMarket, 'get_user_borrow_balance', [r.addr(user)])]);
+    return {user, units: BigInt(snap[0]), debt: BigInt(debt)};
+  });
   // Pending seizures from the low-water mark; ids below it are known synced.
   const pending = [], next = Number(status.next_pending);
   for (let id = st.lowWater ?? 0; id < next && id < (st.lowWater ?? 0) + 50; id++) {
@@ -162,6 +169,12 @@ async function mainMainnet(cfg, liveFlag, env = process.env) {
   const S = loadSdk(), rpc = makeRpc(cfg, {S}), r = makeReader(cfg);
   const checks = await startChecks(cfg, {rpc, view: r.view, S, out});
   const j = openJournal(cfg.dataDir), budget = openBudget(cfg.dataDir, cfg), gate = openGate(cfg.dataDir, cfg);
+  // Borrower discovery (public go-live): listed borrowers stay the minimum; known accounts with a USDC borrow principal
+  // join the plan's set each cycle (and therefore the L3 allowlist and the heartbeat debt gate).
+  const disc = cfg.discovery?.enabled === false ? null : makeDiscovery(cfg, {rpc, S, out, listed: [...cfg.borrowers]});
+  const rediscover = async opts => { if (!disc) return; const d = await disc.cycle(opts); cfg.borrowers = d.watch;
+    if (d.debtors || opts?.maxPages > 3) out({level: 'info', msg: 'discovery', known: d.known, debtors: d.debtors, watched: d.watch.length, coverage: d.coverage, rpc: d.rpc}); };
+  if (disc) await rediscover({maxPages: 40});                      // startup backfill of the whole RPC window
   let exec = null, hb = null;
   // Both trustlines: refused in live mode, reported in dry run (the soak may start before they exist).
   const trustlines = live ? await requireTrustlines(cfg, rpc, cfg.liquidator, S) : await trustlineStatus(cfg, rpc, cfg.liquidator, S).catch(() => null);
@@ -187,8 +200,11 @@ async function mainMainnet(cfg, liveFlag, env = process.env) {
     heartbeat: hb ? {account: cfg.heartbeatAccount, periodMs: cfg.heartbeatPeriodMs ?? 12000, rpcs: hb.labels, gate: 'starts with CL debt'} : null,
     budget: {liquidatorSpentToday: String(budget.spent('liquidator')), heartbeatSpentToday: String(budget.spent('heartbeat'))}, gate: live ? 'armed' : gate.load()});
   if (!has('--watch')) { for (let i = 0; i < (live ? 8 : 1); i++) if (!(await step(cfg, r, exec, j)).sent) break; return; }
+  let discFailures = 0;
   for (;;) {
     let wait = cfg.watchIntervalSec, ok = true;
+    try { await rediscover({maxPages: 3}); discFailures = 0; }
+    catch (e) { discFailures++; out({level: discFailures >= 6 ? 'alert' : 'warn', msg: 'discovery failed: keeping the previous borrower set', err: e.message, failures: discFailures}); }
     try { const s = await step(cfg, r, exec, j, hb); wait = s.sent ? 1 : Math.min(cfg.watchIntervalSec, Math.max(1, s.waitSec)); } catch (e) { ok = false; out({level: 'warn', msg: 'cycle failed', err: e.message}); }
     if (!live) { const g = gate.record(ok); if (!ok || g.cycles % 360 === 1) out({level: ok ? 'info' : 'warn', msg: 'dry-run gate', since: g.since, last: g.last, cycles: g.cycles, resets: g.resets, needHours: cfg.dryRunGateHours}); }
     await new Promise(res => setTimeout(res, wait * 1000));

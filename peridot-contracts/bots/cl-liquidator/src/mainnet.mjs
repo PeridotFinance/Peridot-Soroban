@@ -80,6 +80,8 @@ export function validateMainnetConfig(out) {
   }
   if (out.team3 != null && !G.test(out.team3)) throw Error('config.team3 must be null or a public G... address');
   for (const b of out.borrowers) if (!G.test(b) || b === out.liquidator || b === out.heartbeatAccount) throw Error('config.borrowers must be public G... addresses other than the bot accounts');
+  if (out.discovery != null && (typeof out.discovery !== 'object' || (out.discovery.startLedger != null && !(Number.isSafeInteger(out.discovery.startLedger) && out.discovery.startLedger > 0))))
+    throw Error('config.discovery: {enabled?: bool, startLedger?: deploy ledger of the USDC market}');
   const fees = {...FEE_DEFAULTS, ...out.fees, resourceCeilingStroops: {...RESOURCE_CEILING_DEFAULTS, ...out.fees?.resourceCeilingStroops},
     heartbeat: {...FEE_DEFAULTS.heartbeat, ...out.fees?.heartbeat}};
   for (const [fn, v] of Object.entries(fees.resourceCeilingStroops)) {
@@ -126,7 +128,7 @@ export function makeRpc(cfg, {S = loadSdk(), fetchImpl = fetch} = {}) {
 const instanceKey = (S, id) => S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: new S.Address(id).toScAddress(),
   key: S.xdr.ScVal.scvLedgerKeyContractInstance(), durability: S.xdr.ContractDataDurability.persistent()}));
 const dataKey = (S, id, parts) => S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: new S.Address(id).toScAddress(),
-  key: S.xdr.ScVal.scvVec(parts.map(p => (typeof p === 'string' && /^[A-Z][A-Za-z]*$/.test(p) ? S.xdr.ScVal.scvSymbol(p) : new S.Address(p).toScVal()))),
+  key: S.xdr.ScVal.scvVec(parts.map(p => (typeof p === 'string' && /^[A-Z][A-Za-z]*$/.test(p) && p.length < 32 ? S.xdr.ScVal.scvSymbol(p) : new S.Address(p).toScVal()))),
   durability: S.xdr.ContractDataDurability.persistent()}));
 
 /** One getLedgerEntries: code hash of each pinned role, and which pinned contracts have a pending upgrade proposal. */
@@ -235,7 +237,7 @@ export function botAllow(cfg, contract, fn, args) {
     [`${c.controller}:cache_price`]: () => keys === 'token' && eq(args.token, c.usdc),
     [`${c.usdc}:approve`]: () => keys === 'from,spender,amount,expiration_ledger' && eq(args.from, cfg.liquidator) && eq(args.spender, c.usdcMarket)
       && BigInt(args.amount) > 0n && BigInt(args.amount) <= BigInt(cfg.repayCapRaw),
-    [`${c.controller}:liquidate`]: () => keys === 'borrower,repay_market,collateral_market,repay_amount,liquidator' && cfg.borrowers.includes(String(args.borrower))
+    [`${c.controller}:liquidate`]: () => keys === 'borrower,repay_market,collateral_market,repay_amount,liquidator' && cfg.borrowers.includes(String(args.borrower)) && String(args.borrower) !== cfg.liquidator && String(args.borrower) !== cfg.heartbeatAccount
       && eq(args.repay_market, c.usdcMarket) && eq(args.collateral_market, c.receipt) && eq(args.liquidator, cfg.liquidator)
       && BigInt(args.repay_amount) > 0n && BigInt(args.repay_amount) <= BigInt(cfg.repayCapRaw),
   }[`${contract}:${fn}`];
