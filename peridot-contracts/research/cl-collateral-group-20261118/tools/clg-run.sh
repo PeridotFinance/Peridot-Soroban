@@ -1,4 +1,4 @@
-# Source this in zsh:  source clg-run.sh
+# Source this in zsh, in its OWN terminal (it redefines step/check/U of the cash upgrade-run.sh):  source clg-run.sh
 # step <name> <clg-ceremony args...> = fresh live-Mainnet simulation -> Ledger sign -> verify -> send -> require SUCCESS.
 # The signer and its HD path come from the prepared JSON (admin = path 0, T3 = path 3). Stops at the first problem and
 # sends nothing after it. No keys are read; the Ledger signs. A step with a SUCCESS send file is skipped.
@@ -11,13 +11,13 @@ NET="Public Global Stellar Network ; September 2015"
 mkdir -p "$U"
 
 _sign_send() {
-  local n=$1 tool=$2 hd=$3
+  local n=$1 tool=$2 hd=$3 okpat=${4:-'"ok": true'}
   local hdarg=(); [ "$hd" != "0" ] && hdarg=(--hd-path "$hd")
   echo "   Approve on the Ledger now (Stellar app, account index $hd)."
   stellar tx sign --sign-with-ledger "${hdarg[@]}" --rpc-url "$RPC" --network-passphrase "$NET" \
     "$U/$n.unsigned.xdr" > "$U/$n.signed.xdr" || { echo "SIGN FAILED $n"; return 1; }
   ( cd "$(dirname "$tool")" && node "$tool" verify-signed "$U/$n.unsigned.xdr" "$U/$n.signed.xdr" ) \
-    | grep -q '"ok": true' || { echo "VERIFY FAILED $n"; return 1; }
+    | grep -q "$okpat" || { echo "VERIFY FAILED $n"; return 1; }
   stellar tx send --rpc-url "$RPC" --network-passphrase "$NET" "$U/$n.signed.xdr" \
     > "$U/$n.send.json" 2> "$U/$n.send.err"
   if grep -q '"status": "SUCCESS"' "$U/$n.send.json"; then
@@ -55,7 +55,7 @@ pstep() {
   ( cd "$P" && node ledger-owner-call.cjs "$@" --out "$U/$n.unsigned.xdr" > "$U/$n.prep.json" ) \
     || { echo "PREPARE FAILED $n"; cat "$U/$n.prep.json"; return 1; }
   echo "== $n: $(grep -o '"call": "[^"]*"' "$U/$n.prep.json")"
-  _sign_send "$n" "$P/ledger-owner-call.cjs" 0
+  _sign_send "$n" "$P/ledger-owner-call.cjs" 0 '"status": "SIGNED_OK"'
 }
 
 rb() { ( cd "$T" && node clg-ceremony.cjs readback "$1" ); }

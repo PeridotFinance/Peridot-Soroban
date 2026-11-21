@@ -31,7 +31,7 @@ Markers used below:
 | Item | Value |
 |---|---|
 | What goes live | Vault v2 `CAGZA2TN…GVTB`, receipt StgV2 `CDOPEENZ…3UZO`, group controller `CDSJ3ACU…TEOA`, USDC lending market `CCDYSYV5…BS2N`. These are deterministic ids from the admin address and the salts in `clg-mainnet.json`; `node clg-ceremony.cjs addresses` prints them |
-| Code | Candidates built at 96e7b3c (includes 6e83fd7 upgradeability and the 137de32 F1 emergency-exit fix): vault `6fd8599a…` 125,559 B, receipt `424454b9…` 125,585 B, controller `642421f1…` 64,957 B. USDC market from the on-chain cash code `5630a701` (no upload). Final freeze pending (HG1) |
+| Code | Candidates built at 96e7b3c (includes 6e83fd7 upgradeability and the 137de32 F1 emergency-exit fix): vault `6fd8599a…` 125,559 B, receipt `424454b9…` 125,585 B, controller `642421f1…` 64,957 B. USDC market from the on-chain cash code `5630a701` (no upload). Final freeze pending (HG1). Coordinator pin (21 Nov): exactly these three, pending the double canonical build confirmation in `build-hashes-cl-group.json`. **Never** pin `719914b1` (stale generated source, no F2) or `bf8864e1` (workspace-relative OZ path) |
 | Caps | USDC borrow cap **200 USDC**; USDC supply cap 1,000 USDC with 400 USDC owner liquidity; CL backing cap **2,000 PYUSD**; CF on vault units **50 %**; close factor 50 %; incentive 8 %; liquidation fee 0; at most 2 markets (structural, G7). See §2 |
 | CL liquidator | New dedicated key holding 200 USDC and 25 XLM. Covers two close-factor rounds on the full cap with a 10 % buffer (165 ≤ 200 USDC) |
 | Ledger signatures | **61** (G1–G61): **54** by the admin (index 0) and **7** by team account T3 (index 3), all in the Stellar app. Contingency fallbacks are listed separately |
@@ -146,7 +146,7 @@ Each prepared transaction is valid for 40 ledgers (about 200 s). Sign within abo
 
 ## 5. Operator commands
 
-**Setup (once per terminal, zsh):**
+**Setup (zsh, in its own terminal).** `clg-run.sh` redefines `step`, `check` and `U` from the cash `upgrade-run.sh`, so never source both in one shell.
 ```bash
 T=/Users/joshua/Peridot/Peridot-Soroban/.wt-cl-group/peridot-contracts
 cd $T/research/cl-collateral-group-20261118/tools
@@ -176,6 +176,7 @@ Expected:
 | `SIGN FAILED`, or the window expired | Run the same line again. Stale files are kept, renamed `*-stale.*` |
 | `VERIFY FAILED` | Nothing was sent (wrong account or HD path). Check the Ledger account index |
 | `SEND FAILED` | Run `clg status <hash>`. If it is `FAILED` or `NOT_FOUND` after 60 s, run the line again; it re-simulates. Otherwise send me the 3 error lines |
+| `PREPARE FAILED … already done` | The state already equals the target (for example a default). Skip the step; `rb <id>` confirms it |
 | Any failure after a step that **pauses or latches** | Stop and send me the output. The latches are one-way |
 
 Files are written to `/Users/joshua/Peridot/clg-launch-20261122/`, outside git. Never delete them.
@@ -213,6 +214,7 @@ step g09-cr-receipt prepare deploy.receipt
 step g10-cr-usdcm   prepare deploy.usdcMarket
 ```
 - Read-back: `rb deploy.vault` etc. prints `done true`, meaning the instance exists at the precomputed id and runs the pinned hash.
+- **Id check.** `prepare` refuses unless the host's simulated return address equals the precomputed id. This was verified live for G10 at ledger 65592849.
 - **If a create lands but its read-back hash differs:** stop. Do not initialize it.
 
 ### 5.4 Configuration: G11–G41, then the price gate (Sun 10:15–12:00)
@@ -337,7 +339,8 @@ step g53-t3-borrow prepare team.borrow        # sign within 60 s of G52
 | G52 | none: it only refreshes the 60 s NAV checkpoint |
 | G53 | `rb team.borrow` true (debt > 0, 20 USDC) |
 
-- **G53 reverts or traps:** the checkpoint was older than 60 s. Run G52 then G53 again, quickly.
+- **G52 and G53 skip the read-back walk** (`fast`), because the 60 s window does not allow it. Instead, G53 refuses at prepare if the NAV checkpoint is older than 40 s. `clg list` takes about 4 s.
+- **G53 refused or reverted (stale checkpoint):** rerun both with **new names**, because a name with a SUCCESS file is skipped: `step g52-$(date +%H%M%S) prepare team.checkpoint_nav`, then at once `step g53-$(date +%H%M%S) prepare team.borrow`.
 - **G49 refused "open quote not admissible":** the pool is out of band or the oracle is stale. Wait 5 minutes and run it again.
 
 ### 5.7 First real liquidation: G54, bot, G55, G56 (Sun 16:00–16:45)
@@ -354,7 +357,7 @@ gate cf-eta                                   # prints etaUtc
 |---|---|
 | G54 | `rb liq.disable_cf` true (CF 0). T3 is short: the bot plan shows a shortfall |
 | gate | `"ok": true`: `next_pending` ≥ 1 and the liquidator is the vault beneficiary of the seized units (L5 landed) |
-| G55 | m: `get_user_borrow_balance(T3)` = 0. The repay amount is debt + 0.01 % + 1,000 raw; the market caps it at the debt, which the simulation shows |
+| G55 | m: `get_user_borrow_balance(T3)` = 0. The repay amount is debt + 0.01 % + 1,000 raw. `repay` caps it at the **pre-accrual** debt (`receipt-vault/src/contract.rs` `repay`, `planned_repay`), so a few raw units of interest can remain. If so, repeat: `step g55-$(date +%H%M%S) prepare team.repay`. The nested auth is a plain `transfer(T3 → market)` of at most the amount, as checked by the tool |
 | G56 | `rb cf.propose` true (`PendingMarketCF` = 500000). `gate cf-eta` shows ETA = send time + 24 h |
 
 - **Cancel G56 (proposal):** `step k-cancel-cf emergency disable-cf`. `emergency_disable_collateral` deletes the pending CF and keeps CF at 0. Re-propose later with `step g56b-cf-propose prepare cf.propose`.
@@ -415,6 +418,8 @@ node src/main.mjs --config config/mainnet.local.json --watch      # soak >= 2 h
 4. **G55:** T3 repays the remaining ≈ 10 USDC. This leaves no debt, so the bot has nothing more to do.
 5. **G56:** propose the CF restore.
 6. Start `--watch --live`.
+
+The bot plans one L3 per cycle, for the largest shortfall (bots/cl-liquidator README). `--once --live` sends at most 8 stages, so there can be exactly one L3. Confirm this in the HG4 review of `main.mjs`.
 
 Evidence to record: the hashes of L1a–L5, `stage2_pending(0)`, liquidator units, and T3 units before and after.
 

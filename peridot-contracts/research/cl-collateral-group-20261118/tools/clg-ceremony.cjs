@@ -147,8 +147,11 @@ function steps(cfg) {
   add({id: 'team.open', kind: 'open', signer: 'team3', amount: P.team.openPyusdRaw, why: 'T3 stage_open on the new receipt; keeper session runs convert/mint/invest/finalise'});
   tx('team.enter.receipt', C, 'enter_market', () => [addr(T()), addr(R)], async x => ((await view(C, 'get_user_markets', [addr(T())])(x)) || []).includes(R), 'T3 enters the CL market', {signer: 'team3'});
   tx('team.enter.usdcMarket', C, 'enter_market', () => [addr(T()), addr(M)], async x => ((await view(C, 'get_user_markets', [addr(T())])(x)) || []).includes(M), 'T3 enters the USDC market', {signer: 'team3'});
-  tx('team.checkpoint_nav', R, 'checkpoint_nav', () => [], async () => false, 'L1a (no auth) right before the borrow; repeatable', {signer: 'team3', auth: 'none', repeatable: true});
-  tx('team.borrow', M, 'borrow', () => [addr(T()), u128(P.team.borrowUsdcRaw)], async x => u((await view(M, 'get_user_borrow_balance', [addr(T())])(x)) || 0) > 0n, `T3 borrows ${fmt7(P.team.borrowUsdcRaw)} USDC within 60 s of the checkpoint`, {signer: 'team3', historical: true});
+  tx('team.checkpoint_nav', R, 'checkpoint_nav', () => [], async () => false, 'L1a (no auth) right before the borrow; repeatable', {signer: 'team3', auth: 'none', repeatable: true, fast: true});
+  tx('team.borrow', M, 'borrow', () => [addr(T()), u128(P.team.borrowUsdcRaw)], async x => u((await view(M, 'get_user_borrow_balance', [addr(T())])(x)) || 0) > 0n, `T3 borrows ${fmt7(P.team.borrowUsdcRaw)} USDC within 60 s of the checkpoint`, {signer: 'team3', historical: true, fast: true,
+      pre: async x => { const st = await view(R, 'stage2_status')(x); assert(st && st.nav, 'no NAV checkpoint: run G52 first');
+        const l = await x.rpc.getLatestLedger(); const age = Math.floor(Date.now() / 1000) - Number(st.nav.ts);
+        assert(age <= 40, `NAV checkpoint ${age} s old (> 40 s): run G52 again with a new step name`); }});
   // G. first liquidation (shortfall by the CF kill switch; the bot liquidates)
   tx('liq.disable_cf', C, 'emergency_disable_collateral', () => [addr(R), bool(true)], eq(raw(C, key('MarketCF', addr(R))), 0n), 'CF -> 0 (durable, immediate): T3 becomes liquidatable; bot runs L1a..L5', {historical: true});
   add({id: 'gate.first-liquidation', kind: 'gate', gate: 'first-liquidation', historical: true, why: 'one L3 + L5 landed for T3; liquidator holds the seized units'});
@@ -270,7 +273,8 @@ async function simulateBuild(cfg, c, op, source, {cpuMax, feeCapStroops, policy,
   assert(u(prepared.fee) <= feeCapStroops, `fee ${prepared.fee} above the cap ${feeCapStroops}`);
   assert.equal(prepared.signatures.length, 0); assert.equal(prepared.source, source);
   metrics.minResourceFeeXlm = Number(minFee) / 1e7; // simulated (unpadded); maxFee = 1.2 x this + 0.001 + inclusion bid
-  return {prepared, metrics, simulatedLedger: sim.latestLedger, validLedgers: {min: latest.sequence + 1, maxExclusive: latest.sequence + L.window}};
+  const retval = sim.result && sim.result.retval ? S.scValToNative(sim.result.retval) : undefined;
+  return {prepared, metrics, retval, simulatedLedger: sim.latestLedger, validLedgers: {min: latest.sequence + 1, maxExclusive: latest.sequence + L.window}};
 }
 async function classicBuild(cfg, c, ops, source) {
   const acc = await c.rpc.getAccount(source), latest = await c.rpc.getLatestLedger(), L = cfg.limits;
@@ -421,6 +425,8 @@ async function buildStep(cfg, c, s) {
   const o = await opFor(cfg, c, s);
   const res = o.classic ? await classicBuild(cfg, c, o.classic, src)
     : await simulateBuild(cfg, c, o.op, src, {cpuMax: o.cpuMax, feeCapStroops: o.feeCapStroops, policy: o.policy, authOpts: o.authOpts});
+  // The host's own answer must equal the precomputed id (salt + admin), or nothing is written.
+  if (s.kind === 'deploy') assert.equal(String(res.retval), s.contract, `host would create ${res.retval}, not the pinned ${s.contract}`);
   return {res, summary: {step: s.id, n: s.n, signer: s.signer, hdPath: cfg.signers[s.signer].hdPath, call: s.method || s.kind, target: s.target || null, why: s.why, ...(o.summary || {})}};
 }
 
@@ -459,7 +465,8 @@ async function main(argv) {
   if (cmd === 'gate') { const r = await gate(cfg, c, argv[1]); if (!r.ok) process.exitCode = 1; return r; }
   if (cmd === 'prepare') {
     const s = find(argv[1]); assert.notEqual(s.kind, 'gate', 'gates are evaluated with `gate`');
-    for (const prev of list.slice(0, list.indexOf(s))) {
+    // fast steps (G52/G53) skip the read-back walk: the 60 s NAV window does not allow ~50 reads; their pre() checks instead.
+    for (const prev of s.fast ? [] : list.slice(0, list.indexOf(s))) {
       if (prev.repeatable || prev.historical) continue;
       const d = await isDone(cfg, c, prev);
       assert(d !== false, `earlier step ${prev.n || ''} ${prev.id} not read back as done`);
