@@ -12,14 +12,14 @@ This report closes the BUILD-REPORT §4 item 6 gap (stand-in pool, cash-backed u
 | 1 | Units backed by a **real concentrated position** | **PASS**. A fresh instance of the Aquarius concentrated-pool code `155a17b9…` (§1). The vault holds liquidity in [−20, 20] and the pool's own snapshot shows the range. |
 | 2 | Price-driven shortfall (pool and oracle moved, not CF), NAV-path L1a → L3 → L4 → L5 | **PASS** on R1 (18 Nov candidates) and on **R2 (current release candidates)**. The bot did both. The L4 AQUA claim was real and non-zero, and the beneficiary moved. |
 | 3 | Real-time D3 fallback liquidation (≥ 10 min continuously blocked) | **PASS** on R1 (bot) and R2 (manual liquidator). L1b = 97.94 % of NAV. |
-| 4 | Bot live soak with `watch` heartbeat | **Defect found and fixed.** Old cadence 25–125 s broke the chain 7× in 20 min. The fixed-timer heartbeat (`4979f7b`, `4a7b449`, `a17d2ab`, `7e55b84`) held p95 15 s / max 15 s over 3 h 10 min. RPC and host outages are listed in §4. |
+| 4 | Bot live soak with `watch` heartbeat | **Defect found and fixed.** Old cadence 25–125 s broke the chain 7× in 20 min. On the **final code `5f48b0d`**, over a 31.9 min out-of-range window, both bots measured **p95 15 s / max 15 s** (0 gaps > 20 s). A heartbeat-only process with a **dead primary RPC** also held max 15 s. RPC and host outages are in §4. |
 | 5 | External USDC feed (CAFJ analogue) | **PASS**. The controller priced USDC from the **real Testnet Reflector external feed** `CCYOZJ…RN63` `Other(USDC)` (base USD, 14 dp, 300 s). L2 cached 1.00180 and 1.00166. |
-| 6 | Rows vs the 100-entry internal limit, stop at 85 | **No stage above 85.** The maximum is the emergency exit at **84** (58 + 26). L3 = 77, borrow = 71, open-mint = 75. See §5. |
+| 6 | Rows vs the 100-entry internal limit, stop at 85 | **STOP: the position-backed in-kind `stage_withdraw` is 91 entries (60 + 31) and 91.3M CPU** (1911b142…). Reported to the lead. Otherwise no measured stage is above 85. The maximum is the emergency exit at **84** (58 + 26), which does not supersede the 89 on the Mainnet capture. L3 = 77, borrow = 71, open-mint = 75. `prepare_close` with debt = 77. Fee-on L3 was not run on the real pool. See §5. |
 | 7 | Upgrade path (coordinator add-on) | **Proposed on all three R2 contracts.** Cancel/re-propose and every before-ETA refusal pass. **Execute is pending the ETA, 2026-11-22 ≈ 12:44 UTC** (§6). |
 | 8 | Real auth, hashes per stage (add-on) | Every tx was signed, with no `mock_all_auths` (§3). |
 | 9 | Trustline retry (add-on) | **PASS**. Pay without a PYUSD trustline fails with SAC #13, and the command stays HELD (phase 21). After the trustline is added, the pay succeeds (phase 22, exact amounts). |
 
-**No contract defect found.** The defects found are operational (bot, fees), listed in §7.
+**No functional contract defect was found. There is one resource STOP:** the position-backed in-kind `stage_withdraw` measured 91 entries and 91.3M CPU (§7.0). The other defects are operational (bot, fees), §7.
 
 ## 1. Venue and stacks
 
@@ -50,7 +50,7 @@ Tokens are **classic-asset SACs**, as on Mainnet, issued by `clgr-iss`. PYUSD `C
 
 - Both stacks share the pool, tokens and feeds.
 - The USDC market on both is the Testnet build of the accepted cash market (eb4c912a). Mainnet uses the on-chain 5630a701.
-- Receipt and controller sizes match the release pins 424454b9/642421f1 byte for byte in length. **The vault is 56 B larger** than the 6fd8599a pin (125,559 B). This is not explained by the admin constant alone. Stream C should confirm the pin was built from the same sources.
+- Receipt and controller lengths match the release pins 424454b9/642421f1 exactly. The vault is 56 B larger than the 6fd8599a pin, which is exactly one G-strkey. The Testnet build contains both the Testnet admin and the pinned-Ledger literal `GC4T5MP5…7FP` (one occurrence each). The Mainnet build contains only the Ledger, since the two literals are equal there and dedupe. Not a discrepancy.
 
 **Positions.** Each owner opened 1,000 PYUSD through `stage_open → convert → mint → 3 keeper observations on consecutive ledgers → stage_invest → finalise`:
 - The observations are sent by `tn.mjs invest`. Simulation runs at the latest ledger, so one simulated footprint is reused with the next sequence.
@@ -111,7 +111,7 @@ All transactions are signed Testnet transactions:
 - On-chain gaps over 08:17–08:37 (26 gaps): p50 30 s, p95 105 s, max 125 s, with 7 gaps over 60 s. The chain therefore restarted repeatedly and **the fallback was never admitted in 20 min**.
 - Testnet ledgers were 5 s and RPC reads were fast. The slowness was in the CLI sends.
 
-**Fix.** `bots/cl-liquidator/src/heartbeat.mjs`:
+**Fix.** `bots/cl-liquidator/src/heartbeat.mjs` (final 5f48b0d):
 - A fixed 12 s timer from the last submit, independent of the plan loop.
 - Its own fee-only account, so there are no sequence collisions with the liquidator.
 - SDK build and simulate, CLI `tx sign`, then RPC send without waiting for inclusion.
@@ -120,7 +120,8 @@ All transactions are signed Testnet transactions:
   - `TRY_AGAIN_LATER` keeps the local sequence and retries after 2 s;
   - resync only on `ERROR`;
   - inclusion fee 10,000 stroops;
-  - ordered RPC failover (`heartbeatRpcUrls`).
+  - ordered RPC failover (`heartbeatRpcUrls`);
+  - **self-observation**: the heartbeat simulates `checkpoint_nav` itself through its failover RPC when the plan loop has been quiet for more than 20 s. Failover alone did not help, because the plan loop reads through the single primary RPC, its observation went stale, and the heartbeat then stopped after 60 s.
 - CLI sends now journal the tx hash (`tx/` marker).
 - Tests: `node --test test/*.test.mjs` 49/49 at 7e55b84, including 8 new heartbeat tests.
 
@@ -128,8 +129,11 @@ All transactions are signed Testnet transactions:
 |---|---:|---:|---:|---:|---:|---:|
 | Old bot, R1, 08:17–08:37 | 26 | 30 | 105 | 125 | 26 | 7 |
 | Fixed timer, R1, 08:37–12:32 (whole 3 h 55 min, pre-hardening) | 1,150 | 10 | 15 | 70 | 7 | 2 |
-| Fixed timer, R1, **09:22–12:32 (3 h 10 min)** | **949** | **10** | **15** | **15** | **0** | **0** |
-| Fixed timer, R2, 12:45–12:57 | 38 | 10 | 15 | 220 | 1 | 1 |
+| Fixed timer 4979f7b (pre-hardening), R1, 09:22–12:32 (3 h 10 min) | **949** | **10** | **15** | **15** | **0** | **0** |
+| Fixed timer, R2, 12:45–12:57 (7e55b84 not yet deployed) | 38 | 10 | 15 | 220 | 1 | 1 |
+| **Final code 5f48b0d, R1 bot, 16:14:05–16:46:00 (31.9 min out of range)** | **159** | **10** | **15** | **15** | **0** | **0** |
+| **Final code 5f48b0d, R2 bot, same window** | **159** | **10** | **15** | **15** | **0** | **0** |
+| Final code, heartbeat-only, **primary RPC dead** (127.0.0.1:9) + gateway.fm, no plan loop, 16:14–16:29 | 74 | 10 | 15 | 15 | 0 | 0 |
 
 Causes of every gap over 20 s:
 - 08:53–09:21: `TRY_AGAIN_LATER` → sequence resync → `txBAD_SEQ`. Fixed in 4a7b449.
@@ -143,7 +147,13 @@ Causes of every gap over 20 s:
 - The R1 liquidator sent 52 CLI stages with **0 failures**. Included heartbeats: 1,151 on R1 (08:37–12:32) and 48 on R2 up to 15:52. Each cost about 0.0108 XLM (gaps.py fee totals: 1.24 XLM and 0.063 XLM).
 - XLM spent at 16:10 UTC: liq 0.286, heartbeat 1.391, liq2 0.170, heartbeat2 0.128.
 - Latency: heartbeat submit took 0.5–4.0 s (`sendMs` in the logs). At a 12 s period the on-chain gaps were 10 s or 15 s, i.e. two or three 5 s ledgers. The L1b → L3 window measured 10 s.
-- The bots keep running after this report. The final soak figures will be appended.
+- **Misses and failures (log counts, 08:14–16:49):**
+  - R1: 40 plan cycles `cycle failed` (all RPC `fetch failed`); 9 heartbeat send rejections (`TRY_AGAIN_LATER`/`ERROR`, all before 4a7b449); 10 heartbeat transport errors; 0 failed CLI stages out of 59.
+  - R2: 37 cycles failed (`fetch failed`); 1 rejection; 1 transport error; 0 failed CLI stages out of 16.
+- **Uptime.** The longest gap between consecutive log lines is 10,128 s (12:57:32–15:46:20, host suspended). Otherwise it is ≤ 90 s.
+  - Scheduled runtime (sum of log intervals < 120 s): R1 ≈ 5.4 h by 16:24, crossing 6 h about 17:05. R2 ≈ 1.3 h.
+  - **The ≥ 6 h target was met only as a sum of two segments (4 h 43 min + about 1 h 20 min), not as one continuous run.**
+  - `caffeinate -i -s` does not survive a closed lid or battery power; Mainnet must run on a server.
 
 ## 5. Measured rows on real dependencies
 
@@ -167,10 +177,14 @@ Entries = |readOnly| + 2·|readWrite| (= keys + writes, the BUILD-REPORT metric)
 | L1a `checkpoint_nav` (ok, or blocked observation) | 20 (19+1) | 19 | 1 | 13,670,328 | 5,316,095 | 0.0011 |
 | L2 `cache_price(USDC)` via the real Reflector external feed | 17 (16+1) | 16 | 1 | 4,133,160 | 1,986,612 | 0.0007 |
 | L1b `checkpoint_fallback` | 15 (14+1) | 14 | 1 | 7,467,895 | 4,086,952 | 0.0101 |
+| **`stage_withdraw` in kind, position-backed (10 % close by an entered owner with debt)** | **91 (60+31)** | 60 | 31 | **91,308,680** | 10,697,873 | 0.1832 |
+| `stage_prepare_close` 10 % with debt | 77 (66+11) | 66 | 11 | 29,430,961 | 6,422,934 | 0.0530 |
+| `stage_withdraw` in kind, cash-backed units (R1) | 46 (30+16) | 30 | 16 | 14,316,886 | 5,070,494 | 0.0774 |
 
 Comparison with the local rows on the Mainnet capture (BUILD-REPORT §2):
 - L3 is 77 here vs 80 there; L1a 20 vs 20; L1b 15 vs 15; L4 28 vs 28–29; L5 29 vs 29; borrow cold 71 vs 75.
-- The emergency exit is **84** on real dependencies vs 89 there. This is within 1 of the 85 stop line, so stream B/C should keep it pinned.
+- The emergency exit is **84** on real dependencies vs 89 there. The Testnet figure does **not** supersede the Mainnet-capture row: the pool state and the caller differ (here a liquidator that holds only seized units). Open issue 1 stays open. 84 is within 1 of the 85 stop line.
+- **Not measured on the real pool:** L3 with the liquidation fee on (84 locally) and `prepare_close` with debt (80 locally).
 - CPU: open-mint and invest use **77–78M of the 100M instruction limit**. That is the tightest resource, not entries.
 - R1 rows (18 Nov bytes) are identical within ±1 entry.
 
@@ -203,14 +217,21 @@ Caveat: "propose by a non-admin" passes in simulation because recording auth doe
 
 ## 7. Findings for the lead
 
+0. **STOP: position-backed in-kind withdraw is 91 entries and 91.3M CPU** (1911b14283cf48a13da334f424e85e2618ae94e74f2e623d8bf04007f6115dba). Key counts by contract:
+   - pool 21 (3 WordBitmap, 2 TickChunk, 2 TickRewardPlaneChunk, PositionV2, User, UserRewardState, RewardGlobalStatePacked, …);
+   - vault 14;
+   - AQUA 3 (the withdraw claims rewards), plane 2, PYUSD/USDC 3 each, code 6, trustlines 2.
+
+   The pool part scales with the tick chunks and bitmap words touched. A Mainnet pool with more initialised ticks or reward-plane chunks can push this past 100 entries or 100M CPU, which makes a normal exit unexecutable. The emergency pair (84 + 21) remains as an exit. BUILD-REPORT has no row for this stage; the 18 Nov withdraw was cash-backed. Needs a harness row on the live Mainnet pool state before freeze.
+
 1. **Bot D3 heartbeat cadence (defect, fixed).** See §4. Commits 4979f7b, 4a7b449, a17d2ab, 7e55b84.
 2. **Testnet single-RPC and host outages break the chain.** With a broken chain the protocol degrades to *no* fallback liquidation, not a wrong one. For Mainnet: two or more RPC providers (configured), an always-on host, and alerting on `D3 chain lapsed`.
-3. **Rent on the first touch of fresh code.** The first `checkpoint_nav` on freshly uploaded R2 code (3c5775d3…) charged **70.97 XLM**: 19 reads, 1 write of 1,740 B, so the cost is TTL extension of code and instance. The bot has no fee ceiling, so a keeper can pay a large rent bump unannounced. Recommendations:
+3. **Rent on the first touch of fresh code.** The first `checkpoint_nav` on freshly uploaded R2 code (3c5775d3…) charged **70.97 XLM**. Soroban meta: `rentFeeCharged` = 709,693,010 stroops, against 0 for the same call on R1 (a6fb2fa8…). This is TTL extension of code and instance entries, with 19 reads and 1 write of 1,740 B. The bot has no fee ceiling, so a keeper can pay a large rent bump unannounced. Recommendations:
    - a resource-fee ceiling in the bot;
    - extend the fresh Mainnet code TTLs inside the launch ceremony;
    - stream C should quote the Mainnet rent.
 4. **Hash parse.** The CLI prints event payloads, for example the wasm hash in upgrade events, so "last 64-hex token" is wrong. Fixed in the bot and in `lib.sh`.
-5. **Vault byte length.** The R2 vault is 125,615 B against the pinned 6fd8599a at 125,559 B; receipt and controller lengths match their pins exactly. Worth one check by stream C.
+5. ~~Vault byte length~~ explained: +56 B is the second strkey literal in a non-Ledger-admin build (§1).
 6. Emergency exit is at 84 entries and open/invest at 78 % CPU. These are the tightest margins.
 
 ## 8. Reproduction
