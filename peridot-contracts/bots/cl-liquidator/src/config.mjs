@@ -18,6 +18,12 @@ export function normalize(cfg, baseDir = process.cwd()) {
   if (out.submitMarginSec < 0 || out.submitMarginSec > 15) throw Error('submitMarginSec must be within 0..15 (checkpoints live 60 s)');
   if (!(out.watchIntervalSec >= 1 && out.watchIntervalSec <= 20)) throw Error('watchIntervalSec must be 1..20 (D3 heartbeat <= 20 s)');
   assertIdentityName(out.executorIdentity);
+  if (out.heartbeatIdentity != null) {
+    assertIdentityName(out.heartbeatIdentity);
+    if (out.heartbeatIdentity === out.executorIdentity) throw Error('heartbeatIdentity must differ from executorIdentity (separate sequence numbers)');
+    if (!/^G[A-Z2-7]{55}$/.test(out.heartbeatAccount ?? '') || out.heartbeatAccount === out.liquidator) throw Error('heartbeatAccount must be a public G... address distinct from the liquidator');
+    if (out.heartbeatPeriodMs != null && !(out.heartbeatPeriodMs >= 3000 && out.heartbeatPeriodMs <= 15000)) throw Error('heartbeatPeriodMs must be 3000..15000 (on-chain gap target <= 20 s)');
+  }
   out.repayCapRaw = out.repayCapRaw == null ? null : BigInt(out.repayCapRaw);
   out.dataDir = path.resolve(baseDir, out.dataDir);
   return out;

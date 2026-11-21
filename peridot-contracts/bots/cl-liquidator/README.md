@@ -61,3 +61,22 @@ at most 8 stages. `--watch` re-plans every `watchIntervalSec` (<= 20) seconds, 1
 - Depeg watcher (D2, `watcher.mjs`): alert when the feed is > 100 bps from par or from the optional external
   reference (disabled by default), or older than 600 s. It prints the recommended guardian calls (receipt
   `stage_pause_deposits`, controller `pause_borrow_g(usdc_market)`); it never sends them.
+
+## D3 heartbeat (fixed timer, 21 Nov 2026)
+
+The live Testnet soak showed the plan-loop heartbeat landing every 25-30 s, and up to 125 s when CLI sends
+slowed. That broke the D3 chain 7 times in 20 min. Setting `heartbeatIdentity` plus `heartbeatAccount`
+(`--watch --live` only) enables `src/heartbeat.mjs`, which works as follows:
+- Whenever the latest observation (<= 60 s old) says `checkpoint_nav` is blocked, it submits `checkpoint_nav()`
+  every `heartbeatPeriodMs` (default 12 s, allowed 3-15 s) from the last SUBMIT. The timer is independent of the
+  plan loop.
+- It sends from its own fee-only account. `checkpoint_nav` needs no auth, and using a separate account avoids
+  sequence collisions with the liquidator's CLI sends. The config refuses the same alias or account as the liquidator.
+- Transactions are built and simulated with the SDK, signed by `stellar tx sign --sign-with-key <alias>` (no key in
+  this process), and sent by RPC without waiting for inclusion.
+- Journal: an `HB` intent carrying the hash at submit, and a result with ledger close time and retval when
+  inclusion is polled.
+- The plan loop drops its own "D3 heartbeat" L1a while the timer runs. All other L1a stages (clear, refresh) still go.
+- CLI sends now journal the transaction hash parsed from the CLI's stderr.
+
+On-chain gap distribution: `prototypes/cl-collateral-group/testnet-real/gaps.py`.
