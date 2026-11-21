@@ -9,8 +9,9 @@ import {fileURLToPath} from 'node:url';
 export const TESTNET = 'Test SDF Network ; September 2015';
 export const MAINNET = 'Public Global Stellar Network ; September 2015';
 const here = path.dirname(fileURLToPath(import.meta.url));
-// Sibling bot (main checkout layout), then the main checkout seen from the .wt-cl-group worktree.
-const SDK_DIRS = [path.join(here, '..', '..', 'cash-liquidator'), path.join(here, '..', '..', '..', '..', '..', 'peridot-contracts', 'bots', 'cash-liquidator')];
+// This package's own install (Droplet: `npm ci` from package-lock.json), the sibling bot (main checkout layout), then
+// the main checkout seen from the .wt-cl-group worktree.
+const SDK_DIRS = [path.join(here, '..'), path.join(here, '..', '..', 'cash-liquidator'), path.join(here, '..', '..', '..', '..', '..', 'peridot-contracts', 'bots', 'cash-liquidator')];
 
 let sdk = null;
 /** @stellar/stellar-sdk 16.3.1, resolved from STELLAR_SDK_DIR or a sibling install (no install in this package). */
@@ -18,7 +19,10 @@ export function loadSdk(dir = process.env.STELLAR_SDK_DIR) {
   if (sdk) return sdk;
   const d = dir || SDK_DIRS.find(x => fs.existsSync(path.join(x, 'node_modules', '@stellar', 'stellar-sdk')));
   if (!d) throw Error('set STELLAR_SDK_DIR to a directory whose node_modules holds @stellar/stellar-sdk 16.3.1');
-  sdk = createRequire(path.join(d, 'package.json'))('@stellar/stellar-sdk');
+  const req = createRequire(path.join(d, 'package.json'));
+  const version = JSON.parse(fs.readFileSync(path.join(d, 'node_modules', '@stellar', 'stellar-sdk', 'package.json'), 'utf8')).version;
+  if (version !== '16.3.1') throw Error(`@stellar/stellar-sdk ${version} found; 16.3.1 required`);
+  sdk = req('@stellar/stellar-sdk');
   return sdk;
 }
 

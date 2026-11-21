@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": {"node": ">=22"},
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node src/main.mjs",
     "check": "for f in src/*.mjs; do node --check $f || exit 1; done",
-    "test": "node --test"
+    "test": "node --test",
+    "keygen": "node src/keygen.mjs"
   },
-  "comment": "@stellar/stellar-sdk 16.3.1 is resolved at run time from STELLAR_SDK_DIR (default: the main checkout's bots/cash-liquidator); no install here."
+  "comment": "@stellar/stellar-sdk 16.3.1 from package-lock.json (Droplet: npm ci --omit=dev --ignore-scripts). Dev checkouts may instead resolve it from STELLAR_SDK_DIR or the sibling bots/cash-liquidator install; chain.mjs refuses any other version.",
+  "dependencies": {
+    "@stellar/stellar-sdk": "16.3.1"
+  }
 }

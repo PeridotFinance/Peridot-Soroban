@@ -1,0 +1,89 @@
+{
+ "observedAt": "2026-11-21T12:49:18.156Z",
+ "rows": [
+  {
+   "label": "vault-size code proxy e6638030 (123,430 B)",
+   "code": "e66380303e50c6177492d1c9e880edcc84b4258da2cd46be46a1b3f8fe12e3e9",
+   "ledger": 65595861,
+   "entryXdrBytes": null,
+   "liveUntil": 67566323,
+   "remaining": 1970462,
+   "extendTo": 3110399,
+   "ledgersAdded": 1139937,
+   "minResourceFeeXlm": 90.5907615,
+   "stroopsPerKbPerMillionLedgers": null
+  },
+  {
+   "label": "receipt-size code proxy 140dcaab (112,328 B)",
+   "code": "140dcaab08680be910f9ea65f6682b72c1c4029bd991bca9397b516af9b66823",
+   "ledger": 65595861,
+   "entryXdrBytes": null,
+   "liveUntil": 67566335,
+   "remaining": 1970474,
+   "extendTo": 3110399,
+   "ledgersAdded": 1139925,
+   "minResourceFeeXlm": 79.7941425,
+   "stroopsPerKbPerMillionLedgers": null
+  },
+  {
+   "label": "USDC market code 5630a701 (89,808 B, real)",
+   "code": "5630a701bc7f29ea1334cfd1c12e349664da7376fd86df080d587ea9f685e452",
+   "ledger": 65595861,
+   "entryXdrBytes": null,
+   "liveUntil": 67617548,
+   "remaining": 2021687,
+   "extendTo": 3110399,
+   "ledgersAdded": 1088712,
+   "minResourceFeeXlm": 63.0971561,
+   "stroopsPerKbPerMillionLedgers": null
+  },
+  {
+   "label": "controller-size code proxy f41e5260 (70,507 B)",
+   "code": "f41e5260513390abcb3c18d74f4c0e9e9d65b0638bc797d11ddaec45de5fe2d8",
+   "ledger": 65595861,
+   "entryXdrBytes": null,
+   "liveUntil": 67617543,
+   "remaining": 2021682,
+   "extendTo": 3110399,
+   "ledgersAdded": 1088717,
+   "minResourceFeeXlm": 52.0220427,
+   "stroopsPerKbPerMillionLedgers": null
+  },
+  {
+   "label": "vault instance proxy CD6N",
+   "instance": "CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63",
+   "ledger": 65595861,
+   "entryXdrBytes": null,
+   "liveUntil": 67566341,
+   "remaining": 1970480,
+   "extendTo": 3110399,
+   "ledgersAdded": 1139919,
+   "minResourceFeeXlm": 0.3408595,
+   "stroopsPerKbPerMillionLedgers": null
+  },
+  {
+   "label": "receipt instance proxy CCGK",
+   "instance": "CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI",
+   "ledger": 65595862,
+   "entryXdrBytes": null,
+   "liveUntil": 67566349,
+   "remaining": 1970488,
+   "extendTo": 3110399,
+   "ledgersAdded": 1139911,
+   "minResourceFeeXlm": 0.1410869,
+   "stroopsPerKbPerMillionLedgers": null
+  },
+  {
+   "label": "controller instance proxy CBMRS7",
+   "instance": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+   "ledger": 65595862,
+   "entryXdrBytes": null,
+   "liveUntil": 68033878,
+   "remaining": 2438016,
+   "extendTo": 3110399,
+   "ledgersAdded": 672383,
+   "minResourceFeeXlm": 0.00994,
+   "stroopsPerKbPerMillionLedgers": null
+  }
+ ]
+}

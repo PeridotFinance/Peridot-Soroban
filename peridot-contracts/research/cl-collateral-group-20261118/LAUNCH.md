@@ -217,6 +217,51 @@ step g10-cr-usdcm   prepare deploy.usdcMarket
 - **Id check.** `prepare` refuses unless the host's simulated return address equals the precomputed id. This was verified live for G10 at ledger 65592849.
 - **If a create lands but its read-back hash differs:** stop. Do not initialize it.
 
+### 5.3b Rent and TTL: no first-call extension on Mainnet; schedule TTL step T1 before day ≈ 85
+
+**The Testnet effect does not occur at launch on Mainnet.** On Testnet the first `checkpoint_nav` cost 70.97 XLM because of these settings:
+
+| | Testnet | Mainnet |
+|---|---:|---:|
+| Initial TTL of an upload or create (`minPersistentTtl`) | **120,960** ledgers | **2,073,600** ledgers (≈ 120 days) |
+| `maxEntryTtl` | 3,110,400 | 3,110,400 |
+
+Source: live `getLedgerEntries` of the state-archival config, 21 Nov 2026.
+
+All four contracts bump their instance with `extend_ttl(500,000 → 1,000,000)`. An instance bump also extends the code entry. This covers:
+- vault: `bump_critical_ttl`;
+- receipt: `storage.rs` and `staged*.rs` TTL constants;
+- controller: `bump_core_ttl`;
+- USDC market: the same receipt-vault code.
+
+On Testnet the fresh 120,960-ledger TTL is below the 500,000 threshold, so the first call that bumps the instance pays to extend a ~125 KB code entry to 1,000,000 ledgers. On Mainnet a fresh upload or create starts at 2,073,600, above the threshold, so **no call pays an extension until the remaining TTL falls below 500,000.** That happens about 1,573,600 ledgers after the upload, about **91–109 days** at 5–6 s per ledger.
+
+**What the threshold crossing costs, and who pays.**
+- **Payer:** the first transaction after the crossing that bumps the instance. That can be a user, the liquidator bot or the heartbeat.
+- **What it pays:** extending the code (and instance) by about 500,001 ledgers.
+- **Rate:** from live `extendFootprintTtl` simulations on same-size proxies, rent is linear at about **6.44 × 10⁻¹⁰ XLM per byte-ledger** (`tools/ttl-quote.cjs`, `sims/ttl-quote-max-*.json`, ledger ≈ 65595900).
+
+| Contract (release bytes) | Threshold bump (+500,001 ledgers), paid by the first caller | Admin pre-extension to max TTL right after upload/create (+≈ 1,036,800 ledgers) |
+|---|---:|---:|
+| Vault v2 code 6fd8599a (125,559 B) | ≈ 40.4 XLM | ≈ 83.8 XLM |
+| Receipt StgV2 code 424454b9 (125,585 B) | ≈ 40.4 XLM | ≈ 83.8 XLM |
+| Group controller code 642421f1 (64,957 B) | ≈ 20.9 XLM | ≈ 43.4 XLM |
+| Instances (proxies CD6N / CCGK / CBMRS7, live) | ≤ 0.2 each | 0.34 / 0.14 / 0.01 |
+| USDC market code 5630a701 (shared with the cash markets) | already ≈ 2.02M ledgers left; covered by the cash TTL keeper | — |
+
+**Risk.** A surprise extension of about 40 XLM inside a liquidation, borrow or exit would exceed the bot's and users' fee caps, and the transaction would fail. **This must never happen.**
+
+**Answer to "should an `extendFootprintTtl` step follow each upload or create?"** A step right after upload only **prepays** at the same linear rate: about 211 XLM for the three codes, delaying the crossing by about 60 days. It is not needed at launch, because nothing pays at the first call on Mainnet. The step that actually moves the cost to the admin at a known price is a scheduled TTL extension before the threshold.
+
+**Step T1 (scheduled, admin; not part of the Sunday ceremony):** `extendFootprintTtl`, read-only footprint = {code 6fd8599a, code 424454b9, code 642421f1, the three new instances}.
+- **When:** run it while every entry still has more than 500,000 ledgers left, at the latest about day 85 after G4.
+- **Extend to:** `extendTo` = 3,110,399, the network maximum. Each run then restarts the clock by about 2.6M ledgers.
+- **Expected price** at today's rate, for the ≈ 1.57M ledgers the run adds at day 85: ≈ 127 XLM (vault) + ≈ 127 XLM (receipt) + ≈ 66 XLM (controller) + ≤ 1 XLM (instances) ≈ **321 XLM**.
+- **Long-run cost:** rent per ledger is the same whenever it is paid, about **1.3 XLM per day** for the three codes.
+- **Before signing:** re-quote with `node tools/ttl-quote.cjs '<rows>' 3110399` against the live entries, which shows the exact min fee.
+- **Monitoring:** add the three codes and instances to the TTL keeper inventory (`scripts/cash_ttl_keeper.cjs` pattern) with alert threshold 600,000 ledgers.
+- **Tooling gap (P12):** `clg-ceremony.cjs` has no `ttl-extend` prepare mode yet. Until it does, T1 is quote-only and must be prepared with the reviewed cash TTL tooling.
+
 ### 5.4 Configuration: G11–G41, then the price gate (Sun 10:15–12:00)
 ```bash
 step g11 prepare vault.initialize
@@ -621,6 +666,7 @@ Replace `vault` with `receipt`, `controller` or `usdcMarket` as needed; those ne
 | P7 | Re-quote, re-emulation and the L3 row on the frozen bytes (HG7) | `params.capCoverage.worstStage`, §3 |
 | P8 | Exact `fee_charged` per configuration step: filled from `send.json` after each step | §3 |
 | P9 | Liquidator in-kind exit of seized units: a manual tool for its host | §7 |
+| P12 | `clg-ceremony.cjs` has no `ttl-extend` mode for step T1; add the CL codes and instances to the TTL keeper inventory (alert < 600,000 ledgers) | §5.3b |
 | P11 | Segment-id and checkpoint lookup for route B is manual (`reward-boundary`, `reward_weight`) | §9b |
 | P10 | Heartbeat key and public key; live `checkpoint_nav` fee after G26; stream A's Testnet gap stats; the heartbeat's Mainnet signer form (HG4) | §6.4, `clg-mainnet.json` `heartbeat` |
 
