@@ -1,11 +1,12 @@
-// Pause watcher: on a confirmed depeg or oracle-staleness alert, pause NEW BORROWS on the borrowable cash markets with
-// the pause-only guardian key (controller pause_borrow_g, 72 h). It can build no other call: redeem, liquidation and
+// Pause watcher: on a confirmed USDC price-band breach or stablecoin depeg (plan.mjs pauseSignals), pause NEW BORROWS on
+// the borrowable cash markets with the pause-only guardian key (controller pause_borrow_g, 72 h). A stale or missing price
+// is an alert only and never pauses (user rule 2026-11-21). It can build no other call: redeem, liquidation and
 // deposit pauses are deliberately unreachable from this code even though the guardian key could sign them. Unpausing
 // is the Ledger's job (research/cash-borrowing-activation-20261117/tools/ceremony.cjs unpause-borrow).
 import fs from 'node:fs';
 import path from 'node:path';
 import * as S from '@stellar/stellar-sdk';
-import {depegAlerts, stalenessAlerts, pauseStep} from './plan.mjs';
+import {pauseSignals, pauseRoundKey, pauseStep} from './plan.mjs';
 
 const log = (level, msg, extra = {}) => console.log(JSON.stringify({t: new Date().toISOString(), level, mode: 'pause-watcher', msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
 const ALLOWED_FN = 'pause_borrow_g';
@@ -50,25 +51,35 @@ function journal(file, rec) { fs.mkdirSync(path.dirname(file), {recursive: true}
 
 const other = s => S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('Other'), S.xdr.ScVal.scvSymbol(s)]);
 
-/** Read the feeds the controller uses (and the fiat EUR reference); returns alerts plus read errors (never alerts). */
+/**
+ * The USDC band the controller enforces: its on-chain get_price_band (PriceBand, 1e6 scale) when readable and set,
+ * otherwise the pinned band (pre-upgrade WASM has no get_price_band). A differing on-chain band is reported and used.
+ */
+export async function usdcBandOf(cfg, c) {
+  const pin = cfg.usdcBand.map(BigInt);
+  try {
+    const b = await c.view(cfg.pins.controller, 'get_price_band', [S.nativeToScVal(cfg.pins.markets.USDC.underlying, {type: 'address'})]);
+    if (Array.isArray(b) && b.length === 2) {
+      const band = [BigInt(b[0]), BigInt(b[1])];
+      return {band, source: 'chain', differsFromPin: band[0] !== pin[0] || band[1] !== pin[1]};
+    }
+    return {band: pin, source: 'pin (no on-chain band set)'};
+  } catch { return {band: pin, source: 'pin (get_price_band unreadable)'}; }
+}
+
+/** Read the feeds the controller uses (and the fiat EUR reference). Returns pause alerts, alert-only notices and read errors. */
 export async function observe(cfg, c, nowSec = Math.floor(Date.now() / 1000)) {
   const prices = {}, readErrors = [];
   for (const [n, sym] of Object.entries(cfg.pins.oracle.symbols)) {
     try { prices[n] = await c.view(cfg.pins.oracle.feed, 'lastprice', [other(sym)]); } catch (e) { readErrors.push({asset: n, err: e.message}); }
   }
-  let eur = null;
+  let eur;
   try { eur = await c.view(cfg.pins.depeg.fiat, 'lastprice', [other('EUR')]); } catch (e) { readErrors.push({asset: 'EUR', err: e.message}); }
-  // A stale EUR reference must not trigger an EURC "depeg" pause: drop it (reported, not alerted).
-  if (eur && nowSec - Number(eur.timestamp) > cfg.staleAfterSeconds) { readErrors.push({asset: 'EUR', err: 'fiat EUR reference stale; EURC check skipped'}); eur = null; }
-  const okPrices = Object.fromEntries(Object.entries(prices));
-  const ts = Object.values(prices).filter(Boolean).map(p => BigInt(p.timestamp));
-  const roundKey = ts.length ? String(ts.reduce((a, b) => (a > b ? a : b))) : null;
-  const alerts = [
-    ...depegAlerts({usdc: prices.USDC && BigInt(prices.USDC.price), eurc: prices.EURC && BigInt(prices.EURC.price), eurFiat: eur && BigInt(eur.price)},
-      {usdcBps: cfg.usdcDepegBps, eurcBps: cfg.eurcVsEurBps}).map(a => ({kind: 'depeg', ...a})),
-    ...stalenessAlerts(okPrices, nowSec, cfg.staleAfterSeconds),
-  ];
-  return {alerts, readErrors, roundKey};
+  const band = await usdcBandOf(cfg, c);
+  if (band.differsFromPin) readErrors.push({asset: 'USDC band', err: 'on-chain band differs from the pin; using the on-chain band', band: band.band});
+  const {pause, notices} = pauseSignals({prices, eurFiat: eur, usdcBand: band.band, decimals: cfg.pins.oracle.decimals ?? 14}, nowSec,
+    {staleAfterSeconds: cfg.staleAfterSeconds, usdcAlertBps: cfg.usdcDepegBps, eurcBps: cfg.eurcVsEurBps});
+  return {alerts: pause, notices, readErrors, roundKey: pauseRoundKey(pause), band};
 }
 
 export async function guardianOf(cfg, c) {
@@ -107,8 +118,9 @@ export async function pauseAll(cfg, c, reason, skip = new Set()) {
 export async function watchOnce(cfg, c, st, nowSec) {
   const mode = cfg.dryRun ? 'dry-run' : 'live';
   if (st.mode !== mode) st = {mode};
-  const {alerts, readErrors, roundKey} = await observe(cfg, c, nowSec);
+  const {alerts, notices, readErrors, roundKey} = await observe(cfg, c, nowSec);
   for (const e of readErrors) log('warn', 'feed read problem (not treated as staleness)', e);
+  for (const n of notices) log('alert', 'ALERT ONLY (never pauses): ' + n.kind, n);
   const targets = pauseTargets(cfg.pins).map(t => t.market), done = {...(st.done || {})};
   let {state, action} = pauseStep(st, alerts, {confirmations: cfg.confirmations, clearCycles: cfg.clearCycles}, {roundKey, allDone: targets.every(m => done[m])});
   state.mode = mode;
@@ -121,7 +133,7 @@ export async function watchOnce(cfg, c, st, nowSec) {
   }
   if (action === 'rearmed') log('info', 'watcher re-armed after clean cycles');
   savePauseState(cfg.stateFile, state);
-  return {state, action, alerts, paused};
+  return {state, action, alerts, notices, paused};
 }
 
 export {log};

@@ -94,8 +94,8 @@ export function budgetFor(record, nowMs) {
 }
 
 /**
- * Staleness signal for the pause watcher. A feed observation older than staleAfterSeconds (or missing) for a borrowable
- * symbol is an alert. A failed READ is not staleness (our RPC may be down) and is reported separately by the caller.
+ * Staleness signal for the pause watcher (ALERT ONLY, never a pause). A feed observation older than staleAfterSeconds
+ * (or missing) is an alert. A failed READ is not staleness (our RPC may be down) and is reported separately by the caller.
  */
 export function stalenessAlerts(prices, nowSec, staleAfterSeconds) {
   const out = [];
@@ -108,16 +108,57 @@ export function stalenessAlerts(prices, nowSec, staleAfterSeconds) {
   return out;
 }
 
+/** Kinds that can open a pause incident. Everything else the watcher reports ('stale', 'usdc-deviation') is alert only. */
+export const PAUSE_KINDS = new Set(['band', 'depeg']);
+
 /**
- * Pause watcher state machine (pure). An incident opens after `confirmations` alerting observations: depeg alerts count
- * once per NEW feed round (roundKey), staleness alerts count every cycle. While the incident is open and some target market
- * is not yet done (submitted or already paused), the action is 'pause'; once all are done it is 'latched', so a Ledger
- * unpause is not overridden and the 72 h is not extended. `clearCycles` consecutive clean cycles close the incident.
+ * Pause-watcher signals (pure). Policy (user rule, 2026-11-21): a stale or missing price NEVER pauses; it is an alert.
+ * Only two conditions pause, and each is evaluated only on that asset's own FRESH observation (age <= staleAfterSeconds
+ * and not > 60 s in the future), so a frozen old value can never trigger or confirm a pause:
+ *  - 'band':  USDC outside the controller's price band. Same test as the contract's price_in_band (inclusive, exact
+ *             BigInt): in band iff lo * 10^decimals <= price * 1e6 <= hi * 10^decimals, band in PriceBand 1e6 scale.
+ *  - 'depeg': EURC deviating from the fresh fiat EUR reference by more than eurcBps (exact: |eurc - eur| * 1e4 > bps * eur).
+ * Inside the band, a USDC deviation above usdcAlertBps from $1 is an 'usdc-deviation' alert only.
+ * prices: {USDC, XLM, EURC: {price, timestamp} | null}; eurFiat: {price, timestamp} | null; prices are 10^decimals-scaled.
+ * Alert records carry prices as decimal strings (they are journaled with plain JSON.stringify).
+ */
+export function pauseSignals({prices, eurFiat, usdcBand, decimals = 14}, nowSec, {staleAfterSeconds, usdcAlertBps = 50, eurcBps = 100}) {
+  const notices = stalenessAlerts({...prices, ...(eurFiat !== undefined ? {EUR: eurFiat} : {})}, nowSec, staleAfterSeconds);
+  const fresh = p => { if (p == null) return false; const age = nowSec - Number(p.timestamp); return age <= staleAfterSeconds && age >= -60; };
+  const one = 10n ** BigInt(decimals), pause = [];
+  const usdc = prices.USDC;
+  if (fresh(usdc)) {
+    const p = BigInt(usdc.price), lo = BigInt(usdcBand[0]), hi = BigInt(usdcBand[1]);
+    const inBand = p * 1_000_000n >= lo * one && p * 1_000_000n <= hi * one;
+    const deviationBps = Number(((p - one) * 10_000n) / one);
+    if (!inBand) pause.push({kind: 'band', asset: 'USDC', price: String(p), band: [String(lo), String(hi)], deviationBps, observedAt: Number(usdc.timestamp)});
+    else if (Math.abs(deviationBps) > usdcAlertBps) notices.push({kind: 'usdc-deviation', asset: 'USDC', price: String(p), deviationBps, alertOnly: true});
+  }
+  const eurc = prices.EURC;
+  if (fresh(eurc) && fresh(eurFiat) && BigInt(eurFiat.price) > 0n) {
+    const e = BigInt(eurc.price), f = BigInt(eurFiat.price), diff = e > f ? e - f : f - e;
+    if (diff * 10_000n > BigInt(eurcBps) * f) pause.push({kind: 'depeg', asset: 'EURC', vs: 'EUR', deviationBps: Number(((e - f) * 10_000n) / f), observedAt: Number(eurc.timestamp), referenceAt: Number(eurFiat.timestamp)});
+  }
+  return {pause, notices};
+}
+
+/** Confirmation key: changes only when a TRIGGERING asset publishes a new observation (not when another asset ticks). */
+export function pauseRoundKey(pause) {
+  return pause.length ? pause.map(a => `${a.asset}:${a.observedAt}${a.referenceAt != null ? '/' + a.referenceAt : ''}`).sort().join(',') : null;
+}
+
+/**
+ * Pause watcher state machine (pure). Only PAUSE_KINDS alerts are considered; anything else (stale, alert-only) is
+ * ignored here and counts as a clean cycle. An incident opens after `confirmations` observations, each counted once per
+ * NEW roundKey (a new observation of the triggering asset). While the incident is open and some target market is not yet
+ * done (submitted or already paused), the action is 'pause'; once all are done it is 'latched', so a Ledger unpause is
+ * not overridden and the 72 h is not extended. `clearCycles` consecutive clean cycles close the incident.
  */
 export function pauseStep(state, alerts, {confirmations = 2, clearCycles = 20} = {}, {roundKey = null, allDone = false} = {}) {
   const s = {streak: 0, clean: 0, incident: false, done: {}, lastRound: null, ...state};
-  if (alerts.length) {
-    const counts = alerts.some(a => a.kind === 'stale') || roundKey == null || String(roundKey) !== String(s.lastRound);
+  const triggering = alerts.filter(a => PAUSE_KINDS.has(a.kind));
+  if (triggering.length) {
+    const counts = roundKey == null || String(roundKey) !== String(s.lastRound);
     if (counts) s.streak += 1;
     s.lastRound = roundKey == null ? s.lastRound : String(roundKey); s.clean = 0;
     if (!s.incident && s.streak >= confirmations) { s.incident = true; s.incidentAt = new Date().toISOString(); }

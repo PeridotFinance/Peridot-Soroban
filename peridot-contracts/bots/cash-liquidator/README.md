@@ -29,11 +29,18 @@ At startup the keeper refuses to run in any of these cases:
 
 ## Pause watcher (separate process, separate key: `npm run start:pause`)
 
-`src/pause-main.mjs` reads the external feed (USDC, XLM, EURC) and the fiat EUR feed every `POLL_INTERVAL_MS`. It alerts in two cases:
-- a depeg: USDC more than ±`USDC_DEPEG_BPS` (50) from $1, or EURC more than ±`EURC_VS_EUR_BPS` (100) from EUR;
-- a stale feed: an observation older than `STALE_AFTER_SECONDS` (900).
+`src/pause-main.mjs` reads the external feed (USDC, XLM, EURC), the fiat EUR feed and the controller's USDC price band every
+`POLL_INTERVAL_MS`. Policy (2026-11-21): **a stale or missing price never pauses; it is an alert only** (the controller already
+returns no price after k × resolution, so borrows that need it revert). It pauses only on the following, each evaluated on that asset's own fresh
+observation (age ≤ `STALE_AFTER_SECONDS`, 900):
+- a USDC price outside the controller band: on-chain `get_price_band(USDC)` (PriceBand, 1e6 scale) when set, else the pinned
+  `pauseWatcher.usdcBand1e6` [980000, 1020000]; inclusive, the same exact test as the contract's `price_in_band`;
+- an EURC depeg: EURC more than ±`EURC_VS_EUR_BPS` (100) from the fresh fiat EUR reference.
 
-A failed read of our own RPC is a warning, not staleness. After `PAUSE_CONFIRMATIONS` (2) consecutive alerting cycles, it calls
+Alert only: stale/missing prices, and a USDC deviation over ±`USDC_DEPEG_BPS` (50) from $1 that is still inside the band. PYUSD
+is not monitored: the pinned feed has no PYUSD price and the market is not borrowable, so it carries no collateral value.
+
+A failed read of our own RPC is a warning, not staleness. After `PAUSE_CONFIRMATIONS` (2) consecutive pause-triggering observations (each a new observation of the triggering asset), it calls
 `pause_borrow_g(pauseKey, market, true)` on USDC, XLM and EURC, skipping markets already paused. It then latches until `PAUSE_CLEAR_CYCLES` (20) clean cycles have passed,
 so a Ledger unpause is not overridden and the 72 h pause is not extended.
 

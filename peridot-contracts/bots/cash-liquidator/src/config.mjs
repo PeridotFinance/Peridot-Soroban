@@ -71,7 +71,8 @@ export function loadPauseConfig(env = process.env) {
     cpuStop: int(env.CPU_STOP, 97_000_000),
     stateFile: env.PAUSE_STATE_FILE || path.join(here, '..', 'data', 'pause-state.json'),
     journalFile: env.PAUSE_JOURNAL_FILE || path.join(here, '..', 'data', 'pause-journal.jsonl'),
-    usdcDepegBps: int(env.USDC_DEPEG_BPS, w.usdcDepegBps ?? 50),
+    usdcDepegBps: int(env.USDC_DEPEG_BPS, w.usdcDepegBps ?? 50),            // alert only (inside the band)
+    usdcBand: (w.usdcBand1e6 ?? [980_000, 1_020_000]).map(BigInt),          // pinned fallback; no env override
     eurcVsEurBps: int(env.EURC_VS_EUR_BPS, w.eurcVsEurBps ?? 100),
     staleAfterSeconds: int(env.STALE_AFTER_SECONDS, w.staleAfterSeconds ?? 900),
     confirmations: int(env.PAUSE_CONFIRMATIONS, w.confirmations ?? 2),
@@ -84,6 +85,7 @@ export function loadPauseConfig(env = process.env) {
   if (pins.admin && cfg.publicKey === pins.admin) throw Error('refused: pause key is the admin');
   if (cfg.liquidatorPublicKey && cfg.publicKey === cfg.liquidatorPublicKey) throw Error('refused: pause key is the liquidator key');
   if (cfg.confirmations < 1) throw Error('PAUSE_CONFIRMATIONS must be >= 1');
+  if (!(cfg.usdcBand.length === 2 && cfg.usdcBand[0] > 0n && cfg.usdcBand[0] <= cfg.usdcBand[1])) throw Error('pauseWatcher.usdcBand1e6 must be [lo, hi] with 0 < lo <= hi');
   cfg.neverTouch = new Set(pins.neverTouch || []);
   return cfg;
 }

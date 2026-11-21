@@ -17,8 +17,11 @@ function journal(file, rec) { fs.mkdirSync(path.dirname(file), {recursive: true}
 export async function verifyPins(cfg, c) {
   const net = await c.rpc.getNetwork();
   if (net.passphrase !== cfg.network) throw Error('RPC network mismatch');
-  if (cfg.pins.controllerWasm && (await c.codeHash(cfg.pins.controller)) !== cfg.pins.controllerWasm) throw Error('controller code changed');
-  for (const [n, m] of Object.entries(cfg.pins.markets)) if (cfg.pins.marketWasm && (await c.codeHash(m.receipt)) !== cfg.pins.marketWasm) throw Error(`${n} code changed`);
+  // Each instance must run its pinned WASM or exactly the reviewed cash-borrow upgrade target (pins.upgradeWasm).
+  const up = cfg.pins.upgradeWasm || {};
+  const ok = (h, pin, next) => h === pin || (next != null && h === next);
+  if (cfg.pins.controllerWasm && !ok(await c.codeHash(cfg.pins.controller), cfg.pins.controllerWasm, up.controller)) throw Error('controller code changed');
+  for (const [n, m] of Object.entries(cfg.pins.markets)) if (cfg.pins.marketWasm && !ok(await c.codeHash(m.receipt), cfg.pins.marketWasm, up.market)) throw Error(`${n} code changed`);
 }
 
 // Role separation: the liquidator key is never the admin Ledger nor the pause guardian.
