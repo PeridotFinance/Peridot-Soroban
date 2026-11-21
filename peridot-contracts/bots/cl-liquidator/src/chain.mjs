@@ -62,6 +62,17 @@ export function makeExecutor(cfg, {execFile = execFileCb} = {}) {
   };
 }
 
+/** Storage key Vec of parts: a valid G/C strkey is an Address, anything else a Symbol. A strkey can consist of letters
+ *  only (e.g. CCWNPXMQ...UOVA), so the old "/^[A-Z][A-Za-z]*$/ = symbol" rule could encode an address as a symbol. */
+export function dataKey(S, parts) {
+  return S.xdr.ScVal.scvVec(parts.map(p => {
+    const strkey = typeof p === 'string' && (S.StrKey.isValidEd25519PublicKey(p) || S.StrKey.isValidContract(p));
+    if (strkey || typeof p !== 'string') return S.nativeToScVal(p, {type: 'address'});
+    if (!/^[A-Za-z0-9_]{1,32}$/.test(p)) throw Error(`storage key part "${p.slice(0, 40)}" is neither a strkey nor a symbol`);
+    return S.xdr.ScVal.scvSymbol(p);
+  }));
+}
+
 export function makeReader(cfg) {
   const S = loadSdk();
   const rpc = new S.rpc.Server(cfg.rpcUrl, {allowHttp: cfg.rpcUrl.startsWith('http://')});
@@ -94,7 +105,7 @@ export function makeReader(cfg) {
   }
   /** Raw persistent contract data, e.g. controller PriceCache(token); null when absent. */
   async function data(contract, keyParts) {
-    const key = S.xdr.ScVal.scvVec(keyParts.map(p => (typeof p === 'string' && /^[A-Z][A-Za-z]*$/.test(p) ? S.xdr.ScVal.scvSymbol(p) : addr(p))));
+    const key = dataKey(S, keyParts);
     const lk = S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: new S.Address(contract).toScAddress(), key,
       durability: S.xdr.ContractDataDurability.persistent()}));
     const r = await rpc.getLedgerEntries(lk);
