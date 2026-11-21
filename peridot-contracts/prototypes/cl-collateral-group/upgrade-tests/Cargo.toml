@@ -1,0 +1,14 @@
+[package]
+name = "clg-upgrade-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Compiled-bytes upgrade tests for the CL group stack (UPGRADEABILITY.md). Isolated workspace; test only.
+[workspace]
+
+[lib]
+doctest = false
+
+[dev-dependencies]
+soroban-sdk = { version = "25.3.0", features = ["testutils"] }
