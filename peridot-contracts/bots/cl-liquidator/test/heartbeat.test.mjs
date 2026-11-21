@@ -77,5 +77,18 @@ test('makeHeartbeat: a rejected send resyncs the sequence from the network', asy
     sign: async x => x, out: () => {}, clock: () => now});
   hb.observe(true); await hb.tick(); for (let k = 0; k < 5; k++) await new Promise(r => setImmediate(r));
   now = 500; hb.observe(true); await hb.tick(); for (let k = 0; k < 5; k++) await new Promise(r => setImmediate(r));
-  assert.deepEqual(f.sent, ['101', '101'], 'retry after a rejection reuses the network sequence, not a skipped one');
+  assert.deepEqual(f.sent, ['101'], 'no retry inside the 2 s backoff');
+  now = 2500; hb.observe(true); await hb.tick(); for (let k = 0; k < 5; k++) await new Promise(r => setImmediate(r));
+  assert.deepEqual(f.sent, ['101', '101'], 'retry after an ERROR resyncs to the network sequence, not a skipped one');
+});
+test('makeHeartbeat: TRY_AGAIN_LATER keeps the local sequence and retries after 2 s', async () => {
+  const f = fakes(); let now = 0, calls = 0;
+  f.rpc.getAccount = async () => { calls++; return {sequenceNumber: () => '100'}; };
+  let first = true;
+  f.rpc.sendTransaction = async tx => { f.sent.push(String(tx.seq)); const s = first ? 'PENDING' : f.sent.length === 2 ? 'TRY_AGAIN_LATER' : 'PENDING'; first = false; return {status: s}; };
+  const hb = makeHeartbeat({S: f.S, rpc: f.rpc, cfg: {heartbeatAccount: 'G', contracts: {receipt: 'C'}, networkPassphrase: 'T'}, journal: f.j,
+    sign: async x => x, out: () => {}, clock: () => now});
+  const run = async t => { now = t; hb.observe(true); await hb.tick(); for (let k = 0; k < 5; k++) await new Promise(r => setImmediate(r)); };
+  await run(0); await run(12_000); await run(13_000); await run(14_100);
+  assert.deepEqual(f.sent, ['101', '102', '102']); assert.equal(calls, 1, 'no network resync on TRY_AGAIN_LATER');
 });

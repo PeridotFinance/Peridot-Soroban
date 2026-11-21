@@ -22,6 +22,7 @@ export function normalize(cfg, baseDir = process.cwd()) {
     assertIdentityName(out.heartbeatIdentity);
     if (out.heartbeatIdentity === out.executorIdentity) throw Error('heartbeatIdentity must differ from executorIdentity (separate sequence numbers)');
     if (!/^G[A-Z2-7]{55}$/.test(out.heartbeatAccount ?? '') || out.heartbeatAccount === out.liquidator) throw Error('heartbeatAccount must be a public G... address distinct from the liquidator');
+    if (out.heartbeatFeeStroops != null && !(Number.isInteger(out.heartbeatFeeStroops) && out.heartbeatFeeStroops >= 100 && out.heartbeatFeeStroops <= 1_000_000)) throw Error('heartbeatFeeStroops must be an integer 100..1000000');
     if (out.heartbeatPeriodMs != null && !(out.heartbeatPeriodMs >= 3000 && out.heartbeatPeriodMs <= 15000)) throw Error('heartbeatPeriodMs must be 3000..15000 (on-chain gap target <= 20 s)');
   }
   out.repayCapRaw = out.repayCapRaw == null ? null : BigInt(out.repayCapRaw);

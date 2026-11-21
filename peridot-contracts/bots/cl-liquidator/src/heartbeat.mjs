@@ -32,15 +32,15 @@ export function gapStats(times) {
  * `sign(xdr) -> Promise<signedXdr>` (CLI). `observe` is called by the plan loop after each observation.
  */
 export function makeHeartbeat({S, rpc, cfg, journal, sign, out, clock = () => Date.now()}) {
-  const st = {blocked: false, obsAtMs: null, lastSubmitMs: null, submitting: false, seq: null, pending: new Map(), included: []};
-  const period = cfg.heartbeatPeriodMs ?? HEARTBEAT_PERIOD_MS;
+  const st = {blocked: false, obsAtMs: null, lastSubmitMs: null, submitting: false, seq: null, pending: new Map(), included: [], retryAtMs: null};
+  const period = cfg.heartbeatPeriodMs ?? HEARTBEAT_PERIOD_MS, fee = String(cfg.heartbeatFeeStroops ?? 10_000), RETRY_MS = 2_000;
   async function submitOne() {
     st.submitting = true;
     const t0 = clock();
     try {
       if (st.seq == null) st.seq = BigInt((await rpc.getAccount(cfg.heartbeatAccount)).sequenceNumber());
       const acct = new S.Account(cfg.heartbeatAccount, String(st.seq));
-      let tx = new S.TransactionBuilder(acct, {fee: '1000', networkPassphrase: cfg.networkPassphrase})
+      let tx = new S.TransactionBuilder(acct, {fee, networkPassphrase: cfg.networkPassphrase})
         .addOperation(new S.Contract(cfg.contracts.receipt).call('checkpoint_nav')).setTimeout(45).build();
       const sim = await rpc.simulateTransaction(tx);
       if (!S.rpc.Api.isSimulationSuccess(sim)) { out({level: 'warn', msg: 'heartbeat simulation failed', err: String(sim.error).split('\n')[0]}); return; }
@@ -50,14 +50,19 @@ export function makeHeartbeat({S, rpc, cfg, journal, sign, out, clock = () => Da
       const seq0 = journal.intent('HB', 'L1a', null, {call: {contract: cfg.contracts.receipt, fn: 'checkpoint_nav', args: {}}, hash, source: cfg.heartbeatAccount});
       const r = await rpc.sendTransaction(signed);
       if (r.status === 'ERROR' || r.status === 'TRY_AGAIN_LATER') {
-        st.seq = null;   // resync the sequence from the network next time
-        journal.result(seq0, 'HB', 'L1a', null, false, {hash, sendStatus: r.status});
-        out({level: 'warn', msg: 'heartbeat send rejected', status: r.status, hash});
+        // Live Testnet soak: TRY_AGAIN_LATER (queue full / earlier tx still pending) followed by a sequence
+        // resync produced txBAD_SEQ ERRORs and a 65-70 s gap. Keep the local sequence on TRY_AGAIN_LATER and
+        // retry after RETRY_MS; resync only on ERROR.
+        let code = null; try { code = r.errorResult?.result().switch().name ?? null; } catch {}
+        if (r.status === 'ERROR') st.seq = null;
+        st.retryAtMs = clock() + RETRY_MS;
+        journal.result(seq0, 'HB', 'L1a', null, false, {hash, sendStatus: r.status, code});
+        out({level: 'warn', msg: 'heartbeat send rejected', status: r.status, code, hash});
         return;
       }
       st.seq += 1n; st.lastSubmitMs = t0; st.pending.set(hash, {seq0, at: t0});
       out({level: 'info', msg: 'heartbeat submitted', hash, sendMs: clock() - t0});
-    } catch (e) { st.seq = null; out({level: 'warn', msg: 'heartbeat failed', err: e.message}); }
+    } catch (e) { st.seq = null; st.retryAtMs = clock() + RETRY_MS; out({level: 'warn', msg: 'heartbeat failed', err: e.message.slice(0, 200)}); }
     finally { st.submitting = false; }
   }
   async function poll() {
@@ -76,7 +81,8 @@ export function makeHeartbeat({S, rpc, cfg, journal, sign, out, clock = () => Da
   return {
     observe(blocked) { st.blocked = !!blocked; st.obsAtMs = clock(); },
     async tick() {
-      if (heartbeatDue({blocked: st.blocked, obsAtMs: st.obsAtMs, nowMs: clock(), lastSubmitMs: st.lastSubmitMs, submitting: st.submitting, periodMs: period})) submitOne();
+      const now = clock();
+      if ((st.retryAtMs == null || now >= st.retryAtMs) && heartbeatDue({blocked: st.blocked, obsAtMs: st.obsAtMs, nowMs: now, lastSubmitMs: st.lastSubmitMs, submitting: st.submitting, periodMs: period})) { st.retryAtMs = null; submitOne(); }
       if (st.pending.size) await poll();
     },
     start(ms = 500) { timer = setInterval(() => { this.tick().catch(e => out({level: 'warn', msg: 'heartbeat tick failed', err: e.message})); }, ms); return this; },
