@@ -49,6 +49,10 @@ install -d -m 700 -o clliq -g clliq "$DATA" "$DATA/state" "$DATA/logs" "$DATA/ke
 new_log clliq "$DATA/logs/cl-liquidator.log"
 LIQ_KEY=$DATA/keys/cl-liquidator.secret HB_KEY=$DATA/keys/cl-hb-main.secret
 LIQ_PUB=$(ensure_key clliq "$LIQ_KEY"); HB_PUB=$(ensure_key clliq "$HB_KEY")
+# Second heartbeat RPC (Alchemy; its URL carries the API key): an EMPTY 0600 placeholder owned by clliq. The operator
+# fills it on this host with `read -s` + printf (SIGNER-KEEPER-V6.md §3); the bot refuses live mode while it is empty.
+RPC_FILE=$DATA/keys/rpc-alchemy.url
+[ -e "$RPC_FILE" ] || install -m 600 -o clliq -g clliq /dev/null "$RPC_FILE"
 [[ "$LIQ_PUB" =~ ^G[A-Z2-7]{55}$ && "$HB_PUB" =~ ^G[A-Z2-7]{55}$ ]] || die "key creation did not return public keys"
 [ "$LIQ_PUB" != "$HB_PUB" ] || die "liquidator and heartbeat keys must differ"
 for forbidden in GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G \
@@ -63,7 +67,7 @@ install -d -m 750 -o root -g clliq "$ETC"
   const [example, liq, hb, data, rpc] = process.argv.slice(1);
   const c = JSON.parse(fs.readFileSync(example, "utf8"));
   Object.assign(c, {rpcUrl: rpc, liquidator: liq, heartbeatAccount: hb, executorKeyFile: data + "/keys/cl-liquidator.secret",
-    heartbeatKeyFile: data + "/keys/cl-hb-main.secret", dataDir: data + "/state"});
+    heartbeatKeyFile: data + "/keys/cl-hb-main.secret", heartbeatRpcUrlFiles: [data + "/keys/rpc-alchemy.url"], dataDir: data + "/state"});
   process.stdout.write(JSON.stringify(c, null, 2) + "\n");' \
   "$APP_ROOT/current/config/mainnet.example.json" "$LIQ_PUB" "$HB_PUB" "$DATA" "$RPC_URL" | write_once "$ETC/mainnet.json" root:clliq 0640
 grep -q "\"liquidator\": \"$LIQ_PUB\"" "$ETC/mainnet.json" && grep -q "\"heartbeatAccount\": \"$HB_PUB\"" "$ETC/mainnet.json" || die "existing $ETC/mainnet.json names different keys"

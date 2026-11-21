@@ -112,7 +112,7 @@ Refusals are raised to `alert`. The heartbeat's RPC is the raw-`getTransaction` 
 
 ### 1.4 Points for the lead (decide; not picked silently)
 
-1. **The 12 h gate conflicts with the LAUNCH timeline.**
+1. **The 12 h gate conflicts with the LAUNCH timeline.** *(Decided 21 Nov: 12 h kept; see §5.)*
    - LAUNCH §4 schedules a 2 h soak (12:30–14:30) and the first live cycle at 16:00 Sun.
    - With the default 12 h, the dry run must start by Sun 04:00 or earlier.
    - The contracts don't exist before G7–G10 (09:45–10:15), and `startChecks` refuses missing instances. So 12 h is impossible on Sunday.
@@ -230,6 +230,20 @@ SKIP_PACKAGES=1 START=0 bash /root/bootstrap-cl-liquidator.sh
 
 **Then:**
 1. **HG6.** Enter the keys in `clg-mainnet.json`: `liquidator.publicKey` and `heartbeat.publicKey`.
+1a. **Second heartbeat RPC (Alchemy; user decision 21 Nov).** The bootstrap creates the empty 0600 placeholder `/mnt/cashliq/cl-liquidator/keys/rpc-alchemy.url`, owned by `clliq`. Fill it **on the Droplet**, as root, without the URL ever entering argv, a log or shell history (`read` and `printf` are shell builtins):
+   ```bash
+   F=/mnt/cashliq/cl-liquidator/keys/rpc-alchemy.url
+   read -r -s -p 'Alchemy Stellar Mainnet URL: ' U; echo
+   printf '%s\n' "$U" > "$F"; unset U
+   chown clliq:clliq "$F"; chmod 600 "$F"
+   stat -c '%a %U %s' "$F"      # expect: 600 clliq <bytes>. Never cat the file.
+   runuser -u clliq -- /usr/local/bin/node --input-type=module -e \
+     "import {readUrlFile} from '/opt/peridot-cl-liquidator/current/src/mainnet.mjs'; console.log(readUrlFile(process.argv[1]).label)" "$F"
+   # prints only host#hash, e.g. stellar-mainnet.g.alchemy.com#1a2b3c4d
+   ```
+   - Never `echo <url> > file` or put the URL on any command line.
+   - gateway.fm stays the primary (`heartbeatRpcUrls`), and the Alchemy file is the second entry (`heartbeatRpcUrlFiles`).
+   - A dry-run start logs `heartbeat RPCs verified (Mainnet)` with both labels. While the file is empty, it logs `heartbeat RPCs not ready` and live mode refuses to start.
 2. **Gate decision §1.4-1.** If the timeline stays, set `"dryRunGateHours": 2` in `/etc/peridot-cl-liquidator/mainnet.json` now. It is root-owned, 0640; edit it as root.
 3. **After G7–G10** (the contracts exist) and ideally after the Ledger has done the first-touch `checkpoint_nav` / `cache_price` (§1.4-4):
    ```bash
@@ -317,3 +331,25 @@ Builds on stream A's 5f48b0d (`failoverRpc`, plus self-observation of `checkpoin
   - the start refusal on a Testnet or unreachable server;
   - failover away from a dead primary, and skipping a server that later reports another network;
   - the pin check through the secondary when the primary is dead, both a changed code (refused, nothing charged) and the pinned code (signed).
+
+---
+
+## 5. User decisions of 21 Nov (implemented)
+
+1. **Alchemy is the second heartbeat RPC.**
+   - **Config:** `heartbeatRpcUrlFiles` holds absolute paths to 0600 files owned by the service user, one URL each. They are read at start with the same checks as key files (`readUrlFile`), and an empty or invalid file is refused.
+   - **Redaction:** the URL is never put in the config, a log or the journal. RPC errors are redacted to the label (host plus the first 8 hex of the URL's sha256) and the start line shows labels only.
+   - **Totals:** at least 2 RPCs, counting `heartbeatRpcUrls` and `heartbeatRpcUrlFiles` together. Duplicates are refused, and so is a key file listed as a URL file.
+   - **Main bot:** keeps gateway.fm through `rpcUrl`. A URL file for the main RPC was not added; it can be done the same way if wanted.
+2. **The heartbeat runs only while CL debt exists.**
+   - On Mainnet the heartbeat is now required in the config, so the plan loop never sends D3 observations from the liquidator.
+   - Each plan cycle passes the borrowers' USDC debt, read in that cycle's observation, to `applyDebtGate`:
+     - when debt appears, the heartbeat timer starts in that same cycle;
+     - when all listed debt is zero, it stops, including its self-observation;
+     - while debt-free, the plan loop's D3 L1a stages ("D3: start…" and "D3 heartbeat…") are dropped, so no D3 observation is sent at all.
+   - Chain clearing and NAV refresh are kept; the plan only produces them when needed.
+   - The fee ceiling, cap and daily budget still apply to every heartbeat.
+   - **Effect:** once debt appears, the D3 fallback becomes admissible only after 600 s of continuous block measured from then. This is accepted under the decision.
+3. **The CL bot dry-run gate stays at 12 h** (the code default). The 2 h option in §1.4-1 is therefore withdrawn. Start the dry run at least 12 h before the first live cycle, which moves that cycle to Mon (LAUNCH §4/§7).
+
+Tests: 59/59 (+5). They cover the URL-file rules and redaction, a secret URL in a server error being redacted, a duplicate or empty file being refused, no heartbeat while debt-free, start on the first cycle with debt, stop at zero debt, restart, and a real heartbeat timer sending nothing while gated off.

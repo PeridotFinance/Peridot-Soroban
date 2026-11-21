@@ -11,7 +11,7 @@ import {assessDepeg, fetchReference, httpJson} from './watcher.mjs';
 import {makeHeartbeat, failoverRpc} from './heartbeat.mjs';
 import {execFile} from 'node:child_process';
 import {cliEnv, assertIdentityName, MAINNET} from './chain.mjs';
-import {isMainnet, makeRpc, startChecks, makeSender, botAllow, makeHeartbeatSigner, makeHeartbeatRpc, openBudget, openGate, acquireRunLock, trustlineStatus, requireTrustlines} from './mainnet.mjs';
+import {isMainnet, makeRpc, startChecks, makeSender, botAllow, makeHeartbeatSigner, makeHeartbeatRpc, makeDebtGatedHeartbeat, applyDebtGate, openBudget, openGate, acquireRunLock, trustlineStatus, requireTrustlines} from './mainnet.mjs';
 
 /** CLI-held key signs an SDK-built envelope (stdin -> stdout). No key material enters this process. */
 export function makeCliSigner(cfg, identity, {execFileImpl = execFile} = {}) {
@@ -102,6 +102,8 @@ async function step(cfg, r, exec, j, hb = null) {
   const p = plan(obs, {submitMargin: cfg.submitMarginSec, repayCap: cfg.repayCapRaw});
   // The fixed-timer heartbeat owns D3 chain extension; the plan loop keeps every other L1a (clear, refresh).
   if (hb) p.stages = p.stages.filter(x => !(x.stage === 'L1a' && /^D3 heartbeat/.test(x.reason ?? '')));
+  // Mainnet debt gate: the heartbeat runs only while a listed borrower owes; debt-free, no D3 observation is sent at all.
+  if (hb?.update) p.stages = applyDebtGate(p.stages, obs.borrowers, hb);
   const ref = await fetchReference(cfg.watcher?.reference, httpJson);
   const dp = assessDepeg({feed: obs.feed, now: obs.now, ref}, cfg);
   if (obs.navSim === 'error') p.alerts.push({level: 'alert', msg: 'checkpoint_nav simulation failed', err: obs.navError});
@@ -164,6 +166,9 @@ async function mainMainnet(cfg, liveFlag, env = process.env) {
   // Both trustlines: refused in live mode, reported in dry run (the soak may start before they exist).
   const trustlines = live ? await requireTrustlines(cfg, rpc, cfg.liquidator, S) : await trustlineStatus(cfg, rpc, cfg.liquidator, S).catch(() => null);
   if (!live && !(trustlines?.USDC && trustlines?.PYUSD)) out({level: 'warn', msg: 'liquidator trustlines incomplete: live mode will refuse to start', trustlines});
+  // Dry run: verify the heartbeat RPCs (URL files incl.) now, so the soak shows what live mode would refuse.
+  if (!live) await makeHeartbeatRpc(cfg, {S, failover: rpcs => failoverRpc(rpcs)}).then(h => out({level: 'info', msg: 'heartbeat RPCs verified (Mainnet)', rpcs: h.labels}),
+    e => out({level: 'warn', msg: 'heartbeat RPCs not ready: live mode will refuse to start', err: e.message}));
   if (live) {
     const armed = gate.requireArmed();
     exec = makeSender(cfg, {rpc, S, account: cfg.liquidator, keyFile: cfg.executorKeyFile, kind: 'liquidator', allow: botAllow, budget});
@@ -172,12 +177,14 @@ async function mainMainnet(cfg, liveFlag, env = process.env) {
     if (has('--watch') && cfg.heartbeatAccount) {
       // Failover over heartbeatRpcUrls (each verified Mainnet); the signer re-checks the code pins through it.
       const hbRpc = await makeHeartbeatRpc(cfg, {S, failover: rpcs => failoverRpc(rpcs, hbOut)});
-      hb = makeHeartbeat({S, rpc: hbRpc, cfg, journal: j, sign: makeHeartbeatSigner(cfg, {S, budget, rpc: hbRpc}), out: hbOut}).start();
+      // Not started here: the debt gate starts it on the first plan cycle that sees CL debt (user decision 21 Nov).
+      hb = makeDebtGatedHeartbeat(makeHeartbeat({S, rpc: hbRpc, cfg, journal: j, sign: makeHeartbeatSigner(cfg, {S, budget, rpc: hbRpc}), out: hbOut}), out);
+      hb.labels = hbRpc.labels;
     }
     out({level: 'info', msg: 'dry-run gate passed', since: armed.since, last: armed.last, armedAt: armed.armedAt, cycles: armed.cycles});
   }
   out({msg: 'start', live, watch: has('--watch'), network: MAINNET, signer: live ? 'key file' : 'none (dry run)', trustlines, code: checks.code, pendingUpgrades: checks.pendingUpgrades,
-    heartbeat: hb ? {account: cfg.heartbeatAccount, periodMs: cfg.heartbeatPeriodMs ?? 12000, rpcs: cfg.heartbeatRpcUrls.map(u => new URL(u).host)} : null,
+    heartbeat: hb ? {account: cfg.heartbeatAccount, periodMs: cfg.heartbeatPeriodMs ?? 12000, rpcs: hb.labels, gate: 'starts with CL debt'} : null,
     budget: {liquidatorSpentToday: String(budget.spent('liquidator')), heartbeatSpentToday: String(budget.spent('heartbeat'))}, gate: live ? 'armed' : gate.load()});
   if (!has('--watch')) { for (let i = 0; i < (live ? 8 : 1); i++) if (!(await step(cfg, r, exec, j)).sent) break; return; }
   for (;;) {

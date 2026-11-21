@@ -8,7 +8,7 @@ import path from 'node:path';
 import {loadSdk, MAINNET, TESTNET} from '../src/chain.mjs';
 import {normalize} from '../src/config.mjs';
 import {failoverRpc} from '../src/heartbeat.mjs';
-import {makeHeartbeatRpc, botAllow, makeSender, makeHeartbeatSigner, openBudget, openGate, gateBinding, acquireRunLock, readPins, assertPins,
+import {makeHeartbeatRpc, readUrlFile, redact, makeDebtGatedHeartbeat, applyDebtGate, botAllow, makeSender, makeHeartbeatSigner, openBudget, openGate, gateBinding, acquireRunLock, readPins, assertPins,
   validateMainnetConfig, FORBIDDEN_SIGNERS, NEVER_TOUCH, CPU_STOP, trustlineStatus, requireTrustlines, startChecks} from '../src/mainnet.mjs';
 import {loadKeyFile, createKeyFile} from '../src/keyfile.mjs';
 import {exitCall, exitAllow, PHASE} from '../src/exit-seized.mjs';
@@ -42,8 +42,8 @@ test('mainnet config: example shape accepted; CLI aliases, placeholders, pilot/r
   assert.throws(() => cfgOf({repayCapRaw: null}), /repayCapRaw/);
   const example = JSON.parse(fs.readFileSync(new URL('../config/mainnet.example.json', import.meta.url)));
   assert.throws(() => normalize(example), /liquidator must be a public/);
-  assert.throws(() => normalize({...example, liquidator: Gk(10), heartbeatAccount: Gk(11)}), /heartbeatRpcUrls/);   // second RPC is a placeholder
-  assert.doesNotThrow(() => normalize({...example, liquidator: Gk(10), heartbeatAccount: Gk(11), heartbeatRpcUrls: ['https://rpc-a.invalid', 'https://rpc-b.invalid']}));
+  assert.doesNotThrow(() => normalize({...example, liquidator: Gk(10), heartbeatAccount: Gk(11)}));
+  assert.deepEqual([example.heartbeatRpcUrls, example.heartbeatRpcUrlFiles], [['https://soroban-rpc.mainnet.stellar.gateway.fm'], ['/mnt/cashliq/cl-liquidator/keys/rpc-alchemy.url']]);
 });
 test('mainnet config: role separation (admin, cash liquidator, cash pause key, keeper, T3, heartbeat = liquidator)', () => {
   for (const g of Object.keys(FORBIDDEN_SIGNERS)) {
@@ -328,9 +328,12 @@ test('resource-fee ceiling (Testnet 70.97 XLM rent on a first checkpoint_nav): r
 });
 
 // ------------------------------------------------------------------ heartbeat RPC failover (5f48b0d) on Mainnet
-test('mainnet config: heartbeatRpcUrls needs >= 2 distinct https URLs without credentials', () => {
+test('mainnet config: >= 2 heartbeat RPCs (URLs + URL files), https without credentials; heartbeat required', () => {
   for (const urls of [undefined, [], ['https://a.invalid'], ['https://a.invalid', 'https://a.invalid'], ['https://a.invalid', 'http://b.invalid'], ['https://a.invalid', 'https://u:p@b.invalid']])
-    assert.throws(() => cfgOf({heartbeatRpcUrls: urls}), /heartbeatRpcUrls/, JSON.stringify(urls));
+    assert.throws(() => cfgOf({heartbeatRpcUrls: urls}), /heartbeatRpc/, JSON.stringify(urls));
+  assert.doesNotThrow(() => cfgOf({heartbeatRpcUrls: ['https://a.invalid'], heartbeatRpcUrlFiles: ['/k/rpc.url']}));
+  for (const files of [['rel/rpc.url'], ['/k/rpc.url', '/k/rpc.url'], ['/k/liq.secret']]) assert.throws(() => cfgOf({heartbeatRpcUrls: ['https://a.invalid'], heartbeatRpcUrlFiles: files}), /heartbeatRpcUrlFiles/);
+  assert.throws(() => cfgOf({heartbeatAccount: undefined, heartbeatKeyFile: undefined}), /heartbeatAccount .* required on Mainnet/);
   assert.deepEqual(cfgOf({heartbeatRpcUrls: ['https://a.invalid', 'https://b.invalid', 'https://c.invalid']}).heartbeatRpcUrls.length, 3);
 });
 function servers(c, spec) {
@@ -346,7 +349,7 @@ test('heartbeat RPC: start refused unless EVERY server reports Mainnet', async (
   const c = cfgOf();
   for (const bad of [{net: TESTNET}, {net: 'throw'}]) {
     const {make} = servers(c, {'https://rpc-a.invalid': {net: MAINNET}, 'https://rpc-b.invalid': bad});
-    await assert.rejects(makeHeartbeatRpc(c, {S, make, failover: r => failoverRpc(r)}), /rpc-b.invalid is not a reachable Mainnet RPC/);
+    await assert.rejects(makeHeartbeatRpc(c, {S, make, failover: r => failoverRpc(r)}), /rpc-b\.invalid#[0-9a-f]{8} is not a reachable Mainnet RPC/);
   }
   await assert.rejects(makeHeartbeatRpc({...c, networkPassphrase: TESTNET}, {S, make: () => ({}), failover: r => r}), /non-Mainnet/);
 });
@@ -381,4 +384,79 @@ test('heartbeat signer re-checks the code pins through whichever heartbeat RPC i
   assert.ok(await makeHeartbeatSigner(c, {S, budget, rpc})(xdr()));
   assert(sv.calls.some(([h, m]) => h === 'rpc-b.invalid' && m === 'getLedgerEntries'));
   await assert.rejects(makeHeartbeatSigner(c, {S, budget})(xdr()), /needs its RPC/);
+});
+
+// ------------------------------------------------------------------ RPC URL files (user decision 21 Nov: Alchemy as the 2nd RPC)
+const SECRET_URL = 'https://stellar-mainnet.g.alchemy.com/v2/SeCrEtApIkEy0123456789';
+test('URL file: 0600, owner, regular file, one https URL; empty placeholder refused; contents never in errors', t => {
+  const d = tmp(t), f = path.join(d, 'rpc.url');
+  fs.writeFileSync(f, '', {mode: 0o600});
+  assert.throws(() => readUrlFile(f), /is empty/);
+  fs.writeFileSync(f, SECRET_URL + '\n');
+  const r = readUrlFile(f);
+  assert.equal(r.url, SECRET_URL); assert.match(r.label, /^stellar-mainnet\.g\.alchemy\.com#[0-9a-f]{8}$/); assert(!r.label.includes('SeCrEt'));
+  fs.chmodSync(f, 0o640); assert.throws(() => readUrlFile(f), /too open/); fs.chmodSync(f, 0o600);
+  fs.symlinkSync(f, path.join(d, 'l.url')); assert.throws(() => readUrlFile(path.join(d, 'l.url')), /not a symlink/);
+  for (const bad of ['http://x.invalid/k', 'https://u:p@x.invalid/', 'not a url', `${SECRET_URL} ${SECRET_URL}`]) {
+    fs.writeFileSync(f, bad); try { readUrlFile(f); assert.fail('accepted ' + bad); } catch (e) { assert(!e.message.includes('SeCrEt') && !e.message.includes('u:p'), e.message); }
+  }
+  assert.equal(redact(`fetch ${SECRET_URL} failed at /v2/SeCrEtApIkEy0123456789`, [{url: SECRET_URL, label: 'L'}]), 'fetch L failed at /<redacted>');
+});
+test('heartbeat RPC with a URL file: Alchemy-style secret URL is used but never appears in errors or labels', async t => {
+  const d = tmp(t), f = path.join(d, 'rpc.url'); fs.writeFileSync(f, SECRET_URL, {mode: 0o600});
+  const c = cfgOf({heartbeatRpcUrls: ['https://rpc-a.invalid'], heartbeatRpcUrlFiles: [f]});
+  const made = [];
+  const make = url => { made.push(url); return {getNetwork: async () => ({passphrase: MAINNET}), getAccount: async () => { throw Error(`request to ${url} failed: 401`); }}; };
+  const rpc = await makeHeartbeatRpc(c, {S, make, failover: r => failoverRpc(r)});
+  assert.deepEqual(made, ['https://rpc-a.invalid', SECRET_URL]);
+  assert(rpc.labels.every(l => !l.includes('SeCrEt'))); assert.match(rpc.labels[1], /alchemy\.com#/);
+  await assert.rejects(rpc.getAccount(c.heartbeatAccount), e => !e.message.includes('SeCrEt') && /alchemy\.com#[0-9a-f]{8}/.test(e.message));
+  fs.writeFileSync(f, 'https://rpc-a.invalid');
+  await assert.rejects(makeHeartbeatRpc(c, {S, make, failover: r => failoverRpc(r)}), /duplicate heartbeat RPC/);
+  fs.writeFileSync(f, '');
+  await assert.rejects(makeHeartbeatRpc(c, {S, make, failover: r => failoverRpc(r)}), /is empty/);
+});
+
+// ------------------------------------------------------------------ debt-gated heartbeat (user decision 21 Nov)
+function fakeHb() { const ev = []; return {ev, start() { ev.push('start'); return this; }, stop() { ev.push('stop'); }, observe(b) { ev.push(`obs:${b}`); }, stats: () => ({n: 0})}; }
+const D3 = [{stage: 'L1a', reason: 'D3 heartbeat: extend the blocked chain'}, {stage: 'L1a', reason: 'D3: start a blocked chain'}];
+test('debt gate: no heartbeat and no D3 observation while debt-free', () => {
+  const hb = fakeHb(), g = makeDebtGatedHeartbeat(hb);
+  for (let i = 0; i < 5; i++) assert.deepEqual(applyDebtGate([...D3, {stage: 'L4'}], [{user: Gk(9), debt: 0n}], g), [{stage: 'L4'}]);
+  assert.deepEqual(applyDebtGate(D3, [], g), []);
+  assert.deepEqual(hb.ev, []); assert.equal(g.running, false);
+  const keep = [{stage: 'L1a', reason: 'pool healthy: clear the D3 chain'}, {stage: 'L1a', reason: 'no NAV checkpoint'}];
+  assert.deepEqual(applyDebtGate(keep, [{debt: 0n}], g), keep);   // clearing a chain and NAV refresh are not D3 observations
+});
+test('debt gate: heartbeat starts on the first cycle with debt, stops when all debt is zero, restarts on new debt', () => {
+  const hb = fakeHb(), g = makeDebtGatedHeartbeat(hb);
+  applyDebtGate(D3, [{debt: 0n}], g); assert.deepEqual(hb.ev, []);
+  assert.deepEqual(applyDebtGate(D3, [{debt: 0n}, {debt: 20_000_000n}], g), D3);          // debt appears: started this cycle
+  assert.deepEqual(hb.ev, ['start']); assert.equal(g.running, true);
+  applyDebtGate(D3, [{debt: 5n}], g); assert.deepEqual(hb.ev, ['start']);                    // still owed: no restart
+  assert.deepEqual(applyDebtGate(D3, [{debt: 0n}, {debt: 0n}], g), []);                      // repaid / liquidated to zero
+  assert.deepEqual(hb.ev, ['start', 'stop']); assert.equal(g.running, false);
+  applyDebtGate(D3, [{debt: '1'}], g); assert.deepEqual(hb.ev, ['start', 'stop', 'start']);
+});
+test('debt gate on the real heartbeat timer: a stopped heartbeat sends nothing, a started one submits while blocked', async t => {
+  const {makeHeartbeat} = await import('../src/heartbeat.mjs');
+  const d = tmp(t), sent = [];
+  const c = cfgOf({dataDir: d});
+  const rpc = {getAccount: async a => new S.Account(a, '5'), simulateTransaction: async () => ({_parsed: true, latestLedger: 1, events: [], minResourceFee: '100',
+    transactionData: new S.SorobanDataBuilder().setResourceFee('100'), result: {auth: [], retval: S.xdr.ScVal.scvU128(new S.xdr.UInt128Parts({hi: 0n, lo: 0n}))}}),
+    sendTransaction: async tx => { sent.push(tx); return {status: 'PENDING'}; }, getTransaction: async () => ({status: 'NOT_FOUND'})};
+  const journal = {intent: () => 1, result: () => {}};
+  let now = 1_000_000;
+  const hb = makeHeartbeat({S, rpc, cfg: c, journal, sign: async x => x, out: () => {}, clock: () => now});
+  const g = makeDebtGatedHeartbeat({...hb, start: () => { hb.started = true; }, stop: () => { hb.started = false; }, observe: hb.observe, stats: hb.stats});
+  const tickIfStarted = async () => { if (hb.started) await hb.tick(); };
+  hb.observe(true); applyDebtGate(D3, [{debt: 0n}], g);
+  for (let i = 0; i < 5; i++) { now += 13_000; hb.observe(true); await tickIfStarted(); }
+  assert.equal(sent.length, 0, 'debt-free: no heartbeat');
+  applyDebtGate(D3, [{debt: 1n}], g);
+  for (let i = 0; i < 3; i++) { now += 13_000; hb.observe(true); await tickIfStarted(); await new Promise(r => setImmediate(r)); }
+  assert(sent.length >= 1, 'debt: heartbeats are submitted');
+  const n = sent.length; applyDebtGate(D3, [{debt: 0n}], g);
+  for (let i = 0; i < 3; i++) { now += 13_000; hb.observe(true); await tickIfStarted(); }
+  assert.equal(sent.length, n, 'debt back to zero: heartbeats stop');
 });
