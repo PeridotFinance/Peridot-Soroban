@@ -281,6 +281,15 @@ function checkAuth(auth, op, source, policy, opts = {}) {
   }
   throw Error('unknown auth policy ' + policy);
 }
+// Upload instruction allowance: 100M by default; above that ONLY for a hash pinned in
+// limits.uploadCpuAllowance.hashes, and only once the user has set acceptedByUser=true (pending decision).
+function uploadCpuMax(cfg, sha256, simulateOnly) {
+  const A = cfg.limits.uploadCpuAllowance, base = A ? A.defaultUploadCpuMax : 100000000;
+  const pin = A && A.hashes && A.hashes[sha256];
+  if (!pin || pin.allowance <= base) return base;
+  assert(A.acceptedByUser === true || simulateOnly, `upload of ${sha256} needs ${pin.measuredCpu} instructions, above the ${base} policy: user decision limits.uploadCpuAllowance.acceptedByUser required (PENDING)`);
+  return pin.allowance;
+}
 function checkResources(data, cpuMax) {
   const r = data.resources(), fp = r.footprint(), keys = [...fp.readOnly(), ...fp.readWrite()].map(k => k.toXDR('base64'));
   assert(Number(r.instructions()) <= cpuMax, `CPU ${r.instructions()} above ${cpuMax}`);
@@ -351,10 +360,9 @@ async function opFor(cfg, c, s) {
   }
   if (s.kind === 'upload') {
     assert(cfg.artifacts.frozen === true || s.allowUnfrozen, 'artifacts not frozen (PLACEHOLDER): uploads refused');
-    assert(cfg.limits.uploadCpuAcceptedByUser === true || s.allowUnfrozen, 'upload CPU (~106M) above the 100M policy: user decision uploadCpuAcceptedByUser required');
     const {wasm, sha256} = artifact(cfg, s.artifact);
     assert(!(await codeExists(c, sha256)), `code ${sha256} already on chain: skip`);
-    return {op: S.Operation.uploadContractWasm({wasm}), cpuMax: L.uploadCpuMax, feeCapStroops: xlm(L.uploadMaxFeeXlm[s.artifact]), policy: 'none', summary: {sha256, bytes: wasm.length}};
+    return {op: S.Operation.uploadContractWasm({wasm}), cpuMax: uploadCpuMax(cfg, sha256, s.allowUnfrozen), feeCapStroops: xlm(L.uploadMaxFeeXlm[s.artifact]), policy: 'none', summary: {sha256, bytes: wasm.length}};
   }
   if (s.kind === 'deploy') {
     assert(cfg.artifacts.frozen === true || s.allowUnfrozen, 'artifacts not frozen (PLACEHOLDER): deploys refused');
@@ -599,5 +607,5 @@ async function main(argv) {
   if (cmd === 'status') { const r = await c.rpc.getTransaction(argv[1]); return {hash: argv[1], status: r.status, ledger: r.ledger}; }
   throw Error('usage: see header');
 }
-module.exports = {contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY, assertRouteAAllowed, decodeSeizeEvents, readSeizeEvents};
+module.exports = {uploadCpuMax, contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY, assertRouteAAllowed, decodeSeizeEvents, readSeizeEvents};
 if (require.main === module) main(process.argv.slice(2)).then(r => console.log(json(r))).catch(e => { console.error('REFUSED/FAILED:', e.message); process.exit(1); });
