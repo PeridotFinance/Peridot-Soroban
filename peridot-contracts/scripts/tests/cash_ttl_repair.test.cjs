@@ -83,3 +83,10 @@ test('b1: absent key classified archived (restore preamble) vs deleted',async()=
  assert.equal(await I.classifyAbsent(fakeClient({oldest:1,latest:10,entries:{[akey]:acct},sim:{minResourceFee:'1'}}),k),'deleted');
  assert.match(await I.classifyAbsent(fakeClient({oldest:1,latest:10,entries:{}}),k),/unclassified/);});
 test('a: upgrade code stays inventoried/approved for reporting and guards',()=>{for(const h of Object.values(UPGRADE_CODE))assert(I.APPROVED_CODE.has(h));});
+test('b1: absent key relabelled deleted only if simulation says so AND it provably cannot have archived',()=>{const base={minPersistentTtl:2073600,ledger:65600000};
+ assert(I.absentIsDeleted({...base,classification:'deleted',lastKnownLiveUntil:68000000}));
+ assert(I.absentIsDeleted({...base,classification:'deleted',firstSeenLedger:65543986}));
+ assert(!I.absentIsDeleted({...base,classification:'deleted',lastKnownLiveUntil:65500000}));
+ assert(!I.absentIsDeleted({...base,classification:'deleted'}));
+ assert(!I.absentIsDeleted({...base,classification:'archived',lastKnownLiveUntil:68000000}));});
+test('b3: a deferrable re-quote failure at submit time defers the batch instead of aborting',()=>{const src=fs.readFileSync(path.join(__dirname,'../cash_ttl_keeper.cjs'),'utf8');assert(/catch\(e\)\{if\(!e\.deferrable\)throw e;run\.deferred\.push/.test(src));});

@@ -28,9 +28,14 @@ const EXTEND=2592000,THRESHOLD=2419200,BATCH=30,MAX_TX=400000000n,MAX_RUN=800000
 // after 2026-12-21 the user decides, then set `enabled:true` here in a reviewed
 // commit. Nothing re-enables this automatically. Alerts: LIVE_CODE_TTL_LOW when
 // live code has < 1,500,000 ledgers (~87 days; expected ~2026-12-21) and
-// UPGRADE_CODE_HOLD_REVIEW_DUE from reviewOn. At that point a re-add costs
-// roughly 4.8e-5 XLM/ledger (controller) + 5.8e-5 XLM/ledger (receipt) of
-// extension, i.e. about 115 XLM to bring both back to 150 days.
+// UPGRADE_CODE_HOLD_REVIEW_DUE from reviewOn. Measured 2026-11-21: about
+// 4.78e-5 XLM/ledger (controller) and 5.80e-5 XLM/ledger (receipt) of
+// extension. At ~1,500,000 ledgers left, extending to 2,592,000 needs ~63 and
+// ~76 XLM of allowance: each exceeds MAX_TX (40 XLM) and together MAX_RUN
+// (80 XLM/24h), so setting enabled:true ALONE would only defer them. A re-add
+// also needs a user-approved cap change (or a shorter EXTEND for code) and
+// ~150 XLM in the deployer (allowance + 10 XLM remainder). Ongoing cost for
+// both codes is ~55 XLM per 30 days.
 const UPGRADE_CODE_HOLD={enabled:false,heldOn:'2026-11-21',reviewOn:'2026-12-21',alertBelowLedgers:1500000};
 const rpc=new S.rpc.Server(endpoint,{timeout:45});
 const json=x=>JSON.stringify(x,(_,v)=>typeof v==='bigint'?String(v):v,2)+'\n';
@@ -156,7 +161,7 @@ async function main(mode){
   const run={startedAt:new Date().toISOString(),firstHalfMaxLedger:enabled?null:JSON.parse(fs.readFileSync(firstFile)).maxLedger,planSha256:enabled?null:JSON.parse(fs.readFileSync(firstFile)).planSha256,transactions:[],keys:selected.flatMap(b=>b.keys).map(x=>({keyXdr:x,before:eligible.find(e=>e.keyXdr===x).liveUntilLedger})),deferred:plan.deferred,alerts};const runPath=path.join(DIR,'run-'+Date.now()+'.json');save(runPath,run);
   let allowedSpent=0n;const submitted=[];
   for(const b of selected){const keys=b.keys;
-   const {tx,record,overTxCap}=await quoteBatch(keys,{extendableCode:policy.extendable});
+   let q;try{q=await quoteBatch(keys,{extendableCode:policy.extendable});}catch(e){if(!e.deferrable)throw e;run.deferred.push({urgency:b.urgency,keys,reason:'re-quote at submit failed: '+e.message.slice(0,160)});save(runPath,run);continue;}const {tx,record,overTxCap}=q;
    if(overTxCap||allowedSpent+BigInt(tx.fee)>budgetLeft||balance-(allowedSpent+BigInt(tx.fee))<MIN_REMAINDER){run.deferred.push({urgency:b.urgency,fee:record.feeAllowance,keys,reason:'re-quote at submit exceeded a cap'});save(runPath,run);continue;}
    allowedSpent+=BigInt(tx.fee);assert(allowedSpent<=budgetLeft);assert(balance-allowedSpent>=MIN_REMAINDER);assert(BigInt(tx.fee)<=MAX_TX);validate(tx,keys,{extendableCode:policy.extendable});
    const unsigned=tx.toXDR();
