@@ -1,5 +1,5 @@
 {
-  "status": "PROPOSED_FOR_USER_APPROVAL_NOT_APPROVED",
+  "status": "CAPS_APPROVED_2026-11-21_UPLOAD_EXCEPTION_ACCEPTED_SCAN_PENDING",
   "revision": "2026-11-21 launch plan v1 (LAUNCH.md). Fresh-stack option A. Artifacts NOT frozen: the upgradeable vault v2 / receipt StgV2 / group controller builds replace the paths and hashes below.",
   "network": "Public Global Stellar Network ; September 2015",
   "rpc": "https://soroban-rpc.mainnet.stellar.gateway.fm",
@@ -200,5 +200,41 @@
     "startXlm": "12",
     "minXlm": "10",
     "note": "PLACEHOLDER: fee-only D3 heartbeat account of bots/cl-liquidator (src/heartbeat.mjs, config heartbeatIdentity/heartbeatAccount). Generated on the CL bot Droplet, secret only in a chmod-600 file, never printed. Must differ from the liquidator, admin, T3, cash liquidator and pause key. Sizing: L1a cap <= 0.007 XLM x 5 per minute = 2.1 XLM per hour of open chain; 12 XLM = 1 XLM base reserve + about 5 h of continuous chain at the cap (about 9 h at the expected 0.004)."
+  },
+  "userDecisions": {
+    "recordedAt": "2026-11-21",
+    "caps": {
+      "approved": true,
+      "borrowCapUsdc": 200,
+      "supplyCapUsdc": 1000,
+      "backingCapPyusd": 2000,
+      "cfVaultUnits": "50%"
+    },
+    "uploadCpuException": {
+      "accepted": true,
+      "commit": "610d9d9",
+      "see": "limits.uploadCpuAllowance"
+    },
+    "emergencyExitBrokenReceipt": {
+      "accepted": true,
+      "basis": "24 h receipt upgrade at these caps (LAUNCH.md section 10 residual)"
+    },
+    "clBotDryRunGateHours": 12,
+    "heartbeat": {
+      "rpcFailover": true,
+      "onlyWhileClDebtExists": true,
+      "implementation": "signer agent (PLACEHOLDER commit)"
+    },
+    "secondRpc": {
+      "provider": "Alchemy (user URL)",
+      "source": "chmod-600 file on the Droplet",
+      "rule": "the URL never appears in any config, command, log or document; agents never read the file",
+      "implementation": "signer agent (PLACEHOLDER commit)"
+    },
+    "almanax": {
+      "status": "PENDING_USER_REAPPROVAL",
+      "gate": "hard gate before the uploads (HG1)"
+    },
+    "goLive": "Wed 25 Nov 2026 (12 h gate moves the plan one day past the 3-day target)"
   }
 }

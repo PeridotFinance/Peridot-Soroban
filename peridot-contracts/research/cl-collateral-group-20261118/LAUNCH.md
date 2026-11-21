@@ -1,6 +1,6 @@
 # CL collateral group: Mainnet launch file (fresh stack, option A)
 
-Prepared on 21 Nov 2026 for a target go-live within 3 days (Tue 24 Nov 2026).
+Prepared on 21 Nov 2026 for a target go-live within 3 days (Tue 24 Nov 2026). With the 12 h dry-run gate the user chose, go-live is **Wed 25 Nov**, one day past that target (§4).
 Status: **PROPOSED, NOT APPROVED.** Nothing in this file has been signed, sent, uploaded, deployed or upgraded.
 The only network use was read-only `simulateTransaction`, `getLedgerEntries` and Horizon reads.
 
@@ -26,6 +26,18 @@ Markers used below:
 
 ---
 
+## 0a. User decisions recorded 21 Nov 2026
+
+| # | Decision | Effect in this file / tooling |
+|---|---|---|
+| D-caps | **Caps approved:** 200 USDC borrow, 1,000 USDC supply, 2,000 PYUSD backing, CF 50 % | §2 is approved. `clg-mainnet.json` `userDecisions.caps`. HG8 is done for the caps; fees (§3) are covered by the upload decision |
+| D-upload | **Upload exception accepted** (commit 610d9d9) | It applies per hash and only if the fresh live simulation stays within the allowance: 107.5M vault/receipt, 100M controller (`limits.uploadCpuAllowance`). HG2 is done |
+| D-exit | **Emergency exit with a broken receipt: accepted**, relying on the 24 h receipt upgrade at these caps | §10 residual accepted; HG3 still needs the test pass result |
+| D-gate | **CL bot dry-run gate: 12 h** (`dryRunGateHours: 12`) | The soak runs Sun 12:30 → Mon 00:30. The first live cycle, T3 and the first liquidation move to **Mon 23**; CF restore and migration to **Tue 24**; go-live to **Wed 25** (§4) |
+| D-hb | **Heartbeat** with RPC failover, running **only while CL debt exists** | Otherwise the borrow flow and the liquidator refresh NAV on demand (§6.4). Being implemented by the signer agent: **PLACEHOLDER** for its commit |
+| D-rpc | **Second RPC:** the user's Alchemy URL, read from a **chmod-600 file on the Droplet** | It must never appear in any config, command, log or this file (§6.4). Being implemented by the signer agent: **PLACEHOLDER** |
+| D-scan | **Almanax:** still pending the user's re-approval | It **stays a hard gate before the uploads** (HG1) |
+
 ## 0. One page
 
 | Item | Value |
@@ -36,7 +48,7 @@ Markers used below:
 | CL liquidator | New dedicated key holding 200 USDC and 25 XLM. Covers two close-factor rounds on the full cap with a 10 % buffer (165 ≤ 200 USDC). Plus a separate fee-only **D3 heartbeat account** (12 XLM), §6.4 |
 | Ledger signatures | **61** numbered (G1–G61): **54** by the admin (index 0) and **7** by team account T3 (index 3). Plus **2** admin first-touch calls, **G41a** and **G49a** (§6.3b). All in the Stellar app. Contingency fallbacks are listed separately |
 | Admin XLM | Spends ≈ 416 XLM expected; ≤ 559 XLM if no refund is counted. 172.29 XLM today, so **G1 withdraws 500 XLM first**. See §3 |
-| Days | Sat 21 gates and G1–G3 · Sun 22 deploy, wire, team borrow, first liquidation, CF-restore proposal · Mon 23 CF restore, pilot migration, pilot latches · Tue 24 public go-live |
+| Days | Sat 21 gates and G1–G3 · Sun 22 deploy, wire, liquidity, start the 12 h soak · Mon 23 gate, switch, team borrow, first liquidation, CF-restore proposal · Tue 24 CF restore, pilot migration, pilot latches · **Wed 25 public go-live** |
 | Hard gates before G4 | HG1–HG9 in §1. Three of them are open blockers in code or keys (HG4 bot Mainnet signer, HG5 keeper v6, HG6 keys) |
 
 ---
@@ -46,18 +58,18 @@ Markers used below:
 | Gate | Requirement | Status 21 Nov |
 |---|---|---|
 | HG1 | **Release freeze.** Final bytes of the vault, the receipt (≥ 137de32, features `stg-mainnet-accepted,stg2-mainnet-accepted`) and the controller (`--features group`). Clean Almanax scan of the range. Final path, sha256 and bytes entered in `clg-mainnet.json`, then `artifacts.frozen=true` | **PLACEHOLDER.** Pinned now: the 96e7b3c candidates (`target/clg/freeze/final-96e7b3c/art`). Commits after 96e7b3c (for example d7cfc69, vault tests) must be checked for byte changes. The tool refuses uploads and deploys while `frozen=false` |
-| HG2 | **Upload CPU.** The vault and receipt uploads need ≈ 106.7M instructions, above the 100M policy (network limit 400M). Precedent: the pilot vault upload ran at 104.87M. You decide by setting `limits.uploadCpuAcceptedByUser=true` | **USER DECISION.** The tool refuses until it is set |
+| HG2 | **Upload CPU.** The vault and receipt uploads need ≈ 106.7M instructions, above the 100M policy (network limit 400M) | **DONE: accepted by the user 21 Nov** (610d9d9). The exception is per hash, and the fresh live simulation must stay within 107.5M / 107.5M / 100M |
 | HG3 | **Emergency exit (condition 3)** passes on the frozen receipt bytes (§10): `user_required_emergency_exit_works_while_paused_oracle_stale_pool_broken_or_cf_zero`, `user_required_entered_debt_free_holder_exits_while_paused_oracle_broken_and_cf_zero`, `f1_emergency_exit_works_when_the_controller_traps`, `f1_paused_but_answering_controller_still_refuses_an_entered_owner`, `f2_cf_zero_does_not_let_an_indebted_borrower_leave_the_sleeve`, and `g10_debt_free_account_can_always_exit_and_an_indebted_or_unreadable_one_cannot` (all in `prototypes/cl-collateral-group/receipt-v2/tests/`, commit 137de32) | **PLACEHOLDER: pass result on the frozen bytes.** Not run by this stream |
 | HG4 | **CL bot Mainnet signer.** `bots/cl-liquidator/src/chain.mjs:27` refuses `--live` on Mainnet. A reviewed change is needed: a key-file signer as in `bots/cash-liquidator` (`LIQUIDATOR_KEY_FILE`), with the Mainnet passphrase pinned and the same journal rules | **Implemented** in 12eb8b6 (+ 7e55b84 heartbeat RPC failover), 48/48 tests, see §6.1 and SIGNER-KEEPER-V6.md. **Open:** Almanax scan (expired), lead decisions §1.4 (`dryRunGateHours` 2 or 12, heartbeat budget, host) |
 | HG5 | **Keeper v6.** Keeper v5 (`prototypes/cl-pyusd-vault-b-pilot-tools/keeper-*-v5.cjs`) is pinned to CCGK/CD6N. A copy pinned to the new receipt and vault v2 is needed for `stage_convert/mint/checkpoint_investment/invest/finalise` (G49, G59). It uses the same observation key GBHW…ZON4 (19.31 XLM), in sessions that never overlap a v5 session | **Implemented** in ffc64b3..2f76786 (103/103), setup in §6.5. **Open:** Almanax scan, and the operator-written `write-approval-v6.cjs` (agents never write approvals). Fallback for T3 only: `stage_cancel` at MINTED leaves cash-backed units (Testnet flow), and every permissionless step has a Ledger fallback |
 | HG6 | **Keys.** T3 public key (`stellar keys add peridot-team3 --ledger --hd-path 3`), the CL liquidator public key, and the **heartbeat** public key, both printed on their host. Neither may be the cash liquidator GDQA…5B5G, the pause key GBSK…PQX3, the admin or T3, and they must differ from each other. All three are entered in `clg-mainnet.json` (`signers.team3`, `liquidator`, `heartbeat`) | **PLACEHOLDER** |
 | HG7 | **Re-quote and re-emulate on the frozen bytes.** `tools/mainnet-sims.cjs quote` and the `fresh_mainnet` emulation (MAINNET-SIMS.md §6) rerun on HG1 bytes, including the receipt with F1. Replace `params.capCoverage.worstStage` with the measured L3 row on those bytes, then run `node clg-ceremony.cjs caps` | **PLACEHOLDER** (current figures come from the 18 Nov candidates and 6e83fd7) |
-| HG8 | **Approval.** You approve §2 (caps) and §3 (fees) and change `clg-mainnet.json` `status` | Pending |
+| HG8 | **Approval** of §2 (caps) and §3 (fees) | **DONE for the caps** (D-caps, 21 Nov). Fees follow from D-upload |
 | HG9 | **Cash-market interplay.** G2 takes 600 USDC from the cash USDC market. Together with COMMANDS-21NOV §3 (500 USDC to the cash liquidator), the cash USDC supply falls to ≈ 2,940 USDC. At its 70 % reserve that leaves ≈ 882 USDC borrowable, 18 below its 900 cap. Accept this, or lower G2 | Decision |
 
 ---
 
-## 2. Caps and parameters (proposed; `node clg-ceremony.cjs caps` checks them)
+## 2. Caps and parameters (**approved by the user 21 Nov**; `node clg-ceremony.cjs caps` checks them)
 
 | Parameter | Value | Reasoning |
 |---|---|---|
@@ -120,25 +132,26 @@ MAINNET-SIMS §4 recommends ≥ 365 XLM; 500 also covers the two account funding
 
 ---
 
-## 4. Timeline (Berlin time, CET = UTC+1)
+## 4. Timeline (Berlin time, CET = UTC+1; 12 h dry-run gate, D-gate)
 
 | When | What | Signatures |
 |---|---|---|
-| Sat 21 Nov, by 20:00 | HG1–HG9 green. Optional: G1–G3 withdrawals | G1–G3 |
-| Sun 22 Nov 09:00–09:45 | Uploads | G4–G6 |
+| Sat 21 Nov, by 20:00 | HG1 (freeze + **Almanax, pending re-approval**), HG3–HG7, HG9 green. Droplet bootstrap (§6.2). Optional: G1–G3 withdrawals | G1–G3 |
+| Sun 22 Nov 09:00–09:45 | Uploads (only after HG1 incl. the scan) | G4–G6 |
 | 09:45–10:15 | Creates | G7–G10 |
-| 10:15–12:00 | Configuration and wiring, price gate | G11–G41 |
-| 12:00–12:30 | Owner liquidity; liquidator account, trustlines (on its host), USDC | G42–G44 |
-| 12:30–14:30 | CL bot dry-run soak (`dryRunGateHours` 2; with 12 everything below shifts a day, §6.2), then the liquidator gate. Before it: trustlines (§6.3a) and G41a | G41a |
-| 14:30 | Borrow switch | G45 |
-| 14:45–15:45 | T3 account, trustlines, open (keeper v6 session), G49a first-touch NAV, enter × 2, checkpoint + borrow | G46–G53, G49a |
-| 16:00–16:30 | CF → 0, bot `--once --live` (first real liquidation), gate, T3 repays the rest | G54, G55 |
-| 16:30–16:45 | Propose the CF restore. Its ETA is ≈ Mon 23 Nov 16:45, printed by `gate cf-eta` | G56 |
-| Mon 23 Nov, ETA + 30 s (≈ 16:46) | Execute the CF restore | G57 |
-| 17:00–18:00 | Keeper v5 session, then pilot full close on CCGK/CD6N | G58 |
-| 18:00–19:00 | Keeper v6 session, then the owner redeposits into v2; gate | G59 |
-| 19:00–19:15 | Pilot deposit latches (one-way) | G60, G61 |
-| Tue 24 Nov 10:00 | Public go-live (frontend). Bot `--watch --live` has been running since Sun 16:30 | — |
+| 10:15–12:00 | Configuration and wiring, price gate, first-touch `cache_price` | G11–G41, G41a |
+| 12:00–12:30 | Owner liquidity; liquidator and heartbeat accounts; trustlines on the host (§6.3a); liquidator USDC | G42–G44 |
+| 12:30 | **Start the 12 h dry-run soak** (§6.3c). Optional the same afternoon: T3 account, trustlines and PYUSD (classic, no borrowing) | G46–G48 (optional) |
+| Mon 23 Nov, from 00:30 (morning, e.g. 09:00) | Dry-run gate (§6.3d), `gate liquidator` | — |
+| 09:15 | Borrow switch | G45 |
+| 09:30–10:30 | T3: open (keeper v6 session), first-touch NAV, enter × 2, checkpoint + borrow | (G46–G48), G49, G49a, G50–G53 |
+| 10:30–11:00 | CF → 0, bot `--once --live` (first real liquidation), gate, T3 repays the rest, `live.conf` | G54, G55 |
+| 11:00–11:15 | Propose the CF restore. Its ETA is ≈ Tue 24 Nov 11:15 (`gate cf-eta`) | G56 |
+| Tue 24 Nov, ETA + 30 s (≈ 11:16) | Execute the CF restore | G57 |
+| 11:30–12:30 | Keeper v5 session, then pilot full close on CCGK/CD6N | G58 |
+| 12:30–13:30 | Keeper v6 session, then the owner redeposits into v2; gate | G59 |
+| 13:30–13:45 | Pilot deposit latches (one-way) | G60, G61 |
+| **Wed 25 Nov 10:00** | Public go-live (frontend). Bot `--watch --live` has been running since Mon ≈ 11:00 | — |
 
 Each prepared transaction is valid for 40 ledgers (about 200 s). Sign within about 3 minutes of `step` printing the call.
 
@@ -340,13 +353,13 @@ Specific failure actions:
 - **G41 shows a CF already set:** stop. The 24 h path applies, see §11.
 - **`gate prices` false:** do not continue to G45. Run `gate prices` again after one oracle round (300 s).
 
-### 5.5 Liquidity, liquidator and the switch: G42–G45 (Sun 12:00–14:30)
+### 5.5 Liquidity, liquidator and the switch: G42–G45 (Sun 12:00–12:30; G45 Mon 09:15 after the 12 h gate)
 ```bash
 step g42-supply prepare usdcMarket.deposit.admin
 step g43-liq-acct prepare fund.liquidator.xlm
 # host, unit stopped: src/trustlines.mjs USDC + PYUSD (§6.3a)
 step g44-liq-usdc prepare fund.liquidator.usdc
-# §6.3b G41a first-touch cache_price, then §6.3c soak (dryRunGateHours: USER DECISION 2 or 12), then:
+# §6.3b G41a first-touch cache_price, then §6.3c soak (dryRunGateHours 12, D-gate); Mon:
 gate liquidator
 step g45-switch prepare usdcMarket.set_cash_borrowing_enabled
 ```
@@ -362,7 +375,7 @@ step g45-switch prepare usdcMarket.set_cash_borrowing_enabled
 - **If G45 must be undone:** `step k1-kill emergency kill-borrow` (§9).
 - G45 is refused while a controller borrow pause is active.
 
-### 5.6 Team position T3: G46–G53 (Sun 14:45–15:45)
+### 5.6 Team position T3: G46–G53 (G46–G48 optional Sun; G49–G53 Mon 09:30–10:30)
 ```bash
 step g46-t3-acct  prepare team.create
 step g47-t3-trust prepare team.trust          # Ledger index 3
@@ -390,7 +403,7 @@ step g53-t3-borrow prepare team.borrow        # sign within 60 s of G52
 - **G53 refused or reverted (stale checkpoint):** rerun both with **new names**, because a name with a SUCCESS file is skipped: `step g52-$(date +%H%M%S) prepare team.checkpoint_nav`, then at once `step g53-$(date +%H%M%S) prepare team.borrow`.
 - **G49 refused "open quote not admissible":** the pool is out of band or the oracle is stale. Wait 5 minutes and run it again.
 
-### 5.7 First real liquidation: G54, bot, G55, G56 (Sun 16:00–16:45)
+### 5.7 First real liquidation: G54, bot, G55, G56 (Mon 10:30–11:15)
 ```bash
 step g54-cf0 prepare liq.disable_cf
 # on the liquidator host: one live cycle (§7)
@@ -410,14 +423,14 @@ gate cf-eta                                   # prints etaUtc
 - **Cancel G56 (proposal):** `step k-cancel-cf emergency disable-cf`. `emergency_disable_collateral` deletes the pending CF and keeps CF at 0. Re-propose later with `step g56b-cf-propose prepare cf.propose`.
 - **If the bot does not liquidate within 10 minutes:** run its dry run (§6.3) and send me the plan. CF stays 0, which is safe: only T3 has debt.
 
-### 5.8 CF restore: G57 (Mon 23 Nov, ETA + 30 s, ≈ 16:46)
+### 5.8 CF restore: G57 (Tue 24 Nov, ETA + 30 s, ≈ 11:16)
 ```bash
 gate cf-eta && step g57-cf-exec prepare cf.execute
 ```
 - Read-back: `rb cf.execute` true (`MarketCF` = 500000, nothing pending).
 - **If it fails "market cf timelocked":** the ETA has not passed. Wait, then run again.
 
-### 5.9 Migration: G58–G61 (Mon 17:00–19:15), see §8
+### 5.9 Migration: G58–G61 (Tue 11:30–13:45), see §8
 
 ---
 
@@ -471,9 +484,7 @@ SKIP_PACKAGES=1 START=0 bash /root/bootstrap-cl-liquidator.sh
 **Then:**
 - **HG6.** Enter the two printed public keys in `clg-mainnet.json` as `liquidator.publicKey` and `heartbeat.publicKey`.
 - **The secrets are never printed, copied or read.** Do not run `cat` on `keys/*.secret`.
-- **USER DECISION: `dryRunGateHours` = 2 or 12.** It is part of the gate binding, so changing it later restarts the soak. Set it **now** in `/etc/peridot-cl-liquidator/mainnet.json` (root, 0640).
-  - **2:** the §4 timeline holds (soak Sun 12:30–14:30, first live cycle Sun 16:00).
-  - **12** (the code default): the soak cannot finish on Sunday, because the contracts only exist from G7–G10. The first live cycle, and with it §5.6–5.9, moves one day later (live cycle Mon; CF restore and migration Tue; go-live Wed).
+- **`dryRunGateHours: 12`, decided by the user 21 Nov (D-gate).** This is the code default; leave it unchanged in `/etc/peridot-cl-liquidator/mainnet.json`. It is part of the gate binding, so changing it restarts the soak. The soak starts Sun ≈ 12:30 and the gate is reachable from Mon ≈ 00:30; §4 is planned on that basis.
 
 ### 6.3 Trustlines, first-touch calls, dry run, gate, live
 
@@ -518,7 +529,7 @@ systemctl show -p ActiveEnterTimestamp peridot-cl-liquidator
 - `cat /mnt/cashliq/cl-liquidator/state/dryrun-gate.json` shows `last - since` ≥ 3600 × hours;
 - `gate liquidator` passes on the Mac.
 
-**(e) First live cycle: `--once --live`** (Sun 16:00, after G54; this is §7). Run it as the service user, with the unit stopped. The gate must have been satisfied **within 10 minutes** of stopping the dry run.
+**(e) First live cycle: `--once --live`** (Mon ≈ 10:30, after G54; this is §7). Run it as the service user, with the unit stopped. The gate must have been satisfied **within 10 minutes** of stopping the dry run.
 ```bash
 systemctl stop peridot-cl-liquidator
 $R --setenv=DRY_RUN=false $W /usr/local/bin/node src/main.mjs $C --once --live
@@ -543,7 +554,9 @@ systemctl daemon-reload && systemctl start peridot-cl-liquidator
 - It has its own 0.5 XLM resource ceiling, fee cap and daily budget.
 - It uses its own sequence number, never the liquidator's.
 - It runs only under `--watch --live`, so it starts with the `live.conf` drop-in.
-- It fails over between RPCs in order (`heartbeatRpcUrls`, commit 7e55b84).
+- It fails over between RPCs in order (`heartbeatRpcUrls` ≥ 2, commits 7e55b84 / 5f48b0d / 2280be6), with a per-server Mainnet check.
+- **D-hb: it runs only while CL debt exists.** With no CL debt, nothing extends a D3 chain. The borrow flow (the frontend sends `checkpoint_nav` before `borrow`) and the liquidator's own L1a refresh NAV on demand. **PLACEHOLDER:** the signer agent's commit for this gating.
+- **D-rpc: the second RPC is the user's Alchemy URL.** It is read at start from a **chmod-600 file on the Droplet**, owned by `clliq`; the file path is the only thing in the config. The URL itself must **never** appear in `mainnet.json`, the env file, a command line, a log, the journal or this file. Agents never read that file. **PLACEHOLDER:** the signer agent's commit and the config key name.
 
 **Funding:** 12 XLM in G43.
 - L1a costs ≤ ≈ 0.007 XLM per call. 5 calls a minute is ≈ 1.2–2.1 XLM per hour of open chain.
@@ -583,7 +596,7 @@ Sources: commits ffc64b3..2f76786, 103/103 tests; `SIGNER-KEEPER-V6.md` §2–3.
 
 ---
 
-## 7. First real liquidation (Sun 16:00–16:30)
+## 7. First real liquidation (Mon 23 Nov 10:30–11:00)
 
 1. **G54** sets CF → 0, so T3's 20 USDC debt is fully short.
 2. **On the host,** with the unit stopped and the gate satisfied within 10 minutes (§6.3e):
@@ -605,7 +618,7 @@ Notes:
 
 ---
 
-## 8. Migration: pilot ≈ 800 PYUSD from CD6N to v2, then close CD6N (Mon 17:00–19:15)
+## 8. Migration: pilot ≈ 800 PYUSD from CD6N to v2, then close CD6N (Tue 24 Nov 11:30–13:45)
 
 **Live position (read at ledger 65592394).**
 - Owner units 7,996,501,607; principal 8,000,000,000 raw; NAV 799.65 USDC; invested; position liquidity 3,995,340,039,279.
