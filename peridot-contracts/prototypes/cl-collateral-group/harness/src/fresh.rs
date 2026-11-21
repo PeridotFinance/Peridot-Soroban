@@ -177,6 +177,19 @@ fn fresh_upgrade_rows(s3: &LedgerSnapshot, f: &Fresh, results: &mut StdVec<Value
         "receipt_stage2_config": tv(env, &r, "stage2_config", Vec::new(env)),
     })) };
     let before = state(&s4);
+    // Control: the same second command on the PRE-upgrade vault (attributes the second-mint footprint).
+    {
+        let q = read(&s4, { let v2 = v.clone(); move |env| tv(env, &v2, "stage_quote_open", (1_000_000_000u128, 20u32, 5000u32).into_val(env)) });
+        if q.get("swap_in").is_some() {
+            let (si, ms, mh, rs) = (u(&q["swap_in"]), u(&q["min_swap"]), u(&q["min_shares"]), u(&q["reserve"]));
+            let dl = s4.timestamp + 3000;
+            let (rows, _, _) = seq("FRESH CONTROL second command on the PRE-upgrade vault (P1-P3)", &s4, &[
+                call("K1 receipt.stage_open(owner, 100 PYUSD) pre-upgrade", &r, "stage_open", move |e| (a(e, O), 1_000_000_000u128, si, ms, mh, rs, dl).into_val(e), true),
+                call("K2 stage_convert(1)", &r, "stage_convert", |e| (1u64,).into_val(e), true),
+                call("K3 stage_mint(1)", &r, "stage_mint", |e| (1u64,).into_val(e), true)]);
+            results.push(rows);
+        }
+    }
     // ---- cancel branch
     {
         let mut sp = s4.clone(); sp.timestamp -= 86_460;

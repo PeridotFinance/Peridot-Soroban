@@ -4,50 +4,116 @@ Stream 2. Read-only throughout: nothing was signed, sent, uploaded, deployed or 
 used only for `getLatestLedger`, `getAccount`, `getLedgerEntries` and `simulateTransaction` on
 `https://soroban-rpc.mainnet.stellar.gateway.fm`, plus Horizon reads of pilot transactions.
 
-## FINAL: release candidates of commit 6e83fd7 (this section supersedes the figures in §1, §2 and §4)
+## FINAL: release bytes from `git archive` of 96e7b3c (this section supersedes §1, §2 and §4)
 
-Artifacts are in `target/clg/upg/` (SHA256SIZES.txt there). All are under 131,072 B, and every upload
-write stays under the live 132,096 B per-transaction write limit.
+**How the bytes were built.**
+- **Source.** `git archive 96e7b3cfeaa6cf403b80f2f751b5e9aa018f7342`, which equals origin/feat/cl-collateral-group, unchanged through the end of the run. It covers `prototypes/cl-collateral-group` and `contracts/simple-peridottroller`. None of the shared worktree was used.
+- **Changes included.** Vault upgrade gate (6e83fd7), controller G10/F2 and G11 (6e83fd7), receipt F1 (137de32).
+- **Build.** `stellar contract build --locked`, stellar 26.1.0 and rustc 1.96.0, with the Mainnet init-admin constant GC4T…7FP.
+- **Receipt inputs.** Base tree `target/clg/ws/receipt-base`, pinned by `apply-stgv2.py`'s staged.rs SHA. The OpenZeppelin dependency is rewritten to the **canonical absolute path** `/Users/joshua/Peridot/Peridot-Soroban/openzeppelin-stellar-contracts` (3f81125).
+- **Artifacts.** `target/clg/freeze/final-96e7b3c/art/`.
 
-| Contract | Bytes | sha256 |
-|---|---:|---|
-| Vault v2 (upgradeable) | 125,559 | `6fd8599a9b369ab84ba9ee8fd95642cde50621c07d5cc37cd278e8f225a4870e` |
-| Receipt StgV2 (Mainnet features) | 125,589 | `bf8864e11a6f40740fc15b2832b07eaa58523310c8d3c4fc931162ebe6f41da6` |
-| Group controller (G0–G11) | 64,931 | `719914b17f2ceeffe4e77fe0e0a5369066da4ccb8201691e09fea5333710234d` |
-| USDC group market | 89,808 | `5630a701…e452`, already on chain |
+| Contract | Features | Bytes (< 131,072) | sha256 |
+|---|---|---:|---|
+| Vault v2 | `cl-pyusd-vault-b` | 125,559 | `6fd8599a9b369ab84ba9ee8fd95642cde50621c07d5cc37cd278e8f225a4870e` |
+| Receipt StgV2 | `stg-mainnet-accepted,stg2-mainnet-accepted` | 125,585 | `424454b94e455c92921d7f548be92ffbe0bc2bcf67dcb05eed1696dacad1d379` |
+| Group controller | `group` (G0–G11) | 64,957 | `642421f151273a5a9e89523b5969fdcef89d22f0388c79289c5461cf0dc7f208` |
+| USDC group market | — | 89,808 | `5630a701…e452`, already on chain (§3b) |
 
-**Live RPC quote.** Ledgers 65592556–65592557 (`sims/quote-final-20261121T081351Z.json`, manifest
-`tools/manifest-final.json`). The payer and source of every step is the admin GC4T…7FP.
+**Differences from the interim `target/clg/upg` bytes.**
+- **Controller.** 719914b1 was built from a worktree `controller/src` generated *before* the committed G10/F2 edit. It lacks the sleeve exit check that applies while CF is 0 (`market_cf > 0 || sleeve`). 642421f1 is the HEAD build. **Do not upload 719914b1.**
+- **Receipt.** bf8864e1 was built with the ws-relative OZ path. 424454b9 is the canonical-path build of the same source.
+- **Vault.** The hash is identical.
 
-| Step | min resource (XLM) | cap (XLM) | CPU | write B |
+### Live RPC quote
+
+Ledgers 65592616–65592617: `sims/quote-final-96e7b3c-20261121T081849Z.json`, manifest `tools/manifest-final.json`.
+- **Payer** for every step is the source account, the admin Ledger **GC4T…7FP**.
+- **Uploads** need no authorization entries.
+- **Creates** need source-account auth only.
+
+| Step | min resource (XLM) | cap = min × 1.2 + 0.002 (XLM) | CPU | write B |
 |---|---:|---:|---:|---:|
-| U1 upload vault v2 | 167.6576637 | 201.1911964 | 106,660,682 | 125,660 |
-| U2 upload receipt StgV2 | 162.7074984 | 195.2509980 | 106,685,953 | 125,692 |
-| U3 upload group controller | 92.3864607 | 110.8657528 | 55,692,865 | 65,032 |
-| C1–C4 create ×4 | 4 × 0.0209 | 4 × 0.0271 | ≤ 1.94M | 104 |
-| Configuration, 30 transactions (§4 basis) | ≈ 2.5 expected | ≤ 5 | — | — |
-| First command | ≈ 1 | ≤ 2 | — | — |
-| **Total** | **≈ 372 expected** (uploads at about 87% of min resource) | **≈ 514.5** | | |
+| U1 upload vault v2 6fd8599a | 167.6576637 | 201.1911964 | 106,660,682 | 125,660 |
+| U2 upload receipt 424454b9 | 162.7072417 | 195.2506900 | 106,682,591 | 125,688 |
+| U3 upload controller 642421f1 | 92.4333637 | 110.9220364 | 55,714,793 | 65,060 |
+| C1–C3 create (on-chain proxies), C4 create USDC market (real 5630a701) | 4 × 0.0209 | 4 × 0.0271 | ≤ 1,935,720 | 104 |
 
-**Withdrawal.** Recommend **400 XLM = 4,000,000,000 raw pTokens** from XLM market CBHMG4CN….
-- The worst case is 514.5 + 3 reserve + buffer against 172.29 XLM held.
-- The strict minimum, relying on the refunds between sequential uploads, is about 230 XLM.
+**Upload allowance needed.** U1 and U2 run at about 106.7M CPU, above the 100M financial-transaction
+policy. The network limit is 400M. The launch tool's upload mode must pin an upload allowance for these
+exact hashes, as the pilot tool did per step.
 
-**Emulation on these exact bytes.** Public network id, live state at ledger 65592376,
-`target/clg/fresh/state/fresh-result-final.json`, sha256 `de1e2c75…a669`.
-- All 30 ceremony rows pass, then the first command (8), borrow and repay (8), and every vault
-  upgrade-gate row: cancel, timelock, unpaused refused, wrong hash refused, then `upgrade_wasm` to the
-  d3ea4f91 marker succeeds.
-- **State is preserved** across the upgrade.
-- The post-upgrade second command passes P1–P8; P9 is the frozen-oracle artefact described in §3c.
-- **Maxima:** 74 entries (second `stage_mint`), 59.6M CPU.
+### Configuration fees, step by step (each re-simulated live before signing)
 
-**Reproducibility note on the receipt.** bf8864e1 was built at `target/clg/ws/receipt-v2`. That tree's
-Cargo.toml points the OpenZeppelin dependency at `../openzeppelin-stellar-contracts` (the ws copy), not at
-the canonical absolute path `/Users/joshua/Peridot/Peridot-Soroban/openzeppelin-stellar-contracts`.
-The receipt bytes depend on that path, as shown by e6695dbd versus dbc42f12 on the same pre-upgradeability
-source. The rule from the cash release is "canonical path only". Either rebuild at the canonical OZ path
-before upload, or record the exact tree path as part of the reproduction recipe.
+Basis "pilot" is the actual `fee_charged` (Horizon) of the identical-shape step in the pilot deployment of
+15 Nov. Basis "estimate" means there is no pilot analogue.
+
+| Step | XLM | Basis |
+|---|---:|---|
+| V1 vault.initialize | 0.2687 | pilot |
+| V2 set_primary_reward_token | 0.0138 | pilot |
+| V3 set_max_deploy | 0.0005 | pilot |
+| R1 receipt.initialize | 0.4688 | pilot |
+| G1 ctrl.initialize | 0.47 | estimate (= R1) |
+| G2 set_oracle | 0.05 | estimate |
+| G3 set_oracle_asset_symbol | 0.05 | estimate |
+| M1 usdc.initialize | 0.4688 | pilot (= R1) |
+| M2, M2b, M3, M4 market setters | 4 × 0.0010 | pilot (cash-reserve / supply-cap analogue) |
+| M5 seed_minimum_supply | 0.0831 | pilot |
+| M6 usdc.set_peridottroller | 0.0238 | pilot |
+| G4, G5 add_market | 2 × 0.0403 | pilot |
+| G6 set_pause_borrow | 0.0212 | pilot |
+| R2 receipt.set_peridottroller | 0.0238 | pilot |
+| R3 cash reserve, R4 supply cap | 2 × 0.0010 | pilot |
+| R5 seed_minimum_supply | 0.0831 | pilot |
+| V4 stage_bind | 0.0361 | pilot |
+| V5 guardian | 0.0218 | pilot |
+| V6 invest keeper | 0.0145 | pilot |
+| R6 stage_activate | 0.1331 | pilot |
+| R7 stage2_activate | 0.05 | estimate |
+| G7 sleeve, G8 cache-only | 2 × 0.03 | estimate |
+| G9 set_market_cf | 0.05 | estimate |
+| G10 set_pause_guardian | 0.03 | estimate |
+| **Sum** | **≈ 2.51** | cap budget 5 |
+
+### Total and withdrawal
+
+| | XLM |
+|---|---:|
+| Uploads, expected (about 87% of min resource, as in the pilot) | ≈ 368 |
+| Creates, configuration, first command | ≈ 3.6 |
+| **Expected spend** | **≈ 372** |
+| Caps if reserved without counting refunds: 507.47 + 0.11 + 5 + 2 | ≈ 514.6 |
+
+- **Admin balance** at 08:19 UTC: 172.29 XLM. With 4 subentries the reserve is 3 XLM.
+- **Recommendation: withdraw 400 XLM** (4,000,000,000 raw pTokens, rate 1.0) from XLM market CBHMG4CN….
+- **Strict minimum** with sequential uploads and refunds: about 230 XLM.
+- **The withdraw was simulated live** at ledger 65592624 and succeeded: min fee 0.0040252 XLM, 18.5M CPU, 38 + 7 footprint (`sims/withdraw-xlm-400-20261121T081928Z.json`).
+- **XLM market pauses today:** redeem, deposit and borrow are all false.
+- **Pending cash upgrade.** The cash upgrade 5630a701 for that market is still pending (ETA passed 19 Nov). Its execution requires deposit, redeem and borrow paused, so **the withdraw must be sent before that pause window or after it closes.**
+
+### Emulation on these exact bytes
+
+Public network id, live state at ledger 65592376: `target/clg/fresh/state/fresh-result-96e7b3c.json`,
+sha256 `152d35d37079b715c28e9fad2d98e70fd7a71328129dd24ee064d936df5f5a8a`.
+
+- **Every intended outcome is met** (10 sequences): the 30-step ceremony, the first command, borrow and
+  repay, cancel, the timelock, and the refusals for unpaused execution and a wrong hash.
+- **Upgrade.** `upgrade_wasm` to the d3ea4f91 marker succeeds, the marker returns 2, and **state is
+  preserved**. The post-upgrade second command passes P1–P8. P9 is the frozen-oracle artefact.
+- **Maxima:** 74 entries, 58 keys, 59.6M CPU.
+- **The 74-entry, 59.6M second `stage_mint` is not an upgrade effect.** The same second command on the
+  pre-upgrade vault (control K1–K3) measures identically: 74 entries / 59.57M. It is the cost of minting into
+  a vault that already holds a position. That is within 100 entries and the 97M stop, but it is the largest
+  staged row.
+
+### Coverage limit
+
+These rows do **not** exercise, under the public network id on Mainnet-feature bytes: liquidation (L1a–L5),
+seizure, `sync_seized`, `checkpoint_fallback`/D3, `stage_prepare_close` with debt, or the emergency exit.
+Those were measured only on Testnet-id and default builds (BUILD-REPORT §2). The manual review did not
+re-read the receipt or controller parts of 6e83fd7 and 137de32 in depth. Almanax has not scanned anything,
+because the subscription has expired.
 
 ## 0. Why the plan is a fresh stack
 
@@ -274,7 +340,7 @@ state. `propose` reads no time-dependent external state.
 The owner holds 6.83 PYUSD and 17.71 USDC on the account today. Funding a real seed requires closing the
 live pilot (StgV1 close on CCGK) or other PYUSD.
 
-## 5. Kill switches available on the fresh stack (current, pre-upgradeability code)
+## 5. Kill switches available on the fresh stack (96e7b3c bytes)
 
 | Switch | Who | Effect |
 |---|---|---|
@@ -286,7 +352,8 @@ live pilot (StgV1 close on CCGK) or other PYUSD.
 | `vault.stage_pause_deposits` / `receipt.stage_pause_deposits` | admin (Ledger guardian) | **One-way** pause of new staged commands; no resume in these bytes |
 | `receipt.stage_lower_backing_cap` | admin | Lower the staged backing cap |
 | Owner exits | owner | `stage_prepare_close` (health-checked when the owner has debt); `stage_emergency_exit` only when not entered (G10 lets a debt-free owner exit the market first) |
-| Upgrades | admin | Group controller and receipt: 24 h `propose_upgrade_wasm` / `upgrade_wasm`; no cancel entrypoint (re-propose the deployed hash). **Vault v2 as frozen here: none on Mainnet** (same assert as CD6N). The upgradeability stream is changing this |
+| Upgrades | admin (pinned Ledger) | All three contracts: 24 h `propose_upgrade_wasm` / `upgrade_wasm`, plus `cancel_upgrade` and `get_pending_upgrade`. The vault executes only while admin-paused. The receipt executes only with the controller's deposit, redeem and borrow pauses on it |
+| `vault.set_paused(admin, bool)` | admin | **Reversible** admin pause (works while bound from 6e83fd7). Blocks new deposits, investment and swaps. In-kind close, emergency exit and seizure sync do not read it |
 
 ## 6. Reproduce
 

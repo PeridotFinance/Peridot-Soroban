@@ -1,20 +1,20 @@
 {
- "note": "FINAL release candidates (commit 6e83fd7, target/clg/upg). Upload rows simulate the exact bytes; creates as before (3 proxies, USDC market real 5630a701).",
+ "note": "FINAL: bytes rebuilt from git archive of 96e7b3c (target/clg/freeze/final-96e7b3c/art), --locked, Mainnet features, canonical OZ path. Creates: 3 proxies + real 5630a701.",
  "steps": [
   {
    "step": "U1 upload vault v2",
    "kind": "upload",
-   "file": "../../../target/clg/upg/vault-v2/cl_share_vault.wasm"
+   "file": "../../../target/clg/freeze/final-96e7b3c/art/vault-v2/cl_share_vault.wasm"
   },
   {
    "step": "U2 upload receipt StgV2",
    "kind": "upload",
-   "file": "../../../target/clg/upg/receipt-v2-mainnet/receipt_vault.wasm"
+   "file": "../../../target/clg/freeze/final-96e7b3c/art/receipt-v2/receipt_vault.wasm"
   },
   {
    "step": "U3 upload group controller",
    "kind": "upload",
-   "file": "../../../target/clg/upg/ctrl-group/simple_peridottroller.wasm"
+   "file": "../../../target/clg/freeze/final-96e7b3c/art/ctrl-group/simple_peridottroller.wasm"
   },
   {
    "step": "C1 create vault v2",

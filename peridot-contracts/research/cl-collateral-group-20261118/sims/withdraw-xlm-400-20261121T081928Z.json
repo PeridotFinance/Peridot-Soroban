@@ -1,0 +1,28 @@
+{
+  "label": "CBHMG4….withdraw",
+  "ok": true,
+  "ledger": 65592624,
+  "protocol": 29,
+  "source": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+  "minResourceFeeStroops": "40252",
+  "minResourceFeeXlm": 0.0040252,
+  "capStroops": "68302",
+  "capXlm": 0.0068302,
+  "restoreRequired": false,
+  "auth": [
+    "sorobanCredentialsSourceAccount"
+  ],
+  "cpu": 18483404,
+  "diskReadBytes": 144,
+  "writeBytes": 1376,
+  "readOnly": 38,
+  "readWrite": 7,
+  "retval": null,
+  "kind": "invoke",
+  "contract": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+  "method": "withdraw",
+  "args": [
+    "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+    "4000000000"
+  ]
+}
