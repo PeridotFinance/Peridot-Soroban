@@ -154,6 +154,10 @@ Causes of every gap over 20 s:
   - Scheduled runtime (sum of log intervals < 120 s): R1 ≈ 5.4 h by 16:24, crossing 6 h about 17:05. R2 ≈ 1.3 h.
   - **The ≥ 6 h target was met only as a sum of two segments (4 h 43 min + about 1 h 20 min), not as one continuous run.**
   - `caffeinate -i -s` does not survive a closed lid or battery power; Mainnet must run on a server.
+- **Final figures at 17:05 UTC:**
+  - R1: 6.05 h scheduled runtime, 77 CLI stages with 0 failures, 1,449 heartbeats submitted, 9 rejections, 10 transport errors, 40 failed plan cycles.
+  - R2: 1.59 h, 33 CLI stages with 0 failures, 288 heartbeats, 1 rejection, 1 transport error, 37 failed plan cycles.
+  - Both bots (PIDs 74590/74595, each with a `caffeinate -w`) are still running on 5f48b0d.
 
 ## 5. Measured rows on real dependencies
 
