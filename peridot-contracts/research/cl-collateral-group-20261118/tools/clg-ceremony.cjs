@@ -1,0 +1,510 @@
+// CL collateral group Mainnet launch ceremony builder (fresh-stack option A). Sibling of
+// research/cash-borrowing-activation-20261117/tools/ceremony.cjs, reusing its read-only lib.cjs.
+// ONE unsigned transaction at a time, built from a fresh live-Mainnet simulation taken right before it is written.
+// It never signs, never sends and never reads keys. The operator signs on the Ledger (clg-run.sh `step`).
+//
+//   addresses                         deterministic ids of the four new contracts (admin + salt; no network)
+//   list                              ordered steps (G-numbers) with live done/pending status
+//   simulate-all [--allow-unfrozen]   read-only: simulate every pending step whose target exists (fees, resources)
+//   prepare <step> --out F.unsigned.xdr   fresh simulation; every earlier step must read back done
+//   readback <step>                   live post-state check (exit 1 if not done)
+//   gate <prices|liquidator|cf-eta>   non-transaction gates
+//   caps                              offline: cap rule (inventory x close factor) + 85 % stage rule + liquidity rule
+//   emergency <name> [on|off] --out F kill switches (see EMERGENCY below); never blocked by earlier steps
+//   owner-open <admin|team3> <pyusdRaw> --out F   stage_open on the NEW receipt from a fresh vault v2 quote
+//   repay <team3> --out F             repay the signer's whole USDC debt on the new USDC market
+//   pending <vault|receipt|controller|usdcMarket>  read PendingUpgradeHash / ETA (persistent keys)
+//   propose-upgrade|execute-upgrade|cancel-upgrade <target> <sha256> --out F   24 h upgrade path (PLACEHOLDER ABI)
+//   verify-signed F.unsigned.xdr F.signed.xdr   same hash, exactly one valid signature by the expected source
+//   status <hash>                     RPC outcome (read-only)
+//
+// Refusals: any retired pre-incident contract as target or argument; the pilot vault/receipt except their two
+// deposit latches; any cash market except the owner's own withdraw; unfrozen artifacts for uploads/deploys.
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const assert = require('node:assert/strict');
+const CASH_TOOLS = process.env.CLG_CASH_TOOLS || '/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/research/cash-borrowing-activation-20261117/tools';
+const {S, u, json, addr, u128, u32, bool, sym, key, chain, padResourceFee} = require(path.join(CASH_TOOLS, 'lib.cjs'));
+
+const CFG_FILE = process.env.CLG_CONFIG || path.join(__dirname, 'clg-mainnet.json');
+const sha = b => crypto.createHash('sha256').update(b).digest();
+const saltOf = label => sha(Buffer.from(label, 'utf8'));
+const u64v = x => S.nativeToScVal(u(x), {type: 'u64'});
+const some = v => v; // Option<T>::Some(v) is the bare value in Soroban ScVal
+const optAddr = a => (a == null ? S.xdr.ScVal.scvVoid() : addr(a));
+
+// ---------------------------------------------------------------- pure (unit-tested)
+function contractIdFor(network, deployer, label) {
+  const preimage = S.xdr.HashIdPreimage.envelopeTypeContractId(new S.xdr.HashIdPreimageContractId({
+    networkId: sha(Buffer.from(network, 'utf8')),
+    contractIdPreimage: S.xdr.ContractIdPreimage.contractIdPreimageFromAddress(new S.xdr.ContractIdPreimageFromAddress({
+      address: S.Address.fromString(deployer).toScAddress(), salt: saltOf(label)})),
+  }));
+  return S.StrKey.encodeContract(sha(preimage.toXDR()));
+}
+function ids(cfg) {
+  const o = {};
+  for (const [k, label] of Object.entries(cfg.salts)) o[k] = contractIdFor(cfg.network, cfg.admin, label);
+  return o;
+}
+const xlm = s => BigInt(Math.round(Number(s) * 1e7));
+const fmt7 = r => (Number(u(r)) / 1e7).toFixed(7);
+
+// Cap rules (mirrors cash checkCapsVsInventory, plus the CL stage rule and the market-liquidity rule). Throws on violation.
+function checkCaps(cfg) {
+  const p = cfg.params, cc = p.capCoverage, rows = {};
+  const cf = u(p.controller.closeFactorScaled), buf = u(cc.bufferScaled), cap = u(p.usdcMarket.borrowCapRaw);
+  const r1 = cap * cf / 1_000_000n, r2 = (cap - r1) * cf / 1_000_000n;
+  const need = (r1 + (cc.secondRound ? r2 : 0n)) * buf / 1_000_000n, inv = u(p.funding.liquidatorUsdcRaw);
+  rows.inventory = {borrowCapRaw: String(cap), firstRoundRaw: String(r1), secondRoundRaw: String(r2), withBufferRaw: String(need), inventoryRaw: String(inv), ok: need <= inv};
+  assert(need <= inv, `borrow cap x close factor x buffer ${need} exceeds CL liquidator USDC inventory ${inv}`);
+  const w = cc.worstStage, lim = {entries: Math.floor(cc.stageEntriesMax * cc.liveShare), cpu: Math.floor(cc.stageCpuMax * cc.liveShare), writes: Math.floor(cc.stageWritesMax * cc.liveShare)};
+  rows.stage = {stage: w.name, entries: w.entries, cpu: w.cpu, writes: w.writes, limits: lim, source: w.source,
+    ok: w.entries <= lim.entries && w.cpu <= lim.cpu && w.writes <= lim.writes};
+  assert(rows.stage.ok, `worst liquidation stage ${json(w)} above 85 % of the internal limits ${json(lim)}`);
+  assert.equal(String(p.controller.liquidationFeeScaled), '0', 'liquidation fee must be 0 (fee on adds 4 entries to L3)');
+  const supply = u(p.usdcMarket.adminSupplyRaw), borrowable = supply * BigInt(10000 - p.usdcMarket.minCashReserveBps) / 10000n;
+  rows.liquidity = {adminSupplyRaw: String(supply), borrowableAtReserveRaw: String(borrowable), borrowCapRaw: String(cap), ok: borrowable >= cap};
+  assert(borrowable >= cap, 'group USDC supply x (1 - reserve) is below the borrow cap');
+  assert(u(p.usdcMarket.adminSupplyRaw) + u(p.usdcMarket.seedRaw) <= u(p.usdcMarket.supplyCapRaw), 'supply cap below seed + admin supply');
+  const backing = u(p.receipt.backingCapRaw), rcf = u(p.receipt.cfScaled);
+  rows.collateral = {backingCapRaw: String(backing), cfScaled: String(rcf), maxBorrowFromCapRaw: String(backing * rcf / 1_000_000n),
+    note: 'backing cap is PYUSD cost basis; it bounds CL units, it does not bound USDC debt'};
+  assert(rcf > 0n && rcf <= 500_000n, 'launch CF for the vault units must be in (0, 50 %]');
+  assert(u(p.team.borrowUsdcRaw) * 1_000_000n < u(p.team.openPyusdRaw) * rcf * 98n / 100n, 'team borrow above 98 % of its CF limit');
+  return rows;
+}
+
+// ---------------------------------------------------------------- step model
+// signer: admin | team3. auth: none | root | root+transfer | create | open | classic.
+function steps(cfg) {
+  const I = ids(cfg), D = cfg.deps, A = cfg.admin, P = cfg.params, out = [];
+  let n = 0;
+  const add = s => { s.n = s.kind === 'gate' ? null : `G${++n}`; out.push(s); };
+  const tx = (id, target, method, args, done, why, extra = {}) => add({id, kind: 'tx', signer: 'admin', target, method, args, done, why, auth: 'root', ...extra});
+  // A. funding (owner's own cash-market pTokens)
+  for (const [m, k] of [['XLM', 'withdrawXlmPTokensRaw'], ['USDC', 'withdrawUsdcPTokensRaw'], ['PYUSD', 'withdrawPyusdPTokensRaw']])
+    add({id: `fund.withdraw.${m}`, kind: 'withdraw', signer: 'admin', market: m, amount: P.funding[k], why: `owner redeems ${fmt7(P.funding[k])} ${m} pTokens (1:1 at 21 Nov)`, auth: 'root+transfer-in'});
+  // B. uploads
+  for (const k of ['vault', 'receipt', 'controller']) add({id: `upload.${k}`, kind: 'upload', signer: 'admin', artifact: k, why: `upload reviewed ${k} WASM`, auth: 'none'});
+  // C. deploys (deterministic ids, no constructor)
+  for (const k of ['vault', 'controller', 'receipt', 'usdcMarket']) add({id: `deploy.${k}`, kind: 'deploy', signer: 'admin', artifact: k, salt: cfg.salts[k], contract: I[k], why: `create ${k} ${I[k]}`, auth: 'create'});
+  const V = I.vault, C = I.controller, R = I.receipt, M = I.usdcMarket;
+  const inst = (c, k) => async x => { try { return (await x.instance(c))[k]; } catch { return undefined; } };
+  const view = (c, m, a = []) => async x => { const v = await x.tryView(c, m, a); return v && typeof v === 'object' && v.error ? undefined : v; };
+  const raw = (c, k) => async x => { const r = await x.raw(c, k); return r ? r.value : undefined; };
+  const js = v => JSON.stringify(v, (_, y) => typeof y === 'bigint' ? String(y) : y);
+  const eq = (f, want) => async x => js(await f(x)) === js(want);
+  // D. vault v2
+  tx('vault.initialize', V, 'initialize', () => [addr(A), addr(D.pool), u32(0), addr(D.cali)], eq(inst(V, 'Initialized'), true), 'pool CAPIOQNU, underlying index 0 (PYUSD), oracle CALI');
+  tx('vault.set_primary_reward_token', V, 'set_primary_reward_token', () => [addr(A), optAddr(D.aqua)], eq(inst(V, 'PrimaryRewardToken'), D.aqua), 'AQUA primary reward');
+  tx('vault.set_max_deploy', V, 'set_max_deploy', () => [addr(A), u128(P.vault.maxDeployRaw)], async x => { const p = await inst(V, 'Params')(x); return !!p && String(p.max_deploy) === P.vault.maxDeployRaw; }, `per-command deploy limit ${fmt7(P.vault.maxDeployRaw)} PYUSD (pilot value)`);
+  // controller
+  tx('controller.initialize', C, 'initialize', () => [addr(A)], eq(view(C, 'get_admin'), A), 'admin = Ledger');
+  tx('controller.set_oracle', C, 'set_oracle', () => [addr(D.cafj)], eq(view(C, 'get_oracle'), D.cafj), 'D1: CAFJ external USD feed (first set immediate; later changes 24 h)');
+  tx('controller.set_oracle_asset_symbol.USDC', C, 'set_oracle_asset_symbol', () => [addr(D.usdc), sym(P.controller.usdcOracleSymbol)], eq(raw(C, key('OracleAssetSymbol', addr(D.usdc))), P.controller.usdcOracleSymbol), 'price USDC as Other(USDC)');
+  // receipt StgV2 (base pToken path is a 1 PYUSD floor; staged path bounded by the backing cap)
+  tx('receipt.initialize', R, 'initialize', () => [addr(D.pyusd), u128(0), u128(0), addr(A)], eq(view(R, 'get_underlying_token'), D.pyusd), 'PYUSD receipt, rates 0');
+  tx('receipt.set_peridottroller', R, 'set_peridottroller', () => [addr(C)], eq(raw(R, key('Peridottroller')), C), 'bind to the NEW group controller (frozen afterwards by StgV2)');
+  tx('receipt.set_min_cash_reserve_bps', R, 'set_min_cash_reserve_bps', () => [addr(A), u32(P.receipt.minCashReserveBps)], eq(view(R, 'get_min_cash_reserve_bps'), P.receipt.minCashReserveBps), '100 % reserve (receipt never lends)');
+  tx('receipt.set_supply_cap', R, 'set_supply_cap', () => [u128(P.receipt.supplyCapRaw)], async x => String(await raw(R, key('SupplyCap'))(x)) === P.receipt.supplyCapRaw, 'base pToken path: 1 PYUSD floor only');
+  tx('receipt.seed_minimum_supply', R, 'seed_minimum_supply', () => [addr(A), u128(P.receipt.seedRaw)], async x => String(await inst(R, 'PermanentMinimumSupply')(x)) === P.receipt.seedRaw, '1 PYUSD permanent floor (owner pays)', {auth: 'root+transfer', transferMax: P.receipt.seedRaw});
+  tx('vault.stage_bind', V, 'stage_bind', () => [addr(A), addr(R)], eq(inst(V, 'StgV1Receipt'), R), 'register the receipt as custodian (vault empty)');
+  tx('vault.stage_configure_guardian', V, 'stage_configure_guardian', () => [addr(A), addr(A)], eq(inst(V, 'StgV1Guardian'), A), 'vault guardian = Ledger; opens vault deposits');
+  tx('vault.stage_set_invest_keeper', V, 'stage_set_invest_keeper', () => [addr(A), addr(cfg.investKeeper)], eq(inst(V, 'StgV1InvestKeeper'), cfg.investKeeper), 'observation keeper GBHWPV6Q (sequential sessions with the pilot, never concurrent)');
+  tx('receipt.stage_activate', R, 'stage_activate', () => [addr(A), addr(V), addr(A), u128(P.receipt.backingCapRaw)], async x => { const c = await view(R, 'stage_config')(x); return !!c && c.vault === V && String(c.backing_cap) === P.receipt.backingCapRaw; }, `staged mode; guardian Ledger; backing cap ${fmt7(P.receipt.backingCapRaw)} PYUSD (lower-only afterwards)`);
+  tx('receipt.stage2_activate', R, 'stage2_activate', () => [addr(A), stg2Config(C, D)], async x => { const c = await view(R, 'stage2_config')(x); return !!c && c.controller === C; }, 'StgV2 collateral class {controller, pool, CALI, USDC}');
+  // USDC lending market (cash-market code 5630a701)
+  tx('usdcMarket.initialize', M, 'initialize', () => [addr(D.usdc), u128(0), u128(0), addr(A)], eq(view(M, 'get_underlying_token'), D.usdc), 'USDC lending market');
+  tx('usdcMarket.set_min_cash_reserve_bps', M, 'set_min_cash_reserve_bps', () => [addr(A), u32(P.usdcMarket.minCashReserveBps)], eq(view(M, 'get_min_cash_reserve_bps'), P.usdcMarket.minCashReserveBps), `max utilisation ${(10000 - P.usdcMarket.minCashReserveBps) / 100} %`);
+  for (const [m, k, rk] of [['set_supply_cap', 'supplyCapRaw', 'SupplyCap'], ['set_borrow_cap', 'borrowCapRaw', 'BorrowCap'], ['set_reserve_factor', 'reserveFactorScaled', 'ReserveFactorScaled'],
+    ['set_flash_loan_fee', 'flashLoanFeeScaled', 'FlashLoanFeeScaled'], ['set_borrow_rate', 'borrowRateScaled', 'BorrowYearlyRateScaled']])
+    tx(`usdcMarket.${m}`, M, m, () => [u128(P.usdcMarket[k])], async x => String(await raw(M, key(rk))(x)) === String(P.usdcMarket[k]), `${k} = ${P.usdcMarket[k]}`);
+  tx('usdcMarket.enable_static_rates', M, 'enable_static_rates', () => [addr(A)], async x => (await raw(M, key('RatesReady'))(x)) === true && (await raw(M, key('InterestModel'))(x)) == null, 'static 8 % APR, no JRM (D8)');
+  tx('usdcMarket.seed_minimum_supply', M, 'seed_minimum_supply', () => [addr(A), u128(P.usdcMarket.seedRaw)], async x => String(await inst(M, 'PermanentMinimumSupply')(x)) === P.usdcMarket.seedRaw, '1 USDC permanent floor', {auth: 'root+transfer', transferMax: P.usdcMarket.seedRaw});
+  tx('usdcMarket.set_peridottroller', M, 'set_peridottroller', () => [addr(C)], eq(raw(M, key('Peridottroller')), C), 'bind to the group controller');
+  // group wiring
+  tx('controller.add_market.usdcMarket', C, 'add_market', () => [addr(M)], eq(view(C, 'is_market_supported', [addr(M)]), true), 'list USDC market');
+  tx('controller.add_market.receipt', C, 'add_market', () => [addr(R)], eq(view(C, 'is_market_supported', [addr(R)]), true), 'list CL receipt (G7: at most 2 markets)');
+  tx('controller.group_set_sleeve', C, 'group_set_sleeve', () => [addr(R)], eq(inst(C, 'Sleeve'), R), 'G1: the receipt is the sleeve (fixed once)');
+  tx('controller.group_set_liq_cache_only', C, 'group_set_liq_cache_only', () => [bool(true)], eq(inst(C, 'LiqCacheOnly'), true), 'D7: L3 reads only a cached price (80 entries)');
+  tx('controller.set_market_cf.receipt', C, 'set_market_cf', () => [addr(R), u128(P.receipt.cfScaled)], eq(raw(C, key('MarketCF', addr(R))), u(P.receipt.cfScaled)), 'first set is immediate; G6: only the sleeve may hold a CF',
+    {historical: true, pre: async x => assert.equal(await raw(C, key('MarketCF', addr(R)))(x), undefined, 'CF already set: a change is the 24 h path (cf-restore)')});
+  add({id: 'gate.prices', kind: 'gate', gate: 'prices', why: 'controller get_price_usd(USDC) equals CAFJ Other(USDC); no fallback price'});
+  // E. liquidity and liquidator
+  tx('usdcMarket.deposit.admin', M, 'deposit', () => [addr(A), u128(P.usdcMarket.adminSupplyRaw)], async x => u((await view(M, 'balance', [addr(A)])(x)) || 0) >= u(P.usdcMarket.adminSupplyRaw), `owner supplies ${fmt7(P.usdcMarket.adminSupplyRaw)} USDC`, {auth: 'root+transfer', transferMax: P.usdcMarket.adminSupplyRaw});
+  add({id: 'fund.liquidator.xlm', kind: 'classic', signer: 'admin', op: 'create', dest: () => need(cfg.liquidator.publicKey, 'liquidator.publicKey'), xlm: P.funding.liquidatorStartXlm, why: 'create the CL liquidator account (fees + reserves)'});
+  add({id: 'fund.liquidator.usdc', kind: 'classic', signer: 'admin', op: 'pay', asset: 'USDC', dest: () => need(cfg.liquidator.publicKey, 'liquidator.publicKey'), amountRaw: P.funding.liquidatorUsdcRaw, why: 'CL liquidator USDC inventory (after its trustlines exist)'});
+  add({id: 'gate.liquidator', kind: 'gate', gate: 'liquidator', historical: true, why: 'inventory, allowance, trustlines, role separation; bot dry-run soak clean'});
+  tx('usdcMarket.set_cash_borrowing_enabled', M, 'set_cash_borrowing_enabled', () => [addr(A), bool(true)], eq(view(M, 'get_cash_borrowing_enabled'), true), 'THE SWITCH', {historical: true, pre: async x => assert.equal(await view(C, 'is_borrow_paused', [addr(M)])(x), false, 'controller borrow pause active')});
+  // F. team position (T3, HD path 3)
+  const T = () => need(cfg.signers.team3.publicKey, 'signers.team3.publicKey');
+  add({id: 'team.create', kind: 'classic', signer: 'admin', op: 'create', dest: T, xlm: P.funding.team3StartXlm, why: 'create T3'});
+  add({id: 'team.trust', kind: 'classic', signer: 'team3', op: 'trust', assets: ['PYUSD', 'USDC'], why: 'T3 trustlines PYUSD + USDC (one tx, two ops)'});
+  add({id: 'team.fund.pyusd', kind: 'classic', signer: 'admin', op: 'pay', asset: 'PYUSD', dest: T, amountRaw: P.funding.team3PyusdRaw, why: 'T3 principal + reserve'});
+  add({id: 'team.open', kind: 'open', signer: 'team3', amount: P.team.openPyusdRaw, why: 'T3 stage_open on the new receipt; keeper session runs convert/mint/invest/finalise'});
+  tx('team.enter.receipt', C, 'enter_market', () => [addr(T()), addr(R)], async x => ((await view(C, 'get_user_markets', [addr(T())])(x)) || []).includes(R), 'T3 enters the CL market', {signer: 'team3'});
+  tx('team.enter.usdcMarket', C, 'enter_market', () => [addr(T()), addr(M)], async x => ((await view(C, 'get_user_markets', [addr(T())])(x)) || []).includes(M), 'T3 enters the USDC market', {signer: 'team3'});
+  tx('team.checkpoint_nav', R, 'checkpoint_nav', () => [], async () => false, 'L1a (no auth) right before the borrow; repeatable', {signer: 'team3', auth: 'none', repeatable: true});
+  tx('team.borrow', M, 'borrow', () => [addr(T()), u128(P.team.borrowUsdcRaw)], async x => u((await view(M, 'get_user_borrow_balance', [addr(T())])(x)) || 0) > 0n, `T3 borrows ${fmt7(P.team.borrowUsdcRaw)} USDC within 60 s of the checkpoint`, {signer: 'team3', historical: true});
+  // G. first liquidation (shortfall by the CF kill switch; the bot liquidates)
+  tx('liq.disable_cf', C, 'emergency_disable_collateral', () => [addr(R), bool(true)], eq(raw(C, key('MarketCF', addr(R))), 0n), 'CF -> 0 (durable, immediate): T3 becomes liquidatable; bot runs L1a..L5', {historical: true});
+  add({id: 'gate.first-liquidation', kind: 'gate', gate: 'first-liquidation', historical: true, why: 'one L3 + L5 landed for T3; liquidator holds the seized units'});
+  add({id: 'team.repay', kind: 'repay', signer: 'team3', why: 'T3 repays the remaining debt (repay never depends on the sleeve)'});
+  tx('cf.propose', C, 'set_market_cf', () => [addr(R), u128(P.receipt.cfScaled)], eq(raw(C, key('PendingMarketCF', addr(R))), u(P.receipt.cfScaled)), 'PROPOSE CF restore; executable 24 h later; cancel = emergency disable-cf (removes the pending CF)', {historical: true});
+  add({id: 'gate.cf-eta', kind: 'gate', gate: 'cf-eta', historical: true, why: 'PendingMarketCFEta + 30 s has passed'});
+  tx('cf.execute', C, 'set_market_cf', () => [addr(R), u128(P.receipt.cfScaled)], eq(raw(C, key('MarketCF', addr(R))), u(P.receipt.cfScaled)), 'EXECUTE CF restore (same call after the ETA)');
+  // H. migration (pilot close is ledger-owner-call.cjs + keeper v5, outside this tool)
+  add({id: 'pilot.close', kind: 'external', signer: 'admin', why: 'owner stage_prepare_close of ALL pilot units on CCGK via prototypes/cl-pyusd-vault-b-pilot-tools/ledger-owner-call.cjs (A3); keeper v5 runs A4 stage_withdraw + A5 stage_close_convert'});
+  add({id: 'gate.pilot-closed', kind: 'gate', gate: 'pilot-closed', why: 'CCGK owner units 0, no open command, PYUSD back in the owner wallet'});
+  add({id: 'migrate.open', kind: 'open', signer: 'admin', amount: null, why: 'owner stage_open on the NEW receipt with the PYUSD returned by the pilot close'});
+  add({id: 'gate.migrated', kind: 'gate', gate: 'migrated', why: 'owner holds v2 units, job finalised, no open command'});
+  tx('pilot.receipt.stage_pause_deposits', cfg.pilot.receipt, 'stage_pause_deposits', () => [addr(A)], eq(view(cfg.pilot.receipt, 'stage_deposits_paused'), true), 'ONE-WAY latch: CCGK takes no new staged deposits (exits unaffected)', {pilotLatch: true});
+  tx('pilot.vault.stage_pause_deposits', cfg.pilot.vault, 'stage_pause_deposits', () => [addr(A)], eq(view(cfg.pilot.vault, 'stage_deposits_paused'), true), 'ONE-WAY latch: CD6N admits no new open (exits unaffected)', {pilotLatch: true});
+  return out;
+}
+function need(v, name) { assert(v, `${name} not set in clg-mainnet.json (PLACEHOLDER)`); return v; }
+function stg2Config(C, D) {
+  // contracttype struct = ScMap with keys sorted by symbol
+  const e = (k, v) => new S.xdr.ScMapEntry({key: sym(k), val: addr(v)});
+  return S.xdr.ScVal.scvMap([e('controller', C), e('oracle', D.cali), e('pool', D.pool), e('usdc', D.usdc)]);
+}
+
+// Emergency builders. Durable = stays until the admin reverses it; 72h = expires on its own.
+const EMERGENCY = {
+  'kill-borrow': {durable: true, build: (cfg, I) => [I.usdcMarket, 'set_cash_borrowing_enabled', [addr(cfg.admin), bool(false)]], note: 'stops new USDC borrows; repay/liquidate unaffected'},
+  'pause-borrow': {durable: false, build: (cfg, I, on) => [I.controller, 'set_pause_borrow', [addr(I.usdcMarket), bool(on)]], note: '72 h controller pause'},
+  'pause-liquidation': {durable: false, build: (cfg, I, on) => [I.controller, 'set_pause_liquidation', [addr(I.receipt), bool(on)]], note: '72 h; stops seizure of CL units (bad oracle)'},
+  'pause-redeem': {durable: false, build: (cfg, I, on) => [I.controller, 'set_pause_redeem', [addr(I.usdcMarket), bool(on)]], note: '72 h; USDC suppliers only'},
+  'disable-cf': {durable: true, build: (cfg, I) => [I.controller, 'emergency_disable_collateral', [addr(I.receipt), bool(true)]], note: 'CF -> 0 now; EVERY borrower becomes liquidatable; also cancels a pending CF'},
+  'latch-receipt': {durable: true, build: (cfg, I) => [I.receipt, 'stage_pause_deposits', [addr(cfg.admin)]], note: 'ONE-WAY: no new CL deposits on the new receipt'},
+  'latch-vault': {durable: true, build: (cfg, I) => [I.vault, 'stage_pause_deposits', [addr(cfg.admin)]], note: 'ONE-WAY: no new open on vault v2'},
+  'vault-pause': {durable: true, build: (cfg, I, on) => [I.vault, 'set_paused', [addr(cfg.admin), bool(on)]], note: 'REVERSIBLE admin pause of vault v2 (required before upgrade_wasm)'},
+  'lower-backing-cap': {durable: true, build: (cfg, I, raw) => [I.receipt, 'stage_lower_backing_cap', [addr(cfg.admin), u128(raw)]], note: 'lower-only'},
+};
+
+// ---------------------------------------------------------------- guards
+function allowedTargets(cfg) {
+  const I = ids(cfg);
+  return new Set([I.vault, I.controller, I.receipt, I.usdcMarket]);
+}
+function assertTargetAllowed(cfg, target, step) {
+  const retired = new Set(cfg.retired);
+  assert(!retired.has(target), `refused: ${target} is a retired pre-incident contract`);
+  if (step && step.pilotLatch) { assert([cfg.pilot.receipt, cfg.pilot.vault].includes(target)); return; }
+  if (step && step.kind === 'withdraw') { assert(Object.values(cfg.cash).some(m => m.receipt === target)); return; }
+  assert(allowedTargets(cfg).has(target), `refused: ${target} is not one of the four new contracts`);
+}
+function assertNoRetiredArgs(cfg, op) {
+  const ic = op.body().invokeHostFunctionOp().hostFunction().invokeContract();
+  const s = JSON.stringify(ic.args().map(a => S.scValToNative(a)), (_, x) => typeof x === 'bigint' ? String(x) : x);
+  for (const r of cfg.retired) assert(!s.includes(r), `refused: retired contract ${r} in arguments`);
+}
+const fnOf = inv => inv.function();
+function checkAuth(auth, op, source, policy, opts = {}) {
+  if (policy === 'none') { assert.equal(auth.length, 0, 'no authorization expected'); return; }
+  assert.equal(auth.length, 1, 'exactly one authorization entry required');
+  const a = auth[0], cred = a.credentials().switch().name;
+  assert.equal(cred, 'sorobanCredentialsSourceAccount', 'only the transaction source may authorize');
+  const root = a.rootInvocation(), f = fnOf(root);
+  if (policy === 'create') {
+    assert(/CreateContract/i.test(f.switch().name), 'root must be the contract creation');
+    assert.equal(root.subInvocations().length, 0); return;
+  }
+  assert.equal(f.contractFn().toXDR('base64'), op.body().invokeHostFunctionOp().hostFunction().invokeContract().toXDR('base64'), 'authorized root differs from the operation');
+  const subs = root.subInvocations();
+  if (policy === 'root') { assert.equal(subs.length, 0, 'admin setter must not authorize nested calls'); return; }
+  const isTransfer = (inv, token, from, to, max) => {
+    const cf = fnOf(inv).contractFn(), args = cf.args().map(x => S.scValToNative(x));
+    return S.Address.fromScAddress(cf.contractAddress()).toString() === token && cf.functionName().toString() === 'transfer'
+      && args[0] === from && args[1] === to && u(args[2]) <= u(max) && inv.subInvocations().length === 0;
+  };
+  if (policy === 'root+transfer') {
+    assert.equal(subs.length, 1, 'exactly one nested token transfer expected');
+    assert(isTransfer(subs[0], opts.token, source, opts.to, opts.max), 'nested authorization is not the expected bounded transfer'); return;
+  }
+  if (policy === 'open') {
+    assert.equal(subs.length, 1, 'stage_open: exactly one nested call');
+    const v = fnOf(subs[0]).contractFn();
+    assert.equal(S.Address.fromScAddress(v.contractAddress()).toString(), opts.vault); assert.equal(v.functionName().toString(), 'stage_accept_funds');
+    assert.equal(subs[0].subInvocations().length, 1);
+    assert(isTransfer(subs[0].subInvocations()[0], opts.token, source, opts.vault, opts.max), 'stage_open: transfer is not owner -> vault, principal + reserve'); return;
+  }
+  throw Error('unknown auth policy ' + policy);
+}
+function checkResources(data, cpuMax) {
+  const r = data.resources(), fp = r.footprint(), keys = [...fp.readOnly(), ...fp.readWrite()].map(k => k.toXDR('base64'));
+  assert(Number(r.instructions()) <= cpuMax, `CPU ${r.instructions()} above ${cpuMax}`);
+  assert(keys.length <= 100 && new Set(keys).size === keys.length, 'more than 100 or duplicate keys');
+  assert(fp.readWrite().length <= 50, 'more than 50 writes');
+  assert(data.ext().switch() === 0 || data.ext().v1().archivedSorobanEntries().length === 0, 'archived entries: restore first (outside this tool)');
+  return {cpu: Number(r.instructions()), keys: keys.length, writes: fp.readWrite().length, diskReadBytes: r.diskReadBytes(), writeBytes: r.writeBytes(), resourceFeeStroops: String(data.resourceFee().toString())};
+}
+
+// ---------------------------------------------------------------- chain-facing
+function artifact(cfg, k) {
+  const a = cfg.artifacts[k], file = path.resolve(__dirname, a.path), wasm = fs.readFileSync(file);
+  const h = sha(wasm).toString('hex');
+  assert.equal(h, a.sha256, `${k}: artifact ${h} is not the pinned ${a.sha256}`);
+  assert.equal(wasm.length, a.bytes, `${k}: artifact size ${wasm.length} != ${a.bytes}`);
+  return {wasm, sha256: h};
+}
+async function codeExists(c, hex) {
+  const k = S.xdr.LedgerKey.contractCode(new S.xdr.LedgerKeyContractCode({hash: Buffer.from(hex, 'hex')}));
+  const r = await c.rpc.getLedgerEntries(k); return !!(r.entries && r.entries.length);
+}
+async function contractWasm(c, id) { try { return await c.codeHash(id); } catch { return null; } }
+async function simulateBuild(cfg, c, op, source, {cpuMax, feeCapStroops, policy, authOpts}) {
+  const acc = await c.rpc.getAccount(source), latest = await c.rpc.getLatestLedger(), L = cfg.limits;
+  const tx = new S.TransactionBuilder(acc, {fee: String(L.classicFeeStroops), networkPassphrase: cfg.network}).addOperation(op)
+    .setLedgerbounds(latest.sequence + 1, latest.sequence + L.window).setTimeout(L.timeout).build();
+  const sim = await c.rpc.simulateTransaction(tx);
+  assert(S.rpc.Api.isSimulationSuccess(sim), 'simulation failed: ' + String(sim.error || '').split('\n')[0].slice(0, 300));
+  assert(!sim.restorePreamble, 'restoration needed: outside this tool');
+  checkAuth((sim.result && sim.result.auth) || [], tx.toEnvelope().v1().tx().operations()[0], source, policy, authOpts);
+  const minFee = BigInt(sim.minResourceFee);
+  const prepared = S.rpc.assembleTransaction(tx, padResourceFee(sim)).build();
+  const data = prepared.toEnvelope().v1().tx().ext().sorobanData(), metrics = checkResources(data, cpuMax);
+  assert(u(prepared.fee) <= feeCapStroops, `fee ${prepared.fee} above the cap ${feeCapStroops}`);
+  assert.equal(prepared.signatures.length, 0); assert.equal(prepared.source, source);
+  metrics.minResourceFeeXlm = Number(minFee) / 1e7; // simulated (unpadded); maxFee = 1.2 x this + 0.001 + inclusion bid
+  return {prepared, metrics, simulatedLedger: sim.latestLedger, validLedgers: {min: latest.sequence + 1, maxExclusive: latest.sequence + L.window}};
+}
+async function classicBuild(cfg, c, ops, source) {
+  const acc = await c.rpc.getAccount(source), latest = await c.rpc.getLatestLedger(), L = cfg.limits;
+  let b = new S.TransactionBuilder(acc, {fee: String(L.classicFeeStroops), networkPassphrase: cfg.network});
+  for (const o of ops) b = b.addOperation(o);
+  const prepared = b.setLedgerbounds(latest.sequence + 1, latest.sequence + L.window).setTimeout(L.timeout).build();
+  return {prepared, metrics: {classic: true, ops: ops.length}, simulatedLedger: latest.sequence, validLedgers: {min: latest.sequence + 1, maxExclusive: latest.sequence + L.window}};
+}
+const assetOf = (cfg, code) => { const [cd, iss] = cfg.classicAssets[code].split(':'); return new S.Asset(cd, iss); };
+async function horizonAccount(cfg, g) { const r = await fetch(`${cfg.horizon}/accounts/${g}`); return r.status === 200 ? r.json() : null; }
+
+async function opFor(cfg, c, s) {
+  const I = ids(cfg), L = cfg.limits, src = cfg.signers[s.signer].publicKey;
+  const inv = (target, method, args, extra = {}) => {
+    assertTargetAllowed(cfg, target, s);
+    const op = new S.Contract(target).call(method, ...args); assertNoRetiredArgs(cfg, op);
+    return {op, cpuMax: L.invokeCpuMax, feeCapStroops: BigInt(L.invokeMaxFeeStroops), policy: s.auth, ...extra};
+  };
+  if (s.kind === 'tx') {
+    const o = inv(s.target, s.method, s.args());
+    if (s.auth === 'root+transfer') o.authOpts = {token: s.target === I.receipt ? cfg.deps.pyusd : cfg.deps.usdc, to: s.target, max: s.transferMax};
+    return o;
+  }
+  if (s.kind === 'withdraw') {
+    const m = cfg.cash[s.market].receipt;
+    const bal = u((await c.view(m, 'balance', [addr(src)])).value);
+    assert(u(s.amount) <= bal, `amount above owner pToken balance ${bal}`);
+    // withdraw pays out with the market's own transfer: the owner authorizes only the root call
+    return {...inv(m, 'withdraw', [addr(src), u128(s.amount)]), policy: 'root'};
+  }
+  if (s.kind === 'upload') {
+    assert(cfg.artifacts.frozen === true || s.allowUnfrozen, 'artifacts not frozen (PLACEHOLDER): uploads refused');
+    assert(cfg.limits.uploadCpuAcceptedByUser === true || s.allowUnfrozen, 'upload CPU (~106M) above the 100M policy: user decision uploadCpuAcceptedByUser required');
+    const {wasm, sha256} = artifact(cfg, s.artifact);
+    assert(!(await codeExists(c, sha256)), `code ${sha256} already on chain: skip`);
+    return {op: S.Operation.uploadContractWasm({wasm}), cpuMax: L.uploadCpuMax, feeCapStroops: xlm(L.uploadMaxFeeXlm[s.artifact]), policy: 'none', summary: {sha256, bytes: wasm.length}};
+  }
+  if (s.kind === 'deploy') {
+    assert(cfg.artifacts.frozen === true || s.allowUnfrozen, 'artifacts not frozen (PLACEHOLDER): deploys refused');
+    const h = cfg.artifacts[s.artifact].sha256;
+    assert(await codeExists(c, h), `code ${h} not uploaded yet`);
+    assert.equal(await contractWasm(c, s.contract), null, `${s.contract} already exists`);
+    const op = S.Operation.createCustomContract({address: S.Address.fromString(src), wasmHash: Buffer.from(h, 'hex'), salt: saltOf(s.salt)});
+    return {op, cpuMax: L.invokeCpuMax, feeCapStroops: BigInt(L.invokeMaxFeeStroops), policy: 'create', summary: {contract: s.contract, wasm: h}};
+  }
+  if (s.kind === 'open') {
+    const owner = src, amount = s.amount || (await openAmountFromWallet(cfg, c, owner));
+    const q = (await c.view(I.vault, 'stage_quote_open', [u128(amount), u32(20), u32(5000)])).value;
+    assert(q.valid === true && q.admissible === true && q.oracle_fresh === true && q.in_band === true && q.deposits_paused === false && q.composition_dirty === false, 'open quote not admissible: ' + json(q));
+    const latest = await c.rpc.getLatestLedger(), now = Math.floor(Date.now() / 1000), deadline = BigInt(now + 3000);
+    const op = inv(I.receipt, 'stage_open', [addr(owner), u128(amount), u128(q.swap_in), u128(q.min_swap), u128(q.min_shares), u128(q.reserve), u64v(deadline)], {policy: 'open'});
+    op.authOpts = {vault: I.vault, token: cfg.deps.pyusd, max: String(u(amount) + u(q.reserve))};
+    op.summary = {amount: String(amount), quote: q, deadline: String(deadline), quoteLedger: latest.sequence};
+    return op;
+  }
+  if (s.kind === 'repay') {
+    const owner = src, debt = u((await c.view(I.usdcMarket, 'get_user_borrow_balance', [addr(owner)])).value);
+    assert(debt > 0n, 'no debt');
+    const amount = debt + debt / 10000n + 1000n; // interest accrues between simulation and inclusion; market caps at debt (check sim)
+    const op = inv(I.usdcMarket, 'repay', [addr(owner), u128(amount)], {policy: 'root+transfer'});
+    op.authOpts = {token: cfg.deps.usdc, to: I.usdcMarket, max: String(amount)}; op.summary = {debtRaw: String(debt), repayRaw: String(amount)};
+    return op;
+  }
+  if (s.kind === 'classic') {
+    let ops;
+    if (s.op === 'create') {
+      const d = s.dest(); assert(S.StrKey.isValidEd25519PublicKey(d)); assert.notEqual(d, cfg.admin);
+      assert(!(await horizonAccount(cfg, d)), `${d} already exists`);
+      ops = [S.Operation.createAccount({destination: d, startingBalance: String(s.xlm)})];
+    } else if (s.op === 'pay') {
+      const d = s.dest(); assert.notEqual(d, cfg.admin);
+      ops = [S.Operation.payment({destination: d, asset: assetOf(cfg, s.asset), amount: fmt7(s.amountRaw)})];
+    } else if (s.op === 'trust') ops = s.assets.map(a => S.Operation.changeTrust({asset: assetOf(cfg, a)}));
+    return {classic: ops, summary: {ops: s.op}};
+  }
+  throw Error('no builder for ' + s.kind);
+}
+async function openAmountFromWallet(cfg, c, owner) {
+  const bal = u((await c.view(cfg.deps.pyusd, 'balance', [addr(owner)])).value);
+  const amount = bal - bal / 200n - 10_000_000n; // keep ~0.5 % + 1 PYUSD for the reserve and dust
+  assert(amount > 0n && amount <= u(cfg.params.vault.maxDeployRaw), `open amount ${amount} outside (0, max_deploy]`);
+  return amount;
+}
+
+async function gate(cfg, c, name) {
+  const I = ids(cfg), P = cfg.params;
+  if (name === 'prices') {
+    const got = await c.tryView(I.controller, 'get_price_usd', [addr(cfg.deps.usdc)]);
+    const direct = (await c.view(cfg.deps.cafj, 'lastprice', [S.xdr.ScVal.scvVec([sym('Other'), sym('USDC')])])).value;
+    const dev = got && direct && !got.error ? Number((u(got[0]) - u(direct.price)) * 10000n / u(direct.price)) : null;
+    const fb = await c.raw(I.controller, key('FallbackPrice', addr(cfg.deps.usdc)));
+    const ok = dev !== null && Math.abs(dev) <= 5 && !fb;
+    return {gate: name, ok, controller: got, direct, deviationBps: dev, fallbackPrice: fb ? fb.value : null};
+  }
+  if (name === 'liquidator') {
+    const lq = cfg.liquidator.publicKey; if (!lq) return {gate: name, ok: false, reason: 'liquidator.publicKey not set'};
+    const bal = await c.tryView(cfg.deps.usdc, 'balance', [addr(lq)]), alw = await c.tryView(cfg.deps.usdc, 'allowance', [addr(lq), addr(I.usdcMarket)]);
+    const acct = await horizonAccount(cfg, lq), trust = acct ? acct.balances.map(b => b.asset_code).filter(Boolean) : [];
+    const rows = {usdcRaw: String(bal), minRaw: P.funding.liquidatorUsdcRaw, allowanceRaw: String(alw), trustlines: trust,
+      roles: lq !== cfg.admin && lq !== cfg.signers.team3.publicKey && lq !== 'GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G'};
+    // The allowance is reported only: the bot's APPROVE stage sets it right before its first L3 (bots/cl-liquidator README).
+    const ok = typeof bal === 'bigint' && bal >= u(P.funding.liquidatorUsdcRaw) && trust.includes('USDC') && trust.includes('PYUSD') && rows.roles;
+    return {gate: name, ok, liquidator: lq, rows, manual: 'also: bot dry-run log >= 2 h, zero errors, every borrower planned, D3 status read'};
+  }
+  if (name === 'cf-eta') {
+    const eta = await c.raw(I.controller, key('PendingMarketCFEta', addr(I.receipt)));
+    const now = Math.floor(Date.now() / 1000);
+    return {gate: name, ok: !!eta && now >= Number(eta.value) + 30, eta: eta ? String(eta.value) : null, etaUtc: eta ? new Date(Number(eta.value) * 1000).toISOString() : null};
+  }
+  if (name === 'first-liquidation') {
+    const st = await c.tryView(I.receipt, 'stage2_status'), lq = cfg.liquidator.publicKey;
+    const units = lq ? await c.tryView(I.receipt, 'stage_units', [addr(lq)]) : null;
+    const ben = lq ? await c.tryView(I.vault, 'stage_beneficial', [addr(lq)]) : null;
+    const ok = !!st && !st.error && Number(st.next_pending) >= 1 && typeof ben === 'bigint' && ben > 0n;
+    return {gate: name, ok, status: st, liquidatorUnits: units, liquidatorBeneficial: ben};
+  }
+  if (name === 'pilot-closed') {
+    const units = await c.tryView(cfg.pilot.receipt, 'stage_units', [addr(cfg.admin)]), cmds = await c.tryView(cfg.pilot.receipt, 'stage_commands', [addr(cfg.admin)]);
+    return {gate: name, ok: units === 0n && Array.isArray(cmds) && cmds.length === 0, units, commands: cmds};
+  }
+  if (name === 'migrated') {
+    const units = await c.tryView(I.receipt, 'stage_units', [addr(cfg.admin)]), cmds = await c.tryView(I.receipt, 'stage_commands', [addr(cfg.admin)]);
+    return {gate: name, ok: typeof units === 'bigint' && units > 0n && Array.isArray(cmds) && cmds.length === 0, units, commands: cmds};
+  }
+  throw Error('unknown gate ' + name);
+}
+async function isDone(cfg, c, s) {
+  if (s.kind === 'gate') return (await gate(cfg, c, s.gate)).ok;
+  if (s.kind === 'upload') return codeExists(c, cfg.artifacts[s.artifact].sha256);
+  if (s.kind === 'deploy') return (await contractWasm(c, s.contract)) === cfg.artifacts[s.artifact].sha256;
+  if (s.kind === 'tx') { try { return !!(await s.done(c)); } catch { return false; } }
+  if (s.kind === 'external') return (await gate(cfg, c, 'pilot-closed')).ok;
+  return null; // withdraw / classic / open / repay: read back manually (printed in LAUNCH.md)
+}
+function write(cfg, out, res, summary) {
+  assert(out && out.endsWith('.unsigned.xdr'), '--out FILE.unsigned.xdr required');
+  const meta = out.replace(/\.unsigned\.xdr$/, '.unsigned.json');
+  assert(!fs.existsSync(out) && !fs.existsSync(meta), 'output exists: never overwrite a prepared transaction');
+  fs.writeFileSync(out, res.prepared.toXDR() + '\n', {mode: 0o600, flag: 'wx'});
+  const record = {status: 'UNSIGNED_PREPARED_SIGN_ON_LEDGER', signing: false, submission: false, network: cfg.network, file: out,
+    hash: res.prepared.hash().toString('hex'), source: res.prepared.source, hdPath: summary.hdPath, sequence: res.prepared.sequence,
+    maxFeeStroops: res.prepared.fee, maxFeeXlm: Number(res.prepared.fee) / 1e7, validLedgers: res.validLedgers, simulatedLedger: res.simulatedLedger, metrics: res.metrics, ...summary};
+  fs.writeFileSync(meta, json(record) + '\n', {mode: 0o600, flag: 'wx'});
+  return record;
+}
+async function buildStep(cfg, c, s) {
+  const src = need(cfg.signers[s.signer].publicKey, `signers.${s.signer}.publicKey`);
+  const o = await opFor(cfg, c, s);
+  const res = o.classic ? await classicBuild(cfg, c, o.classic, src)
+    : await simulateBuild(cfg, c, o.op, src, {cpuMax: o.cpuMax, feeCapStroops: o.feeCapStroops, policy: o.policy, authOpts: o.authOpts});
+  return {res, summary: {step: s.id, n: s.n, signer: s.signer, hdPath: cfg.signers[s.signer].hdPath, call: s.method || s.kind, target: s.target || null, why: s.why, ...(o.summary || {})}};
+}
+
+async function main(argv) {
+  const opt = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : d; }, has = k => argv.includes(k);
+  const cfg = JSON.parse(fs.readFileSync(CFG_FILE, 'utf8'));
+  assert.equal(cfg.network, S.Networks.PUBLIC);
+  const cmd = argv[0];
+  if (cmd === 'addresses') return ids(cfg);
+  if (cmd === 'caps') return {caps: checkCaps(cfg)};
+  if (cmd === 'verify-signed') {
+    const a = S.TransactionBuilder.fromXDR(fs.readFileSync(argv[1], 'utf8').trim(), cfg.network), b = S.TransactionBuilder.fromXDR(fs.readFileSync(argv[2], 'utf8').trim(), cfg.network);
+    assert.equal(a.hash().toString('hex'), b.hash().toString('hex'), 'signed transaction differs from the prepared one');
+    assert.equal(b.signatures.length, 1, 'exactly one signature');
+    assert(S.Keypair.fromPublicKey(b.source).verify(b.hash(), b.signatures[0].signature()), 'signature does not verify for the source (wrong Ledger account / HD path?)');
+    return {ok: true, hash: b.hash().toString('hex'), source: b.source};
+  }
+  const c = chain(cfg), list = steps(cfg);
+  if (['list', 'simulate-all', 'prepare', 'readback'].includes(cmd)) checkCaps(cfg);
+  const find = id => { const s = list.find(x => x.id === id); assert(s, `unknown step ${id}`); return s; };
+  if (cmd === 'prepare') assert.notEqual(find(argv[1]).kind, 'external', 'external step: use the command printed in LAUNCH.md');
+  if (cmd === 'list' || cmd === 'simulate-all') {
+    const rows = [];
+    for (const s of list) {
+      const row = {n: s.n, id: s.id, kind: s.kind, signer: s.signer || null, why: s.why, done: await isDone(cfg, c, s)};
+      const simulable = ['tx', 'upload', 'deploy'].includes(s.kind) ? row.done === false : s.kind === 'withdraw';
+      if (cmd === 'simulate-all' && simulable) {
+        try { const r = await buildStep(cfg, c, {...s, allowUnfrozen: has('--allow-unfrozen')}); row.sim = {...r.res.metrics, maxFeeXlm: Number(r.res.prepared.fee) / 1e7, ledger: r.res.simulatedLedger}; }
+        catch (e) { row.simError = e.message.slice(0, 200); }
+      }
+      rows.push(row);
+    }
+    return {network: cfg.network, ledger: (await c.rpc.getLatestLedger()).sequence, addresses: ids(cfg), frozen: cfg.artifacts.frozen, steps: rows};
+  }
+  if (cmd === 'readback') { const s = find(argv[1]); const d = await isDone(cfg, c, s); if (d !== true) process.exitCode = 1; return {step: s.id, n: s.n, done: d}; }
+  if (cmd === 'gate') { const r = await gate(cfg, c, argv[1]); if (!r.ok) process.exitCode = 1; return r; }
+  if (cmd === 'prepare') {
+    const s = find(argv[1]); assert.notEqual(s.kind, 'gate', 'gates are evaluated with `gate`');
+    for (const prev of list.slice(0, list.indexOf(s))) {
+      if (prev.repeatable || prev.historical) continue;
+      const d = await isDone(cfg, c, prev);
+      assert(d !== false, `earlier step ${prev.n || ''} ${prev.id} not read back as done`);
+    }
+    if (!s.repeatable) assert.notEqual(await isDone(cfg, c, s), true, `${s.id} already done`);
+    if (s.pre) await s.pre(c);
+    const {res, summary} = await buildStep(cfg, c, s);
+    return write(cfg, opt('--out'), res, {...summary, readback: `node clg-ceremony.cjs readback ${s.id}`});
+  }
+  if (cmd === 'emergency') {
+    const name = argv[1], e = EMERGENCY[name]; assert(e, 'emergency: ' + Object.keys(EMERGENCY).join('|'));
+    const arg = argv[2] === 'on' ? true : argv[2] === 'off' ? false : argv[2];
+    const [target, method, args] = e.build(cfg, ids(cfg), arg);
+    const s = {id: `emergency.${name}`, kind: 'tx', signer: 'admin', target, method, args: () => args, auth: 'root'};
+    const {res, summary} = await buildStep(cfg, c, s);
+    return write(cfg, opt('--out'), res, {...summary, emergency: true, durable: e.durable, note: e.note});
+  }
+  if (cmd === 'owner-open' || cmd === 'repay') {
+    const signer = argv[1]; assert(cfg.signers[signer], 'signer admin|team3');
+    const s = cmd === 'repay' ? {id: `repay.${signer}`, kind: 'repay', signer} : {id: `open.${signer}`, kind: 'open', signer, amount: argv[2] || null};
+    const {res, summary} = await buildStep(cfg, c, s);
+    return write(cfg, opt('--out'), res, summary);
+  }
+  if (cmd === 'pending') {
+    const t = ids(cfg)[argv[1]]; assert(t, 'target vault|receipt|controller|usdcMarket');
+    const p = await c.tryView(t, 'get_pending_upgrade');
+    const ok = Array.isArray(p);
+    return {target: t, wasm: await contractWasm(c, t), pendingHash: ok ? Buffer.from(p[0]).toString('hex') : null, eta: ok ? String(p[1]) : null,
+      etaUtc: ok ? new Date(Number(p[1]) * 1000).toISOString() : null, raw: ok || p === null ? undefined : p};
+  }
+  if (['propose-upgrade', 'execute-upgrade', 'cancel-upgrade'].includes(cmd)) {
+    // ABI of commit 6e83fd7: vault takes admin_addr first; receipt, controller and USDC market (5630a701) take only the hash.
+    // cancel_upgrade exists on all four (vault: cancel_upgrade(admin_addr)). Vault execute requires set_paused(admin, true) first.
+    const kind = argv[1], t = ids(cfg)[kind]; assert(t, 'target vault|receipt|controller|usdcMarket');
+    const live = await contractWasm(c, t), hex = cmd === 'cancel-upgrade' ? null : argv[2];
+    if (cmd !== 'cancel-upgrade') { assert(/^[0-9a-f]{64}$/.test(hex || ''), 'sha256 hex required'); assert(await codeExists(c, hex), `code ${hex} not uploaded`); assert.notEqual(hex, live, 'already live'); }
+    const hb = hex && S.xdr.ScVal.scvBytes(Buffer.from(hex, 'hex')), pre = kind === 'vault' ? [addr(cfg.admin)] : [];
+    const method = {'propose-upgrade': 'propose_upgrade_wasm', 'execute-upgrade': 'upgrade_wasm', 'cancel-upgrade': 'cancel_upgrade'}[cmd];
+    const args = cmd === 'cancel-upgrade' ? pre : [...pre, hb];
+    const s = {id: `${cmd}.${kind}`, kind: 'tx', signer: 'admin', target: t, method, args: () => args, auth: 'root'};
+    const {res, summary} = await buildStep(cfg, c, s);
+    return write(cfg, opt('--out'), res, {...summary, hash: hex, live, readback: `node clg-ceremony.cjs pending ${kind}`});
+  }
+  if (cmd === 'status') { const r = await c.rpc.getTransaction(argv[1]); return {hash: argv[1], status: r.status, ledger: r.ledger}; }
+  throw Error('usage: see header');
+}
+module.exports = {contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY};
+if (require.main === module) main(process.argv.slice(2)).then(r => console.log(json(r))).catch(e => { console.error('REFUSED/FAILED:', e.message); process.exit(1); });
