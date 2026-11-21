@@ -26,6 +26,7 @@
   "heartbeatKeyFile": "/mnt/cashliq/cl-liquidator/keys/cl-hb-main.secret",
   "heartbeatPeriodMs": 12000,
   "heartbeatFeeStroops": 10000,
+  "heartbeatRpcUrls": ["https://soroban-rpc.mainnet.stellar.gateway.fm", "PLACEHOLDER_second_independent_mainnet_rpc_https_url_without_credentials"],
   "repayCapRaw": "1000000000",
   "submitMarginSec": 10,
   "watchIntervalSec": 10,

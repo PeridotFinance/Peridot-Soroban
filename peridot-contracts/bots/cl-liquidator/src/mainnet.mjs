@@ -60,6 +60,10 @@ export function validateMainnetConfig(out) {
     if (!G.test(out.heartbeatAccount ?? '') || out.heartbeatAccount === out.liquidator) throw Error('heartbeatAccount must be a public G... address distinct from the liquidator');
     if (!path.isAbsolute(out.heartbeatKeyFile ?? '') || out.heartbeatKeyFile === out.executorKeyFile) throw Error('heartbeatKeyFile must be an absolute path distinct from executorKeyFile');
     if (out.heartbeatPeriodMs != null && !(out.heartbeatPeriodMs >= 3000 && out.heartbeatPeriodMs <= 15000)) throw Error('heartbeatPeriodMs must be 3000..15000 (on-chain gap target <= 20 s)');
+    // Heartbeat RPC failover (5f48b0d) is REQUIRED on Mainnet: an ordered list of >= 2 distinct https RPCs.
+    const urls = out.heartbeatRpcUrls;
+    if (!Array.isArray(urls) || urls.length < 2 || new Set(urls).size !== urls.length || !urls.every(u => /^https:\/\/[^\s@]+$/.test(u)))
+      throw Error('heartbeatRpcUrls: at least 2 distinct https RPC URLs (no credentials) are required on Mainnet');
     if (out.heartbeatFeeStroops != null && !(Number.isInteger(out.heartbeatFeeStroops) && out.heartbeatFeeStroops >= 100 && out.heartbeatFeeStroops <= 1_000_000)) throw Error('heartbeatFeeStroops must be an integer 100..1000000');
   }
   for (const a of [out.liquidator, out.heartbeatAccount].filter(Boolean)) {
@@ -314,9 +318,36 @@ export function makeSender(cfg, {rpc, S = loadSdk(), account, keyFile, kind = 'l
   }
 }
 
+/**
+ * Heartbeat RPC on Mainnet: every server in cfg.heartbeatRpcUrls must report the Mainnet passphrase at start (else the
+ * start is refused), and each server re-checks its passphrase before its first call and then at most every
+ * `recheckMs`; a server that answers another network throws, so the failover (heartbeat.mjs failoverRpc) moves past it.
+ * Every server is a raw-getTransaction facade (makeRpc).
+ */
+export async function makeHeartbeatRpc(cfg, {S = loadSdk(), failover, make = url => makeRpc({...cfg, rpcUrl: url}, {S}), clock = () => Date.now(), recheckMs = 600_000} = {}) {
+  if (!isMainnet(cfg)) throw Error('refused: Mainnet heartbeat RPC on a non-Mainnet config');
+  const guarded = [];
+  for (const url of cfg.heartbeatRpcUrls) {
+    const raw = make(url), label = new URL(url).host;
+    let checkedAt = null;
+    const check = async () => {
+      if (checkedAt != null && clock() - checkedAt < recheckMs) return;
+      const n = await raw.getNetwork();
+      if (n?.passphrase !== MAINNET) { checkedAt = null; throw Error(`refused: heartbeat RPC ${label} reports another network`); }
+      checkedAt = clock();
+    };
+    try { await check(); } catch (e) { throw Error(`refused: heartbeat RPC ${label} is not a reachable Mainnet RPC (${String(e.message).slice(0, 120)})`); }
+    guarded.push(Object.fromEntries(HB_RPC_METHODS.map(m => [m, async (...args) => { await check(); return raw[m](...args); }])));
+  }
+  // Plain objects with a fixed method list: a Proxy would answer `then` and be treated as a thenable.
+  const f = failover(guarded);
+  return Object.fromEntries(HB_RPC_METHODS.map(m => [m, (...args) => f[m](...args)]));
+}
+const HB_RPC_METHODS = ['getNetwork', 'getAccount', 'simulateTransaction', 'sendTransaction', 'getTransaction', 'getLedgerEntries', 'getLatestLedger', 'getFeeStats'];
+
 /** Heartbeat `sign(xdr)` for src/heartbeat.mjs on Mainnet: accepts ONLY receipt.checkpoint_nav() from the heartbeat
  *  account, no auth entries, fee <= its cap and the heartbeat daily budget (charged at the envelope fee at signing). */
-export function makeHeartbeatSigner(cfg, {S = loadSdk(), budget, loadKey = loadKeyFile}) {
+export function makeHeartbeatSigner(cfg, {S = loadSdk(), budget, rpc = null, loadKey = loadKeyFile}) {
   if (!isMainnet(cfg)) throw Error('refused: Mainnet heartbeat signer on a non-Mainnet config');
   let kp = null;
   return async xdr => {
@@ -333,6 +364,8 @@ export function makeHeartbeatSigner(cfg, {S = loadSdk(), budget, loadKey = loadK
     const fee = BigInt(tx.fee), resource = BigInt(tx.toEnvelope().v1().tx().ext().value()?.resourceFee?.()?.toString() ?? fee);
     if (resource > BigInt(cfg.fees.heartbeat.resourceCeilingStroops)) throw Error(`refused: heartbeat resource fee ${resource} above the ceiling ${cfg.fees.heartbeat.resourceCeilingStroops} stroops (rent/new entries?): not signed`);
     if (fee > BigInt(cfg.fees.heartbeat.maxFeeStroops)) throw Error(`refused: heartbeat fee ${fee} above cap`);
+    // Code pins re-checked through the heartbeat's own RPC (whichever failover server is in use) before every signature.
+    if (rpc) assertPins(cfg, await readPins(cfg, rpc, S)); else throw Error('refused: heartbeat signer needs its RPC for the code-pin check');
     kp ??= loadKey(cfg.heartbeatKeyFile, {expectedPublicKey: cfg.heartbeatAccount}, S);
     budget.reserve('heartbeat', fee);
     tx.sign(kp);

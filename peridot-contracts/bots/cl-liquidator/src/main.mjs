@@ -11,7 +11,7 @@ import {assessDepeg, fetchReference, httpJson} from './watcher.mjs';
 import {makeHeartbeat, failoverRpc} from './heartbeat.mjs';
 import {execFile} from 'node:child_process';
 import {cliEnv, assertIdentityName, MAINNET} from './chain.mjs';
-import {isMainnet, makeRpc, startChecks, makeSender, botAllow, makeHeartbeatSigner, openBudget, openGate, acquireRunLock, trustlineStatus, requireTrustlines} from './mainnet.mjs';
+import {isMainnet, makeRpc, startChecks, makeSender, botAllow, makeHeartbeatSigner, makeHeartbeatRpc, openBudget, openGate, acquireRunLock, trustlineStatus, requireTrustlines} from './mainnet.mjs';
 
 /** CLI-held key signs an SDK-built envelope (stdin -> stdout). No key material enters this process. */
 export function makeCliSigner(cfg, identity, {execFileImpl = execFile} = {}) {
@@ -169,11 +169,15 @@ async function mainMainnet(cfg, liveFlag, env = process.env) {
     exec = makeSender(cfg, {rpc, S, account: cfg.liquidator, keyFile: cfg.executorKeyFile, kind: 'liquidator', allow: botAllow, budget});
     // A signer refusal (resource ceiling, fee cap, daily budget) surfaces from heartbeat.mjs as 'heartbeat failed': raise it to an alert.
     const hbOut = o => out(o?.msg === 'heartbeat failed' && /^refused/.test(o.err ?? '') ? {...o, level: 'alert', msg: 'heartbeat refused by the Mainnet signer'} : o);
-    if (has('--watch') && cfg.heartbeatAccount) hb = makeHeartbeat({S, rpc, cfg, journal: j, sign: makeHeartbeatSigner(cfg, {S, budget}), out: hbOut}).start();
+    if (has('--watch') && cfg.heartbeatAccount) {
+      // Failover over heartbeatRpcUrls (each verified Mainnet); the signer re-checks the code pins through it.
+      const hbRpc = await makeHeartbeatRpc(cfg, {S, failover: rpcs => failoverRpc(rpcs, hbOut)});
+      hb = makeHeartbeat({S, rpc: hbRpc, cfg, journal: j, sign: makeHeartbeatSigner(cfg, {S, budget, rpc: hbRpc}), out: hbOut}).start();
+    }
     out({level: 'info', msg: 'dry-run gate passed', since: armed.since, last: armed.last, armedAt: armed.armedAt, cycles: armed.cycles});
   }
   out({msg: 'start', live, watch: has('--watch'), network: MAINNET, signer: live ? 'key file' : 'none (dry run)', trustlines, code: checks.code, pendingUpgrades: checks.pendingUpgrades,
-    heartbeat: hb ? {account: cfg.heartbeatAccount, periodMs: cfg.heartbeatPeriodMs ?? 12000} : null,
+    heartbeat: hb ? {account: cfg.heartbeatAccount, periodMs: cfg.heartbeatPeriodMs ?? 12000, rpcs: cfg.heartbeatRpcUrls.map(u => new URL(u).host)} : null,
     budget: {liquidatorSpentToday: String(budget.spent('liquidator')), heartbeatSpentToday: String(budget.spent('heartbeat'))}, gate: live ? 'armed' : gate.load()});
   if (!has('--watch')) { for (let i = 0; i < (live ? 8 : 1); i++) if (!(await step(cfg, r, exec, j)).sent) break; return; }
   for (;;) {

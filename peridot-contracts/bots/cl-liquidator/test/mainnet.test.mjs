@@ -7,7 +7,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {loadSdk, MAINNET, TESTNET} from '../src/chain.mjs';
 import {normalize} from '../src/config.mjs';
-import {botAllow, makeSender, makeHeartbeatSigner, openBudget, openGate, gateBinding, acquireRunLock, readPins, assertPins,
+import {failoverRpc} from '../src/heartbeat.mjs';
+import {makeHeartbeatRpc, botAllow, makeSender, makeHeartbeatSigner, openBudget, openGate, gateBinding, acquireRunLock, readPins, assertPins,
   validateMainnetConfig, FORBIDDEN_SIGNERS, NEVER_TOUCH, CPU_STOP, trustlineStatus, requireTrustlines, startChecks} from '../src/mainnet.mjs';
 import {loadKeyFile, createKeyFile} from '../src/keyfile.mjs';
 import {exitCall, exitAllow, PHASE} from '../src/exit-seized.mjs';
@@ -22,7 +23,7 @@ function raw(over = {}) {
   return {networkPassphrase: MAINNET, rpcUrl: 'https://rpc.invalid',
     contracts: {receipt: C(1), vault: C(2), controller: C(3), usdcMarket: C(4), usdc: 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75', pyusd: 'CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2', oracle: C(7)},
     pins: PINS, admin: 'GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP', team3: Gk(9), borrowers: [Gk(9)],
-    liquidator: Gk(10), executorKeyFile: '/k/liq.secret', heartbeatAccount: Gk(11), heartbeatKeyFile: '/k/hb.secret', repayCapRaw: '1000000000', dataDir: '/tmp/x', ...over};
+    liquidator: Gk(10), executorKeyFile: '/k/liq.secret', heartbeatAccount: Gk(11), heartbeatKeyFile: '/k/hb.secret', heartbeatRpcUrls: ['https://rpc-a.invalid', 'https://rpc-b.invalid'], repayCapRaw: '1000000000', dataDir: '/tmp/x', ...over};
 }
 const cfgOf = (over = {}) => normalize(raw(over));
 
@@ -41,7 +42,8 @@ test('mainnet config: example shape accepted; CLI aliases, placeholders, pilot/r
   assert.throws(() => cfgOf({repayCapRaw: null}), /repayCapRaw/);
   const example = JSON.parse(fs.readFileSync(new URL('../config/mainnet.example.json', import.meta.url)));
   assert.throws(() => normalize(example), /liquidator must be a public/);
-  assert.doesNotThrow(() => normalize({...example, liquidator: Gk(10), heartbeatAccount: Gk(11)}));
+  assert.throws(() => normalize({...example, liquidator: Gk(10), heartbeatAccount: Gk(11)}), /heartbeatRpcUrls/);   // second RPC is a placeholder
+  assert.doesNotThrow(() => normalize({...example, liquidator: Gk(10), heartbeatAccount: Gk(11), heartbeatRpcUrls: ['https://rpc-a.invalid', 'https://rpc-b.invalid']}));
 });
 test('mainnet config: role separation (admin, cash liquidator, cash pause key, keeper, T3, heartbeat = liquidator)', () => {
   for (const g of Object.keys(FORBIDDEN_SIGNERS)) {
@@ -197,7 +199,7 @@ test('start checks: a bot key that holds an on-chain role (guardian, keeper, adm
 test('heartbeat signer: only receipt.checkpoint_nav() from the heartbeat account, no auth, fee cap and daily budget', async t => {
   const d = tmp(t), keyFile = path.join(d, 'hb.secret'), pub = createKeyFile(keyFile);
   const c = cfgOf({heartbeatAccount: pub, heartbeatKeyFile: keyFile, dataDir: d, fees: {heartbeat: {maxFeeStroops: 100_000, dailyBudgetStroops: 100_000}}});
-  const budget = openBudget(d, c), sign = makeHeartbeatSigner(c, {S, budget});
+  const budget = openBudget(d, c), sign = makeHeartbeatSigner(c, {S, budget, rpc: fakeRpc(c)});
   const build = ({source = pub, contract = c.contracts.receipt, fn = 'checkpoint_nav', fee = '60000', ops = 1} = {}) => {
     const b = new S.TransactionBuilder(new S.Account(source, '7'), {fee, networkPassphrase: MAINNET});
     for (let i = 0; i < ops; i++) b.addOperation(new S.Contract(contract).call(fn));
@@ -317,10 +319,66 @@ test('resource-fee ceiling (Testnet 70.97 XLM rent on a first checkpoint_nav): r
   // Heartbeat: an assembled checkpoint_nav whose resource fee exceeds 0.5 XLM is refused at signing.
   const d = tmp(t), keyFile = path.join(d, 'hb.secret'), pub = createKeyFile(keyFile);
   const c = cfgOf({heartbeatAccount: pub, heartbeatKeyFile: keyFile, dataDir: d});
-  const sign = makeHeartbeatSigner(c, {S, budget: openBudget(d, c)});
+  const sign = makeHeartbeatSigner(c, {S, budget: openBudget(d, c), rpc: fakeRpc(c)});
   const env = res => new S.TransactionBuilder(new S.Account(pub, '7'), {fee: '10000', networkPassphrase: MAINNET, sorobanData: new S.SorobanDataBuilder().setResourceFee(String(res)).build()})
     .addOperation(new S.Contract(c.contracts.receipt).call('checkpoint_nav')).setTimeout(45).build().toXDR();
   await assert.rejects(sign(env(709_700_000)), /resource fee 709700000 above the ceiling/);
   assert.equal(openBudget(d, c).spent('heartbeat'), 0n);
   assert.ok(await sign(env(60_000)));
+});
+
+// ------------------------------------------------------------------ heartbeat RPC failover (5f48b0d) on Mainnet
+test('mainnet config: heartbeatRpcUrls needs >= 2 distinct https URLs without credentials', () => {
+  for (const urls of [undefined, [], ['https://a.invalid'], ['https://a.invalid', 'https://a.invalid'], ['https://a.invalid', 'http://b.invalid'], ['https://a.invalid', 'https://u:p@b.invalid']])
+    assert.throws(() => cfgOf({heartbeatRpcUrls: urls}), /heartbeatRpcUrls/, JSON.stringify(urls));
+  assert.deepEqual(cfgOf({heartbeatRpcUrls: ['https://a.invalid', 'https://b.invalid', 'https://c.invalid']}).heartbeatRpcUrls.length, 3);
+});
+function servers(c, spec) {
+  // spec[url] = {net: passphrase | 'throw', dead: bool, code: role => hash}
+  const calls = [];
+  const make = url => { const o = spec[url], base = fakeRpc(c, {code: o.code});
+    return new Proxy({}, {get: (_, m) => async (...a) => { calls.push([new URL(url).host, m]);
+      if (m === 'getNetwork') { if (o.net === 'throw') throw Error('fetch failed'); return {passphrase: typeof o.net === 'function' ? o.net() : o.net}; }
+      if (o.dead) throw Error('fetch failed'); return base[m](...a); }}); };
+  return {make, calls};
+}
+test('heartbeat RPC: start refused unless EVERY server reports Mainnet', async () => {
+  const c = cfgOf();
+  for (const bad of [{net: TESTNET}, {net: 'throw'}]) {
+    const {make} = servers(c, {'https://rpc-a.invalid': {net: MAINNET}, 'https://rpc-b.invalid': bad});
+    await assert.rejects(makeHeartbeatRpc(c, {S, make, failover: r => failoverRpc(r)}), /rpc-b.invalid is not a reachable Mainnet RPC/);
+  }
+  await assert.rejects(makeHeartbeatRpc({...c, networkPassphrase: TESTNET}, {S, make: () => ({}), failover: r => r}), /non-Mainnet/);
+});
+test('heartbeat RPC: a dead primary fails over; a server that later reports another network is skipped', async () => {
+  const c = cfgOf(); let now = 0, bNet = MAINNET, aDead = false;
+  const spec = {'https://rpc-a.invalid': {net: MAINNET, get dead() { return aDead; }}, 'https://rpc-b.invalid': {net: () => bNet}};
+  const {make, calls} = servers(c, spec), events = [];
+  const rpc = await makeHeartbeatRpc(c, {S, make, clock: () => now, recheckMs: 1000, failover: r => failoverRpc(r, e => events.push(e))});
+  assert.equal((await rpc.getAccount(c.heartbeatAccount)).accountId(), c.heartbeatAccount);
+  assert.equal(calls.at(-1)[0], 'rpc-a.invalid');
+  aDead = true;                                                       // primary dies (transport failure)
+  await rpc.getAccount(c.heartbeatAccount);
+  assert.equal(calls.at(-1)[0], 'rpc-b.invalid'); assert.equal(events[0].msg, 'heartbeat RPC failover');
+  now += 2000; bNet = TESTNET;                                        // secondary now answers another network: refused
+  await assert.rejects(rpc.getAccount(c.heartbeatAccount));
+  assert(calls.some(([h, m]) => h === 'rpc-b.invalid' && m === 'getNetwork'));
+});
+test('heartbeat signer re-checks the code pins through whichever heartbeat RPC is in use', async t => {
+  const d = tmp(t), keyFile = path.join(d, 'hb.secret'), pub = createKeyFile(keyFile);
+  const c = cfgOf({heartbeatAccount: pub, heartbeatKeyFile: keyFile, dataDir: d});
+  const xdr = () => new S.TransactionBuilder(new S.Account(pub, '7'), {fee: '60000', networkPassphrase: MAINNET}).addOperation(new S.Contract(c.contracts.receipt).call('checkpoint_nav')).setTimeout(45).build().toXDR();
+  // Primary dead, secondary serves a CHANGED receipt code: refused, nothing charged.
+  let spec = {'https://rpc-a.invalid': {net: MAINNET, dead: true}, 'https://rpc-b.invalid': {net: MAINNET, code: r => (r === 'receipt' ? 'f'.repeat(64) : PINS[r])}};
+  let rpc = await makeHeartbeatRpc(c, {S, make: servers(c, spec).make, failover: r => failoverRpc(r)});
+  const budget = openBudget(d, c);
+  await assert.rejects(makeHeartbeatSigner(c, {S, budget, rpc})(xdr()), /receipt code ffffffff differs/);
+  assert.equal(budget.spent('heartbeat'), 0n);
+  // Primary dead, secondary with the pinned code: signs (pins read through the secondary).
+  spec = {'https://rpc-a.invalid': {net: MAINNET, dead: true}, 'https://rpc-b.invalid': {net: MAINNET}};
+  const sv = servers(c, spec);
+  rpc = await makeHeartbeatRpc(c, {S, make: sv.make, failover: r => failoverRpc(r)});
+  assert.ok(await makeHeartbeatSigner(c, {S, budget, rpc})(xdr()));
+  assert(sv.calls.some(([h, m]) => h === 'rpc-b.invalid' && m === 'getLedgerEntries'));
+  await assert.rejects(makeHeartbeatSigner(c, {S, budget})(xdr()), /needs its RPC/);
 });

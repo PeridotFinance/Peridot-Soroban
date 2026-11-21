@@ -296,3 +296,24 @@ SKIP_PACKAGES=1 START=0 bash /root/bootstrap-cl-liquidator.sh
    node keeper-loop-v6.cjs …/keeper-config-v6.json --execute --approval …/keeper-approval-v6.json --poll-ms 1000 --max-run-seconds 3600 --pending-timeout-seconds 120 --max-attempts 40
    ```
    For G49 (T3) and G59 (migration). A refusal `PENDING_UPGRADE` means an upgrade proposal exists on the new vault or receipt. Do not keep running: cancel the proposal, or finish the upgrade path first.
+
+---
+
+## 4. Follow-up: heartbeat RPC failover on Mainnet
+
+Builds on stream A's 5f48b0d (`failoverRpc`, plus self-observation of `checkpoint_nav` through the heartbeat's own RPC).
+
+- **Config.** `heartbeatRpcUrls` is **required on Mainnet**: an ordered list of at least 2 distinct `https` URLs, none carrying credentials.
+  - In `config/mainnet.example.json` the first entry is gateway.fm and the second is a `PLACEHOLDER`. The config refuses to load until the operator enters an independent second Mainnet RPC.
+  - The bootstrap copies this placeholder into `/etc/peridot-cl-liquidator/mainnet.json`, so the unit does not start until it is edited.
+- **Network checks.** `makeHeartbeatRpc` runs at the live start:
+  - Every server must answer `getNetwork` with the Mainnet passphrase. One unreachable or wrong-network server refuses the start.
+  - Afterwards each server re-checks its passphrase before its first call and then at most every 10 min.
+  - A server that answers another network throws, so the failover moves past it.
+- **Shape.** Each server is the raw-`getTransaction` facade, and they are combined with stream A's `failoverRpc` (its alerts go through `hbOut`). The same object serves the heartbeat's sends, its polls and its self-observation.
+- **Code pins.** The heartbeat signer re-reads the code pins (vault, receipt, controller, USDC market) through that same failover RPC, whichever server is in use, before every signature. A mismatch refuses with nothing charged. A signer without the RPC refuses.
+- **Tests.** 54/54 in total. New tests cover:
+  - the config rules;
+  - the start refusal on a Testnet or unreachable server;
+  - failover away from a dead primary, and skipping a server that later reports another network;
+  - the pin check through the secondary when the primary is dead, both a changed code (refused, nothing charged) and the pinned code (signed).
