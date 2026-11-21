@@ -129,10 +129,11 @@ fn fresh_inner() {
                     call("B3 ctrl.cache_price(USDC) via CAFJ", &c, "cache_price", |e| (a(e, USDC),).into_val(e), true),
                     call("B4 usdc.borrow(owner, 10 USDC)", &m, "borrow", |e| (a(e, O), 100_000_000u128).into_val(e), true),
                     call("B5 ctrl.account_liquidity(owner)", &c2, "account_liquidity", |e| (a(e, O),).into_val(e), true),
-                    call("B6 usdc.repay(owner, all)", &m2, "repay", |e| (a(e, O), 100_100_000u128).into_val(e), true),
+                    call("B6 usdc.repay_max(owner)", &m2, "repay_max", |e| (a(e, O),).into_val(e), true),
                 ];
                 let (rows, s3, ok3) = seq("FRESH borrow path on the fresh stack (CAFJ USDC price)", &s2, &bl);
                 results.push(rows);
+                if ok3 { fresh_exit_rows(&s2, &s3, &f, &mut results); }
                 if ok3 && std::path::Path::new(&format!("{}/vault-v2-marker.wasm", wdir())).exists() {
                     fresh_upgrade_rows(&s3, &f, &mut results, &mut log);
                 }
@@ -253,4 +254,105 @@ fn fresh_upgrade_rows(s3: &LedgerSnapshot, f: &Fresh, results: &mut StdVec<Value
     let (rows, s6, _) = seq("FRESH UPG-5 real second command on the upgraded vault", &s5, &fl);
     results.push(rows);
     log.push(json!({"post_second_command_state": state(&s6)}));
+}
+
+/// USER-REQUIRED emergency-exit rows plus F1/F2, on the COMPILED release bytes, public network id.
+/// s2 = owner holds units, not entered, no debt. s3 = owner entered (receipt + USDC market), debt repaid.
+/// "Trap" = the contract's code swapped in the local snapshot to the cash-market WASM, so every call to
+/// it fails with a recoverable VM error (a dead or badly upgraded dependency).
+fn fresh_exit_rows(s2: &LedgerSnapshot, s3: &LedgerSnapshot, f: &Fresh, results: &mut StdVec<Value>) {
+    let (v, r, c, m) = (f.v.clone(), f.r.clone(), f.c.clone(), f.m.clone());
+    let trap = wasm("market.wasm");
+    let units = |snap: &LedgerSnapshot| { let r = r.clone(); u(&read(snap, move |env| tv(env, &r, "stage_units", (a(env, O),).into_val(env)))) };
+    let next_id = |snap: &LedgerSnapshot| { let r = r.clone(); u(&read(snap, move |env| tv(env, &r, "stage_state", Vec::new(env)))["next_id"]) as u64 };
+    let pauses = |c: &String, mk: &[&String], deposit: bool| -> StdVec<Call> {
+        let mut out = StdVec::new();
+        for mm in mk { for (fnm, on) in [("set_pause_redeem", true), ("set_pause_deposit", deposit), ("set_pause_borrow", true), ("set_pause_liquidation", true)] {
+            if !on { continue; }
+            let m2 = (*mm).clone(); out.push(call(&format!("setup {fnm}({})", &m2[..6]), c, fnm, move |e| (a(e, &m2), true).into_val(e), false));
+        } }
+        out
+    };
+    let ee = |label: &str, n: u128, waive: bool| call(label, &r, "stage_emergency_exit", move |e| (a(e, O), n, waive).into_val(e), true);
+    let pay = |label: &str, id: u64| call(label, &r, "stage_emergency_pay", move |e| (id,).into_val(e), true);
+    let r_c = r.clone();
+    let exit_m = move |label: &str| { let rr = r_c.clone(); call(label, &c, "exit_market", move |e| (a(e, O), a(e, &rr)).into_val(e), true) };
+    let r_c2 = r.clone(); let c2 = f.c.clone();
+    let enter_m = move |label: &str| { let rr = r_c2.clone(); call(label, &c2, "enter_market", move |e| (a(e, O), a(e, &rr)).into_val(e), true) };
+    let r_c3 = r.clone(); let c3 = f.c.clone();
+    let disable = move |label: &str| { let rr = r_c3.clone(); call(label, &c3, "emergency_disable_collateral", move |e| (a(e, &rr), true).into_val(e), true) };
+    // borrower snapshot sB: s2 + supplier liquidity, NAV, enter both, cache, borrow 10 USDC
+    let (m1, c1, r1, sup) = (m.clone(), f.c.clone(), r.clone(), f.supplier.clone());
+    let (m1b, r1b) = (m.clone(), r.clone());
+    let (rows, sb, okb) = seq("FRESH EX setup: borrower with debt (enter both, borrow 10 USDC)", s2, &[
+        call("setup supplier deposit", &m, "deposit", move |e| (a(e, &sup), 10_000_000_000u128).into_val(e), false),
+        call("setup checkpoint_nav", &r, "checkpoint_nav", |e| Vec::new(e), false),
+        call("setup enter receipt", &c1, "enter_market", move |e| (a(e, O), a(e, &r1)).into_val(e), false),
+        call("setup enter usdc", &f.c, "enter_market", move |e| (a(e, O), a(e, &m1)).into_val(e), false),
+        call("setup cache_price(USDC)", &f.c, "cache_price", |e| (a(e, USDC),).into_val(e), false),
+        call("setup borrow 10 USDC", &m1b, "borrow", |e| (a(e, O), 100_000_000u128).into_val(e), false)]);
+    results.push(rows);
+    let _ = r1b;
+    let n2 = units(s2); let n3 = units(s3);
+    // X1: entered debt-free owner: refused while entered; exit_market (oracle-free, 3,600 s later) then exit + pay
+    { let id = next_id(s3);
+      let (rows, x, ok) = seq("FRESH EX1a entered debt-free emergency exit refused (#2116 expected)", s3, &[ee("EX1a stage_emergency_exit while entered -> #2116", n3, true).fails()]);
+      results.push(rows);
+      if ok { let mut x = x; x.timestamp += 3_600;
+        let (rows, _, _) = seq("FRESH EX1b exit_market (oracle stale) then emergency exit and pay", &x, &[exit_m("EX1b ctrl.exit_market(owner, receipt) 3,600 s later", ), ee("EX1c stage_emergency_exit(all)", n3, true), pay("EX1d stage_emergency_pay (permissionless)", id)]);
+        results.push(rows); } }
+    // X2: entered owner WITH debt: emergency exit refused, exit_market refused
+    if okb {
+        let (rows, _, _) = seq("FRESH EX2a USER-REQUIRED entered with debt: emergency exit refused (#2116)", &sb, &[ee("EX2a stage_emergency_exit with debt -> #2116", n2 / 10, true).fails()]);
+        results.push(rows);
+        let (rows, _, _) = seq("FRESH EX2b entered with debt: exit_market refused", &sb, &[exit_m("EX2b ctrl.exit_market with debt -> revert").fails()]);
+        results.push(rows);
+    }
+    // X3: NOT-entered holder; StgV1 deposit latch, every controller pause, CF 0, oracle and pool trapped, +10,000 s
+    { let mut calls = vec![call("setup receipt.stage_pause_deposits(guardian)", &r, "stage_pause_deposits", |e| (a(e, O),).into_val(e), false)];
+      calls.extend(pauses(&f.c, &[&r, &m], true));
+      calls.push(disable("setup ctrl.emergency_disable_collateral(receipt)"));
+      let (rows, x, ok) = seq("FRESH EX3 setup: all pauses + CF 0 (not-entered holder)", s2, &calls);
+      results.push(rows);
+      if ok { let x = swap_code(&x, ORACLE, &trap); let mut x = x; x.timestamp += 10_000; let id = next_id(&x);
+        let (rows, _, _) = seq("FRESH EX3 USER-REQUIRED not-entered holder exits while paused, oracle trapped and stale, CF 0 (a fully dead POOL makes any extraction impossible: inherent)", &x, &[
+            ee("EX3a stage_emergency_exit(half)", n2 / 2, true), pay("EX3b stage_emergency_pay", id), ee("EX3c stage_emergency_exit(rest, no waiver)", n2 - n2 / 2, false)]);
+        results.push(rows); } }
+    // X4: ENTERED debt-free holder under pauses + broken oracle, then again at CF 0
+    { let mut calls = vec![call("setup receipt.stage_pause_deposits(guardian)", &r, "stage_pause_deposits", |e| (a(e, O),).into_val(e), false)];
+      calls.extend(pauses(&f.c, &[&r, &m], false));
+      let (rows, x, ok) = seq("FRESH EX4 setup: pauses (entered debt-free holder)", s3, &calls);
+      results.push(rows);
+      if ok { let x = swap_code(&x, ORACLE, &trap); let mut x = x; x.timestamp += 10_000;
+        let (rows, _, _) = seq("FRESH EX4 USER-REQUIRED entered debt-free exits while paused, oracle trapped, and again at CF 0", &x, &[
+            exit_m("EX4a ctrl.exit_market"), ee("EX4b stage_emergency_exit(half)", n3 / 2, true), enter_m("EX4c ctrl.enter_market again"),
+            disable("EX4d ctrl.emergency_disable_collateral (CF 0)"), exit_m("EX4e ctrl.exit_market at CF 0"), ee("EX4f stage_emergency_exit(rest)", n3 - n3 / 2, true)]);
+        results.push(rows); } }
+    // F1a: controller trapped: an entered borrower WITH debt can emergency-exit (documented trade-off)
+    if okb { let x = swap_code(&sb, &f.c, &trap);
+        let (rows, _, _) = seq("FRESH F1a controller TRAPPED: entered borrower with debt emergency-exits (fail-open trade-off)", &x, &[ee("F1a stage_emergency_exit(all) with dead controller", n2, true)]);
+        results.push(rows); }
+    // F1b: controller answering but fully paused: entered owner refused #2116
+    { let calls = pauses(&f.c, &[&r, &m], true);
+      let (rows, x, ok) = seq("FRESH F1b setup: every controller pause on (answering controller)", s3, &calls);
+      results.push(rows);
+      if ok { let (rows, _, _) = seq("FRESH F1b paused but answering controller refuses an entered owner (#2116)", &x, &[ee("F1b stage_emergency_exit -> #2116", n3, true).fails()]); results.push(rows); } }
+    // F2: CF 0 does not let an indebted borrower leave the sleeve
+    if okb {
+        let (rows, x, ok) = seq("FRESH F2 setup: emergency_disable_collateral (CF 0), checkpoint_nav", &sb, &[disable("F2 setup CF 0"), call("F2 setup checkpoint_nav", &r, "checkpoint_nav", |e| Vec::new(e), false)]);
+        results.push(rows);
+        if ok {
+            let dl = x.timestamp + 3000;
+            let (rows, _, _) = seq("FRESH F2a CF 0 + debt: prepare_close refused (#2106)", &x, &[call("F2a stage_prepare_close(all) -> #2106", &r, "stage_prepare_close", move |e| (a(e, O), n2, 0u128, dl).into_val(e), true).fails()]);
+            results.push(rows);
+            let (rows, _, _) = seq("FRESH F2b CF 0 + debt: exit_market refused", &x, &[exit_m("F2b ctrl.exit_market -> revert").fails()]);
+            results.push(rows);
+            let (rows, _, _) = seq("FRESH F2c CF 0 + debt: emergency exit refused (#2116)", &x, &[ee("F2c stage_emergency_exit -> #2116", n2, true).fails()]);
+            results.push(rows);
+            let (rows, _, _) = seq("FRESH F2d after full repay: exit_market and emergency exit succeed", &x, &[
+                call("F2d usdc.repay_max(owner)", &m, "repay_max", |e| (a(e, O),).into_val(e), true), exit_m("F2e ctrl.exit_market"), ee("F2f stage_emergency_exit(all)", n2, true)]);
+            results.push(rows);
+        }
+    }
+    let _ = v;
 }

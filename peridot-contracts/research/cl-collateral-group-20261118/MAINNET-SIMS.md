@@ -107,10 +107,44 @@ sha256 `152d35d37079b715c28e9fad2d98e70fd7a71328129dd24ee064d936df5f5a8a`.
   a vault that already holds a position. That is within 100 entries and the 97M stop, but it is the largest
   staged row.
 
+### Emergency exit (user-required), F1 and F2 on the compiled release bytes
+
+Same emulation (public network id, live state, bytes 6fd8599a / 424454b9 / 642421f1 / 5630a701), with
+`fresh_exit_rows` added. Evidence: `target/clg/fresh/state/fresh-result-96e7b3c-exits.json`, sha256
+`98a14c72…b7fd`. All 27 sequences behave as intended. The only `ok: false` sequence is the known P9
+frozen-oracle artefact. Expected refusals are counted as passes only when the call actually reverts.
+
+"Trapped" means the dependency's code is swapped, in the local snapshot, to the cash-market WASM, so every
+call to it fails with a recoverable VM error.
+
+| Test (native counterpart in `receipt-v2/tests/stgv2_test.rs`) | Compiled result |
+|---|---|
+| EX1 `user_required_debt_free_account_exits_market…`. Entered debt-free owner. | Emergency exit refused **#2116**; `exit_market` passes 3,600 s later with the oracle stale (56 entries); then a full emergency exit (91 entries, 60.7M) and a permissionless pay (21) |
+| EX2 `user_required_entered_account_is_refused…`. Entered with debt. | Emergency exit **#2116**; `exit_market` reverts |
+| EX3 `user_required_emergency_exit_works_while_paused…`. Not-entered holder; StgV1 deposit latch, every controller pause on both markets, CF 0, CALI trapped and +10,000 s. | Half exit (89 entries, 62.0M), then pay, then the rest without waiver (91) — all ok |
+| EX4 `user_required_entered_debt_free_holder_exits…`. Entered debt-free; pauses, CALI trapped; then re-enter and CF 0. | `exit_market`, then half exit, then `enter_market`, then `emergency_disable_collateral`, then `exit_market` at CF 0, then the rest — all ok |
+| F1a `f1_emergency_exit_works_when_the_controller_traps`. Group controller trapped; entered borrower with debt. | Emergency exit **succeeds** (90 entries, 60.6M). This is the documented fail-open trade-off |
+| F1b `f1_paused_but_answering_controller…`. Every controller pause on, controller answering. | Entered owner refused **#2116** |
+| F2 `f2_cf_zero_does_not_let_an_indebted_borrower_leave…`. CF 0 with debt. | `stage_prepare_close` **#2106**; `exit_market` reverts; emergency exit **#2116**; after `repay_max`: `exit_market` and full emergency exit ok |
+
+**Findings from these rows:**
+- **Emergency exit headroom.** The emergency exit peaks at **91 entries** (limit 100) and 62.0M CPU on these bytes.
+- **Repay the full debt with `repay_max`.** A fixed-amount `repay` of 10.01 USDC against a 10 USDC loan left
+  **3 raw units** of interest debt. `group_no_debt` then (correctly) refused `exit_market`. Frontend and bot
+  "repay all" flows must use `repay_max`, or the owner cannot leave the market for an emergency exit.
+- **Pool-trap scope.** A completely dead *pool* (all calls trapping) makes extraction impossible: the vault's
+  `get_all_position_fees` traps. This is inherent. The native "pool trap" mocks only quote functions, so
+  EX3/EX4 here trap the oracle only.
+- **F1 and footprint omission.** Fail-open is not reachable by footprint omission. Host 29
+  `HostError::is_recoverable` treats `Storage/ExceededLimit` (access outside the footprint) and budget
+  exhaustion as non-recoverable, so `try_invoke_contract` cannot be forced to `Err` by a borrower trimming
+  the footprint. An archived controller entry cannot be skipped either: the transaction fails before
+  execution.
+
 ### Coverage limit
 
 These rows do **not** exercise, under the public network id on Mainnet-feature bytes: liquidation (L1a–L5),
-seizure, `sync_seized`, `checkpoint_fallback`/D3, `stage_prepare_close` with debt, or the emergency exit.
+seizure, `sync_seized` and `checkpoint_fallback`/D3. `stage_prepare_close` with debt is covered only as the F2a refusal. The emergency exit is now covered above.
 Those were measured only on Testnet-id and default builds (BUILD-REPORT §2). The manual review did not
 re-read the receipt or controller parts of 6e83fd7 and 137de32 in depth. Almanax has not scanned anything,
 because the subscription has expired.
