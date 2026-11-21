@@ -40,3 +40,20 @@ test('Stg2Config is a symbol-sorted map', () => {
   const cfg = base(), v = m.stg2Config('CDSJ3ACUWASAHCPRTXJLU3M452OBFXRVSPS2QLKOFUUHKLCKLIDFTEOA', cfg.deps);
   assert.deepEqual(v.map().map(e => e.key().sym().toString()), ['controller', 'oracle', 'pool', 'usdc']);
 });
+test('F4: route A is refused for a boundary opened by a seize sync, or when events cannot be proven', () => {
+  const S = require('/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/bots/margin-liquidator/node_modules/@stellar/stellar-sdk');
+  const from = 'GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP', to = 'GBHWPV6QTQIAPJI7WHLHWZJB4GELG3B5NAR2NJ27FQNKSIGYGBYFZON4';
+  const val = S.nativeToScVal([S.Address.fromString(from), S.Address.fromString(to), S.nativeToScVal(5n, {type: 'u128'}), S.xdr.ScVal.scvBool(true)]);
+  const raw = [{value: val.toXDR('base64'), ledger: 100, ledgerClosedAt: '2026-11-22T15:00:00Z', txHash: 'ab'}];
+  const ev = m.decodeSeizeEvents(raw), ts = Date.parse('2026-11-22T15:00:00Z') / 1000;
+  assert.equal(ev[0].opened, true); assert.equal(ev[0].from, from);
+  const cov = {oldestLedgerCloseTime: String(ts - 1000)};
+  assert.throws(() => m.assertRouteAAllowed('3', {holder: from, timestamp: String(ts)}, ev, cov), /F4/);
+  assert.equal(m.assertRouteAAllowed('2', {holder: from, timestamp: String(ts - 5)}, ev, cov), true);
+  assert.equal(m.assertRouteAAllowed('4', {holder: to, timestamp: String(ts)}, ev, cov), true);
+  const closed = m.decodeSeizeEvents([{...raw[0], value: S.nativeToScVal([S.Address.fromString(from), S.Address.fromString(to), S.nativeToScVal(5n, {type: 'u128'}), S.xdr.ScVal.scvBool(false)]).toXDR('base64')}]);
+  assert.equal(m.assertRouteAAllowed('3', {holder: from, timestamp: String(ts)}, closed, cov), true);
+  assert.throws(() => m.assertRouteAAllowed('3', {holder: from, timestamp: String(ts)}, ev, null), /could not be read/);
+  assert.throws(() => m.assertRouteAAllowed('1', {holder: from, timestamp: String(ts - 2000)}, [], cov), /older than the RPC event window/);
+  assert.throws(() => m.assertRouteAAllowed('9', null, [], cov), /does not exist/);
+});

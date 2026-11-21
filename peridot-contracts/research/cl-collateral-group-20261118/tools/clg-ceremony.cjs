@@ -16,6 +16,10 @@
 //   pending <vault|receipt|controller|usdcMarket>  read PendingUpgradeHash / ETA (persistent keys)
 //   propose-upgrade|execute-upgrade|cancel-upgrade <target> <sha256> --out F   24 h upgrade path (PLACEHOLDER ABI)
 //   verify-signed F.unsigned.xdr F.signed.xdr   same hash, exactly one valid signature by the expected source
+//   reward-boundary <id>              read-only: boundary, F4 verdict (opened by a seize sync?), interval
+//   reward-route-a <propose|attribute> <boundaryId> <raw> <evidenceHex> --out F   REFUSED for seize-opened boundaries (F4)
+//   reward-route-b <propose|attribute> <segmentId> <raw> <evidenceHex> --out F    the release path after a seizure
+//   reward-prepare <segmentId> [limit] / reward-settle <holder> <segmentId> <checkpoint> --out F   route B, permissionless
 //   status <hash>                     RPC outcome (read-only)
 //
 // Refusals: any retired pre-incident contract as target or argument; the pilot vault/receipt except their two
@@ -189,6 +193,44 @@ const EMERGENCY = {
   'vault-pause': {durable: true, build: (cfg, I, on) => [I.vault, 'set_paused', [addr(cfg.admin), bool(on)]], note: 'REVERSIBLE admin pause of vault v2 (required before upgrade_wasm)'},
   'lower-backing-cap': {durable: true, build: (cfg, I, raw) => [I.receipt, 'stage_lower_backing_cap', [addr(cfg.admin), u128(raw)]], note: 'lower-only'},
 };
+
+// ---------------------------------------------------------------- F4: reward route A vs seizure boundaries
+// A seize sync (`stage_seize_reassign`) that opens a boundary publishes ("seizesync",) -> (from, to, n, opened=true) in the
+// same transaction that writes Boundary(Count) with holder = from and timestamp = the ledger close time. Route A
+// (propose_reward_attribution / attribute_rewards) on such a boundary strands the other holders' share (finding F4), so
+// it is refused; route B (reward segments, then per-holder settle) is the only release path after a seizure.
+function decodeSeizeEvents(raw) {
+  return raw.map(ev => {
+    const v = S.scValToNative(S.xdr.ScVal.fromXDR(ev.value, 'base64'));
+    return {from: v[0], to: v[1], n: String(v[2]), opened: v[3] === true, ledger: ev.ledger, ts: Math.floor(Date.parse(ev.ledgerClosedAt) / 1000), txHash: ev.txHash};
+  });
+}
+// Pure (unit-tested). coverage = {oldestLedgerCloseTime} of the event query. Throws unless route A is provably safe.
+function assertRouteAAllowed(id, b, events, coverage) {
+  assert(b, `boundary ${id} does not exist`);
+  assert(coverage && Number.isFinite(Number(coverage.oldestLedgerCloseTime)), 'refused: seize-sync events could not be read');
+  assert(Number(b.timestamp) >= Number(coverage.oldestLedgerCloseTime),
+    `refused: boundary ${id} (ts ${b.timestamp}) is older than the RPC event window (from ${coverage.oldestLedgerCloseTime}); a seize sync cannot be excluded. Use route B`);
+  const hit = events.find(e => e.opened && e.from === b.holder && Number(e.ts) === Number(b.timestamp));
+  assert(!hit, `refused (F4): boundary ${id} was opened by seizesync ${hit && hit.txHash} at ledger ${hit && hit.ledger}; route A would strand other holders' rewards. Use route B (reward-route-b, reward-prepare, reward-settle)`);
+  return true;
+}
+async function readSeizeEvents(cfg, c, vault) {
+  const call = async (method, params) => {
+    const r = await (await fetch(cfg.rpc, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({jsonrpc: '2.0', id: 1, method, params})})).json();
+    if (r.error) throw Error(`${method}: ${JSON.stringify(r.error)}`); return r.result;
+  };
+  const topic = S.xdr.ScVal.scvSymbol('seizesync').toXDR('base64'), filters = [{type: 'contract', contractIds: [vault], topics: [[topic]]}];
+  let first = await call('getEvents', {startLedger: (await call('getLatestLedger')).sequence - 1, filters, pagination: {limit: 1}});
+  const oldest = first.oldestLedger, coverage = {oldestLedger: oldest, oldestLedgerCloseTime: first.oldestLedgerCloseTime};
+  assert(oldest && first.oldestLedgerCloseTime, 'RPC did not report its event window');
+  const out = []; let r = await call('getEvents', {startLedger: oldest, filters, pagination: {limit: 200}});
+  for (let pages = 0; ; pages++) {
+    out.push(...r.events); if (r.events.length < 200) break;
+    assert(pages < 500, 'too many seize events to page'); r = await call('getEvents', {filters, pagination: {cursor: r.cursor, limit: 200}});
+  }
+  return {events: decodeSeizeEvents(out), coverage};
+}
 
 // ---------------------------------------------------------------- guards
 function allowedTargets(cfg) {
@@ -522,8 +564,40 @@ async function main(argv) {
     const {res, summary} = await buildStep(cfg, c, s);
     return write(cfg, opt('--out'), res, {...summary, hash: hex, live, readback: `node clg-ceremony.cjs pending ${kind}`});
   }
+  if (cmd === 'reward-boundary') {
+    const V = ids(cfg).vault, id = argv[1], b = await c.tryView(V, 'reward_boundary', [u64v(id)]);
+    let verdict;
+    try { const {events, coverage} = await readSeizeEvents(cfg, c, V); assertRouteAAllowed(id, b, events, coverage); verdict = 'route A allowed (no seizure sync opened it)'; }
+    catch (e) { verdict = e.message; }
+    const interval = b && !b.error ? await c.tryView(V, 'reward_interval', [u64v(b.interval)]) : null;
+    return {boundary: b, verdict, interval};
+  }
+  if (cmd === 'reward-route-a' || cmd === 'reward-route-b') {
+    // route A: <propose|attribute> <boundaryId> <amountRaw> <evidenceHex>; route B: same with a reward SEGMENT id.
+    const V = ids(cfg).vault, [, which, id, amount, ev] = argv;
+    assert(['propose', 'attribute'].includes(which), 'propose|attribute');
+    assert(/^[0-9]+$/.test(id || '') && /^[0-9]+$/.test(amount || '') && /^[0-9a-f]{64}$/.test(ev || '') && !/^0+$/.test(ev), 'id, raw amount, 32-byte non-zero evidence hex');
+    if (cmd === 'reward-route-a') {
+      const b = await c.view(V, 'reward_boundary', [u64v(id)]).then(r => r.value).catch(() => null);
+      let seize; try { seize = await readSeizeEvents(cfg, c, V); } catch (e) { throw Error('refused: seize-sync events could not be read (' + e.message.slice(0, 120) + ')'); }
+      assertRouteAAllowed(id, b, seize.events, seize.coverage);
+    }
+    const method = cmd === 'reward-route-a' ? (which === 'propose' ? 'propose_reward_attribution' : 'attribute_rewards') : (which === 'propose' ? 'propose_reward_segment' : 'attribute_reward_segment');
+    const s = {id: `${cmd}.${which}.${id}`, kind: 'tx', signer: 'admin', target: V, method, args: () => [u64v(id), u128(amount), S.xdr.ScVal.scvBytes(Buffer.from(ev, 'hex'))], auth: 'root'};
+    const {res, summary} = await buildStep(cfg, c, s);
+    return write(cfg, opt('--out'), res, {...summary, note: which === 'propose' ? 'executable 24 h later with the same amount and evidence' : 'governed attribution'});
+  }
+  if (cmd === 'reward-prepare' || cmd === 'reward-settle') {
+    // Route B, permissionless (no auth; the admin only pays the fee): prepare_reward_segment(id, limit<=4) once, then
+    // settle_reward_segment(holder, id, checkpoint) for EVERY holder of the segment (each settles once).
+    const V = ids(cfg).vault;
+    const args = cmd === 'reward-prepare' ? [u64v(argv[1]), u32(argv[2] || 4)] : [addr(argv[1]), u64v(argv[2]), u32(argv[3])];
+    const s = {id: `${cmd}.${argv.slice(1, 3).join('.')}`, kind: 'tx', signer: 'admin', target: V, method: cmd === 'reward-prepare' ? 'prepare_reward_segment' : 'settle_reward_segment', args: () => args, auth: 'none'};
+    const {res, summary} = await buildStep(cfg, c, s);
+    return write(cfg, opt('--out'), res, summary);
+  }
   if (cmd === 'status') { const r = await c.rpc.getTransaction(argv[1]); return {hash: argv[1], status: r.status, ledger: r.ledger}; }
   throw Error('usage: see header');
 }
-module.exports = {contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY};
+module.exports = {contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY, assertRouteAAllowed, decodeSeizeEvents, readSeizeEvents};
 if (require.main === module) main(process.argv.slice(2)).then(r => console.log(json(r))).catch(e => { console.error('REFUSED/FAILED:', e.message); process.exit(1); });

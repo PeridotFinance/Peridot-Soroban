@@ -539,6 +539,28 @@ Repayment is never paused by any of these.
 
 ---
 
+## 9b. Reward release after a seizure (ops rule, finding F4)
+
+**Rule.** A boundary opened by a seizure sync is released **only by route B**:
+```bash
+clg reward-boundary <id>                                           # read-only: verdict + interval
+step rb-prop-<seg>  reward-route-b propose <seg> <raw> <evidenceHex>
+# 24 h later, same amount and evidence:
+step rb-attr-<seg>  reward-route-b attribute <seg> <raw> <evidenceHex>
+step rb-prep-<seg>  reward-prepare <seg> 4                         # repeat until it returns true
+step rb-set-<seg>-<holder> reward-settle <G…> <seg> <checkpoint>   # once for EVERY holder of the segment
+```
+- **When it applies.** A seizure sync (L5) that runs more than 60 s after the last claim opens a reward boundary (D6). It publishes `seizesync (from, to, n, opened=true)`, and the boundary id is the vault's boundary Count just before that transaction.
+- **Why route A is refused.** The admin-only route A (`propose_reward_attribution` / `attribute_rewards`) credits only that boundary's holder, the seized borrower. Used on such a boundary, it strands every other holder's share of the quarantined claim (`seize_tests.rs` `route_a_per_boundary_release_can_only_credit_the_seized_from_holder`).
+- **Route B** (`route_b_segment_release_pays_every_holder_once_at_post_move_weights`) pays every holder once.
+- **How the tool enforces it.** `clg-ceremony.cjs reward-route-a` reads the vault's `seizesync` events live and refuses three cases:
+  - the boundary matches an `opened=true` event (same `from` holder and ledger close time);
+  - the events cannot be read;
+  - the boundary is older than the RPC event window (about 7 days, `oldestLedgerCloseTime`), so a seizure cannot be excluded. Such boundaries also go through route B.
+- **Offline test:** `clg-ceremony.test.cjs`, "F4: route A is refused …".
+- **Arguments.** The segment ids come from `reward_interval(boundary.interval)` (printed by `reward-boundary`). The per-holder `checkpoint` comes from `reward_history_count` / `reward_weight`. Both `reward-prepare` and `reward-settle` are permissionless: the admin only pays the fee.
+- **Practice.** The bot runs L4 within 60 s before every L5 (BUILD-REPORT §4 item 4), so a boundary should be rare. When one opens, the bot alerts; record the boundary id from `reward-boundary` the same day.
+
 ## 10. Emergency exit for holders (condition 3)
 
 | Holder state | Path | Dependencies | Test (`prototypes/cl-collateral-group/receipt-v2/tests`, commit 137de32) |
@@ -595,6 +617,7 @@ Replace `vault` with `receipt`, `controller` or `usdcMarket` as needed; those ne
 | P7 | Re-quote, re-emulation and the L3 row on the frozen bytes (HG7) | `params.capCoverage.worstStage`, §3 |
 | P8 | Exact `fee_charged` per configuration step: filled from `send.json` after each step | §3 |
 | P9 | Liquidator in-kind exit of seized units: a manual tool for its host | §7 |
+| P11 | Segment-id and checkpoint lookup for route B is manual (`reward-boundary`, `reward_weight`) | §9b |
 | P10 | Heartbeat key and public key; live `checkpoint_nav` fee after G26; stream A's Testnet gap stats; the heartbeat's Mainnet signer form (HG4) | §6.4, `clg-mainnet.json` `heartbeat` |
 
 ## 13. Evidence (outside git)
