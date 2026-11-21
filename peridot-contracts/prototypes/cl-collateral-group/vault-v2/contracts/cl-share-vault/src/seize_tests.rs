@@ -260,3 +260,83 @@ fn weight_history_follows_the_move() {
     let after = f.e.as_contract(&f.v, || crate::reward_history::count(&f.e, &f.liq));
     assert_eq!(after, before + 1, "liquidator weight recorded");
 }
+
+// ---- BUILD-REPORT open issue 3/4: the D6 boundary quarantines the WHOLE next claim. Every release
+// route driven to completion with two non-seized-side holders (Bob, and the liquidator), checking
+// that nobody double-claims and recording who can be made whole (TESTS-STGV2.md §4).
+fn stale_seizure_then_quarantined_claim() -> F {
+    let f = F::new();
+    f.mint(&f.alice, 1000);
+    f.mint(&f.bob, 1000);
+    f.claim(100); // 50 / 50
+    f.advance(61);
+    assert!(f.seize(&f.alice, &f.liq, 400), "stale L5 opens a boundary");
+    f.claim(40); // whole claim quarantined
+    assert_eq!(f.c().reward_totals().quarantine, 40);
+    assert_eq!((f.pending(&f.alice), f.pending(&f.bob), f.pending(&f.liq)), (50, 50, 0));
+    f
+}
+fn credited(f: &F) -> u128 { f.pending(&f.alice) + f.pending(&f.bob) + f.pending(&f.liq) }
+
+#[test]
+fn route_a_per_boundary_release_can_only_credit_the_seized_from_holder() {
+    // Route A (rewards::attribute, the documented release): the bucket is credited ONLY to the
+    // boundary holder. Bob held 50 % of the shares for the whole quarantined interval but no
+    // route-A call can credit him, and once route A is used the segment route is closed.
+    let f = stale_seizure_then_quarantined_claim();
+    let ev = BytesN::from_array(&f.e, &[3; 32]);
+    f.c().propose_reward_attribution(&0, &12, &ev); // e.g. Alice's own 600/2000 of 40
+    f.advance(86_400);
+    f.c().attribute_rewards(&0, &12, &ev);
+    assert_eq!((f.pending(&f.alice), f.pending(&f.bob), f.pending(&f.liq)), (62, 50, 0));
+    assert_eq!(f.c().reward_totals().quarantine, 28, "Bob's and the liquidator's 28 stay quarantined");
+    // No second route-A release for the same boundary (no double claim) ...
+    assert!(f.c().try_propose_reward_attribution(&0, &28, &ev).is_err(), "already attributed");
+    // ... and the segment route is closed for this interval: Bob's share is unreachable.
+    let seg = BytesN::from_array(&f.e, &[4; 32]);
+    assert!(f.c().try_propose_reward_segment(&0, &40, &seg).is_err(), "direct-governed interval");
+    let n = f.c().reward_history_count(&f.bob);
+    assert!(f.c().try_settle_reward_segment(&f.bob, &0, &(n - 1)).is_err(), "Bob cannot settle");
+    let t = f.c().reward_totals();
+    assert!(credited(&f) + t.quarantine == t.received, "conservation: nothing created or lost from the ledger");
+    assert_eq!(f.c().claim_rewards(&f.alice), 62);
+    assert_eq!(f.c().claim_rewards(&f.alice), 0, "no double claim");
+}
+
+#[test]
+fn route_b_segment_release_pays_every_holder_once_at_post_move_weights() {
+    // Route B (reward_history segments): seize_gap records NO observation before the move, so the
+    // interval is ONE segment sealed at the claim, at POST-move weights (Alice 600, Bob 1000,
+    // liquidator 400). Governed segment attribution + per-holder settlement pays all 40, each once.
+    let f = stale_seizure_then_quarantined_claim();
+    let id = f.c().reward_boundary(&0).unwrap().interval;
+    let iv = f.c().reward_interval(&id).expect("sealed interval");
+    assert_eq!((iv.sealed, iv.segments, iv.received), (true, 1, 40), "one segment, no pre-move snapshot");
+    assert_eq!(iv.first_segment, 0);
+    let ev = BytesN::from_array(&f.e, &[5; 32]);
+    f.c().propose_reward_segment(&0, &40, &ev);
+    f.advance(86_399);
+    assert!(f.c().try_attribute_reward_segment(&0, &40, &ev).is_err(), "timelock");
+    f.advance(1);
+    f.c().attribute_reward_segment(&0, &40, &ev);
+    assert!(f.c().prepare_reward_segment(&0, &4));
+    let last = |a: &Address| f.c().reward_history_count(a) - 1;
+    let (a, b, l) = (
+        f.c().settle_reward_segment(&f.alice, &0, &last(&f.alice)),
+        f.c().settle_reward_segment(&f.bob, &0, &last(&f.bob)),
+        f.c().settle_reward_segment(&f.liq, &0, &last(&f.liq)),
+    );
+    assert_eq!(a + b + l, 40 * 1_000_000_000_000_000_000, "whole bucket distributed (1e18-scaled)");
+    assert_eq!((f.pending(&f.alice), f.pending(&f.bob), f.pending(&f.liq)), (62, 70, 8), "Bob made whole (20); Alice/liquidator split at post-move weights");
+    assert_eq!(f.c().reward_totals().quarantine, 0);
+    // Each holder settles once; route A is closed after segment settlement started.
+    assert_eq!(f.c().settle_reward_segment(&f.bob, &0, &last(&f.bob)), 0, "no double settlement");
+    let ra = BytesN::from_array(&f.e, &[6; 32]);
+    f.c().propose_reward_attribution(&0, &1, &ra);
+    f.advance(86_400);
+    assert!(f.c().try_attribute_rewards(&0, &1, &ra).is_err(), "segment settlement already started");
+    let t = f.c().reward_totals();
+    assert_eq!(credited(&f) + t.quarantine, t.received);
+    assert_eq!(f.c().claim_rewards(&f.bob), 70);
+    assert_eq!(f.c().claim_rewards(&f.bob), 0);
+}
