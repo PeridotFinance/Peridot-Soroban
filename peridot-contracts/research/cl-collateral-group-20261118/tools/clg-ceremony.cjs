@@ -135,7 +135,9 @@ function steps(cfg) {
   add({id: 'gate.prices', kind: 'gate', gate: 'prices', why: 'controller get_price_usd(USDC) equals CAFJ Other(USDC); no fallback price'});
   // E. liquidity and liquidator
   tx('usdcMarket.deposit.admin', M, 'deposit', () => [addr(A), u128(P.usdcMarket.adminSupplyRaw)], async x => u((await view(M, 'balance', [addr(A)])(x)) || 0) >= u(P.usdcMarket.adminSupplyRaw), `owner supplies ${fmt7(P.usdcMarket.adminSupplyRaw)} USDC`, {auth: 'root+transfer', transferMax: P.usdcMarket.adminSupplyRaw});
-  add({id: 'fund.liquidator.xlm', kind: 'classic', signer: 'admin', op: 'create', dest: () => need(cfg.liquidator.publicKey, 'liquidator.publicKey'), xlm: P.funding.liquidatorStartXlm, why: 'create the CL liquidator account (fees + reserves)'});
+  add({id: 'fund.liquidator.xlm', kind: 'classic', signer: 'admin', op: 'create', dest: () => need(cfg.liquidator.publicKey, 'liquidator.publicKey'), xlm: P.funding.liquidatorStartXlm,
+    also: () => [{dest: need(cfg.heartbeat.publicKey, 'heartbeat.publicKey'), xlm: cfg.heartbeat.startXlm}],
+    why: 'create the CL liquidator account (25 XLM) and its fee-only D3 heartbeat account (12 XLM) in one transaction'});
   add({id: 'fund.liquidator.usdc', kind: 'classic', signer: 'admin', op: 'pay', asset: 'USDC', dest: () => need(cfg.liquidator.publicKey, 'liquidator.publicKey'), amountRaw: P.funding.liquidatorUsdcRaw, why: 'CL liquidator USDC inventory (after its trustlines exist)'});
   add({id: 'gate.liquidator', kind: 'gate', gate: 'liquidator', historical: true, why: 'inventory, allowance, trustlines, role separation; bot dry-run soak clean'});
   tx('usdcMarket.set_cash_borrowing_enabled', M, 'set_cash_borrowing_enabled', () => [addr(A), bool(true)], eq(view(M, 'get_cash_borrowing_enabled'), true), 'THE SWITCH', {historical: true, pre: async x => assert.equal(await view(C, 'is_borrow_paused', [addr(M)])(x), false, 'controller borrow pause active')});
@@ -341,9 +343,14 @@ async function opFor(cfg, c, s) {
   if (s.kind === 'classic') {
     let ops;
     if (s.op === 'create') {
-      const d = s.dest(); assert(S.StrKey.isValidEd25519PublicKey(d)); assert.notEqual(d, cfg.admin);
-      assert(!(await horizonAccount(cfg, d)), `${d} already exists`);
-      ops = [S.Operation.createAccount({destination: d, startingBalance: String(s.xlm)})];
+      const all = [{dest: s.dest(), xlm: s.xlm}, ...(s.also ? s.also() : [])];
+      assert.equal(new Set(all.map(a => a.dest)).size, all.length, 'accounts must be distinct');
+      ops = [];
+      for (const a of all) {
+        assert(S.StrKey.isValidEd25519PublicKey(a.dest)); assert.notEqual(a.dest, cfg.admin);
+        assert(!(await horizonAccount(cfg, a.dest)), `${a.dest} already exists`);
+        ops.push(S.Operation.createAccount({destination: a.dest, startingBalance: String(a.xlm)}));
+      }
     } else if (s.op === 'pay') {
       const d = s.dest(); assert.notEqual(d, cfg.admin);
       ops = [S.Operation.payment({destination: d, asset: assetOf(cfg, s.asset), amount: fmt7(s.amountRaw)})];
@@ -373,11 +380,16 @@ async function gate(cfg, c, name) {
     const lq = cfg.liquidator.publicKey; if (!lq) return {gate: name, ok: false, reason: 'liquidator.publicKey not set'};
     const bal = await c.tryView(cfg.deps.usdc, 'balance', [addr(lq)]), alw = await c.tryView(cfg.deps.usdc, 'allowance', [addr(lq), addr(I.usdcMarket)]);
     const acct = await horizonAccount(cfg, lq), trust = acct ? acct.balances.map(b => b.asset_code).filter(Boolean) : [];
+    const hbk = cfg.heartbeat && cfg.heartbeat.publicKey, hba = hbk ? await horizonAccount(cfg, hbk) : null;
+    const hbXlm = hba ? Number((hba.balances.find(b => b.asset_type === 'native') || {}).balance || 0) : 0;
+    const others = [cfg.admin, cfg.signers.team3.publicKey, 'GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G', 'GBSK3FYCGNYZLHHPSYRJNE53NZXDFL6ED24KLT3GUUETLFKDAUD7PQX3'];
     const rows = {usdcRaw: String(bal), minRaw: P.funding.liquidatorUsdcRaw, allowanceRaw: String(alw), trustlines: trust,
-      roles: lq !== cfg.admin && lq !== cfg.signers.team3.publicKey && lq !== 'GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G'};
+      heartbeat: {account: hbk, xlm: hbXlm, minXlm: Number(cfg.heartbeat.minXlm)},
+      roles: !others.includes(lq) && !!hbk && hbk !== lq && !others.includes(hbk)};
     // The allowance is reported only: the bot's APPROVE stage sets it right before its first L3 (bots/cl-liquidator README).
-    const ok = typeof bal === 'bigint' && bal >= u(P.funding.liquidatorUsdcRaw) && trust.includes('USDC') && trust.includes('PYUSD') && rows.roles;
-    return {gate: name, ok, liquidator: lq, rows, manual: 'also: bot dry-run log >= 2 h, zero errors, every borrower planned, D3 status read'};
+    const ok = typeof bal === 'bigint' && bal >= u(P.funding.liquidatorUsdcRaw) && trust.includes('USDC') && trust.includes('PYUSD') && rows.roles
+      && hbXlm >= Number(cfg.heartbeat.minXlm);
+    return {gate: name, ok, liquidator: lq, rows, manual: 'also: bot dry-run log >= 2 h, zero errors, every borrower planned, D3 status read; heartbeat tests pass and the Testnet heartbeat gap stats (p95 <= 20 s, 0 gaps > 60 s) are recorded (LAUNCH.md section 6.4)'};
   }
   if (name === 'cf-eta') {
     const eta = await c.raw(I.controller, key('PendingMarketCFEta', addr(I.receipt)));

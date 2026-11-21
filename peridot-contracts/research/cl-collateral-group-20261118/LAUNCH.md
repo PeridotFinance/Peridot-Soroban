@@ -33,9 +33,9 @@ Markers used below:
 | What goes live | Vault v2 `CAGZA2TN…GVTB`, receipt StgV2 `CDOPEENZ…3UZO`, group controller `CDSJ3ACU…TEOA`, USDC lending market `CCDYSYV5…BS2N`. These are deterministic ids from the admin address and the salts in `clg-mainnet.json`; `node clg-ceremony.cjs addresses` prints them |
 | Code | Candidates built at 96e7b3c (includes 6e83fd7 upgradeability and the 137de32 F1 emergency-exit fix): vault `6fd8599a…` 125,559 B, receipt `424454b9…` 125,585 B, controller `642421f1…` 64,957 B. USDC market from the on-chain cash code `5630a701` (no upload). Final freeze pending (HG1). Coordinator pin (21 Nov): exactly these three, pending the double canonical build confirmation in `build-hashes-cl-group.json`. **Never** pin `719914b1` (stale generated source, no F2) or `bf8864e1` (workspace-relative OZ path) |
 | Caps | USDC borrow cap **200 USDC**; USDC supply cap 1,000 USDC with 400 USDC owner liquidity; CL backing cap **2,000 PYUSD**; CF on vault units **50 %**; close factor 50 %; incentive 8 %; liquidation fee 0; at most 2 markets (structural, G7). See §2 |
-| CL liquidator | New dedicated key holding 200 USDC and 25 XLM. Covers two close-factor rounds on the full cap with a 10 % buffer (165 ≤ 200 USDC) |
+| CL liquidator | New dedicated key holding 200 USDC and 25 XLM. Covers two close-factor rounds on the full cap with a 10 % buffer (165 ≤ 200 USDC). Plus a separate fee-only **D3 heartbeat account** (12 XLM), §6.4 |
 | Ledger signatures | **61** (G1–G61): **54** by the admin (index 0) and **7** by team account T3 (index 3), all in the Stellar app. Contingency fallbacks are listed separately |
-| Admin XLM | Spends ≈ 404 XLM expected; ≤ 545 XLM if no refund is counted. 172.29 XLM today, so **G1 withdraws 500 XLM first**. See §3 |
+| Admin XLM | Spends ≈ 416 XLM expected; ≤ 559 XLM if no refund is counted. 172.29 XLM today, so **G1 withdraws 500 XLM first**. See §3 |
 | Days | Sat 21 gates and G1–G3 · Sun 22 deploy, wire, team borrow, first liquidation, CF-restore proposal · Mon 23 CF restore, pilot migration, pilot latches · Tue 24 public go-live |
 | Hard gates before G4 | HG1–HG9 in §1. Three of them are open blockers in code or keys (HG4 bot Mainnet signer, HG5 keeper v6, HG6 keys) |
 
@@ -50,7 +50,7 @@ Markers used below:
 | HG3 | **Emergency exit (condition 3)** passes on the frozen receipt bytes (§10): `user_required_emergency_exit_works_while_paused_oracle_stale_pool_broken_or_cf_zero`, `user_required_entered_debt_free_holder_exits_while_paused_oracle_broken_and_cf_zero`, `f1_emergency_exit_works_when_the_controller_traps`, `f1_paused_but_answering_controller_still_refuses_an_entered_owner`, `f2_cf_zero_does_not_let_an_indebted_borrower_leave_the_sleeve`, and `g10_debt_free_account_can_always_exit_and_an_indebted_or_unreadable_one_cannot` (all in `prototypes/cl-collateral-group/receipt-v2/tests/`, commit 137de32) | **PLACEHOLDER: pass result on the frozen bytes.** Not run by this stream |
 | HG4 | **CL bot Mainnet signer.** `bots/cl-liquidator/src/chain.mjs:27` refuses `--live` on Mainnet. A reviewed change is needed: a key-file signer as in `bots/cash-liquidator` (`LIQUIDATOR_KEY_FILE`), with the Mainnet passphrase pinned and the same journal rules | **BLOCKER (owner: lead).** §6 cannot run live without it |
 | HG5 | **Keeper v6.** Keeper v5 (`prototypes/cl-pyusd-vault-b-pilot-tools/keeper-*-v5.cjs`) is pinned to CCGK/CD6N. A copy pinned to the new receipt and vault v2 is needed for `stage_convert/mint/checkpoint_investment/invest/finalise` (G49, G59). It uses the same observation key GBHW…ZON4 (19.31 XLM), in sessions that never overlap a v5 session | **BLOCKER (owner: lead).** Fallback for T3 only: `stage_cancel` at MINTED leaves cash-backed units (Testnet flow), and every permissionless step has a Ledger fallback |
-| HG6 | **Keys.** T3 public key (`stellar keys add peridot-team3 --ledger --hd-path 3`), and the CL liquidator public key printed on its host (never the cash liquidator GDQA…5B5G, the pause key GBSK…PQX3 or the admin). Both entered in `clg-mainnet.json` | **PLACEHOLDER** |
+| HG6 | **Keys.** T3 public key (`stellar keys add peridot-team3 --ledger --hd-path 3`), the CL liquidator public key, and the **heartbeat** public key, both printed on their host. Neither may be the cash liquidator GDQA…5B5G, the pause key GBSK…PQX3, the admin or T3, and they must differ from each other. All three are entered in `clg-mainnet.json` (`signers.team3`, `liquidator`, `heartbeat`) | **PLACEHOLDER** |
 | HG7 | **Re-quote and re-emulate on the frozen bytes.** `tools/mainnet-sims.cjs quote` and the `fresh_mainnet` emulation (MAINNET-SIMS.md §6) rerun on HG1 bytes, including the receipt with F1. Replace `params.capCoverage.worstStage` with the measured L3 row on those bytes, then run `node clg-ceremony.cjs caps` | **PLACEHOLDER** (current figures come from the 18 Nov candidates and 6e83fd7) |
 | HG8 | **Approval.** You approve §2 (caps) and §3 (fees) and change `clg-mainnet.json` `status` | Pending |
 | HG9 | **Cash-market interplay.** G2 takes 600 USDC from the cash USDC market. Together with COMMANDS-21NOV §3 (500 USDC to the cash liquidator), the cash USDC supply falls to ≈ 2,940 USDC. At its 70 % reserve that leaves ≈ 882 USDC borrowable, 18 below its 900 cap. Accept this, or lower G2 | Decision |
@@ -97,7 +97,7 @@ Markers used below:
 | G10 | create USDC market from 5630a701 | 0.0209286 | 0.0271143 | [LIVE-SIM] 65592556, real code |
 | G11–G41 | 31 configuration transactions | 0.0005–0.47 each, ≈ 2.5 total | ≤ 5 total | [EMU] rows; pilot `fee_charged` analogues (initialize ≈ 0.27–0.47, setters ≤ 0.08) |
 | G42 | owner deposit 400 USDC | ≈ 0.005 | ≤ 0.05 | Cash-market analogue |
-| G43 / G44 | create liquidator (+25 XLM transferred) / pay 200 USDC | 0.001 / 0.001 | 0.001 each | Classic, fixed 10,000 stroops |
+| G43 / G44 | create the liquidator (+25 XLM) **and** the heartbeat account (+12 XLM): one transaction, two ops / pay 200 USDC | 0.002 / 0.001 | 0.002 / 0.001 | Classic, fixed 10,000 stroops per op |
 | G45 | the borrow switch | ≈ 0.001 | ≤ 0.05 | [EMU] M2b |
 | G46 / G48 | create T3 (+8 XLM transferred) / pay T3 51 PYUSD | 0.001 / 0.001 | 0.001 each | Classic |
 | G47, G49–G53, G55 | T3's own transactions (trustlines, open, enter × 2, checkpoint, borrow, repay) | ≈ 0.1 total | ≤ 0.4 | [EMU] F1, B1–B6; **paid by T3** |
@@ -112,8 +112,8 @@ Markers used below:
 |---|---:|---:|
 | Uploads | ≈ 368 (87 % of 422.80) | 507.36 |
 | Creates + configuration + other transactions | ≈ 4 | ≈ 7 |
-| XLM transferred to the liquidator (25) and T3 (8) | 33 | 33 |
-| **Total outflow** | **≈ 404 XLM** | **≈ 547 XLM** |
+| XLM transferred to the liquidator (25), heartbeat (12) and T3 (8) | 45 | 45 |
+| **Total outflow** | **≈ 416 XLM** | **≈ 559 XLM** |
 
 **Balance.** 172.29 + 500 (G1) = 672.29 XLM, which covers the worst case plus the 3 XLM reserve with margin.
 MAINNET-SIMS §4 recommends ≥ 365 XLM; 500 also covers the two account fundings and growth of the bytes at HG1.
@@ -308,7 +308,7 @@ step g45-switch prepare usdcMarket.set_cash_borrowing_enabled
 | Sig | Read-back |
 |---|---|
 | G42 | `rb usdcMarket.deposit.admin` true (admin pTokens ≥ 4,000,000,000) |
-| G43 | m: the liquidator account exists with 25 XLM |
+| G43 | m: the liquidator account exists with 25 XLM, and the heartbeat account with 12 XLM |
 | G44 | m: liquidator USDC balance 200 |
 | gate | `"ok": true`: balance ≥ 200 USDC, trustlines USDC + PYUSD, no role overlap. The allowance is only reported; the bot's APPROVE stage sets it right before its first L3. Manual: dry-run log ≥ 2 h, zero errors |
 | G45 | `rb usdcMarket.set_cash_borrowing_enabled` true |
@@ -382,6 +382,7 @@ HG4: the bot cannot send on Mainnet today. Commands marked **[after HG4]** use t
 ### 6.2 Host and key
 - **Host.** Run it as a second systemd service on Droplet `peridot-cashliq` (fra1, 165.245.249.83, context `peridot-liq2`), with its own data directory `/mnt/cashliq/cl-liquidator`, its own key file and its own journal. It never uses the cash liquidator key.
 - **Key.** Generate the key on the host; it never leaves it. The command depends on HG4's signer design; mirror the cash `bootstrap-liquidator.sh`. Print only the public key and enter it in `clg-mainnet.json` `liquidator.publicKey` (HG6).
+- **Heartbeat key.** A second key generated on the same host, for the fee-only D3 heartbeat (§6.4); see the commands there.
 - **Trustlines.** USDC (GA5Z…KZVN) and PYUSD (GDQE…U2V5), signed by the liquidator key on its host. **PLACEHOLDER:** the cash `trustlines.mjs` equivalent for this key. They are needed before G44, and PYUSD is needed to receive in-kind exits.
 
 ### 6.3 Config, dry run, gate, live
@@ -392,6 +393,7 @@ Copy `config/testnet.example.json` to `config/mainnet.local.json` (git-ignored) 
 - `liquidator` = the CL liquidator public key
 - `repayCapRaw` = `1000000000` (100 USDC, the first round on the full cap)
 - `submitMarginSec` 10, `watchIntervalSec` 10
+- `heartbeatIdentity` = `cl-hb-main`, `heartbeatAccount` = the heartbeat public key, `heartbeatPeriodMs` 12000. `config.mjs` refuses a heartbeat identity equal to `executorIdentity` and a heartbeat account equal to the liquidator
 
 ```bash
 cd /mnt/cashliq/cl-liquidator
@@ -403,7 +405,47 @@ node src/main.mjs --config config/mainnet.local.json --watch      # soak >= 2 h
 - **Live [after HG4]**, from Sun 16:00: first the single cycle of §7, then
   `node src/main.mjs --config config/mainnet.local.json --watch --live`
   as a systemd unit with restart-on-failure. It also provides the D3 heartbeat (≤ 20 s while a chain is open).
-- **Stop (kill switch K7):** `sudo systemctl stop cl-liquidator`. A stopped bot is not a D3 cause and does not unlock the fallback (D3-CONTINUITY.md).
+- **Stop (kill switch K7):** `sudo systemctl stop cl-liquidator`. A stopped bot is not a D3 cause and does not unlock the fallback (D3-CONTINUITY.md). The heartbeat runs inside the same process and stops with it.
+
+### 6.4 D3 heartbeat account (fee-only)
+
+**What it does.** `bots/cl-liquidator/src/heartbeat.mjs`, from stream A, is the D3 timer.
+- While the normal checkpoint is blocked, it sends receipt `checkpoint_nav()` every **12 s** from the last submit, and nothing else.
+- `checkpoint_nav` needs no authorization, so this account holds no power. It exists so the heartbeat never shares a sequence number with the liquidator's sends.
+- It runs only with `--watch --live`.
+- Every submit journals an intent with its hash, and inclusion is polled.
+
+**Key generation**, on the CL bot Droplet, as the service user:
+- The secret lives only in the CLI store or a chmod-600 file and is never printed.
+- The exact form follows HG4's Mainnet signer: today the heartbeat signs with `stellar tx sign --sign-with-key <alias>`.
+
+```bash
+umask 077
+stellar keys generate cl-hb-main --no-fund
+stellar keys address cl-hb-main          # public key only -> clg-mainnet.json heartbeat.publicKey
+chmod 600 ~/.config/stellar/identity/cl-hb-main.toml
+ls -l ~/.config/stellar/identity/cl-hb-main.toml   # -rw-------
+```
+- Never run `stellar keys show` (that prints the secret).
+- If HG4 moves the signer to a key file, generate the file the same way, `umask 077` with mode 600 and never printed. Use the `--sign-with-key` alias only on hosts where the CLI keystore is used.
+
+**Funding, inside G43** (same transaction as the liquidator account; admin pays): **12 XLM**.
+
+| Item | Value |
+|---|---|
+| L1a `checkpoint_nav` | 15.7M CPU, 18 entries, 1 write (DESIGN §5.2) |
+| Cap per call | ≤ 0.007 XLM (min resource ≲ 0.004, × 1.2, plus 0.002 bid/pad), by analogy with the 18.5M-CPU / 7-write withdraw simulated at 0.0040 |
+| Cap rate | 5 calls a minute × 0.007 = **2.1 XLM per hour** of open chain |
+| 12 XLM | 1 XLM base reserve (0 subentries) + about **5 h** of continuous chain at the cap, about 9 h at the expected 0.004 |
+
+**PLACEHOLDER:** replace the cap per call with the live `checkpoint_nav` simulation right after G26, using `clg-ceremony.cjs simulate-all`, step `team.checkpoint_nav`. Top up when the balance falls below **10 XLM**; `gate liquidator` refuses below that.
+
+**Dry-run gate** (before `gate liquidator` and G45):
+1. `node --test` in `bots/cl-liquidator` passes, including `test/heartbeat.test.mjs` (timer, gap statistics).
+2. `node src/main.mjs --config config/mainnet.local.json --once` loads the config without a heartbeat or identity refusal. In dry run the `start` line shows `heartbeat: null`, because the heartbeat runs only live; that is expected.
+3. A Testnet live run of the heartbeat (`config/testnet-real.local.json`, identity `clgr-hb`) over a ≥ 10-minute blocked chain. Its `gapStats` show p95 ≤ 20 s and **0 gaps over 60 s**, recorded as evidence. **PLACEHOLDER:** the stream A result.
+4. `gate liquidator` shows `rows.heartbeat.xlm ≥ 10` and `roles: true`, meaning the heartbeat account is distinct from the liquidator, admin, T3, the cash liquidator and the pause key.
+5. After going live: the first blocked period on Mainnet shows heartbeat intents and results in the journal about 12 s apart. Until then, the D3 residual of D3-CONTINUITY.md applies.
 
 ---
 
@@ -553,6 +595,7 @@ Replace `vault` with `receipt`, `controller` or `usdcMarket` as needed; those ne
 | P7 | Re-quote, re-emulation and the L3 row on the frozen bytes (HG7) | `params.capCoverage.worstStage`, §3 |
 | P8 | Exact `fee_charged` per configuration step: filled from `send.json` after each step | §3 |
 | P9 | Liquidator in-kind exit of seized units: a manual tool for its host | §7 |
+| P10 | Heartbeat key and public key; live `checkpoint_nav` fee after G26; stream A's Testnet gap stats; the heartbeat's Mainnet signer form (HG4) | §6.4, `clg-mainnet.json` `heartbeat` |
 
 ## 13. Evidence (outside git)
 

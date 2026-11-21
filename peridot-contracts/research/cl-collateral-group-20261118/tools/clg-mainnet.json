@@ -170,5 +170,11 @@
         "source": "BUILD-REPORT.md section 2 (candidate bytes); PLACEHOLDER: replace with MAINNET-SIMS.md on the frozen upgradeable bytes"
       }
     }
+  },
+  "heartbeat": {
+    "publicKey": null,
+    "startXlm": "12",
+    "minXlm": "10",
+    "note": "PLACEHOLDER: fee-only D3 heartbeat account of bots/cl-liquidator (src/heartbeat.mjs, config heartbeatIdentity/heartbeatAccount). Generated on the CL bot Droplet, secret only in a chmod-600 file, never printed. Must differ from the liquidator, admin, T3, cash liquidator and pause key. Sizing: L1a cap <= 0.007 XLM x 5 per minute = 2.1 XLM per hour of open chain; 12 XLM = 1 XLM base reserve + about 5 h of continuous chain at the cap (about 9 h at the expected 0.004)."
   }
 }
