@@ -10,7 +10,8 @@ import {openJournal, unresolvedL3, lastL4Failure, lastL2CacheTs} from './journal
 import {assessDepeg, fetchReference, httpJson} from './watcher.mjs';
 import {makeHeartbeat} from './heartbeat.mjs';
 import {execFile} from 'node:child_process';
-import {cliEnv, assertIdentityName} from './chain.mjs';
+import {cliEnv, assertIdentityName, MAINNET} from './chain.mjs';
+import {isMainnet, makeRpc, startChecks, makeSender, botAllow, makeHeartbeatSigner, openBudget, openGate, acquireRunLock, trustlineStatus, requireTrustlines} from './mainnet.mjs';
 
 /** CLI-held key signs an SDK-built envelope (stdin -> stdout). No key material enters this process. */
 export function makeCliSigner(cfg, identity, {execFileImpl = execFile} = {}) {
@@ -23,7 +24,12 @@ export function makeCliSigner(cfg, identity, {execFileImpl = execFile} = {}) {
   });
 }
 /** Transaction hash printed by `stellar contract invoke` on stderr (last 64-hex token), or null. */
-export function hashFromCli(stderr) { const m = String(stderr ?? '').match(/\b[0-9a-f]{64}\b/g); return m ? m.at(-1) : null; }
+export function hashFromCli(stderr) {
+  // Prefer the CLI's own markers: contract events printed on stderr can contain other 64-hex values (e.g. a wasm hash).
+  const t = String(stderr ?? ''), m = /tx\/([0-9a-f]{64})/.exec(t) || /Signing transaction: ([0-9a-f]{64})/.exec(t);
+  if (m) return m[1];
+  const all = t.match(/\b[0-9a-f]{64}\b/g); return all ? all.at(-1) : null;
+}
 
 const out = o => console.log(JSON.stringify({t: new Date().toISOString(), ...o}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
 const argv = process.argv.slice(2), has = f => argv.includes(f), arg = f => (argv.includes(f) ? argv[argv.indexOf(f) + 1] : null);
@@ -81,10 +87,11 @@ async function observe(cfg, r, j, st) {
 async function send(cfg, exec, j, s, obs) {
   const call = stageCall(s, cfg, obs.sequence), key = s.stage === 'L3' ? s.borrower : s.stage === 'L5' ? String(s.id) : s.stage;
   const seq = j.intent(s.stage, key, obs.now, {call, nextPending: Number(obs.status.next_pending), cacheTs: obs.priceCache?.timestamp ?? null});
-  const res = await exec(call.contract, call.fn, call.args);
-  if (res.unknown) { out({level: 'alert', msg: `${s.stage} outcome unknown (CLI timeout/signal): intent left unresolved`, stderr: res.stderr}); return false; }
-  j.result(seq, s.stage, key, obs.now, res.ok, {hash: hashFromCli(res.stderr), retval: res.stdout === 'false' ? false : res.stdout === 'true' ? true : res.stdout.slice(0, 200), stderr: res.ok ? undefined : res.stderr});
-  out({level: res.ok ? 'info' : 'warn', msg: `sent ${s.stage}`, ok: res.ok, hash: hashFromCli(res.stderr), stdout: res.stdout, stderr: res.ok ? undefined : res.stderr});
+  // Mainnet sender: the hash is journalled (note `of` = intent seq) after signing and BEFORE sending.
+  const res = await exec(call.contract, call.fn, call.args, {onSigned: hash => j.note({of: seq, stage: s.stage, key, hash, signed: true})});
+  if (res.unknown) { out({level: 'alert', msg: `${s.stage} outcome unknown (timeout/signal/no final status): intent left unresolved`, hash: res.hash ?? null, stderr: res.stderr}); return false; }
+  j.result(seq, s.stage, key, obs.now, res.ok, {hash: res.hash ?? hashFromCli(res.stderr), retval: res.stdout === 'false' ? false : res.stdout === 'true' ? true : res.stdout.slice(0, 200), stderr: res.ok ? undefined : res.stderr});
+  out({level: res.ok ? 'info' : 'warn', msg: `sent ${s.stage}`, ok: res.ok, hash: res.hash ?? hashFromCli(res.stderr), stdout: res.stdout, stderr: res.ok ? undefined : res.stderr});
   return res.ok;
 }
 
@@ -115,6 +122,7 @@ async function main() {
   if (arg('--obs')) { const o = JSON.parse(fs.readFileSync(arg('--obs'), 'utf8')); out({msg: 'plan', ...plan({...o, blockedL3: new Set(o.blockedL3 ?? [])}, o.opts ?? {})}); return; }
   if (!arg('--config')) throw Error('usage: main.mjs --config <file.json> [--once|--watch] [--live] | --obs <file.json>');
   const cfg = loadConfig(arg('--config')), live = has('--live');
+  if (isMainnet(cfg)) return mainMainnet(cfg, live);
   if (live) { assertLiveAllowed(cfg); if (cfg.repayCapRaw == null) throw Error('--live requires repayCapRaw (also the approval ceiling)'); }
   const r = makeReader(cfg);
   if ((await r.passphrase()) !== cfg.networkPassphrase) throw Error('RPC network passphrase does not match config');
@@ -129,6 +137,47 @@ async function main() {
   for (;;) {
     let wait = cfg.watchIntervalSec;
     try { const s = await step(cfg, r, exec, j, hb); wait = s.sent ? 1 : Math.min(cfg.watchIntervalSec, Math.max(1, s.waitSec)); } catch (e) { out({level: 'warn', msg: 'cycle failed', err: e.message}); }
+    await new Promise(res => setTimeout(res, wait * 1000));
+  }
+}
+
+/**
+ * Mainnet (HG4). Dry run unless BOTH `--live` and DRY_RUN=false. Start: RPC network, code pins (receipt, vault,
+ * controller, USDC market), role separation, single instance per data directory. Live also needs a passed dry-run
+ * gate (dryRunGateHours, default 12, of error-free --watch dry-run cycles on the same config and source).
+ */
+/** Mainnet send mode: live only with BOTH `--live` and DRY_RUN=false (any other DRY_RUN value means dry run). */
+export function mainnetLiveMode(liveFlag, env = process.env) {
+  const dryEnv = env.DRY_RUN !== 'false';
+  if (liveFlag && dryEnv) throw Error('refused: --live on Mainnet also needs DRY_RUN=false in the environment');
+  if (!liveFlag && !dryEnv) throw Error('refused: DRY_RUN=false without --live (ambiguous); pass both or neither');
+  return liveFlag;
+}
+async function mainMainnet(cfg, liveFlag, env = process.env) {
+  const live = mainnetLiveMode(liveFlag, env);
+  const release = acquireRunLock(cfg.dataDir);
+  process.on('exit', release);
+  const S = loadSdk(), rpc = makeRpc(cfg, {S}), r = makeReader(cfg);
+  const checks = await startChecks(cfg, {rpc, view: r.view, S, out});
+  const j = openJournal(cfg.dataDir), budget = openBudget(cfg.dataDir, cfg), gate = openGate(cfg.dataDir, cfg);
+  let exec = null, hb = null;
+  // Both trustlines: refused in live mode, reported in dry run (the soak may start before they exist).
+  const trustlines = live ? await requireTrustlines(cfg, rpc, cfg.liquidator, S) : await trustlineStatus(cfg, rpc, cfg.liquidator, S).catch(() => null);
+  if (!live && !(trustlines?.USDC && trustlines?.PYUSD)) out({level: 'warn', msg: 'liquidator trustlines incomplete: live mode will refuse to start', trustlines});
+  if (live) {
+    const armed = gate.requireArmed();
+    exec = makeSender(cfg, {rpc, S, account: cfg.liquidator, keyFile: cfg.executorKeyFile, kind: 'liquidator', allow: botAllow, budget});
+    if (has('--watch') && cfg.heartbeatAccount) hb = makeHeartbeat({S, rpc, cfg, journal: j, sign: makeHeartbeatSigner(cfg, {S, budget}), out}).start();
+    out({level: 'info', msg: 'dry-run gate passed', since: armed.since, last: armed.last, armedAt: armed.armedAt, cycles: armed.cycles});
+  }
+  out({msg: 'start', live, watch: has('--watch'), network: MAINNET, signer: live ? 'key file' : 'none (dry run)', trustlines, code: checks.code, pendingUpgrades: checks.pendingUpgrades,
+    heartbeat: hb ? {account: cfg.heartbeatAccount, periodMs: cfg.heartbeatPeriodMs ?? 12000} : null,
+    budget: {liquidatorSpentToday: String(budget.spent('liquidator')), heartbeatSpentToday: String(budget.spent('heartbeat'))}, gate: live ? 'armed' : gate.load()});
+  if (!has('--watch')) { for (let i = 0; i < (live ? 8 : 1); i++) if (!(await step(cfg, r, exec, j)).sent) break; return; }
+  for (;;) {
+    let wait = cfg.watchIntervalSec, ok = true;
+    try { const s = await step(cfg, r, exec, j, hb); wait = s.sent ? 1 : Math.min(cfg.watchIntervalSec, Math.max(1, s.waitSec)); } catch (e) { ok = false; out({level: 'warn', msg: 'cycle failed', err: e.message}); }
+    if (!live) { const g = gate.record(ok); if (!ok || g.cycles % 360 === 1) out({level: ok ? 'info' : 'warn', msg: 'dry-run gate', since: g.since, last: g.last, cycles: g.cycles, resets: g.resets, needHours: cfg.dryRunGateHours}); }
     await new Promise(res => setTimeout(res, wait * 1000));
   }
 }

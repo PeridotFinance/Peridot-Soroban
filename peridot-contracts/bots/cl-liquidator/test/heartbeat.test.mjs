@@ -27,6 +27,7 @@ test('hashFromCli: last 64-hex token on stderr', () => {
   const h = 'a'.repeat(64), g = 'b'.repeat(64);
   assert.equal(hashFromCli(`Transaction hash is ${h}\nhttps://x/tx/${g}`), g);
   assert.equal(hashFromCli('no hash'), null);
+  assert.equal(hashFromCli(`Signing transaction: ${h}\nEvent: upgraded ${g}\nhttps://stellar.expert/explorer/testnet/tx/${h}`), h, 'CLI markers beat event payloads');
 });
 test('config: heartbeat identity/account must be distinct from the liquidator', () => {
   const c = {contracts: {receipt: 'C', vault: 'C', controller: 'C', usdcMarket: 'C', usdc: 'C', pyusd: 'C', oracle: 'C'},
