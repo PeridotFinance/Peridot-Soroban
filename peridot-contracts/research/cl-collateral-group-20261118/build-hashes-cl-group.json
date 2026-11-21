@@ -1,0 +1,87 @@
+{
+ "schema": "cl-group-build-v1",
+ "builtAt": "2026-11-21",
+ "commit": "15d98332758fb611c0a56bf68dad6cab98af626a",
+ "releaseSourcesUnchangedThrough": "05745bdf7b87700972f1f58276736ec5fc277adb (checked: no diff under vault-v2, receipt-v2, controller, d3-chain, contracts/simple-peridottroller)",
+ "toolchain": {
+  "stellar": "26.1.0 (1228cff8)",
+  "rustc": "1.96.0",
+  "sorobanSdk": "25.3.1"
+ },
+ "command": "bash prototypes/cl-collateral-group/build/canonical-build.sh 15d98332758fb611c0a56bf68dad6cab98af626a <dest>   (from peridot-contracts/ of any checkout of this repo; <dest> must not exist)",
+ "recipe": [
+  "git archive <commit> prototypes/cl-collateral-group contracts/simple-peridottroller, extracted to <dest>/src/peridot-contracts (shared worktree never used)",
+  "vault: stellar contract build --locked --package cl-share-vault --features cl-pyusd-vault-b (own fresh CARGO_TARGET_DIR)",
+  "controller: apply-patches.py inside the archive, then stellar contract build --locked --features group",
+  "receipt: apply-stgv2.py over the frozen run-5 base, OZ path rewritten to the canonical absolute path, stellar contract build --locked --package receipt-vault --features stg-mainnet-accepted,stg2-mainnet-accepted",
+  "env: CARGO_INCREMENTAL=0 CARGO_NET_OFFLINE=true and every *_INIT_ADMIN=GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP"
+ ],
+ "openzeppelin": {
+  "path": "/Users/joshua/Peridot/Peridot-Soroban/openzeppelin-stellar-contracts",
+  "commit": "3f81125bed3114cc93f5fca6d13240082050269a",
+  "note": "receipt bytes depend on this absolute path; any other OZ path gives different receipt bytes"
+ },
+ "receiptBase": {
+  "path": "/Users/joshua/Peridot/Peridot-Soroban/peridot-contracts/target/cl-staged-market-integration/run-5/staged",
+  "receiptVaultSourceDigest": "bf6dad44ac6794e6e003e51dc71f7265046d3d2609c3861d2ea746cb8c2cc8c2",
+  "stagedRsSha256": "522e34022bbf5f4fb8c2527d04af7688a31608f107ef5adf9061b65a275c75bf"
+ },
+ "reproduced": [
+  {
+   "dest": "/Users/joshua/Peridot/Peridot-Soroban/.wt-cl-group/peridot-contracts/target/clg/canonical/15d9833-a",
+   "fresh target dirs": true,
+   "identical": true
+  },
+  {
+   "dest": "<session scratchpad>/canon-15d9833-b (different absolute path, deleted afterwards)",
+   "fresh target dirs": true,
+   "identical": true
+  },
+  {
+   "dest": "target/clg/freeze/final-96e7b3c (git archive 96e7b3c, same release sources)",
+   "identical": true
+  }
+ ],
+ "artifacts": {
+  "vault-v2": {
+   "file": "artifacts/cl_share_vault.wasm",
+   "bytes": 125559,
+   "sha256": "6fd8599a9b369ab84ba9ee8fd95642cde50621c07d5cc37cd278e8f225a4870e",
+   "features": "cl-pyusd-vault-b"
+  },
+  "receipt-stgv2": {
+   "file": "artifacts/receipt_vault.wasm",
+   "bytes": 125585,
+   "sha256": "424454b94e455c92921d7f548be92ffbe0bc2bcf67dcb05eed1696dacad1d379",
+   "features": "stg-mainnet-accepted,stg2-mainnet-accepted"
+  },
+  "group-controller": {
+   "file": "artifacts/simple_peridottroller.wasm",
+   "bytes": 64957,
+   "sha256": "642421f151273a5a9e89523b5969fdcef89d22f0388c79289c5461cf0dc7f208",
+   "features": "group (G0-G11)"
+  },
+  "usdc-group-market": {
+   "sha256": "5630a701bc7f29ea1334cfd1c12e349664da7376fd86df080d587ea9f685e452",
+   "bytes": 89808,
+   "note": "cash-upgrade code, already on Mainnet; not rebuilt here"
+  }
+ },
+ "limit": 131072,
+ "superseded": {
+  "719914b17f2ceeffe4e77fe0e0a5369066da4ccb8201691e09fea5333710234d": "controller built from stale generated src WITHOUT the committed G10/F2 sleeve exit guard; do not upload",
+  "bf8864e11a6f40740fc15b2832b07eaa58523310c8d3c4fc931162ebe6f41da6": "receipt built with ws-relative OZ path (same source); non-canonical",
+  "72286249db318fcd459b666c994c83a167744719dec611f54f320eb2706b2394": "pre-upgradeability vault",
+  "e6695dbdb29f27130729516d86135a169a44ae0f49ac82be93c58a858dbdc28e": "pre-upgradeability receipt",
+  "debe1a36e658f9a6d491d7fc7f13d1c92e99b4e8fe27f1cc69242a8a4f66f55c": "pre-upgradeability controller"
+ },
+ "testMarkersFromSameSource": {
+  "vault": "d3ea4f91e3509c86bfe768d6d90266ddbcbc5fab83c0a3bc1b96fc0406606e3f",
+  "receipt": "7a88145377a38724c2e82503214388a004d2e4d06e75540422c3fee292aef6d4",
+  "controller": "01adf6137e20eb85a14a49543a210c5c736b94ce946ee6b77d507c03fb0d4ae0"
+ },
+ "compiledTests": {
+  "upgrade-tests (CLG_UPG_DIR=target/clg/freeze/final-96e7b3c/upgdir)": "2 passed: controller_propose_cancel_timelock_auth_and_v2_prime, receipt_upgrade_needs_controller_pauses_and_preserves_state",
+  "harness fresh_mainnet (public network id, live state ledger 65592376)": "27 sequences / 131 rows as intended: ceremony, first command, borrow/repay, vault upgrade gate + state preserved, EX1-EX4 user-required emergency exit, F1a/F1b, F2; only P9 frozen-oracle artefact. Evidence fresh-result-96e7b3c-exits.json sha256 98a14c729e627498198ecfb7a4850788e19475a661ce78dcb6baf38ab573b7fd"
+ }
+}
