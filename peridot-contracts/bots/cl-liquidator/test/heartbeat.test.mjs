@@ -105,3 +105,18 @@ test('failoverRpc: a transport failure moves to the next server and stays; answe
   b.getAccount = async () => { throw Error('down'); };
   await assert.rejects(() => r.getAccount('G'), /fetch failed|down/);
 });
+
+test('makeHeartbeat: keeps beating on its own observation when the plan loop stops observing', async () => {
+  const f = fakes(); let now = 0;
+  f.S.scValToNative = v => v; f.rpc.simulateTransaction = async () => ({result: {retval: 0}});
+  const hb = makeHeartbeat({S: f.S, rpc: f.rpc, cfg: {heartbeatAccount: 'G', contracts: {receipt: 'C'}, networkPassphrase: 'T'}, journal: f.j,
+    sign: async x => x, out: () => {}, clock: () => now});
+  const settle = async () => { for (let k = 0; k < 6; k++) await new Promise(r => setImmediate(r)); };
+  hb.observe(true);                       // one plan-loop observation, then the plan loop is dead
+  for (now = 0; now <= 120_000; now += 500) { await hb.tick(); await settle(); }
+  assert.equal(f.sent.length, 11, 'one heartbeat every 12 s for 120 s with no plan-loop observation');
+  f.rpc.simulateTransaction = async () => ({result: {retval: 995764}});   // NAV healthy again
+  const before = f.sent.length;
+  for (; now <= 200_000; now += 500) { await hb.tick(); await settle(); }
+  assert.ok(f.sent.length <= before + 2, 'stops once its own observation says not blocked');
+});

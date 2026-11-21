@@ -7,6 +7,7 @@
 
 export const HEARTBEAT_PERIOD_MS = 12_000;
 export const OBS_MAX_AGE_MS = 60_000;
+export const SELF_OBS_MS = 20_000;   // the heartbeat re-observes by itself when the plan loop has not for this long
 
 /**
  * Pure timer logic (unit-tested). Due when the latest observation says the checkpoint is blocked (a
@@ -51,7 +52,7 @@ export function failoverRpc(rpcs, out = () => {}) {
 }
 
 export function makeHeartbeat({S, rpc, cfg, journal, sign, out, clock = () => Date.now()}) {
-  const st = {blocked: false, obsAtMs: null, lastSubmitMs: null, submitting: false, seq: null, pending: new Map(), included: [], retryAtMs: null};
+  const st = {blocked: false, obsAtMs: null, lastSubmitMs: null, submitting: false, seq: null, pending: new Map(), included: [], retryAtMs: null, observing: false};
   const period = cfg.heartbeatPeriodMs ?? HEARTBEAT_PERIOD_MS, fee = String(cfg.heartbeatFeeStroops ?? 10_000), RETRY_MS = 2_000;
   async function submitOne() {
     st.submitting = true;
@@ -96,11 +97,25 @@ export function makeHeartbeat({S, rpc, cfg, journal, sign, out, clock = () => Da
       } catch (e) { out({level: 'warn', msg: 'heartbeat poll failed', err: e.message}); }
     }
   }
+  // Self-observation through the heartbeat's own (failover) RPC: a plan loop stuck on a dead primary RPC
+  // must not starve the heartbeat. Simulated checkpoint_nav retval 0 = blocked; any other answer = not blocked.
+  async function selfObserve() {
+    st.observing = true;
+    try {
+      const tx = new S.TransactionBuilder(new S.Account(cfg.heartbeatAccount, '0'), {fee: '100', networkPassphrase: cfg.networkPassphrase})
+        .addOperation(new S.Contract(cfg.contracts.receipt).call('checkpoint_nav')).setTimeout(30).build();
+      const sim = await rpc.simulateTransaction(tx);
+      const blocked = S.rpc.Api.isSimulationSuccess(sim) && BigInt(S.scValToNative(sim.result.retval)) === 0n;
+      st.blocked = blocked; st.obsAtMs = clock();
+    } catch (e) { out({level: 'warn', msg: 'heartbeat self-observation failed', err: e.message.slice(0, 200)}); }
+    finally { st.observing = false; }
+  }
   let timer = null;
   return {
     observe(blocked) { st.blocked = !!blocked; st.obsAtMs = clock(); },
     async tick() {
       const now = clock();
+      if (!st.observing && !st.submitting && (st.obsAtMs == null || now - st.obsAtMs > SELF_OBS_MS)) await selfObserve();
       if ((st.retryAtMs == null || now >= st.retryAtMs) && heartbeatDue({blocked: st.blocked, obsAtMs: st.obsAtMs, nowMs: now, lastSubmitMs: st.lastSubmitMs, submitting: st.submitting, periodMs: period})) { st.retryAtMs = null; submitOne(); }
       if (st.pending.size) await poll();
     },
