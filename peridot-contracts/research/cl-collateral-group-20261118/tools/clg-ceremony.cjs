@@ -20,7 +20,9 @@
 //   reward-route-a <propose|attribute> <boundaryId> <raw> <evidenceHex> --out F   REFUSED for seize-opened boundaries (F4)
 //   reward-route-b <propose|attribute> <segmentId> <raw> <evidenceHex> --out F    the release path after a seizure
 //   reward-prepare <segmentId> [limit] / reward-settle <holder> <segmentId> <checkpoint> --out F   route B, permissionless
-//   trust-liquidator --out F          unsigned changeTrust USDC + PYUSD for the CL liquidator (signed on its host)
+//   first-touch <cache-price|nav> --out F   G41a / G49a: admin pays the first (rent-bearing) cache_price / checkpoint_nav
+//   trust-liquidator --out F          FALLBACK only: unsigned changeTrust USDC + PYUSD for the liquidator. The normal path
+//                                     is src/trustlines.mjs on the host (LAUNCH.md section 6.3a)
 //   status <hash>                     RPC outcome (read-only)
 //
 // Refusals: any retired pre-incident contract as target or argument; the pilot vault/receipt except their two
@@ -615,6 +617,16 @@ async function main(argv) {
     const s = {id: `${cmd}.${argv.slice(1, 3).join('.')}`, kind: 'tx', signer: 'admin', target: V, method: cmd === 'reward-prepare' ? 'prepare_reward_segment' : 'settle_reward_segment', args: () => args, auth: 'none'};
     const {res, summary} = await buildStep(cfg, c, s);
     return write(cfg, opt('--out'), res, summary);
+  }
+  if (cmd === 'first-touch') {
+    // G41a / G49a: the first cache_price(USDC) / checkpoint_nav, paid by the admin, so the bot's resource-fee ceiling
+    // never meets a rent-bearing first call. Permissionless calls: no auth entry.
+    const I = ids(cfg), which = argv[1];
+    assert(which === 'cache-price' || which === 'nav', 'first-touch cache-price|nav');
+    const s = which === 'nav' ? {id: 'G49a.first-touch.nav', target: I.receipt, method: 'checkpoint_nav', args: () => []}
+      : {id: 'G41a.first-touch.cache-price', target: I.controller, method: 'cache_price', args: () => [addr(cfg.deps.usdc)]};
+    const {res, summary} = await buildStep(cfg, c, {...s, kind: 'tx', signer: 'admin', auth: 'none'});
+    return write(cfg, opt('--out'), res, {...summary, n: s.id.split('.')[0]});
   }
   if (cmd === 'trust-liquidator') {
     // Unsigned changeTrust USDC + PYUSD (one tx, two ops) with the CL LIQUIDATOR as source. It is signed ON THE
