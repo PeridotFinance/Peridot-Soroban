@@ -131,13 +131,113 @@ fn fresh_inner() {
                     call("B5 ctrl.account_liquidity(owner)", &c2, "account_liquidity", |e| (a(e, O),).into_val(e), true),
                     call("B6 usdc.repay(owner, all)", &m2, "repay", |e| (a(e, O), 100_100_000u128).into_val(e), true),
                 ];
-                let (rows, _s3, _ok3) = seq("FRESH borrow path on the fresh stack (CAFJ USDC price)", &s2, &bl);
+                let (rows, s3, ok3) = seq("FRESH borrow path on the fresh stack (CAFJ USDC price)", &s2, &bl);
                 results.push(rows);
+                if ok3 && std::path::Path::new(&format!("{}/vault-v2-marker.wasm", wdir())).exists() {
+                    fresh_upgrade_rows(&s3, &f, &mut results, &mut log);
+                }
             }
         } else { extra = json!({"open_quote_unavailable": q}); }
     }
-    // Fee estimate per measured row (SDK pubnet fee snapshot, conservative rent).
     let out = json!({"schema": "clg-fresh-mainnet-emulation-v1", "state_ledger": st["ledger"], "state_close_time": st["closeTime"], "network": "public",
         "results": results, "log": log, "extra": extra});
     std::fs::write(format!("{}/fresh-result.json", sdir()), serde_json::to_string_pretty(&out).unwrap()).unwrap();
+}
+
+/// Upload a code blob in a setup step (no measurement). Returns (next snapshot, wasm hash).
+fn fresh_upload(snap: &LedgerSnapshot, code: &[u8]) -> (LedgerSnapshot, [u8; 32]) {
+    let s = step_env(snap); let env = &s.env;
+    let h = env.deployer().upload_contract_wasm(soroban_sdk::Bytes::from_slice(env, code)).to_array();
+    let mut next = env.to_ledger_snapshot();
+    strip_nonces(&mut next);
+    for (k, _) in next.ledger_entries.iter() { let x = k.to_xdr_base64(Limits::none()).unwrap(); CREATED.with(|c| c.borrow_mut().insert(x)); }
+    next.sequence_number += 1; next.timestamp += 6;
+    (next, h)
+}
+
+/// Vault v2 upgrade gate on the fresh stack, public network id: propose -> timelock -> pause ->
+/// upgrade_wasm(v2' marker) -> unpause -> a real second command; state preserved. Also cancel.
+/// The proposal is placed 24 h + 60 s in the PAST (snapshot clock moved back for that step only)
+/// so the post-upgrade command still sees fresh live oracle and pool state; the propose step reads
+/// no time-dependent external state.
+fn fresh_upgrade_rows(s3: &LedgerSnapshot, f: &Fresh, results: &mut StdVec<Value>, log: &mut StdVec<Value>) {
+    let (s4, h) = fresh_upload(s3, &wasm("vault-v2-marker.wasm"));
+    log.push(json!({"marker_hash": hex::encode(h)}));
+    let v = f.v.clone(); let r = f.r.clone();
+    let hb = move |e: &Env| soroban_sdk::BytesN::<32>::from_array(e, &h);
+    let state = |snap: &LedgerSnapshot| { let (v, r) = (v.clone(), r.clone()); read(snap, move |env| json!({
+        "vault_total_supply": tv(env, &v, "total_supply", Vec::new(env)),
+        "vault_liquidity": tv(env, &v, "get_position_liquidity", Vec::new(env)),
+        "vault_beneficial_owner": tv(env, &v, "stage_beneficial", (a(env, O),).into_val(env)),
+        "vault_ticks": tv(env, &v, "get_ticks", Vec::new(env)),
+        "vault_receipt": tv(env, &v, "stage_receipt", Vec::new(env)),
+        "vault_reward_totals": tv(env, &v, "reward_totals", Vec::new(env)),
+        "receipt_units_owner": tv(env, &r, "stage_units", (a(env, O),).into_val(env)),
+        "receipt_stage_state": tv(env, &r, "stage_state", Vec::new(env)),
+        "receipt_stage2_config": tv(env, &r, "stage2_config", Vec::new(env)),
+    })) };
+    let before = state(&s4);
+    // ---- cancel branch
+    {
+        let mut sp = s4.clone(); sp.timestamp -= 86_460;
+        let (h1, h2) = (hb.clone(), hb.clone());
+        let (rows, _, _) = seq("FRESH UPG-C propose then cancel_upgrade; upgrade_wasm then fails", &sp, &[
+            call("UC1 vault.propose_upgrade_wasm(admin, v2')", &v, "propose_upgrade_wasm", move |e| (a(e, O), h1(e)).into_val(e), true),
+            call("UC2 vault.cancel_upgrade(admin)", &v, "cancel_upgrade", |e| (a(e, O),).into_val(e), true),
+            call("UC3 vault.get_pending_upgrade() = None", &v, "get_pending_upgrade", |e| Vec::new(e), true),
+            call("UC4 vault.set_paused(admin, true)", &v, "set_paused", |e| (a(e, O), true).into_val(e), true),
+            call("UC5 vault.upgrade_wasm after cancel -> revert", &v, "upgrade_wasm", move |e| (a(e, O), h2(e)).into_val(e), true).after(86_460).fails(),
+        ]);
+        results.push(rows);
+    }
+    // ---- propose (24 h + 60 s ago), early execute refused
+    let mut sp = s4.clone(); let t0 = sp.timestamp; sp.timestamp = t0 - 86_460;
+    let (h1, h2) = (hb.clone(), hb.clone());
+    let (rows, mut sq, ok) = seq("FRESH UPG-1 propose (T-24h-60s), pause; execute before ETA refused", &sp, &[
+        call("U1 vault.propose_upgrade_wasm(admin, v2')", &v, "propose_upgrade_wasm", move |e| (a(e, O), h1(e)).into_val(e), true),
+        call("U1b vault.get_pending_upgrade()", &v, "get_pending_upgrade", |e| Vec::new(e), true),
+        call("U1c vault.set_paused(admin, true)", &v, "set_paused", |e| (a(e, O), true).into_val(e), true),
+        call("U2 vault.upgrade_wasm before ETA (paused) -> revert timelocked", &v, "upgrade_wasm", move |e| (a(e, O), h2(e)).into_val(e), true).fails(),
+    ]);
+    results.push(rows);
+    if !ok { return; }
+    sq.timestamp = t0 + 6;
+    let (h3, h4, h5) = (hb.clone(), hb.clone(), hb.clone());
+    let (rows, sq2, ok) = seq("FRESH UPG-2 after ETA: unpause; unpaused execute refused", &sq, &[
+        call("U3a vault.set_paused(admin, false)", &v, "set_paused", |e| (a(e, O), false).into_val(e), true),
+        call("U3 vault.upgrade_wasm unpaused -> revert", &v, "upgrade_wasm", move |e| (a(e, O), h3(e)).into_val(e), true).fails()]);
+    results.push(rows);
+    if !ok { return; }
+    let (rows, s5, ok) = seq("FRESH UPG-3 pause; wrong hash refused", &sq2, &[
+        call("U5 vault.set_paused(admin, true)", &v, "set_paused", |e| (a(e, O), true).into_val(e), true),
+        call("U4 vault.upgrade_wasm wrong hash -> revert", &v, "upgrade_wasm", |e| (a(e, O), soroban_sdk::BytesN::<32>::from_array(e, &[7u8; 32])).into_val(e), true).fails(),
+    ]);
+    results.push(rows);
+    if !ok { return; }
+    let (rows, s5, ok) = seq("FRESH UPG-4 upgrade_wasm(v2'), marker, unpause", &s5, &[
+        call("U6 vault.upgrade_wasm(admin, v2')", &v, "upgrade_wasm", move |e| (a(e, O), h4(e)).into_val(e), true),
+        call("U7 vault.upgrade_marker() = 2", &v, "upgrade_marker", |e| Vec::new(e), true),
+        call("U8 vault.get_pending_upgrade() = None", &v, "get_pending_upgrade", |e| Vec::new(e), true),
+        call("U9 vault.set_paused(admin, false)", &v, "set_paused", |e| (a(e, O), false).into_val(e), true),
+    ]);
+    let _ = h5;
+    results.push(rows);
+    if !ok { return; }
+    let after = state(&s5);
+    log.push(json!({"upgrade_state_before": before, "upgrade_state_after": after, "state_preserved": before == after}));
+    // ---- a real second command after the upgrade (id 1), plus a NAV checkpoint
+    let q = read(&s5, { let v2 = v.clone(); move |env| tv(env, &v2, "stage_quote_open", (1_000_000_000u128, 20u32, 5000u32).into_val(env)) });
+    if q.get("swap_in").is_none() { log.push(json!({"post_upgrade_quote_unavailable": q})); return; }
+    let (swap_in, min_swap, min_shares, reserve) = (u(&q["swap_in"]), u(&q["min_swap"]), u(&q["min_shares"]), u(&q["reserve"]));
+    let deadline = s5.timestamp + 3000;
+    let mut fl: StdVec<Call> = vec![call("P1 receipt.stage_open(owner, 100 PYUSD) after upgrade", &r, "stage_open", move |e| (a(e, O), 1_000_000_000u128, swap_in, min_swap, min_shares, reserve, deadline).into_val(e), true),
+        call("P2 stage_convert(1)", &r, "stage_convert", |e| (1u64,).into_val(e), true),
+        call("P3 stage_mint(1)", &r, "stage_mint", |e| (1u64,).into_val(e), true)];
+    for g in ["P4 keeper checkpoint 1", "P5 keeper checkpoint 2", "P6 keeper checkpoint 3"] { fl.push(call(g, &v, "stage_checkpoint_investment", |e| (a(e, KEEPER),).into_val(e), true)); }
+    fl.push(call("P7 stage_invest(1)", &r, "stage_invest", |e| (1u64,).into_val(e), true));
+    fl.push(call("P8 stage_finalise(1)", &r, "stage_finalise", |e| (1u64,).into_val(e), true));
+    fl.push(call("P9 receipt.checkpoint_nav() after upgrade", &r, "checkpoint_nav", |e| Vec::new(e), true));
+    let (rows, s6, _) = seq("FRESH UPG-5 real second command on the upgraded vault", &s5, &fl);
+    results.push(rows);
+    log.push(json!({"post_second_command_state": state(&s6)}));
 }

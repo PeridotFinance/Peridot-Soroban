@@ -33,7 +33,7 @@ Canonical build:
 | Vault v2 | 124,762 | `72286249db318fcd459b666c994c83a167744719dec611f54f320eb2706b2394` | Reproduces the BUILD-REPORT hash exactly |
 | Receipt StgV2 (`stg-mainnet-accepted,stg2-mainnet-accepted`) | 124,901 | `e6695dbdb29f27130729516d86135a169a44ae0f49ac82be93c58a858dbdc28e` | **Differs from the measured 47b4a147**, explained below |
 | Group controller (`--features group`) | 64,267 | `debe1a36e658f9a6d491d7fc7f13d1c92e99b4e8fe27f1cc69242a8a4f66f55c` | Reproduces exactly |
-| USDC group market | 89,033 | `4229b7ef…f79e` (live cash-market code, **already on chain**) | Alternative: `5630a701…e452`, also on chain |
+| USDC group market | 89,808 | `5630a701bc7f29ea1334cfd1c12e349664da7376fd86df080d587ea9f685e452` (cash-upgrade code, **already on chain**; see §3b) | 4229b7ef was used in the first emulation run |
 
 - **Why the receipt hash differs.** The measured 47b4a147 is the *default* (non-Mainnet) build, and it was
   measured with the Testnet network id (`harness/src/real.rs`). Neither the Mainnet-feature receipt nor any
@@ -151,6 +151,48 @@ Findings from the emulation:
   as a trap. The frontend and bot flow must send this call; it is not a contract defect.
 - **CAFJ prices USDC correctly.** `Other(USDC)` cached 1.0017234 with scale 1e14. NAV rate was 999,808
   (1e6 = 1 USDC per unit). After a 10 USDC borrow against 100 PYUSD at CF 50%, liquidity was 40.037 USDC.
+
+### 3b. Same 46 steps with the USDC group market on 5630a701 (the cash-upgrade code)
+
+**5630a701 is compatible with the group controller, and the market should be created from it, not
+4229b7ef.**
+- **Result:** all 46 rows pass.
+- **Identical footprint:** every row has the same entries, keys and writes as with 4229b7ef.
+- **CPU:** +0.05 to +0.19M on the market rows (M1 5.51M, B4 borrow 21.76M, B6 repay 16.40M).
+- **ABI:** the receipt-vault ABI the controller uses is unchanged. 5630a701 adds the flash-loan switch
+  (off by default), exact flash fees, and `cancel_upgrade`.
+- **Upload:** none needed; it is already on chain, live until ledger 67617548.
+- **Evidence:** `target/clg/fresh/state/fresh-result-5630a701.json`, sha256 `a0b558fa…bbd7`.
+
+### 3c. Vault v2 upgrade gate on the fresh stack (commit 6e83fd7 bytes)
+
+Bytes and setup:
+- **Vault v2 (upgradeable):** `6fd8599a9b369ab84ba9ee8fd95642cde50621c07d5cc37cd278e8f225a4870e`,
+  125,559 B, built from HEAD with `git archive`.
+- **v2′ marker** (`--features cl-pyusd-vault-b,upgrade-marker`):
+  `d3ea4f91e3509c86bfe768d6d90266ddbcbc5fab83c0a3bc1b96fc0406606e3f`, 125,627 B.
+- **Other contracts:** receipt and controller are still the pre-upgradeability frozen bytes; the USDC
+  market is 5630a701.
+- **Evidence:** `target/clg/fresh/state/fresh-result-upgrade.json`, sha256 `fc10d5ec…4650`.
+
+**How the 24 h wait is emulated.** The proposal runs with the snapshot clock set 24 h + 60 s back, for that
+step only. Execution then runs at the real capture time, so the later steps see live oracle and pool
+state. `propose` reads no time-dependent external state.
+
+| Row | Result |
+|---|---|
+| UC1–UC5: propose, then `cancel_upgrade`; `get_pending_upgrade` returns None; pause; `upgrade_wasm` at +24 h | Reverts as expected (nothing pending) |
+| U1, U1b: propose; `get_pending_upgrade` returns (d3ea4f91…, ETA) | ok |
+| U1c, U2: pause; `upgrade_wasm` before the ETA | Reverts (timelocked) |
+| U3a, U3: after the ETA, unpause; `upgrade_wasm` while unpaused | Reverts ("pause vault before upgrade") |
+| U5, U4: pause; `upgrade_wasm` with a wrong hash | Reverts |
+| U6: `upgrade_wasm(admin, v2′)` | **ok**, 11 entries, 2.44M CPU |
+| U7: `upgrade_marker()` | Returns **2**, so the new code is running |
+| U8: `get_pending_upgrade()` | None |
+| U9: unpause | ok |
+| **State preserved** | Every field compares equal before and after the upgrade: vault supply, position liquidity, owner beneficial, ticks, binding, reward totals, receipt units, stage_state, stage2_config |
+| P1–P8: real second command on the upgraded vault (open 100 PYUSD → convert → mint → 3 keeper checkpoints → invest → finalise) | **All ok.** P3 `stage_mint` 74 entries / 59.6M CPU (the first mint was 44); P7 `stage_invest` 56 / 59.4M |
+| P9: `checkpoint_nav` | Reverts #2105 OracleStale. This is an **emulation artefact**: the captured CALI timestamp is frozen, and by P9 the emulated clock is more than 600 s past it. B1 shows the same call succeeding while the price is fresh |
 
 ## 4. Fee quote, step by step, in XLM (payer: admin Ledger GC4T…7FP unless stated)
 
