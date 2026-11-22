@@ -137,3 +137,24 @@ Times are UTC on 22 Nov 2026.
 
 - 10:27: SSH from the café IP times out, as expected (the firewall allows only 84.185.36.152).
 - 10:37: `prepare` done. The release rehearsal on the Mac (`npm ci`, `node --test` 67/67, `--once` dry run on R1 and R2 against Testnet) passes. Plan: R1 L1a refresh simulated OK; R2 no stage.
+- 11:25: SSH still blocked. 11:40:05: SSH works (operator updated the firewall at home).
+- 11:40: `install`:
+  - npm ci; host `node --test` 67/67;
+  - 4 keys put, each re-derived to its pinned public key;
+  - journal/state snapshots (R1 4,553, R2 2,083 journal lines);
+  - `check` **PASSED**:
+    - `liquidator.secret` is 600 cashliq:cashliq under 700 cashliq; `test -r` as tnbot: denied;
+    - no file under `/mnt/cashliq`, `/etc/peridot-*` or `/root` is readable by tnbot;
+    - in both sandboxes, `/mnt/cashliq`, `/etc/peridot-*`, `/root` and the other bot's keys are inaccessible;
+    - CLI Testnet read ok.
+  - `/etc/peridot-cl-liquidator` does not exist on this host. `peridot-cash-liquidator`: active since 2026-11-19 06:10:37, NRestarts 0. Unchanged.
+- 11:41:26 / 11:41:27: `peridot-tn-clbot-r1` / `-r2` active, `live: true`, Testnet passphrase, mode normal.
+- 11:42–11:44: first Droplet sends succeed on Testnet during the overlap:
+  - R1 L1a fe32f504… (11:42:11) and 76d64f78… (11:43:21);
+  - R2 206b4b38… (11:44:21).
+- 11:44:59: `stop-mac`. PIDs 74590/74595 stopped by TERM, their `caffeinate -w` exited with them, and no Mac bot remains.
+- 11:45–11:48: Droplet only, 0 warn/alert lines:
+  - R1 4 L1a sends, e.g. 4476da92… and fbc0ccdc…;
+  - R2 3, e.g. 09f17bbc… and b9ff9081….
+  - All are `successful=true` with source = that bot's liquidator.
+  - MemoryPeak 58 MB / 48 MB (limit 200M). NRestarts 0.
