@@ -1,0 +1,30 @@
+{
+ "remoteObjects": 103875,
+ "remoteBytes": 38168423453,
+ "sizeCompare": {
+  "compared": 103875,
+  "missing": 0,
+  "sizeMismatch": 0,
+  "extraRemote": 0
+ },
+ "rcloneCheckMd5": {
+  "files": 103875,
+  "matching": 103875,
+  "differences": 0
+ },
+ "sha256Download": {
+  "files": 2659,
+  "over100MB": 62,
+  "randomSample": 2597,
+  "randomSeed": 20261122,
+  "bytes": 16246905718,
+  "mismatches": 0
+ },
+ "reuploads": 0,
+ "anonymousAccess": {
+  "bucketRoot": 403,
+  "listObjectsV2": 403,
+  "objectGet": 403,
+  "cdnEndpoint": "not enabled (no response)"
+ }
+}

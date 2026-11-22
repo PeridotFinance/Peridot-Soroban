@@ -1,0 +1,1844 @@
+{
+ "date": "2026-11-22",
+ "bucket": "peridot-evidence",
+ "region": "fra1",
+ "endpoint": "https://fra1.digitaloceanspaces.com",
+ "prefix": "stellar/",
+ "acl": "private",
+ "files": 103875,
+ "bytes": 38168423453,
+ "perTopLevelFolder": {
+  "peridot-contracts/target/cl-pyusd-vault-b": {
+   "files": 36203,
+   "bytes": 11252278594
+  },
+  "peridot-contracts/target/cl-option1-core": {
+   "files": 37070,
+   "bytes": 3204882893
+  },
+  "peridot-contracts/target/cl-option1-ci-replay-v2": {
+   "files": 1037,
+   "bytes": 2737140263
+  },
+  "peridot-contracts/target/cl-option1-ci-replay-v1": {
+   "files": 833,
+   "bytes": 2121791569
+  },
+  "peridot-contracts/target/cl-pyusd-vault-b-reward-coverage": {
+   "files": 653,
+   "bytes": 1608236930
+  },
+  "peridot-contracts/target/cl-split-publication": {
+   "files": 256,
+   "bytes": 1434137451
+  },
+  "peridot-contracts/target/cl-decisions-ci": {
+   "files": 157,
+   "bytes": 1287934405
+  },
+  "peridot-contracts/target/cl-pyusd-invest-finalise": {
+   "files": 8896,
+   "bytes": 883746051
+  },
+  "peridot-contracts/target/cl-stage1-signed-local": {
+   "files": 581,
+   "bytes": 852454650
+  },
+  "peridot-contracts/target/cl-staged-market-integration": {
+   "files": 2909,
+   "bytes": 719696676
+  },
+  "peridot-contracts/research/cl-pyusd-tight-pilot-20261111": {
+   "files": 774,
+   "bytes": 671060633
+  },
+  "peridot-contracts/target/cl-option1-ci": {
+   "files": 7,
+   "bytes": 665434816
+  },
+  "peridot-contracts/target/cl-decisions-corrected": {
+   "files": 74,
+   "bytes": 610833549
+  },
+  "peridot-contracts/target/cl-next-linux-replay-final": {
+   "files": 117,
+   "bytes": 570032019
+  },
+  "peridot-contracts/target/cl-next-linux-replay-v3": {
+   "files": 117,
+   "bytes": 570031821
+  },
+  "peridot-contracts/target/cl-next-linux-replay-v2": {
+   "files": 117,
+   "bytes": 570031713
+  },
+  "peridot-contracts/target/cl-next-linux-replay": {
+   "files": 111,
+   "bytes": 569778295
+  },
+  "peridot-contracts/target/cl-next-replay-input": {
+   "files": 66,
+   "bytes": 546090527
+  },
+  "peridot-contracts/target/cl-next-full": {
+   "files": 49,
+   "bytes": 545651243
+  },
+  "peridot-contracts/target/cl-ci-627e2e2": {
+   "files": 45,
+   "bytes": 482177297
+  },
+  "peridot-contracts/target/cl-stage1-stable-final": {
+   "files": 46,
+   "bytes": 284711790
+  },
+  "peridot-contracts/target/cl-stage1-history-final": {
+   "files": 58,
+   "bytes": 265348553
+  },
+  "peridot-contracts/target/cl-split-replayed": {
+   "files": 333,
+   "bytes": 219205231
+  },
+  "peridot-contracts/target/cl-resource-decision-refresh": {
+   "files": 120,
+   "bytes": 208890083
+  },
+  "peridot-contracts/target/cl-ci-1198078": {
+   "files": 18,
+   "bytes": 203392945
+  },
+  "peridot-contracts/target/cl-ci-90111e2": {
+   "files": 13,
+   "bytes": 203349311
+  },
+  "peridot-contracts/target/cl-history": {
+   "files": 119,
+   "bytes": 185868725
+  },
+  "peridot-contracts/target/cl-storage-candidate-all-states": {
+   "files": 14,
+   "bytes": 185560913
+  },
+  "peridot-contracts/target/cl-restoration-final-v7-liquidations": {
+   "files": 41,
+   "bytes": 181062073
+  },
+  "peridot-contracts/target/cl-split-proof-captured": {
+   "files": 11,
+   "bytes": 165808871
+  },
+  "peridot-contracts/target/cl-split-final-captured": {
+   "files": 11,
+   "bytes": 165369432
+  },
+  "peridot-contracts/target/cl-stage1-live-pairs": {
+   "files": 991,
+   "bytes": 157827705
+  },
+  "peridot-contracts/target/cl-decisions-reserve": {
+   "files": 97,
+   "bytes": 149253516
+  },
+  "peridot-contracts/target/cl-option1-proof": {
+   "files": 8,
+   "bytes": 148716780
+  },
+  "peridot-contracts/target/cl-restoration-final-v7-pending": {
+   "files": 41,
+   "bytes": 142432470
+  },
+  "peridot-contracts/target/cl-storage-ci-review": {
+   "files": 98,
+   "bytes": 132981458
+  },
+  "peridot-contracts/target/cl-restoration-final-v7-combined": {
+   "files": 41,
+   "bytes": 124036566
+  },
+  "peridot-contracts/target/lending-archive-qualification": {
+   "files": 267,
+   "bytes": 123021766
+  },
+  "peridot-contracts/target/cl-storage-candidate-exit-retry": {
+   "files": 14,
+   "bytes": 108207746
+  },
+  "peridot-contracts/target/cl-restoration-final-v7-open-close": {
+   "files": 41,
+   "bytes": 107550920
+  },
+  "peridot-contracts/target/cl-next-history": {
+   "files": 31,
+   "bytes": 99042329
+  },
+  "peridot-contracts/target/cl-next-reserve": {
+   "files": 41,
+   "bytes": 96331276
+  },
+  "peridot-contracts/target/cl-atomic-v4-optimized-archived": {
+   "files": 14,
+   "bytes": 92915210
+  },
+  "peridot-contracts/target/cl-atomic-v4-baseline-archived": {
+   "files": 14,
+   "bytes": 92911545
+  },
+  "peridot-contracts/target/cl-storage-baseline-data-archive": {
+   "files": 14,
+   "bytes": 92893781
+  },
+  "peridot-contracts/target/cl-atomic-v3-optimized-archived": {
+   "files": 14,
+   "bytes": 92800477
+  },
+  "peridot-contracts/target/cl-atomic-v3-baseline-archived": {
+   "files": 14,
+   "bytes": 92796966
+  },
+  "peridot-contracts/target/cl-split-fee-captured": {
+   "files": 11,
+   "bytes": 86942884
+  },
+  "peridot-contracts/target/cl-storage-baseline-code-archive": {
+   "files": 14,
+   "bytes": 86148925
+  },
+  "peridot-contracts/target/cl-atomic-baseline-archived": {
+   "files": 13,
+   "bytes": 79080494
+  },
+  "peridot-contracts/target/cl-restoration-combined-v4": {
+   "files": 38,
+   "bytes": 71228711
+  },
+  "peridot-contracts/target/cl-atomic-v3-optimized-captured": {
+   "files": 14,
+   "bytes": 58791244
+  },
+  "peridot-contracts/target/cl-atomic-v3-baseline-captured": {
+   "files": 14,
+   "bytes": 58787579
+  },
+  "peridot-contracts/target/cl-option1-shared-v2": {
+   "files": 53,
+   "bytes": 54323060
+  },
+  "peridot-contracts/target/cl-split-adversarial-captured-network-diagnostic": {
+   "files": 10,
+   "bytes": 51019588
+  },
+  "peridot-contracts/target/cl-pyusd-minimal-release": {
+   "files": 1572,
+   "bytes": 50824101
+  },
+  "peridot-contracts/target/cl-atomic-optimized-captured": {
+   "files": 13,
+   "bytes": 49205011
+  },
+  "peridot-contracts/target/cl-atomic-baseline-captured": {
+   "files": 13,
+   "bytes": 49202259
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-v2": {
+   "files": 45,
+   "bytes": 48141240
+  },
+  "peridot-contracts/target/cl-split-proof-internal": {
+   "files": 11,
+   "bytes": 46023111
+  },
+  "peridot-contracts/target/cl-option1-joined-final-captured-v3": {
+   "files": 23,
+   "bytes": 45567050
+  },
+  "peridot-contracts/target/cl-split-final-internal": {
+   "files": 11,
+   "bytes": 44926206
+  },
+  "peridot-contracts/target/cl-storage-candidate-exit-data": {
+   "files": 15,
+   "bytes": 43529096
+  },
+  "peridot-contracts/target/cl-restoration-final-v5-pending": {
+   "files": 41,
+   "bytes": 42243455
+  },
+  "peridot-contracts/target/cl-storage-candidate-pending-retry": {
+   "files": 14,
+   "bytes": 41284859
+  },
+  "peridot-contracts/target/cl-storage-packaging": {
+   "files": 13,
+   "bytes": 38983509
+  },
+  "peridot-contracts/target/cl-restoration-final-v5-liquidations": {
+   "files": 41,
+   "bytes": 38003497
+  },
+  "peridot-contracts/target/cl-fee-pending-final-v7": {
+   "files": 23,
+   "bytes": 35007608
+  },
+  "peridot-contracts/target/cl-fee-pending-final-v6": {
+   "files": 22,
+   "bytes": 35006722
+  },
+  "peridot-contracts/target/cl-fee-pending-final-v5": {
+   "files": 22,
+   "bytes": 35003555
+  },
+  "peridot-contracts/target/cl-split-acceptance-captured": {
+   "files": 8,
+   "bytes": 34783677
+  },
+  "peridot-contracts/target/cl-split-acceptance-internal": {
+   "files": 8,
+   "bytes": 33468062
+  },
+  "peridot-contracts/target/cl-storage-candidate-roots-retry": {
+   "files": 14,
+   "bytes": 29249768
+  },
+  "peridot-contracts/target/cl-repayment-captured-v4": {
+   "files": 15,
+   "bytes": 28189059
+  },
+  "peridot-contracts/target/cl-repayment-captured-v5": {
+   "files": 15,
+   "bytes": 28177999
+  },
+  "peridot-contracts/target/cl-storage-candidate-exit-live": {
+   "files": 15,
+   "bytes": 27426223
+  },
+  "peridot-contracts/target/cl-repayment-final-positive": {
+   "files": 14,
+   "bytes": 27228928
+  },
+  "peridot-contracts/target/cl-option1-joined-final-captured-v2": {
+   "files": 19,
+   "bytes": 27087367
+  },
+  "peridot-contracts/target/cl-split-adversarial-internal-policy": {
+   "files": 10,
+   "bytes": 26462808
+  },
+  "peridot-contracts/target/cl-fee-pending-v3": {
+   "files": 12,
+   "bytes": 26110020
+  },
+  "peridot-contracts/target/cl-restoration-final-v5-open-close": {
+   "files": 41,
+   "bytes": 25125304
+  },
+  "peridot-contracts/target/cl-storage-candidate-liquidation-data": {
+   "files": 15,
+   "bytes": 22106383
+  },
+  "peridot-contracts/target/cl-history-publication": {
+   "files": 28,
+   "bytes": 20121498
+  },
+  "peridot-contracts/target/cl-option1-joined-final-internal-v3": {
+   "files": 23,
+   "bytes": 18991301
+  },
+  "peridot-contracts/target/cl-restoration-probe-v2-funded": {
+   "files": 38,
+   "bytes": 18215605
+  },
+  "peridot-contracts/target/cl-next": {
+   "files": 156,
+   "bytes": 18080738
+  },
+  "peridot-contracts/target/cl-option1-pending-captured-v3": {
+   "files": 22,
+   "bytes": 17774538
+  },
+  "peridot-contracts/target/cl-storage-candidate-pending-data": {
+   "files": 15,
+   "bytes": 17244433
+  },
+  "peridot-contracts/target/cl-option1-joined-final-captured-v1": {
+   "files": 19,
+   "bytes": 15475578
+  },
+  "peridot-contracts/target/cl-option1-joined-closing-captured-v1": {
+   "files": 14,
+   "bytes": 15374839
+  },
+  "peridot-contracts/target/cl-storage-candidate-liquidation-live": {
+   "files": 15,
+   "bytes": 15175589
+  },
+  "peridot-contracts/target/cl-history-publication-v2": {
+   "files": 54,
+   "bytes": 13551017
+  },
+  "peridot-contracts/target/cl-storage-candidate-roots-data": {
+   "files": 15,
+   "bytes": 12608800
+  },
+  "peridot-contracts/target/cl-stage1-captured-v6": {
+   "files": 27,
+   "bytes": 12190282
+  },
+  "peridot-contracts/target/cl-stage1-internal-v6": {
+   "files": 27,
+   "bytes": 12187628
+  },
+  "peridot-contracts/target/cl-option1-closing-captured-v2": {
+   "files": 14,
+   "bytes": 11724647
+  },
+  "peridot-contracts/target/cl-stage1-internal-v5": {
+   "files": 27,
+   "bytes": 11652249
+  },
+  "peridot-contracts/target/cl-option1-ci-archive": {
+   "files": 4,
+   "bytes": 11444453
+  },
+  "peridot-contracts/target/cl-stage1-captured-v5": {
+   "files": 24,
+   "bytes": 11342560
+  },
+  "peridot-contracts/target/cl-storage-candidate-pending-live": {
+   "files": 15,
+   "bytes": 10641020
+  },
+  "peridot-contracts/target/cl-split-late-replayed": {
+   "files": 334,
+   "bytes": 10072646
+  },
+  "peridot-contracts/target/cl-stage1-internal-v3": {
+   "files": 25,
+   "bytes": 8536870
+  },
+  "peridot-contracts/target/cl-storage-candidate-roots-live": {
+   "files": 15,
+   "bytes": 8520820
+  },
+  "peridot-contracts/target/cl-stage1-internal-v4": {
+   "files": 24,
+   "bytes": 8375494
+  },
+  "peridot-contracts/target/cl-pyusd-tight-release": {
+   "files": 387,
+   "bytes": 8327524
+  },
+  "peridot-contracts/target/cl-split-adversarial-price-fixed": {
+   "files": 10,
+   "bytes": 7347367
+  },
+  "peridot-contracts/target/cl-next-publication": {
+   "files": 99,
+   "bytes": 7064928
+  },
+  "peridot-contracts/target/cl-option1-durable-20261104": {
+   "files": 4,
+   "bytes": 6876892
+  },
+  "peridot-contracts/target/cl-atomic-v2-optimized-captured": {
+   "files": 10,
+   "bytes": 6792360
+  },
+  "peridot-contracts/target/cl-atomic-v2-baseline-captured": {
+   "files": 10,
+   "bytes": 6657521
+  },
+  "peridot-contracts/target/cl-exit-assessment-final-captured": {
+   "files": 8,
+   "bytes": 6285286
+  },
+  "peridot-contracts/target/cl-decisions-publication": {
+   "files": 12,
+   "bytes": 6234058
+  },
+  "peridot-contracts/target/cl-split-patch-encoding": {
+   "files": 302,
+   "bytes": 5778532
+  },
+  "peridot-contracts/target/cl-atomic-v3-optimized-known-peak": {
+   "files": 14,
+   "bytes": 5695953
+  },
+  "peridot-contracts/target/cl-atomic-v3-baseline-known-peak": {
+   "files": 14,
+   "bytes": 5695746
+  },
+  "keeper-pyusd-vaultb": {
+   "files": 503,
+   "bytes": 5671940
+  },
+  "peridot-contracts/target/cl-split-fee-internal": {
+   "files": 11,
+   "bytes": 4647193
+  },
+  "peridot-contracts/target/cl-split-fourth": {
+   "files": 10,
+   "bytes": 4484165
+  },
+  "peridot-contracts/target/cl-atomic-v3-baseline-internal": {
+   "files": 14,
+   "bytes": 4467599
+  },
+  "peridot-contracts/target/cl-split-repro-isolated": {
+   "files": 223,
+   "bytes": 4455942
+  },
+  "peridot-contracts/target/cl-atomic-final-archive": {
+   "files": 3,
+   "bytes": 4249884
+  },
+  "peridot-contracts/target/cl-exit-assessment-corrected-captured": {
+   "files": 6,
+   "bytes": 4150984
+  },
+  "peridot-contracts/target/cl-option1-pending-captured-v2": {
+   "files": 18,
+   "bytes": 4043543
+  },
+  "peridot-contracts/target/cl-restoration-publication-v1": {
+   "files": 4,
+   "bytes": 3970987
+  },
+  "peridot-contracts/target/cl-option1-joined-build-v2": {
+   "files": 189,
+   "bytes": 3893498
+  },
+  "peridot-contracts/target/cl-option1-joined-build-v1": {
+   "files": 189,
+   "bytes": 3885938
+  },
+  "peridot-contracts/target/cl-option1-mixed-captured-v3": {
+   "files": 20,
+   "bytes": 3877258
+  },
+  "peridot-contracts/target/cl-option1-mixed-internal-v3": {
+   "files": 20,
+   "bytes": 3876174
+  },
+  "peridot-contracts/target/cl-fee-pending-v2": {
+   "files": 12,
+   "bytes": 3853226
+  },
+  "peridot-contracts/target/cl-option1-pending-build-v3": {
+   "files": 187,
+   "bytes": 3837889
+  },
+  "peridot-contracts/target/cl-split-separate-preparation-captured": {
+   "files": 10,
+   "bytes": 3795297
+  },
+  "peridot-contracts/target/cl-split-separate-preparation-internal": {
+   "files": 10,
+   "bytes": 3794779
+  },
+  "peridot-contracts/target/cl-option1-pending-build-v1": {
+   "files": 181,
+   "bytes": 3774065
+  },
+  "peridot-contracts/target/cl-split-repro-verified": {
+   "files": 183,
+   "bytes": 3739215
+  },
+  "peridot-contracts/target/cl-restoration-clean-build": {
+   "files": 178,
+   "bytes": 3691812
+  },
+  "peridot-contracts/target/cl-storage-candidate-build": {
+   "files": 177,
+   "bytes": 3648926
+  },
+  "peridot-contracts/target/cl-stage1-roundtrip-v3": {
+   "files": 24,
+   "bytes": 3597177
+  },
+  "peridot-contracts/target/cl-option1-pending-internal-v2": {
+   "files": 19,
+   "bytes": 3582205
+  },
+  "peridot-contracts/target/cl-stage1-cash-first-build-v4": {
+   "files": 175,
+   "bytes": 3579390
+  },
+  "peridot-contracts/target/cl-stage1-cash-first-build-v3": {
+   "files": 175,
+   "bytes": 3578171
+  },
+  "peridot-contracts/target/cl-stage1-cash-first-build-v2": {
+   "files": 175,
+   "bytes": 3572431
+  },
+  "peridot-contracts/target/cl-option1-joined-build-v3": {
+   "files": 173,
+   "bytes": 3514912
+  },
+  "peridot-contracts/target/cl-split-transfer-fault-fixed": {
+   "files": 11,
+   "bytes": 3496041
+  },
+  "peridot-contracts/target/cl-option1-closing-work": {
+   "files": 181,
+   "bytes": 3490567
+  },
+  "peridot-contracts/target/cl-runtime29-cost-model-host": {
+   "files": 265,
+   "bytes": 3460617
+  },
+  "peridot-contracts/target/cl-atomic-optimized-v2-build": {
+   "files": 173,
+   "bytes": 3430382
+  },
+  "peridot-contracts/target/cl-atomic-optimized-v3-build": {
+   "files": 173,
+   "bytes": 3430382
+  },
+  "peridot-contracts/target/cl-atomic-optimized-build": {
+   "files": 173,
+   "bytes": 3428788
+  },
+  "peridot-contracts/target/cl-atomic-failures-archive": {
+   "files": 3,
+   "bytes": 3380332
+  },
+  "peridot-contracts/target/cl-restoration-combined-build": {
+   "files": 163,
+   "bytes": 3365960
+  },
+  "peridot-contracts/target/cl-repayment-build": {
+   "files": 163,
+   "bytes": 3352692
+  },
+  "peridot-contracts/target/cl-storage-candidate-v2-build": {
+   "files": 162,
+   "bytes": 3323709
+  },
+  "peridot-contracts/target/cl-storage-work": {
+   "files": 160,
+   "bytes": 3263601
+  },
+  "peridot-contracts/target/cl-stage1-cash-first-build-v1": {
+   "files": 165,
+   "bytes": 3195580
+  },
+  "peridot-contracts/target/cl-pyusd-tight-receipt-check-v1": {
+   "files": 162,
+   "bytes": 3072470
+  },
+  "peridot-contracts/target/cl-split-workspace": {
+   "files": 164,
+   "bytes": 2996972
+  },
+  "peridot-contracts/target/cl-atomic-open-diagnostic2": {
+   "files": 13,
+   "bytes": 2720960
+  },
+  "peridot-contracts/target/cl-restoration-journey-checker-tests": {
+   "files": 10,
+   "bytes": 2718091
+  },
+  "peridot-contracts/target/cl-exit-assessment-captured": {
+   "files": 6,
+   "bytes": 2639808
+  },
+  "peridot-contracts/target/cl-split-isolated-internal": {
+   "files": 10,
+   "bytes": 2565787
+  },
+  "peridot-contracts/target/cl-option1-mixed-captured-v2": {
+   "files": 15,
+   "bytes": 2452846
+  },
+  "peridot-contracts/target/cl-repayment-debug-v1": {
+   "files": 14,
+   "bytes": 2392548
+  },
+  "peridot-contracts/target/cl-exit-assessment-final-internal": {
+   "files": 8,
+   "bytes": 2363569
+  },
+  "peridot-contracts/target/cl-split-third": {
+   "files": 10,
+   "bytes": 2257573
+  },
+  "peridot-contracts/target/cl-option1-closing-captured-v1": {
+   "files": 14,
+   "bytes": 2204282
+  },
+  "peridot-contracts/target/cl-restoration-final-v5-combined-retry": {
+   "files": 25,
+   "bytes": 2191283
+  },
+  "peridot-contracts/target/cl-restoration-diagnostic-v6-funded": {
+   "files": 25,
+   "bytes": 2178319
+  },
+  "peridot-contracts/target/cl-repayment-final-adversarial": {
+   "files": 14,
+   "bytes": 2118070
+  },
+  "peridot-contracts/target/cl-split-late-captured": {
+   "files": 11,
+   "bytes": 2076547
+  },
+  "peridot-contracts/target/cl-next-feasibility": {
+   "files": 91,
+   "bytes": 1910954
+  },
+  "peridot-contracts/target/cl-split-open-internal": {
+   "files": 10,
+   "bytes": 1858518
+  },
+  "peridot-contracts/target/cl-exit-assessment-diagnostic2": {
+   "files": 6,
+   "bytes": 1851420
+  },
+  "peridot-contracts/target/cl-exit-assessment-corrected-internal": {
+   "files": 6,
+   "bytes": 1582336
+  },
+  "peridot-contracts/target/cl-exit-assessment-internal": {
+   "files": 6,
+   "bytes": 1582281
+  },
+  "peridot-contracts/target/cl-option1-pending-expired-only-results": {
+   "files": 6,
+   "bytes": 1502195
+  },
+  "peridot-contracts/target/cl-share-checkpoint": {
+   "files": 73,
+   "bytes": 1423417
+  },
+  "peridot-contracts/target/cl-next-local-replay": {
+   "files": 9,
+   "bytes": 1395385
+  },
+  "peridot-contracts/target/cl-split-late-internal": {
+   "files": 11,
+   "bytes": 1277266
+  },
+  "peridot-contracts/target/cl-fee-pending-v1": {
+   "files": 12,
+   "bytes": 1209992
+  },
+  "peridot-contracts/target/cl-decisions-full": {
+   "files": 44,
+   "bytes": 1199546
+  },
+  "peridot-contracts/target/cl-atomic-final-gate-replay": {
+   "files": 22,
+   "bytes": 1162210
+  },
+  "peridot-contracts/target/cl-restoration-work": {
+   "files": 36,
+   "bytes": 1131626
+  },
+  "peridot-contracts/target/cl-stage1-staged-publish-v1": {
+   "files": 3,
+   "bytes": 1060183
+  },
+  "peridot-contracts/target/cl-next-linux-v2": {
+   "files": 3,
+   "bytes": 950545
+  },
+  "peridot-contracts/target/cl-next-linux": {
+   "files": 2,
+   "bytes": 945148
+  },
+  "peridot-contracts/target/cl-decisions-resource": {
+   "files": 51,
+   "bytes": 907974
+  },
+  "peridot-contracts/target/cl-option1-shared-build-v2": {
+   "files": 28,
+   "bytes": 764299
+  },
+  "peridot-contracts/target/cl-option1-shared-build-v1": {
+   "files": 28,
+   "bytes": 764262
+  },
+  "peridot-contracts/target/cl-repayment-final-old-route": {
+   "files": 14,
+   "bytes": 747766
+  },
+  "peridot-contracts/target/cl-repayment-final-exact-baseline": {
+   "files": 14,
+   "bytes": 746532
+  },
+  "peridot-contracts/target/margin-fees-testnet": {
+   "files": 24,
+   "bytes": 712857
+  },
+  "peridot-contracts/target/cl-option1-mixed-portability-check": {
+   "files": 26,
+   "bytes": 711620
+  },
+  "peridot-contracts/target/cl-option1-mixed-build-v2": {
+   "files": 26,
+   "bytes": 711331
+  },
+  "peridot-contracts/target/cl-option1-mixed-build-v1": {
+   "files": 26,
+   "bytes": 711330
+  },
+  "peridot-contracts/target/cl-option1-mixed-build-v3": {
+   "files": 26,
+   "bytes": 711329
+  },
+  "peridot-contracts/target/margin-fee-entitlements-testnet": {
+   "files": 8,
+   "bytes": 700443
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-build-v1": {
+   "files": 25,
+   "bytes": 668285
+  },
+  "peridot-contracts/target/cl-fee-pending-publish-v7": {
+   "files": 2,
+   "bytes": 651608
+  },
+  "peridot-contracts/target/cash-flash-guard-20261111": {
+   "files": 24,
+   "bytes": 648970
+  },
+  "peridot-contracts/target/cl-split-pycache": {
+   "files": 50,
+   "bytes": 645691
+  },
+  "peridot-contracts/target/cl-history-relocated-replay": {
+   "files": 8,
+   "bytes": 634968
+  },
+  "peridot-contracts/target/cl-history-replay-validation": {
+   "files": 8,
+   "bytes": 634692
+  },
+  "peridot-contracts/target/cl-restoration-final-v7-build": {
+   "files": 20,
+   "bytes": 625685
+  },
+  "peridot-contracts/target/cl-option1-closing-build-v2": {
+   "files": 20,
+   "bytes": 621731
+  },
+  "peridot-contracts/target/cl-option1-closing-build-v1": {
+   "files": 20,
+   "bytes": 621501
+  },
+  "peridot-contracts/target/cl-restoration-diagnostic-v6-build": {
+   "files": 20,
+   "bytes": 620036
+  },
+  "peridot-contracts/target/cl-restoration-final-v5-build": {
+   "files": 20,
+   "bytes": 618783
+  },
+  "peridot-contracts/target/cl-restoration-probe-v4-build": {
+   "files": 16,
+   "bytes": 557453
+  },
+  "peridot-contracts/target/cl-restoration-probe-v3-build": {
+   "files": 16,
+   "bytes": 557308
+  },
+  "peridot-contracts/target/lending-release-clean-20261111": {
+   "files": 23,
+   "bytes": 553953
+  },
+  "peridot-contracts/target/cl-restoration-probe-build": {
+   "files": 16,
+   "bytes": 552217
+  },
+  "peridot-contracts/target/cl-restoration-probe-v2-build": {
+   "files": 16,
+   "bytes": 552191
+  },
+  "peridot-contracts/target/cl-repayment-debug-build": {
+   "files": 16,
+   "bytes": 542639
+  },
+  "peridot-contracts/target/cl-repayment-baseline-build": {
+   "files": 15,
+   "bytes": 531431
+  },
+  "peridot-contracts/target/cl-fee-pending-publish": {
+   "files": 2,
+   "bytes": 529784
+  },
+  "peridot-contracts/target/cl-atomic-debug2-build": {
+   "files": 15,
+   "bytes": 518442
+  },
+  "peridot-contracts/target/cl-atomic-debug-build": {
+   "files": 15,
+   "bytes": 518307
+  },
+  "peridot-contracts/target/cl-storage-candidate-v4-build": {
+   "files": 14,
+   "bytes": 498011
+  },
+  "peridot-contracts/target/cl-atomic-optimized-v4-build": {
+   "files": 14,
+   "bytes": 497466
+  },
+  "peridot-contracts/target/cl-storage-candidate-v3-build": {
+   "files": 14,
+   "bytes": 497286
+  },
+  "peridot-contracts/target/cl-atomic-baseline-v4-build": {
+   "files": 14,
+   "bytes": 497240
+  },
+  "peridot-contracts/target/cl-storage-baseline-build": {
+   "files": 14,
+   "bytes": 494493
+  },
+  "peridot-contracts/target/cl-split-cargo": {
+   "files": 27,
+   "bytes": 490893
+  },
+  "peridot-contracts/target/cl-atomic-baseline-v2-build": {
+   "files": 14,
+   "bytes": 490517
+  },
+  "peridot-contracts/target/cl-atomic-baseline-v3-build": {
+   "files": 14,
+   "bytes": 490517
+  },
+  "peridot-contracts/target/cl-atomic-baseline-build": {
+   "files": 14,
+   "bytes": 488956
+  },
+  "peridot-contracts/target/cl-stage1-roundtrip-v2": {
+   "files": 24,
+   "bytes": 480607
+  },
+  "peridot-contracts/target/cl-storage-per-key.csv": {
+   "files": 1,
+   "bytes": 464411
+  },
+  "peridot-contracts/target/cl-atomic-final-assessment.json": {
+   "files": 1,
+   "bytes": 412715
+  },
+  "peridot-contracts/target/cl-storage-exit-differential.json": {
+   "files": 1,
+   "bytes": 406988
+  },
+  "peridot-contracts/target/cl-split-artifacts": {
+   "files": 9,
+   "bytes": 383235
+  },
+  "peridot-contracts/target/cl-restoration-research": {
+   "files": 21,
+   "bytes": 378120
+  },
+  "peridot-contracts/target/lending-release-verification-20261111": {
+   "files": 21,
+   "bytes": 378048
+  },
+  "peridot-contracts/target/cl-option1-archive-verification.json": {
+   "files": 1,
+   "bytes": 376775
+  },
+  "peridot-contracts/target/cl-restoration-prefix-refinement": {
+   "files": 56,
+   "bytes": 370004
+  },
+  "peridot-contracts/target/cl-atomic-v3-differential-live-corrected.json": {
+   "files": 1,
+   "bytes": 361156
+  },
+  "peridot-contracts/target/cl-atomic-v3-differential-live.json": {
+   "files": 1,
+   "bytes": 361156
+  },
+  "peridot-contracts/target/cl-storage-baseline-keys.json": {
+   "files": 1,
+   "bytes": 331255
+  },
+  "peridot-contracts/target/cl-storage-prior-keys.json": {
+   "files": 1,
+   "bytes": 326392
+  },
+  "peridot-contracts/target/cl-split-design": {
+   "files": 17,
+   "bytes": 322091
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-v1": {
+   "files": 27,
+   "bytes": 279912
+  },
+  "peridot-contracts/target/medium2-rounding-20261111": {
+   "files": 17,
+   "bytes": 274449
+  },
+  "peridot-contracts/target/cl-storage-assessment.json": {
+   "files": 1,
+   "bytes": 273913
+  },
+  "peridot-contracts/target/depth-testnet-replay": {
+   "files": 23,
+   "bytes": 253315
+  },
+  "peridot-contracts/target/cl-atomic-v3-live-assessment.json": {
+   "files": 1,
+   "bytes": 250351
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-v2-reexpiry.jsonl": {
+   "files": 1,
+   "bytes": 218466
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-v2-reexpiry-batches.jsonl": {
+   "files": 1,
+   "bytes": 214638
+  },
+  "peridot-contracts/target/cl-storage-candidate-root-keys.json": {
+   "files": 1,
+   "bytes": 207658
+  },
+  "peridot-contracts/target/cl-storage-liquidation-differential.json": {
+   "files": 1,
+   "bytes": 202666
+  },
+  "peridot-contracts/target/cl-stage1-abi-freeze": {
+   "files": 14,
+   "bytes": 186301
+  },
+  "peridot-contracts/target/cl-option1-joined-assessment-v3.json": {
+   "files": 1,
+   "bytes": 183855
+  },
+  "peridot-contracts/target/cl-stage1-first-roundtrip": {
+   "files": 20,
+   "bytes": 183799
+  },
+  "peridot-contracts/target/cl-repayment-captured-v1": {
+   "files": 18,
+   "bytes": 182733
+  },
+  "peridot-contracts/target/cl-repayment-work": {
+   "files": 6,
+   "bytes": 180420
+  },
+  "peridot-contracts/target/cash-upload-preflight-20261111": {
+   "files": 2,
+   "bytes": 169110
+  },
+  "peridot-contracts/target/lending-medium-fixed-20261111": {
+   "files": 6,
+   "bytes": 168563
+  },
+  "peridot-contracts/target/lending-medium-final-20261111": {
+   "files": 4,
+   "bytes": 163660
+  },
+  "peridot-contracts/target/margin-fees-mainnet-verified": {
+   "files": 28,
+   "bytes": 156903
+  },
+  "peridot-contracts/target/cl-option1-pending-captured-v1": {
+   "files": 17,
+   "bytes": 155524
+  },
+  "peridot-contracts/target/cl-restoration-probe-v3-trade": {
+   "files": 38,
+   "bytes": 149284
+  },
+  "peridot-contracts/target/cl-restoration-probe-v2": {
+   "files": 38,
+   "bytes": 146152
+  },
+  "peridot-contracts/target/cl-restoration-final-v5-combined": {
+   "files": 25,
+   "bytes": 141812
+  },
+  "peridot-contracts/target/cl-atomic-ci-checker-fix": {
+   "files": 14,
+   "bytes": 133928
+  },
+  "peridot-contracts/target/cl-option1-joined-assessment.json": {
+   "files": 1,
+   "bytes": 131699
+  },
+  "peridot-contracts/target/cl-option1-joined-assessment-v2.json": {
+   "files": 1,
+   "bytes": 131675
+  },
+  "peridot-contracts/target/cl-option1-shared-v1": {
+   "files": 25,
+   "bytes": 130428
+  },
+  "peridot-contracts/target/cl-atomic-v4-restoration-counts.json": {
+   "files": 1,
+   "bytes": 123973
+  },
+  "peridot-contracts/target/cl-repayment-captured-v3": {
+   "files": 15,
+   "bytes": 120466
+  },
+  "peridot-contracts/target/cl-repayment-captured-v2": {
+   "files": 15,
+   "bytes": 117563
+  },
+  "peridot-contracts/target/cl-storage-roots-differential.json": {
+   "files": 1,
+   "bytes": 115157
+  },
+  "peridot-contracts/target/cl-atomic-v1-sources": {
+   "files": 9,
+   "bytes": 108790
+  },
+  "peridot-contracts/target/margin-fees-mainnet-verified-rebuild": {
+   "files": 11,
+   "bytes": 107340
+  },
+  "peridot-contracts/target/cl-storage-pending-differential.json": {
+   "files": 1,
+   "bytes": 103201
+  },
+  "peridot-contracts/target/margin-fees-mainnet-rebuild": {
+   "files": 11,
+   "bytes": 102121
+  },
+  "peridot-contracts/target/margin-fees-mainnet-release": {
+   "files": 11,
+   "bytes": 102121
+  },
+  "peridot-contracts/target/cl-atomic-v2-baseline-archived": {
+   "files": 14,
+   "bytes": 99208
+  },
+  "peridot-contracts/target/cl-option1-mixed-captured-v1": {
+   "files": 14,
+   "bytes": 99136
+  },
+  "peridot-contracts/target/cl-atomic-v2-baseline-internal": {
+   "files": 14,
+   "bytes": 99032
+  },
+  "peridot-contracts/target/cl-option1-checker-source": {
+   "files": 12,
+   "bytes": 98641
+  },
+  "peridot-contracts/target/cl-atomic-v2-failed-sources": {
+   "files": 11,
+   "bytes": 97121
+  },
+  "peridot-contracts/target/margin-fees-candidate": {
+   "files": 11,
+   "bytes": 97032
+  },
+  "peridot-contracts/target/reserve-checkpoint": {
+   "files": 1,
+   "bytes": 86768
+  },
+  "peridot-contracts/target/cl-split-runtime29": {
+   "files": 4,
+   "bytes": 86167
+  },
+  "peridot-contracts/target/deployer-key-rotation-20261104": {
+   "files": 22,
+   "bytes": 77734
+  },
+  "peridot-contracts/target/cl-option1-package-plan.json": {
+   "files": 1,
+   "bytes": 76827
+  },
+  "peridot-contracts/target/cl-option1-package-plan-initial.json": {
+   "files": 1,
+   "bytes": 76739
+  },
+  "peridot-contracts/target/depth-recovery-validation": {
+   "files": 12,
+   "bytes": 74763
+  },
+  "peridot-contracts/target/cl-storage-candidate-liquidation-keys.json": {
+   "files": 1,
+   "bytes": 69650
+  },
+  "peridot-contracts/target/cl-storage-key-removals.json": {
+   "files": 1,
+   "bytes": 67707
+  },
+  "peridot-contracts/target/cl-call-boundary-review-20261110": {
+   "files": 6,
+   "bytes": 65999
+  },
+  "peridot-contracts/target/vault-proof": {
+   "files": 1,
+   "bytes": 65449
+  },
+  "peridot-contracts/target/cl-option1-pending-source-review": {
+   "files": 2,
+   "bytes": 57980
+  },
+  "peridot-contracts/target/cl-split-first-final-source": {
+   "files": 4,
+   "bytes": 55196
+  },
+  "peridot-contracts/target/cl-atomic-open-diagnostic": {
+   "files": 13,
+   "bytes": 51181
+  },
+  "peridot-contracts/target/cl-restoration-v7-open-close-independent": {
+   "files": 10,
+   "bytes": 44649
+  },
+  "peridot-contracts/target/cl-stage1-fable-review": {
+   "files": 5,
+   "bytes": 42905
+  },
+  "peridot-contracts/target/cl-atomic-v4-differential-archived.json": {
+   "files": 1,
+   "bytes": 39167
+  },
+  "peridot-contracts/target/cl-atomic-v3-differential-live-final.json": {
+   "files": 1,
+   "bytes": 38931
+  },
+  "peridot-contracts/target/cl-option1-pending-five-overlays.patch": {
+   "files": 1,
+   "bytes": 38417
+  },
+  "peridot-contracts/target/stellar-margin-droplet-20261012": {
+   "files": 6,
+   "bytes": 38143
+  },
+  "peridot-contracts/target/cl-atomic-v3-differential-known-peak-corrected.json": {
+   "files": 1,
+   "bytes": 37448
+  },
+  "peridot-contracts/target/cl-atomic-v3-differential-known-peak.json": {
+   "files": 1,
+   "bytes": 37448
+  },
+  "peridot-contracts/target/cl-option1-pending-four-overlays.patch": {
+   "files": 1,
+   "bytes": 34187
+  },
+  "peridot-contracts/target/treasury-withdraw-2500-20261014": {
+   "files": 4,
+   "bytes": 33989
+  },
+  "peridot-contracts/target/treasury-withdraw-1200-20261102": {
+   "files": 4,
+   "bytes": 33986
+  },
+  "peridot-contracts/target/treasury-withdraw-1680-20261013": {
+   "files": 4,
+   "bytes": 33986
+  },
+  "peridot-contracts/target/cl-resource-decision-updated.md": {
+   "files": 1,
+   "bytes": 32233
+  },
+  "peridot-contracts/target/treasury-eurc-shares-2600-20261018": {
+   "files": 4,
+   "bytes": 32038
+  },
+  "peridot-contracts/target/depth-droplet-20260926": {
+   "files": 6,
+   "bytes": 31491
+  },
+  "peridot-contracts/target/cl-history-regression.log": {
+   "files": 1,
+   "bytes": 31190
+  },
+  "peridot-contracts/target/cl-decisions-history": {
+   "files": 2,
+   "bytes": 30524
+  },
+  "peridot-contracts/target/cl-repayment-results.json": {
+   "files": 1,
+   "bytes": 27219
+  },
+  "peridot-contracts/target/treasury-payout-20260925": {
+   "files": 6,
+   "bytes": 25235
+  },
+  "peridot-contracts/target/cl-storage-layered-v2.patch": {
+   "files": 1,
+   "bytes": 23208
+  },
+  "peridot-contracts/target/cl-storage-layered.patch": {
+   "files": 1,
+   "bytes": 20762
+  },
+  "peridot-contracts/target/cl-atomic-qualification-report.md": {
+   "files": 1,
+   "bytes": 19992
+  },
+  "peridot-contracts/target/cl-atomic-restoration-analysis.md": {
+   "files": 1,
+   "bytes": 18467
+  },
+  "peridot-contracts/target/cl-storage-checkpoint-report.md": {
+   "files": 1,
+   "bytes": 18152
+  },
+  "peridot-contracts/target/cl-option1-joined-final-captured-v1.driver.json": {
+   "files": 1,
+   "bytes": 18019
+  },
+  "peridot-contracts/target/cl-history-tests-53.log": {
+   "files": 1,
+   "bytes": 17237
+  },
+  "peridot-contracts/target/cl-option1-joined-final-internal-v3.driver.json": {
+   "files": 1,
+   "bytes": 16974
+  },
+  "peridot-contracts/target/cl-option1-joined-final-captured-v2.driver.json": {
+   "files": 1,
+   "bytes": 16783
+  },
+  "peridot-contracts/target/cl-history-tests-complete.log": {
+   "files": 1,
+   "bytes": 16673
+  },
+  "peridot-contracts/target/cl-history-tests-final2.log": {
+   "files": 1,
+   "bytes": 16673
+  },
+  "peridot-contracts/target/cl-history-tests-final.log": {
+   "files": 1,
+   "bytes": 15998
+  },
+  "peridot-contracts/target/cl-history-tests.log": {
+   "files": 1,
+   "bytes": 15932
+  },
+  "peridot-contracts/target/cl-history-tests-fixed.log": {
+   "files": 1,
+   "bytes": 15615
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-v2-wrapper.log": {
+   "files": 1,
+   "bytes": 15478
+  },
+  "peridot-contracts/target/margin-config-mainnet": {
+   "files": 8,
+   "bytes": 13537
+  },
+  "peridot-contracts/target/cl-option1-checkpoint-draft-preserved.md": {
+   "files": 1,
+   "bytes": 13478
+  },
+  "peridot-contracts/target/cl-history-regression-fixed.log": {
+   "files": 1,
+   "bytes": 12807
+  },
+  "peridot-contracts/target/cl-stage1-report25.md": {
+   "files": 1,
+   "bytes": 12750
+  },
+  "peridot-contracts/target/prepare-treasury-eurc-shares-2600-20261018.mjs": {
+   "files": 1,
+   "bytes": 12291
+  },
+  "peridot-contracts/target/cl-stage1-plan-fable-review": {
+   "files": 4,
+   "bytes": 12193
+  },
+  "peridot-contracts/target/cl-option1-joined-final-captured-v3.driver.json": {
+   "files": 1,
+   "bytes": 11281
+  },
+  "peridot-contracts/target/cl-storage-operating-costs.md": {
+   "files": 1,
+   "bytes": 11040
+  },
+  "peridot-contracts/target/cl-atomic-v2-review.txt": {
+   "files": 1,
+   "bytes": 10830
+  },
+  "peridot-contracts/target/prepare-treasury-withdraw-1200-20261102.mjs": {
+   "files": 1,
+   "bytes": 10265
+  },
+  "peridot-contracts/target/mainnet-eurc-full-seq768-high-budget-first-signed.xdr": {
+   "files": 1,
+   "bytes": 10209
+  },
+  "peridot-contracts/target/mainnet-usdc-full-seq769-high-budget-first-signed.xdr": {
+   "files": 1,
+   "bytes": 10209
+  },
+  "peridot-contracts/target/mainnet-eurc-full-seq768-high-budget-prepared.xdr": {
+   "files": 1,
+   "bytes": 10113
+  },
+  "peridot-contracts/target/mainnet-usdc-full-seq769-high-budget-prepared.xdr": {
+   "files": 1,
+   "bytes": 10113
+  },
+  "peridot-contracts/target/prepare-treasury-withdraw-2500-20261014.mjs": {
+   "files": 1,
+   "bytes": 10112
+  },
+  "peridot-contracts/target/prepare-treasury-withdraw-1680-20261013.mjs": {
+   "files": 1,
+   "bytes": 10100
+  },
+  "peridot-contracts/target/cl-atomic-independent-review.txt": {
+   "files": 1,
+   "bytes": 8668
+  },
+  "peridot-contracts/target/cl-option1-joined-proof-map-initial.json": {
+   "files": 1,
+   "bytes": 8492
+  },
+  "peridot-contracts/target/restore-depth-fixture-20261008.mjs": {
+   "files": 1,
+   "bytes": 8450
+  },
+  "peridot-contracts/target/cl-atomic-final-review.txt": {
+   "files": 1,
+   "bytes": 7657
+  },
+  "peridot-contracts/target/cl-storage-independent-review.txt": {
+   "files": 1,
+   "bytes": 7646
+  },
+  "peridot-contracts/target/cl-fee-pending-final": {
+   "files": 7,
+   "bytes": 7508
+  },
+  "peridot-contracts/target/cl-split-first": {
+   "files": 2,
+   "bytes": 7111
+  },
+  "peridot-contracts/target/cl-history-build-complete.log": {
+   "files": 1,
+   "bytes": 6907
+  },
+  "peridot-contracts/target/cl-history-build.log": {
+   "files": 1,
+   "bytes": 6907
+  },
+  "peridot-contracts/target/update-aqua-floor-20260926.mjs": {
+   "files": 1,
+   "bytes": 5978
+  },
+  "peridot-contracts/target/cl-option1-shared-verify.py": {
+   "files": 1,
+   "bytes": 5705
+  },
+  "peridot-contracts/target/package_cl_atomic_checkpoint.py": {
+   "files": 1,
+   "bytes": 5620
+  },
+  "peridot-contracts/target/cl-atomic-measured-details.json": {
+   "files": 1,
+   "bytes": 5486
+  },
+  "peridot-contracts/target/refresh-lp-caches-20260926.mjs": {
+   "files": 1,
+   "bytes": 5363
+  },
+  "peridot-contracts/target/cl-atomic-v3-differential-known-peak-final.json": {
+   "files": 1,
+   "bytes": 5189
+  },
+  "peridot-contracts/target/cl-restoration-postcondition-checker-tests": {
+   "files": 3,
+   "bytes": 4955
+  },
+  "peridot-contracts/target/keeper-release-20260926.mjs": {
+   "files": 1,
+   "bytes": 4850
+  },
+  "peridot-contracts/target/keeper-release-20260929.mjs": {
+   "files": 1,
+   "bytes": 4850
+  },
+  "peridot-contracts/target/cl-restoration-stage-paths.json": {
+   "files": 1,
+   "bytes": 4789
+  },
+  "peridot-contracts/target/fund-mainnet-keeper-20260926.mjs": {
+   "files": 1,
+   "bytes": 4473
+  },
+  "peridot-contracts/target/cl-storage-root-cold-lower-bound.json": {
+   "files": 1,
+   "bytes": 4464
+  },
+  "peridot-contracts/target/review-aqua-floor-20260926.mjs": {
+   "files": 1,
+   "bytes": 4343
+  },
+  "peridot-contracts/target/cl-atomic-checker-tests-final.log": {
+   "files": 1,
+   "bytes": 4270
+  },
+  "peridot-contracts/target/cl-history-compile.log": {
+   "files": 1,
+   "bytes": 4000
+  },
+  "peridot-contracts/target/diagnose-depth-prepare-20261008.mjs": {
+   "files": 1,
+   "bytes": 3918
+  },
+  "peridot-contracts/target/cl-stage1-ci-prior-jobs.json": {
+   "files": 1,
+   "bytes": 3713
+  },
+  "peridot-contracts/target/cl-option1-joined-assessment-v2.md": {
+   "files": 1,
+   "bytes": 3537
+  },
+  "peridot-contracts/target/cl-option1-joined-assessment-v3.md": {
+   "files": 1,
+   "bytes": 3537
+  },
+  "peridot-contracts/target/cl-option1-joined-assessment.md": {
+   "files": 1,
+   "bytes": 3499
+  },
+  "peridot-contracts/target/audit-keeper-profit-20260930.mjs": {
+   "files": 1,
+   "bytes": 3387
+  },
+  "peridot-contracts/target/audit-depth-cloud-20261005.mjs": {
+   "files": 1,
+   "bytes": 3359
+  },
+  "peridot-contracts/target/audit-keeper-harvest-20260927.mjs": {
+   "files": 1,
+   "bytes": 3249
+  },
+  "peridot-contracts/target/cl-atomic-checker-tests.log": {
+   "files": 1,
+   "bytes": 3194
+  },
+  "peridot-contracts/target/cl-decisions-checker-tests.log": {
+   "files": 1,
+   "bytes": 3194
+  },
+  "peridot-contracts/target/diagnose-lp-20260926.mjs": {
+   "files": 1,
+   "bytes": 2930
+  },
+  "peridot-contracts/target/cl-option1-mixed-preportable.py": {
+   "files": 1,
+   "bytes": 2902
+  },
+  "peridot-contracts/target/audit-keeper-release-20260926.mjs": {
+   "files": 1,
+   "bytes": 2883
+  },
+  "peridot-contracts/target/audit-keeper-release-20260929.mjs": {
+   "files": 1,
+   "bytes": 2883
+  },
+  "peridot-contracts/target/treasury-payment-1200-20261102": {
+   "files": 1,
+   "bytes": 2883
+  },
+  "peridot-contracts/target/cl-storage-add-companions-v1.py": {
+   "files": 1,
+   "bytes": 2831
+  },
+  "peridot-contracts/target/diagnose-keeper-fees-20260926.mjs": {
+   "files": 1,
+   "bytes": 2614
+  },
+  "peridot-contracts/target/lp-cache-maintenance-20260926.jsonl": {
+   "files": 1,
+   "bytes": 2484
+  },
+  "peridot-contracts/target/.rustc_info.json": {
+   "files": 1,
+   "bytes": 2479
+  },
+  "peridot-contracts/target/cl-split-second": {
+   "files": 1,
+   "bytes": 2368
+  },
+  "peridot-contracts/target/cl-restoration-checker-tests": {
+   "files": 3,
+   "bytes": 2123
+  },
+  "peridot-contracts/target/cl-runtime29-compile.log": {
+   "files": 1,
+   "bytes": 2103
+  },
+  "peridot-contracts/target/mainnet-treasury-add-ledger-seq770-cosigner.txt": {
+   "files": 1,
+   "bytes": 2101
+  },
+  "peridot-contracts/target/mainnet-usdc-full-seq769-high-budget-cosigner.txt": {
+   "files": 1,
+   "bytes": 1876
+  },
+  "peridot-contracts/target/mainnet-eurc-full-seq768-high-budget-cosigner.txt": {
+   "files": 1,
+   "bytes": 1874
+  },
+  "peridot-contracts/target/cl-storage-native-cargo": {
+   "files": 5,
+   "bytes": 1865
+  },
+  "peridot-contracts/target/medium2-native": {
+   "files": 5,
+   "bytes": 1865
+  },
+  "peridot-contracts/target/cl-stage1-ci-prior.json": {
+   "files": 1,
+   "bytes": 1745
+  },
+  "peridot-contracts/target/stellar-margin-keeper-20261010": {
+   "files": 1,
+   "bytes": 1682
+  },
+  "peridot-contracts/target/cl-storage-liquidation-cold-lower-bound.json": {
+   "files": 1,
+   "bytes": 1659
+  },
+  "peridot-contracts/target/cl-exit-assessment-diagnostic": {
+   "files": 1,
+   "bytes": 1582
+  },
+  "peridot-contracts/target/cash-funding-revision-20261112-preview": {
+   "files": 2,
+   "bytes": 1358
+  },
+  "peridot-contracts/target/aqua-floor-20260926-intent.json": {
+   "files": 1,
+   "bytes": 1153
+  },
+  "peridot-contracts/target/cl-fee-pending-default-isolation.log": {
+   "files": 1,
+   "bytes": 1114
+  },
+  "peridot-contracts/target/cl-option1-ci-replay-v1.log": {
+   "files": 1,
+   "bytes": 979
+  },
+  "peridot-contracts/target/cl-stage1-cash-first-build-v1.log": {
+   "files": 1,
+   "bytes": 885
+  },
+  "peridot-contracts/target/cl-option1-pending-build-v3.log": {
+   "files": 1,
+   "bytes": 758
+  },
+  "peridot-contracts/target/cl-option1-ci-replay-v2.log": {
+   "files": 1,
+   "bytes": 751
+  },
+  "peridot-contracts/target/cl-option1-pending-build-v1.log": {
+   "files": 1,
+   "bytes": 630
+  },
+  "peridot-contracts/target/cl-split-repro-isolated.log": {
+   "files": 1,
+   "bytes": 570
+  },
+  "peridot-contracts/target/cl-split-repro-verified.log": {
+   "files": 1,
+   "bytes": 570
+  },
+  "peridot-contracts/target/cl-option1-package.log": {
+   "files": 1,
+   "bytes": 494
+  },
+  "peridot-contracts/target/keeper-funding-20260926-result.json": {
+   "files": 1,
+   "bytes": 459
+  },
+  "peridot-contracts/target/cl-option1-ci-replay-v3.log": {
+   "files": 1,
+   "bytes": 457
+  },
+  "peridot-contracts/target/cash-funding.M85Q90": {
+   "files": 2,
+   "bytes": 434
+  },
+  "peridot-contracts/target/keeper-funding-20260926-intent.json": {
+   "files": 1,
+   "bytes": 384
+  },
+  "peridot-contracts/target/cl-option1-ci-replay-warm.log": {
+   "files": 1,
+   "bytes": 326
+  },
+  "peridot-contracts/target/mainnet-treasury-add-ledger-seq770-first-signed.xdr": {
+   "files": 1,
+   "bytes": 305
+  },
+  "peridot-contracts/target/mainnet-treasury-add-ledger-seq770-prepared.xdr": {
+   "files": 1,
+   "bytes": 209
+  },
+  "peridot-contracts/target/aqua-floor-20260926-result.json": {
+   "files": 1,
+   "bytes": 186
+  },
+  "peridot-contracts/target/CACHEDIR.TAG": {
+   "files": 1,
+   "bytes": 177
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-v1-wrapper.log": {
+   "files": 1,
+   "bytes": 176
+  },
+  "peridot-contracts/target/cl-decisions-corrected-runner.log": {
+   "files": 1,
+   "bytes": 141
+  },
+  "peridot-contracts/target/cl-option1-package-final.log": {
+   "files": 1,
+   "bytes": 138
+  },
+  "peridot-contracts/target/cl-next-linux-replay-v3.log": {
+   "files": 1,
+   "bytes": 134
+  },
+  "peridot-contracts/target/cl-option1-reporting-tests.log": {
+   "files": 1,
+   "bytes": 104
+  },
+  "peridot-contracts/target/cl-split-fee-internal-driver.log": {
+   "files": 1,
+   "bytes": 99
+  },
+  "peridot-contracts/target/cl-split-final-internal-driver.log": {
+   "files": 1,
+   "bytes": 99
+  },
+  "peridot-contracts/target/cl-split-isolated-internal-driver.log": {
+   "files": 1,
+   "bytes": 99
+  },
+  "peridot-contracts/target/cl-split-late-internal-driver.log": {
+   "files": 1,
+   "bytes": 99
+  },
+  "peridot-contracts/target/cl-split-open-internal-driver.log": {
+   "files": 1,
+   "bytes": 99
+  },
+  "peridot-contracts/target/cl-split-proof-internal-driver.log": {
+   "files": 1,
+   "bytes": 99
+  },
+  "peridot-contracts/target/cl-split-third-driver.log": {
+   "files": 1,
+   "bytes": 99
+  },
+  "peridot-contracts/target/cl-split-fee-captured-driver.log": {
+   "files": 1,
+   "bytes": 97
+  },
+  "peridot-contracts/target/cl-split-final-captured-driver.log": {
+   "files": 1,
+   "bytes": 97
+  },
+  "peridot-contracts/target/cl-split-fourth-driver.log": {
+   "files": 1,
+   "bytes": 97
+  },
+  "peridot-contracts/target/cl-split-late-captured-driver.log": {
+   "files": 1,
+   "bytes": 97
+  },
+  "peridot-contracts/target/cl-split-proof-captured-driver.log": {
+   "files": 1,
+   "bytes": 97
+  },
+  "peridot-contracts/target/cl-split-transfer-fault-fixed-driver.log": {
+   "files": 1,
+   "bytes": 97
+  },
+  "peridot-contracts/target/cl-stage1-build-v4.log": {
+   "files": 1,
+   "bytes": 93
+  },
+  "peridot-contracts/target/cl-stage1-cash-first-build-v2.log": {
+   "files": 1,
+   "bytes": 93
+  },
+  "peridot-contracts/target/cl-stage1-cash-first-build-v3.log": {
+   "files": 1,
+   "bytes": 93
+  },
+  "peridot-contracts/target/cl-option1-closing-captured-v1-wrapper.log": {
+   "files": 1,
+   "bytes": 92
+  },
+  "peridot-contracts/target/cl-option1-joined-final-internal-v3.driver.log": {
+   "files": 1,
+   "bytes": 92
+  },
+  "peridot-contracts/target/cl-option1-mixed-captured-v1-driver.log": {
+   "files": 1,
+   "bytes": 92
+  },
+  "peridot-contracts/target/cl-option1-mixed-captured-v2-driver.log": {
+   "files": 1,
+   "bytes": 92
+  },
+  "peridot-contracts/target/cl-option1-pending-captured-v1-wrapper.log": {
+   "files": 1,
+   "bytes": 92
+  },
+  "peridot-contracts/target/cl-option1-pending-internal-v2-wrapper.log": {
+   "files": 1,
+   "bytes": 92
+  },
+  "peridot-contracts/target/cl-option1-closing-captured-v2-wrapper.log": {
+   "files": 1,
+   "bytes": 90
+  },
+  "peridot-contracts/target/cl-option1-joined-final-captured-v3.driver.log": {
+   "files": 1,
+   "bytes": 90
+  },
+  "peridot-contracts/target/cl-option1-mixed-captured-v3-driver.log": {
+   "files": 1,
+   "bytes": 90
+  },
+  "peridot-contracts/target/cl-option1-mixed-internal-v3-driver.log": {
+   "files": 1,
+   "bytes": 90
+  },
+  "peridot-contracts/target/cl-option1-pending-captured-v2-wrapper.log": {
+   "files": 1,
+   "bytes": 90
+  },
+  "peridot-contracts/target/cl-option1-pending-captured-v3-wrapper.log": {
+   "files": 1,
+   "bytes": 90
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-build-v1.log": {
+   "files": 1,
+   "bytes": 47
+  },
+  "peridot-contracts/target/cl-decisions-full-runner.log": {
+   "files": 1,
+   "bytes": 0
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-v1-reexpiry-batches.jsonl": {
+   "files": 1,
+   "bytes": 0
+  },
+  "peridot-contracts/target/cl-option1-pending-restoration-v1-reexpiry.jsonl": {
+   "files": 1,
+   "bytes": 0
+  },
+  "peridot-contracts/target/cl-split-acceptance-captured-driver.log": {
+   "files": 1,
+   "bytes": 0
+  },
+  "peridot-contracts/target/cl-split-acceptance-internal-driver.log": {
+   "files": 1,
+   "bytes": 0
+  }
+ }
+}
