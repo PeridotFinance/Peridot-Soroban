@@ -243,6 +243,41 @@
       "status": "PENDING_USER_REAPPROVAL",
       "gate": "hard gate before the uploads (HG1)"
     },
-    "goLive": "Wed 25 Nov 2026 (12 h gate moves the plan one day past the 3-day target)"
+    "goLive": "Wed 25 Nov 2026 (12 h gate moves the plan one day past the 3-day target)",
+    "exitPathEntryCeiling": {
+      "accepted": true,
+      "decision": "Exits 91 OK",
+      "ceilingEntries": 91,
+      "appliesTo": [
+        "in-kind withdraw",
+        "emergency extract"
+      ],
+      "condition": "<= 85% of live network limits",
+      "measuredWorst": {
+        "entries": [
+          86,
+          91
+        ],
+        "keys": 60,
+        "writes": 31,
+        "cpu": 81000000,
+        "memBytes": 9700000,
+        "writeBytes": 20600
+      },
+      "limits85pct": {
+        "footprint": 340,
+        "diskReadEntries": 170,
+        "writes": 170,
+        "cpu": 340000000,
+        "memBytes": 35600000,
+        "writeBytes": 112000
+      },
+      "otherPaths": "liquidation and every other path keep the 85-entry line"
+    },
+    "leveragedU1toU13": {
+      "accepted": "all as recommended",
+      "spec": "0f456aa (.wt-cl-leveraged)",
+      "rule": "nothing leveraged deploys without its own ceremony list"
+    }
   }
 }

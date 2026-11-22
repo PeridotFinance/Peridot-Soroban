@@ -38,6 +38,8 @@ Markers used below:
 | D-rpc | **Second RPC:** the user's Alchemy URL, read from a **chmod-600 file on the Droplet** | It must never appear in any config, command, log or this file (§6.4). Being implemented by the signer agent: **PLACEHOLDER** |
 | D-scan | **Almanax:** still pending the user's re-approval | It **stays a hard gate before the uploads** (HG1). The uploads are scheduled immediately after it (§4) |
 | D-rate | **First liquidation by a temporary rate raise** ("rate raise OK"), with conditions | 1000 % APR for at most 30 min (G52). Both directions are simulated before the raise. **Mandatory, separately numbered 8 % reset G56**, whether or not the liquidation happens; the window warns at 25 min. CF-0 stays the 15-minute fallback (FB1–FB3). No cap changes (§5.6–5.7) |
+| D-exit91 | **"Exits 91 OK":** a separate ceiling of **91 entries for exit paths only** (in-kind withdraw, emergency extract), on condition that it stays ≤ 85 % of the live network limits | It does. The measured worst cases are 86 / 91 entries, 60 keys, 31 writes, 81.0M CPU, 9.7 MB memory and 20.6 KB write bytes. The 85 % marks are 340 footprint entries, 170 disk-read entries, 170 writes, 340M CPU, 35.6 MB memory and 112 KB write bytes. **Liquidation and every other path keep the 85-entry line** (§2) |
+| D-lev | **Leveraged U1–U13: all as recommended** (spec commit 0f456aa in `.wt-cl-leveraged`) | Out of scope for this launch. **Nothing leveraged deploys without its own ceremony list**; no step here touches it |
 
 ## 0. One page
 
