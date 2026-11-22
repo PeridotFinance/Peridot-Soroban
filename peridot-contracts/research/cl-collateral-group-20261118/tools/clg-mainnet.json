@@ -137,7 +137,11 @@
       },
       "defaultUploadCpuMax": 100000000,
       "userDecision": "21 Nov owner: \"upload exception if it simulates on mainnet\". Enforced by the step: the fresh live Mainnet simulation right before signing must stay within the per-hash allowance (107.5M vault/receipt, 100M controller), else refused."
-    }
+    },
+    "entryLine": 85,
+    "exitPathMaxEntries": 91,
+    "entryExceptions": {},
+    "entryNote": "entries = memory + disk reads + writes (footprint keys + read-write keys). Every prepared step must be <= entryLine (85) from its fresh simulation; exit-path builders (owner withdraw, emergency extract) <= exitPathMaxEntries (91, D-exit91). entryExceptions pins {stepId: {measured, allowance}} by user decision only; empty = refuse everything above the line."
   },
   "params": {
     "funding": {

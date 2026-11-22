@@ -99,3 +99,21 @@ test('exact-limit borrow: USD value never exceeds the liquidity, leftover below 
     assert((a + 1n) * price / scale > liq);
   }
 });
+test('entry line: 85 for every step, 91 only for exit paths, exceptions only when pinned by step id', () => {
+  const cfg = base();
+  assert.equal(m.ENTRY_LINE, 85); assert.equal(m.EXIT_PATH_MAX_ENTRIES, 91);
+  assert.equal(cfg.limits.entryLine, 85); assert.equal(cfg.limits.exitPathMaxEntries, 91);
+  assert.deepEqual(cfg.limits.entryExceptions, {}, 'no launch step has an exception');
+  assert.equal(m.entriesOf({keys: 63, writes: 17}), 80);
+  assert.equal(m.checkEntries({keys: 63, writes: 17}, m.entryLimitFor(cfg, 'any'), 'L3-like'), 80);
+  assert.equal(m.checkEntries({keys: 70, writes: 15}, 85, 'edge'), 85);
+  assert.throws(() => m.checkEntries({keys: 70, writes: 16}, m.entryLimitFor(cfg, 'team.borrow'), 'team.borrow'), /86 entries .* above the 85-entry line/);
+  assert.equal(m.entryLimitFor(cfg, 'x', {exitPath: true}), 91);
+  assert.equal(m.checkEntries({keys: 60, writes: 31}, m.entryLimitFor(cfg, 'exit', {exitPath: true}), 'exit'), 91);
+  assert.throws(() => m.checkEntries({keys: 61, writes: 31}, m.entryLimitFor(cfg, 'exit', {exitPath: true}), 'exit'), /above the 91-entry line/);
+  const c2 = base(); c2.limits.entryExceptions = {'team.open': {measured: 88, allowance: 88}};
+  assert.equal(m.entryLimitFor(c2, 'team.open'), 88); assert.equal(m.entryLimitFor(c2, 'team.borrow'), 85);
+  const c3 = base(); c3.limits.entryExceptions = {'team.open': {measured: 90, allowance: 88}};
+  assert.throws(() => m.entryLimitFor(c3, 'team.open'), /bad entry exception/);
+  for (const s of m.steps(cfg)) assert.notEqual(s.exitPath, true, `${s.id} must not use the exit-path ceiling`);
+});

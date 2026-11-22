@@ -303,6 +303,22 @@ function uploadCpuMax(cfg, sha256, simulateOnly) {
   assert(A.acceptedByUser === true || simulateOnly, `upload of ${sha256} needs ${pin.measuredCpu} instructions, above the ${base} policy: user decision limits.uploadCpuAllowance.acceptedByUser required (PENDING)`);
   return pin.allowance;
 }
+// Entry line (project rule): entries = memory + disk reads + writes = footprint keys + read-write keys (harness
+// convention: L3 = 63 keys + 17 writes = 80). Every prepared step must stay <= 85; an exception must be pinned in
+// clg-mainnet.json limits.entryExceptions[stepId] = {measured, allowance} (default: none, refuse). Exit-path builders
+// (owner withdraw / emergency extract; none is prepared by this tool today) use EXIT_PATH_MAX_ENTRIES (D-exit91).
+const ENTRY_LINE = 85, EXIT_PATH_MAX_ENTRIES = 91;
+function entriesOf(m) { return m.keys + m.writes; }
+function entryLimitFor(cfg, stepId, {exitPath = false} = {}) {
+  const ex = cfg.limits && cfg.limits.entryExceptions && cfg.limits.entryExceptions[stepId];
+  if (ex) { assert(Number(ex.allowance) >= Number(ex.measured) && Number(ex.allowance) <= 100, `bad entry exception for ${stepId}`); return Number(ex.allowance); }
+  return exitPath ? EXIT_PATH_MAX_ENTRIES : ENTRY_LINE;
+}
+function checkEntries(metrics, limit, stepId) {
+  const e = entriesOf(metrics);
+  assert(e <= limit, `${stepId}: ${e} entries (${metrics.keys} keys + ${metrics.writes} writes) above the ${limit}-entry line; refused (pin an exception in limits.entryExceptions only on a user decision)`);
+  return e;
+}
 function checkResources(data, cpuMax) {
   const r = data.resources(), fp = r.footprint(), keys = [...fp.readOnly(), ...fp.readWrite()].map(k => k.toXDR('base64'));
   assert(Number(r.instructions()) <= cpuMax, `CPU ${r.instructions()} above ${cpuMax}`);
@@ -325,7 +341,7 @@ async function codeExists(c, hex) {
   const r = await c.rpc.getLedgerEntries(k); return !!(r.entries && r.entries.length);
 }
 async function contractWasm(c, id) { try { return await c.codeHash(id); } catch { return null; } }
-async function simulateBuild(cfg, c, op, source, {cpuMax, feeCapStroops, policy, authOpts}) {
+async function simulateBuild(cfg, c, op, source, {cpuMax, feeCapStroops, policy, authOpts, entryLimit = ENTRY_LINE, stepId = '?'}) {
   const acc = await c.rpc.getAccount(source), latest = await c.rpc.getLatestLedger(), L = cfg.limits;
   const tx = new S.TransactionBuilder(acc, {fee: String(L.classicFeeStroops), networkPassphrase: cfg.network}).addOperation(op)
     .setLedgerbounds(latest.sequence + 1, latest.sequence + L.window).setTimeout(L.timeout).build();
@@ -336,6 +352,7 @@ async function simulateBuild(cfg, c, op, source, {cpuMax, feeCapStroops, policy,
   const minFee = BigInt(sim.minResourceFee);
   const prepared = S.rpc.assembleTransaction(tx, padResourceFee(sim)).build();
   const data = prepared.toEnvelope().v1().tx().ext().sorobanData(), metrics = checkResources(data, cpuMax);
+  metrics.entries = checkEntries(metrics, entryLimit, stepId); metrics.entryLimit = entryLimit;
   assert(u(prepared.fee) <= feeCapStroops, `fee ${prepared.fee} above the cap ${feeCapStroops}`);
   assert.equal(prepared.signatures.length, 0); assert.equal(prepared.source, source);
   metrics.minResourceFeeXlm = Number(minFee) / 1e7; // simulated (unpadded); maxFee = 1.2 x this + 0.001 + inclusion bid
@@ -559,7 +576,8 @@ async function buildStep(cfg, c, s) {
   const src = need(cfg.signers[s.signer].publicKey, `signers.${s.signer}.publicKey`);
   const o = await opFor(cfg, c, s);
   const res = o.classic ? await classicBuild(cfg, c, o.classic, src)
-    : await simulateBuild(cfg, c, o.op, src, {cpuMax: o.cpuMax, feeCapStroops: o.feeCapStroops, policy: o.policy, authOpts: o.authOpts});
+    : await simulateBuild(cfg, c, o.op, src, {cpuMax: o.cpuMax, feeCapStroops: o.feeCapStroops, policy: o.policy, authOpts: o.authOpts,
+        entryLimit: entryLimitFor(cfg, s.id, {exitPath: !!s.exitPath}), stepId: s.id});
   // The host's own answer must equal the precomputed id (salt + admin), or nothing is written.
   if (s.kind === 'deploy') assert.equal(String(res.retval), s.contract, `host would create ${res.retval}, not the pinned ${s.contract}`);
   return {res, summary: {step: s.id, n: s.n, signer: s.signer, hdPath: cfg.signers[s.signer].hdPath, call: s.method || s.kind, target: s.target || null, why: s.why, ...(o.summary || {})}};
@@ -714,5 +732,5 @@ async function main(argv) {
   if (cmd === 'status') { const r = await c.rpc.getTransaction(argv[1]); return {hash: argv[1], status: r.status, ledger: r.ledger}; }
   throw Error('usage: see header');
 }
-module.exports = {uploadCpuMax, contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY, assertRouteAAllowed, decodeSeizeEvents, readSeizeEvents, checkTrustlines, checkRatePlan, rateWindow, borrowAtLimit};
+module.exports = {uploadCpuMax, contractIdFor, ids, steps, checkCaps, checkAuth, assertTargetAllowed, stg2Config, EMERGENCY, assertRouteAAllowed, decodeSeizeEvents, readSeizeEvents, checkTrustlines, checkRatePlan, rateWindow, borrowAtLimit, ENTRY_LINE, EXIT_PATH_MAX_ENTRIES, entriesOf, entryLimitFor, checkEntries};
 if (require.main === module) main(process.argv.slice(2)).then(r => console.log(json(r))).catch(e => { console.error('REFUSED/FAILED:', e.message); process.exit(1); });
