@@ -434,3 +434,11 @@ own work running in parallel on another engineer, the critical path is group vau
 | U12 | Whether leveraged borrowing shares the group market's borrow cap with plain group borrowers or gets its own market | Own cap accounting: add an aggregate leveraged-debt cap in `cl-leveraged` (not prototyped) |
 | U13 | Behaviour when the group sets the sleeve CF to 0 (`emergency_disable_collateral`): every indebted leveraged position becomes Health-exitable (prototyped), or freeze to repay-only | Exit-eligible: positions self-unwind in kind with their own assets; no seizure discount is involved |
 
+
+## 10. User decisions recorded (22 Nov 2026)
+
+Owner, in chat: "Leveraged U1 to U13: all as recommended. Nothing deploys without a ceremony list."
+
+- U1–U13 are accepted as the **Recommendation** column of the §9 table, unchanged.
+- No leveraged contract, upgrade, wiring call or parameter goes to Mainnet without its own numbered ceremony list. Each step in that list carries its command, Ledger account, expected output, read-back, failure action and cancel path, and is simulated against live Mainnet first.
+- Values left open by the recommendations still need their own decision before that ceremony list: U3 thresholds from backtests, U5 fee values, U12 aggregate cap.
