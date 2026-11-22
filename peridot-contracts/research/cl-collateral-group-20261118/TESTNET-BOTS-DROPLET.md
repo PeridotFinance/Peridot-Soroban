@@ -158,3 +158,17 @@ Times are UTC on 22 Nov 2026.
   - R2 3, e.g. 09f17bbc… and b9ff9081….
   - All are `successful=true` with source = that bot's liquidator.
   - MemoryPeak 58 MB / 48 MB (limit 200M). NRestarts 0.
+- 12:44:57: Testnet ledger closeTime 1795351496 is past the vault ETA plus 30 s. `05-upgrade.sh execute` on R2 (log: `target/clg/testnet-real2/upgrade-execute.log`), rc 0:
+  - Before-ETA refusals are re-confirmed: vault execute while unpaused and receipt execute with pauses off both refuse.
+  - ctrl `upgrade_wasm` a567a96c…; `upgrade_marker` = **2**.
+  - pause deposit bbd58e8b… and pause redeem 9b7628bd…; receipt `upgrade_wasm` 135e93aa…; marker = **2**.
+  - vault `set_paused(true)` 665d5dc9…; vault `upgrade_wasm` 2b71e42d…; marker = **2**; `set_paused(false)` 15d97a27….
+  - unpause deposit 96209da8… and unpause redeem 4e5cf489….
+  - **State snapshot (27 values) identical before and after execute.**
+  - post-upgrade L1a `checkpoint_nav` cc1952cd… = 1001586.
+  - Afterwards `get_pending_upgrade` is null on all three, and vault `is_paused` = false.
+  - Both Droplet bots kept cycling and sending through the upgrade, with 0 warn/alert lines.
+- 12:46:48: `teardown`:
+  - data fetched to `target/clg/testnet-real{,2}/bot/droplet-20261122T124648Z/` (R1 4,677, R2 2,201 journal lines). A bug in `fetch` left the timestamp empty; it is fixed and the directories were renamed.
+  - **TEARDOWN VERIFIED**: no tnbot unit, user, group, files, keys or processes remain. `/opt` again holds only `digitalocean`, `node-v22.23.5` and `peridot-cash-liquidator`.
+- **Observation (not caused by this work).** `peridot-cash-liquidator` was restarted at 12:10:46 and again at 12:19:24 UTC, by separate root SSH sessions from the operator IP. This task made no SSH connection between 11:49 and 12:45. Its ActiveEnterTimestamp is now 2026-11-22 12:19:24, which resets its dry-run clock.

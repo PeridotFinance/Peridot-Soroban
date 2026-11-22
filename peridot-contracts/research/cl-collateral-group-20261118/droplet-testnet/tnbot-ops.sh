@@ -162,7 +162,7 @@ cmd_stop_mac() {
 }
 
 cmd_fetch() {
-  local ts; ts=$(date -u +%Y%m%dT%H%M%SZ) b
+  local ts b; ts=$(date -u +%Y%m%dT%H%M%SZ)
   for b in r1 r2; do
     local d=$PC/target/clg/$(bot_cfg $b)/bot/droplet-$ts
     mkdir -p "$d"
