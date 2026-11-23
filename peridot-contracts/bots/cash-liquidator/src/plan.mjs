@@ -67,6 +67,20 @@ export function mergeBorrowers(known, events) {
   return [...s].sort();
 }
 
+/**
+ * Drop tracked borrowers whose debt is zero in every market read. `debts` maps user -> array of BigInt debts, with
+ * null for a failed read. Fail-safe: a user with no entry, any failed read or any nonzero debt is kept. Safe because a
+ * pruned account that borrows again emits a new borrow_event after the event cursor and is re-added by discovery.
+ */
+export function pruneZeroDebt(borrowers, debts) {
+  const kept = [], pruned = [];
+  for (const u of borrowers) {
+    const d = debts.get(u);
+    if (!d || d.length === 0 || d.some(x => x == null) || d.some(x => x > 0n)) kept.push(u); else pruned.push(u);
+  }
+  return {kept, pruned};
+}
+
 /** XLM is both repay inventory and the fee/reserve balance: never plan a repay out of the fee floor or account reserves. */
 export function netInventory(inv, {feeFloorXlmRaw = 0n, accountReserveXlmRaw = 0n} = {}) {
   const out = {...inv};

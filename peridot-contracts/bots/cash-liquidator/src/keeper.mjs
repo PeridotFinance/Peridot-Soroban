@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as S from '@stellar/stellar-sdk';
 import {marginPass} from './margin.mjs';
-import {planLiquidation, seizeIsProfitable, depegAlerts, mergeBorrowers, netInventory, refreshDecision, budgetFor, inventoryShortfalls, cachedPriceForLiquidation} from './plan.mjs';
+import {planLiquidation, seizeIsProfitable, depegAlerts, mergeBorrowers, netInventory, refreshDecision, budgetFor, inventoryShortfalls, cachedPriceForLiquidation, pruneZeroDebt} from './plan.mjs';
 
 const log = (level, msg, extra = {}) => console.log(JSON.stringify({t: new Date().toISOString(), level, msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
 
@@ -96,8 +96,30 @@ export async function ensureAllAllowances(cfg, c) {
   }
 }
 
+// Hourly (PRUNE_EVERY_MS, 0 = off): forget borrowers with zero debt in every pinned and entered market, e.g. repaid
+// or merged accounts. Runs after discover(), so a borrow that is already on chain is either in the debt read or in a
+// later borrow_event; any failed read keeps the user.
+export async function pruneBorrowers(cfg, c, st, now = Date.now()) {
+  if (!cfg.pruneEveryMs || (st.lastPruneMs && now - st.lastPruneMs < cfg.pruneEveryMs)) return [];
+  const pinned = Object.values(cfg.pins.markets).map(m => m.receipt);
+  const debts = new Map();
+  for (const user of st.borrowers) {
+    let entered = [];
+    try { entered = (await c.view(cfg.pins.controller, 'get_user_markets', [c.addr(user)])) || []; } catch { debts.set(user, [null]); continue; }
+    const receipts = [...new Set([...pinned, ...entered.map(String)])];
+    const d = [];
+    for (const r of receipts) { try { d.push(BigInt(await c.view(r, 'get_user_borrow_balance', [c.addr(user)]))); } catch { d.push(null); } }
+    debts.set(user, d);
+  }
+  const {kept, pruned} = pruneZeroDebt(st.borrowers, debts);
+  st.borrowers = kept; st.lastPruneMs = now;
+  if (pruned.length) { log('info', 'pruned zero-debt borrowers', {pruned, kept: kept.length}); saveState(cfg.stateFile, st); }
+  return pruned;
+}
+
 export async function cycle(cfg, c, st) {
   await discover(cfg, c, st); saveState(cfg.stateFile, st);
+  await pruneBorrowers(cfg, c, st);
   const closeFactor = BigInt(await c.view(cfg.pins.controller, 'get_close_factor_scaled'));
   const li = BigInt(await c.view(cfg.pins.controller, 'get_liquidation_incentive_scaled'));
   const xlm = await balanceOf(cfg, c, cfg.pins.markets.XLM.underlying);

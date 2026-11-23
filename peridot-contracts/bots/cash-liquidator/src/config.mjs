@@ -17,6 +17,7 @@ export function loadConfig(env = process.env) {
     dryRun: bool(env.DRY_RUN, true),
     runOnce: bool(env.RUN_ONCE, false),
     pollMs: int(env.POLL_INTERVAL_MS, 30_000),
+    pruneEveryMs: int(env.PRUNE_EVERY_MS, 3_600_000),
     minProfitBps: int(env.MIN_PROFIT_BPS, 200),
     inclusionFee: int(env.INCLUSION_FEE_STROOPS, 100_000),
     maxFeeStroops: int(env.MAX_FEE_STROOPS, 20_000_000),
