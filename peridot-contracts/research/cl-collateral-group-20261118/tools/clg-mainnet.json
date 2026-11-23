@@ -1,5 +1,5 @@
 {
-  "status": "CAPS_APPROVED_2026-11-21_UPLOAD_EXCEPTION_ACCEPTED_SCAN_PENDING",
+  "status": "FROZEN_2026-11-23_UPLOADS_APPROVED_SCAN_GATES_GO_LIVE_ONLY",
   "revision": "2026-11-21 launch plan v1 (LAUNCH.md). Fresh-stack option A. Artifacts NOT frozen: the upgradeable vault v2 / receipt StgV2 / group controller builds replace the paths and hashes below.",
   "network": "Public Global Stellar Network ; September 2015",
   "rpc": "https://soroban-rpc.mainnet.stellar.gateway.fm",
@@ -71,8 +71,8 @@
     "CDNJSOJKURHQUDBO7OHK7Z64R2CNMIAWXENHM24ALK7Y3H56EU6PUOKR"
   ],
   "artifacts": {
-    "frozen": false,
-    "note": "PLACEHOLDER until the user freezes the release: candidates built at 96e7b3c (descendant of 137de32 F1 and 6e83fd7 upgradeability), quoted in sims/quote-final-96e7b3c-20261121T081849Z.json. Set frozen=true only with the final reviewed and scanned hashes.",
+    "frozen": true,
+    "note": "FROZEN 23 Nov 2026 by user decision (uploads do not wait for the Almanax scan; the scan gates only the go-live switch G45). Bytes = canonical build of 15d9833 (build-hashes-cl-group.json), identical to the 96e7b3c candidates at these paths (sha256 rechecked 23 Nov). Live sims at ledger 65628197: G4 106.66M CPU / 167.66 XLM min, G5 106.68M / 162.71, G6 55.71M / 92.43.",
     "vault": {
       "path": "../../../target/clg/freeze/final-96e7b3c/art/vault-v2/cl_share_vault.wasm",
       "sha256": "6fd8599a9b369ab84ba9ee8fd95642cde50621c07d5cc37cd278e8f225a4870e",
@@ -244,10 +244,16 @@
       "implementation": "signer agent (PLACEHOLDER commit)"
     },
     "almanax": {
-      "status": "PENDING_USER_REAPPROVAL",
-      "gate": "hard gate before the uploads (HG1)"
+      "status": "REAPPROVAL_DONE_OR_IN_PROGRESS_2026-11-23",
+      "gate": "gates ONLY the go-live switch (G45) and everything after it. Uploads, creates and configuration G1-G44 proceed now with deposits and borrowing off (user decision 23 Nov)"
     },
-    "goLive": "Wed 25 Nov 2026 (12 h gate moves the plan one day past the 3-day target)",
+    "orderAndDepositsOff": {
+      "recordedAt": "2026-11-23",
+      "decision": "Withdrawals, uploads, creates and configuration now; start the 12 h soak as soon as the contracts exist; scan gates only go-live; migration of the 800 PYUSD after go-live",
+      "depositsOff": "vault v2 set_paused(admin,true) (durable, reversible) after G26 until go-live; USDC market controller set_pause_deposit(true) right after the owner deposit G42 (72 h expiry, renew if go-live slips)",
+      "borrowingOff": "set_cash_borrowing_enabled stays false until G45 (default after initialize)"
+    },
+    "goLive": "after the clean scan and the 12 h soak; earliest Tue 24 Nov morning (Berlin)",
     "exitPathEntryCeiling": {
       "accepted": true,
       "decision": "Exits 91 OK",

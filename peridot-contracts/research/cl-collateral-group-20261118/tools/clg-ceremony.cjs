@@ -200,6 +200,7 @@ const EMERGENCY = {
   'pause-borrow': {durable: false, build: (cfg, I, on) => [I.controller, 'set_pause_borrow', [addr(I.usdcMarket), bool(on)]], note: '72 h controller pause'},
   'pause-liquidation': {durable: false, build: (cfg, I, on) => [I.controller, 'set_pause_liquidation', [addr(I.receipt), bool(on)]], note: '72 h; stops seizure of CL units (bad oracle)'},
   'pause-redeem': {durable: false, build: (cfg, I, on) => [I.controller, 'set_pause_redeem', [addr(I.usdcMarket), bool(on)]], note: '72 h; USDC suppliers only'},
+  'pause-deposit': {durable: false, build: (cfg, I, on) => [I.controller, 'set_pause_deposit', [addr(I.usdcMarket), bool(on)]], note: '72 h; no new USDC supply on the group market before go-live (23 Nov)'},
   'disable-cf': {durable: true, build: (cfg, I) => [I.controller, 'emergency_disable_collateral', [addr(I.receipt), bool(true)]], note: 'CF -> 0 now; EVERY borrower becomes liquidatable; also cancels a pending CF'},
   'latch-receipt': {durable: true, build: (cfg, I) => [I.receipt, 'stage_pause_deposits', [addr(cfg.admin)]], note: 'ONE-WAY: no new CL deposits on the new receipt'},
   'latch-vault': {durable: true, build: (cfg, I) => [I.vault, 'stage_pause_deposits', [addr(cfg.admin)]], note: 'ONE-WAY: no new open on vault v2'},
