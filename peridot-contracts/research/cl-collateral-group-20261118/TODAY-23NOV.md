@@ -27,8 +27,8 @@ Deposits off before go-live (new emergency builder `pause-deposit` added 23 Nov,
 - Borrowing: `set_cash_borrowing_enabled` stays false until G45.
 
 Bot release for the Droplet: commit 8b71f32 (67/67 tests). Deterministic tarball:
-`git archive --format=tar --prefix=cl-liquidator/ 8b71f32:peridot-contracts/bots/cl-liquidator | gzip -n -9`
-sha256 `eee9db4d322821be06371cdce1309eadc3fc919d4cdf20055b78c6ab8a4f7c50` (three identical rebuilds).
+`git archive --format=tar --mtime='2026-11-22 00:00:00 +0000' --prefix=cl-liquidator/ 8b71f32:peridot-contracts/bots/cl-liquidator | gzip -n -9`
+sha256 `2aa4469eefbf1503c1ddb9e21d93dbc5b029f4ba61fff308826e9c26267f0670` (identical rebuilds seconds apart). Without `--mtime`, archiving a tree (commit:path) stamps the current time into every header, so the hash changes every second; the earlier eee9db4d figure was such a same-second coincidence and is void.
 `git archive --format=tar.gz` is NOT reproducible here; never use it for SRC_SHA256.
 
 Cash-market effect of G2: cash USDC supply 3,541 → 2,941 USDC; borrowable at the 70 % reserve 1,062 → 882 USDC
