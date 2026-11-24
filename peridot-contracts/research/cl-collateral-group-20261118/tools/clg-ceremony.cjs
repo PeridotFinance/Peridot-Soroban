@@ -622,7 +622,9 @@ async function main(argv) {
     // fast steps (G52/G53) skip the read-back walk: the 60 s NAV window does not allow ~50 reads; their pre() checks instead.
     for (const prev of s.fast ? [] : list.slice(0, list.indexOf(s))) {
       if (prev.repeatable || prev.historical) continue;
-      const d = await isDone(cfg, c, prev);
+      // A failed RPC read looks like "not done": re-read up to twice (3 s apart) before refusing.
+      let d = await isDone(cfg, c, prev);
+      for (let i = 0; d === false && i < 2; i++) { await new Promise(r => setTimeout(r, 3000)); d = await isDone(cfg, c, prev); }
       assert(d !== false, `earlier step ${prev.n || ''} ${prev.id} not read back as done`);
     }
     if (!s.repeatable) assert.notEqual(await isDone(cfg, c, s), true, `${s.id} already done`);
