@@ -123,6 +123,7 @@ short XLM debt ≈ $400 ≈ 3.2k XLM (cap 4,500, shared with all borrowers).
 - Every cycle (≤ 30 s at 5×): list positions (counter + events), simulate `liquidate` for every position past its own
   liq LTV, worst first; then `settle_backstop_debt`. Refresh/act on every new Reflector round.
 - Cash liquidator excludes the margin pooled account from its own liquidation (alert only).
+- **Reaction target: one Reflector round.** Alert when any position has been liquidatable for > 10 min (owner, 24 Nov).
 - Inventory: USDC ≥ largest long debt, XLM ≥ largest short debt.
 - CAP-88: repeated ledger timestamps must not stall or double-count (audit 24 Nov).
 
@@ -132,7 +133,12 @@ Recorded 24 Nov: 5× max (frontend default 3×); maintenance = half starting mar
 130 keys / 200 M for margin, liquidation ≤ 85 % of live limits; funding spread +2 % APR on; cooldown 72 h; Almanax on
 the margin release in parallel, gating **public opening only**, not the supervised team pilot; pilot target **Thu 3 Dec**.
 
-Open: SDK for the margin release (25 vs 30 — CLI/SDK review 24 Nov); Tier 1 values (§9) after the pilot.
+Recorded 24 Nov (later): **pilot backstop seed $750 approved**, from the treasury, in USDC pTokens; Tier 1 / Tier 2 stay
+as drafted until the pilot has run; **keeper reaction target = one Reflector round**, with an **alert if a liquidatable
+position waits > 10 min**; margin release builds on the **workspace SDK 25.3.x** (SDK 30 later, whole workspace);
+Almanax renewal in progress — start the margin scan the day it is active.
+
+Open: Tier 1 values (§9) after the pilot.
 
 ## 8. Estimate (parallel subagents; contract code starts Wed 25 Nov during the CL go-live)
 
