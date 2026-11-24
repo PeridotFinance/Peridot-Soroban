@@ -115,7 +115,7 @@ function steps(cfg) {
   tx('controller.set_oracle', C, 'set_oracle', () => [addr(D.cafj)], eq(view(C, 'get_oracle'), D.cafj), 'D1: CAFJ external USD feed (first set immediate; later changes 24 h)');
   tx('controller.set_oracle_asset_symbol.USDC', C, 'set_oracle_asset_symbol', () => [addr(D.usdc), sym(P.controller.usdcOracleSymbol)], eq(raw(C, key('OracleAssetSymbol', addr(D.usdc))), P.controller.usdcOracleSymbol), 'price USDC as Other(USDC)');
   // receipt StgV2 (base pToken path is a 1 PYUSD floor; staged path bounded by the backing cap)
-  tx('receipt.initialize', R, 'initialize', () => [addr(D.pyusd), u128(0), u128(0), addr(A)], eq(view(R, 'get_underlying_token'), D.pyusd), 'PYUSD receipt, rates 0');
+  tx('receipt.initialize', R, 'initialize', () => [addr(D.pyusd), u128(0), u128(0), addr(A)], async x => { const t = await view(R, 'get_underlying_token')(x); if (t === D.pyusd) return true; const c = await view(R, 'stage2_config')(x); return t === D.usdc && !!c && c.controller === C; }, 'PYUSD receipt, rates 0 (after G26 StgV2 the view reports the USDC numeraire by design)');
   tx('receipt.set_peridottroller', R, 'set_peridottroller', () => [addr(C)], eq(raw(R, key('Peridottroller')), C), 'bind to the NEW group controller (frozen afterwards by StgV2)');
   tx('receipt.set_min_cash_reserve_bps', R, 'set_min_cash_reserve_bps', () => [addr(A), u32(P.receipt.minCashReserveBps)], eq(view(R, 'get_min_cash_reserve_bps'), P.receipt.minCashReserveBps), '100 % reserve (receipt never lends)');
   tx('receipt.set_supply_cap', R, 'set_supply_cap', () => [u128(P.receipt.supplyCapRaw)], async x => String(await raw(R, key('SupplyCap'))(x)) === P.receipt.supplyCapRaw, 'base pToken path: 1 PYUSD floor only');
