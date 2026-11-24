@@ -293,6 +293,12 @@
       "date": "2026-11-24",
       "decision": "g42b pause-deposit NOT applied (rejected on the Ledger): the group USDC market stays open for deposits before go-live so the SDF can deposit; vault v2 set_paused(true) (g26b) stays until go-live; borrowing stays off until G45",
       "undo": "step g42b-dep-pause emergency pause-deposit on (72 h)"
+    },
+    "almanaxWaived": {
+      "date": "2026-11-24",
+      "decision": "Owner decision: Almanax subscription inactive with no renewal date; go-live G45 and everything after it proceed WITHOUT an Almanax scan. Unscanned at go-live: contracts 15d9833 (frozen bytes), bot release 3171b5c (incl. 8b71f32 lineage), launch tooling 10b7a64..1b0c8d6",
+      "followUp": "scan these commits once Almanax is active again; any High/Critical finding -> emergency pause path (LAUNCH.md section 10)",
+      "supersedes": "almanax.gate and goLive 'after the clean scan'"
     }
   }
 }
