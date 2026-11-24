@@ -288,6 +288,11 @@
       "accepted": "all as recommended",
       "spec": "0f456aa (.wt-cl-leveraged)",
       "rule": "nothing leveraged deploys without its own ceremony list"
+    },
+    "depositPauseSkipped": {
+      "date": "2026-11-24",
+      "decision": "g42b pause-deposit NOT applied (rejected on the Ledger): the group USDC market stays open for deposits before go-live so the SDF can deposit; vault v2 set_paused(true) (g26b) stays until go-live; borrowing stays off until G45",
+      "undo": "step g42b-dep-pause emergency pause-deposit on (72 h)"
     }
   }
 }
