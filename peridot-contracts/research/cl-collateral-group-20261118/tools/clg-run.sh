@@ -33,7 +33,7 @@ _fresh() {
     echo "SKIP $n (already SUCCESS)"; return 2
   fi
   local f
-  for f in unsigned.xdr unsigned.json signed.xdr send.json send.err; do
+  for f in unsigned.xdr unsigned.json prep.out signed.xdr send.json send.err; do
     [ -e "$U/$n.$f" ] && mv "$U/$n.$f" "$U/$n.$(date +%H%M%S)-stale.$f"
   done
   return 0
@@ -42,8 +42,9 @@ _fresh() {
 step() {
   local n=$1; shift
   _fresh "$n"; local r=$?; [ $r -eq 2 ] && return 0
-  ( cd "$T" && node clg-ceremony.cjs "$@" --out "$U/$n.unsigned.xdr" > "$U/$n.unsigned.json" ) \
-    || { echo "PREPARE FAILED $n"; cat "$U/$n.unsigned.json"; return 1; }
+  # stdout goes to .prep.out: clg-ceremony.cjs itself writes $n.unsigned.json and refuses if that file already exists.
+  ( cd "$T" && node clg-ceremony.cjs "$@" --out "$U/$n.unsigned.xdr" > "$U/$n.prep.out" ) \
+    || { echo "PREPARE FAILED $n"; cat "$U/$n.prep.out"; return 1; }
   local hd; hd=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1])).hdPath)' "$U/$n.unsigned.json")
   echo "== $n: $(grep -o '"n": "G[0-9]*"' "$U/$n.unsigned.json") $(grep -o '"call": "[^"]*"' "$U/$n.unsigned.json") $(grep -o '"maxFeeXlm": [0-9.]*' "$U/$n.unsigned.json")"
   _sign_send "$n" "$T/clg-ceremony.cjs" "$hd"; local rc=$?
