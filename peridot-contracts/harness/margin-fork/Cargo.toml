@@ -1,0 +1,20 @@
+[package]
+name = "margin-fork"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Isolated, test-only: protocol-29 host (soroban-env-host 29.0.1, as Mainnet) over a read-only Mainnet ledger fork.
+# Loads the deployed WASM bytes from the fork's ContractCode entries; never compiles contract WASM.
+[workspace]
+
+[dependencies]
+soroban-sdk = { version = "=29.0.1", features = ["testutils"] }
+soroban-env-host = { version = "=29.0.1", features = ["testutils"] }
+soroban-ledger-snapshot = "=29.0.1"
+serde_json = "1"
+sha2 = "0.10"
+stellar-strkey = "=0.0.16"
+
+[profile.dev]
+overflow-checks = true

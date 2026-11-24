@@ -25,6 +25,7 @@ pub trait Receipt {
     fn get_exchange_rate(env: Env) -> u128;
     fn get_ptoken_balance(env: Env, user: Address) -> u128;
     fn get_user_borrow_balance(env: Env, user: Address) -> u128;
+    fn update_interest(env: Env);
 }
 
 #[contractclient(name = "CtrlClient")]
@@ -263,7 +264,11 @@ fn total_shares(env: &Env, debt: &Address) -> u128 {
     inst_get(env, &Key::DebtShares(debt.clone())).unwrap_or(0)
 }
 fn pooled_debt(env: &Env, debt: &Address) -> u128 {
-    ReceiptClient::new(env, &receipt(env, debt)).get_user_borrow_balance(&me(env))
+    // Accrue first: the plain balance view can lag the index that the next
+    // state-changing receipt call applies (observed on the Mainnet fork).
+    let rc = ReceiptClient::new(env, &receipt(env, debt));
+    rc.update_interest();
+    rc.get_user_borrow_balance(&me(env))
 }
 /// Position debt rounded up; the last share holder owes the whole pooled balance.
 fn position_debt(env: &Env, p: &Position) -> u128 {

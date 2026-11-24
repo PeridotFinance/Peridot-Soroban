@@ -1,0 +1,59 @@
+{
+  "checks": {
+    "closeSurplusUsdc": 1363946,
+    "liquidatableAfterDrop": true,
+    "liquidatorXlmPTokens": 2475927518,
+    "openDebt": 150035811,
+    "openLtv1e6": 282275,
+    "opensPausedAtCreate": true,
+    "pooledUsdcDebtAfterClose": 0,
+    "pooledUsdcDebtAtEnd": 0,
+    "receiptHookStillUnset": true,
+    "userXlmPTokensAfterClose": 2986627556,
+    "xlmPriceAfterDrop": "(6364685348441, 100000000000000)",
+    "xlmPriceBefore": "(12729370696883, 100000000000000)"
+  },
+  "fork": "/private/tmp/claude-501/-Users-joshua-Peridot-Peridot-Soroban-peridot-contracts/3effc166-c183-42f3-9a77-c4c7711e1705/scratchpad/fork-now2.json",
+  "marginWasmSha256": "4673e46fd0ab2ffaf4ba5b4c2aa2b6ca85f5ebcc0735c0e97bf3e224640df75c",
+  "rows": [
+    {
+      "cpu": 96471961,
+      "diskReadBytes": 0,
+      "diskReadEntries": 1,
+      "footprintKeys": 100,
+      "mainnetFit": true,
+      "memBytes": 9907979,
+      "memoryReadEntries": 99,
+      "op": "open long XLM (300 XLM + 15 USDC borrow, swap, 2 deposits)",
+      "projectGate100Keys": true,
+      "writeBytes": 6520,
+      "writeEntries": 30
+    },
+    {
+      "cpu": 101960824,
+      "diskReadBytes": 0,
+      "diskReadEntries": 0,
+      "footprintKeys": 102,
+      "mainnetFit": true,
+      "memBytes": 11736862,
+      "memoryReadEntries": 102,
+      "op": "close long XLM (withdraw, swap, repay, surplus + pToken transfer)",
+      "projectGate100Keys": false,
+      "writeBytes": 6664,
+      "writeEntries": 31
+    },
+    {
+      "cpu": 86461726,
+      "diskReadBytes": 0,
+      "diskReadEntries": 0,
+      "footprintKeys": 97,
+      "mainnetFit": true,
+      "memBytes": 10348167,
+      "memoryReadEntries": 97,
+      "op": "liquidate (repay, seize + remainder pToken transfers) after XLM -50%",
+      "projectGate100Keys": true,
+      "writeBytes": 5156,
+      "writeEntries": 25
+    }
+  ]
+}

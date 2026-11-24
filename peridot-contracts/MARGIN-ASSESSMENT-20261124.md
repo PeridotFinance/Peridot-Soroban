@@ -6,7 +6,7 @@ Branch `assess/margin-20261124` (worktree `.wt-margin-assess`, based on `main` f
 
 ## Verdict
 
-**No-go for an unsupervised "one-click margin" tomorrow.** A conditional go is possible for a supervised, team-run pilot of about $200, at the earliest Wed 25 Nov around 15:00 CET. That needs gates G1–G4 below to pass first.
+**No-go for an unsupervised public "one-click margin" tomorrow.** A conditional go is possible for a supervised, team-run pilot of about $200, at the earliest Wed 25 Nov around 15:00 CET. That needs gates G1–G4 below to pass first.
 
 | Question | Answer |
 |---|---|
@@ -119,35 +119,45 @@ The raw numbers are in `MARGIN-ASSESSMENT-20261124.sim.json`, produced by `scrip
 
 | Item | Result |
 |---|---|
-| `margin_controller.wasm` (`stellar contract build`, sha256 `4dc93a0f…e06c`) | 22,086 B |
+| `margin_controller.wasm` (`stellar contract build`), first build `4dc93a0f…e06c` (22,086 B, used for the upload quote) | Final build after the accrual fix: `4673e46f…f75c`, 22,119 B |
 | Upload simulation | 19.67M instructions, 1 entry, write 22,188 B, **min resource fee 34.88 XLM** |
 | Create simulation | `Error(Storage, MissingValue)`, because the code isn't uploaded. It cannot be quoted before the upload; expect less than 1 XLM (one instance entry plus constructor writes). |
 | Aquarius CL pool `CBBMQB…BUCV` `swap`, 100 XLM→USDC | 14.63M instructions, 10 footprint entries, 0.0027 XLM |
 | Same pool, 15 USDC→XLM | 10.29M instructions, 10 entries, 0.0025 XLM |
 
-The open, close and liquidate figures below are **estimates**. They come from the fork measurements in `cash-borrowing-upgrade-20261118/REPORT.md` at 2 entered markets, plus the swaps above:
-- borrow is 37.9M / 100 keys / 120 entries
-- withdraw-with-debt is 46.7M / 100 keys
-- repay is 16.0M / 44 keys
+**Measured end-to-end on a Mainnet fork.** Results are in `MARGIN-ASSESSMENT-20261124.fork.json`; the test is `harness/margin-fork/tests/margin.rs`.
+- **Fork:** fetched 2026-11-24 at ledger 65646193, with live controller `f41e5260` and live receipts `5630a701`. Margin WASM is `4673e46f…f75c`.
+- **Host:** protocol-29. Mainnet reports protocol 30, so the snapshot version was clamped to 29.
+- **Auth:** user and liquidator calls ran under explicit, non-`mock_all` auth trees. The contract's own root transfer authorizations were therefore really exercised.
+- **Pool:** a native mock with the deployed pool's auth shape, because the real pool's storage isn't in the fork.
 
-| Flow | Estimated instructions | Estimated entries | Mainnet limit | Internal 100-key gate |
-|---|---|---|---|---|
-| `open` (2 deposits, borrow, swap) | 90–110M | 115–135 | 400M / 400 | **exceeds** |
-| `close` (withdraw, swap, repay, pToken transfer) | 110–130M | 120–140 | 400M / 400 | **exceeds** |
-| `liquidate` (repay, 2 pToken transfers) | 100–120M | 115–130 | 400M / 400 | **exceeds** |
+| Flow | Instructions | Memory | Footprint keys | Writes | Mainnet fit (400M / 400 / 200) | Internal 100-key gate |
+|---|---|---|---|---|---|---|
+| `open` long XLM (300 XLM + 15 USDC borrow) | 96.5M | 9.9 MB | 100 | 30 | yes | at the limit |
+| `close` | 102.0M | 11.7 MB | 102 | 31 | yes | **exceeds** |
+| `liquidate` after XLM −50% | 86.5M | 10.3 MB | 97 | 25 | yes | yes |
 
-All three fit Mainnet (400M instructions, 400 entries, 200 reads and 200 writes), but none fits the internal 100-key gate the cash team uses. **They are not measured end-to-end.** That is gate G1.
+- **Real-pool adjustment.** The real pool swap costs 10.3–14.6M instructions and 10 entries, against roughly 2 for the mock. Expect about 110–115M instructions and about 108 keys per flow. That still fits Mainnet comfortably, with 3.5× instruction headroom.
+
+**Checks that passed:**
+- Opens are paused at create.
+- The receipt hook stays `None` throughout.
+- Open LTV is 0.282.
+- Close repaid everything: pooled USDC debt is 0, the user got 1.36 USDC surplus plus 298.66 XLM of pTokens.
+- After XLM −50% (LTV 0.564 ≥ 0.45), liquidation succeeded: the liquidator received 247.6 XLM of pTokens, the owner got the remainder, and pooled debt is 0.
+
+**Bug found and fixed by the fork run.** The receipt's `get_user_borrow_balance` view lagged the index that its next state-changing call applies. The position debt was read as 150,000,000 but the receipt then held 150,035,811, which left residual debt and made the final pToken transfer fail its health check. Margin now calls the receipt's public `update_interest()` before every debt read. Separately, a fresh 15 USDC borrow showed 35,811 raw (about 0.0036 USDC) of immediate interest on the live receipt. This looks like receipt index behaviour worth a look, but it is not a margin issue.
 
 ## 6. Q6: ceremony, caps and timing
 
 **Gates before any Mainnet step:**
-- **G1:** open, close, close_with_repay and liquidate run with the built WASM against the live receipt and controller bytes on a Mainnet fork. Use the `cash-borrow-footprint` harness, with the real pool keys, or Testnet with real receipts. Measure the footprint and use strict (non-mock) auth.
+- **G1 (partly done):** open, close and liquidate pass on the live-bytes Mainnet fork with strict auth (§5). Still open: `close_with_repay` and short XLM on the fork, the real Aquarius pool (add its keys to the fork, or run a Mainnet `simulateTransaction` of `open` after deploy while opens are still paused) and a protocol-30 host.
 - **G2:** native tests in the crate. None exist yet on this branch; the old `test.rs` targeted the hook ABI and was removed.
 - **G3:** Almanax scan of the branch, with zero High or Medium findings.
 - **G4:** owner sign-off on the parameters, and a liquidation keeper running, because internal liquidation must come before the controller's own liquidation of the pooled account.
 
 **Ceremony (admin `GC4T5…` on Ledger, HD path 0; each step simulate → review → sign):**
-1. Upload `margin_controller.wasm` (verify sha256; about 35 XLM).
+1. Upload `margin_controller.wasm`: rebuild from the reviewed commit, verify the sha256 (current build `4673e46f…f75c`), about 35 XLM.
 2. Create the contract with constructor `(admin, controller CBMRS7…JRK, guardian)`. Opens start paused.
 3. Call `set_market` for XLM (`CBHMG4…WMS`) and for USDC (`CDW3GD…Y3F`).
 4. Call `enter_markets([XLM, USDC])`.
