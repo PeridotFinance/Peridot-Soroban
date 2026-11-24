@@ -73,15 +73,30 @@ export function dataKey(S, parts) {
   }));
 }
 
-export function makeReader(cfg) {
+/** Transient RPC transport failure: HTTP 429/502/503/504, a dropped connection or DNS hiccup. A contract error or a
+ *  failed simulation is never transient (it comes back as a result, not as a thrown transport error). */
+export const isTransientRpcError = e => /status code (429|502|503|504)\b|fetch failed|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(String(e?.message ?? e));
+/** Bounded retry of one read-only RPC call on transient transport errors (live Mainnet soak 24 Nov: two single
+ *  gateway.fm HTTP 429s each failed a cycle and restarted the 12 h gate). Backoff 1 s, 2 s, 4 s: at most ~7 s added,
+ *  well under dryRunMaxGapSec. Anything else, or the 4th transient failure, is rethrown unchanged. */
+export async function withRpcRetry(fn, {tries = 4, baseMs = 1000, sleep = ms => new Promise(r => setTimeout(r, ms))} = {}) {
+  for (let k = 1; ; k++) {
+    try { return await fn(); }
+    catch (e) { if (k >= tries || !isTransientRpcError(e)) throw e; await sleep(baseMs * 2 ** (k - 1)); }
+  }
+}
+
+export function makeReader(cfg, {retry = withRpcRetry} = {}) {
   const S = loadSdk();
   const rpc = new S.rpc.Server(cfg.rpcUrl, {allowHttp: cfg.rpcUrl.startsWith('http://')});
-  const raw = async (method, params) => {
-    const r = await (await fetch(cfg.rpcUrl, {method: 'POST', headers: {'content-type': 'application/json'},
-      body: JSON.stringify({jsonrpc: '2.0', id: 1, method, params})})).json();
+  const raw = (method, params) => retry(async () => {
+    const res = await fetch(cfg.rpcUrl, {method: 'POST', headers: {'content-type': 'application/json'},
+      body: JSON.stringify({jsonrpc: '2.0', id: 1, method, params})});
+    if (!res.ok) throw Error(`Request failed with status code ${res.status}`);
+    const r = await res.json();
     if (r.error) throw Error(JSON.stringify(r.error));
     return r.result;
-  };
+  });
   const addr = a => S.nativeToScVal(a, {type: 'address'});
   const u64 = x => S.nativeToScVal(BigInt(x), {type: 'u64'});
   const u128 = x => S.nativeToScVal(BigInt(x), {type: 'u128'});
@@ -89,7 +104,7 @@ export function makeReader(cfg) {
     .addOperation(new S.Contract(contract).call(method, ...args)).setTimeout(60).build();
   /** Simulate from the liquidator's PUBLIC address. Returns {ok, retval, error, code, metrics}. */
   async function simulate(contract, method, args = []) {
-    const sim = await rpc.simulateTransaction(build(contract, method, args));
+    const sim = await retry(() => rpc.simulateTransaction(build(contract, method, args)));
     if (!S.rpc.Api.isSimulationSuccess(sim)) {
       const error = String(sim.error).split('\n')[0].slice(0, 300), m = /Error\(Contract, #(\d+)\)/.exec(String(sim.error));
       return {ok: false, error, code: m ? Number(m[1]) : null};
@@ -108,7 +123,7 @@ export function makeReader(cfg) {
     const key = dataKey(S, keyParts);
     const lk = S.xdr.LedgerKey.contractData(new S.xdr.LedgerKeyContractData({contract: new S.Address(contract).toScAddress(), key,
       durability: S.xdr.ContractDataDurability.persistent()}));
-    const r = await rpc.getLedgerEntries(lk);
+    const r = await retry(() => rpc.getLedgerEntries(lk));
     return r.entries.length ? S.scValToNative(r.entries[0].val.contractData().val()) : null;
   }
   /** Ledger close time (s): the clock the contracts use. */
