@@ -74,6 +74,8 @@ On any such failure, **lender withdraws and transfers revert** until the hook is
 
 ## 4. Q4: fixes, implemented on this branch
 
+**This is a rewrite, not the existing contract.** `main`'s margin-controller and its tests are deleted. Also dropped: `transfer_spot_to_margin`/margin balances, the swap-adapter routes, multi-step V1 leverage and V2. The new crate has no unit tests yet; it is covered only by the fork test.
+
 The rewrite is in `contracts/margin-controller/src/contract.rs`, and the crate is now standalone. **No receipt or controller change is needed: no upgrade and no timelock.** The swap-adapter is no longer needed; margin swaps directly on the Aquarius pool.
 
 **The margin contract is a normal account.** It uses only the plain entrypoints: `deposit`, `enter_market`, `borrow`, `repay`, `withdraw`, `transfer`, `get_*` and `get_price_usd`/`get_market_cf`.
@@ -104,6 +106,7 @@ The rewrite is in `contracts/margin-controller/src/contract.rs`, and the crate i
 
 **Caps and kill switch (both in margin, both immediate):**
 - `set_caps(debt, per_position, global)` caps the borrow per open and the pooled debt including interest.
+- **Required fix before deploy:** there is no collateral cap. `open` accepts any collateral, so custody in margin is not bounded to about $200; only debt is.
 - Contract creation leaves opens paused. `set_opens_paused` can be called by the admin or the guardian (guardian may only pause). Close and liquidate are never paused.
 - Margin's own upgrade is timelocked to 24h.
 - Initialisation runs in `__constructor`, so it is atomic with the create and cannot be front-run.
@@ -115,21 +118,22 @@ The rewrite is in `contracts/margin-controller/src/contract.rs`, and the crate i
 
 ## 5. Q5: resource measurements (Mainnet, read-only)
 
-The raw numbers are in `MARGIN-ASSESSMENT-20261124.sim.json`, produced by `scripts/margin_assess_sim.cjs` at ledger 65646170.
+The raw numbers are in `.scratch/margin-assess-20261124/MARGIN-ASSESSMENT-20261124.sim.json` (git-ignored evidence, sha256 `f1486228…ad97`), produced by `scripts/margin_assess_sim.cjs` at ledger 65646170.
 
 | Item | Result |
 |---|---|
-| `margin_controller.wasm` (`stellar contract build`), first build `4dc93a0f…e06c` (22,086 B, used for the upload quote) | Final build after the accrual fix: `4673e46f…f75c`, 22,119 B |
+| `margin_controller.wasm` (`stellar contract build`), first build `4dc93a0f…e06c` (22,086 B, used for the upload quote) | Final build: `80a082ec…6ea8`, 23,062 B |
 | Upload simulation | 19.67M instructions, 1 entry, write 22,188 B, **min resource fee 34.88 XLM** |
 | Create simulation | `Error(Storage, MissingValue)`, because the code isn't uploaded. It cannot be quoted before the upload; expect less than 1 XLM (one instance entry plus constructor writes). |
 | Aquarius CL pool `CBBMQB…BUCV` `swap`, 100 XLM→USDC | 14.63M instructions, 10 footprint entries, 0.0027 XLM |
 | Same pool, 15 USDC→XLM | 10.29M instructions, 10 entries, 0.0025 XLM |
 
-**Measured end-to-end on a Mainnet fork.** Results are in `MARGIN-ASSESSMENT-20261124.fork.json`; the test is `harness/margin-fork/tests/margin.rs`.
-- **Fork:** fetched 2026-11-24 at ledger 65646193, with live controller `f41e5260` and live receipts `5630a701`. Margin WASM is `4673e46f…f75c`.
+**Measured end-to-end on a Mainnet fork.** Results are in `.scratch/margin-assess-20261124/MARGIN-ASSESSMENT-20261124.fork.json` (git-ignored, sha256 `da31d07f…8961`); the test is `harness/margin-fork/tests/margin.rs`.
+- **Fork:** fetched 2026-11-24 at ledger 65646193, with live controller `f41e5260` and live receipts `5630a701`. Final margin WASM is `80a082ec…6ea8` (23,062 B), which includes both swap-auth shapes.
 - **Host:** protocol-29. Mainnet reports protocol 30, so the snapshot version was clamped to 29.
 - **Auth:** user and liquidator calls ran under explicit, non-`mock_all` auth trees. The contract's own root transfer authorizations were therefore really exercised.
-- **Pool:** a native mock with the deployed pool's auth shape, because the real pool's storage isn't in the fork.
+- **Pool:** a native mock, because the real pool's storage isn't in the fork. It pulls the input with `transfer`, so it exercises the root-transfer auth shape only.
+- **Real pool auth shape:** a Mainnet simulation of the live CL pool's `swap` records **`pool.swap(user, …)` → nested `token.transfer(user, pool, amount)`**. So this pool DOES `require_auth` on `swap`, unlike the memory note. Margin now authorizes both shapes, root transfer and swap-with-nested-transfer, as V3 does. The swap shape is still unverified against the real pool code.
 
 | Flow | Instructions | Memory | Footprint keys | Writes | Mainnet fit (400M / 400 / 200) | Internal 100-key gate |
 |---|---|---|---|---|---|---|
@@ -146,18 +150,21 @@ The raw numbers are in `MARGIN-ASSESSMENT-20261124.sim.json`, produced by `scrip
 - Close repaid everything: pooled USDC debt is 0, the user got 1.36 USDC surplus plus 298.66 XLM of pTokens.
 - After XLM −50% (LTV 0.564 ≥ 0.45), liquidation succeeded: the liquidator received 247.6 XLM of pTokens, the owner got the remainder, and pooled debt is 0.
 
-**Bug found and fixed by the fork run.** The receipt's `get_user_borrow_balance` view lagged the index that its next state-changing call applies. The position debt was read as 150,000,000 but the receipt then held 150,035,811, which left residual debt and made the final pToken transfer fail its health check. Margin now calls the receipt's public `update_interest()` before every debt read. Separately, a fresh 15 USDC borrow showed 35,811 raw (about 0.0036 USDC) of immediate interest on the live receipt. This looks like receipt index behaviour worth a look, but it is not a margin issue.
+**Bug found and fixed by the fork run.** The receipt's `get_user_borrow_balance` view lagged the index that its next state-changing call applies. The position debt was read as 150,000,000 but the receipt then held 150,035,811, which left residual debt and made the final pToken transfer fail its health check. Margin now calls the receipt's public `update_interest()` before every debt read. **Live receipt finding, affecting every cash borrower, not just margin.** A fresh 15 USDC borrow was charged 35,811 raw (0.0036 USDC) of immediate interest. That equals 8% APR on 150,000,000 raw over the market's idle time: fork close time 1795517197 minus USDC `LastUpdateTime` 1795423081 is 94,116 s, about 26.1 h, which predicts about 35,800. So a new borrower appears to pay interest for the period before their borrow. The effect is small and proportional to how long the market sat idle, but it needs a receipt-side review. Margin works around it by accruing before reading debt, and does not fix it.
 
 ## 6. Q6: ceremony, caps and timing
 
 **Gates before any Mainnet step:**
-- **G1 (partly done):** open, close and liquidate pass on the live-bytes Mainnet fork with strict auth (§5). Still open: `close_with_repay` and short XLM on the fork, the real Aquarius pool (add its keys to the fork, or run a Mainnet `simulateTransaction` of `open` after deploy while opens are still paused) and a protocol-30 host.
+- **G1 (partly done):** open, close and liquidate pass on the live-bytes Mainnet fork with strict auth (§5). Still open:
+  - `close_with_repay`, short XLM, and long and short positions open at the same time on the pooled shares (the fork test had one long position at a time)
+  - the real Aquarius pool: add its contract keys to the fork. A post-deploy simulation of `open` cannot stand in, because `open` fails on `OpensPaused` before the swap.
+  - a protocol-30 host (Mainnet is now p30; `net-limits.cjs` at ledger 65646323 shows unchanged limits of 400M instructions, 200 reads and 200 writes)
 - **G2:** native tests in the crate. None exist yet on this branch; the old `test.rs` targeted the hook ABI and was removed.
 - **G3:** Almanax scan of the branch, with zero High or Medium findings.
 - **G4:** owner sign-off on the parameters, and a liquidation keeper running, because internal liquidation must come before the controller's own liquidation of the pooled account.
 
 **Ceremony (admin `GC4T5…` on Ledger, HD path 0; each step simulate → review → sign):**
-1. Upload `margin_controller.wasm`: rebuild from the reviewed commit, verify the sha256 (current build `4673e46f…f75c`), about 35 XLM.
+1. Upload `margin_controller.wasm`: rebuild from the reviewed commit, verify the sha256 (current build `80a082ec…6ea8`), about 35 XLM.
 2. Create the contract with constructor `(admin, controller CBMRS7…JRK, guardian)`. Opens start paused.
 3. Call `set_market` for XLM (`CBHMG4…WMS`) and for USDC (`CDW3GD…Y3F`).
 4. Call `enter_markets([XLM, USDC])`.

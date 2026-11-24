@@ -21,4 +21,4 @@ peridot-contracts/.soroban/
 peridot-contracts/.stellar/
 
 # Test snapshots (all contracts)
-**/test_snapshots/
+**/test_snapshots/.scratch/

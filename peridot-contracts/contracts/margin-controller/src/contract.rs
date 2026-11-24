@@ -240,7 +240,29 @@ fn swap(env: &Env, t_in: &Address, t_out: &Address, amount_in: u128, min_out: u1
     };
     let (ii, oi) = (idx(t_in), idx(t_out));
     let before = tok_balance(env, t_out);
-    authorize_transfer(env, t_in, &pool, amount_in);
+    // Both shapes, as V3 (4c03928 perps.rs:2389): root transfer, and pool.swap with the
+    // transfer nested. Mainnet simulation of the live CL pool records swap -> transfer.
+    let xfer = InvokerContractAuthEntry::Contract(SubContractInvocation {
+        context: ContractContext {
+            contract: t_in.clone(),
+            fn_name: Symbol::new(env, "transfer"),
+            args: (me(env), pool.clone(), i(env, amount_in)).into_val(env),
+        },
+        sub_invocations: Vec::new(env),
+    });
+    let mut nested = Vec::new(env);
+    nested.push_back(xfer.clone());
+    let mut auths = Vec::new(env);
+    auths.push_back(xfer);
+    auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+        context: ContractContext {
+            contract: pool.clone(),
+            fn_name: Symbol::new(env, "swap"),
+            args: (me(env), ii, oi, amount_in, min_out).into_val(env),
+        },
+        sub_invocations: nested,
+    }));
+    env.authorize_as_current_contract(auths);
     PoolClient::new(env, &pool).swap(&me(env), &ii, &oi, &amount_in, &min_out);
     let got = tok_balance(env, t_out).saturating_sub(before);
     if got < min_out {
