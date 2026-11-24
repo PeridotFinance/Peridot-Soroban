@@ -17,7 +17,7 @@
     }
   },
   "liquidator": {
-    "publicKey": null,
+    "publicKey": "GBP4EIOR74O3HYBN7QYCDUUUY47OZRUIQEEGZPBX62LOKN4F6M37LCW2",
     "note": "PLACEHOLDER: dedicated CL liquidator key generated on its Droplet (never the cash liquidator GDQARPHR..., never the admin, never the pause key)."
   },
   "investKeeper": "GBHWPV6QTQIAPJI7WHLHWZJB4GELG3B5NAR2NJ27FQNKSIGYGBYFZON4",
@@ -208,7 +208,7 @@
     }
   },
   "heartbeat": {
-    "publicKey": null,
+    "publicKey": "GDQXIY7I2YTSVZMIKGQFZ5T23FBASOMCNJU4AEVKUNDBMD2FOQUJRXCU",
     "startXlm": "12",
     "minXlm": "10",
     "note": "PLACEHOLDER: fee-only D3 heartbeat account of bots/cl-liquidator (src/heartbeat.mjs, config heartbeatIdentity/heartbeatAccount). Generated on the CL bot Droplet, secret only in a chmod-600 file, never printed. Must differ from the liquidator, admin, T3, cash liquidator and pause key. Sizing: L1a cap <= 0.007 XLM x 5 per minute = 2.1 XLM per hour of open chain; 12 XLM = 1 XLM base reserve + about 5 h of continuous chain at the cap (about 9 h at the expected 0.004)."
