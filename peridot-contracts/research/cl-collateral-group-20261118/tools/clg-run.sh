@@ -55,7 +55,7 @@ step() {
 
 # After the first-liquidation raise: print the window (warns at 25 min, OVERDUE at 30) until the 8 % reset lands.
 _ratewin() {
-  ls "$U"/*rate-up.send.json >/dev/null 2>&1 || return 0
+  local raised=("$U"/*rate-up.send.json(N)); (( ${#raised} )) || return 0   # (N): no zsh "no matches" error
   ( cd "$T" && node clg-ceremony.cjs rate-window 2>/dev/null ) | node -e '
     const j=JSON.parse(require("fs").readFileSync(0,"utf8")); if (!j.raised || j.reset) process.exit(0);
     console.log((j.level==="ok"?"   ":"!! ")+"rate raised "+j.minutes+" min ago ("+j.level+"); reset by "+j.resetBy+": "+j.next);' || true
