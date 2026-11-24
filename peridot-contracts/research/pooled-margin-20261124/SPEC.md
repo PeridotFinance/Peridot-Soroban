@@ -56,7 +56,7 @@ liquidation flows ≤ 85 % of every live limit (340 footprint, 170 disk reads, 1
 | → liquidation move from entry (long ≈ 1/(2L−1)) | 2×: −33 % · 3×: −20 % · **5×: −11.1 %** (short: +50 % / +25 % / +12.5 %) | |
 | Liquidation bonus | **4 %**: 3 % liquidator, 1 % backstop | owner |
 | Solvency bound (`set_risk`) | liq LTV × 1.04 × (1 + 1 % slippage) < 1 → 5×: 0.90 × 1.0504 = **0.945** | |
-| Gap tolerated past the liquidation point before bad debt | **5×: ~5.5 %** · 3×: ~12.5 % · 2×: ~29 % | 5×: > 5-min p99.9 (2.2 %) and > 15-min p99.9 (3.7–4.1 %), < 1-h p99.9 (8–10 %) → keeper must act within one oracle round |
+| Gap tolerated past the liquidation point before bad debt | **5×: ~5.5 %** · 3×: ~12.5 % · 2×: ~21 % | 5×: > 5-min p99.9 (2.2 %) and > 15-min p99.9 (3.7–4.1 %), < 1-h p99.9 (8–10 %) → keeper must act within one oracle round |
 | Open / close fee | 0.10 % / 0.10 % of notional → backstop | |
 | Funding spread | **on: +2 % APR** over the cash-market borrow APR → backstop | owner |
 | Backstop exit | request → **72 h cooldown** → withdraw at NAV at execution; refused if it breaks the pool check | owner |
@@ -76,9 +76,9 @@ long trader equity (debt 4, collateral 5 × price ratio, 1 % slippage, 4 % bonus
 |---|---|---|---|
 | 21:15 open (next round) | 0.316 (−12.7 %) | **$0** (owner keeps ~$0.15) | $0 |
 | 21:15 close (oracle one round late) | 0.201 (−44.6 %) | **$1.42** | $0.43 |
-| 21:20 low (worst print) | 0.160 (−55.8 %) | **$2.06** | $0.75 |
+| 21:20 low (worst print) | 0.160 (−55.8 %) | **$1.97** | $0.77 |
 
-Pilot long book $100 at 5× → worst case ≈ **$206** backstop loss; Tier 1 ($2k) → ≈ $4.1k. Shorts were not hurt
+Pilot long book $100 at 5× → worst case ≈ **$197** backstop loss; Tier 1 ($2k) → ≈ $3.9k. Shorts were not hurt
 (XLM fell). Binance wicks overstate what the Reflector median and Aquarius would print, but liquidity also vanishes.
 
 ## 4. Pool check in `open` (re-sized for 5×)
@@ -110,8 +110,8 @@ Checks in `open` (all must pass after the trade):
 | Per position (equity) | $25 (5× = $125 notional) | $500 ($2.5k) | $2,000 ($10k) |
 | Long / short equity | $100 / $100 | $2k / $2k | $10k / $10k |
 | OI per side (notional) | $500 | $10k | $50k |
-| **Backstop seed (USDC pTokens)** | **$750** (formula $625) | **$12.5k** | **$62k** |
-| Worst 10-Oct-2025 loss (5× long book, late oracle) | ~$206 (27 % of seed) | ~$4.1k (33 %) | ~$21k (33 %) |
+| **Backstop seed (USDC pTokens)** | **$750** (formula $625) | **$12.5k** | **$60k** |
+| Worst 10-Oct-2025 loss (5× long book, worst print) | ~$197 (26 % of seed) | ~$3.9k (32 %) | ~$19.7k (33 %) |
 | Largest liquidation vs Aquarius depth | ≪ 1 % | ~0.2 % | ~0.6 %; long-book cascade $50k ≈ 2.3 % |
 
 Pilot fits today's cash caps: long USDC debt 4 × $100 = $400 (≈ $880 borrowable, plus the seed adds supply);
