@@ -19,6 +19,8 @@ mod common;
 mod contract;
 mod headroom;
 mod types;
+#[cfg(test)]
+mod test_headroom;
 
 pub use common::*;
 pub use contract::*;
