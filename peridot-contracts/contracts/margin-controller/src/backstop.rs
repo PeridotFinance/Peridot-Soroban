@@ -1,7 +1,7 @@
 //! WP1: backstop module. Signatures frozen in WP0; bodies owned by WP1.
 use crate::common::*;
-use crate::contract::{MarginController, MarginControllerArgs, MarginControllerClient};
 use crate::types::*;
+use crate::{MarginController, MarginControllerArgs, MarginControllerClient};
 use soroban_sdk::{contractimpl, Address, Env};
 
 // ---- crate-internal API used by WP2 / WP3

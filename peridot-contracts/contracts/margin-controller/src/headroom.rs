@@ -1,7 +1,7 @@
 //! WP3: pool check, required backstop size, reconcile / Impaired. Signatures frozen in WP0.
 use crate::common::*;
-use crate::contract::{MarginController, MarginControllerArgs, MarginControllerClient};
 use crate::types::*;
+use crate::{MarginController, MarginControllerArgs, MarginControllerClient};
 use soroban_sdk::{contractimpl, Address, Env};
 
 /// SPEC §4 checks 1-3 on the post-trade pooled state (both receipts' update_interest first,

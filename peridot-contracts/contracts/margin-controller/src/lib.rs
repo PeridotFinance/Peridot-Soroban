@@ -14,9 +14,8 @@
 //! - `backstop` backstop shares, exits, fees in, bad debt (WP1)
 //! - `headroom` pool check, required backstop size, reconcile/Impaired (WP3)
 
-// The contract struct lives at the crate root so the generated client's private (testutils)
-// fields are visible to every module that adds a `#[contractimpl]` block (contract, backstop,
-// headroom are siblings; only descendants of the defining module can see private fields).
+/// Declared at the crate root so every module's `#[contractimpl]` (and tests) can use the
+/// generated client/args types (E0616 otherwise).
 #[soroban_sdk::contract]
 pub struct MarginController;
 
@@ -31,3 +30,20 @@ mod types;
 pub use common::*;
 pub use contract::*;
 pub use types::*;
+
+#[cfg(test)]
+mod wp0_smoke {
+    use crate::*;
+    use soroban_sdk::{testutils::Address as _, Address, Env};
+    #[test]
+    fn constructs() {
+        let e = Env::default();
+        let a = Address::generate(&e);
+        let id = e.register(
+            MarginController,
+            (a.clone(), a.clone(), a.clone(), a.clone(), a.clone()),
+        );
+        let c = MarginControllerClient::new(&e, &id);
+        assert!(c.opens_paused());
+    }
+}
