@@ -1,13 +1,19 @@
-# Margin v2 — WP5 real-pool Mainnet-fork results (25 Nov 2026)
+# Margin v2 — WP5 real-pool Mainnet-fork results (25 Nov 2026), updated for WP6
+
+**Current build: WP6, sha256 `b1cb1cb21f02de1b1a9047d31fa60ffc066c2ddedc94c4dff2fcbdb0a7b1766f` (67,488 B).** The current
+numbers are in *WP6 changes* and the *Resource table (WP6 build)*. The WP5 sections further down are kept for history.
+They describe build `957ad3ca…5846`, except where a section is marked WP6.
 
 Harness: `harness/margin-fork/tests/margin.rs` (isolated crate, soroban-sdk 30.0.0 / soroban-env-host 30.0.1, protocol 30).
 Fork: Mainnet ledger **65662216** (fetched 2026-11-25 08:59 UTC with `tools/fetch-fork.cjs`, read-only public RPC, ~620 KB,
 git-ignored under `harness/margin-fork/.scratch/`). It contains the live controller f41e5260, the live receipts 5630a701, the
 SACs, Reflector and the real Aquarius XLM/USDC concentrated pool CBBMQ…BUCV.
-Margin WASM: `stellar contract build --package margin-controller` → sha256 **957ad3ca…5846** (62,533 B). The test imports it
+Margin WASM: `stellar contract build --package margin-controller` → WP5 sha256 **957ad3ca…5846** (62,533 B); WP6
+sha256 **b1cb1cb2…766f** (67,488 B). The test imports it
 with `contractimport!`, asserts the hash and registers it fresh on the fork with the 5-argument v2 constructor.
 Run: `cd harness/margin-fork && cargo test -- --test-threads=1 --nocapture`. Per-test JSON goes to `.scratch/wp5-*.json`.
-**5/5 tests pass.** One measured state exceeds a limit (see *Over the limit*).
+**5/5 tests pass** on both builds. WP5 had one measured state over a limit (see *Over the limit*). On the WP6 build
+every row is within its limit.
 
 Pilot parameters, all set explicitly through the v2 setters: `set_risk` 5× on both sides; `set_caps` $25 per position,
 $100 side equity, $500 side OI, $1 minimum; `set_fees` 0.10 % / 0.10 %, funding 2 % APR, bonus 3 % + 1 %;
@@ -42,7 +48,165 @@ P0 is Reflector at the fork ledger: XLM $0.12425, USDC $1.0005.
   (a disk read) plus a nonce entry (read-write), so **add about 2 keys per signer**. An XLM/USDC transfer from a G-account
   touches its account or trustline instead of a contract balance entry, which does not change the count.
 
-## Resource table (real pool, protocol-30 host)
+## WP6 changes (25 Nov)
+
+Contract changes (details in INTERFACE.md "WP6 changes"):
+
+1. **`open` is refused while any backstop bad debt is unsettled** (`BackstopDebtOutstanding` #25).
+2. **Every duplicate receipt and oracle read is removed from `open` → `pool_check`.** One price read per asset and one
+   USDC rate before the trade. One held rate after it. The position debt comes from the borrow's own balance. One held
+   pToken balance read before and one after the deposits. No `update_interest` in the Open pool check. The NAV is read
+   once per pool check.
+3. **`settle_backstop_debt` sizes itself** to the pooled free liquidity. It fails with the new `PooledShortfall` (#35)
+   when there is none. New keeper view: `settle_max_ptokens`.
+4. **The XLM settle swap input comes from the pool's `estimate_swap_strict_receive`**, bounded by the oracle.
+   - The leftover XLM is kept as tracked **backstop XLM pTokens** (`BsXlmPt`, in `Ledger(XLM)`).
+   - The next XLM settle repays from them first.
+5. **Close reserve multiplier 1.01 → 1.015.**
+
+Harness changes:
+
+- **`heaviest_open_…`**: opens now fail #25 while USDC and XLM bad debt are outstanding (asserted). Opens are measured
+  in seven states, all with a backstop exit pending:
+  - first long;
+  - first short, after a long;
+  - second long and second short;
+  - long and short after the settles, with backstop XLM pTokens held;
+  - long and short after a 72 h warp, with 3 longs and 3 shorts open.
+- **`pooled_account_seizure_…`**:
+  - An L2 solvent-liquidation claim is kept unclaimed through the ×7 spike.
+  - `claim`, swap-`close` and `close_with_repay` are tried with pooled HF < 1.
+  - Then a liquidation, the self-sized settles and the blocked exits.
+- **Fidelity**: strict-receive round trip at 10 / 100 / 1,000 / 5,000 XLM. `estimate_swap` of the quoted input
+  returns the asked output +0 to +5 stroops. A real swap of the quote for 100 XLM delivered exactly 100.0000000 XLM.
+
+### 1. `open` back under 170 M
+
+Worst open measured: **153.3 M** (long 3× after the 72 h warp, 3 + 3 positions open, exit pending). That is 23 % below
+the 200 M gate and under the 170 M target. Before WP6 the worst was 225.1 M.
+
+| Open state (all with a backstop exit pending unless noted) | WP5 | WP6 |
+|---|---|---|
+| long 5×, first long (pilot / heavy) | 170.9 M | 141.7 / 141.9 M |
+| short 5×, after a long | 163.2 M | 133.2 / 133.4 M |
+| long 3×, second long, shorts open (pilot / heavy) | 182.1 M | 152.5 / 152.6 M |
+| short 3×, second short | 164.7 M | 134.9 / 134.9 M |
+| long 5× / short 5× with USDC + XLM bad debt unsettled | 225.1 / 207.1 M | **refused #25** |
+| long 5× / short 5× after the settles (backstop XLM pT held) | – | 152.8 / 135.1 M |
+| long 3× / short 3× after 72 h (3 longs + 3 shorts open) | – | **153.3** / 134.8 M |
+
+- **The 11 M gap between longs is isolated.** It is not leverage. A one-off probe opened three longs in a row with no
+  short open (3×, 5×, 3×): **141.3 / 142.3 / 142.4 M**.
+- A long costs about +11 M whenever the pooled account already owes XLM, i.e. a short is open. That cost falls inside
+  the live receipt/controller calls: the borrow health check and the accrual for an account with debt in the other
+  market. This attribution is inferred, not profiled.
+- Shorts cost about the same in every order.
+- The saving per open is about 29–30 M. Of that, about 9 M is the two skipped `update_interest` calls in the pool check
+  and about 8.6 M the second `update_interest` + borrow-balance pair. The rest comes from fewer pToken balance reads,
+  rate reads and price reads.
+
+### 2. Pooled controller HF < 1: what traps and why (traced)
+
+State: the seizure env. The cash controller seizes 280.84 USDC pT at XLM ×7, then `reconcile` sets Impaired; pooled HF
+is 0.98. Each failing call was traced with the host diagnostic log. Every one ends in the live receipt's controller
+liquidity check: `get_collateral_excl_usd` and `get_borrows_excl`, then the XLM price and the CF, then
+`UnreachableCodeReached` in the receipt.
+
+| Call (pooled HF < 1) | Result | Exact failing call |
+|---|---|---|
+| `close_with_repay` long (L3) | traps | Runs in this order:<br>1. USDC `transfer` in from the owner<br>2. `repay` 49.54 USDC succeeds (USDC debt → 0)<br>3. the fee `deposit` succeeds<br>4. **XLM receipt `transfer(margin → owner, 598.70 XLM pT)`** traps |
+| `claim` XLM (L2 remainder, 57.13 XLM pT) | traps | **XLM receipt `transfer(margin → owner)`** |
+| swap-`close` long (L3) | traps | **XLM receipt `withdraw(margin, 57.94 XLM pT)`**: the first step, before any swap or repay |
+| `close_with_repay` short (S3) | ok | pays in first, then sends USDC pT |
+| `liquidate` short underwater (S5) | ok | pays in first |
+| `open` | #24 Impaired | – |
+
+**Diagnosis: not an ordering bug.** L3's `close_with_repay` already repays before it moves any pToken, like
+`liquidate`. The trap is genuine. Once the backstop's XLM bad debt has eaten the pooled free liquidity, L3's own XLM
+collateral is backing that debt: about $286 CF-weighted at ×7, against $49.5 of L3 debt. Swap-close cannot repay before
+it withdraws, because it needs the proceeds. So the contract is left as it is. Bypassing the live controller check would
+remove the lender protection.
+
+**Fix shipped: settles size themselves.** Recovery on the fork:
+
+1. Liquidate S5. It pays in first.
+2. Run `settle_max_ptokens`. It shows **15.32 pT**, capped by liquidity.
+3. Settle. It repays **123.40 XLM** and **does not trap**. In WP5 the full settle trapped at this point.
+4. Close S3 with `close_with_repay`.
+5. Run the keeper loop. One more self-sized settle of 41.85 pT repays the remaining 336.86 XLM, and the shares reach 0.
+6. L3 `close_with_repay` and the XLM `claim` then **succeed**.
+
+Under a real controller shortfall the settle fails with `PooledShortfall` (#35) and the view returns 0. The native test
+`settle_self_sizes_to_pooled_liquidity_and_converges` covers both:
+
+- An external seizure leaves the account short, and the settle fails #35 with the view at 0.
+- After a 25 pT `admin_recapitalize`, settles capped by the health-checking mock receipt converge to zero. The view
+  always equals what the settle withdrew.
+
+Open owner decision, not implemented: when an exit's transfer would fail, park its collateral as a `Claim`.
+
+### 3. XLM settle: no idle XLM
+
+At the +40 % oracle gap (gaps test) the XLM settle repays 107.35 XLM.
+
+| | WP5 | WP6 |
+|---|---|---|
+| Idle XLM left in the contract | 45.2 XLM, untracked | **0** |
+| Leftover kept | – | **0.0537 XLM pT** as `BsXlmPt` (≈ the 0.05 % buffer), in `Ledger(XLM)`; Ledger == balance |
+| Backstop end NAV | 724.2 pT | **729.85 pT** |
+
+The NAV gain comes from the input size. The input now follows the pool's price. Before, it followed the oracle + 1.5 %,
+and the oracle-only +40 % gap made that much larger.
+
+Native tests cover four cases:
+
+- quote-sized settle;
+- `BsXlmPt` used first by the next settle;
+- a 3-stroop dust tail settled to exactly zero shares (0.1 XLM minimum purchase);
+- the no-quote fallback to the oracle bound.
+
+## Resource table (WP6 build b1cb1cb2, real pool, protocol-30 host)
+
+Same method and limits as the WP5 table below. Each row is the worst state for its entrypoint.
+
+| Entrypoint / scenario | Instr | Mem MB | Keys | Disk rd | Writes | Write B | Events B | Within limit |
+|---|---|---|---|---|---|---|---|---|
+| backstop_deposit (admin seed $750 / second backer) | 21.9 M | 5.00 | 52 | 0 | 12 | 3,996 | 552 | yes |
+| **open long 3× after 72 h (3 + 3 open, exit pending): worst open** | **153.3 M** | 15.27 | 112 | 0 | 35 | 13,140 | 4,868 | yes |
+| open long 5× (first long; most keys) | 141.9 M | 14.38 | **113** | 1 | 35 | 12,688 | 4,648 | yes |
+| open short 5× after settles (worst short) | 135.1 M | 13.82 | 109 | 0 | 32 | 12,404 | 4,172 | yes |
+| open with backstop bad debt unsettled | refused #25 | | | | | | | – |
+| backstop_request_withdraw | 1.4 M | 1.48 | 6 | 0 | 4 | 3,756 | 168 | yes |
+| backstop_withdraw (72 h, book open, pool check) | 86.0 M | 9.84 | 98 | 0 | 16 | 4,896 | 1,212 | yes |
+| close long 3× (swap XLM→USDC, 72 h funding) | 162.3 M | 16.39 | 107 | 0 | 37 | 13,188 | 4,728 | yes |
+| close short 3× (swap USDC→XLM) | 137.1 M | 15.03 | 107 | 0 | 34 | 12,396 | 3,864 | yes |
+| close_with_repay long 5× | 85.7 M | 9.83 | 98 | 0 | 27 | 7,704 | 2,564 | yes |
+| close_with_repay short 5× | 60.7 M | 8.53 | 93 | 0 | 24 | 6,912 | 1,644 | yes |
+| liquidate long 2× solvent −40 % (worst liquidate) | 108.5 M | 12.09 | 99 | 0 | 28 | 8,072 | 2,868 | yes |
+| liquidate short 5× underwater +40 % | 100.4 M | 10.94 | 96 | 0 | 24 | 7,188 | 2,348 | yes |
+| liquidate long 5× underwater −20 % | 96.3 M | 10.43 | 96 | 0 | 25 | 7,140 | 2,460 | yes |
+| settle_backstop_debt USDC (ticked, heavy; chunk / full 88.4 / 88.6 M) | 89.6 M | 10.25 | 96 | 0 | 22 | 6,684 | 2,436 | yes |
+| **settle_backstop_debt XLM (ticked, heavy, book open, exit pending): worst settle** | **135.2 M** | 13.87 | **109** | 0 | **33** | 12,368 | 4,092 | yes |
+| settle_backstop_debt XLM (self-sized keeper loop, Impaired; gaps 132.8 M) | 134.1 M | 13.97 | 109 | 0 | 33 | 12,404 | 4,092 | yes |
+| settle_backstop_debt XLM (liquidity-capped partial, right after S5 liquidation) | 112.0 M | 12.40 | 107 | 0 | 30 | 11,564 | 3,340 | yes |
+| reconcile (no deficit / deficit → Impaired) | 8.6 / 16.6 M | 3.53 | 75 | 0 | 2 | 3,504 | 208 | yes |
+| claim XLM pTokens | 46.5 M | 7.22 | 92 | 0 | 17 | 5,216 | 792 | yes |
+| claim USDC pTokens | 26.6 M | 5.99 | 85 | 0 | 12 | 4,900 | 572 | yes |
+
+Worst case against each gate:
+
+- **Release:** 113 keys (87 % of 130; about 115 with a G-account signer). Open at 153.3 M (77 % of 200 M; target
+  < 170 M met). Swap-close long at 162.3 M (81 %); this flow is unchanged.
+- **Liquidation flows:** 109 keys (32 % of 340), 135.2 M instructions (40 % of 340 M), 33 writes (19 %), 14.0 MB memory
+  (39 %), 12.4 kB write bytes (11 %), 4.1 kB events (29 %).
+- **XLM settle cost: +45 M** against WP5 (88.5 → 132.8 M). The additions:
+  - the pool quote, about 10 M;
+  - `account_liquidity` + CF + one `update_interest`, about 13.5 M;
+  - the surplus deposit to the XLM receipt and its balance reads.
+
+  It stays within the 85 % liquidation gates. The USDC settle also pays for the liquidity cap: +15 M (73.8 → 88.6 M).
+
+## WP5 resource table (superseded; build 957ad3ca)
 
 Limits: margin release (open / close / close_with_repay / backstop_*) ≤ 130 keys and ≤ 200 M instructions, with the network
 limits otherwise. Liquidation flows (liquidate, settle, reconcile, claim) ≤ 85 % of the live limits: 340 footprint, 170
@@ -80,7 +244,7 @@ disk reads, 170 writes, 340 M instructions, 35.65 MB memory, 112,281 B write byt
 | claim XLM pTokens | 46.4 M | 7.21 | 92 | 0 | 17 | 0 | 5,216 | 792 | yes |
 | claim USDC pTokens | 26.6 M | 5.98 | 85 | 0 | 12 | 0 | 4,852 | 572 | yes |
 
-### Over the limit: `open` in the heavy backstop state (200 M instruction gate)
+### Over the limit: `open` in the heavy backstop state (200 M instruction gate). Resolved in WP6 (remedies 1–3 applied)
 
 The normal book runs at 163–182 M. In the worst state, open goes over the gate: **225.1 M long and 207.1 M short**.
 That state is both sides open, a live backstop exit request, and unsettled USDC and XLM bad debt, measured in the test
@@ -184,7 +348,7 @@ General trims, a few M instructions each:
 - The backstop NAV still reads 749.9 pT at this point: the seized pTokens are a Ledger deficit, not a NAV entry, until
   `admin_resolve_impairment` charges them (as designed).
 
-## Known gaps (INTERFACE.md) exercised
+## Known gaps (INTERFACE.md) exercised (WP5 build; WP6 resolution in *WP6 changes* §2–3)
 
 1. **Pooled controller HF < 1 blocks some exits.** This is in the seizure env, after the reconcile.
    - `close_with_repay` **short** (S3) worked.

@@ -84,11 +84,11 @@ Pilot long book $100 at 5× → worst case ≈ **$197** backstop loss; Tier 1 ($
 ## 4. Pool check in `open` (re-sized for 5×)
 
 Live controller health-checks the pooled account mid-flow (at the borrow before the proceeds are deposited, and at the
-withdraw before repay in a swap-close). Per $1 of trader equity C at 5× (1 % slippage):
+withdraw before repay in a swap-close). Per $1 of trader equity C at 5× (1.5 % slippage, the default since WP4):
 
 | | 5× long (hold XLM, owe USDC) | 5× short (hold USDC, owe XLM) |
 |---|---|---|
-| debt / collateral after open | 4C / 4.96C | 4C / 4.96C |
+| debt / collateral after open | 4C / 4.94C | 4C / 4.94C |
 | transient need at the borrow (weighted USD) | 4 − 0.55 = **3.45C** → 4.6C of backstop USDC | 4 − 0.75 = **3.25C** → 4.33C |
 | transient at swap-close withdraw | 0.55 × 4.04 = 2.22C → 2.96C | 0.75 × 4.04 = 3.03C → 4.04C |
 | steady, pooled HF 1.25 at spot | B ≥ 3.03C | B ≥ 1.71C |
@@ -97,7 +97,7 @@ withdraw before repay in a swap-close). Per $1 of trader equity C at 5× (1 % sl
 Checks in `open` (all must pass after the trade):
 1. pooled HF ≥ **1.25** at spot;
 2. pooled HF ≥ **1.10** at XLM −20 % and at +20 % (monotonic, so both ends cover the range);
-3. free liquidity ≥ `close_reserve_usd` = 1.01 × max(0.55 × largest long debt, 0.75 × largest short debt), so the largest
+3. free liquidity ≥ `close_reserve_usd` = 1.015 × max(0.55 × largest long debt, 0.75 × largest short debt), so the largest
    position can always be swap-closed and liquidated;
 4. position leverage ≤ 5×; per-position, per-side OI and total-collateral caps (§5).
 

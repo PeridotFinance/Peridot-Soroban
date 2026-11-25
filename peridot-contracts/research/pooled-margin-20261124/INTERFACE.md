@@ -18,7 +18,7 @@ another WP's file. Units: amounts raw 7-decimal; fractions 1e6; USD values "usd7
 ## Rules every WP relies on
 
 1. **Ledger.** `Ledger(asset)` = pTokens this contract accounts for = Σ open positions' `held_ptokens` + `Bs.ptokens`
-   (USDC) + `ClaimsTotal(asset)`. Whoever mints/receives or sends/burns pTokens updates it in the same call
+   (USDC) + `BsXlmPt` (XLM, WP6) + `ClaimsTotal(asset)`. Whoever mints/receives or sends/burns pTokens updates it in the same call
    (`ledger_add/sub`). Donations are never counted. `reconcile` compares it to `get_ptoken_balance(me)`.
 2. **Debt shares.** `DebtShares(asset)` = position shares only; `BsDebtShares(asset)` = backstop bad-debt shares.
    Debt per share = `pooled_debt / (DebtShares + BsDebtShares)`. **WP2 must change `position_debt` to divide by the sum**,
@@ -42,8 +42,8 @@ another WP's file. Units: amounts raw 7-decimal; fractions 1e6; USD values "usd7
      (`SideTotals`, decreased by exactly what the position added).
    - Open order: `require_not_impaired` → paused check → caps → trade → `headroom::pool_check(Check::Open)` last.
    - Close / close_with_repay / liquidate / claim never check the pause or `Impaired`.
-5. **Pool check (WP3)** per SPEC §4; `close_reserve_usd = 0` → derive `1.01 × max(cf_xlm × maxdebt_long, cf_usdc ×
-   maxdebt_short)` with `maxdebt = per_position_equity_usd × (max_leverage − 1)`.
+5. **Pool check (WP3)** per SPEC §4; `close_reserve_usd = 0` → derive `1.015 × max(cf_xlm × maxdebt_long, cf_usdc ×
+   maxdebt_short)` with `maxdebt = per_position_equity_usd × (max_leverage − 1)` (1.01 before WP6).
 6. **Backstop (WP1)**: CODE-PLAN §3 (oracle-free NAV in USDC pTokens; dead shares; rounding against the backer; exit
    request → 72 h → 48 h window; frozen while `BsDebtShares(XLM) > 0` or `Impaired`).
 7. **Events**: single-tuple topics `(Symbol,)`: `margin_open`, `margin_close`, `margin_liquidate`, `margin_bad_debt`,
@@ -86,8 +86,66 @@ Shims removed: `contract.rs` calls `headroom::require_not_impaired` / `pool_chec
 7. **`credit_pt` never panics:** saturating; an empty backstop (no shares) accumulates the fee pTokens, which the
    later seed's shares own pro rata with the dead shares.
 
-Known gaps carried to WP5: once bad debt exceeds the backstop, the pooled controller HF can fall below 1 and the
+Known gaps carried to WP5 (superseded by "WP6 changes" below): once bad debt exceeds the backstop, the pooled controller HF can fall below 1 and the
 live controller then blocks close (withdraw), liquidate/claim (pToken transfer) and settle (withdraw before
 repay); the integration test keeps HF ≥ 1 with short-side USDC. Large `settle_backstop_debt` amounts need
 chunking via `max_ptokens` (the withdraw is health-checked before the repay). `harness/margin-fork` still drives
 the v0.2 ABI by name and must be ported to v2.
+
+## WP6 changes (25 Nov)
+
+Resource fix for `open` and the two gaps the WP5 fork found. Build sha256 `b1cb1cb2…766f` (67,488 B); results in
+`WP5-FORK-RESULTS.md` ("WP6 changes").
+
+1. **Opens refused while backstop bad debt is unsettled.** `open` fails `BackstopDebtOutstanding` (#25, reused; its
+   meaning now also covers this) while `BsDebtShares(USDC) > 0` or `BsDebtShares(XLM) > 0`, checked right after the
+   Impaired/pause checks. This mirrors the backstop-deposit freeze for XLM bad debt. Close, close_with_repay, liquidate,
+   claim and `settle_backstop_debt` are not gated. The keeper must settle to **exactly zero shares** before opens
+   resume; the XLM settle cannot leave a dust tail (item 4).
+2. **One read per value in `open` → `pool_check`.** The open path no longer repeats any of these reads:
+   - Prices are read once and passed to `oracle_min_out_p` (new in `common.rs`).
+   - The USDC exchange rate is read once before the trade, and the held rate once after it.
+   - The position debt comes from the borrow's own `get_user_borrow_balance` via `share_debt` (new), with no second
+     `update_interest` + balance pair.
+   - The held receipt's pToken balance is read before the first and after the last held deposit (`deposit_raw`, new),
+     not around every deposit.
+   - `pool_check_with(env, Check::Open, Some(OpenPre { usdc_rate, usdc_price }))` skips both `update_interest` calls,
+     because both receipts already accrued in the same invocation. `Check::BackstopExit` still accrues both receipts.
+   - The backstop NAV is read once per pool check (`pending_pt_at` / `value_usd_at`). The pre-trade USDC rate can only
+     understate the backstop value, which is the safe side.
+   - Short open: the open fee's pTokens are the fee's pro-rata share of the single collateral + proceeds mint.
+3. **Self-sizing settle, and a keeper view.** `settle_backstop_debt` caps its USDC withdrawal at the pooled free
+   liquidity, because the live controller health-checks the withdrawal before the repay:
+   - The cap is `account_liquidity(me)`, after accruing the receipt the settle has not yet accrued, converted at the USDC
+     CF, price and exchange rate, less a 1 % haircut.
+   - With no free liquidity the settle fails with the **new error `PooledShortfall` (#35)**. Recapitalise first, or let
+     pay-in-first exits restore liquidity.
+   - Every settle frees liquidity, so the keeper repeats it until `get_bs_debt_shares` is 0.
+   - **New view `settle_max_ptokens(debt_asset) -> u128`** returns the USDC pTokens a `max_ptokens = MAX` settle would
+     withdraw now. 0 means nothing to settle, the backstop's XLM pTokens cover the debt, or a shortfall.
+4. **XLM settle sizing and surplus.**
+   - The swap input is the pool's `estimate_swap_strict_receive(USDC→XLM, want)` + 1, with `want = debt + 0.05 % + 10
+     stroops`, at least 0.1 XLM. The quote is untrusted and called with `try_invoke`. It is capped at the old bound
+     (oracle value of `want` + max slippage); without a quote that bound is used.
+   - The output floor is unchanged: oracle less max slippage, and the caller's `min_out`.
+   - XLM left after the repay is deposited to the XLM receipt and tracked as **backstop XLM pTokens (new key `BsXlmPt`,
+     appended to `Key`; in `Ledger(XLM)`)**. They are not counted in the NAV, which is conservative.
+   - The next XLM settle first repays from `BsXlmPt` (withdraw + repay, no swap), then swaps for the rest.
+   - Only sub-pToken dust can stay idle. The `bs_settle` event's last field is now the XLM surplus that was deposited.
+   - **New view `get_bs_xlm_ptokens() -> u128`.**
+5. **Close reserve multiplier 1.015** (`headroom::RESERVE_MARGIN`), matching the 1.5 % default slippage (SPEC §4).
+6. **Pooled controller HF < 1, traced on the fork.** The live controller's check, inside the receipt, rejects every
+   pToken removal from the pooled account that would leave it short:
+   - The `withdraw` / `transfer` traps `UnreachableCodeReached` after `get_collateral_excl_usd`, `get_borrows_excl`, the
+     XLM price and the CF.
+   - Long `close_with_repay` already repays first. It fails on the **XLM receipt `transfer` of the held pTokens to the
+     owner**, because the pooled account's other debt needs that collateral.
+   - `claim` fails on the same `transfer`.
+   - Swap-`close` fails on the **XLM receipt `withdraw`** of the pTokens it sells, before any swap or repay. It cannot
+     repay first without the proceeds.
+   - So no reordering helps, and the contract does not bypass the lender protection. Pay-in-first flows still work:
+     `liquidate` and the short's `close_with_repay`.
+   - The recovery order is: liquidate, then self-sized settles (repeat), then the blocked exits go through. Exercised on
+     the fork.
+   - Open owner decision, not implemented: parking a failed exit's collateral as a `Claim`.
+

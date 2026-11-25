@@ -1,11 +1,12 @@
 //! Pooled margin v2 (WP5) on a read-only Mainnet fork: live controller f41e5260, live receipts 5630a701, live
 //! Reflector and the REAL Aquarius XLM/USDC concentrated pool (CBBMQ...BUCV: its instance, code and every entry the RPC
 //! footprints of read-only swap simulations touched), protocol-30 host (soroban-env-host 30.0.1).
-//! The v2 margin WASM is imported from the workspace build (sha256 asserted below) and registered fresh on the fork.
+//! The v2 margin WASM (WP6 build) is imported from the workspace build (sha256 asserted below) and registered fresh on the fork.
 //!
 //! Tests (each on a fresh Env from the same snapshot):
 //! - `fork_fidelity_and_pool_auth`: fork estimate_swap == recorded Mainnet quotes; a native probe swaps on the real pool
-//!   under ENFORCING auth with the root `transfer` entry, the nested `swap -> transfer` entry, both or none.
+//!   under ENFORCING auth with the root `transfer` entry, the nested `swap -> transfer` entry, both or none; WP6: the
+//!   pool's estimate_swap_strict_receive round-trips at settle sizes and a real swap of its quoted input delivers the output.
 //! - `pilot_book_backstop_exit_and_closes`: $750 seed, a second backer, long + short open concurrently at 3x and 5x,
 //!   backstop request -> Cooldown -> 72 h warp -> BackstopHeadroom (book open) -> allowed exit, then close and
 //!   close_with_repay on both sides, fees into backstop NAV.
@@ -13,9 +14,10 @@
 //!   both sides, bad debt -> backstop, chunked USDC settle and XLM settle (real-pool swap), claims; other positions' debt
 //!   unchanged.
 //! - `pooled_account_seizure_reconcile`: XLM spike until the live controller sees a shortfall on the pooled account, a
-//!   plain cash-controller `liquidate` of it, `reconcile` -> Impaired, and what still works afterwards.
-//! - `heaviest_open_with_bad_debt_and_pending_exit`: opens with both sides open, a pending backstop exit and unsettled USDC +
-//!   XLM bad debt (pool_check reads the backstop NAV twice): the worst-case open footprint.
+//!   plain cash-controller `liquidate` of it, `reconcile` -> Impaired, and what still works afterwards (claim, swap-close,
+//!   close_with_repay, liquidate); WP6: self-sized XLM settles in a keeper loop, then the blocked exits go through.
+//! - `heaviest_open_with_bad_debt_and_pending_exit`: WP6: opens in several orders with a backstop exit pending; with USDC +
+//!   XLM bad debt unsettled opens are refused (#25); after the settles and after a 72 h warp they are measured again.
 //! Measured opens/swap-closes/withdraws follow a +5 s tick so they pay their own receipt accrual.
 //! User, backer, liquidator and keeper calls into margin run with explicit (non-mock-all) auth trees; only setup, the
 //! Reflector `set_price` (oracle admin) and the external cash liquidator use mock_all_auths.
@@ -40,7 +42,7 @@ type SVec<T> = Vec<T>;
 mod mc {
     soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/margin_controller.wasm");
 }
-const MARGIN_SHA: &str = "957ad3ca2fd362cb5aa8e494d0d3b256164966012d87d764e2b9625139305846";
+const MARGIN_SHA: &str = "b1cb1cb21f02de1b1a9047d31fa60ffc066c2ddedc94c4dff2fcbdb0a7b1766f";
 
 const CTRL: &str = "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK";
 const REFLECTOR: &str = "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN";
@@ -437,8 +439,23 @@ fn fork_fidelity_and_pool_auth() {
     let ok = |k: &str| matrix[k]["ok"].as_bool().unwrap();
     assert_eq!(first_out.expect("no auth shape swapped"), u(&sim0["out_amount"]), "fork swap output != Mainnet simulated output");
     assert!(!ok("none") && ok("both (as margin v2 swap())") && ok("root transfer only") && !ok("nested swap->transfer only"));
+    // WP6: settle_backstop_debt sizes its USDC input with the pool's estimate_swap_strict_receive. Round-trip it at settle
+    // sizes (estimate_swap of the quoted input must deliver the asked output) and swap one size for real.
+    let mut strict = vec![];
+    for out in [10 * R7, 100 * R7, 1_000 * R7, 5_000 * R7] {
+        let q: u128 = call(&e, &pool, "estimate_swap_strict_receive", vec![1u32.into_val(&e), 0u32.into_val(&e), out.into_val(&e)]);
+        let back: u128 = call(&e, &pool, "estimate_swap", vec![1u32.into_val(&e), 0u32.into_val(&e), q.into_val(&e)]);
+        strict.push(json!({"outXlm": out.to_string(), "usdcIn": q.to_string(), "estimateSwapOfIn": back.to_string()}));
+        assert!(back >= out, "estimate_swap(strict_receive({out})) = {back} < {out}");
+    }
+    let want = 100 * R7;
+    let q: u128 = call(&e, &pool, "estimate_swap_strict_receive", vec![1u32.into_val(&e), 0u32.into_val(&e), want.into_val(&e)]);
+    fund(&e, &usdc, &probe, q as i128);
+    let got: u128 = e.invoke_contract(&probe, &Symbol::new(&e, "run"), (pool.clone(), usdc.clone(), 1u32, 0u32, q, 3u32).into_val(&e));
+    assert!(got >= want, "real swap of the strict-receive input delivered {got} < {want}");
     let out = json!({"test": "fidelity", "forkLedger": fj["ledger"], "forkFetchedAt": fj["fetchedAt"], "quoteChecks": quote_checks,
-        "contractCallerAuthMatrix": Value::Object(matrix), "mainnetSimOut": sim0["out_amount"]});
+        "contractCallerAuthMatrix": Value::Object(matrix), "mainnetSimOut": sim0["out_amount"], "strictReceiveRoundTrip": strict,
+        "strictReceiveRealSwap": {"wantXlm": want.to_string(), "usdcIn": q.to_string(), "gotXlm": got.to_string()}});
     let s = serde_json::to_string_pretty(&out).unwrap();
     println!("{s}");
     std::fs::write(format!("{}/.scratch/wp5-fidelity.json", dir()), s).unwrap();
@@ -656,7 +673,11 @@ fn gaps_liquidations_and_settles() {
     assert_eq!(bs_xlm(), 0);
     let d2 = c.debts(&[s3]);
     assert!(d0[0].abs_diff(d2[0]) <= 1, "S3 debt changed by XLM settle");
-    c.note("settleXlm", json!({"sharesBefore": xb.to_string(), "repaidXlm": repaid.to_string(), "idleXlmSurplus": (bal(&c.e, &x, &c.margin) - x_idle0).to_string(),
+    let idle = bal(&c.e, &x, &c.margin) - x_idle0;
+    let bs_xpt = m.get_bs_xlm_ptokens();
+    assert!(idle <= 2, "WP6: no idle XLM after the settle ({idle} stroops)");
+    assert!(bs_xpt > 0 && (bs_xpt as u128) * c.rate(&c.xr) / E6 <= repaid / 500 + 2 * R7, "surplus kept as backstop XLM pT, about the 0.05 % buffer: {bs_xpt}");
+    c.note("settleXlm", json!({"sharesBefore": xb.to_string(), "repaidXlm": repaid.to_string(), "idleXlmAfter": idle.to_string(), "bsXlmPtokens": bs_xpt.to_string(),
         "S3DebtAfter": d2[0].to_string(), "navAfter": c.nav().to_string(), "frozenDepositResult": format!("{frozen:?}")}));
     // S3 at +40 %
     let (pay, under) = c.liquidate(&keeper, s3).expect("liquidate S3 at +40%");
@@ -692,6 +713,14 @@ fn pooled_account_seizure_reconcile() {
     let s5 = c.open(&t, false, 5_000_000, EQ).expect("S5");
     let s3 = c.open(&t, false, 3_000_000, EQ).expect("S3");
     let l3 = c.open(&t, true, 3_000_000, EQ).expect("L3");
+    let l2 = c.open(&t, true, 2_000_000, EQ).expect("L2");
+    // L2 liquidated solvent at XLM -40 %: its owner remainder stays as an unclaimed XLM-pT claim through the spike
+    let keeper = Address::generate(&c.e);
+    fund(&c.e, &x, &keeper, 1_000_000 * R7 as i128);
+    fund(&c.e, &u, &keeper, 100_000 * R7 as i128);
+    c.post(60, 100, 0, 60);
+    assert!(!c.liquidate(&keeper, l2).expect("L2 -40%").1);
+    assert!(m.get_claim(&t, &x) > 0);
     c.ledger_eq("before spike");
     // keeper offline: XLM spikes until the live controller sees a shortfall on the pooled account
     let mut k_hit = 0;
@@ -720,7 +749,6 @@ fn pooled_account_seizure_reconcile() {
     c.note("cashLiquidation", json!({"result": format!("{r:?}"), "repayXlm": repay.to_string(), "seizedUsdcPt": seized.to_string(),
         "extUsdcPt": c.pt_bal(&c.ur, &ext).to_string()}));
     assert!(matches!(r, Ok(Ok(()))) && seized > 0, "cash-controller liquidation of the pooled account failed: {r:?}");
-    let keeper = Address::generate(&c.e);
     let newly = c.reconcile(&keeper).expect("reconcile");
     c.res("reconcile (deficit -> newly Impaired, opens paused, event)", "liquidation");
     assert!(newly && m.is_impaired() && m.opens_paused());
@@ -730,36 +758,67 @@ fn pooled_account_seizure_reconcile() {
     let (hf_r, _, _, _) = m.pooled_health();
     c.note("atReconcile", json!({"ledgerUsdc": c.ledger_of(&u).to_string(), "balanceUsdc": c.pt_bal(&c.ur, &c.margin).to_string(),
         "ledgerXlm": c.ledger_of(&x).to_string(), "balanceXlm": c.pt_bal(&c.xr, &c.margin).to_string(), "backstopNavPt": nav_r.to_string(), "pooledHf": hf_r.to_string()}));
-    // what still works with pooled HF < 1 (INTERFACE known gaps)
+    // ---- what still works with pooled HF < 1 (right after the seizure; INTERFACE known gaps)
     let open_try = c.open(&t, true, 2_000_000, 50_000_000);
-    let cwr_s3 = c.close_with_repay(&t, s3);
+    // Traced (WP6): claim traps in the XLM receipt `transfer` (margin -> owner) and swap-close in the XLM receipt `withdraw`
+    // of the pTokens to sell (before any swap or repay), both in the receipt's controller liquidity check
+    // (get_collateral_excl_usd + get_borrows_excl, XLM price and CF -> UnreachableCodeReached).
+    let claim_hf_lt1 = c.claim(&t, &x); // L2's solvent-liquidation remainder (XLM pT)
+    c.tick();
+    let close_l3_hf_lt1 = c.close(&t, l3); // swap-close long: withdraws XLM pT before the repay
     let cwr_l3 = c.close_with_repay(&t, l3);
     fund(&c.e, &x, &keeper, 1_000_000 * R7 as i128);
-    let liq_s5 = c.liquidate(&keeper, s5);
-    let settle_x = c.settle(&keeper, &x, u128::MAX);
-    // diagnostic for the failures above: USDC receipt withdraw / XLM pToken transfer trap in the live controller health
-    // check (UnreachableCodeReached) while the pooled account is short. Retry after S3/S5 are gone, and a small settle chunk.
+    let liq_s5 = c.liquidate(&keeper, s5); // pays in first: works
+    let (_, short_s5): (u128, u128) = call(&c.e, &c.ctrl, "account_liquidity", vec![c.margin.into_val(&c.e)]);
+    let view_s5 = m.settle_max_ptokens(&x);
+    c.tick();
+    let settle_s5 = c.settle(&keeper, &x, u128::MAX); // XLM bad debt now; PooledShortfall (#35) if still short
+    if settle_s5.is_ok() { c.res("settle_backstop_debt XLM (self-sized, right after S5 liquidation, Impaired)", "liquidation"); }
+    let cwr_s3 = c.close_with_repay(&t, s3);
     let (_, short_mid): (u128, u128) = call(&c.e, &c.ctrl, "account_liquidity", vec![c.margin.into_val(&c.e)]);
     let (nav_mid, _) = m.backstop_nav();
     let (hf_mid, _, _, _) = m.pooled_health();
-    let rx_xlm_pt = c.pt_bal(&c.xr, &c.margin);
-    let bs_xlm_debt_shares_before_settle = m.get_bs_debt_shares(&x);
+    let bs_x0 = m.get_bs_debt_shares(&x);
+    // L3's close_with_repay failed above: traced (WP6) to the XLM receipt `transfer` of L3's XLM pTokens to the owner,
+    // AFTER the repay; the receipt's controller liquidity check (get_collateral_excl_usd + get_borrows_excl, XLM price, CF)
+    // traps UnreachableCodeReached because the pooled account's other debt needs that collateral. Retried here once the
+    // keeper has liquidated S5, settled (self-sized) and S3 has repaid.
     let cwr_l3_retry = c.close_with_repay(&t, l3);
-    let settle_chunk = c.settle(&keeper, &x, 100_000_000);
-    let settle_rest = c.settle(&keeper, &x, u128::MAX);
+    // ---- WP6 keeper loop: self-sized XLM settles (each withdraws only what the pooled liquidity allows) until zero
+    let mut chunks = vec![];
+    let mut first = true;
+    while m.get_bs_debt_shares(&x) > 0 {
+        let view = m.settle_max_ptokens(&x);
+        c.tick();
+        let r = c.settle(&keeper, &x, u128::MAX).unwrap_or_else(|err| panic!("self-sized XLM settle {}: {err}", chunks.len()));
+        if first { c.res("settle_backstop_debt XLM (self-sized keeper loop, Impaired, book open)", "liquidation"); first = false; }
+        chunks.push(json!({"viewPt": view.to_string(), "repaidXlm": r.to_string(), "sharesLeft": m.get_bs_debt_shares(&x).to_string()}));
+        assert!(chunks.len() < 40, "self-sized settles do not converge: {chunks:?}");
+    }
+    let view_after: u128 = m.settle_max_ptokens(&x);
+    // after the bad debt is settled the trapped exits go through
+    let cwr_l3_after = if cwr_l3_retry.is_ok() { Ok(()) } else { c.close_with_repay(&t, l3) };
     let (_, short1): (u128, u128) = call(&c.e, &c.ctrl, "account_liquidity", vec![c.margin.into_val(&c.e)]);
+    let claim_after = if claim_hf_lt1.is_ok() { Ok(0) } else { c.claim(&t, &x) };
     c.note("afterImpaired", json!({"ledgerUsdc": c.ledger_of(&u).to_string(), "balanceUsdc": c.pt_bal(&c.ur, &c.margin).to_string(),
-        "reconcileAgain": again, "openWhileImpaired": format!("{open_try:?}"), "closeWithRepayShortS3": format!("{cwr_s3:?}"),
-        "closeWithRepayLongL3": format!("{cwr_l3:?}"), "shortfallAfterS3S5": short_mid.to_string(), "navAfterS5LiqPt": nav_mid.to_string(),
-        "pooledHfBeforeRetry": hf_mid.to_string(), "marginXlmPtBeforeRetry": rx_xlm_pt.to_string(), "bsDebtSharesXlmBeforeSettle": bs_xlm_debt_shares_before_settle.to_string(),
-        "closeWithRepayLongL3Retry": format!("{cwr_l3_retry:?}"), "settleXlmChunk10pT": format!("{settle_chunk:?}"), "settleXlmRest": format!("{settle_rest:?}"), "liquidateS5": format!("{liq_s5:?}"), "settleXlm": format!("{settle_x:?}"),
-        "bsDebtSharesXlm": m.get_bs_debt_shares(&x).to_string(), "shortfallAfter": short1.to_string()}));
+        "reconcileAgain": again, "openWhileImpaired": format!("{open_try:?}"), "claimXlmHfLt1": format!("{claim_hf_lt1:?}"),
+        "swapCloseLongL3HfLt1": format!("{close_l3_hf_lt1:?}"), "closeWithRepayShortS3": format!("{cwr_s3:?}"),
+        "closeWithRepayLongL3": format!("{cwr_l3:?}"), "liquidateS5": format!("{liq_s5:?}"), "shortfallAfterS5Liq": short_s5.to_string(),
+        "settleMaxPtokensAfterS5Liq": view_s5.to_string(), "settleXlmAfterS5Liq": format!("{settle_s5:?}"), "shortfallAfterS3S5": short_mid.to_string(),
+        "navAfterS5LiqPt": nav_mid.to_string(), "pooledHfBeforeRetry": hf_mid.to_string(), "bsDebtSharesXlmBeforeSettle": bs_x0.to_string(),
+        "closeWithRepayLongL3Retry": format!("{cwr_l3_retry:?}"), "selfSizedSettles": chunks, "settleMaxPtokensAfter": view_after.to_string(),
+        "closeWithRepayLongL3AfterSettles": format!("{cwr_l3_after:?}"), "claimXlmAfterSettles": format!("{claim_after:?}"),
+        "bsXlmPtokens": m.get_bs_xlm_ptokens().to_string(), "shortfallAfter": short1.to_string()}));
     assert!(open_try.is_err_and(|s| s.contains("#24")), "open must fail Impaired");
+    assert!(cwr_s3.is_ok() && liq_s5.is_ok(), "pay-in-first exits work under pooled HF < 1");
+    assert!(cwr_l3_after.is_ok(), "L3 close_with_repay after the self-sized settles: {cwr_l3_after:?}");
+    assert!(claim_hf_lt1.is_ok() || claim_after.is_ok(), "claim after the settles");
     c.finish("seizure");
 }
 
-/// Heaviest open state: both sides open, a live backstop exit request pending, and UNSETTLED USDC and XLM bad debt, so
-/// pool_check's pending_pt and value_usd each read the backstop NAV with both debt buckets (oracle back at P0).
+/// WP6 open states. Opens are measured in several orders, all with a backstop exit pending: first on a side, after the
+/// opposite side, second on the same side; then, with USDC and XLM bad debt unsettled, opens are REFUSED (#25); after
+/// the keeper's settles (backstop XLM pTokens held), and again after a 72 h warp. pool_check reads the NAV once.
 #[test]
 fn heaviest_open_with_bad_debt_and_pending_exit() {
     let c = setup("heavy");
@@ -773,28 +832,58 @@ fn heaviest_open_with_bad_debt_and_pending_exit() {
     let keeper = Address::generate(&c.e);
     fund(&c.e, &x, &keeper, 1_000_000 * R7 as i128);
     fund(&c.e, &u, &keeper, 100_000 * R7 as i128);
-    let l5 = c.open(&t, true, 5_000_000, EQ).expect("L5");
-    let _l3 = c.open(&t, true, 3_000_000, EQ).expect("L3");
-    let s5 = c.open(&t, false, 5_000_000, EQ).expect("S5");
-    let _s3 = c.open(&t, false, 3_000_000, EQ).expect("S3");
+    let mut o = |long: bool, lev: u128, name: &str| -> u64 {
+        c.tick();
+        let id = c.open(&t, long, lev, EQ).unwrap_or_else(|err| panic!("{name}: {err}"));
+        c.res(name, "release");
+        id
+    };
+    let l5 = o(true, 5_000_000, "open long 5x (first long, exit pending)");
+    let s5 = o(false, 5_000_000, "open short 5x (first short, after a long, exit pending)");
+    let _l3 = o(true, 3_000_000, "open long 3x (second long, both sides open, exit pending)");
+    let _s3 = o(false, 3_000_000, "open short 3x (second short, both sides open, exit pending)");
     c.post(80, 100, 600, 120);
     assert!(c.liquidate(&keeper, l5).expect("L5 -20%").1);
     c.post(140, 100, 0, 60);
     assert!(c.liquidate(&keeper, s5).expect("S5 +40%").1);
     c.post(1, 1, 0, 60);
     assert!(m.get_bs_debt_shares(&u) > 0 && m.get_bs_debt_shares(&x) > 0 && m.get_backstop().pending_shares > 0);
-    for (long, name) in [(true, "open long 5x HEAVIEST (both sides open, exit pending, USDC+XLM bad debt unsettled)"),
-                         (false, "open short 5x HEAVIEST (both sides open, exit pending, USDC+XLM bad debt unsettled)")] {
+    // WP6 1a: opens refused while backstop bad debt is unsettled
+    let mut refused = serde_json::Map::new();
+    for long in [true, false] {
         c.tick();
-        c.open(&t, long, 5_000_000, EQ).unwrap_or_else(|err| panic!("{name}: {err}"));
-        c.res(name, "release");
+        let r = c.open(&t, long, 5_000_000, EQ);
+        assert!(r.as_ref().is_err_and(|s| s.contains("#25")), "open with bad debt outstanding must fail BackstopDebtOutstanding: {r:?}");
+        refused.insert(if long { "long".into() } else { "short".into() }, json!(format!("{r:?}")));
     }
+    c.note("opensWithBadDebt", Value::Object(refused));
     c.tick();
     let _ = c.settle(&keeper, &x, u128::MAX).expect("settle XLM");
-    c.res("settle_backstop_debt XLM (ticked, book open)", "liquidation");
+    c.res("settle_backstop_debt XLM (ticked, book open, exit pending)", "liquidation");
     c.tick();
     let _ = c.settle(&keeper, &u, u128::MAX).expect("settle USDC");
     c.res("settle_backstop_debt USDC (ticked, book open)", "liquidation");
+    assert!(m.get_bs_debt_shares(&u) == 0 && m.get_bs_debt_shares(&x) == 0 && m.get_bs_xlm_ptokens() > 0);
+    let mut o = |long: bool, lev: u128, name: &str| -> u64 {
+        c.tick();
+        let id = c.open(&t, long, lev, EQ).unwrap_or_else(|err| panic!("{name}: {err}"));
+        c.res(name, "release");
+        id
+    };
+    o(true, 5_000_000, "open long 5x after settles (both sides open, exit pending, backstop XLM pT held)");
+    o(false, 5_000_000, "open short 5x after settles (both sides open, exit pending)");
+    // 72 h later (interest accrued on both receipts, exit request inside its window)
+    let req = m.get_withdraw_req(&backer).unwrap();
+    c.e.ledger().with_mut(|li| li.timestamp = req.ready_at + 1);
+    c.post(1, 1, 0, 120);
+    let mut o = |long: bool, lev: u128, name: &str| -> u64 {
+        c.tick();
+        let id = c.open(&t, long, lev, EQ).unwrap_or_else(|err| panic!("{name}: {err}"));
+        c.res(name, "release");
+        id
+    };
+    o(true, 3_000_000, "open long 3x after 72 h (3 longs + 3 shorts open, exit pending)");
+    o(false, 3_000_000, "open short 3x after 72 h (3 longs + 3 shorts open, exit pending)");
     c.ledger_eq("heavy end");
     c.finish("heavy");
 }
