@@ -31,6 +31,8 @@ mod test_headroom;
 
 #[cfg(test)]
 mod test_backstop;
+#[cfg(test)]
+mod test_integration;
 
 pub use common::*;
 pub use contract::*;

@@ -212,6 +212,7 @@ pub(crate) mod mctrl {
         }
         /// Live `portfolio` shape and truncation order (simple-peridottroller):
         /// coll = ((pbal * rate / 1e6) * cf / 1e6) * price / scale, debt_usd = debt * price / scale.
+        #[allow(clippy::type_complexity)]
         pub fn portfolio(
             env: Env,
             user: Address,
@@ -361,7 +362,17 @@ impl T {
     }
     /// Opens are unpaused, but the backstop has no shares yet.
     pub(crate) fn new_unseeded() -> T {
-        let env = Env::default();
+        T::with_env(Env::default())
+    }
+    /// Seeded fixture that writes no test snapshot (long property loops).
+    pub(crate) fn new_no_snapshot() -> T {
+        let t = T::with_env(Env::new_with_config(soroban_sdk::testutils::EnvTestConfig {
+            capture_snapshot_at_drop: false,
+        }));
+        t.seed_backstop(750 * U);
+        t
+    }
+    fn with_env(env: Env) -> T {
         env.mock_all_auths();
         // Long sequences in one Env; resource measurement is WP5 (fork), not these unit tests.
         env.cost_estimate().budget().reset_unlimited();
@@ -1152,7 +1163,7 @@ fn underwater_short_liquidation() {
 }
 
 // ------------------------------------------------------------------ property loop
-pub(crate) struct Rng(u64);
+pub(crate) struct Rng(pub(crate) u64);
 impl Rng {
     pub(crate) fn next(&mut self) -> u64 {
         self.0 ^= self.0 << 13;
@@ -1380,7 +1391,7 @@ fn bad_debt_exhausting_the_backstop_impairs_once_nav_read_after_finish() {
         .filter(|e| {
             let soroban_sdk::xdr::ContractEventBody::V0(b) = &e.body;
             let want: soroban_sdk::xdr::ScVal =
-                (&soroban_sdk::Symbol::new(&t.env, "margin_impaired")).try_into().unwrap();
+                (&soroban_sdk::Symbol::new(&t.env, "margin_impaired")).into();
             b.topics.first() == Some(&want)
         })
         .count();
