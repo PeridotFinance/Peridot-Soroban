@@ -1,0 +1,8 @@
+{
+  "name": "margin-fork-tools",
+  "private": true,
+  "description": "Read-only Mainnet fork fetcher for harness/margin-fork",
+  "dependencies": {
+    "@stellar/stellar-sdk": "16.3.1"
+  }
+}
