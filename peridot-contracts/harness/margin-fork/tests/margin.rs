@@ -14,6 +14,9 @@
 //!   unchanged.
 //! - `pooled_account_seizure_reconcile`: XLM spike until the live controller sees a shortfall on the pooled account, a
 //!   plain cash-controller `liquidate` of it, `reconcile` -> Impaired, and what still works afterwards.
+//! - `heaviest_open_with_bad_debt_and_pending_exit`: opens with both sides open, a pending backstop exit and unsettled USDC +
+//!   XLM bad debt (pool_check reads the backstop NAV twice): the worst-case open footprint.
+//! Measured opens/swap-closes/withdraws follow a +5 s tick so they pay their own receipt accrual.
 //! User, backer, liquidator and keeper calls into margin run with explicit (non-mock-all) auth trees; only setup, the
 //! Reflector `set_price` (oracle admin) and the external cash liquidator use mock_all_auths.
 //! Gaps move the ORACLE only (Reflector round posted with XLM scaled, then controller cache_price); the real pool stays
@@ -243,6 +246,9 @@ impl Ctx {
         self.e.as_contract(&self.margin, || self.e.storage().instance().get(&mc::Key::Ledger(asset.clone())).unwrap_or(0))
     }
     fn nav(&self) -> i128 { self.m().backstop_nav().0 }
+    /// Next ledger (+5 s, sequence +1) so the measured call pays its own receipt accrual: views called earlier at the same
+    /// timestamp (get_position_debt etc.) already commit update_interest in the test host.
+    fn tick(&self) { self.e.ledger().with_mut(|li| { li.timestamp += 5; li.sequence_number += 1; }); }
 
     fn open(&self, user: &Address, long: bool, lev: u128, eq: u128) -> Result<u64, String> {
         let (px, pu) = (self.price(&self.xlm), self.price(&self.usdc));
@@ -454,6 +460,7 @@ fn pilot_book_backstop_exit_and_closes() {
     let mut ids = vec![];
     for (long, lev, name) in [(true, 5_000_000u128, "open long 5x"), (false, 5_000_000, "open short 5x"), (true, 3_000_000, "open long 3x"), (false, 3_000_000, "open short 3x")] {
         let nav0 = c.nav();
+        c.tick();
         let id = c.open(&t, long, lev, EQ).unwrap_or_else(|err| panic!("{name}: {err}"));
         c.res(&format!("{name} ($24.90 equity, real-pool swap)"), "release");
         let p = m.get_position(&id).unwrap();
@@ -491,6 +498,7 @@ fn pilot_book_backstop_exit_and_closes() {
     c.note("backstopWithdrawBlocked", json!({"adminRequestShares": admin_req.to_string(), "result": format!("{blocked:?}")}));
     assert!(blocked.as_ref().is_err_and(|s| s.contains("#22")), "admin exit with the book open must fail BackstopHeadroom: {blocked:?}");
     c.strict::<()>(&c.admin, "backstop_cancel_withdraw", (c.admin.clone(),).into_val(&c.e), &[]).expect("cancel");
+    c.tick();
     let got = c.strict::<u128>(&backer, "backstop_withdraw", (backer.clone(), b_pt).into_val(&c.e), &[]).expect("allowed exit");
     c.res("backstop_withdraw (after 72 h, book open, pool check)", "release");
     assert!(got >= b_pt, "backer exits at NAV incl. its share of open fees");
@@ -504,6 +512,7 @@ fn pilot_book_backstop_exit_and_closes() {
         let f = m.get_position_funding(&id);
         let (xu, xx) = (bal(&c.e, &u, &t), bal(&c.e, &x, &t));
         let (pu0, px0) = (c.pt_bal(&c.ur, &t), c.pt_bal(&c.xr, &t));
+        if how == "close" { c.tick(); }
         let r = if how == "close" { c.close(&t, id) } else { c.close_with_repay(&t, id) };
         r.unwrap_or_else(|err| panic!("{name}: {err}"));
         c.res(&format!("{name} (72 h funding)"), "release");
@@ -717,6 +726,10 @@ fn pooled_account_seizure_reconcile() {
     assert!(newly && m.is_impaired() && m.opens_paused());
     let again = c.reconcile(&keeper).expect("reconcile again");
     assert!(!again);
+    let (nav_r, _) = m.backstop_nav();
+    let (hf_r, _, _, _) = m.pooled_health();
+    c.note("atReconcile", json!({"ledgerUsdc": c.ledger_of(&u).to_string(), "balanceUsdc": c.pt_bal(&c.ur, &c.margin).to_string(),
+        "ledgerXlm": c.ledger_of(&x).to_string(), "balanceXlm": c.pt_bal(&c.xr, &c.margin).to_string(), "backstopNavPt": nav_r.to_string(), "pooledHf": hf_r.to_string()}));
     // what still works with pooled HF < 1 (INTERFACE known gaps)
     let open_try = c.open(&t, true, 2_000_000, 50_000_000);
     let cwr_s3 = c.close_with_repay(&t, s3);
@@ -727,15 +740,61 @@ fn pooled_account_seizure_reconcile() {
     // diagnostic for the failures above: USDC receipt withdraw / XLM pToken transfer trap in the live controller health
     // check (UnreachableCodeReached) while the pooled account is short. Retry after S3/S5 are gone, and a small settle chunk.
     let (_, short_mid): (u128, u128) = call(&c.e, &c.ctrl, "account_liquidity", vec![c.margin.into_val(&c.e)]);
+    let (nav_mid, _) = m.backstop_nav();
+    let (hf_mid, _, _, _) = m.pooled_health();
+    let rx_xlm_pt = c.pt_bal(&c.xr, &c.margin);
+    let bs_xlm_debt_shares_before_settle = m.get_bs_debt_shares(&x);
     let cwr_l3_retry = c.close_with_repay(&t, l3);
     let settle_chunk = c.settle(&keeper, &x, 100_000_000);
     let settle_rest = c.settle(&keeper, &x, u128::MAX);
     let (_, short1): (u128, u128) = call(&c.e, &c.ctrl, "account_liquidity", vec![c.margin.into_val(&c.e)]);
     c.note("afterImpaired", json!({"ledgerUsdc": c.ledger_of(&u).to_string(), "balanceUsdc": c.pt_bal(&c.ur, &c.margin).to_string(),
         "reconcileAgain": again, "openWhileImpaired": format!("{open_try:?}"), "closeWithRepayShortS3": format!("{cwr_s3:?}"),
-        "closeWithRepayLongL3": format!("{cwr_l3:?}"), "shortfallAfterS3S5": short_mid.to_string(),
+        "closeWithRepayLongL3": format!("{cwr_l3:?}"), "shortfallAfterS3S5": short_mid.to_string(), "navAfterS5LiqPt": nav_mid.to_string(),
+        "pooledHfBeforeRetry": hf_mid.to_string(), "marginXlmPtBeforeRetry": rx_xlm_pt.to_string(), "bsDebtSharesXlmBeforeSettle": bs_xlm_debt_shares_before_settle.to_string(),
         "closeWithRepayLongL3Retry": format!("{cwr_l3_retry:?}"), "settleXlmChunk10pT": format!("{settle_chunk:?}"), "settleXlmRest": format!("{settle_rest:?}"), "liquidateS5": format!("{liq_s5:?}"), "settleXlm": format!("{settle_x:?}"),
         "bsDebtSharesXlm": m.get_bs_debt_shares(&x).to_string(), "shortfallAfter": short1.to_string()}));
     assert!(open_try.is_err_and(|s| s.contains("#24")), "open must fail Impaired");
     c.finish("seizure");
+}
+
+/// Heaviest open state: both sides open, a live backstop exit request pending, and UNSETTLED USDC and XLM bad debt, so
+/// pool_check's pending_pt and value_usd each read the backstop NAV with both debt buckets (oracle back at P0).
+#[test]
+fn heaviest_open_with_bad_debt_and_pending_exit() {
+    let c = setup("heavy");
+    let m = c.m();
+    let (u, x) = (c.usdc.clone(), c.xlm.clone());
+    let backer = Address::generate(&c.e);
+    let b_pt = c.mint_usdc_pt(&backer, 50 * R7);
+    let b_shares = c.backstop_deposit(&backer, b_pt).expect("backer deposit");
+    c.strict::<()>(&backer, "backstop_request_withdraw", (backer.clone(), b_shares).into_val(&c.e), &[]).expect("request");
+    let t = trader(&c);
+    let keeper = Address::generate(&c.e);
+    fund(&c.e, &x, &keeper, 1_000_000 * R7 as i128);
+    fund(&c.e, &u, &keeper, 100_000 * R7 as i128);
+    let l5 = c.open(&t, true, 5_000_000, EQ).expect("L5");
+    let _l3 = c.open(&t, true, 3_000_000, EQ).expect("L3");
+    let s5 = c.open(&t, false, 5_000_000, EQ).expect("S5");
+    let _s3 = c.open(&t, false, 3_000_000, EQ).expect("S3");
+    c.post(80, 100, 600, 120);
+    assert!(c.liquidate(&keeper, l5).expect("L5 -20%").1);
+    c.post(140, 100, 0, 60);
+    assert!(c.liquidate(&keeper, s5).expect("S5 +40%").1);
+    c.post(1, 1, 0, 60);
+    assert!(m.get_bs_debt_shares(&u) > 0 && m.get_bs_debt_shares(&x) > 0 && m.get_backstop().pending_shares > 0);
+    for (long, name) in [(true, "open long 5x HEAVIEST (both sides open, exit pending, USDC+XLM bad debt unsettled)"),
+                         (false, "open short 5x HEAVIEST (both sides open, exit pending, USDC+XLM bad debt unsettled)")] {
+        c.tick();
+        c.open(&t, long, 5_000_000, EQ).unwrap_or_else(|err| panic!("{name}: {err}"));
+        c.res(name, "release");
+    }
+    c.tick();
+    let _ = c.settle(&keeper, &x, u128::MAX).expect("settle XLM");
+    c.res("settle_backstop_debt XLM (ticked, book open)", "liquidation");
+    c.tick();
+    let _ = c.settle(&keeper, &u, u128::MAX).expect("settle USDC");
+    c.res("settle_backstop_debt USDC (ticked, book open)", "liquidation");
+    c.ledger_eq("heavy end");
+    c.finish("heavy");
 }
