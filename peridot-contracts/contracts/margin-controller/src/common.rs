@@ -203,7 +203,7 @@ pub(crate) fn swap(
 }
 
 pub(crate) fn oracle_min_out(env: &Env, t_in: &Address, t_out: &Address, amount_in: u128) -> u128 {
-    let slip: u128 = inst_get(env, &Key::MaxSlippage).unwrap_or(10_000);
+    let slip: u128 = inst_get(env, &Key::MaxSlippage).unwrap_or(DEFAULT_MAX_SLIPPAGE);
     let po = price(env, t_out);
     let out = usd(amount_in, price(env, t_in))
         .checked_mul(po.1)

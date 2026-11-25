@@ -573,9 +573,9 @@ fn settle_xlm_strict_auth_and_unfreeze() {
     assert_eq!(err!(f.m.try_settle_backstop_debt(&keeper, &f.xlm, &u128::MAX, &0)), Error::Slippage);
     MockPoolClient::new(&f.env, &f.pool).init(&vec![&f.env, f.usdc.clone(), f.xlm.clone()], &3_992, &1_000);
 
-    // Permissionless caller cannot pull more than $1 x (1 + 1 % max slippage) of pTokens.
+    // Permissionless caller cannot pull more than $1 x (1 + 1.5 % default max slippage) of pTokens.
     let usdc_need = ceil(ceil(40_000_000, P_XLM, PS), PS, P_USDC);
-    let need_pt = ceil(ceil(usdc_need, 1_010_000, 1_000_000), 1_000_000, RATE);
+    let need_pt = ceil(ceil(usdc_need, 1_000_000 + DEFAULT_MAX_SLIPPAGE, 1_000_000), 1_000_000, RATE);
     let got_usdc = need_pt * RATE / 1_000_000;
     let got_xlm = got_usdc * 3_992 / 1_000;
     let big = u128::MAX / 2;
@@ -668,4 +668,97 @@ fn auth_is_enforced() {
     let auths = f.env.auths();
     assert_eq!(auths.len(), 1);
     assert_eq!(auths[0].0, f.admin);
+}
+
+// ---------------------------------------------------------------- WP4 integration fixes
+#[test]
+fn recapitalize_mints_no_shares_and_works_exhausted_impaired_and_frozen() {
+    let f = setup();
+    f.params(3_600, 3_600);
+    // No backstop yet: the seed must be a backstop_deposit.
+    f.ru.mint_pt(&f.admin, &50_000_000);
+    assert_eq!(err!(f.m.try_admin_recapitalize(&f.admin, &1_000_000)), Error::BackstopEmpty);
+    f.seed(10_000_000);
+    let mallory = f.backer(1_000_000);
+    assert_eq!(err!(f.m.try_admin_recapitalize(&mallory, &1_000_000)), Error::NotAdmin);
+    assert_eq!(err!(f.m.try_admin_recapitalize(&f.admin, &0)), Error::BadAmount);
+    // Exhaust: USDC bad debt above the backstop; plus XLM bad debt (deposits frozen); Impaired.
+    f.ru.set_borrow(&f.m.address, &20_000_000);
+    f.bad_debt(&f.usdc, 20_000_000); // backstop owns all USDC debt: 20e6 USDC > 10e6 pT * 1.23
+    f.rx.set_borrow(&f.m.address, &4_000_000);
+    f.bad_debt(&f.xlm, 4_000_000);
+    f.set_inst(Key::Impaired, true);
+    assert!(f.nav() < 0);
+    // Resolve before the recap must not clear: the ledgers match but NAV < 0.
+    f.m.admin_resolve_impairment(&f.admin, &0, &0);
+    assert!(f.m.is_impaired());
+    let b0 = f.m.get_backstop();
+    let shares_admin = f.m.get_backer(&f.admin);
+    let nav0 = f.nav();
+    let out = f.m.admin_recapitalize(&f.admin, &12_000_000);
+    let b1 = f.m.get_backstop();
+    assert_eq!(out, b0.ptokens + 12_000_000);
+    assert_eq!(b1.ptokens, b0.ptokens + 12_000_000);
+    assert_eq!(b1.shares, b0.shares); // no shares minted
+    assert_eq!(f.m.get_backer(&f.admin), shares_admin);
+    assert_eq!(f.ledger_u(), b1.ptokens);
+    assert_eq!(f.ru.get_ptoken_balance(&f.m.address), b1.ptokens);
+    assert_eq!(f.nav(), nav0 + 12_000_000);
+    assert!(f.nav() >= 0);
+    // Now resolve clears; deposits stay frozen until the XLM bad debt is settled.
+    f.m.admin_resolve_impairment(&f.admin, &0, &0);
+    assert!(!f.m.is_impaired());
+    let bob = f.backer(5_000_000);
+    assert_eq!(err!(f.m.try_backstop_deposit(&bob, &5_000_000, &0)), Error::BackstopDebtOutstanding);
+}
+
+#[test]
+fn recapitalize_at_nav_exactly_zero() {
+    let f = setup();
+    f.seed(10_000_000);
+    // Backstop owns all USDC debt worth exactly its 10e6 pT: 10e6 * RATE / 1e6 USDC.
+    let debt = 10_000_000u128 * RATE / 1_000_000;
+    f.ru.set_borrow(&f.m.address, &debt);
+    f.bad_debt(&f.usdc, debt);
+    assert_eq!(f.nav(), 0);
+    let bob = f.backer(5_000_000);
+    assert_eq!(err!(f.m.try_backstop_deposit(&bob, &5_000_000, &0)), Error::BackstopEmpty);
+    f.ru.mint_pt(&f.admin, &1_000_000);
+    f.m.admin_recapitalize(&f.admin, &1_000_000);
+    assert_eq!(f.nav(), 1_000_000);
+    assert!(f.m.backstop_deposit(&bob, &5_000_000, &0) > 0);
+}
+
+#[test]
+fn anyone_can_clear_an_expired_request() {
+    let f = setup();
+    f.params(3_600, 3_600);
+    f.seed(10_000_000);
+    let alice = f.backer(5_000_000);
+    let sa = f.m.backstop_deposit(&alice, &5_000_000, &0);
+    let keeper = Address::generate(&f.env);
+    assert_eq!(err!(f.m.try_backstop_clear_expired(&keeper, &alice)), Error::NoRequest);
+    f.m.backstop_request_withdraw(&alice, &sa);
+    let r = f.m.get_withdraw_req(&alice).unwrap();
+    // Live (inclusive expires_at) -> refused.
+    f.at(r.expires_at);
+    assert_eq!(err!(f.m.try_backstop_clear_expired(&keeper, &alice)), Error::BadParams);
+    assert_eq!(f.m.get_backstop().pending_shares, sa);
+    f.at(r.expires_at + 1);
+    // Exact auth: only the caller signs; nothing is needed from the backer.
+    let args = (keeper.clone(), alice.clone()).into_val(&f.env);
+    f.env.mock_auths(&[MockAuth {
+        address: &keeper,
+        invoke: &MockAuthInvoke { contract: &f.m.address, fn_name: "backstop_clear_expired", args, sub_invokes: &[] },
+    }]);
+    f.m.backstop_clear_expired(&keeper, &alice);
+    f.env.mock_all_auths();
+    assert_eq!(f.m.get_backstop().pending_shares, 0);
+    assert_eq!(f.m.get_backer(&alice), sa);
+    assert_eq!(f.m.get_withdraw_req(&alice), None);
+    env_pending_pt_is_zero(&f);
+}
+
+fn env_pending_pt_is_zero(f: &F) {
+    f.env.as_contract(&f.m.address, || assert_eq!(backstop::pending_pt(&f.env), 0));
 }

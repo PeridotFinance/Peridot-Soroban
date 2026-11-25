@@ -44,6 +44,15 @@ mod mrec {
         pub fn set_rate(env: Env, v: u128) {
             env.storage().instance().set(&RK::Rate, &v);
         }
+        pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
+            from.require_auth();
+            let a = amount as u128;
+            let fb: u128 = env.storage().instance().get(&RK::PBal(from.clone())).unwrap_or(0);
+            assert!(fb >= a, "pt balance");
+            env.storage().instance().set(&RK::PBal(from), &(fb - a));
+            let tb: u128 = env.storage().instance().get(&RK::PBal(to.clone())).unwrap_or(0);
+            env.storage().instance().set(&RK::PBal(to), &(tb + a));
+        }
         pub fn set_pending(env: Env, user: Address, v: u128) {
             env.storage().instance().set(&RK::Pending, &(user, v));
         }
@@ -500,9 +509,14 @@ fn reconcile_deficit_sets_impaired_and_pauses() {
     assert_eq!(body.topics[0], want);
     assert!(f.m.is_impaired() && f.m.opens_paused());
     assert_eq!(f.m.try_t_not_impaired(), Err(Ok(se(Error::Impaired))));
+    // Already impaired: a further deficit returns false and emits nothing (keeper sends only
+    // on true, so it never resends every cycle).
+    f.rx.set_pbal(&f.id, &(2_000 * E7 - 2));
+    assert!(!f.m.reconcile(&k));
+    assert_eq!(f.env.events().all().filter_by_contract(&f.id).events().len(), 0);
     // Never cleared by reconcile, even after the balance returns.
     f.rx.set_pbal(&f.id, &(2_000 * E7));
-    assert!(f.m.reconcile(&k));
+    assert!(!f.m.reconcile(&k));
     assert!(f.m.is_impaired());
 }
 
@@ -530,10 +544,15 @@ fn resolve_impairment_books_charges() {
     // USDC fixed but XLM still short -> stays impaired.
     f.m.admin_resolve_impairment(&f.admin, &1, &0);
     assert!(f.m.is_impaired());
-    // XLM write-down is Ledger-only (no backstop counterpart).
+    // XLM: the admin restores the 3 missing XLM pTokens; Ledger(XLM) is unchanged, so every
+    // XLM position and claim can still exit in full (no Ledger-only write-down).
+    f.rx.set_pbal(&f.admin, &10);
+    assert!(f.m.try_admin_resolve_impairment(&f.admin, &0, &11).is_err()); // admin holds only 10
     f.m.admin_resolve_impairment(&f.admin, &0, &3);
     assert!(!f.m.is_impaired());
-    assert_eq!(f.get::<u128>(Key::Ledger(f.xlm.clone())).unwrap(), 2_000 * E7 - 3);
+    assert_eq!(f.get::<u128>(Key::Ledger(f.xlm.clone())).unwrap(), 2_000 * E7);
+    assert_eq!(f.rx.get_ptoken_balance(&f.id), 2_000 * E7);
+    assert_eq!(f.rx.get_ptoken_balance(&f.admin), 7);
     let bs: Backstop = f.get(Key::Bs).unwrap();
     assert_eq!(bs.ptokens, 100 * E7 - 5);
     assert!(f.m.opens_paused()); // admin must unpause explicitly

@@ -4,7 +4,7 @@
 //! modules (WP4: no shims); the mocks are shared with test_integration.rs.
 extern crate std;
 use crate::{Backstop, Caps, Error, Fees, Key, MarginController, MarginControllerClient, Position};
-use soroban_sdk::testutils::{Address as _, Ledger as _};
+use soroban_sdk::testutils::{Address as _, Events as _, Ledger as _};
 use soroban_sdk::token::{StellarAssetClient, TokenClient};
 use soroban_sdk::{vec, Address, Env};
 use std::vec::Vec as SVec;
@@ -355,6 +355,12 @@ pub(crate) fn caps(per: u128, side: u128, oi: u128) -> Caps {
 
 impl T {
     pub(crate) fn new() -> T {
+        let t = T::new_unseeded();
+        t.seed_backstop(750 * U);
+        t
+    }
+    /// Opens are unpaused, but the backstop has no shares yet.
+    pub(crate) fn new_unseeded() -> T {
         let env = Env::default();
         env.mock_all_auths();
         // Long sequences in one Env; resource measurement is WP5 (fork), not these unit tests.
@@ -422,7 +428,6 @@ impl T {
             user,
             liq,
         };
-        t.seed_backstop(750 * U);
         t
     }
     /// Treasury seed through the real entrypoint: the admin supplies USDC to the receipt,
@@ -505,6 +510,14 @@ impl T {
             &0,
             &u128::MAX,
         )
+    }
+    pub(crate) fn long_try(
+        &self,
+    ) -> Result<
+        Result<u64, soroban_sdk::Error>,
+        Result<soroban_sdk::Error, soroban_sdk::InvokeError>,
+    > {
+        self.m.try_open(&self.user, &self.xlm, &self.usdc, &(100 * U), &(100 * U), &0, &u128::MAX)
     }
     pub(crate) fn pos(&self, id: u64) -> Position {
         self.m.get_position(&id).unwrap()
@@ -1311,4 +1324,158 @@ fn property_debt_conservation() {
         liqs,
         bad
     );
+}
+
+// ------------------------------------------------------------------ WP4 integration fixes
+fn headroom(t: &T, reserve: u128, coef_largest: u128) {
+    t.m.set_headroom(
+        &t.admin,
+        &crate::Headroom {
+            hf_target: 1_250_000,
+            hf_stress: 1_100_000,
+            stress: 200_000,
+            close_reserve_usd: reserve,
+            coef_long: 0,
+            coef_short: 0,
+            coef_largest,
+        },
+    );
+}
+
+/// Fresh fixture WITHOUT the 750 seed (T::new seeds it).
+fn bare() -> T {
+    let t = T::new();
+    // Withdraw the whole seed through the real exit path. With no positions the HF checks pass;
+    // the derived close reserve ($75.75) would not, so use an explicit $1e-7 floor.
+    headroom(&t, 1, 1_000_000);
+    let s = t.m.get_backer(&t.admin);
+    t.m.backstop_request_withdraw(&t.admin, &s);
+    t.skip(259_200);
+    t.m.backstop_withdraw(&t.admin, &0);
+    t
+}
+
+#[test]
+fn bad_debt_exhausting_the_backstop_impairs_once_nav_read_after_finish() {
+    // One 5x long is the only USDC debtor. At XLM $0.005 it is underwater: the liquidator pays
+    // r = $2.4975 / 1.03 and the residual ~$97.575 moves to the backstop. Before `finish` the
+    // divisor still holds the burned shares and the backstop debt reads ~$95.21; the seed
+    // ($96.5 + 0.125 open fee) lies between, so only the post-finish read sees NAV < 0.
+    // Two 1.2x shorts (XLM debt only) add the USDC collateral the controller's health check
+    // needs at the long's borrow (before its proceeds are deposited).
+    let t = bare();
+    assert_eq!(t.m.get_backstop().shares, crate::BS_DEAD_SHARES);
+    t.seed_backstop(965 * U / 10); // after the full exit the dead shares remain: not a first deposit
+    t.short(25 * U, 20 * U);
+    t.short(25 * U, 20 * U);
+    let l = t.long(100 * U, 100 * U);
+    let bs0 = t.bs_pt();
+    assert!(!t.m.opens_paused());
+    t.set_xlm(50_000);
+    t.m.liquidate(&t.liq, &l, &u128::MAX);
+    let evs = t.env.events().all().filter_by_contract(&t.m.address);
+    let n = evs
+        .events()
+        .iter()
+        .filter(|e| {
+            let soroban_sdk::xdr::ContractEventBody::V0(b) = &e.body;
+            let want: soroban_sdk::xdr::ScVal =
+                (&soroban_sdk::Symbol::new(&t.env, "margin_impaired")).try_into().unwrap();
+            b.topics.first() == Some(&want)
+        })
+        .count();
+    assert_eq!(n, 1);
+    // Independent recomputation: the backstop now owns ALL USDC debt shares, so its debt is
+    // the whole pooled USDC balance; the pre-finish divisor would have under-read it.
+    assert_eq!(t.shares(&t.usdc), 0);
+    let bad = t.pooled(&t.usdc);
+    let r = 100 * U - bad;
+    let under = bad * t.bs_shares(&t.usdc) / (t.bs_shares(&t.usdc) + 100 * U * r / (100 * U));
+    assert!(under < bs0 && bs0 < bad, "{} {} {}", under, bs0, bad);
+    let (nav, _) = t.m.backstop_nav();
+    assert_eq!(nav, bs0 as i128 - bad as i128);
+    assert!(nav < 0, "nav {}", nav);
+    assert!(t.m.is_impaired());
+    assert!(t.m.opens_paused());
+    assert_eq!(err(t.long_try()), ce(Error::Impaired));
+}
+
+#[test]
+fn solvent_or_covered_bad_debt_does_not_impair() {
+    let t = T::new(); // 750 seed covers one 5x long's full residual
+    let l = t.long(100 * U, 100 * U);
+    t.set_xlm(50_000);
+    t.m.liquidate(&t.liq, &l, &u128::MAX);
+    assert!(t.bs_shares(&t.usdc) > 0);
+    assert!(t.m.backstop_nav().0 > 0);
+    assert!(!t.m.is_impaired());
+}
+
+#[test]
+fn default_max_slippage_is_1_5_pct_and_5x_bound_holds() {
+    let t = T::new();
+    let slip: u128 = t.get(&Key::MaxSlippage).unwrap();
+    assert_eq!(slip, crate::DEFAULT_MAX_SLIPPAGE);
+    assert_eq!(slip, 15_000);
+    // 5x at 1.5 %: 0.9 x 1.04 x 1.015 = 0.950 < 1 (T::new already set 5x on both sides).
+    t.m.set_risk(&t.admin, &t.xlm, &5_000_000);
+    // Total bonus 9.5 %: 0.9 x 1.095 x 1.015 = 1.0003 -> refused at the default ...
+    let f95 = Fees {
+        open_fee: 1_000,
+        close_fee: 1_000,
+        funding_apr: 20_000,
+        bonus_liquidator: 70_000,
+        bonus_backstop: 25_000,
+    };
+    assert_eq!(err(t.m.try_set_fees(&t.admin, &f95)), ce(Error::BadParams));
+    // ... accepted at 1 % (0.9 x 1.095 x 1.01 = 0.995), after which 1.5 % is refused.
+    t.m.set_max_slippage(&t.admin, &10_000);
+    t.m.set_fees(&t.admin, &f95);
+    assert_eq!(
+        err(t.m.try_set_max_slippage(&t.admin, &15_000)),
+        ce(Error::BadParams)
+    );
+}
+
+#[test]
+fn close_fills_1_02_pct_below_oracle_at_default_slippage() {
+    let t = T::new();
+    let l = t.long(100 * U, 100 * U);
+    let s = t.short(25 * U, 400 * U);
+    t.pool.set_fill(&989_800); // the real-pool fork's close fill: 1.02 % below Reflector
+    t.m.close(&t.user, &l, &0);
+    t.m.close(&t.user, &s, &0);
+    assert_eq!(t.pooled(&t.usdc), 0);
+    assert_eq!(t.pooled(&t.xlm), 0);
+    t.assert_ledgers();
+    // 2 % below is outside the 1.5 % bound.
+    let l2 = t.long(100 * U, 100 * U);
+    t.pool.set_fill(&980_000);
+    assert!(t.m.try_close(&t.user, &l2, &0).is_err());
+}
+
+#[test]
+fn credit_pt_never_panics_even_on_an_empty_backstop() {
+    // A fully empty backstop (no shares at all) on a fresh contract: open + close a 2x short
+    // with the backstop requirement off; the fees land in Bs.ptokens without shares.
+    let t = T::new_unseeded();
+    headroom(&t, 1, 0);
+    let s = t.short(25 * U, 50 * U); // 1.5x: the borrow-time health check passes unseeded
+    assert_eq!(t.m.get_backstop().shares, 0);
+    let fee_open = t.bs_pt();
+    assert!(fee_open > 0);
+    t.m.close(&t.user, &s, &0);
+    let fees = t.bs_pt();
+    assert!(fees > fee_open);
+    t.assert_ledgers();
+    // The later seed owns them pro rata with the dead shares.
+    t.seed_backstop(100 * U);
+    let b = t.m.get_backstop();
+    assert_eq!(b.shares, 100 * U + crate::BS_DEAD_SHARES);
+    assert_eq!(b.ptokens, 100 * U + fees);
+    // Saturating at the top.
+    t.env.as_contract(&t.m.address, || {
+        crate::backstop::credit_pt(&t.env, u128::MAX);
+    });
+    assert_eq!(t.m.get_backstop().ptokens, u128::MAX);
 }

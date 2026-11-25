@@ -100,12 +100,15 @@ fn emit<T: soroban_sdk::IntoVal<Env, soroban_sdk::Val>>(env: &Env, topic: &str, 
 // ---- crate-internal API used by WP2 / WP3
 /// Credit `usdc_pt` USDC pTokens (already held by this contract and already added to
 /// Ledger(USDC) by the caller) to the backstop as fee income.
+///
+/// Never panics (closes and liquidations call it): saturating, and an empty backstop (no
+/// shares yet) simply accumulates the pTokens, which the later seed's shares then own.
 pub(crate) fn credit_pt(env: &Env, usdc_pt: u128) {
     if usdc_pt == 0 {
         return;
     }
     let mut b = bs_get(env);
-    b.ptokens = add(env, b.ptokens, usdc_pt);
+    b.ptokens = b.ptokens.saturating_add(usdc_pt);
     bs_put(env, &b);
 }
 /// Move `shares` debt shares of `debt_asset` from a position (caller already removed them
@@ -116,6 +119,14 @@ pub(crate) fn assign_bad_debt(env: &Env, debt_asset: &Address, shares: u128) {
     }
     let v = add(env, bs_debt_shares(env, debt_asset), shares);
     set_bs_debt_shares(env, debt_asset, v);
+}
+/// After bad debt has been assigned AND the position finished (so the share divisor no longer
+/// holds the burned shares): if the backstop is exhausted (nav_pt(false) < 0), set Impaired,
+/// pause opens and emit margin_impaired (once). Values XLM bad debt at the oracle.
+pub(crate) fn impair_if_exhausted(env: &Env, caller: &Address) {
+    if !is_impaired(env) && nav_pt(env, false) < 0 {
+        crate::headroom::mark_impaired(env, caller);
+    }
 }
 /// Net backstop USDC pTokens: Bs.ptokens - USDC value of BsDebtShares(USDC), rounded against
 /// the pool. Negative if exhausted. Panics BackstopDebtOutstanding if BsDebtShares(XLM) > 0
@@ -320,6 +331,49 @@ impl MarginController {
         pt
     }
 
+    /// Permissionless: return the shares of an EXPIRED request (now > expires_at) to its backer,
+    /// so a stale request stops counting as pending (it is excluded from open headroom). Live
+    /// requests are refused (BadParams). The backer's balance only ever grows here.
+    pub fn backstop_clear_expired(env: Env, caller: Address, backer: Address) {
+        caller.require_auth();
+        let r = get_req(&env, &backer).unwrap_or_else(|| panic_with_error!(&env, Error::NoRequest));
+        if env.ledger().timestamp() <= r.expires_at {
+            panic_with_error!(&env, Error::BadParams);
+        }
+        let mut b = bs_get(&env);
+        b.pending_shares = sub(&env, b.pending_shares, r.shares);
+        bs_put(&env, &b);
+        let bal = add(&env, backer_shares(&env, &backer), r.shares);
+        set_backer_shares(&env, &backer, bal);
+        env.storage().persistent().remove(&Key::WithdrawReq(backer.clone()));
+        emit(&env, "bs_cancel", (backer, r.shares));
+        bump(&env);
+    }
+
+    /// Admin recapitalisation: `ptokens` USDC pTokens from the admin into the backstop WITHOUT
+    /// minting shares (a gift to the existing shares). Works in every state an exhausted
+    /// backstop can be in: NAV <= 0, Impaired, XLM bad debt outstanding (no NAV read, no oracle).
+    /// Needs an existing backstop (shares > 0); the first deposit is the seed (backstop_deposit).
+    /// Clearing Impaired stays admin_resolve_impairment. Returns Bs.ptokens afterwards.
+    pub fn admin_recapitalize(env: Env, admin: Address, ptokens: u128) -> u128 {
+        require_admin(&env, &admin);
+        if ptokens == 0 {
+            panic_with_error!(&env, Error::BadAmount);
+        }
+        let mut b = bs_get(&env);
+        if b.shares == 0 {
+            panic_with_error!(&env, Error::BackstopEmpty);
+        }
+        let u = usdc(&env);
+        ReceiptClient::new(&env, &receipt(&env, &u)).transfer(&admin, &me(&env), &i(&env, ptokens));
+        ledger_add(&env, &u, ptokens);
+        b.ptokens = add(&env, b.ptokens, ptokens);
+        bs_put(&env, &b);
+        emit(&env, "bs_recap", (admin, ptokens, b.ptokens));
+        bump(&env);
+        b.ptokens
+    }
+
     /// Permissionless: repay backstop-owned bad debt from backstop USDC pTokens (XLM: swap).
     /// Returns debt repaid (raw debt units). Not gated by Impaired / the XLM freeze: it is the
     /// recovery path. Repays at most the backstop's own debt; never other positions' debt.
@@ -348,7 +402,7 @@ impl MarginController {
         let need_pt = if is_usdc {
             to_pt_up(d, rate)
         } else {
-            let slip: u128 = inst_get(&env, &Key::MaxSlippage).unwrap_or(10_000);
+            let slip: u128 = inst_get(&env, &Key::MaxSlippage).unwrap_or(DEFAULT_MAX_SLIPPAGE);
             let usdc_need = xlm_to_usdc_up(&env, d);
             to_pt_up(mul_div_up(usdc_need, SCALE_1E6 + slip, SCALE_1E6), rate)
         };

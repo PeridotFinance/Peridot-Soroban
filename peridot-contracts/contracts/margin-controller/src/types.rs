@@ -7,6 +7,9 @@ use soroban_sdk::{contracterror, contracttype, Address, BytesN};
 pub const SCALE_1E6: u128 = 1_000_000;
 pub const YEAR_SECS: u128 = 31_536_000;
 pub const MAX_SLIPPAGE_CAP: u128 = 100_000; // 10 %
+/// Constructor default (WP4 25 Nov): 1.5 %. The real-pool fork saw a close fill 1.02 % below
+/// Reflector. 5x solvency still holds: 0.9 x 1.04 x 1.015 = 0.950 < 1.
+pub const DEFAULT_MAX_SLIPPAGE: u128 = 15_000;
 pub const MAX_LEVERAGE_CAP: u128 = 5_000_000; // 5x, owner 24 Nov
 pub const MAX_TOTAL_BONUS: u128 = 150_000; // 15 %, liquidator + backstop
 pub const MAX_FEE: u128 = 10_000; // 1 % per open/close fee

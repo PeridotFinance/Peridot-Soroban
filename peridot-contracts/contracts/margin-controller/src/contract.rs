@@ -7,7 +7,7 @@ use soroban_sdk::{contractimpl, panic_with_error, token, Address, BytesN, Env, S
 
 // ---------------------------------------------------------------- WP2 helpers
 fn slippage(env: &Env) -> u128 {
-    inst_get(env, &Key::MaxSlippage).unwrap_or(10_000)
+    inst_get(env, &Key::MaxSlippage).unwrap_or(DEFAULT_MAX_SLIPPAGE)
 }
 /// liq_ltv * (1e6 + bonuses) * (1e6 + slippage) < 1e18 (seizing at liquidation stays covered).
 fn solvent(liq_ltv: u128, f: &Fees, slip: u128) -> bool {
@@ -200,7 +200,7 @@ impl MarginController {
         s.set(&Key::Usdc, &usdc);
         s.set(&Key::Xlm, &xlm);
         s.set(&Key::OpensPaused, &true);
-        s.set(&Key::MaxSlippage, &10_000u128); // 1 %
+        s.set(&Key::MaxSlippage, &DEFAULT_MAX_SLIPPAGE); // 1.5 %
         s.set(
             &Key::Fees,
             &Fees {
@@ -752,9 +752,11 @@ impl MarginController {
             );
             env.events().publish(
                 (Symbol::new(&env, "margin_liquidate"),),
-                (id, owner, liquidator, repaid, held, 0u128),
+                (id, owner, liquidator.clone(), repaid, held, 0u128),
             );
             finish(&env, id, p);
+            // After finish: the burned shares are gone from the divisor, so NAV is exact.
+            crate::backstop::impair_if_exhausted(&env, &liquidator);
             return;
         }
 

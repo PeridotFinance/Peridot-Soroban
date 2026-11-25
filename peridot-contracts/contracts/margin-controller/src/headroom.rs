@@ -25,7 +25,7 @@ pub struct MarginImpaired {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MarginResolved {
     pub usdc_pt_charge: u128,
-    pub xlm_pt_charge: u128,
+    pub xlm_pt_restored: u128,
     pub cleared: bool,
 }
 
@@ -195,6 +195,20 @@ pub(crate) fn require_not_impaired(env: &Env) {
     }
 }
 
+/// Set Impaired and pause opens; emit margin_impaired (with both ledgers and balances) only
+/// when the flag was not already set. Returns true if newly set. Used by `reconcile` (ledger
+/// deficit) and by `liquidate` when bad debt exhausts the backstop (nav_pt < 0).
+pub(crate) fn mark_impaired(env: &Env, caller: &Address) -> bool {
+    if is_impaired(env) {
+        return false;
+    }
+    set_impaired(env, true);
+    env.storage().instance().set(&Key::OpensPaused, &true);
+    let (usdc_ledger, usdc_balance, xlm_ledger, xlm_balance) = balances(env);
+    MarginImpaired { caller: caller.clone(), usdc_ledger, usdc_balance, xlm_ledger, xlm_balance }.publish(env);
+    true
+}
+
 /// (Ledger(USDC), balance USDC pT, Ledger(XLM), balance XLM pT)
 fn balances(env: &Env) -> (u128, u128, u128, u128) {
     let (u, x) = (usdc(env), xlm(env));
@@ -238,32 +252,36 @@ impl MarginController {
         required_backstop_usd(&env)
     }
     /// Permissionless: compare receipt.get_ptoken_balance(me) with Ledger(asset) for USDC and
-    /// XLM; on any deficit set Impaired, pause opens, emit margin_impaired. Returns true if impaired.
-    /// Oracle-free. Never clears Impaired (only admin_resolve_impairment does); the return value
-    /// is the flag after the call, so it is also true if the contract was already impaired.
-    /// Surpluses (donations) are ignored.
+    /// XLM; on any deficit set Impaired, pause opens, emit margin_impaired. Oracle-free.
+    ///
+    /// Returns true only when THIS call newly sets Impaired (WP4 integration, 25 Nov), so a
+    /// keeper that simulates every cycle and sends only on `true` never resends. A deficit found
+    /// while already Impaired returns false and emits nothing (`is_impaired` is the state view).
+    /// Never clears Impaired (only admin_resolve_impairment does). Surpluses (donations) are ignored.
     pub fn reconcile(env: Env, caller: Address) -> bool {
         caller.require_auth();
         let (lu, bu, lx, bx) = balances(&env);
-        if bu < lu || bx < lx {
-            set_impaired(&env, true);
-            env.storage().instance().set(&Key::OpensPaused, &true);
-            MarginImpaired { caller, usdc_ledger: lu, usdc_balance: bu, xlm_ledger: lx, xlm_balance: bx }.publish(&env);
-        }
+        let newly = (bu < lu || bx < lx) && mark_impaired(&env, &caller);
         bump(&env);
-        is_impaired(&env)
+        newly
     }
-    /// Book a charge (pTokens) against the backstop and Ledger; clears Impaired only if
-    /// Ledger <= balance for both markets afterwards.
+    /// Book an impairment and clear it when the books are whole again.
     ///
-    /// USDC: the missing USDC pTokens are a backstop loss: Bs.ptokens and Ledger(USDC) both
-    /// drop by `usdc_pt_charge` (BadAmount if either is smaller).
-    /// XLM: the backstop holds no XLM pTokens, so `xlm_pt_charge` is a write-down of
-    /// Ledger(XLM) only. The operator compensates in USDC through `usdc_pt_charge` (oracle
-    /// value of the XLM loss, computed off-chain) and/or restores XLM pTokens to the contract.
-    /// After an XLM write-down Ledger(XLM) is below the sum of held XLM pTokens + XLM claims, so
-    /// the last XLM closers would hit the shortfall. Never unpauses opens (admin does that).
-    pub fn admin_resolve_impairment(env: Env, admin: Address, usdc_pt_charge: u128, xlm_pt_charge: u128) {
+    /// USDC (`usdc_pt_charge`): the missing USDC pTokens are a backstop loss: Bs.ptokens and
+    /// Ledger(USDC) both drop by the charge (BadAmount if either is smaller). The rule
+    /// Ledger(USDC) = held + Bs.ptokens + claims keeps holding, so no later ledger_sub underflows.
+    ///
+    /// XLM (`xlm_pt_restore`, WP4 25 Nov): the backstop holds no XLM pTokens, so an XLM deficit
+    /// cannot be booked against it, and a Ledger-only write-down would leave Ledger(XLM) below
+    /// held + claims (the last XLM closer's ledger_sub and pToken transfer would fail). Instead
+    /// the admin RESTORES XLM pTokens: `xlm_pt_restore` pTokens move admin -> contract and
+    /// Ledger(XLM) is unchanged. (Anyone may also restore by plain transfer: surpluses are
+    /// ignored.) Backstop-funded XLM restoration (USDC -> XLM swap) is an open owner decision.
+    ///
+    /// Clears Impaired only if, afterwards, Ledger <= balance for both markets AND the backstop
+    /// is not exhausted (nav_pt(false) >= 0; recapitalise with admin_recapitalize first). The
+    /// NAV read values XLM bad debt at the oracle. Never unpauses opens (admin does that).
+    pub fn admin_resolve_impairment(env: Env, admin: Address, usdc_pt_charge: u128, xlm_pt_restore: u128) {
         require_admin(&env, &admin);
         let (u, x) = (usdc(&env), xlm(&env));
         if usdc_pt_charge > 0 {
@@ -275,15 +293,15 @@ impl MarginController {
             env.storage().instance().set(&Key::Bs, &bs);
             ledger_sub(&env, &u, usdc_pt_charge);
         }
-        if xlm_pt_charge > 0 {
-            ledger_sub(&env, &x, xlm_pt_charge);
+        if xlm_pt_restore > 0 {
+            ReceiptClient::new(&env, &receipt(&env, &x)).transfer(&admin, &me(&env), &i(&env, xlm_pt_restore));
         }
         let (lu, bu, lx, bx) = balances(&env);
-        let cleared = lu <= bu && lx <= bx;
+        let cleared = lu <= bu && lx <= bx && crate::backstop::nav_pt(&env, false) >= 0;
         if cleared {
             set_impaired(&env, false);
         }
-        MarginResolved { usdc_pt_charge, xlm_pt_charge, cleared }.publish(&env);
+        MarginResolved { usdc_pt_charge, xlm_pt_restored: xlm_pt_restore, cleared }.publish(&env);
         bump(&env);
     }
     pub fn is_impaired(env: Env) -> bool {
