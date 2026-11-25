@@ -1,0 +1,47 @@
+{
+  "source": {
+    "note": "Responses derived from the WP5/WP6 Mainnet-fork harness (feat/margin-v2 harness/margin-fork, .scratch/wp5-gaps.json and wp5-seizure.json; protocol-30 host). Values marked derived are reconstructed from the recorded LTV/paid figures, not read from the fork.",
+    "forkLedger": 65662216,
+    "forkFetchedAt": "2026-11-25T08:59:06.051Z",
+    "marginWasmSha256": "b1cb1cb21f02de1b1a9047d31fa60ffc066c2ddedc94c4dff2fcbdb0a7b1766f"
+  },
+  "fees": {"open_fee": "1000", "close_fee": "1000", "funding_apr": "20000", "bonus_liquidator": "30000", "bonus_backstop": "10000"},
+  "headroom": {"hf_target": "1250000", "hf_stress": "1100000", "stress": "200000", "close_reserve_usd": "0", "coef_long": "3000000", "coef_short": "2100000", "coef_largest": "4600000"},
+  "pricesP0": {"usdc": ["100049927484869", "100000000000000"], "xlm": ["12424660835662", "100000000000000"]},
+  "checks": {
+    "L5_underwater_minus20": {"gap": "-20%", "fork": {"ltv": "1000165", "liqLtv": "899983", "paid": "961719289", "underwater": true},
+      "derived": {"heldPt": "9970749395", "debt": "990732053", "funding": "2259", "rateHeld": "1000000", "priceXlm": ["9939728668529", "100000000000000"]}},
+    "L2_solvent_minus40": {"gap": "-40%", "fork": {"debt": "247633852", "paid": "250110814", "backstopNavDeltaPt": "2476949", "underwater": false},
+      "derived": {"funding": "623", "heldPt": "3994049441", "rateHeld": "1000000", "priceXlm": ["7454796501397", "100000000000000"], "fundingNote": "paid - debt - ceil(1% debt); corroborated by the backstop NAV delta"}},
+    "S3_solvent_plus40": {"gap": "+40%", "fork": {"debt": "3988151532", "paid": "3988151532", "underwater": false}}
+  },
+  "scenarios": {
+    "minus20": {
+      "note": "gaps_liquidations_and_settles, XLM -20 % (before the keeper acts): L5 liquidatable, L3 at its liq LTV boundary (not), L2 healthy",
+      "latestLedger": 65662400,
+      "priceXlm": ["9939728668529", "100000000000000"],
+      "positions": [
+        {"id": 1, "label": "L5", "side": "long", "ltv": "1000165", "liqLtv": "899983", "heldPt": "9970749395", "debt": "990732053", "funding": "2259"},
+        {"id": 2, "label": "L3", "side": "long", "ltv": "832790", "liqLtv": "833113", "heldPt": "5984000000", "debt": "495267329", "funding": "1130"},
+        {"id": 3, "label": "L2", "side": "long", "ltv": "624080", "liqLtv": "749629", "heldPt": "3994049441", "debt": "247633665", "funding": "565"}
+      ],
+      "pooledHealth": ["3779962", "4319158", "2500000", "9000000000"],
+      "bsDebtShares": {"USDC": "0", "XLM": "0"},
+      "reconcile": false,
+      "impaired": false
+    },
+    "seizure": {
+      "note": "pooled_account_seizure_reconcile: external cash liquidation of the pooled account seized 280.84 USDC pT; XLM bad debt outstanding after S5",
+      "latestLedger": 65663000,
+      "priceXlm": ["86972625849634", "100000000000000"],
+      "positions": [],
+      "pooledHealth": ["981084", "900000", "1100000", "0"],
+      "ledgerUsdc": "9480304329", "balanceUsdc": "6671901847",
+      "bsDebtShares": {"USDC": "0", "XLM": "4490772757"},
+      "settleMaxPtokens": {"XLM": "418478166"},
+      "settleRepaid": {"XLM": "3368559516"},
+      "reconcile": true,
+      "impaired": false
+    }
+  }
+}

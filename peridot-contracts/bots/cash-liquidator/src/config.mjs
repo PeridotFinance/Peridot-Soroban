@@ -44,7 +44,50 @@ export function loadConfig(env = process.env) {
   if (cfg.signerCliAlias && cfg.network.startsWith('Public')) throw Error('SIGNER_CLI_ALIAS is Testnet-only');
   if (cfg.network !== pins.network) throw Error('NETWORK_PASSPHRASE does not match pins');
   cfg.neverTouch = new Set(pins.neverTouch || []);
+  cfg.margin = loadMarginConfig(pins, env);
+  // Cash-pass exclusion: never liquidate these borrowers (alert only). The margin pooled account is always added when
+  // a margin contract id is configured, whether or not the margin pass itself is enabled.
+  cfg.neverLiquidateBorrowers = new Set([...(pins.neverLiquidateBorrowers || []), ...(cfg.margin.contract ? [cfg.margin.contract] : [])]);
   return cfg;
+}
+
+const STRKEY_C = /^C[A-Z2-7]{55}$/;
+const STRKEY_G = /^G[A-Z2-7]{55}$/;
+
+/**
+ * Margin pass (pooled margin v2). Off unless `margin.enabled` is true AND `margin.contract` is set. Release defaults come
+ * from pins.margin; an operator overlay MARGIN_CONFIG_FILE (JSON, e.g. /etc/peridot-cash-liquidator/margin.json) may set
+ * enabled / contract / thresholds, but the contract's WASM must still be one of the release-pinned `wasmAllowed`.
+ * Its own dry-run flag (MARGIN_DRY_RUN, default true) so a margin dry stage never switches off live cash liquidations;
+ * the effective margin dry run is DRY_RUN || MARGIN_DRY_RUN.
+ */
+export function loadMarginConfig(pins, env = process.env) {
+  const base = pins.margin || {};
+  const overlay = env.MARGIN_CONFIG_FILE ? JSON.parse(fs.readFileSync(env.MARGIN_CONFIG_FILE, 'utf8')) : {};
+  for (const k of ['wasmAllowed', 'controller']) if (k in overlay) throw Error(`MARGIN_CONFIG_FILE may not override release pin margin.${k}`);
+  const m = {...base, ...overlay};
+  const out = {
+    enabled: m.enabled === true && !!m.contract,
+    contract: m.contract || null,
+    wasmAllowed: base.wasmAllowed || [],
+    controller: base.controller || pins.controller,
+    dryRun: bool(env.MARGIN_DRY_RUN, true),
+    cpuStop: int(env.MARGIN_CPU_STOP, m.cpuStop ?? 289_000_000),          // 85 % of the 340 M liquidation-flow limit (SPEC §7)
+    maxFeeStroops: int(env.MARGIN_MAX_FEE_STROOPS, m.maxFeeStroops ?? 30_000_000),
+    minProfitBps: int(env.MARGIN_MIN_PROFIT_BPS, m.minProfitBps ?? 0),    // profit must be > 0 after the tx fee in any case
+    payBufferBps: m.payBufferBps ?? 50,
+    maxSettleIters: m.maxSettleIters ?? 8,
+    hfDownMin: BigInt(m.hfDownMin ?? 1_100_000),
+    liquidatableAlertMs: (m.liquidatableAlertSecs ?? 600) * 1000,
+    realertMs: (m.realertSecs ?? 600) * 1000,
+    backerLookbackLedgers: m.backerLookbackLedgers ?? 100_000,
+    backersSeed: m.backersSeed || [],
+    roundPollMs: int(env.MARGIN_ROUND_POLL_MS, m.roundPollMs ?? 5_000),
+  };
+  if (out.contract && !STRKEY_C.test(out.contract)) throw Error('margin.contract must be a C... contract id');
+  if (out.enabled && !out.wasmAllowed.length) throw Error('margin.enabled requires release pin margin.wasmAllowed');
+  for (const b of out.backersSeed) if (!STRKEY_G.test(b) && !STRKEY_C.test(b)) throw Error('margin.backersSeed entries must be addresses');
+  return out;
 }
 
 // Pause watcher (src/pause-main.mjs): a separate process with a separate pause-only key. It never loads, and refuses to

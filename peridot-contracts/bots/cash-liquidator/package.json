@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/main.mjs",
     "start:pause": "node src/pause-main.mjs",
-    "check": "node --check src/main.mjs && node --check src/keeper.mjs && node --check src/chain.mjs && node --check src/plan.mjs && node --check src/config.mjs && node --check src/pause.mjs && node --check src/pause-main.mjs && node --check src/keyfile.mjs && node --check src/keygen.mjs && node --check src/trustlines.mjs",
+    "margin:alert-check": "node src/margin-alert-check.mjs",
+    "check": "node --check src/main.mjs && node --check src/keeper.mjs && node --check src/chain.mjs && node --check src/plan.mjs && node --check src/config.mjs && node --check src/pause.mjs && node --check src/pause-main.mjs && node --check src/keyfile.mjs && node --check src/keygen.mjs && node --check src/trustlines.mjs && node --check src/margin.mjs && node --check src/margin-plan.mjs && node --check src/margin-alert-check.mjs",
     "test": "node --test"
   },
   "dependencies": {"@stellar/stellar-sdk": "16.3.1"}

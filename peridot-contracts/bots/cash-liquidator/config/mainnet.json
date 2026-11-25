@@ -64,5 +64,23 @@
     "USDC": "5000000000",
     "XLM": "25000000000",
     "EURC": "2500000000"
+  },
+  "neverLiquidateBorrowers": [],
+  "margin": {
+    "note": "Pooled margin v2 pass (contracts/margin-controller). Off until enabled with the contract id (release pin or MARGIN_CONFIG_FILE overlay). The contract id, when set, is always added to neverLiquidateBorrowers for the cash pass.",
+    "enabled": false,
+    "contract": null,
+    "wasmAllowed": [
+      "b1cb1cb21f02de1b1a9047d31fa60ffc066c2ddedc94c4dff2fcbdb0a7b1766f"
+    ],
+    "controller": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+    "liquidatableAlertSecs": 600,
+    "realertSecs": 600,
+    "hfDownMin": 1100000,
+    "minProfitBps": 0,
+    "payBufferBps": 50,
+    "maxSettleIters": 8,
+    "backerLookbackLedgers": 100000,
+    "backersSeed": []
   }
 }

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as S from '@stellar/stellar-sdk';
+import {marginPass} from './margin.mjs';
 import {planLiquidation, seizeIsProfitable, depegAlerts, mergeBorrowers, netInventory, refreshDecision, budgetFor, inventoryShortfalls, cachedPriceForLiquidation} from './plan.mjs';
 
 const log = (level, msg, extra = {}) => console.log(JSON.stringify({t: new Date().toISOString(), level, msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
@@ -12,7 +13,7 @@ export function saveState(file, st) {
   fs.mkdirSync(path.dirname(file), {recursive: true});
   fs.writeFileSync(file + '.tmp', JSON.stringify(st, null, 1)); fs.renameSync(file + '.tmp', file);
 }
-function journal(file, rec) { fs.mkdirSync(path.dirname(file), {recursive: true}); fs.appendFileSync(file, JSON.stringify({t: new Date().toISOString(), ...rec}, (_, v) => (typeof v === 'bigint' ? String(v) : v)) + '\n'); }
+export function journal(file, rec) { fs.mkdirSync(path.dirname(file), {recursive: true}); fs.appendFileSync(file, JSON.stringify({t: new Date().toISOString(), ...rec}, (_, v) => (typeof v === 'bigint' ? String(v) : v)) + '\n'); }
 
 export async function verifyPins(cfg, c) {
   const net = await c.rpc.getNetwork();
@@ -60,7 +61,7 @@ export async function balanceOf(cfg, c, token) {
   catch (e) { if (/Error\(Contract, #13\)/.test(e.message)) return 0n; throw e; }
 }
 
-async function inventoryOf(cfg, c) {
+export async function inventoryOf(cfg, c) {
   const inv = {};
   for (const [n, m] of Object.entries(cfg.pins.markets)) inv[n] = await balanceOf(cfg, c, m.underlying);
   return netInventory(inv, {feeFloorXlmRaw: cfg.minFeeXlmRaw, accountReserveXlmRaw: cfg.accountReserveXlmRaw ?? 0n});
@@ -112,6 +113,8 @@ export async function cycle(cfg, c, st) {
     try { liq = await c.view(cfg.pins.controller, 'account_liquidity', [c.addr(user)]); } catch (e) { log('warn', 'account_liquidity failed', {user, err: e.message}); continue; }
     const shortfall = BigInt(liq[1]);
     if (shortfall === 0n) continue;
+    // Margin pooled account (and any configured account): never liquidated by the cash pass, alert only.
+    if (cfg.neverLiquidateBorrowers?.has(user)) { log('alert', 'never-liquidate borrower (margin pooled account) in cash shortfall: alert only, not liquidated', {user, shortfall}); continue; }
     const entered = await c.view(cfg.pins.controller, 'get_user_markets', [c.addr(user)]);
     const positions = await positionsOf(cfg, c, user, entered, priceCache);
     const plan = planLiquidation(positions, inventory, {closeFactor, li, minProfitBps: cfg.minProfitBps, neverTouch: cfg.neverTouch});
@@ -120,6 +123,7 @@ export async function cycle(cfg, c, st) {
     if (cfg.neverTouch.has(rm.receipt) || cfg.neverTouch.has(cm.receipt)) throw Error('refused: never-touch market selected');
     // repay_on_behalf pulls the repayment with transfer_from on the liquidator's allowance (receipt-vault 4764-4772).
     if (!(await ensureAllowance(cfg, c, rm, plan.repay))) continue;
+    if (cfg.neverLiquidateBorrowers?.has(user)) throw Error('refused: never-liquidate borrower selected');
     const args = [c.addr(user), c.addr(rm.receipt), c.addr(cm.receipt), c.u128(plan.repay), c.addr(cfg.publicKey)];
     const sim = await c.prepare(cfg.pins.controller, 'liquidate', args);
     if (!sim.ok) { log(cfg.dryRun && /Contract, #9/.test(sim.error) ? 'info' : 'warn', cfg.dryRun && /Contract, #9/.test(sim.error) ? 'DRY_RUN liquidate needs the repay allowance (approved when live)' : 'liquidate simulation failed', {user, plan, err: sim.error}); continue; }
@@ -223,6 +227,39 @@ async function depegCheck(cfg, c) {
     const alerts = depegAlerts({usdc: usdc && BigInt(usdc.price), eurc: eurc && BigInt(eurc.price), eurFiat: eur && BigInt(eur.price)});
     for (const a of alerts) log('alert', 'DEPEG: consider kill switch set_cash_borrowing_enabled(false)', a);
   } catch (e) { log('warn', 'depeg check failed', {err: e.message}); }
+}
+
+/** Time left in this cycle's period (the period is pollMs from the cycle START, so it never exceeds pollMs + cycle overrun). */
+export function remainingMs(startedMs, nowMs, pollMs) { return Math.max(0, startedMs + pollMs - nowMs); }
+
+// Sleeps until the next cycle is due. With the margin pass enabled it also polls the Reflector feed every roundPollMs and
+// returns early on a NEW round (round timestamp greater than the last one seen), so the margin pass acts on every round.
+export async function waitForNextCycle(cfg, c, st, startedMs, {now = () => Date.now(), sleep = ms => new Promise(r => setTimeout(r, ms))} = {}) {
+  const watch = cfg.margin?.enabled && cfg.pins.oracle;
+  for (;;) {
+    const left = remainingMs(startedMs, now(), cfg.pollMs);
+    if (left === 0) return 'period';
+    await sleep(watch ? Math.min(left, cfg.margin.roundPollMs) : left);
+    if (!watch) return 'period';
+    try {
+      const p = await c.view(cfg.pins.oracle.feed, 'lastprice', [S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol('Other'), S.xdr.ScVal.scvSymbol(cfg.pins.oracle.symbols.XLM)])]);
+      const ts = p ? String(p.timestamp) : null;
+      if (ts && st.lastRoundTs && BigInt(ts) > BigInt(st.lastRoundTs)) { st.lastRoundTs = ts; return 'new round'; }
+      if (ts && !st.lastRoundTs) st.lastRoundTs = ts;
+    } catch { /* a failed feed read never shortens or blocks the wait */ }
+  }
+}
+
+// One keeper cycle: the cash pass (discovery, price refresh, cash liquidations), then the margin pass, strictly serially on
+// the one signer. A cash-pass error is rethrown AFTER the margin pass ran (so it keeps the existing failure counting), and a
+// margin-pass error never throws (marginPass logs it).
+export async function fullCycle(cfg, c, st, deps = {}) {
+  let results = [], cashError = null;
+  try { results = await cycle(cfg, c, st); } catch (e) { cashError = e; }
+  const margin = await marginPass(cfg, c, st, {log, journal, inventoryOf, ...deps});
+  saveState(cfg.stateFile, st);
+  if (cashError) throw cashError;
+  return {results, margin};
 }
 
 export {log};
