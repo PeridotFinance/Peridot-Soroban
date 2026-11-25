@@ -85,7 +85,10 @@
     "invokeMaxFeeStroops": 50000000,
     "classicFeeStroops": 10000,
     "window": 40,
-    "timeout": 240
+    "timeout": 240,
+    "hostWindow": 720,
+    "hostTimeout": 3600,
+    "hostNote": "guardian (pause host) transactions: ~1 h validity for the Mac -> host -> Mac round trip"
   },
   "neverTarget": [
     "CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI",

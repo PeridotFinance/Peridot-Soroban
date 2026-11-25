@@ -159,3 +159,119 @@ test('kill switches: guardian may only pause; resume is keeper-gated; no deposit
     assert.doesNotThrow(() => m.assertCallAllowed(cfg, M, method), `${k} -> ${method}`);
   }
 });
+
+test('M2 deploy: createCustomContract with constructor args; the create auth policy accepts the exact entry and refuses others', () => {
+  const cfg = withGuardian(), args = m.deployArgs(cfg), crypto = require('node:crypto');
+  const op = S.Operation.createCustomContract({address: S.Address.fromString(cfg.admin), wasmHash: Buffer.from(cfg.artifact.sha256, 'hex'),
+    salt: crypto.createHash('sha256').update(cfg.salt).digest(), constructorArgs: args});
+  const cc = op.body().invokeHostFunctionOp().hostFunction().createContractV2();
+  const entry = c2 => new S.xdr.SorobanAuthorizationEntry({credentials: S.xdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+    rootInvocation: new S.xdr.SorobanAuthorizedInvocation({function: S.xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractV2HostFn(c2), subInvocations: []})});
+  assert.doesNotThrow(() => m.checkAuth(cfg, [entry(cc)], op, cfg.admin, 'create', {constructorArgs: args}));
+  const swapped = [args[0], args[1], addr(cfg.admin), args[3], args[4]];
+  const op2 = S.Operation.createCustomContract({address: S.Address.fromString(cfg.admin), wasmHash: Buffer.from(cfg.artifact.sha256, 'hex'),
+    salt: crypto.createHash('sha256').update(cfg.salt).digest(), constructorArgs: swapped});
+  const cc2 = op2.body().invokeHostFunctionOp().hostFunction().createContractV2();
+  assert.throws(() => m.checkAuth(cfg, [entry(cc2)], op, cfg.admin, 'create', {constructorArgs: args}), /differs/);
+  assert.throws(() => m.checkAuth(cfg, [entry(cc2)], op2, cfg.admin, 'create', {constructorArgs: args}), /constructor args/);
+  const op3 = S.Operation.createCustomContract({address: S.Address.fromString(cfg.admin), wasmHash: Buffer.alloc(32, 7), salt: crypto.createHash('sha256').update(cfg.salt).digest(), constructorArgs: args});
+  const cc3 = op3.body().invokeHostFunctionOp().hostFunction().createContractV2();
+  assert.throws(() => m.checkAuth(cfg, [entry(cc3)], op3, cfg.admin, 'create', {constructorArgs: args}), /wasm hash is not the pin/);
+  assert.throws(() => m.checkAuth(cfg, [], op, cfg.admin, 'create', {constructorArgs: args}), /exactly one/);
+});
+
+// ---- stubbed chain: walk the whole ceremony state by state and check every `prepare` precondition (no network)
+function stubChain(cfg) {
+  const M = m.marginId(cfg), D = cfg.deps, P = cfg.params, A = cfg.admin;
+  const st = {uploaded: false, deployed: false, inst: {}, markets: [], positions: [], backer: 0n, bsPt: 0n};
+  const nat = v => S.scValToNative(v), N = x => BigInt(x);
+  const numObj = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, N(v)]));
+  const views = (contract, method, a) => {
+    if (contract === D.controller) {
+      if (method === 'get_user_markets') return st.markets;
+      if (method === 'get_price_usd') return nat(a[0]) === D.xlm ? [12_170_821_168_736n, 100_000_000_000_000n] : [100_100_759_862_319n, 100_000_000_000_000n];
+      if (method === 'is_deposit_paused') return false;
+    }
+    if (contract === D.usdcReceipt || contract === D.xlmReceipt) {
+      if (method === 'get_margin_controller') return null;
+      if (method === 'balance') return contract === D.usdcReceipt ? 29_400_000_000n - st.backer : 256_584_313_671n;
+      if (method === 'get_exchange_rate') return 1_000_000n;
+      if (method === 'get_ptoken_balance') return contract === D.usdcReceipt ? st.bsPt : 0n;
+    }
+    if ((contract === D.usdc || contract === D.xlm) && method === 'balance') return 1_000_000_000_000n;
+    if (contract === M) {
+      if (!st.deployed) throw Error('MissingValue');
+      const side = a => { const h = nat(a[0]); return {equity_usd: 0n, oi_usd: 0n, open_positions: st.positions.filter(p => p.open && p.held_asset === h).length}; };
+      return {get_headroom: () => st.inst.Headroom, opens_paused: () => st.inst.OpensPaused, get_backstop: () => (st.bsPt ? {ptokens: st.bsPt, shares: st.bsPt + 1_000_000n, pending_shares: 0n} : undefined),
+        get_backer: () => st.backer, required_backstop: () => 1_150_000_000n, backstop_nav: () => [st.bsPt, st.bsPt + 1_000_000n], is_impaired: () => false,
+        get_bs_debt_shares: () => 0n, get_position_counter: () => BigInt(st.positions.length), get_position: () => st.positions[Number(nat(a[0])) - 1], get_side: () => side(a)}[method]();
+    }
+    throw Error(`no stub view ${contract.slice(0, 6)}.${method}`);
+  };
+  const c = {
+    rpc: {getLedgerEntries: async () => ({entries: st.uploaded ? [{}] : []})},
+    codeHash: async id => { if (id === M) { if (!st.deployed) throw Error('missing'); return cfg.artifact.sha256; } return id === D.controller ? cfg.liveCode.controller : cfg.liveCode.usdcReceipt; },
+    instance: async id => { assert.equal(id, M); if (!st.deployed) throw Error('missing'); return {...st.inst, [`Ledger:${D.usdc}`]: st.bsPt, [`Ledger:${D.xlm}`]: 0n}; },
+    tryView: async (ct, me, a = []) => { try { return views(ct, me, a); } catch (e) { return {error: e.message}; } },
+    view: async (ct, me, a = []) => ({value: views(ct, me, a)}),
+  };
+  const apply = s => {
+    const id = s.id;
+    if (id === 'upload') st.uploaded = true;
+    else if (id === 'deploy') { st.deployed = true; st.inst = {Admin: A, Guardian: cfg.signers.guardian.publicKey, Ctrl: D.controller, Usdc: D.usdc, Xlm: D.xlm, OpensPaused: true,
+      Fees: numObj(P.fees), MaxSlippage: N(P.maxSlippage), Headroom: numObj(P.headroom), BsParams: numObj(P.backstopParams)}; }
+    else if (id === 'set_market.XLM') st.inst[`Market:${D.xlm}`] = D.xlmReceipt;
+    else if (id === 'set_market.USDC') st.inst[`Market:${D.usdc}`] = D.usdcReceipt;
+    else if (id === 'enter_markets') st.markets = [D.xlmReceipt, D.usdcReceipt];
+    else if (id === 'set_pool') st.inst.Pool = D.pool;
+    else if (id.startsWith('set_risk.')) st.inst[`Risk:${id.endsWith('XLM') ? D.xlm : D.usdc}`] = {max_leverage: N(P.maxLeverage[id.split('.')[1]])};
+    else if (id.startsWith('set_caps.')) st.inst[`Caps:${id.endsWith('XLM') ? D.xlm : D.usdc}`] = numObj(P.caps[id.split('.')[1]]);
+    else if (id === 'backstop_deposit.seed') { st.backer = N(P.seedPtokensRaw); st.bsPt = N(P.seedPtokensRaw); }
+    else if (id === 'unpause') st.inst.OpensPaused = false;
+    else if (s.kind === 'canary-open') st.positions.push({owner: A, held_asset: s.long ? D.xlm : D.usdc, open: true});
+    else if (s.kind === 'canary-close') st.positions.find(p => p.open && p.held_asset === (s.long ? D.xlm : D.usdc)).open = false;
+  };
+  return {c, st, apply};
+}
+function withStubs(cfg, gateFile, fn) {
+  const real = global.fetch;
+  global.fetch = async url => ({status: 200, json: async () => /transactions/.test(url) ? {_embedded: {records: [{created_at: new Date().toISOString()}]}}
+    : {balances: [{asset_type: 'native', balance: '117.39'}]}});
+  return fn().finally(() => { global.fetch = real; });
+}
+test('state walk M1 -> C4: every prepare precondition passes in order; unpause / canary refused without the keeper gate', async () => {
+  const os = require('node:os'), cfg = withGuardian(), list = m.steps(cfg), {c, apply} = stubChain(cfg);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wp8-gate-')); cfg.keeperGate.gateFile = path.join(dir, 'KEEPER-GATE.json');
+  const iso = h => new Date(Date.now() - h * 3600e3).toISOString();
+  const fixture = {...goodGate(cfg), operator: 'Test Operator', keeper: {...goodGate(cfg).keeper, liveSince: iso(1)}, dryStage: {from: iso(6), to: iso(1.5), errors: 0},
+    alerts: {...goodGate(cfg).alerts, testedAt: iso(0.5)}, writtenAt: iso(0.2)};
+  await withStubs(cfg, null, async () => {
+    for (const s of list) {
+      if (s.kind === 'gate' || s.fallback) continue;
+      if (s.id === 'unpause') {
+        await assert.rejects(m.checkPreconditions(cfg, c, list, s, {retryMs: 0}), /keeper gate not passed/, 'unpause before the operator gate file');
+        fs.writeFileSync(cfg.keeperGate.gateFile, JSON.stringify(fixture)); // test fixture in a temp dir (never the real gate file)
+      }
+      if (s.default) { await assert.rejects(m.checkPreconditions(cfg, c, list, s, {retryMs: 0}), /constructor default/); continue; }
+      await m.checkPreconditions(cfg, c, list, s, {retryMs: 0});
+      apply(s);
+      assert.equal(await m.isDone(cfg, c, s), true, `${s.id} reads back done after it is applied`);
+    }
+    assert.equal((await m.gate(cfg, c, 'canary')).ok, true);
+    // K7 resume uses the same gate: passes with the file, refused without it
+    await m.requireKeeperGate(cfg, c);
+    fs.unlinkSync(cfg.keeperGate.gateFile);
+    await assert.rejects(m.requireKeeperGate(cfg, c), /keeper gate not passed/);
+  });
+});
+test('canary: a second open on the same side is refused (re-run after an unknown send never opens twice)', async () => {
+  const cfg = withGuardian(), list = m.steps(cfg), {c, apply} = stubChain(cfg);
+  for (const s of list) if (!['gate'].includes(s.kind) && !s.fallback && !s.canary) apply(s);
+  const open = list.find(s => s.id === 'canary.long.open');
+  const o = await m.opFor(cfg, c, open);
+  assert.equal(S.scValToNative(o.op.body().invokeHostFunctionOp().hostFunction().invokeContract().args()[1]), cfg.deps.xlm);
+  apply(open);
+  await assert.rejects(m.opFor(cfg, c, open), /already open/);
+  const close = await m.opFor(cfg, c, list.find(s => s.id === 'canary.long.close'));
+  assert.equal(o.policy, 'root+transfer'); assert.equal(close.policy, 'root');
+});

@@ -62,7 +62,8 @@ meaningfully grow the backstop at pilot size.
 ## 3. Cash-market headroom (live, 25 Nov, ledger 65664577)
 
 Headroom = min(borrow cap − total borrowed, borrowable cash) − pilot maximum debt. Borrowable cash is the share above the
-70 % cash reserve. The pilot maximum debt per side is min(side equity × (L − 1), side OI − side equity / L) = **$400**.
+70 % cash reserve. The pilot maximum debt per side is min(side equity × (L − 1), side OI × (L − 1) / L) = min($400, $400) = **$400** (debt = notional − equity, with
+notional ≤ OI and equity ≥ notional / L).
 
 | | USDC market (long debt) | XLM market (short debt) |
 |---|---|---|

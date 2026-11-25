@@ -18,7 +18,7 @@ cash markets (the tool has no such switch and refuses `*pause_deposit*`).
 | Pilot parameters | 5× max both sides (frontend default 3×); fees 0.10 % / 0.10 %; funding +2 % APR; bonus 3 % + 1 %; slippage 1.5 %; exit cooldown 72 h; caps $25 / position, $100 side equity, $500 side OI, $1 minimum; seed $750 USDC pTokens |
 | Ledger signatures | **16** by the admin (index 0): M1–M6, M9–M12, M15, M16, C1–C4. M7, M8, M13, M14 equal the constructor defaults and are read-back only (a transaction is prepared only if a read-back differs) |
 | Admin XLM | 210.59 XLM on 25 Nov. M1 needs up to 111.85 XLM (93.20 XLM simulated); everything else < 1 XLM in fees; the long canary locks ~41 XLM until C2 |
-| Files | `margin-ceremony.cjs` (builder), `margin-mainnet.json` (pins), `margin-run.sh` (sign/send), `margin-ceremony.test.cjs` (13 offline tests), `SIZING.md` |
+| Files | `margin-ceremony.cjs` (builder), `margin-mainnet.json` (pins), `margin-run.sh` (sign/send), `margin-ceremony.test.cjs` (16 offline tests, incl. a stubbed-chain walk M1→C4 through every `prepare` precondition), `SIZING.md` |
 | Run / evidence dir | `/Users/joshua/Peridot/margin-v2-launch-20261125/` (outside the repo) |
 
 ## 0. Owner decisions needed before M2
@@ -32,7 +32,7 @@ cash markets (the tool has no such switch and refuses `*pause_deposit*`).
    is a list of *receipts*, so adding the margin id there does nothing; WP7 has to add a per-borrower exclusion
    (`node margin-ceremony.cjs exclusion-fragment` prints the id). The margin keeper pass must run live on the Droplet.
 
-## 1. Simulation results (25 Nov 2026, ledger 65664653)
+## 1. Simulation results (25 Nov 2026, ledgers 65664653 and 65664763 (re-run); identical numbers)
 
 Live Mainnet (`simulate-all`), before the deploy:
 
@@ -67,8 +67,11 @@ non-refundable estimates from the live fee settings; rent is set by the live sim
 | K5 admin_resolve_impairment | 9.6 M | 72 | 2 | liquidation | — |
 | R3 / R4 backstop exit request / withdraw | 2.2 / 63.5 M | 6 / 97 | 4 / 16 | setter / release | — |
 
-The fork does not measure the M2 deploy, because the deployer call runs in the test host. It ran there and produced the
-pinned id with opens paused. The live simulation at `prepare` checks the host's returned id against the pin and refuses
+**Gap against the deploy rule, stated plainly: M2 has neither a live simulation nor a fork measurement yet.** It cannot be
+simulated live until M1's code is on chain, and the fork runs the deployer from the test host, which records no
+per-transaction resources. On the fork the deploy ran and produced the pinned id with opens paused. **M2's live simulation
+is the `prepare` right after M1 lands.** It is written into this plan before M2 is signed (record it in §1), and M2 waits
+for that row. The fork fees in this table are non-refundable estimates only. The live simulation at `prepare` checks the host's returned id against the pin and refuses
 otherwise. K3 `settle_backstop_debt` has no bad debt to settle in this sequence; the WP5/WP6 tables measure it at
 89.6 M (USDC) and 198.0 M (XLM, worst). Every row is within its class limit. Canary results on the fork:
 
@@ -81,7 +84,8 @@ Raw outputs, outside the repo, in `/Users/joshua/Peridot/margin-v2-launch-202611
 | File | sha256 |
 |---|---|
 | `simulate-all-20261125.json` | `89c9c3b18159967817afbc96551f6470ade42e721ac8af81381d2ba034a1ecbb` |
-| `fork-wp8-ceremony.json` | `cad7f76b5a9012ee8cbcf58386482116283b7fd701025130aa62b4bc82fb81fb` |
+| `simulate-all-20261125-r2.json` (re-run, ledger 65664763) | `f3c32dec6bc23d1dcccd1f6ebff90a99ab17d4f0f512637893a2630584fdbf99` |
+| `fork-wp8-ceremony.json` (= `fork-wp8-ceremony-r2.json`, deterministic) | `cad7f76b5a9012ee8cbcf58386482116283b7fd701025130aa62b4bc82fb81fb` |
 
 Re-run the simulations (read-only):
 
@@ -430,7 +434,8 @@ Failure: if it did not land, opens stay paused and nothing else happened. Re-che
 
 ### C1 canary long open ($5 equity at 3×)
 
-- Signer: admin, index 0. `open(admin, XLM, USDC, collateral, borrow, 1, 0.1 USDC)`.
+- Signer: admin, index 0. `open(admin, XLM, USDC, collateral, borrow, 1, 0.1 USDC)`. Refused if an admin long is already
+  open, so a re-run after an unknown send never opens a second canary; run the read-back first.
 - The amounts come from the live controller prices at `prepare`: about 41 XLM collateral and 9.95 USDC borrowed.
 - Authorization: root plus exactly one XLM SAC transfer (admin → margin, ≤ the collateral). The pool swap is
   authorized by the contract itself.
@@ -499,7 +504,8 @@ None of these is blocked by earlier steps. Each prepares ONE unsigned transactio
 Close, close_with_repay, liquidate, claim and settle are never paused by the contract. Pausing opens never traps a trader.
 
 **K1 pause opens, guardian (pause host key, not the Ledger).** Prepare on the Mac, sign on the pause host, send from the
-Mac:
+Mac. Guardian transactions get a ~1 h validity window (`limits.hostWindow` 720 ledgers) for the round trip. The faster
+path in an emergency is the admin K1 below.
 
 ```sh
 hstep k1-pause-g emergency pause-opens guardian
@@ -556,8 +562,9 @@ $10 / $20 / $100 / $1:
 kstep k6-caps-xlm emergency set-caps xlm 100000000 200000000 1000000000 10000000
 ```
 
-**K7 resume opens** (admin). Refused unless the keeper gate passes, the contract is not Impaired and there are no backstop
-bad-debt shares:
+**K7 resume opens** (admin). Refused unless the keeper gate and the config gate pass, the contract is not Impaired and
+there are no backstop bad-debt shares. The config gate compares the live values with `margin-mainnet.json`, so after a K6
+cap change, first record the new caps there (reviewed commit), then resume:
 
 ```sh
 kstep k7-resume emergency resume-opens

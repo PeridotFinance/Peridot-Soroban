@@ -163,7 +163,8 @@ function requiredBackstop(h, longEq, shortEq, largest) {
 }
 // Pilot maximum debt per side, from the caps: debt <= OI - equity and <= equity * (L - 1), equity <= side cap.
 function pilotMaxDebtUsd(caps, lev) {
-  const byLev = u(caps.side_equity_usd) * (u(lev) - E6) / E6, byOi = u(caps.side_oi_usd) - u(caps.side_equity_usd) / (u(lev) / E6);
+  // debt = notional - equity, notional <= OI and equity >= notional / L  =>  debt <= OI * (L - 1) / L
+  const byLev = u(caps.side_equity_usd) * (u(lev) - E6) / E6, byOi = u(caps.side_oi_usd) * (u(lev) - E6) / u(lev);
   return byLev < byOi ? byLev : byOi;
 }
 // Cash-market headroom (raw units of the debt asset): min(cap - borrowed, borrowable cash) - pilot max debt.
@@ -272,8 +273,10 @@ async function codeExists(c, hex) {
   const r = await c.rpc.getLedgerEntries(k); return !!(r.entries && r.entries.length);
 }
 async function contractWasm(c, id) { try { return await c.codeHash(id); } catch { return null; } }
-async function simulateBuild(cfg, c, op, source, {cls, policy, authOpts, cpuMax, feeCapStroops}) {
-  const acc = await c.rpc.getAccount(source), latest = await c.rpc.getLatestLedger(), L = cfg.limits;
+async function simulateBuild(cfg, c, op, source, {cls, policy, authOpts, cpuMax, feeCapStroops, hostSigned}) {
+  const acc = await c.rpc.getAccount(source), latest = await c.rpc.getLatestLedger(), L0 = cfg.limits;
+  // Host-signed (guardian) transactions travel Mac -> pause host -> Mac: a longer validity window.
+  const L = hostSigned ? {...L0, window: L0.hostWindow, timeout: L0.hostTimeout} : L0;
   const tx = new S.TransactionBuilder(acc, {fee: String(L.classicFeeStroops), networkPassphrase: cfg.network}).addOperation(op)
     .setLedgerbounds(latest.sequence + 1, latest.sequence + L.window).setTimeout(L.timeout).build();
   const sim = await c.rpc.simulateTransaction(tx);
@@ -339,6 +342,8 @@ async function opFor(cfg, c, s) {
     const {px, pu} = await prices(cfg, c), C = cfg.canary;
     const a = canaryAmounts(s.long, C.equityUsd7, C.leverage, px, pu, C.debtHaircutBps);
     const [held, debt] = s.long ? [D.xlm, D.usdc] : [D.usdc, D.xlm];
+    const already = (await adminPositions(cfg, c, held)).filter(p => p.open);
+    assert.equal(already.length, 0, `refused: an admin ${s.long ? 'long' : 'short'} is already open (id ${already.map(p => p.id)}): never open a second canary; close it (next C-step)`);
     const wallet = u((await c.view(held, 'balance', [addr(src)])).value);
     assert(a.collateral < wallet, `wallet ${fmt7(wallet)} below the canary collateral ${fmt7(a.collateral)}`);
     const o = inv(M, 'open', [addr(src), addr(held), addr(debt), u128(a.collateral), u128(a.borrow), u128(1), u128(C.maxFeeUsdcRaw)]);
@@ -364,9 +369,10 @@ async function gate(cfg, c, name, opts = {}) {
     const xlmBal = Number((acct.balances.find(b => b.asset_type === 'native') || {}).balance || 0);
     const usdcPt = await c.tryView(D.usdcReceipt, 'balance', [addr(cfg.admin)]);
     const codeOk = Object.entries(code).every(([k, v]) => v === cfg.liveCode[k]);
-    const ok = codeOk && hooks.usdc === null && hooks.xlm === null && depPause.usdc === false && depPause.xlm === false && xlmBal >= 120;
+    const ok = codeOk && hooks.usdc === null && hooks.xlm === null && depPause.usdc === false && depPause.xlm === false;
     return {gate: name, ok, code, codeOk, hooksUnset: hooks.usdc === null && hooks.xlm === null, depositPaused: depPause, adminXlm: xlmBal, adminUsdcPt: String(usdcPt),
-      marginExists: (await contractWasm(c, M)) !== null, note: 'adminXlm >= 120 covers the upload (~sim) plus deploy, setters and the canary collateral'};
+      adminXlmWarning: xlmBal < 120 && !(await codeExists(c, cfg.artifact.sha256)) ? 'below 120 XLM before M1: the upload needs up to ~112 XLM' : null,
+      marginExists: (await contractWasm(c, M)) !== null};
   }
   if (name === 'seed-balance') {
     const b = uv(await c.tryView(D.usdcReceipt, 'balance', [addr(cfg.admin)]));
@@ -414,7 +420,7 @@ async function gate(cfg, c, name, opts = {}) {
 }
 async function isDone(cfg, c, s) {
   const M = marginId(cfg);
-  if (s.kind === 'gate') { try { return (await gate(cfg, c, s.gate)).ok; } catch { return false; } }
+  if (s.kind === 'gate') { try { return (await gate(cfg, c, s.gate, {allowUnpaused: true})).ok; } catch { return false; } }
   if (s.kind === 'upload') return codeExists(c, cfg.artifact.sha256);
   if (s.kind === 'deploy') {
     if ((await contractWasm(c, M)) !== cfg.artifact.sha256) return false;
@@ -443,7 +449,7 @@ function write(cfg, out, res, summary) {
 async function buildStep(cfg, c, s) {
   const signer = cfg.signers[s.signer], src = need(signer && signer.publicKey, `signers.${s.signer}.publicKey`);
   const o = await opFor(cfg, c, s);
-  const res = await simulateBuild(cfg, c, o.op, src, {cls: o.cls, policy: o.policy, authOpts: o.authOpts, cpuMax: o.cpuMax, feeCapStroops: o.feeCapStroops});
+  const res = await simulateBuild(cfg, c, o.op, src, {cls: o.cls, policy: o.policy, authOpts: o.authOpts, cpuMax: o.cpuMax, feeCapStroops: o.feeCapStroops, hostSigned: signer.hdPath == null});
   if (s.kind === 'deploy') assert.equal(String(res.retval), s.contract, `host would create ${res.retval}, not the pinned ${s.contract}`);
   return {res, summary: {step: s.id, n: s.n, signer: s.signer, hdPath: signer.hdPath, call: s.method || s.kind, target: s.target || marginId(cfg), why: s.why, ...(o.summary || {})}};
 }
@@ -475,7 +481,22 @@ function feeEstimateStroops(f, row, txBytes = 1500) {
     + kb(row.writeBytes, f.write1kb) + kb(txBytes + 300, f.hist1kb) + kb(txBytes, f.tx1kb) + kb(row.eventsBytes || 0, f.ev1kb);
 }
 
-async function main(argv) {
+// `prepare` preconditions (exported for the offline state-walk test): preflight pins, every earlier step read back
+// done (gates and history excepted as marked), the step itself not yet done, and the keeper gate for M16 / the canary.
+async function checkPreconditions(cfg, c, list, s, {retryMs = 3000} = {}) {
+  const pre = await gate(cfg, c, 'preflight'); assert(pre.codeOk && pre.hooksUnset, 'refused: preflight (live code pins / receipt hooks): ' + js(pre).slice(0, 300));
+  for (const prev of list.slice(0, list.indexOf(s))) {
+    if (prev.historical || prev.fallback || (prev.kind === 'gate' && ['keeper', 'preflight'].includes(prev.gate))) continue;
+    let d = await isDone(cfg, c, prev);
+    for (let i = 0; d === false && i < 2 && retryMs; i++) { await new Promise(r => setTimeout(r, retryMs)); d = await isDone(cfg, c, prev); }
+    if (prev.kind === 'gate' && prev.gate === 'seed-balance' && !d) d = await isDone(cfg, c, list.find(x => x.id === 'backstop_deposit.seed'));
+    assert(d !== false, `earlier step ${prev.n || ''} ${prev.id} not read back as done`);
+  }
+  if (['deploy', 'tx', 'upload'].includes(s.kind)) assert.notEqual(await isDone(cfg, c, s), true, `${s.id} already done${s.default ? ' (constructor default: read-back only, no transaction)' : ''}`);
+  if (s.keeperGate || s.canary) await requireKeeperGate(cfg, c);
+  return true;
+}
+async function main(argv, deps = {}) {
   const opt = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : d; };
   const cfg = JSON.parse(fs.readFileSync(CFG_FILE, 'utf8'));
   assert.equal(cfg.network, S.Networks.PUBLIC);
@@ -493,7 +514,7 @@ async function main(argv) {
     assert(S.Keypair.fromPublicKey(b.source).verify(b.hash(), b.signatures[0].signature()), 'signature does not verify for the source (wrong Ledger account / HD path?)');
     return {ok: true, hash: b.hash().toString('hex'), source: b.source};
   }
-  const c = chain(cfg), list = steps(cfg);
+  const c = deps.chain || chain(cfg), list = steps(cfg);
   const find = id => { const s = list.find(x => x.id === id); assert(s, `unknown step ${id}`); return s; };
   if (cmd === 'headroom') {
     const {px, pu} = await prices(cfg, c), P = cfg.params, out = {ledger: (await c.rpc.getLatestLedger()).sequence, priceXlm: String(px), priceUsdc: String(pu)};
@@ -542,16 +563,7 @@ async function main(argv) {
   if (cmd === 'gate') { const r = await gate(cfg, c, argv[1]); if (!r.ok) process.exitCode = 1; return r; }
   if (cmd === 'prepare') {
     const s = find(argv[1]); assert.notEqual(s.kind, 'gate', 'gates are evaluated with `gate`');
-    const pre = await gate(cfg, c, 'preflight'); assert(pre.codeOk && pre.hooksUnset, 'refused: preflight (live code pins / receipt hooks): ' + js(pre).slice(0, 300));
-    for (const prev of list.slice(0, list.indexOf(s))) {
-      if (prev.historical || prev.fallback || (prev.kind === 'gate' && prev.gate === 'keeper')) continue;
-      let d = await isDone(cfg, c, prev);
-      for (let i = 0; d === false && i < 2; i++) { await new Promise(r => setTimeout(r, 3000)); d = await isDone(cfg, c, prev); }
-      if (prev.kind === 'gate' && prev.gate === 'seed-balance' && !d) d = await isDone(cfg, c, find('backstop_deposit.seed'));
-      assert(d !== false, `earlier step ${prev.n || ''} ${prev.id} not read back as done`);
-    }
-    if (s.kind === 'deploy' || s.kind === 'tx' || s.kind === 'upload') assert.notEqual(await isDone(cfg, c, s), true, `${s.id} already done${s.default ? ' (constructor default: read-back only, no transaction)' : ''}`);
-    if (s.keeperGate || s.canary) await requireKeeperGate(cfg, c);
+    await checkPreconditions(cfg, c, list, s);
     const {res, summary} = await buildStep(cfg, c, s);
     return write(cfg, opt('--out'), res, {...summary, readback: `node margin-ceremony.cjs readback ${s.id}`});
   }
@@ -579,5 +591,5 @@ async function main(argv) {
   throw Error('usage: see header');
 }
 module.exports = {contractIdFor, marginId, steps, EMERGENCY, MARGIN_METHODS, assertCallAllowed, scanAuthTree, checkAuth, checkArtifact, deployArgs,
-  canaryAmounts, requiredBackstop, pilotMaxDebtUsd, cashHeadroom, keeperGateReasons, feesVal, capsVal, headroomVal, bsParamsVal, structVal, feeEstimateStroops, main};
+  checkPreconditions, requireKeeperGate, gate, isDone, opFor, canaryAmounts, requiredBackstop, pilotMaxDebtUsd, cashHeadroom, keeperGateReasons, feesVal, capsVal, headroomVal, bsParamsVal, structVal, feeEstimateStroops, main};
 if (require.main === module) main(process.argv.slice(2)).then(r => console.log(json(r))).catch(e => { console.error('REFUSED/FAILED:', e.message); process.exit(1); });
