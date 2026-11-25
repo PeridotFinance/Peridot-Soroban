@@ -435,14 +435,19 @@ fn hf_matches_independent_recomputation() {
     let f = setup();
     let stress = 0.2;
     // (xpt, upt, xdebt, udebt, rate_x, rate_u)
-    let books: [(u128, u128, u128, u128, u128, u128); 5] = [
+    let books: [(u128, u128, u128, u128, u128, u128); 7] = [
         (2_000 * E7, 1_000 * E7, 0, 400 * E7, 1_000_000, 1_000_000),
         (0, 1_500 * E7, 1_600 * E7, 0, 1_000_000, 1_000_000),
         (1_234_567_891, 9_876_543_210, 777_777_777, 333_333_333, 1_013_456, 1_027_891),
         (3_100 * E7 + 7, 812 * E7 + 3, 900 * E7, 210 * E7 + 11, 1_000_123, 1_049_999),
         (5 * E7, 1_000 * E7, 3 * E7 + 1, 1, 1_200_000, 1_000_001),
+        // spot HF ~1.17: between hf_stress and hf_target -> fails
+        (0, 1_000 * E7, 0, 640 * E7, 1_000_000, 1_003_000),
+        // spot ~1.28 passes, XLM -20 % ~1.02 fails (stress endpoint only)
+        (8_000 * E7, 0, 0, 860 * E7, 1_001_000, 1_000_000),
     ];
     f.m.set_headroom(&f.admin, &hr(1_250_000, 1_100_000, 200_000, 1));
+    let (mut passed, mut failed) = (0, 0);
     for (xpt, upt, xd, ud, rx_rate, ru_rate) in books {
         f.rx.set_pbal(&f.id, &xpt);
         f.ru.set_pbal(&f.id, &upt);
@@ -462,8 +467,10 @@ fn hf_matches_independent_recomputation() {
         let res = f.check(false);
         if (es - 1.25).abs() > 1e-4 && (ed.min(eu) - 1.10).abs() > 1e-4 {
             assert_eq!(res.is_ok(), pass, "book {xpt} {upt} {xd} {ud}");
+            if pass { passed += 1 } else { failed += 1 }
         }
     }
+    assert!(passed >= 3 && failed >= 2, "passed {passed} failed {failed}");
 }
 
 #[test]
@@ -484,7 +491,13 @@ fn reconcile_deficit_sets_impaired_and_pauses() {
     f.rx.set_pbal(&f.id, &(2_000 * E7 - 1));
     assert!(f.m.reconcile(&k));
     let ev = MarginImpaired { caller: k.clone(), usdc_ledger: 1_000 * E7, usdc_balance: 1_000 * E7 + 5, xlm_ledger: 2_000 * E7, xlm_balance: 2_000 * E7 - 1 };
-    assert_eq!(f.env.events().all().filter_by_contract(&f.id), [ev.to_xdr(&f.env, &f.id)]);
+    let evs = f.env.events().all().filter_by_contract(&f.id);
+    assert_eq!(evs, [ev.to_xdr(&f.env, &f.id)]);
+    // Single-tuple topic (Symbol("margin_impaired"),), independent of the struct encoding.
+    let soroban_sdk::xdr::ContractEventBody::V0(body) = &evs.events()[0].body;
+    let want: soroban_sdk::xdr::ScVal = (&soroban_sdk::Symbol::new(&f.env, "margin_impaired")).try_into().unwrap();
+    assert_eq!(body.topics.len(), 1);
+    assert_eq!(body.topics[0], want);
     assert!(f.m.is_impaired() && f.m.opens_paused());
     assert_eq!(f.m.try_t_not_impaired(), Err(Ok(se(Error::Impaired))));
     // Never cleared by reconcile, even after the balance returns.
