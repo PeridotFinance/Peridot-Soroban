@@ -11,6 +11,8 @@ members = [
   "contracts/peridot-token",
   "contracts/swap-adapter",
   "contracts/aquarius-lp-vault",
+  "contracts/sentora-strategy",
+  "contracts/peg-oracle",
   "contracts/cl-share-vault",
   "contracts/cl-integration-fixtures",
   "contracts/cl-share-pool-facade",

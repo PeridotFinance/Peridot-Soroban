@@ -1032,6 +1032,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "peg-oracle"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "peridot-token"
 version = "0.1.0"
 dependencies = [
@@ -1254,6 +1261,16 @@ name = "semver"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
+
+[[package]]
+name = "sentora-strategy"
+version = "0.1.0"
+dependencies = [
+ "receipt-vault",
+ "sha2",
+ "simple-peridottroller",
+ "soroban-sdk",
+]
 
 [[package]]
 name = "serde"

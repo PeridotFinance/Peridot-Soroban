@@ -1,0 +1,18 @@
+[package]
+name = "sentora-strategy"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Research prototype: ReceiptVault boosted-vault adapter over a Sentora (IntoTheBlock StellarVaults) principal vault"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+sha2 = "0.10"
+receipt-vault = { path = "../receipt-vault", features = ["test-default-admin"] }
+simple-peridottroller = { path = "../simple-peridottroller", features = ["test-default-admin"] }

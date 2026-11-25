@@ -1,0 +1,15 @@
+[package]
+name = "peg-oracle"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Research prototype: Reflector-compatible group oracle that prices one pegged stablecoin (PYUSD) at exactly $1 behind a DEX deviation circuit breaker and forwards every other asset to Reflector"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }

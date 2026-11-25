@@ -1,0 +1,21 @@
+[package]
+name = "sentora-fork"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Isolated, test-only: protocol-30 host (soroban-env-host 30.0.1) over a read-only Mainnet ledger fork.
+# Loads the deployed Sentora and Peridot cash-group WASM bytes from the fork's ContractCode entries; the only
+# workspace WASM is the sentora-strategy prototype (built with `stellar contract build`, sha256 asserted).
+[workspace]
+
+[dependencies]
+soroban-sdk = { version = "=30.0.0", features = ["testutils"] }
+soroban-env-host = { version = "=30.0.1", features = ["testutils"] }
+soroban-ledger-snapshot = "=30.0.0"
+serde_json = "1"
+sha2 = "0.10"
+ed25519-dalek = "2"
+
+[profile.dev]
+overflow-checks = true

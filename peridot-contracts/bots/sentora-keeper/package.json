@@ -1,0 +1,16 @@
+{
+  "name": "@peridot/sentora-keeper",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "SKELETON (not deployable): keeper for the isolated Sentora market group. Spec: research/sentora-vault-markets-20261125/DESIGN.md section 14.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/main.mjs",
+    "check": "node --check src/config.mjs && node --check src/jobs.mjs && node --check src/main.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "16.3.0"
+  }
+}

@@ -1,0 +1,85 @@
+# DRAFT, NOT DEPLOYED. Separate DigitalOcean worker for the isolated Sentora market group
+# (research/sentora-vault-markets-20261125/DESIGN.md section 14). Modelled on .do/aquarius-keeper.yaml.
+# - Starts in dry-run. Plain git source: no automatic deploys (deploy manually from an immutable release branch).
+# - Exactly ONE instance: a second live instance with the same key would collide on sequence numbers.
+# - Dedicated signer, never shared with aquarius-keeper, cash keepers, depth reporters or any admin key.
+#   KEEPER_SECRET is set only in the DigitalOcean console as an encrypted RUN_TIME secret; never in this file.
+# - Contract addresses are left as placeholders until the group is deployed (no deployment before Sentora confirms
+#   that contract depositors earn and can claim).
+name: peridot-sentora-keeper
+region: fra
+workers:
+  - name: mainnet-sentora-keeper
+    git:
+      repo_clone_url: https://github.com/PeridotFinance/Peridot-Soroban.git
+      branch: sentora-keeper-v0.1.0
+    source_dir: peridot-contracts/bots/sentora-keeper
+    dockerfile_path: peridot-contracts/bots/sentora-keeper/Dockerfile
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    alerts:
+      - rule: RESTART_COUNT
+        operator: GREATER_THAN
+        value: 1
+        window: FIVE_MINUTES
+    envs:
+      - key: RPC_URL
+        scope: RUN_TIME
+        value: https://soroban-rpc.mainnet.stellar.gateway.fm
+      - key: NETWORK_PASSPHRASE
+        scope: RUN_TIME
+        value: Public Global Stellar Network ; September 2015
+      - key: KEEPER_PUBLIC_KEY
+        scope: RUN_TIME
+        value: REPLACE_WITH_NEW_DEDICATED_SENTORA_KEEPER_PUBLIC_KEY
+      - key: DRY_RUN
+        scope: RUN_TIME
+        value: "true"
+      - key: CONTROLLER
+        scope: RUN_TIME
+        value: REPLACE_AFTER_DEPLOYMENT
+      - key: PEG_ORACLE
+        scope: RUN_TIME
+        value: REPLACE_AFTER_DEPLOYMENT
+      - key: PYUSD_TOKEN
+        scope: RUN_TIME
+        value: CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2
+      - key: RECEIPTS
+        scope: RUN_TIME
+        value: REPLACE_USDC_RV,REPLACE_PYUSD_RV,REPLACE_XLM_RV
+      - key: ADAPTERS
+        scope: RUN_TIME
+        value: REPLACE_USDC_ADAPTER,REPLACE_PYUSD_ADAPTER,REPLACE_XLM_ADAPTER
+      - key: SENTORA_VAULTS
+        scope: RUN_TIME
+        value: CAHEWHOPPDBQYFMAOLDOXXGUX2BCR7EXP4CWYCRY3NEAJB35YPZMMJFF,CAQRAXBU6G4AAX4BZ7R4WLB62TSVAQFS5ZXJDVXRLAU2NZ2ZTGU5QOYB,CA54LVHMAY7HGLMVPN4W72XJB4OGKVZBZX26FWN6JD4P3HJFWQUQEHJO
+      - key: REFRESH_INTERVAL_MS
+        scope: RUN_TIME
+        value: "240000"
+      - key: PEG_INTERVAL_MS
+        scope: RUN_TIME
+        value: "60000"
+      - key: MONITOR_INTERVAL_MS
+        scope: RUN_TIME
+        value: "60000"
+      - key: CLAIM_INTERVAL_MS
+        scope: RUN_TIME
+        value: "3600000"
+      - key: TTL_INTERVAL_MS
+        scope: RUN_TIME
+        value: "86400000"
+      - key: INCLUSION_FEE_STROOPS
+        scope: RUN_TIME
+        value: "10000"
+      - key: MAX_FEE_PER_TX_STROOPS
+        scope: RUN_TIME
+        value: "2000000"
+      - key: DAILY_FEE_BUDGET_STROOPS
+        scope: RUN_TIME
+        value: "50000000"
+      - key: MIN_BALANCE_STROOPS
+        scope: RUN_TIME
+        value: "100000000"
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DEPLOYMENT_LIVE

@@ -1,0 +1,8 @@
+{
+  "name": "sentora-fork-tools",
+  "private": true,
+  "description": "Read-only Mainnet fork fetcher for harness/sentora-fork",
+  "dependencies": {
+    "@stellar/stellar-sdk": "16.3.1"
+  }
+}
