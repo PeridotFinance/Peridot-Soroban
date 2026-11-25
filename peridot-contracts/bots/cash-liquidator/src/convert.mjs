@@ -37,6 +37,13 @@ export function newLot({positionId, side, seizePt, ledger, nowMs, cfg, inventory
     ptokens: String(seizePt), stage: 'redeem', underlying: null, target: swapTarget(seized, inventory, cfg.pins.minInventoryRaw),
     attempts: 0, firstAt: nowMs, nextAt: nowMs, alerted: false, lastErr: null};
 }
+/** USDC (raw) needed to buy the XLM shortfall to the funded minimum, +2 %. 0 when XLM is at or above it. */
+export function xlmBuyCap(inventory, minInventoryRaw = {}, pUsdc, pXlm) {
+  const need = (minInventoryRaw.XLM != null ? BigInt(minInventoryRaw.XLM) : 0n) - (inventory.XLM ?? 0n);
+  if (need <= 0n) return 0n;
+  const usdNeed = (need * pXlm[0]) / pXlm[1];
+  return ((usdNeed * pUsdc[1]) / pUsdc[0]) * 102n / 100n + 1n;
+}
 /** pTokens reserved by open margin lots on a receipt (the cash pass's seized-collateral withdraw must leave them). */
 export function reservedPt(st, receipt) {
   return (st.convert?.lots ?? []).filter(l => l.stage === 'redeem' && l.receipt === receipt).reduce((s, l) => s + BigInt(l.ptokens), 0n);
@@ -96,6 +103,8 @@ export async function convertPass(cfg, c, st, env, deps) {
     const rec = {lotId: lot.lotId, seized: lot.seized, target: lot.target};
     try {
       if (lot.stage === 'redeem') {
+        // Short seizures: decide the XLM buy-back now, from inventory read AFTER the liquidation paid out XLM.
+        if (lot.seized === 'USDC') lot.target = swapTarget('USDC', env.inventory ?? {}, cfg.pins.minInventoryRaw);
         const bal = BigInt(await c.view(lot.receipt, 'get_ptoken_balance', [c.addr(cfg.publicKey)]));
         const pt = BigInt(lot.ptokens) < bal ? BigInt(lot.ptokens) : bal;   // never more than seized
         if (pt === 0n) { done(lot, deps, 'no seized pTokens left to redeem'); continue; }
@@ -116,10 +125,15 @@ export async function convertPass(cfg, c, st, env, deps) {
       if (lot.stage === 'swap') {
         const tin = M[lot.seized].underlying, tout = M[lot.target].underlying;
         const have = await balance(c, tin, cfg.publicKey);
-        const amountIn = BigInt(lot.underlying) < have ? BigInt(lot.underlying) : have;   // never more than the lot
-        if (amountIn === 0n) { done(lot, deps, 'nothing left to swap'); continue; }
+        let amountIn = BigInt(lot.underlying) < have ? BigInt(lot.underlying) : have;   // never more than the lot
         const pIn = env.prices[lot.seized], pOut = env.prices[lot.target];
-        if (!pIn || !pOut) { hold(lot, 'oracle price unavailable', env.nowMs, cv, deps, rec); continue; }
+        if (amountIn > 0n && (!pIn || !pOut)) { hold(lot, 'oracle price unavailable', env.nowMs, cv, deps, rec); continue; }
+        if (lot.target === 'XLM' && amountIn > 0n) {
+          // Inventory policy: buy only the XLM shortfall to the funded minimum (+2 %), never the whole lot.
+          const cap = xlmBuyCap(env.inventory ?? {}, cfg.pins.minInventoryRaw, pIn, pOut);
+          if (cap < amountIn) amountIn = cap;
+        }
+        if (amountIn === 0n) { done(lot, deps, lot.target === 'XLM' ? 'XLM inventory back at its minimum; USDC kept' : 'nothing left to swap'); continue; }
         const minOut = oracleMinOut(amountIn, pIn, pOut, cv.maxSlippageBps);
         if (minOut === 0n) { hold(lot, 'amount too small for a nonzero floor', env.nowMs, cv, deps, rec); continue; }
         const tokens = await c.view(m.pool, 'get_tokens');

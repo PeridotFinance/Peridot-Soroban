@@ -165,7 +165,7 @@ export class TelegramNotifier {
 
 /**
  * Builds the notifier from config. channel 'telegram' + a valid file -> notifier; otherwise {notifier: null, problem}.
- * Problems are returned (the caller logs them), never thrown: missing alert delivery must not stop the keeper.
+ * Problems are returned (the caller logs them as an alert), never thrown: missing alert delivery must not stop the keeper.
  */
 export function makeNotifier(cfg, {warn, uid, fetchImpl} = {}) {
   const a = cfg.alerts ?? {};

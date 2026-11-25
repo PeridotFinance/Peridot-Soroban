@@ -304,3 +304,25 @@ test('dust: expected loss <= $2 (oracle USD incl. fee) is liquidated with a dust
     }
   }
 });
+
+test('LIVE short liquidation: target decided from inventory AFTER paying XLM; buys back only the XLM shortfall (+2 %), keeps the rest as USDC', async () => {
+  const MIN_XLM = BigInt(PINS.minInventoryRaw.XLM);
+  const c = stubChain('minus20', {poolBelowBps: 50, bal: {[M.USDC.underlying]: 0n, [M.XLM.underlying]: MIN_XLM}});
+  const p = c.state.positions['1']; p.side = 'short';            // held USDC pTokens, debt XLM
+  const inventoryOf = async () => ({USDC: c.state.bal[M.USDC.underlying], XLM: c.state.bal[M.XLM.underlying]});
+  const q = quietLog(), j = [];
+  const st = {};
+  await marginCycle(marginCfg({dryRun: false}), c, st, {log: q.log, journal: (f, r) => j.push(r), inventoryOf, nowMs: 1_000});
+  assert.deepEqual(j.filter(x => x.intent).map(x => x.kind), ['margin_liquidate', 'margin_redeem', 'margin_swap']);
+  const paid = BigInt(FIX.checks.L5_underwater_minus20.fork.paid), seized = BigInt(p.heldPt);
+  const xlmAfter = c.state.bal[M.XLM.underlying], usdcAfter = c.state.bal[M.USDC.underlying];
+  assert(xlmAfter >= MIN_XLM && xlmAfter <= MIN_XLM + paid * 3n / 100n, `XLM back to about the minimum: ${xlmAfter}`);
+  assert(usdcAfter > 0n && usdcAfter < seized, 'only part of the seized USDC was sold');
+  assert.deepEqual(st.convert.lots, []);
+  // with XLM already above its minimum after the payment, the seized USDC is only redeemed
+  const c2 = stubChain('minus20', {bal: {[M.USDC.underlying]: 0n, [M.XLM.underlying]: MIN_XLM * 2n}});
+  c2.state.positions['1'].side = 'short';
+  const j2 = [];
+  await marginCycle(marginCfg({dryRun: false}), c2, {}, {log: quietLog().log, journal: (f, r) => j2.push(r), inventoryOf: async () => ({USDC: c2.state.bal[M.USDC.underlying], XLM: c2.state.bal[M.XLM.underlying]}), nowMs: 1_000});
+  assert.deepEqual(j2.filter(x => x.intent).map(x => x.kind), ['margin_liquidate', 'margin_redeem']);
+});

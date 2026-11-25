@@ -117,7 +117,7 @@ ssh $=SSHQ root@$LQ 'SRC_TARBALL=/root/cash-liquidator-'${WP7:0:7}'.tgz NODE_VER
 
 Expected:
 - sha256 OK;
-- the host `node --test` passes (80 tests);
+- the host `node --test` passes (81 tests);
 - `current` points to the new release.
 
 On failure nothing has changed, so stop.
@@ -428,6 +428,54 @@ The keeper restart in step 4 re-runs the start checks (pins, roles, allowances).
 - **Dust.** A margin liquidation with an expected loss ≤ $2 (oracle USD, including the fee) is sent, with `dustLiquidation`. Above $2 it
   is not sent, and an `unprofitableSkipped` alert fires.
 - **Cash pass.** It keeps its plain redeem, with no swap, and leaves margin lots' pTokens alone.
+- **Live-pool check (25 Nov).** A read-only Mainnet simulation through the keeper's own `prepare` was run with the keeper key as source:
+  5 XLM → USDC on `CBBMQ…BUCV`.
+  - It ran in the default recording mode, with one source-account auth entry: root `swap`, with the `transfer` nested.
+  - `get_tokens` = [XLM, USDC], and the return value decodes as a u128: 6,080,915 against an oracle floor of 6,000,637, about 18 bps
+    below the oracle. It used 14.6 M instructions.
+
+### Releasing a lot parked for review
+
+A lot goes to `review` only after an UNKNOWN redeem or swap outcome. The keeper never retries it.
+
+1. Stop the keeper.
+
+```zsh
+ssh $=SSHQ root@$LQ 'systemctl stop peridot-cash-liquidator'
+```
+
+2. Show the parked lots and the matching journal intents.
+
+```zsh
+ssh $=SSHQ root@$LQ 'python3 -c "import json; [print(json.dumps(l)) for l in json.load(open(\"/mnt/cashliq/cash-liquidator/state/state.json\")).get(\"convert\", {}).get(\"lots\", []) if l[\"stage\"] == \"review\"]"'
+```
+
+```zsh
+ssh $=SSHQ root@$LQ 'grep -E "\"kind\":\"margin_(redeem|swap)\"" /mnt/cashliq/cash-liquidator/state/journal.jsonl | tail -n 6'
+```
+
+3. Look the intent hash up on Horizon (`https://horizon.stellar.org/transactions/<hash>`).
+   - If it **executed**, the lot is finished: remove it, and the converted funds are already inventory.
+   - If it **did not execute** (not found after the time bound passed, or failed), put the lot back to the stage it was in, so it is
+     retried.
+
+Remove an executed lot:
+
+```zsh
+ssh $=SSHQ -t root@$LQ 'read -r -p "lotId: " L && python3 -c "import json,sys; p=\"/mnt/cashliq/cash-liquidator/state/state.json\"; s=json.load(open(p)); s[\"convert\"][\"lots\"]=[l for l in s[\"convert\"][\"lots\"] if l[\"lotId\"]!=sys.argv[1]]; json.dump(s, open(p+\".tmp\",\"w\")); import os; os.replace(p+\".tmp\", p)" "$L" && chown cashliq:cashliq /mnt/cashliq/cash-liquidator/state/state.json'
+```
+
+Re-arm a lot that did not execute. Enter `swap` or `redeem`, matching the journal kind:
+
+```zsh
+ssh $=SSHQ -t root@$LQ 'read -r -p "lotId: " L && read -r -p "stage (swap|redeem): " G && python3 -c "import json,sys,os; p=\"/mnt/cashliq/cash-liquidator/state/state.json\"; s=json.load(open(p)); [l.update(stage=sys.argv[2], attempts=0, nextAt=0, alerted=False) for l in s[\"convert\"][\"lots\"] if l[\"lotId\"]==sys.argv[1] and sys.argv[2] in (\"swap\",\"redeem\")]; json.dump(s, open(p+\".tmp\",\"w\")); os.replace(p+\".tmp\", p)" "$L" "$G" && chown cashliq:cashliq /mnt/cashliq/cash-liquidator/state/state.json'
+```
+
+4. Start the keeper again.
+
+```zsh
+ssh $=SSHQ root@$LQ 'systemctl start peridot-cash-liquidator'
+```
 
 ## 5. Watch live actions
 
