@@ -395,6 +395,15 @@ impl MarginController {
             panic_with_error!(&env, Error::OpensPaused);
         }
         let (u, x) = (usdc(&env), xlm(&env));
+        // WP6: no new position while the backstop owns unsettled bad debt in either asset (as
+        // the backstop-deposit freeze for XLM bad debt). New positions must not lean on a
+        // backstop whose loss is not booked yet; it also keeps every bad-debt NAV read out of
+        // open. Closes, close_with_repay, liquidate, claim and settle_backstop_debt stay open.
+        for a in [&u, &x] {
+            if inst_get::<u128>(&env, &Key::BsDebtShares(a.clone())).unwrap_or(0) > 0 {
+                panic_with_error!(&env, Error::BackstopDebtOutstanding);
+            }
+        }
         let long = held_asset == x && debt_asset == u;
         let short = held_asset == u && debt_asset == x;
         if collateral == 0 || borrow == 0 || !(long || short) {
@@ -404,8 +413,10 @@ impl MarginController {
         let caps: Caps = need(&env, &Key::Caps(held_asset.clone()));
         let fs = fees(&env);
         let slip = slippage(&env);
+        // WP6: every price and the USDC exchange rate are read once per open and passed down.
         let (ph, pd) = (price(&env, &held_asset), price(&env, &debt_asset));
         let pu = if long { pd } else { ph };
+        let rate_u = rate_of(&env, &u);
 
         // ---- caps on equity (per position, per side)
         let equity = usd(collateral, ph);
@@ -431,7 +442,7 @@ impl MarginController {
         }
         let gross = equity.checked_add(debt_usd).expect("overflow");
         let mut fee = usd_to_amt_up(frac_up(gross, fs.open_fee), pu);
-        if amt_to_pt_down(fee, rate_of(&env, &u)) == 0 {
+        if amt_to_pt_down(fee, rate_u) == 0 {
             fee = 0; // would mint 0 pTokens: not chargeable
         }
         if fee > max_fee {
@@ -440,12 +451,12 @@ impl MarginController {
         if long && fee >= borrow {
             panic_with_error!(&env, Error::BadAmount);
         }
-        // ---- pre-trade LTV and OI at the oracle-minimum fill
+        // ---- pre-trade LTV and OI at the oracle-minimum fill (debt asset in, held asset out)
         let (oracle_out, held_min) = if long {
-            let o = oracle_min_out(&env, &u, &x, borrow - fee);
+            let o = oracle_min_out_p(&env, borrow - fee, pd, ph);
             (o, collateral.checked_add(o).expect("overflow"))
         } else {
-            let o = oracle_min_out(&env, &x, &u, borrow);
+            let o = oracle_min_out_p(&env, borrow, pd, ph);
             (
                 o,
                 collateral
@@ -460,9 +471,12 @@ impl MarginController {
         }
         check_open_ltv(&env, ltv_of(debt_usd, held_min_usd), &fs, slip);
 
-        // ---- collateral in
+        // ---- collateral in. The held receipt's pToken balance is read once before the first
+        // and once after the last held deposit (nothing else moves it in between).
+        let rh = ReceiptClient::new(&env, &receipt(&env, &held_asset));
+        let held_before = rh.get_ptoken_balance(&me(&env));
         xfer(&env, &held_asset, &user, &me(&env), collateral);
-        let mut held_pt = deposit_self(&env, &held_asset, collateral);
+        deposit_raw(&env, &held_asset, collateral);
 
         // ---- borrow; shares priced over ALL holders (positions + backstop)
         let rd = ReceiptClient::new(&env, &receipt(&env, &debt_asset));
@@ -471,9 +485,8 @@ impl MarginController {
         let bal_before = tok_balance(&env, &debt_asset);
         rd.borrow(&me(&env), &borrow); // health-checked by the live controller
         let borrowed = tok_balance(&env, &debt_asset).saturating_sub(bal_before);
-        let added = rd
-            .get_user_borrow_balance(&me(&env))
-            .saturating_sub(pooled_before);
+        let pooled_after = rd.get_user_borrow_balance(&me(&env));
+        let added = pooled_after.saturating_sub(pooled_before);
         if borrowed < borrow || added == 0 {
             panic_with_error!(&env, Error::BadAmount);
         }
@@ -491,57 +504,49 @@ impl MarginController {
         );
 
         // ---- fee + trade
-        let fee_pt = if long {
+        let (held_pt, fee_pt) = if long {
             let fee_pt = if fee > 0 {
                 deposit_self(&env, &u, fee)
             } else {
                 0
             };
             let bought = swap(&env, &u, &x, borrow - fee, oracle_out.max(min_out));
-            held_pt = held_pt
-                .checked_add(deposit_self(&env, &x, bought))
-                .expect("overflow");
-            fee_pt
+            deposit_raw(&env, &x, bought);
+            (rh.get_ptoken_balance(&me(&env)).saturating_sub(held_before), fee_pt)
         } else {
             let proceeds = swap(&env, &x, &u, borrow, oracle_out.max(min_out));
             if proceeds <= fee {
                 panic_with_error!(&env, Error::BadAmount);
             }
-            let minted = deposit_self(&env, &u, proceeds);
+            deposit_raw(&env, &u, proceeds);
+            // collateral + proceeds; the fee's pro-rata share of the mint goes to the backstop
+            let minted = rh.get_ptoken_balance(&me(&env)).saturating_sub(held_before);
             let fee_pt = if fee > 0 {
-                mul_div_up(minted, fee, proceeds).min(minted)
+                mul_div_up(minted, fee, collateral.checked_add(proceeds).expect("overflow"))
+                    .min(minted)
             } else {
                 0
             };
-            held_pt = held_pt.checked_add(minted - fee_pt).expect("overflow");
-            fee_pt
+            (minted - fee_pt, fee_pt)
         };
+        if held_pt == 0 {
+            panic_with_error!(&env, Error::BadAmount);
+        }
         if fee_pt > 0 {
             ledger_add(&env, &u, fee_pt);
             crate::backstop::credit_pt(&env, fee_pt);
         }
 
-        // ---- post-trade checks on actual values
-        let now = env.ledger().timestamp();
-        let id: u64 = need::<u64>(&env, &Key::Counter)
-            .checked_add(1)
-            .expect("overflow");
-        let mut p = Position {
-            owner: user.clone(),
-            held_asset: held_asset.clone(),
-            debt_asset,
-            held_ptokens: held_pt,
-            debt_shares: new_shares,
-            collateral,
-            equity_usd: equity,
-            notional_usd: 0,
-            liq_ltv: 0,
-            opened_at: now,
-            funding_ts: now,
-            open: true,
-        };
-        let notional = usd(held_underlying(&env, &p), ph);
-        let ltv_open = ltv_of(usd(position_debt(&env, &p), pd), notional);
+        // ---- post-trade checks on actual values (held rate read after the deposits; the
+        // position's debt from the borrow's own pooled balance, no second accrual round trip)
+        let rate_h = rate_of(&env, &held_asset);
+        let notional = usd(pt_to_amt(held_pt, rate_h), ph);
+        let debt_now = share_debt(
+            new_shares,
+            pooled_after,
+            ts_all.checked_add(new_shares).expect("overflow"),
+        );
+        let ltv_open = ltv_of(usd(debt_now, pd), notional);
         check_open_ltv(&env, ltv_open, &fs, slip);
         if notional.checked_mul(SCALE_1E6).expect("overflow")
             > equity.checked_mul(rp.max_leverage).expect("overflow")
@@ -552,8 +557,24 @@ impl MarginController {
         if side_oi > caps.side_oi_usd {
             panic_with_error!(&env, Error::OiCapExceeded);
         }
-        p.notional_usd = notional;
-        p.liq_ltv = liq_of(ltv_open);
+        let now = env.ledger().timestamp();
+        let id: u64 = need::<u64>(&env, &Key::Counter)
+            .checked_add(1)
+            .expect("overflow");
+        let p = Position {
+            owner: user.clone(),
+            held_asset: held_asset.clone(),
+            debt_asset,
+            held_ptokens: held_pt,
+            debt_shares: new_shares,
+            collateral,
+            equity_usd: equity,
+            notional_usd: notional,
+            liq_ltv: liq_of(ltv_open),
+            opened_at: now,
+            funding_ts: now,
+            open: true,
+        };
 
         side.equity_usd = side_equity;
         side.oi_usd = side_oi;
@@ -568,7 +589,14 @@ impl MarginController {
             (Symbol::new(&env, "margin_open"),),
             (id, user, held_asset, borrow, held_pt, fee, p.liq_ltv),
         );
-        crate::headroom::pool_check(&env, Check::Open); // last: sees the final pooled state
+        // last: sees the final pooled state. Both receipts accrued above (held: deposit; debt:
+        // update_interest + borrow), so the check skips its own update_interest calls.
+        let usdc_rate = if long { rate_u } else { rate_h };
+        crate::headroom::pool_check_with(
+            &env,
+            Check::Open,
+            Some(crate::headroom::OpenPre { usdc_rate, usdc_price: pu }),
+        );
         id
     }
 

@@ -339,21 +339,21 @@ fn derived_close_reserve_and_no_debt_still_needs_free_liquidity() {
     f.put(Key::Caps(f.usdc.clone()), caps);
     f.put(Key::Risk(f.xlm.clone()), RiskParams { max_leverage: 5_000_000 });
     f.put(Key::Risk(f.usdc.clone()), RiskParams { max_leverage: 5_000_000 });
-    // reserve = 0 -> derive: maxdebt = 25*4 = $100; max(0.55*100, 0.75*100) = 75; *1.01 = $75.75.
+    // reserve = 0 -> derive: maxdebt = 25*4 = $100; max(0.55*100, 0.75*100) = 75; *1.015 = $76.125.
     f.m.set_headroom(&f.admin, &hr(5_000_000, 5_000_000, 500_000, 0));
-    assert_eq!(f.m.t_reserve(), 757_500_000);
-    // No debt: every HF check passes (even HF target 5x) but free liquidity must cover $75.75.
-    f.ru.set_pbal(&f.id, &1_010_000_000); // C_u = 757_500_000
-    assert_eq!(f.m.pooled_health(), (u128::MAX, u128::MAX, u128::MAX, 757_500_000));
+    assert_eq!(f.m.t_reserve(), 761_250_000);
+    // No debt: every HF check passes (even HF target 5x) but free liquidity must cover $76.125.
+    f.ru.set_pbal(&f.id, &1_015_000_000); // C_u = 761_250_000
+    assert_eq!(f.m.pooled_health(), (u128::MAX, u128::MAX, u128::MAX, 761_250_000));
     assert_eq!(f.check(false), Ok(()));
-    f.ru.set_pbal(&f.id, &1_009_999_999); // C_u = 757_499_999
+    f.ru.set_pbal(&f.id, &1_014_999_999); // C_u = 761_249_999
     assert_eq!(f.check(false), Err(Error::BackstopHeadroom as u32));
-    // Lower USDC CF moves the binding side to the long: 0.55*100*1.01 = 55.55 vs 0.5*100*1.01.
+    // Lower USDC CF moves the binding side to the long: 0.55*100*1.015 = 55.825 vs 0.5*100*1.015.
     f.ctrl.set_cf(&f.ru.address, &500_000);
-    assert_eq!(f.m.t_reserve(), 555_500_000);
+    assert_eq!(f.m.t_reserve(), 558_250_000);
     // One side unconfigured: only the other counts.
     f.env.as_contract(&f.id, || f.env.storage().instance().remove(&Key::Risk(f.xlm.clone())));
-    assert_eq!(f.m.t_reserve(), 505_000_000);
+    assert_eq!(f.m.t_reserve(), 507_500_000);
     // Explicit reserve overrides derivation.
     f.m.set_headroom(&f.admin, &hr(5_000_000, 5_000_000, 500_000, 7));
     assert_eq!(f.m.t_reserve(), 7);

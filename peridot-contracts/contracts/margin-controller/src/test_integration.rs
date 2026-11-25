@@ -8,7 +8,7 @@ extern crate std;
 use crate::test_positions::{caps, ce, check_debt_invariant, err, Rng, T, PS, U};
 use crate::{Error, Headroom};
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::token::StellarAssetClient;
+use soroban_sdk::token::{StellarAssetClient, TokenClient};
 use soroban_sdk::Address;
 use std::collections::BTreeMap;
 use std::vec::Vec as SVec;
@@ -223,13 +223,19 @@ fn underwater_short_freezes_backstop_until_xlm_settle() {
         err(t.m.try_backstop_withdraw(&t.admin, &0)),
         ce(Error::BackstopDebtOutstanding)
     );
-    // Settle: the backstop pays the oracle value plus at most the 1.5 % slippage buffer.
+    // Settle: this mock pool has no strict-receive quote, so the backstop pays the oracle value
+    // of the debt + 0.05 % buffer plus at most the 1.5 % slippage buffer (+1 pT rounding); the
+    // XLM left after the repay is kept as tracked backstop XLM pTokens (WP6).
     let k = Address::generate(&t.env);
     let repaid = t.m.settle_backstop_debt(&k, &t.xlm, &u128::MAX, &0);
     assert_eq!(repaid, bad_xlm);
     assert_eq!(t.bs_shares(&t.xlm), 0);
-    let need_pt = (usdc_up * (1_000_000 + crate::DEFAULT_MAX_SLIPPAGE)).div_ceil(1_000_000);
+    let want = (bad_xlm + bad_xlm / 2_000 + 10).max(1_000_000);
+    let usdc_w = (want * px).div_ceil(PS);
+    let need_pt = (usdc_w * (1_000_000 + crate::DEFAULT_MAX_SLIPPAGE)).div_ceil(1_000_000) + 1;
     assert_eq!(pt0 - t.bs_pt(), need_pt);
+    assert!(t.m.get_bs_xlm_ptokens() > 0);
+    assert_eq!(TokenClient::new(&t.env, &t.xlm).balance(&t.m.address), 0);
     assert_eq!(nav(&t), t.bs_pt() as i128);
     assert_eq!(t.m.get_position_debt(&sb), db);
     // Freeze lifted.
@@ -629,4 +635,118 @@ fn invariant_loop_positions_backstop_and_isolation() {
     assert!(g("bad_debt") > 0 && g("settle") > 0, "{:?}", c);
     assert!(g("bs_deposit") > 3 && g("bs_request") > 3 && g("bs_withdraw") > 0, "{:?}", c);
     assert!(g("bs_headroom_blocked") + g("bs_ctrl_blocked") > 0, "{:?}", c);
+}
+
+// ------------------------------------------------------------------ WP6: bad debt gates opens
+fn try_open(t: &T, who: &Address, long_side: bool) -> Result<u64, soroban_sdk::Error> {
+    let r = if long_side {
+        t.m.try_open(who, &t.xlm, &t.usdc, &(100 * U), &(50 * U), &0, &u128::MAX)
+    } else {
+        t.m.try_open(who, &t.usdc, &t.xlm, &(25 * U), &(200 * U), &0, &u128::MAX)
+    };
+    match r {
+        Ok(Ok(id)) => Ok(id),
+        Err(Ok(e)) => Err(e),
+        other => panic!("unexpected open result {other:?}"),
+    }
+}
+
+/// WP6 1a: while BsDebtShares(USDC) or BsDebtShares(XLM) > 0 every open fails
+/// BackstopDebtOutstanding; close, close_with_repay, liquidate, claim and settle keep working,
+/// and opens resume once the keeper has settled.
+#[test]
+fn opens_refused_while_backstop_bad_debt_unsettled() {
+    let t = T::new();
+    t.fees(0, 0, 0);
+    let a = trader(&t);
+    // ---- USDC bad debt (underwater 5x long)
+    let l5 = long(&t, &a, 100 * U, 100 * U); // 5x at $0.25
+    let l2 = long(&t, &a, 100 * U, 25 * U); // 2x
+    let l2b = long(&t, &a, 100 * U, 25 * U); // 2x, liquidated solvent below -> claim
+    let s2 = short(&t, &a, 25 * U, 100 * U); // 2x
+    t.set_xlm(1_900_000); // $0.19: L5 underwater
+    t.m.liquidate(&t.liq, &l5, &u128::MAX);
+    assert!(t.bs_shares(&t.usdc) > 0);
+    for side in [true, false] {
+        assert_eq!(try_open(&t, &a, side), Err(ce(Error::BackstopDebtOutstanding)));
+    }
+    // exits still work: close_with_repay, swap-close, solvent liquidation + claim
+    t.m.close_with_repay(&a, &l2);
+    t.m.close(&a, &s2, &0);
+    t.set_xlm(1_500_000); // $0.15: L2b (liq LTV 0.75) is liquidatable but solvent
+    assert!(t.m.is_liquidatable(&l2b));
+    t.m.liquidate(&t.liq, &l2b, &u128::MAX);
+    let c = t.m.get_claim(&a, &t.xlm);
+    assert!(c > 0);
+    assert_eq!(t.m.claim(&a, &t.xlm), c);
+    t.set_xlm(2_500_000);
+    let k = Address::generate(&t.env);
+    t.m.settle_backstop_debt(&k, &t.usdc, &u128::MAX, &0);
+    assert_eq!(t.bs_shares(&t.usdc), 0);
+    let s5 = try_open(&t, &a, false).expect("open after the USDC settle");
+    t.assert_ledgers();
+
+    // ---- XLM bad debt (underwater 5x short)
+    let s5b = short(&t, &a, 25 * U, 400 * U);
+    t.set_xlm(3_500_000); // $0.35: S5b underwater
+    t.m.liquidate(&t.liq, &s5b, &u128::MAX);
+    assert!(t.bs_shares(&t.xlm) > 0 && t.bs_shares(&t.usdc) == 0);
+    for side in [true, false] {
+        assert_eq!(try_open(&t, &a, side), Err(ce(Error::BackstopDebtOutstanding)));
+    }
+    t.m.close_with_repay(&a, &s5);
+    t.m.settle_backstop_debt(&k, &t.xlm, &u128::MAX, &0);
+    assert_eq!(t.bs_shares(&t.xlm), 0);
+    t.set_xlm(2_500_000);
+    try_open(&t, &a, true).expect("open after the XLM settle");
+    t.assert_ledgers();
+}
+
+// ------------------------------------------------------------------ WP6: settle under shortfall
+/// WP6 2: the settle's USDC withdrawal is health-checked before its repay. Under a pooled
+/// controller shortfall it fails PooledShortfall (view 0); with a little free liquidity it sizes
+/// itself to what the (health-checking) mock receipt accepts, and repeating it reaches zero.
+#[test]
+fn settle_self_sizes_to_pooled_liquidity_and_converges() {
+    let t = T::new();
+    t.fees(0, 0, 0);
+    let (a, b) = (trader(&t), trader(&t));
+    let sa = short(&t, &a, 25 * U, 400 * U); // 5x
+    let _sb = short(&t, &b, 25 * U, 100 * U); // 2x
+    t.set_xlm(3_500_000);
+    t.m.liquidate(&t.liq, &sa, &u128::MAX);
+    assert!(t.bs_shares(&t.xlm) > 0);
+    // An external seizure of USDC pTokens (cash-market liquidation of the pooled account)
+    // leaves the account short: 60 USDC pT x 0.75 = $45 against about $54 of XLM debt.
+    let ext = Address::generate(&t.env);
+    let left = 60 * U;
+    let bal = t.ru.get_ptoken_balance(&t.m.address);
+    t.ru.seize(&t.m.address, &ext, &(bal - left));
+    let (_, short_) = t.ctrl.account_liquidity(&t.m.address);
+    assert!(short_ > 0);
+    let k = Address::generate(&t.env);
+    assert_eq!(t.m.settle_max_ptokens(&t.xlm), 0);
+    assert_eq!(
+        err(t.m.try_settle_backstop_debt(&k, &t.xlm, &u128::MAX, &0)),
+        ce(Error::PooledShortfall)
+    );
+    // Operator recapitalises 25 pT: a little free liquidity, far less than the full settle.
+    admin_usdc_pt(&t, 25 * U);
+    t.m.admin_recapitalize(&t.admin, &(25 * U));
+    let (liq, short_) = t.ctrl.account_liquidity(&t.m.address);
+    assert!(liq > 0 && short_ == 0);
+    let mut n = 0;
+    let mut chunks = SVec::new();
+    while t.bs_shares(&t.xlm) > 0 {
+        let view = t.m.settle_max_ptokens(&t.xlm);
+        assert!(view > 0);
+        let pt0 = t.bs_pt();
+        t.m.settle_backstop_debt(&k, &t.xlm, &u128::MAX, &0); // never traps the health check
+        assert_eq!(pt0 - t.bs_pt(), view, "view == what the settle withdrew");
+        chunks.push(view);
+        n += 1;
+        assert!(n < 30, "settle does not converge: {chunks:?}");
+    }
+    assert!(n >= 2, "the first settle must have been capped: {chunks:?}");
+    assert_eq!(t.bs_shares(&t.xlm), 0);
 }

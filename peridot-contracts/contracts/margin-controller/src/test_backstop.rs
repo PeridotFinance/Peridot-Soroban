@@ -120,6 +120,11 @@ impl MockCtrl {
         }
         (rows, (ct, dt))
     }
+    /// (liquidity, shortfall) from the same rows (WP6 settle sizing).
+    pub fn account_liquidity(e: Env, user: Address) -> (u128, u128) {
+        let (_, (c, d)) = Self::portfolio(e, user);
+        (c.saturating_sub(d), d.saturating_sub(c))
+    }
 }
 
 /// Exact-input pool: out = in * num / den. Pulls the input with `transfer(user -> pool)`
@@ -130,6 +135,35 @@ pub struct MockPool;
 
 #[contractimpl]
 impl MockPool {
+    pub fn init(e: Env, tokens: Vec<Address>, num: u128, den: u128) {
+        e.storage().instance().set(&rk(&e, "t"), &tokens);
+        e.storage().instance().set(&rk(&e, "r"), &(num, den));
+    }
+    pub fn get_tokens(e: Env) -> Vec<Address> {
+        e.storage().instance().get(&rk(&e, "t")).unwrap()
+    }
+    pub fn swap(e: Env, user: Address, in_idx: u32, out_idx: u32, amount_in: u128, _out_min: u128) -> u128 {
+        let t = Self::get_tokens(e.clone());
+        let (num, den): (u128, u128) = e.storage().instance().get(&rk(&e, "r")).unwrap();
+        let me = e.current_contract_address();
+        token::TokenClient::new(&e, &t.get(in_idx).unwrap()).transfer(&user, &me, &(amount_in as i128));
+        let out = amount_in * num / den;
+        token::TokenClient::new(&e, &t.get(out_idx).unwrap()).transfer(&me, &user, &(out as i128));
+        out
+    }
+    /// Input needed for `out` (Aquarius strict-receive quote shape), rounded up.
+    pub fn estimate_swap_strict_receive(e: Env, _in_idx: u32, _out_idx: u32, out: u128) -> u128 {
+        let (num, den): (u128, u128) = e.storage().instance().get(&rk(&e, "r")).unwrap();
+        (out * den).div_ceil(num)
+    }
+}
+
+/// Same exact-input pool without `estimate_swap_strict_receive` (WP6 fallback).
+#[contract]
+pub struct NoQuotePool;
+
+#[contractimpl]
+impl NoQuotePool {
     pub fn init(e: Env, tokens: Vec<Address>, num: u128, den: u128) {
         e.storage().instance().set(&rk(&e, "t"), &tokens);
         e.storage().instance().set(&rk(&e, "r"), &(num, den));
@@ -232,6 +266,9 @@ impl F {
     }
     fn ledger_u(&self) -> u128 {
         self.env.as_contract(&self.m.address, || ledger(&self.env, &self.usdc))
+    }
+    fn ledger_x(&self) -> u128 {
+        self.env.as_contract(&self.m.address, || ledger(&self.env, &self.xlm))
     }
     fn nav(&self) -> i128 {
         self.m.backstop_nav().0
@@ -573,12 +610,17 @@ fn settle_xlm_strict_auth_and_unfreeze() {
     assert_eq!(err!(f.m.try_settle_backstop_debt(&keeper, &f.xlm, &u128::MAX, &0)), Error::Slippage);
     MockPoolClient::new(&f.env, &f.pool).init(&vec![&f.env, f.usdc.clone(), f.xlm.clone()], &3_992, &1_000);
 
-    // Permissionless caller cannot pull more than $1 x (1 + 1.5 % default max slippage) of pTokens.
-    let usdc_need = ceil(ceil(40_000_000, P_XLM, PS), PS, P_USDC);
-    let need_pt = ceil(ceil(usdc_need, 1_000_000 + DEFAULT_MAX_SLIPPAGE, 1_000_000), 1_000_000, RATE);
+    // WP6: sized from the pool's strict-receive quote for the debt + 0.05 % + 10 stroops (here
+    // below the oracle + 1.5 % bound), +1 pT for the withdrawal's rounding.
+    let want = 40_000_000 + 40_000_000 / 2_000 + 10;
+    let quote_in = ceil(want, 1_000, 3_992) + 1;
+    let bound = ceil(ceil(ceil(want, P_XLM, PS), PS, P_USDC), 1_000_000 + DEFAULT_MAX_SLIPPAGE, 1_000_000);
+    assert!(quote_in < bound);
+    let need_pt = ceil(quote_in, 1_000_000, RATE) + 1;
     let got_usdc = need_pt * RATE / 1_000_000;
     let got_xlm = got_usdc * 3_992 / 1_000;
     let big = u128::MAX / 2;
+    assert_eq!(f.m.settle_max_ptokens(&f.xlm), need_pt);
     let args = (keeper.clone(), f.xlm.clone(), big, 0u128).into_val(&f.env);
     f.env.mock_auths(&[MockAuth {
         address: &keeper,
@@ -591,19 +633,79 @@ fn settle_xlm_strict_auth_and_unfreeze() {
     assert_eq!(f.m.get_bs_debt_shares(&f.xlm), 0);
     assert_eq!(f.m.get_backstop().ptokens, 100_000_000 - need_pt);
     assert_eq!(f.ledger_u(), 100_000_000 - need_pt);
-    // Surplus XLM stays idle and untracked in the contract.
-    let idle = token::TokenClient::new(&f.env, &f.xlm).balance(&f.m.address) as u128;
-    assert_eq!(idle, got_xlm - 40_000_000);
+    // The XLM left over (about the 0.05 % buffer) is tracked as backstop XLM pTokens, not idle.
+    let surplus = got_xlm - 40_000_000;
+    assert!(surplus > 0 && surplus < 40_000_000 / 1_000);
+    assert_eq!(token::TokenClient::new(&f.env, &f.xlm).balance(&f.m.address), 0);
+    assert_eq!(f.m.get_bs_xlm_ptokens(), surplus); // XLM receipt rate 1e6
+    assert_eq!(f.ledger_x(), surplus);
+    assert_eq!(f.rx.get_ptoken_balance(&f.m.address), surplus);
     // Unfrozen.
     let bob = f.backer(5_000_000);
     assert!(f.m.backstop_deposit(&bob, &5_000_000, &0) > 0);
+
+    // A later small XLM bad debt is repaid from the backstop XLM pTokens first: no swap, no USDC.
+    let bs_pt = f.m.get_backstop().ptokens;
+    f.rx.set_borrow(&f.m.address, &5_000);
+    f.bad_debt(&f.xlm, 5_000);
+    assert_eq!(f.m.settle_max_ptokens(&f.xlm), 0);
+    assert_eq!(f.m.settle_backstop_debt(&keeper, &f.xlm, &big, &0), 5_000);
+    assert_eq!(f.m.get_bs_debt_shares(&f.xlm), 0);
+    assert_eq!(f.m.get_backstop().ptokens, bs_pt);
+    assert_eq!(f.m.get_bs_xlm_ptokens(), surplus - 5_001); // ceil(5000) + 1 pT withdrawn
+    assert_eq!(f.ledger_x(), surplus - 5_001);
+    assert_eq!(f.rx.get_ptoken_balance(&f.m.address), surplus - 5_001);
+}
+
+/// WP6 dust tail: a few stroops of XLM bad debt with no backstop XLM pTokens still settle to
+/// exactly zero shares (the swap buys at least 0.1 XLM; the rest is kept as backstop XLM pT).
+#[test]
+fn settle_xlm_dust_tail_reaches_zero() {
+    let f = setup();
+    f.seed(100_000_000);
+    f.rx.set_borrow(&f.m.address, &3);
+    f.bad_debt(&f.xlm, 3);
+    let keeper = Address::generate(&f.env);
+    assert_eq!(f.m.settle_backstop_debt(&keeper, &f.xlm, &u128::MAX, &0), 3);
+    assert_eq!(f.m.get_bs_debt_shares(&f.xlm), 0);
+    assert_eq!(f.rx.get_user_borrow_balance(&f.m.address), 0);
+    let kept = f.m.get_bs_xlm_ptokens();
+    assert!(kept >= 1_000_000 - 3, "0.1 XLM minimum purchase, kept {kept}");
+    assert_eq!(f.ledger_x(), kept);
+    assert_eq!(f.rx.get_ptoken_balance(&f.m.address), kept);
+}
+
+/// WP6: without a strict-receive quote the settle falls back to the oracle + max-slippage bound.
+#[test]
+fn settle_xlm_without_pool_quote_uses_oracle_bound() {
+    let f = setup();
+    f.seed(100_000_000);
+    f.rx.set_borrow(&f.m.address, &40_000_000);
+    f.bad_debt(&f.xlm, 40_000_000);
+    // A pool with no estimate_swap_strict_receive (the positions mock pool shape).
+    let p2 = f.env.register(NoQuotePool, ());
+    NoQuotePoolClient::new(&f.env, &p2).init(&vec![&f.env, f.usdc.clone(), f.xlm.clone()], &3_992, &1_000);
+    token::StellarAssetClient::new(&f.env, &f.xlm).mint(&p2, &1_000_000_000_000);
+    f.m.set_pool(&f.admin, &p2);
+    let want = 40_000_000 + 40_000_000 / 2_000 + 10;
+    let bound = ceil(ceil(ceil(want, P_XLM, PS), PS, P_USDC), 1_000_000 + DEFAULT_MAX_SLIPPAGE, 1_000_000);
+    let need_pt = ceil(bound, 1_000_000, RATE) + 1;
+    assert_eq!(f.m.settle_max_ptokens(&f.xlm), need_pt);
+    let keeper = Address::generate(&f.env);
+    assert_eq!(f.m.settle_backstop_debt(&keeper, &f.xlm, &u128::MAX, &0), 40_000_000);
+    assert_eq!(f.m.get_backstop().ptokens, 100_000_000 - need_pt);
+    let got_xlm = need_pt * RATE / 1_000_000 * 3_992 / 1_000;
+    assert_eq!(f.m.get_bs_xlm_ptokens(), got_xlm - 40_000_000);
+    assert_eq!(token::TokenClient::new(&f.env, &f.xlm).balance(&f.m.address), 0);
 }
 
 #[test]
 fn settle_partial_xlm_when_others_share_the_debt() {
     let f = setup();
     f.seed(100_000_000);
-    // Positions own 3 of 4 XLM debt shares; pooled debt 80 XLM with interest.
+    // Positions own 3 of 4 XLM debt shares; pooled debt 80 XLM with interest. Their held
+    // collateral (400 XLM pT, $55 weighted) keeps the pooled account healthy (WP6 liquidity cap).
+    f.rx.mint_pt(&f.m.address, &4_000_000_000);
     f.rx.set_borrow(&f.m.address, &800_000_003);
     f.set_inst(Key::DebtShares(f.xlm.clone()), 600_000_000u128);
     f.bad_debt(&f.xlm, 200_000_000);

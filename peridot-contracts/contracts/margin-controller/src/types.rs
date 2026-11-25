@@ -48,7 +48,7 @@ pub enum Error {
     BackstopHeadroom = 22, // backstop exit would break the pool check
     BackstopTooSmall = 23, // open refused: backstop below required size
     Impaired = 24,
-    BackstopDebtOutstanding = 25, // XLM bad debt unsettled: backstop deposits/exits frozen
+    BackstopDebtOutstanding = 25, // XLM bad debt unsettled: backstop deposits/exits frozen; any bad debt unsettled: opens refused (WP6)
     Cooldown = 26,
     WindowExpired = 27,
     NoRequest = 28,
@@ -58,6 +58,10 @@ pub enum Error {
     MaxPay = 32, // liquidator's max_pay below the required payment
     MaxFee = 33, // open: fee above the user's max_fee
     BackstopEmpty = 34,
+    /// WP6: settle_backstop_debt cannot withdraw any backstop USDC pTokens without failing the
+    /// live controller's health check (pooled account has no free liquidity). Recapitalise
+    /// (`admin_recapitalize`) or let liquidations/closes with repay restore liquidity first.
+    PooledShortfall = 35,
 }
 
 #[contracttype]
@@ -88,6 +92,7 @@ pub enum Key {
     Impaired,        // bool
     Counter,         // u64
     PendingUpgrade,
+    BsXlmPt, // WP6: u128 XLM pTokens owned by the backstop (XLM-settle surplus), part of Ledger(XLM)
     // ---- persistent
     Position(u64),
     Backer(Address),         // u128 backstop shares

@@ -120,6 +120,14 @@ pub(crate) fn authorize_transfer(env: &Env, tok: &Address, to: &Address, amount:
     env.authorize_as_current_contract(auths);
 }
 
+/// Deposit `amount` of `asset` (held by this contract) into its receipt without measuring the
+/// mint; the caller brackets one or more deposits with `get_ptoken_balance` itself (WP6).
+pub(crate) fn deposit_raw(env: &Env, asset: &Address, amount: u128) {
+    let r = receipt(env, asset);
+    authorize_transfer(env, asset, &r, amount);
+    ReceiptClient::new(env, &r).deposit(&me(env), &amount);
+}
+
 pub(crate) fn deposit_self(env: &Env, asset: &Address, amount: u128) -> u128 {
     let r = receipt(env, asset);
     let rc = ReceiptClient::new(env, &r);
@@ -149,6 +157,32 @@ pub(crate) fn repay_self(env: &Env, asset: &Address, amount: u128) -> u128 {
     x
 }
 
+fn pool_idx(env: &Env, t: &Address) -> u32 {
+    let toks: Vec<Address> = need(env, &Key::PoolTokens);
+    for k in 0..toks.len() {
+        if toks.get_unchecked(k) == *t {
+            return k;
+        }
+    }
+    panic_with_error!(env, Error::NotConfigured)
+}
+
+/// The pool's own quote of the `t_in` input needed to receive `out` of `t_out`
+/// (Aquarius `estimate_swap_strict_receive`). Untrusted: callers bound it by the oracle.
+/// `None` if the pool lacks the function or the call fails (the caller falls back).
+pub(crate) fn pool_quote_in(env: &Env, t_in: &Address, t_out: &Address, out: u128) -> Option<u128> {
+    let pool: Address = need(env, &Key::Pool);
+    let args = (pool_idx(env, t_in), pool_idx(env, t_out), out).into_val(env);
+    match env.try_invoke_contract::<u128, soroban_sdk::Error>(
+        &pool,
+        &Symbol::new(env, "estimate_swap_strict_receive"),
+        args,
+    ) {
+        Ok(Ok(v)) if v > 0 => Some(v),
+        _ => None,
+    }
+}
+
 pub(crate) fn swap(
     env: &Env,
     t_in: &Address,
@@ -160,16 +194,7 @@ pub(crate) fn swap(
         panic_with_error!(env, Error::BadAmount);
     }
     let pool: Address = need(env, &Key::Pool);
-    let toks: Vec<Address> = need(env, &Key::PoolTokens);
-    let idx = |t: &Address| -> u32 {
-        for k in 0..toks.len() {
-            if toks.get_unchecked(k) == *t {
-                return k;
-            }
-        }
-        panic_with_error!(env, Error::NotConfigured)
-    };
-    let (ii, oi) = (idx(t_in), idx(t_out));
+    let (ii, oi) = (pool_idx(env, t_in), pool_idx(env, t_out));
     let before = tok_balance(env, t_out);
     // Both shapes, as V3 (4c03928 perps.rs:2389): root transfer, and pool.swap with the
     // transfer nested. Mainnet simulation of the live CL pool records swap -> transfer.
@@ -203,9 +228,12 @@ pub(crate) fn swap(
 }
 
 pub(crate) fn oracle_min_out(env: &Env, t_in: &Address, t_out: &Address, amount_in: u128) -> u128 {
+    oracle_min_out_p(env, amount_in, price(env, t_in), price(env, t_out))
+}
+/// `oracle_min_out` with already-loaded prices (WP6: no repeated price calls per invocation).
+pub(crate) fn oracle_min_out_p(env: &Env, amount_in: u128, pi: (u128, u128), po: (u128, u128)) -> u128 {
     let slip: u128 = inst_get(env, &Key::MaxSlippage).unwrap_or(DEFAULT_MAX_SLIPPAGE);
-    let po = price(env, t_out);
-    let out = usd(amount_in, price(env, t_in))
+    let out = usd(amount_in, pi)
         .checked_mul(po.1)
         .expect("overflow")
         / po.0;
@@ -239,11 +267,17 @@ pub(crate) fn position_debt(env: &Env, p: &Position) -> u128 {
     if p.debt_shares == 0 || ts == 0 {
         return 0;
     }
-    let pooled = pooled_debt(env, &p.debt_asset);
-    if p.debt_shares >= ts {
+    share_debt(p.debt_shares, pooled_debt(env, &p.debt_asset), ts)
+}
+/// Debt of `shares` out of `total` (all holders) given the pooled balance, rounded up.
+pub(crate) fn share_debt(shares: u128, pooled: u128, total: u128) -> u128 {
+    if shares == 0 || total == 0 {
+        return 0;
+    }
+    if shares >= total {
         return pooled;
     }
-    mul_div_up(p.debt_shares, pooled, ts).min(pooled)
+    mul_div_up(shares, pooled, total).min(pooled)
 }
 pub(crate) fn held_underlying(env: &Env, p: &Position) -> u128 {
     let rate = ReceiptClient::new(env, &receipt(env, &p.held_asset)).get_exchange_rate();

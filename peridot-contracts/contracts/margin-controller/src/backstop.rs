@@ -81,10 +81,67 @@ fn bs_debt(env: &Env, asset: &Address) -> (u128, u128, u128, u128) {
 }
 /// USD value of `amount` XLM converted to USDC underlying, every step rounded up.
 fn xlm_to_usdc_up(env: &Env, amount: u128) -> u128 {
-    let px = price(env, &xlm(env));
-    let pu = price(env, &usdc(env));
+    xlm_to_usdc_up_p(amount, price(env, &xlm(env)), price(env, &usdc(env)))
+}
+fn xlm_to_usdc_up_p(amount: u128, px: (u128, u128), pu: (u128, u128)) -> u128 {
     let usd_up = mul_div_up(amount, px.0, px.1);
     mul_div_up(usd_up, pu.1, pu.0)
+}
+
+// ---- WP6 settle sizing
+/// Haircut on the controller's free liquidity when sizing a settle withdrawal (1 %).
+const LIQ_HAIRCUT: u128 = 10_000;
+/// Smallest XLM purchase of a settle swap (0.1 XLM); the excess over the debt is kept as backstop
+/// XLM pTokens. Keeps a dust tail of XLM bad debt from needing a zero-floor swap.
+const SETTLE_MIN_XLM_OUT: u128 = 1_000_000;
+
+pub(crate) fn bs_xlm_pt(env: &Env) -> u128 {
+    inst_get(env, &Key::BsXlmPt).unwrap_or(0)
+}
+fn set_bs_xlm_pt(env: &Env, v: u128) {
+    env.storage().instance().set(&Key::BsXlmPt, &v);
+}
+/// XLM the settle swap buys for `d_rem` of XLM debt: the debt + 0.05 % + 10 stroops, at least
+/// SETTLE_MIN_XLM_OUT.
+fn xlm_want(d_rem: u128) -> u128 {
+    d_rem
+        .saturating_add(d_rem / 2_000)
+        .saturating_add(10)
+        .max(SETTLE_MIN_XLM_OUT)
+}
+/// USDC pTokens the pooled account can withdraw now and still pass the live controller's
+/// health check: `account_liquidity(me)` (after accruing `other`, the receipt `bs_debt` did not
+/// accrue) at the USDC CF, price and exchange rate, less LIQ_HAIRCUT. 0 under a shortfall.
+fn liquidity_cap_pt(env: &Env, other: &Address, rate: u128, pu: (u128, u128)) -> u128 {
+    ReceiptClient::new(env, &receipt(env, other)).update_interest();
+    let c = ctrl(env);
+    let (liq, _) = c.account_liquidity(&me(env));
+    let cf = c.get_market_cf(&receipt(env, &usdc(env)));
+    if liq == 0 || cf == 0 {
+        return 0;
+    }
+    let v = mul_div_down(liq, SCALE_1E6 - LIQ_HAIRCUT, SCALE_1E6);
+    let underlying = mul_div_down(mul_div_down(v, SCALE_1E6, cf), pu.1, pu.0);
+    mul_div_down(underlying, SCALE_1E6, rate)
+}
+/// Backstop USDC pTokens to withdraw for `d_rem` of `debt_asset` debt (before max_ptokens,
+/// Bs.ptokens and the liquidity cap). USDC: the debt at the exchange rate. XLM: the pool's
+/// strict-receive quote for `xlm_want(d_rem)`, never above the oracle value of that amount plus
+/// the max-slippage buffer (so a permissionless caller or a bad quote cannot push more of the
+/// backstop through the pool); the oracle bound alone if the pool gives no quote.
+fn settle_need_pt(env: &Env, is_usdc: bool, d_rem: u128, rate: u128, pu: (u128, u128), px: (u128, u128)) -> u128 {
+    if is_usdc {
+        return to_pt_up(d_rem, rate);
+    }
+    let slip: u128 = inst_get(env, &Key::MaxSlippage).unwrap_or(DEFAULT_MAX_SLIPPAGE);
+    let want = xlm_want(d_rem);
+    let bound = mul_div_up(xlm_to_usdc_up_p(want, px, pu), SCALE_1E6 + slip, SCALE_1E6);
+    let usdc_in = match pool_quote_in(env, &usdc(env), &xlm(env), want) {
+        Some(q) => q.saturating_add(1).min(bound),
+        None => bound,
+    };
+    // +1 pT: the receipt's withdrawal rounds down
+    to_pt_up(usdc_in, rate).saturating_add(1)
 }
 
 /// Backstop exit pool check (headroom::pool_check, Check::BackstopExit), always.
@@ -157,26 +214,33 @@ pub(crate) fn nav_pt(env: &Env, strict: bool) -> i128 {
 }
 /// USDC pTokens equivalent of Bs.pending_shares at the current NAV (>= 0).
 /// Rounded up (it is excluded from open headroom, so overstating it is the safe side).
+#[cfg(test)]
 pub(crate) fn pending_pt(env: &Env) -> u128 {
+    pending_pt_at(env, nav_pt(env, false))
+}
+/// `pending_pt` at an already-computed `nav_pt(false)` (WP6: the pool check reads the NAV once).
+pub(crate) fn pending_pt_at(env: &Env, nav: i128) -> u128 {
     let b = bs_get(env);
-    if b.pending_shares == 0 || b.shares == 0 {
-        return 0;
-    }
-    let nav = nav_pt(env, false);
-    if nav <= 0 {
+    if b.pending_shares == 0 || b.shares == 0 || nav <= 0 {
         return 0;
     }
     let nav = nav as u128;
     mul_div_up(b.pending_shares, nav, b.shares).min(nav)
 }
 /// Backstop value in usd7 (nav_pt * exchange rate * USDC price); 0 if negative.
+#[cfg(test)]
 pub(crate) fn value_usd(env: &Env) -> u128 {
-    let nav = nav_pt(env, false);
+    value_usd_at(env, nav_pt(env, false), None)
+}
+/// `value_usd` at an already-computed NAV, with the USDC (exchange rate, price) the caller
+/// already loaded in this invocation (`None` reads them).
+pub(crate) fn value_usd_at(env: &Env, nav: i128, pre: Option<(u128, (u128, u128))>) -> u128 {
     if nav <= 0 {
         return 0;
     }
-    let underlying = mul_div_down(nav as u128, usdc_rate(env), SCALE_1E6);
-    usd(underlying, price(env, &usdc(env)))
+    let (rate, pu) = pre.unwrap_or_else(|| (usdc_rate(env), price(env, &usdc(env))));
+    let underlying = mul_div_down(nav as u128, rate, SCALE_1E6);
+    usd(underlying, pu)
 }
 
 #[contractimpl]
@@ -377,6 +441,17 @@ impl MarginController {
     /// Permissionless: repay backstop-owned bad debt from backstop USDC pTokens (XLM: swap).
     /// Returns debt repaid (raw debt units). Not gated by Impaired / the XLM freeze: it is the
     /// recovery path. Repays at most the backstop's own debt; never other positions' debt.
+    ///
+    /// WP6 (25 Nov):
+    /// - Self-sizing: the USDC withdrawal (health-checked by the live controller BEFORE the
+    ///   repay) is capped at what the pooled account's free liquidity allows (`account_liquidity`,
+    ///   1 % haircut). Under a controller shortfall nothing can be withdrawn: `PooledShortfall`.
+    ///   Each settle frees liquidity (repaid debt > CF-weighted collateral removed), so the keeper
+    ///   repeats it until `get_bs_debt_shares` is 0; `settle_max_ptokens` is the sizing view.
+    /// - XLM: the swap input comes from the pool's strict-receive quote for the debt + 0.05 %
+    ///   (bounded by the oracle + max slippage), the output is still floored at the oracle less
+    ///   max slippage, and any XLM left after the repay is deposited as backstop XLM pTokens
+    ///   (`BsXlmPt`, in Ledger(XLM)); the next XLM settle repays from those first, without a swap.
     pub fn settle_backstop_debt(env: Env, caller: Address, debt_asset: Address, max_ptokens: u128, min_out: u128) -> u128 {
         caller.require_auth();
         let u = usdc(&env);
@@ -396,45 +471,106 @@ impl MarginController {
             bump(&env);
             return 0;
         }
-        let rate = usdc_rate(&env);
-        // pTokens needed. XLM: oracle USDC value of d plus the max-slippage buffer, so a
-        // permissionless caller cannot push more of the backstop through the pool than that.
-        let need_pt = if is_usdc {
-            to_pt_up(d, rate)
-        } else {
-            let slip: u128 = inst_get(&env, &Key::MaxSlippage).unwrap_or(DEFAULT_MAX_SLIPPAGE);
-            let usdc_need = xlm_to_usdc_up(&env, d);
-            to_pt_up(mul_div_up(usdc_need, SCALE_1E6 + slip, SCALE_1E6), rate)
-        };
-        let mut b = bs_get(&env);
-        let pt = need_pt.min(max_ptokens).min(b.ptokens);
-        if pt == 0 {
-            panic_with_error!(&env, Error::BadAmount);
+        let mut repaid: u128 = 0;
+        // ---- XLM: the backstop's own XLM pTokens first (an earlier settle's surplus)
+        if !is_usdc {
+            let bx = bs_xlm_pt(&env);
+            if bx > 0 {
+                let rx = ReceiptClient::new(&env, &receipt(&env, &x));
+                let w = bx.min(to_pt_up(d, rx.get_exchange_rate()).saturating_add(1));
+                let before = tok_balance(&env, &x);
+                rx.withdraw(&me(&env), &w);
+                let got = tok_balance(&env, &x).saturating_sub(before);
+                set_bs_xlm_pt(&env, bx - w);
+                ledger_sub(&env, &x, w);
+                repaid = repay_self(&env, &x, got.min(d));
+            }
         }
-        let before = tok_balance(&env, &u);
-        ReceiptClient::new(&env, &receipt(&env, &u)).withdraw(&me(&env), &pt);
-        let got = tok_balance(&env, &u).saturating_sub(before);
-        if got == 0 {
-            panic_with_error!(&env, Error::BadAmount);
+        // ---- backstop USDC pTokens (XLM: swapped on the pool)
+        let mut pt: u128 = 0;
+        let mut surplus: u128 = 0;
+        let d_rem = d - repaid;
+        if d_rem > 0 {
+            let rate = usdc_rate(&env);
+            let pu = price(&env, &u);
+            let px = if is_usdc { pu } else { price(&env, &x) };
+            let need_pt = settle_need_pt(&env, is_usdc, d_rem, rate, pu, px);
+            let cap = liquidity_cap_pt(&env, if is_usdc { &x } else { &u }, rate, pu);
+            let mut b = bs_get(&env);
+            pt = need_pt.min(max_ptokens).min(b.ptokens).min(cap);
+            if pt == 0 {
+                if cap == 0 {
+                    panic_with_error!(&env, Error::PooledShortfall);
+                }
+                panic_with_error!(&env, Error::BadAmount);
+            }
+            let before = tok_balance(&env, &u);
+            ReceiptClient::new(&env, &receipt(&env, &u)).withdraw(&me(&env), &pt);
+            let got = tok_balance(&env, &u).saturating_sub(before);
+            if got == 0 {
+                panic_with_error!(&env, Error::BadAmount);
+            }
+            b.ptokens = sub(&env, b.ptokens, pt);
+            bs_put(&env, &b);
+            ledger_sub(&env, &u, pt);
+            let amount = if is_usdc {
+                got
+            } else {
+                let floor = oracle_min_out_p(&env, got, pu, px).max(min_out);
+                swap(&env, &u, &x, got, floor)
+            };
+            let r = repay_self(&env, &debt_asset, amount.min(d_rem));
+            repaid = add(&env, repaid, r);
+            surplus = amount - r;
+            // XLM left over is kept, tracked, as backstop XLM pTokens (sub-pToken dust stays idle).
+            if !is_usdc && surplus > 0 {
+                let rx = ReceiptClient::new(&env, &receipt(&env, &x));
+                if mul_div_down(surplus, SCALE_1E6, rx.get_exchange_rate()) > 0 {
+                    let minted = deposit_self(&env, &x, surplus);
+                    ledger_add(&env, &x, minted);
+                    set_bs_xlm_pt(&env, add(&env, bs_xlm_pt(&env), minted));
+                }
+            }
         }
-        b.ptokens = sub(&env, b.ptokens, pt);
-        bs_put(&env, &b);
-        ledger_sub(&env, &u, pt);
-        let amount = if is_usdc {
-            got
-        } else {
-            let floor = oracle_min_out(&env, &u, &x, got).max(min_out);
-            swap(&env, &u, &x, got, floor)
-        };
-        let repaid = repay_self(&env, &debt_asset, amount.min(d));
         // Burn rounded down, so the other positions' debt per share can never rise.
         let burned = if repaid >= d { s } else { mul_div_down(repaid, total, pooled).min(s) };
         set_bs_debt_shares(&env, &debt_asset, s - burned);
-        // Surplus (raw debt-asset units) stays idle and untracked in this contract.
-        let surplus = amount.saturating_sub(repaid);
         emit(&env, "bs_settle", (debt_asset, pt, repaid, burned, surplus));
         bump(&env);
         repaid
+    }
+
+    /// Keeper sizing view (WP6): the backstop USDC pTokens `settle_backstop_debt(.., u128::MAX, ..)`
+    /// would withdraw now, after the pooled-liquidity cap. 0 = nothing to withdraw: no backstop
+    /// debt, the backstop's XLM pTokens cover it, or a controller shortfall (recapitalise first).
+    /// Conservative: it ignores the liquidity a first repay from backstop XLM pTokens frees.
+    pub fn settle_max_ptokens(env: Env, debt_asset: Address) -> u128 {
+        let (u, x) = (usdc(&env), xlm(&env));
+        let is_usdc = debt_asset == u;
+        if !is_usdc && debt_asset != x {
+            panic_with_error!(&env, Error::BadParams);
+        }
+        let (d, _, _, _) = bs_debt(&env, &debt_asset);
+        let d_rem = if is_usdc {
+            d
+        } else {
+            let rate_x = ReceiptClient::new(&env, &receipt(&env, &x)).get_exchange_rate();
+            d.saturating_sub(mul_div_down(bs_xlm_pt(&env), rate_x, SCALE_1E6))
+        };
+        if d_rem == 0 {
+            return 0;
+        }
+        let rate = usdc_rate(&env);
+        let pu = price(&env, &u);
+        let px = if is_usdc { pu } else { price(&env, &x) };
+        let need_pt = settle_need_pt(&env, is_usdc, d_rem, rate, pu, px);
+        let cap = liquidity_cap_pt(&env, if is_usdc { &x } else { &u }, rate, pu);
+        need_pt.min(bs_get(&env).ptokens).min(cap)
+    }
+
+    /// Backstop-owned XLM pTokens (XLM-settle surplus, consumed by the next XLM settle).
+    pub fn get_bs_xlm_ptokens(env: Env) -> u128 {
+        bs_xlm_pt(&env)
     }
 
     pub fn get_backstop(env: Env) -> Backstop {

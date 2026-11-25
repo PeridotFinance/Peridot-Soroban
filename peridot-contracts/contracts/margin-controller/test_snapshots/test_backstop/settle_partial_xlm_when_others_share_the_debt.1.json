@@ -221,6 +221,7 @@
     [],
     [],
     [],
+    [],
     [
       [
         "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXI7N",
@@ -617,7 +618,7 @@
               },
               "durability": "persistent",
               "val": {
-                "u128": "58892468"
+                "u128": "59398512"
               }
             }
           },
@@ -685,6 +686,33 @@
               "durability": "persistent",
               "val": {
                 "u128": "600000002"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 4095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "p"
+                  },
+                  {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVAX5"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "u128": "4000100024"
               }
             }
           },
@@ -890,7 +918,7 @@
                               "symbol": "ptokens"
                             },
                             "val": {
-                              "u128": "58892468"
+                              "u128": "59398512"
                             }
                           },
                           {
@@ -954,6 +982,18 @@
                             }
                           }
                         ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "BsXlmPt"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u128": "100024"
                       }
                     },
                     {
@@ -1141,7 +1181,22 @@
                         ]
                       },
                       "val": {
-                        "u128": "58892468"
+                        "u128": "59398512"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Ledger"
+                          },
+                          {
+                            "address": "CDLDVFKHEZ2RVB3NG4UQA4VPD3TSHV6XMHXMHP2BSGCJ2IIWVTOHGDSG"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u128": "100024"
                       }
                     },
                     {
@@ -1307,7 +1362,7 @@
                       "symbol": "amount"
                     },
                     "val": {
-                      "i128": "999949249998"
+                      "i128": "999949874743"
                     }
                   },
                   {
@@ -1359,7 +1414,7 @@
                       "symbol": "amount"
                     },
                     "val": {
-                      "i128": "50750002"
+                      "i128": "50125257"
                     }
                   },
                   {
@@ -1566,7 +1621,7 @@
                       "symbol": "amount"
                     },
                     "val": {
-                      "i128": "200000001"
+                      "i128": "200100025"
                     }
                   },
                   {
@@ -1618,7 +1673,7 @@
                       "symbol": "amount"
                     },
                     "val": {
-                      "i128": "999797405993"
+                      "i128": "999799899975"
                     }
                   },
                   {
@@ -1670,7 +1725,7 @@
                       "symbol": "amount"
                     },
                     "val": {
-                      "i128": "2594006"
+                      "i128": "0"
                     }
                   },
                   {

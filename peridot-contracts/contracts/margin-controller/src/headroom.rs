@@ -7,8 +7,9 @@ use crate::contract::{MarginController, MarginControllerArgs, MarginControllerCl
 use crate::types::*;
 use soroban_sdk::{contractevent, contractimpl, panic_with_error, Address, Env};
 
-/// Close-reserve safety margin when derived from caps (INTERFACE rule 5): 1.01x.
-const RESERVE_MARGIN: u128 = 1_010_000;
+/// Close-reserve safety margin when derived from caps (INTERFACE rule 5): 1.015x, matching the
+/// 1.5 % default max slippage (WP6, 25 Nov; was 1.01x for 1 %).
+const RESERVE_MARGIN: u128 = 1_015_000;
 
 // ---------------------------------------------------------------- events
 #[contractevent(topics = ["margin_impaired"], data_format = "vec")]
@@ -44,11 +45,15 @@ pub(crate) struct Book {
 /// `portfolio(me)` call. `portfolio` lists only entered markets: a missing row counts as zero.
 /// A row for any other market (should not exist; the margin account enters only these two)
 /// adds its debt to the unstressed debt and its collateral is ignored (conservative).
-pub(crate) fn book(env: &Env) -> Book {
+/// `accrued = true` only when both receipts already accrued in this invocation (open: deposit on
+/// the held receipt, update_interest + borrow on the debt receipt), so the calls would be no-ops.
+pub(crate) fn book(env: &Env, accrued: bool) -> Book {
     let ru = receipt(env, &usdc(env));
     let rx = receipt(env, &xlm(env));
-    ReceiptClient::new(env, &ru).update_interest();
-    ReceiptClient::new(env, &rx).update_interest();
+    if !accrued {
+        ReceiptClient::new(env, &ru).update_interest();
+        ReceiptClient::new(env, &rx).update_interest();
+    }
     let (rows, _) = ctrl(env).portfolio(&me(env));
     let mut b = Book::default();
     for (m, pbal, _debt, coll, debt_usd) in rows.iter() {
@@ -108,7 +113,7 @@ fn hf_value(b: &Book, f: u128) -> u128 {
 }
 
 /// close_reserve_usd, or (when 0) the INTERFACE rule 5 derivation:
-/// 1.01 * max(cf_xlm * maxdebt_long, cf_usdc * maxdebt_short), rounded up, with
+/// 1.015 * max(cf_xlm * maxdebt_long, cf_usdc * maxdebt_short), rounded up, with
 /// maxdebt_side = Caps(side).per_position_equity_usd * (Risk(side).max_leverage - 1e6) / 1e6.
 /// A side without Caps or Risk contributes 0 (WP2 cannot open on it without both).
 pub(crate) fn close_reserve(env: &Env, h: &Headroom) -> u128 {
@@ -139,14 +144,31 @@ pub(crate) fn close_reserve(env: &Env, h: &Headroom) -> u128 {
 /// a, b, c, d >= 0. dHF/dp has the constant sign of (a*d - b*c), so HF is monotonic on
 /// [p(1-s), p(1+s)] and its minimum over the interval is at one of the two endpoints.
 pub(crate) fn pool_check(env: &Env, check: Check) {
+    pool_check_with(env, check, None);
+}
+
+/// Values `open` already holds when it runs the pool check (WP6, 25 Nov): both receipts were
+/// accrued earlier in the same invocation, and the USDC exchange rate / oracle price it read.
+/// The rate may be read before the trade's deposits: an older rate is never higher, so the
+/// backstop value it gives is never overstated.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct OpenPre {
+    pub usdc_rate: u128,
+    pub usdc_price: (u128, u128),
+}
+
+/// `pool_check`; `pre = Some(..)` (open only) skips both `update_interest` calls and reuses the
+/// USDC rate and price. The backstop NAV is read once per check (pending exits and value).
+pub(crate) fn pool_check_with(env: &Env, check: Check, pre: Option<OpenPre>) {
     let h: Headroom = need(env, &Key::Headroom);
     let err = match check {
         Check::Open => Error::PoolCheck,
         Check::BackstopExit => Error::BackstopHeadroom,
     };
-    let mut b = book(env);
+    let mut b = book(env, pre.is_some());
+    let nav = if check == Check::Open { crate::backstop::nav_pt(env, false) } else { 0 };
     if check == Check::Open {
-        exclude_pending(&mut b, crate::backstop::pending_pt(env));
+        exclude_pending(&mut b, crate::backstop::pending_pt_at(env, nav));
     }
     if !hf_ok(&b, SCALE_1E6, h.hf_target) {
         panic_with_error!(env, err);
@@ -161,7 +183,10 @@ pub(crate) fn pool_check(env: &Env, check: Check) {
     if c < need_free {
         panic_with_error!(env, err);
     }
-    if check == Check::Open && crate::backstop::value_usd(env) < required_backstop_usd(env) {
+    if check == Check::Open
+        && crate::backstop::value_usd_at(env, nav, pre.map(|p| (p.usdc_rate, p.usdc_price)))
+            < required_backstop_usd(env)
+    {
         panic_with_error!(env, Error::BackstopTooSmall);
     }
 }
@@ -237,7 +262,7 @@ impl MarginController {
     /// free_usd = max(0, C - D), before the close reserve is subtracted.
     pub fn pooled_health(env: Env) -> (u128, u128, u128, u128) {
         let h: Headroom = need(&env, &Key::Headroom);
-        let b = book(&env);
+        let b = book(&env, false);
         let s = h.stress.min(SCALE_1E6);
         let c = b.cx.saturating_add(b.cu);
         let d = b.dx.saturating_add(b.du);
