@@ -1,0 +1,291 @@
+//! WP0: shared helpers and live ABIs (moved verbatim from v0.2 contract.rs; helpers made pub(crate)).
+//! Owned by the integrator. Add helpers only via the integrator.
+use crate::types::*;
+use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
+use soroban_sdk::{contractclient, panic_with_error, token, Address, Env, IntoVal, Symbol, Vec};
+// ---------------------------------------------------------------- live ABIs
+// Signatures checked against the deployed bytes (receipt 5630a701, controller f41e5260)
+// with `stellar contract info interface`. Only plain-account entrypoints are used.
+#[contractclient(name = "ReceiptClient")]
+pub trait Receipt {
+    fn deposit(env: Env, user: Address, amount: u128);
+    fn withdraw(env: Env, user: Address, ptoken_amount: u128);
+    fn borrow(env: Env, user: Address, amount: u128);
+    fn repay(env: Env, user: Address, amount: u128);
+    fn transfer(env: Env, from: Address, to: Address, amount: i128);
+    fn get_underlying_token(env: Env) -> Address;
+    fn get_exchange_rate(env: Env) -> u128;
+    fn get_ptoken_balance(env: Env, user: Address) -> u128;
+    fn get_user_borrow_balance(env: Env, user: Address) -> u128;
+    fn update_interest(env: Env);
+}
+
+#[contractclient(name = "CtrlClient")]
+pub trait Ctrl {
+    fn enter_market(env: Env, user: Address, market: Address);
+    fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)>;
+    fn get_market_cf(env: Env, market: Address) -> u128;
+    /// (rows: (market, ptoken_balance, debt, collateral_usd_after_cf, debt_usd), (coll_total, debt_total))
+    fn portfolio(env: Env, user: Address) -> (Vec<(Address, u128, u128, u128, u128)>, (u128, u128));
+    fn account_liquidity(env: Env, user: Address) -> (u128, u128);
+}
+
+/// Aquarius pool: `swap` does NOT require_auth; the input `transfer` carries the
+/// caller's authorization, so that entry must sit at the root.
+#[contractclient(name = "PoolClient")]
+pub trait Pool {
+    fn get_tokens(env: Env) -> Vec<Address>;
+    fn swap(env: Env, user: Address, in_idx: u32, out_idx: u32, amount_in: u128, out_min: u128) -> u128;
+}
+
+// ---------------------------------------------------------------- helpers
+pub(crate) fn inst_get<T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>>(env: &Env, k: &Key) -> Option<T> {
+    env.storage().instance().get(k)
+}
+pub(crate) fn need<T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>>(env: &Env, k: &Key) -> T {
+    inst_get(env, k).unwrap_or_else(|| panic_with_error!(env, Error::NotConfigured))
+}
+pub(crate) fn bump(env: &Env) {
+    env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+pub(crate) fn me(env: &Env) -> Address {
+    env.current_contract_address()
+}
+pub(crate) fn require_admin(env: &Env, admin: &Address) {
+    let stored: Address = need(env, &Key::Admin);
+    if stored != *admin {
+        panic_with_error!(env, Error::NotAdmin);
+    }
+    admin.require_auth();
+}
+pub(crate) fn receipt(env: &Env, asset: &Address) -> Address {
+    need(env, &Key::Market(asset.clone()))
+}
+pub(crate) fn ctrl(env: &Env) -> CtrlClient<'_> {
+    let a: Address = need(env, &Key::Ctrl);
+    CtrlClient::new(env, &a)
+}
+pub(crate) fn price(env: &Env, asset: &Address) -> (u128, u128) {
+    match ctrl(env).get_price_usd(asset) {
+        Some((p, s)) if p > 0 && s > 0 => (p, s),
+        _ => panic_with_error!(env, Error::PriceUnavailable),
+    }
+}
+pub(crate) fn usd(amount: u128, p: (u128, u128)) -> u128 {
+    amount.checked_mul(p.0).expect("overflow") / p.1
+}
+pub(crate) fn mul_div_up(a: u128, b: u128, d: u128) -> u128 {
+    let n = a.checked_mul(b).expect("overflow");
+    n / d + if n % d == 0 { 0 } else { 1 }
+}
+pub(crate) fn tok_balance(env: &Env, t: &Address) -> u128 {
+    let b = token::TokenClient::new(env, t).balance(&me(env));
+    if b < 0 {
+        0
+    } else {
+        b as u128
+    }
+}
+pub(crate) fn i(env: &Env, x: u128) -> i128 {
+    if x > i128::MAX as u128 {
+        panic_with_error!(env, Error::BadAmount);
+    }
+    x as i128
+}
+
+/// Root entry for `token.transfer(self -> to, amount)` performed inside the NEXT call.
+pub(crate) fn authorize_transfer(env: &Env, tok: &Address, to: &Address, amount: u128) {
+    let mut auths = Vec::new(env);
+    auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+        context: ContractContext {
+            contract: tok.clone(),
+            fn_name: Symbol::new(env, "transfer"),
+            args: (me(env), to.clone(), i(env, amount)).into_val(env),
+        },
+        sub_invocations: Vec::new(env),
+    }));
+    env.authorize_as_current_contract(auths);
+}
+
+pub(crate) fn deposit_self(env: &Env, asset: &Address, amount: u128) -> u128 {
+    let r = receipt(env, asset);
+    let rc = ReceiptClient::new(env, &r);
+    let before = rc.get_ptoken_balance(&me(env));
+    authorize_transfer(env, asset, &r, amount);
+    rc.deposit(&me(env), &amount);
+    let minted = rc.get_ptoken_balance(&me(env)).saturating_sub(before);
+    if minted == 0 {
+        panic_with_error!(env, Error::BadAmount);
+    }
+    minted
+}
+
+/// Repay up to `amount` of the pooled debt; returns what was actually repaid.
+pub(crate) fn repay_self(env: &Env, asset: &Address, amount: u128) -> u128 {
+    let r = receipt(env, asset);
+    let rc = ReceiptClient::new(env, &r);
+    // The receipt caps its pull at its pre-accrual debt view; mirror that exactly so
+    // the authorized transfer arguments match.
+    let view = rc.get_user_borrow_balance(&me(env));
+    let x = amount.min(view);
+    if x == 0 {
+        return 0;
+    }
+    authorize_transfer(env, asset, &r, x);
+    rc.repay(&me(env), &x);
+    x
+}
+
+pub(crate) fn swap(env: &Env, t_in: &Address, t_out: &Address, amount_in: u128, min_out: u128) -> u128 {
+    if amount_in == 0 || min_out == 0 {
+        panic_with_error!(env, Error::BadAmount);
+    }
+    let pool: Address = need(env, &Key::Pool);
+    let toks: Vec<Address> = need(env, &Key::PoolTokens);
+    let idx = |t: &Address| -> u32 {
+        for k in 0..toks.len() {
+            if toks.get_unchecked(k) == *t {
+                return k;
+            }
+        }
+        panic_with_error!(env, Error::NotConfigured)
+    };
+    let (ii, oi) = (idx(t_in), idx(t_out));
+    let before = tok_balance(env, t_out);
+    // Both shapes, as V3 (4c03928 perps.rs:2389): root transfer, and pool.swap with the
+    // transfer nested. Mainnet simulation of the live CL pool records swap -> transfer.
+    let xfer = InvokerContractAuthEntry::Contract(SubContractInvocation {
+        context: ContractContext {
+            contract: t_in.clone(),
+            fn_name: Symbol::new(env, "transfer"),
+            args: (me(env), pool.clone(), i(env, amount_in)).into_val(env),
+        },
+        sub_invocations: Vec::new(env),
+    });
+    let mut nested = Vec::new(env);
+    nested.push_back(xfer.clone());
+    let mut auths = Vec::new(env);
+    auths.push_back(xfer);
+    auths.push_back(InvokerContractAuthEntry::Contract(SubContractInvocation {
+        context: ContractContext {
+            contract: pool.clone(),
+            fn_name: Symbol::new(env, "swap"),
+            args: (me(env), ii, oi, amount_in, min_out).into_val(env),
+        },
+        sub_invocations: nested,
+    }));
+    env.authorize_as_current_contract(auths);
+    PoolClient::new(env, &pool).swap(&me(env), &ii, &oi, &amount_in, &min_out);
+    let got = tok_balance(env, t_out).saturating_sub(before);
+    if got < min_out {
+        panic_with_error!(env, Error::Slippage);
+    }
+    got
+}
+
+pub(crate) fn oracle_min_out(env: &Env, t_in: &Address, t_out: &Address, amount_in: u128) -> u128 {
+    let slip: u128 = inst_get(env, &Key::MaxSlippage).unwrap_or(10_000);
+    let po = price(env, t_out);
+    let out = usd(amount_in, price(env, t_in)).checked_mul(po.1).expect("overflow") / po.0;
+    let m = out.checked_mul(SCALE_1E6 - slip).expect("overflow") / SCALE_1E6;
+    if m == 0 {
+        panic_with_error!(env, Error::BadAmount);
+    }
+    m
+}
+
+pub(crate) fn total_shares(env: &Env, debt: &Address) -> u128 {
+    inst_get(env, &Key::DebtShares(debt.clone())).unwrap_or(0)
+}
+pub(crate) fn pooled_debt(env: &Env, debt: &Address) -> u128 {
+    // Accrue first: the plain balance view can lag the index that the next
+    // state-changing receipt call applies (observed on the Mainnet fork).
+    let rc = ReceiptClient::new(env, &receipt(env, debt));
+    rc.update_interest();
+    rc.get_user_borrow_balance(&me(env))
+}
+/// Position debt rounded up; the last share holder owes the whole pooled balance.
+pub(crate) fn position_debt(env: &Env, p: &Position) -> u128 {
+    let ts = total_shares(env, &p.debt_asset);
+    if p.debt_shares == 0 || ts == 0 {
+        return 0;
+    }
+    let pooled = pooled_debt(env, &p.debt_asset);
+    if p.debt_shares >= ts {
+        return pooled;
+    }
+    mul_div_up(p.debt_shares, pooled, ts).min(pooled)
+}
+pub(crate) fn held_underlying(env: &Env, p: &Position) -> u128 {
+    let rate = ReceiptClient::new(env, &receipt(env, &p.held_asset)).get_exchange_rate();
+    p.held_ptokens.checked_mul(rate).expect("overflow") / SCALE_1E6
+}
+pub(crate) fn ltv(env: &Env, p: &Position, debt: u128) -> u128 {
+    let held_usd = usd(held_underlying(env, p), price(env, &p.held_asset));
+    let debt_usd = usd(debt, price(env, &p.debt_asset));
+    if held_usd == 0 {
+        return u128::MAX;
+    }
+    mul_div_up(debt_usd, SCALE_1E6, held_usd)
+}
+pub(crate) fn load(env: &Env, id: u64) -> Position {
+    let p: Position = env
+        .storage()
+        .persistent()
+        .get(&Key::Position(id))
+        .unwrap_or_else(|| panic_with_error!(env, Error::NotOpen));
+    if !p.open {
+        panic_with_error!(env, Error::NotOpen);
+    }
+    p
+}
+pub(crate) fn store(env: &Env, id: u64, p: &Position) {
+    let k = Key::Position(id);
+    env.storage().persistent().set(&k, p);
+    env.storage().persistent().extend_ttl(&k, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+pub(crate) fn finish(env: &Env, id: u64, p: Position) {
+    let ts = total_shares(env, &p.debt_asset);
+    env.storage()
+        .instance()
+        .set(&Key::DebtShares(p.debt_asset.clone()), &ts.saturating_sub(p.debt_shares));
+    let mut q = p;
+    q.open = false;
+    q.held_ptokens = 0;
+    q.debt_shares = 0;
+    store(env, id, &q);
+}
+pub(crate) fn send_ptokens(env: &Env, asset: &Address, to: &Address, amount: u128) {
+    if amount == 0 {
+        return;
+    }
+    ReceiptClient::new(env, &receipt(env, asset)).transfer(&me(env), to, &i(env, amount));
+}
+
+// ---- WP0 additions: ledger bookkeeping (Ledger(asset) = pTokens this contract accounts for)
+pub(crate) fn ledger(env: &Env, asset: &Address) -> u128 {
+    inst_get(env, &Key::Ledger(asset.clone())).unwrap_or(0)
+}
+pub(crate) fn ledger_add(env: &Env, asset: &Address, pt: u128) {
+    let v = ledger(env, asset).checked_add(pt).expect("overflow");
+    env.storage().instance().set(&Key::Ledger(asset.clone()), &v);
+}
+pub(crate) fn ledger_sub(env: &Env, asset: &Address, pt: u128) {
+    let v = ledger(env, asset).checked_sub(pt).unwrap_or_else(|| panic_with_error!(env, Error::BadAmount));
+    env.storage().instance().set(&Key::Ledger(asset.clone()), &v);
+}
+pub(crate) fn usdc(env: &Env) -> Address {
+    need(env, &Key::Usdc)
+}
+pub(crate) fn xlm(env: &Env) -> Address {
+    need(env, &Key::Xlm)
+}
+pub(crate) fn fees(env: &Env) -> Fees {
+    need(env, &Key::Fees)
+}
+pub(crate) fn is_impaired(env: &Env) -> bool {
+    inst_get(env, &Key::Impaired).unwrap_or(false)
+}
+pub(crate) fn set_impaired(env: &Env, v: bool) {
+    env.storage().instance().set(&Key::Impaired, &v);
+}
