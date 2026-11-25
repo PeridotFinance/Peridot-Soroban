@@ -84,7 +84,7 @@ Pilot long book $100 at 5× → worst case ≈ **$197** backstop loss; Tier 1 ($
 ## 4. Pool check in `open` (re-sized for 5×)
 
 Live controller health-checks the pooled account mid-flow (at the borrow before the proceeds are deposited, and at the
-withdraw before repay in a swap-close). Per $1 of trader equity C at 5× (1.5 % slippage, the default since WP4):
+withdraw before repay in a swap-close). Per $1 of trader equity C at 5× (1 % slippage; the debt/collateral row and the close reserve use the 1.5 % default):
 
 | | 5× long (hold XLM, owe USDC) | 5× short (hold USDC, owe XLM) |
 |---|---|---|

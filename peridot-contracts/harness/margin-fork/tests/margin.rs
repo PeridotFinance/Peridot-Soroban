@@ -871,7 +871,7 @@ fn heaviest_open_with_bad_debt_and_pending_exit() {
         id
     };
     o(true, 5_000_000, "open long 5x after settles (both sides open, exit pending, backstop XLM pT held)");
-    o(false, 5_000_000, "open short 5x after settles (both sides open, exit pending)");
+    let s5b = o(false, 5_000_000, "open short 5x after settles (both sides open, exit pending)");
     // 72 h later (interest accrued on both receipts, exit request inside its window)
     let req = m.get_withdraw_req(&backer).unwrap();
     c.e.ledger().with_mut(|li| li.timestamp = req.ready_at + 1);
@@ -884,6 +884,20 @@ fn heaviest_open_with_bad_debt_and_pending_exit() {
     };
     o(true, 3_000_000, "open long 3x after 72 h (3 longs + 3 shorts open, exit pending)");
     o(false, 3_000_000, "open short 3x after 72 h (3 longs + 3 shorts open, exit pending)");
+    // A second XLM bad debt while backstop XLM pTokens are held: the settle repays from them first (XLM receipt withdraw +
+    // repay), then swaps backstop USDC for the rest and keeps the new surplus.
+    c.post(140, 100, 0, 60);
+    assert!(c.liquidate(&keeper, s5b).expect("S5b +40%").1);
+    let (bx0, xs0) = (m.get_bs_xlm_ptokens(), m.get_bs_debt_shares(&x));
+    assert!(bx0 > 0 && xs0 > 0);
+    c.tick();
+    let repaid = c.settle(&keeper, &x, u128::MAX).expect("settle XLM with backstop XLM pT held");
+    c.res("settle_backstop_debt XLM (backstop XLM pT repaid first, then swap; 3+3 open, exit pending)", "liquidation");
+    let bx1 = m.get_bs_xlm_ptokens();
+    assert_eq!(m.get_bs_debt_shares(&x), 0);
+    assert!(bx1 > 0 && bal(&c.e, &x, &c.margin) <= 2, "new surplus kept as backstop XLM pT, no idle XLM");
+    c.note("secondXlmSettle", json!({"bsXlmPtBefore": bx0.to_string(), "bsXlmPtAfter": bx1.to_string(), "repaidXlm": repaid.to_string(),
+        "sharesBefore": xs0.to_string()}));
     c.ledger_eq("heavy end");
     c.finish("heavy");
 }

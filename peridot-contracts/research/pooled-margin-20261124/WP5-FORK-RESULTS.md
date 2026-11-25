@@ -73,6 +73,9 @@ Harness changes:
   - second long and second short;
   - long and short after the settles, with backstop XLM pTokens held;
   - long and short after a 72 h warp, with 3 longs and 3 shorts open.
+
+  It then liquidates a fresh 5× short at +40 % and settles that XLM bad debt while backstop XLM pTokens are held, so
+  the settle runs its XLM-pT-first path on the live receipt.
 - **`pooled_account_seizure_…`**:
   - An L2 solvent-liquidation claim is kept unclaimed through the ×7 spike.
   - `claim`, swap-`close` and `close_with_repay` are tried with pooled HF < 1.
@@ -167,7 +170,9 @@ Native tests cover four cases:
 
 ## Resource table (WP6 build b1cb1cb2, real pool, protocol-30 host)
 
-Same method and limits as the WP5 table below. Each row is the worst state for its entrypoint.
+Same method and limits as the WP5 table below. Every WP5 row was re-measured on the WP6 build. This table keeps the
+worst state per entrypoint; three non-worst liquidate rows are left out (liquidate long 3× underwater −40 % 95.5 M,
+short 5× solvent +20 % 87.9 M, short 3× solvent +40 % 67.6 M), and all rows are in `.scratch/wp5-*.json`.
 
 | Entrypoint / scenario | Instr | Mem MB | Keys | Disk rd | Writes | Write B | Events B | Within limit |
 |---|---|---|---|---|---|---|---|---|
@@ -186,7 +191,8 @@ Same method and limits as the WP5 table below. Each row is the worst state for i
 | liquidate short 5× underwater +40 % | 100.4 M | 10.94 | 96 | 0 | 24 | 7,188 | 2,348 | yes |
 | liquidate long 5× underwater −20 % | 96.3 M | 10.43 | 96 | 0 | 25 | 7,140 | 2,460 | yes |
 | settle_backstop_debt USDC (ticked, heavy; chunk / full 88.4 / 88.6 M) | 89.6 M | 10.25 | 96 | 0 | 22 | 6,684 | 2,436 | yes |
-| **settle_backstop_debt XLM (ticked, heavy, book open, exit pending): worst settle** | **135.2 M** | 13.87 | **109** | 0 | **33** | 12,368 | 4,092 | yes |
+| **settle_backstop_debt XLM, backstop XLM pT repaid first then swap (3 + 3 open, exit pending): worst settle** | **198.0 M** | **18.63** | **110** | 0 | **33** | 12,312 | **5,772** | yes |
+| settle_backstop_debt XLM (ticked, heavy, book open, exit pending; no BsXlmPt yet) | 135.2 M | 13.87 | 109 | 0 | 33 | 12,368 | 4,092 | yes |
 | settle_backstop_debt XLM (self-sized keeper loop, Impaired; gaps 132.8 M) | 134.1 M | 13.97 | 109 | 0 | 33 | 12,404 | 4,092 | yes |
 | settle_backstop_debt XLM (liquidity-capped partial, right after S5 liquidation) | 112.0 M | 12.40 | 107 | 0 | 30 | 11,564 | 3,340 | yes |
 | reconcile (no deficit / deficit → Impaired) | 8.6 / 16.6 M | 3.53 | 75 | 0 | 2 | 3,504 | 208 | yes |
@@ -195,10 +201,14 @@ Same method and limits as the WP5 table below. Each row is the worst state for i
 
 Worst case against each gate:
 
-- **Release:** 113 keys (87 % of 130; about 115 with a G-account signer). Open at 153.3 M (77 % of 200 M; target
-  < 170 M met). Swap-close long at 162.3 M (81 %); this flow is unchanged.
-- **Liquidation flows:** 109 keys (32 % of 340), 135.2 M instructions (40 % of 340 M), 33 writes (19 %), 14.0 MB memory
-  (39 %), 12.4 kB write bytes (11 %), 4.1 kB events (29 %).
+- **Release:** 113 keys (87 % of 130; about 115 with a G-account signer). The release maximum is swap-close long at
+  **162.3 M** (81 % of 200 M), a flow WP6 did not change. Open is at 153.3 M (77 %), so the < 170 M target is met.
+- **Liquidation flows:** 110 keys (32 % of 340), 198.0 M instructions (58 % of 340 M), 33 writes (19 %), 18.6 MB memory
+  (52 % of 35.65 MB), 12.5 kB write bytes (11 %), 5.8 kB events (41 %). All are on the XLM settle that first repays from
+  the backstop XLM pTokens (heavy test, end).
+  - That path withdraws `BsXlmPt` from the live XLM receipt and repays before the swap. It adds a health-checked XLM
+    withdraw, a second repay and an XLM rate read.
+  - It works on the live receipt: the shares reach 0 and `BsXlmPt` goes from 0.0537 to 0.0539 XLM pT (the new surplus).
 - **XLM settle cost: +45 M** against WP5 (88.5 → 132.8 M). The additions:
   - the pool quote, about 10 M;
   - `account_liquidity` + CF + one `update_interest`, about 13.5 M;
