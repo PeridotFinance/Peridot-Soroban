@@ -1,0 +1,317 @@
+{
+  "generators": {
+    "address": 2,
+    "nonce": 0,
+    "mux_id": 0
+  },
+  "auth": [
+    [],
+    []
+  ],
+  "ledger": {
+    "protocol_version": 25,
+    "sequence_number": 0,
+    "timestamp": 0,
+    "network_id": "0000000000000000000000000000000000000000000000000000000000000000",
+    "base_reserve": 0,
+    "min_persistent_entry_ttl": 4096,
+    "min_temp_entry_ttl": 16,
+    "max_entry_ttl": 6312000,
+    "ledger_entries": [
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
+              "key": "ledger_key_contract_instance",
+              "durability": "persistent",
+              "val": {
+                "contract_instance": {
+                  "executable": {
+                    "wasm": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  "storage": [
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Admin"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "BsParams"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "cooldown_s"
+                            },
+                            "val": {
+                              "u64": "259200"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "min_deposit_pt"
+                            },
+                            "val": {
+                              "u128": "1000000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "window_s"
+                            },
+                            "val": {
+                              "u64": "172800"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Counter"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u64": "0"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Ctrl"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Fees"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "bonus_backstop"
+                            },
+                            "val": {
+                              "u128": "10000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "bonus_liquidator"
+                            },
+                            "val": {
+                              "u128": "30000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "close_fee"
+                            },
+                            "val": {
+                              "u128": "1000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "funding_apr"
+                            },
+                            "val": {
+                              "u128": "20000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "open_fee"
+                            },
+                            "val": {
+                              "u128": "1000"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Guardian"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Headroom"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "close_reserve_usd"
+                            },
+                            "val": {
+                              "u128": "0"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "coef_largest"
+                            },
+                            "val": {
+                              "u128": "4600000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "coef_long"
+                            },
+                            "val": {
+                              "u128": "3000000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "coef_short"
+                            },
+                            "val": {
+                              "u128": "2100000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "hf_stress"
+                            },
+                            "val": {
+                              "u128": "1100000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "hf_target"
+                            },
+                            "val": {
+                              "u128": "1250000"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "stress"
+                            },
+                            "val": {
+                              "u128": "200000"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "MaxSlippage"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "u128": "10000"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "OpensPaused"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "bool": true
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Usdc"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Xlm"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 1000000
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_code": {
+              "ext": "v0",
+              "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "code": ""
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 1000000
+      }
+    ]
+  },
+  "events": []
+}

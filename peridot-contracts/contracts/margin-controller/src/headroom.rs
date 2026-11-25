@@ -1,6 +1,6 @@
 //! WP3: pool check, required backstop size, reconcile / Impaired. Signatures frozen in WP0.
 use crate::common::*;
-use crate::contract::{MarginController, MarginControllerArgs, MarginControllerClient};
+use crate::{MarginController, MarginControllerArgs, MarginControllerClient};
 use crate::types::*;
 use soroban_sdk::{contractimpl, Address, Env};
 

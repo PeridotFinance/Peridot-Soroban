@@ -1,10 +1,9 @@
 //! Constructor, admin configuration and positions (WP2 owns the position flows).
 use crate::common::*;
 use crate::types::*;
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, Vec};
+use soroban_sdk::{contractimpl, panic_with_error, Address, BytesN, Env, Vec};
 
-#[contract]
-pub struct MarginController;
+pub use crate::{MarginController, MarginControllerArgs, MarginControllerClient};
 
 #[contractimpl]
 impl MarginController {
