@@ -5,7 +5,7 @@
 //! deposits and exits are frozen until `settle_backstop_debt` clears it. Rounding always
 //! favours the pool: shares minted down, pTokens redeemed down, bad debt rounded up.
 use crate::common::*;
-use crate::contract::{MarginController, MarginControllerArgs, MarginControllerClient};
+use crate::{MarginController, MarginControllerArgs, MarginControllerClient};
 use crate::types::*;
 use soroban_sdk::{contractimpl, panic_with_error, Address, Env, Symbol};
 
