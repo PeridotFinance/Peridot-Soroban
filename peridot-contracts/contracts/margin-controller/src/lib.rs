@@ -20,6 +20,9 @@ mod contract;
 mod headroom;
 mod types;
 
+#[cfg(test)]
+mod test_backstop;
+
 pub use common::*;
 pub use contract::*;
 pub use types::*;
