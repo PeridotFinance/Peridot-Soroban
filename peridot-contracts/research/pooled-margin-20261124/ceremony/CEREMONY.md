@@ -29,6 +29,10 @@ cash markets (the tool has no such switch and refuses `*pause_deposit*`).
 2. **Keeper dry stage: decided 25 Nov, 12 h** (`minDryStageHours: 12`), matching the WP7 rollout (>= 1,400 heartbeats).
    The gate also requires every alert in `keeperGate.requiredAlerts` to have been delivered to the owner's Telegram
    bot (`alerts.channel: "telegram"`).
+   **Dead-man (owner 25 Nov):** an external heartbeat service (Healthchecks.io) alerts Telegram when the keeper's
+   pings stop, with the pause host as a second watcher; nothing of it runs on the keeper Droplet. The gate requires
+   `deadman: {service: "healthchecks", pauseHostWatcher: true, stopTestAt, alertsReceived: true}` from a real
+   keeper-stop test in which both alerts reached Telegram.
 3. **WP7 dependencies.** The cash liquidator must exclude the margin pooled account (alert only). Done on
    `feat/margin-keeper`: `neverLiquidateBorrowers` always includes the configured margin contract
    (`node margin-ceremony.cjs exclusion-fragment` prints the id). The margin keeper pass must run live on the Droplet.

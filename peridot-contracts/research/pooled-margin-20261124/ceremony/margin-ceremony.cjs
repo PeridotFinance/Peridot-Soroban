@@ -196,6 +196,13 @@ function keeperGateReasons(cfg, g, mid, nowMs) {
   if (miss.length) R.push(`alerts not tested: ${miss.join(', ')}`);
   if (K.requiredAlerts && a.channel !== 'telegram') R.push('alerts.channel must be telegram (delivered to the owner bot)');
   if (!(t(a.testedAt) <= nowMs && nowMs - t(a.testedAt) <= K.maxAlertTestAgeDays * 24 * h)) R.push(`alert test older than ${K.maxAlertTestAgeDays} d or missing`);
+  if (K.deadman) {
+    const dm = g.deadman || {};
+    if (dm.service !== K.deadman.service) R.push(`deadman.service must be ${K.deadman.service} (external, not on the keeper Droplet)`);
+    if (dm.pauseHostWatcher !== true) R.push('deadman.pauseHostWatcher must be true (second watcher on the pause host)');
+    if (dm.alertsReceived !== true) R.push('deadman.alertsReceived must be true (keeper stop test delivered both alerts to Telegram)');
+    if (!(t(dm.stopTestAt) <= nowMs && nowMs - t(dm.stopTestAt) <= K.deadman.maxStopTestAgeDays * 24 * h)) R.push(`deadman stop test older than ${K.deadman.maxStopTestAgeDays} d or missing`);
+  }
   const x = g.exclusion || {};
   if (x.cashLiquidatorExcludesMargin !== true || !/^[0-9a-f]{7,40}$/.test(x.commit || '')) R.push('cash liquidator exclusion of the margin account not confirmed (exclusion.cashLiquidatorExcludesMargin + commit)');
   if (!g.operator || /claude|agent|bot|\bai\b|assistant|gpt/i.test(g.operator)) R.push('operator must be a named person (agents never write this file)');
@@ -507,7 +514,7 @@ async function main(argv, deps = {}) {
   if (cmd === 'addresses') return {margin: M, admin: cfg.admin, salt: cfg.salt};
   if (cmd === 'exclusion-fragment') return {note: 'WP7: the cash liquidator must never liquidate this pooled account (alert only). neverTouch is a list of RECEIPTS and does not do this.', excludeBorrowers: [M]};
   if (cmd === 'gate-template') return {gate: 'margin-keeper-live', marginController: M, keeper: {host: 'droplet', hostName: 'FILL', commit: 'FILL', mode: 'live', dryRun: false, liveSince: 'FILL ISO'},
-    dryStage: {from: 'FILL ISO', to: 'FILL ISO', errors: 0}, alerts: {testedAt: 'FILL ISO', channel: 'telegram', liquidatableOver10min: true, pooledHealthLow: true, impaired: true, inventoryLow: true, opensRefusedBadDebt: true, keeperDown: true, conversionFailed: true, dustLiquidation: true},
+    dryStage: {from: 'FILL ISO', to: 'FILL ISO', errors: 0}, deadman: {service: 'healthchecks', pauseHostWatcher: true, stopTestAt: 'FILL ISO', alertsReceived: true}, alerts: {testedAt: 'FILL ISO', channel: 'telegram', liquidatableOver10min: true, pooledHealthLow: true, impaired: true, inventoryLow: true, opensRefusedBadDebt: true, keeperDown: true, conversionFailed: true, dustLiquidation: true},
     exclusion: {cashLiquidatorExcludesMargin: true, commit: 'FILL'}, operator: 'FILL', attestation: cfg.keeperGate.attestation, writtenAt: 'FILL ISO',
     _: `The OPERATOR writes this to ${cfg.keeperGate.gateFile} by hand after checking the Droplet. Agents never write it.`};
   if (cmd === 'verify-signed') {

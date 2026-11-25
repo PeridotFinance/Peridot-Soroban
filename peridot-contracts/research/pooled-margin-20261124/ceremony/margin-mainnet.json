@@ -103,7 +103,7 @@
     "keeperAccount": "GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G",
     "maxKeeperTxAgeMinutes": 15,
     "minKeeperXlmRaw": "200000000",
-    "note": "OPERATOR-WRITTEN ONLY. Agents never write or edit the gate file. The tool refuses the unpause (M16) and every resume unless it passes. minDryStageHours 12 (owner 25 Nov). Every alert in requiredAlerts must have been delivered to the owner Telegram bot (alerts.channel = telegram).",
+    "note": "OPERATOR-WRITTEN ONLY. Agents never write or edit the gate file. The tool refuses the unpause (M16) and every resume unless it passes. minDryStageHours 12 (owner 25 Nov). Every alert in requiredAlerts must have been delivered to the owner Telegram bot (alerts.channel = telegram). Dead-man (owner 25 Nov): an external heartbeat service (Healthchecks.io) plus the pause host as second watcher, never on the keeper Droplet; the keeper-stop test must have delivered both alerts to Telegram.",
     "requiredAlerts": [
       "liquidatableOver10min",
       "pooledHealthLow",
@@ -113,7 +113,12 @@
       "keeperDown",
       "conversionFailed",
       "dustLiquidation"
-    ]
+    ],
+    "deadman": {
+      "service": "healthchecks",
+      "pauseHostWatcher": true,
+      "maxStopTestAgeDays": 7
+    }
   },
   "limits": {
     "classes": {

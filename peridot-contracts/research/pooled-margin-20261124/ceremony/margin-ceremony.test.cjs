@@ -92,6 +92,7 @@ const now = Date.parse('2026-12-03T10:00:00Z');
 const goodGate = cfg => ({gate: 'margin-keeper-live', marginController: m.marginId(cfg),
   keeper: {host: 'droplet', hostName: 'peridot-keeper-fra1', commit: 'a'.repeat(40), mode: 'live', dryRun: false, liveSince: '2026-12-03T08:00:00Z'},
   dryStage: {from: '2026-12-02T19:00:00Z', to: '2026-12-03T07:55:00Z', errors: 0},
+  deadman: {service: 'healthchecks', pauseHostWatcher: true, stopTestAt: '2026-12-03T08:20:00Z', alertsReceived: true},
   alerts: {testedAt: '2026-12-03T08:30:00Z', channel: 'telegram', liquidatableOver10min: true, pooledHealthLow: true, impaired: true, inventoryLow: true, opensRefusedBadDebt: true, keeperDown: true, conversionFailed: true, dustLiquidation: true},
   exclusion: {cashLiquidatorExcludesMargin: true, commit: 'abcdef1'}, operator: 'Joshua', attestation: cfg.keeperGate.attestation, writtenAt: '2026-12-03T09:00:00Z'});
 test('keeper gate: a complete operator file passes', () => {
@@ -108,6 +109,9 @@ test('keeper gate: unpause is refused before the keeper is live on the Droplet w
   assert(mut(g => { g.alerts.impaired = false; }).some(r => /alerts not tested/.test(r)));
   assert(mut(g => { g.alerts.dustLiquidation = false; }).some(r => /alerts not tested: dustLiquidation/.test(r)));
   assert(mut(g => { g.alerts.channel = 'log'; }).some(r => /telegram/.test(r)));
+  assert(mut(g => { g.deadman.service = 'local-timer'; }).some(r => /deadman.service/.test(r)));
+  assert(mut(g => { g.deadman.pauseHostWatcher = false; }).some(r => /pauseHostWatcher/.test(r)));
+  assert(mut(g => { delete g.deadman; }).some(r => /deadman/.test(r)));
   assert(mut(g => { g.dryStage.from = '2026-12-02T20:00:00Z'; }).some(r => /dry stage shorter than 12 h/.test(r)));
   assert(mut(g => { g.alerts.testedAt = '2026-11-20T00:00:00Z'; }).some(r => /alert test older/.test(r)));
   assert(mut(g => { g.exclusion.cashLiquidatorExcludesMargin = false; }).some(r => /exclusion/.test(r)));
@@ -247,7 +251,7 @@ test('state walk M1 -> C4: every prepare precondition passes in order; unpause /
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wp8-gate-')); cfg.keeperGate.gateFile = path.join(dir, 'KEEPER-GATE.json');
   const iso = h => new Date(Date.now() - h * 3600e3).toISOString();
   const fixture = {...goodGate(cfg), operator: 'Test Operator', keeper: {...goodGate(cfg).keeper, liveSince: iso(1)}, dryStage: {from: iso(14), to: iso(1.5), errors: 0},
-    alerts: {...goodGate(cfg).alerts, testedAt: iso(0.5)}, writtenAt: iso(0.2)};
+    alerts: {...goodGate(cfg).alerts, testedAt: iso(0.5)}, deadman: {...goodGate(cfg).deadman, stopTestAt: iso(0.4)}, writtenAt: iso(0.2)};
   await withStubs(cfg, null, async () => {
     for (const s of list) {
       if (s.kind === 'gate' || s.fallback) continue;
