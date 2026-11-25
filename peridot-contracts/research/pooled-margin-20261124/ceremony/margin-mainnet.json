@@ -12,10 +12,10 @@
       "note": "Ledger index 0. Signs every M-step, the canary and the admin kill switches."
     },
     "guardian": {
-      "publicKey": null,
+      "publicKey": "GBSK3FYCGNYZLHHPSYRJNE53NZXDFL6ED24KLT3GUUETLFKDAUD7PQX3",
       "hdPath": null,
-      "recommended": "GBSK3FYCGNYZLHHPSYRJNE53NZXDFL6ED24KLT3GUUETLFKDAUD7PQX3",
-      "note": "OWNER DECISION PENDING. null refuses the deploy (M2). Recommended: the cash pause key GBSK3FYC... (pause-only key on the pause host, already the cash controller PauseGuardian). The guardian can only PAUSE opens (contract: NotAdmin on unpause). It signs on its host, never on the Mac or the Ledger."
+      "note": "OWNER DECISION 25 Nov: the cash pause key (pause-only host key, already the cash controller PauseGuardian). Verified in code: the margin guardian can only PAUSE opens (set_opens_paused refuses its unpause with NotAdmin; no other function reads Key::Guardian). It signs on its host, never on the Mac or the Ledger.",
+      "recommended": "GBSK3FYCGNYZLHHPSYRJNE53NZXDFL6ED24KLT3GUUETLFKDAUD7PQX3"
     }
   },
   "deps": {
@@ -42,16 +42,47 @@
   },
   "salt": "peridot-margin-v2-mainnet-1:margin-controller",
   "params": {
-    "maxLeverage": {"XLM": "5000000", "USDC": "5000000"},
+    "maxLeverage": {
+      "XLM": "5000000",
+      "USDC": "5000000"
+    },
     "frontendDefaultLeverage": "3000000",
-    "fees": {"open_fee": "1000", "close_fee": "1000", "funding_apr": "20000", "bonus_liquidator": "30000", "bonus_backstop": "10000"},
+    "fees": {
+      "open_fee": "1000",
+      "close_fee": "1000",
+      "funding_apr": "20000",
+      "bonus_liquidator": "30000",
+      "bonus_backstop": "10000"
+    },
     "maxSlippage": "15000",
     "caps": {
-      "XLM": {"per_position_equity_usd": "250000000", "side_equity_usd": "1000000000", "side_oi_usd": "5000000000", "min_equity_usd": "10000000"},
-      "USDC": {"per_position_equity_usd": "250000000", "side_equity_usd": "1000000000", "side_oi_usd": "5000000000", "min_equity_usd": "10000000"}
+      "XLM": {
+        "per_position_equity_usd": "250000000",
+        "side_equity_usd": "1000000000",
+        "side_oi_usd": "5000000000",
+        "min_equity_usd": "10000000"
+      },
+      "USDC": {
+        "per_position_equity_usd": "250000000",
+        "side_equity_usd": "1000000000",
+        "side_oi_usd": "5000000000",
+        "min_equity_usd": "10000000"
+      }
     },
-    "headroom": {"hf_target": "1250000", "hf_stress": "1100000", "stress": "200000", "close_reserve_usd": "0", "coef_long": "3000000", "coef_short": "2100000", "coef_largest": "4600000"},
-    "backstopParams": {"cooldown_s": "259200", "window_s": "172800", "min_deposit_pt": "1000000"},
+    "headroom": {
+      "hf_target": "1250000",
+      "hf_stress": "1100000",
+      "stress": "200000",
+      "close_reserve_usd": "0",
+      "coef_long": "3000000",
+      "coef_short": "2100000",
+      "coef_largest": "4600000"
+    },
+    "backstopParams": {
+      "cooldown_s": "259200",
+      "window_s": "172800",
+      "min_deposit_pt": "1000000"
+    },
     "seedPtokensRaw": "7500000000",
     "seedNote": "$750 approved (SPEC 7): 750.0000000 USDC pTokens from the admin's existing USDC pTokens (exchange rate 1.000000 on 25 Nov, so ~750 USDC, $750.75 at the 25 Nov USDC price). A pToken transfer: the USDC market supply does NOT change."
   },
@@ -67,18 +98,40 @@
     "gateFile": "/Users/joshua/Peridot/margin-v2-launch-20261125/KEEPER-GATE.json",
     "attestation": "I checked this on the Droplet myself. The margin keeper runs LIVE there, after its dry stage, and its alerts were tested.",
     "maxFileAgeHours": 24,
-    "minDryStageHours": 2,
+    "minDryStageHours": 12,
     "maxAlertTestAgeDays": 7,
     "keeperAccount": "GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G",
     "maxKeeperTxAgeMinutes": 15,
     "minKeeperXlmRaw": "200000000",
-    "note": "OPERATOR-WRITTEN ONLY. Agents never write or edit the gate file. The tool refuses the unpause (M16) and every resume unless it passes. minDryStageHours is a proposal (owner decision)."
+    "note": "OPERATOR-WRITTEN ONLY. Agents never write or edit the gate file. The tool refuses the unpause (M16) and every resume unless it passes. minDryStageHours 12 (owner 25 Nov). Every alert in requiredAlerts must have been delivered to the owner Telegram bot (alerts.channel = telegram).",
+    "requiredAlerts": [
+      "liquidatableOver10min",
+      "pooledHealthLow",
+      "impaired",
+      "inventoryLow",
+      "opensRefusedBadDebt",
+      "keeperDown",
+      "conversionFailed",
+      "dustLiquidation"
+    ]
   },
   "limits": {
     "classes": {
-      "setter": {"keys": 100, "cpu": 100000000, "writes": 50},
-      "release": {"keys": 130, "cpu": 200000000, "writes": 100},
-      "liquidation": {"keys": 340, "cpu": 340000000, "writes": 170}
+      "setter": {
+        "keys": 100,
+        "cpu": 100000000,
+        "writes": 50
+      },
+      "release": {
+        "keys": 130,
+        "cpu": 200000000,
+        "writes": 100
+      },
+      "liquidation": {
+        "keys": 340,
+        "cpu": 340000000,
+        "writes": 170
+      }
     },
     "uploadCpuMax": 100000000,
     "uploadMaxFeeXlm": 120,

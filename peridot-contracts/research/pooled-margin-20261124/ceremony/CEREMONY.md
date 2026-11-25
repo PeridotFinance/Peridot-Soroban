@@ -23,13 +23,14 @@ cash markets (the tool has no such switch and refuses `*pause_deposit*`).
 
 ## 0. Owner decisions needed before M2
 
-1. **Guardian key.** `signers.guardian.publicKey` is `null`, so M2 is refused. Recommended: the cash pause key
-   `GBSK3FYCGNYZLHHPSYRJNE53NZXDFL6ED24KLT3GUUETLFKDAUD7PQX3` (pause-only, on the pause host, already the cash
-   controller's PauseGuardian). The margin guardian can only **pause** opens; the contract refuses its unpause. It is
-   a constructor argument, so it needs no extra transaction; `set_guardian` can rotate it later.
-2. **Keeper dry-stage length.** The gate requires `minDryStageHours: 2` (proposal).
-3. **WP7 dependencies.** The cash liquidator must exclude the margin pooled account (alert only). `neverTouch` in its pins
-   is a list of *receipts*, so adding the margin id there does nothing; WP7 has to add a per-borrower exclusion
+1. **Guardian key: decided 25 Nov.** The cash pause key `GBSK3FYCGNYZLHHPSYRJNE53NZXDFL6ED24KLT3GUUETLFKDAUD7PQX3`.
+   Verified in code: the margin guardian can only **pause** opens (`set_opens_paused` refuses its unpause with
+   `NotAdmin`); no other entrypoint reads the guardian. It is a constructor argument; `set_guardian` can rotate it.
+2. **Keeper dry stage: decided 25 Nov, 12 h** (`minDryStageHours: 12`), matching the WP7 rollout (>= 1,400 heartbeats).
+   The gate also requires every alert in `keeperGate.requiredAlerts` to have been delivered to the owner's Telegram
+   bot (`alerts.channel: "telegram"`).
+3. **WP7 dependencies.** The cash liquidator must exclude the margin pooled account (alert only). Done on
+   `feat/margin-keeper`: `neverLiquidateBorrowers` always includes the configured margin contract
    (`node margin-ceremony.cjs exclusion-fragment` prints the id). The margin keeper pass must run live on the Droplet.
 
 ## 1. Simulation results (25 Nov 2026, ledgers 65664653 and 65664763 (re-run); identical numbers)
@@ -611,9 +612,39 @@ kstep kt-bump emergency bump-ttl 1 2
 The margin contract has no "undeploy". The lenders' markets never call into it (the hook stays unset), so rollback means
 making it inert and recovering the seed:
 
-1. **R1** K1 pause opens (guardian or admin).
+1. **R1** K1 pause opens (guardian or admin). Admin path (Ledger index 0):
+
+   ```sh
+   kstep r1-pause-a emergency pause-opens admin
+   ```
+
 2. **R2** Let every position exit. Close, close_with_repay, liquidate and claim keep working, and the keeper liquidates.
-   Wait until `get_side` shows 0 open positions on both sides and both bad-debt share counts are 0 (K3 if not).
+   Wait until both sides show 0 open positions and both bad-debt share counts are 0 (K3 if not). Read-only checks:
+
+   long side (held XLM): expect `open_positions: 0`:
+
+   ```sh
+   stellar contract invoke --id CA6Q7HULJTGFMTB7YLJWFKPQVIIWAP46PQHAY3H5V2EZ2R7HBCW6N7NZ --rpc-url https://soroban-rpc.mainnet.stellar.gateway.fm --network-passphrase "Public Global Stellar Network ; September 2015" --source-account GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP --send=no -- get_side --held_asset CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA
+   ```
+
+   short side (held USDC): expect `open_positions: 0`:
+
+   ```sh
+   stellar contract invoke --id CA6Q7HULJTGFMTB7YLJWFKPQVIIWAP46PQHAY3H5V2EZ2R7HBCW6N7NZ --rpc-url https://soroban-rpc.mainnet.stellar.gateway.fm --network-passphrase "Public Global Stellar Network ; September 2015" --source-account GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP --send=no -- get_side --held_asset CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75
+   ```
+
+   USDC bad-debt shares: expect `"0"`:
+
+   ```sh
+   stellar contract invoke --id CA6Q7HULJTGFMTB7YLJWFKPQVIIWAP46PQHAY3H5V2EZ2R7HBCW6N7NZ --rpc-url https://soroban-rpc.mainnet.stellar.gateway.fm --network-passphrase "Public Global Stellar Network ; September 2015" --source-account GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP --send=no -- get_bs_debt_shares --debt_asset CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75
+   ```
+
+   XLM bad-debt shares: expect `"0"`:
+
+   ```sh
+   stellar contract invoke --id CA6Q7HULJTGFMTB7YLJWFKPQVIIWAP46PQHAY3H5V2EZ2R7HBCW6N7NZ --rpc-url https://soroban-rpc.mainnet.stellar.gateway.fm --network-passphrase "Public Global Stellar Network ; September 2015" --source-account GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP --send=no -- get_bs_debt_shares --debt_asset CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA
+   ```
+
 3. **R3** Request the seed's exit (the shares are in `get_backer(admin)`; the 1e6 dead shares stay in the contract):
 
 ```sh

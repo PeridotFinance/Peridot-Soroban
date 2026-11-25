@@ -82,7 +82,7 @@ test('wrong artifact hash or size is refused; the frozen copy matches the pin', 
 });
 
 test('deploy refuses a placeholder guardian; constructor args are (admin, controller, guardian, USDC, XLM)', () => {
-  assert.throws(() => m.deployArgs(base()), /guardian.*PLACEHOLDER/);
+  { const c = base(); c.signers.guardian.publicKey = null; assert.throws(() => m.deployArgs(c), /guardian.*PLACEHOLDER/); }
   const cfg = withGuardian(), a = m.deployArgs(cfg).map(x => S.scValToNative(x));
   assert.deepEqual(a, [cfg.admin, cfg.deps.controller, cfg.signers.guardian.recommended, cfg.deps.usdc, cfg.deps.xlm]);
 });
@@ -91,8 +91,8 @@ test('deploy refuses a placeholder guardian; constructor args are (admin, contro
 const now = Date.parse('2026-12-03T10:00:00Z');
 const goodGate = cfg => ({gate: 'margin-keeper-live', marginController: m.marginId(cfg),
   keeper: {host: 'droplet', hostName: 'peridot-keeper-fra1', commit: 'a'.repeat(40), mode: 'live', dryRun: false, liveSince: '2026-12-03T08:00:00Z'},
-  dryStage: {from: '2026-12-02T20:00:00Z', to: '2026-12-03T07:55:00Z', errors: 0},
-  alerts: {testedAt: '2026-12-03T08:30:00Z', liquidatableOver10min: true, impaired: true, keeperDown: true},
+  dryStage: {from: '2026-12-02T19:00:00Z', to: '2026-12-03T07:55:00Z', errors: 0},
+  alerts: {testedAt: '2026-12-03T08:30:00Z', channel: 'telegram', liquidatableOver10min: true, pooledHealthLow: true, impaired: true, inventoryLow: true, opensRefusedBadDebt: true, keeperDown: true, conversionFailed: true, dustLiquidation: true},
   exclusion: {cashLiquidatorExcludesMargin: true, commit: 'abcdef1'}, operator: 'Joshua', attestation: cfg.keeperGate.attestation, writtenAt: '2026-12-03T09:00:00Z'});
 test('keeper gate: a complete operator file passes', () => {
   const cfg = base(); assert.deepEqual(m.keeperGateReasons(cfg, goodGate(cfg), m.marginId(cfg), now), []);
@@ -106,6 +106,9 @@ test('keeper gate: unpause is refused before the keeper is live on the Droplet w
   assert(mut(g => { g.dryStage.to = '2026-12-02T20:30:00Z'; }).some(r => /dry stage shorter/.test(r)));
   assert(mut(g => { g.dryStage.errors = 2; }).some(r => /0 errors/.test(r)));
   assert(mut(g => { g.alerts.impaired = false; }).some(r => /alerts not tested/.test(r)));
+  assert(mut(g => { g.alerts.dustLiquidation = false; }).some(r => /alerts not tested: dustLiquidation/.test(r)));
+  assert(mut(g => { g.alerts.channel = 'log'; }).some(r => /telegram/.test(r)));
+  assert(mut(g => { g.dryStage.from = '2026-12-02T20:00:00Z'; }).some(r => /dry stage shorter than 12 h/.test(r)));
   assert(mut(g => { g.alerts.testedAt = '2026-11-20T00:00:00Z'; }).some(r => /alert test older/.test(r)));
   assert(mut(g => { g.exclusion.cashLiquidatorExcludesMargin = false; }).some(r => /exclusion/.test(r)));
   assert(mut(g => { g.operator = 'Claude agent'; }).some(r => /agents never write/.test(r)));
@@ -243,7 +246,7 @@ test('state walk M1 -> C4: every prepare precondition passes in order; unpause /
   const os = require('node:os'), cfg = withGuardian(), list = m.steps(cfg), {c, apply} = stubChain(cfg);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wp8-gate-')); cfg.keeperGate.gateFile = path.join(dir, 'KEEPER-GATE.json');
   const iso = h => new Date(Date.now() - h * 3600e3).toISOString();
-  const fixture = {...goodGate(cfg), operator: 'Test Operator', keeper: {...goodGate(cfg).keeper, liveSince: iso(1)}, dryStage: {from: iso(6), to: iso(1.5), errors: 0},
+  const fixture = {...goodGate(cfg), operator: 'Test Operator', keeper: {...goodGate(cfg).keeper, liveSince: iso(1)}, dryStage: {from: iso(14), to: iso(1.5), errors: 0},
     alerts: {...goodGate(cfg).alerts, testedAt: iso(0.5)}, writtenAt: iso(0.2)};
   await withStubs(cfg, null, async () => {
     for (const s of list) {
