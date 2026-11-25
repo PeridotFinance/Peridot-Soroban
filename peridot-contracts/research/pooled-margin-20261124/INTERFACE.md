@@ -49,3 +49,45 @@ another WP's file. Units: amounts raw 7-decimal; fractions 1e6; USD values "usd7
 7. **Events**: single-tuple topics `(Symbol,)`: `margin_open`, `margin_close`, `margin_liquidate`, `margin_bad_debt`,
    `margin_claim`, `bs_deposit`, `bs_request`, `bs_cancel`, `bs_withdraw`, `bs_settle`, `margin_impaired`.
 8. Custody-only: never call receipt hook functions; `try_invoke` not needed for our own two receipts.
+
+## Integration changes (25 Nov, WP4)
+
+Shims removed: `contract.rs` calls `headroom::require_not_impaired` / `pool_check(Check::Open)` and
+`backstop::credit_pt` / `assign_bad_debt` directly; `headroom.rs` uses `backstop::value_usd` / `pending_pt`;
+`backstop::exit_check` always runs `pool_check(Check::BackstopExit)`. Tests run the real modules
+(`src/test_integration.rs` for cross-module flows). Behaviour changes:
+
+1. **Exhaustion → Impaired.** After an underwater `liquidate` assigns bad debt and `finish`es the position,
+   `backstop::impair_if_exhausted` checks `nav_pt(false) < 0` (XLM bad debt at the oracle); if so it sets
+   `Impaired`, pauses opens and emits `margin_impaired` (same event struct as `reconcile`, `caller` = liquidator).
+   The check runs after `finish` because until then the divisor still holds the burned shares and the backstop
+   debt reads low. Shared helper `headroom::mark_impaired` emits only when the flag is newly set.
+2. **`reconcile` return value:** `true` only when that call newly sets `Impaired`. A deficit found while already
+   impaired returns `false` and emits nothing; `is_impaired()` is the state view. Keeper: simulate each cycle,
+   send only on `true`.
+3. **New `admin_recapitalize(admin, ptokens) -> u128`** (Bs.ptokens after): USDC pTokens admin → contract,
+   added to `Bs.ptokens` and `Ledger(USDC)`, **no shares minted**. Works at NAV ≤ 0, while `Impaired` and while
+   XLM bad debt is outstanding (no NAV or oracle read). Needs an existing backstop (`BackstopEmpty` before the
+   seed). Event `bs_recap (admin, ptokens, bs_ptokens)`.
+4. **`admin_resolve_impairment(admin, usdc_pt_charge, xlm_pt_restore)`:** the XLM argument no longer writes
+   `Ledger(XLM)` down. It **pulls `xlm_pt_restore` XLM pTokens from the admin** and leaves the Ledger unchanged,
+   so the last XLM closers/claims can still exit in full (a Ledger-only write-down left `Ledger(XLM)` below held +
+   claims, and the pTokens were physically missing). The USDC charge is unchanged (backstop loss: `Bs.ptokens`
+   and `Ledger(USDC)` both drop). `Impaired` clears only if both ledgers ≤ balances **and** `nav_pt(false) ≥ 0`
+   (so recapitalise first). Event `margin_resolved` field renamed `xlm_pt_charge` → `xlm_pt_restored`.
+   **Owner decision open:** backstop-funded XLM restoration (swap backstop USDC → XLM pTokens) is not implemented;
+   today the XLM restore comes from the operator/treasury.
+5. **New `backstop_clear_expired(caller, backer)`:** permissionless (caller auth only); returns an expired
+   request's shares to the backer (`now > expires_at`; live → `BadParams`, none → `NoRequest`), so stale
+   requests stop counting in `pending_pt` for opens. Event `bs_cancel`.
+6. **`MaxSlippage` default 15_000 (1.5 %)** (`types::DEFAULT_MAX_SLIPPAGE`; constructor and every fallback).
+   The real-pool fork saw a close fill 1.02 % below Reflector. 5× solvency: 0.9 × 1.04 × 1.015 = 0.950 < 1
+   (tested; a 9.5 % total bonus is now refused at the default, accepted at 1 %).
+7. **`credit_pt` never panics:** saturating; an empty backstop (no shares) accumulates the fee pTokens, which the
+   later seed's shares own pro rata with the dead shares.
+
+Known gaps carried to WP5: once bad debt exceeds the backstop, the pooled controller HF can fall below 1 and the
+live controller then blocks close (withdraw), liquidate/claim (pToken transfer) and settle (withdraw before
+repay); the integration test keeps HF ≥ 1 with short-side USDC. Large `settle_backstop_debt` amounts need
+chunking via `max_ptokens` (the withdraw is health-checked before the repay). `harness/margin-fork` still drives
+the v0.2 ABI by name and must be ported to v2.
