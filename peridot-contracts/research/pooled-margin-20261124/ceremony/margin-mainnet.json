@@ -1,0 +1,133 @@
+{
+  "status": "PROPOSED_2026-11-25_NOT_APPROVED",
+  "revision": "WP8 ceremony v1 for pooled margin v2 (SPEC rev 2, INTERFACE WP6). Build b1cb1cb2 (WP6). Nothing in this file has been signed or sent.",
+  "network": "Public Global Stellar Network ; September 2015",
+  "rpc": "https://soroban-rpc.mainnet.stellar.gateway.fm",
+  "horizon": "https://horizon.stellar.org",
+  "admin": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+  "signers": {
+    "admin": {
+      "publicKey": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+      "hdPath": 0,
+      "note": "Ledger index 0. Signs every M-step, the canary and the admin kill switches."
+    },
+    "guardian": {
+      "publicKey": null,
+      "hdPath": null,
+      "recommended": "GBSK3FYCGNYZLHHPSYRJNE53NZXDFL6ED24KLT3GUUETLFKDAUD7PQX3",
+      "note": "OWNER DECISION PENDING. null refuses the deploy (M2). Recommended: the cash pause key GBSK3FYC... (pause-only key on the pause host, already the cash controller PauseGuardian). The guardian can only PAUSE opens (contract: NotAdmin on unpause). It signs on its host, never on the Mac or the Ledger."
+    }
+  },
+  "deps": {
+    "controller": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+    "usdc": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+    "xlm": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+    "usdcReceipt": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+    "xlmReceipt": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+    "pool": "CBBMQBNHB2FYVZYV7VNHOJHUMTFJLR4PUMRVQYNW6RHIKZO2NQMIBUCV",
+    "oracle": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN"
+  },
+  "liveCode": {
+    "note": "Code the plan was simulated against (live read 25 Nov 2026, ledger 65664440). The preflight gate refuses if any changed.",
+    "controller": "f41e5260513390abcb3c18d74f4c0e9e9d65b0638bc797d11ddaec45de5fe2d8",
+    "usdcReceipt": "5630a701bc7f29ea1334cfd1c12e349664da7376fd86df080d587ea9f685e452",
+    "xlmReceipt": "5630a701bc7f29ea1334cfd1c12e349664da7376fd86df080d587ea9f685e452"
+  },
+  "artifact": {
+    "path": "../../../target/margin-freeze/b1cb1cb2/margin_controller.wasm",
+    "sha256": "b1cb1cb21f02de1b1a9047d31fa60ffc066c2ddedc94c4dff2fcbdb0a7b1766f",
+    "bytes": 67488,
+    "frozen": true,
+    "note": "Copy of target/wasm32v1-none/release/margin_controller.wasm from `stellar contract build --package margin-controller` at 35a5a15 (WP6). Almanax gates the PUBLIC opening only (SPEC 7)."
+  },
+  "salt": "peridot-margin-v2-mainnet-1:margin-controller",
+  "params": {
+    "maxLeverage": {"XLM": "5000000", "USDC": "5000000"},
+    "frontendDefaultLeverage": "3000000",
+    "fees": {"open_fee": "1000", "close_fee": "1000", "funding_apr": "20000", "bonus_liquidator": "30000", "bonus_backstop": "10000"},
+    "maxSlippage": "15000",
+    "caps": {
+      "XLM": {"per_position_equity_usd": "250000000", "side_equity_usd": "1000000000", "side_oi_usd": "5000000000", "min_equity_usd": "10000000"},
+      "USDC": {"per_position_equity_usd": "250000000", "side_equity_usd": "1000000000", "side_oi_usd": "5000000000", "min_equity_usd": "10000000"}
+    },
+    "headroom": {"hf_target": "1250000", "hf_stress": "1100000", "stress": "200000", "close_reserve_usd": "0", "coef_long": "3000000", "coef_short": "2100000", "coef_largest": "4600000"},
+    "backstopParams": {"cooldown_s": "259200", "window_s": "172800", "min_deposit_pt": "1000000"},
+    "seedPtokensRaw": "7500000000",
+    "seedNote": "$750 approved (SPEC 7): 750.0000000 USDC pTokens from the admin's existing USDC pTokens (exchange rate 1.000000 on 25 Nov, so ~750 USDC, $750.75 at the 25 Nov USDC price). A pToken transfer: the USDC market supply does NOT change."
+  },
+  "canary": {
+    "signer": "admin",
+    "equityUsd7": "50000000",
+    "leverage": "3000000",
+    "maxFeeUsdcRaw": "1000000",
+    "debtHaircutBps": 50,
+    "note": "$5 equity at the 3x frontend default, long then short, each opened and swap-closed. max_fee 0.1 USDC (expected open fee ~0.015 USDC)."
+  },
+  "keeperGate": {
+    "gateFile": "/Users/joshua/Peridot/margin-v2-launch-20261125/KEEPER-GATE.json",
+    "attestation": "I checked this on the Droplet myself. The margin keeper runs LIVE there, after its dry stage, and its alerts were tested.",
+    "maxFileAgeHours": 24,
+    "minDryStageHours": 2,
+    "maxAlertTestAgeDays": 7,
+    "keeperAccount": "GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G",
+    "maxKeeperTxAgeMinutes": 15,
+    "minKeeperXlmRaw": "200000000",
+    "note": "OPERATOR-WRITTEN ONLY. Agents never write or edit the gate file. The tool refuses the unpause (M16) and every resume unless it passes. minDryStageHours is a proposal (owner decision)."
+  },
+  "limits": {
+    "classes": {
+      "setter": {"keys": 100, "cpu": 100000000, "writes": 50},
+      "release": {"keys": 130, "cpu": 200000000, "writes": 100},
+      "liquidation": {"keys": 340, "cpu": 340000000, "writes": 170}
+    },
+    "uploadCpuMax": 100000000,
+    "uploadMaxFeeXlm": 120,
+    "invokeMaxFeeStroops": 50000000,
+    "classicFeeStroops": 10000,
+    "window": 40,
+    "timeout": 240
+  },
+  "neverTarget": [
+    "CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI",
+    "CD6N2EQJN47SYLSIYUK3YVBKD4YISATZ2CZZJQZCXKNNVB4HVR6AWL63"
+  ],
+  "retired": [
+    "CA2FIPJ7U6BG3N7EOZFI74XPJZOEOD4TYWXFVCIO5VDCHTVAGS6F4UKK",
+    "CAB4JOLSCNELJVDQKZLVGHKWJCLXFDBZZMITJAFL4GBGTHIKWO47PYFH",
+    "CANCOWOI6R2FZBDLZKUL6BUZJN3VONPZSUUSWFL3KF3MPG5INAF25EKY",
+    "CAQZ7XPUSOSBI66A4RPSNPEBI2EADBMBVUBSW6R2DYWC64QHDM3HKGIN",
+    "CB3WLG4QITFRELACDR74N63VEPICMQ35QW3DSAMF4KCFOITKOJSHH6RW",
+    "CBIOHQFWKSYTRET3LJV4LTO3ZQWRQMQ7I2SJAZ62IZCQHDST4YO3AZP7",
+    "CBNVNCPEW2XXGBEGVMZQXBSODO5V2HMGPT5FFLVLT355SXJMYY53MLMA",
+    "CBP2R5KYAWJCOCVDTSNTEVL3O6JBTWOOH7SZOX7DX5DLGVZCAMLBDZM3",
+    "CBRJTPI3327YPP57KGIZIU4Z6APBUN5F6LJ2Q3MPKCISUQJLAQFFZECZ",
+    "CBU4Y7CJFOUZZE3QBOXTKM54UTUYW3SDJWTNMDGJBNCR5HS5UCEKV3BE",
+    "CBVUJJIJTRJNOORPPCVH72DP7YDCOMDHI6WYKP3WOFVEPSCVP3TBXHIN",
+    "CCB2AR5X3KP4WQKE7HNSUSDS7SHFMC2WPVSZ2ZXJ6DHXOKHFFKOZE6GK",
+    "CCI5LBBNYOASPQ62GIRY54PDEYWWURJB75HNRAFOU4LTOU3XBC73IB5I",
+    "CCKTLDG6I2MMJCKFWXXBXMA42LJ3XN2IOW6M7TK6EWNPJTS736ETFF2N",
+    "CCPJFBH5WSNZVMCUQCBM4X5334L6ZL3W4Q33XJAK45RCDHJ2JGJ5AP6A",
+    "CCVUFGXKFVPAHWMMDDL6HXKUN2B2G73Z27VRM3WXZBBSQEUTNLI6YPEX",
+    "CCZKDMAP23ZFL55RVITKSW4LAONQABGPSK2Y77RS64GPHOVDDFF5ENGC",
+    "CD3WN3PLW63HFZXE56OTRLMBV46WG54TFPGRL4RDQ43HQTTWVB4RPO3G",
+    "CDMH535JSD224YXPET3B4SJOLXTQQ24GRSCWACGYBKSH2DKFJYWI7SUW",
+    "CDNJSOJKURHQUDBO7OHK7Z64R2CNMIAWXENHM24ALK7Y3H56EU6PUOKR",
+    "CC2MVMWNUSEBJ5ITIKTKTLL3URUPYPGRQB6SWX2HAKEKKXDMYF4EYP5C",
+    "CCEMGF23WSRRR3C343LQ7SVQWGCNEQ2OA7I5VD7FY7FD4HJAYNQFV7BW"
+  ],
+  "retiredNote": "The CL launch list plus Margin V3 CC2MVMWN... and SwapAdapter V3 CCEMGF23... (Mainnet, bound to the compromised controller). CAKKHUGH... is the Testnet Margin V3 and is not listed.",
+  "denyMethods": [
+    "set_margin_controller",
+    "begin_margin_withdraw",
+    "init_margin_borrow_state",
+    "borrow_for_margin",
+    "repay_for_margin",
+    "recover_margin_borrow_snapshot",
+    "bump_margin_borrow_ttl",
+    "set_margin_liquidation_ctrl",
+    "liquidate_for_margin",
+    "set_pause_deposit",
+    "pause_deposit_g"
+  ],
+  "denyNote": "Custody-only (owner): the receipts' MarginController hook stays UNSET; no receipt hook function and no controller margin hook is ever called. No deposit pause on the cash markets. Refused as the operation AND anywhere in an authorization tree, on any target."
+}

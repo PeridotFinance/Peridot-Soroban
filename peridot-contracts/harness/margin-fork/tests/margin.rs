@@ -901,3 +901,203 @@ fn heaviest_open_with_bad_debt_and_pending_exit() {
     c.ledger_eq("heavy end");
     c.finish("heavy");
 }
+
+// ================================================================ WP8: the Mainnet ceremony sequence on the fork
+// research/pooled-margin-20261124/ceremony: every deploy-dependent step (M2..M16, C1..C4) and the K / rollback calls, in
+// ceremony order, with the margin-mainnet.json values. The admin and guardian are the REAL G-accounts (their live entries
+// come from tools/fetch-wp8-entries.cjs, so the G-signer's account, trustline and nonce entries are counted). The deploy runs
+// through the deployer with the admin and the ceremony salt; the id must equal `margin-ceremony.cjs addresses`.
+// Results: .scratch/wp8-ceremony.json (rows carry the ceremony step id).
+const WP8_ADMIN: &str = "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP";
+const WP8_GUARDIAN: &str = "GBSK3FYCGNYZLHHPSYRJNE53NZXDFL6ED24KLT3GUUETLFKDAUD7PQX3"; // recommended; owner decision pending
+const WP8_SALT: &str = "peridot-margin-v2-mainnet-1:margin-controller";
+const WP8_ID: &str = "CA6Q7HULJTGFMTB7YLJWFKPQVIIWAP46PQHAY3H5V2EZ2R7HBCW6N7NZ";
+
+/// Admin / guardian entries from tools/fetch-wp8-entries.cjs (read-only, current ledger): accounts, USDC trustline, the
+/// admin's USDC-receipt balance and per-user keys. Inserted only where the fork has no entry for that key.
+fn add_wp8_entries(snap: &mut LedgerSnapshot) -> Value {
+    let path = format!("{}/.scratch/wp8-entries.json", dir());
+    let j: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|_| panic!("{path}: run tools/fetch-wp8-entries.cjs"))).unwrap();
+    let have: std::collections::HashSet<LedgerKey> = snap.ledger_entries.iter().map(|(k, _)| (**k).clone()).collect();
+    let mut added = 0;
+    for e in j["entries"].as_array().unwrap() {
+        let key = LedgerKey::from_xdr_base64(e["key"].as_str().unwrap(), Limits::none()).unwrap();
+        if have.contains(&key) { continue; }
+        let data = LedgerEntryData::from_xdr_base64(e["xdr"].as_str().unwrap(), Limits::none()).unwrap();
+        let entry = LedgerEntry { last_modified_ledger_seq: e["lastModified"].as_u64().unwrap() as u32, data, ext: LedgerEntryExt::V0 };
+        snap.ledger_entries.push((Box::new(key), (Box::new(entry), e["liveUntil"].as_u64().map(|x| x as u32))));
+        added += 1;
+    }
+    json!({"file": path, "fetchedAt": j["fetchedAt"], "latestLedger": j["latestLedger"], "added": added})
+}
+
+#[test]
+fn wp8_ceremony_sequence_on_fork() {
+    let (mut snap, fj) = load_fork();
+    let extra = add_wp8_entries(&mut snap); // real admin (210 XLM, 5.68 USDC, 2,940 USDC pT) and guardian accounts
+    let e = Env::from_ledger_snapshot(snap);
+    e.cost_estimate().disable_resource_limits();
+    assert_eq!(hex(&Sha256::digest(mc::WASM)), MARGIN_SHA, "rebuild margin-controller with stellar contract build");
+    let (ctrl, xlm, usdc, xr, ur) = (a(&e, CTRL), a(&e, XLM_T), a(&e, USDC_T), a(&e, XLM_R), a(&e, USDC_R));
+    let pool = a(&e, fj["pool"]["address"].as_str().unwrap());
+    let (admin, guardian) = (a(&e, WP8_ADMIN), a(&e, WP8_GUARDIAN));
+    let mut steps: std::vec::Vec<Value> = vec![];
+
+    // M1 (upload) is simulated LIVE; here only to make the code available. M2 deploy with the constructor via the deployer.
+    let hash = e.deployer().upload_contract_wasm(mc::WASM);
+    let salt = soroban_sdk::BytesN::<32>::from_array(&e, &Sha256::digest(WP8_SALT.as_bytes()).into());
+    e.mock_all_auths();
+    let margin = e.deployer().with_address(admin.clone(), salt).deploy_v2(hash, (admin.clone(), ctrl.clone(), guardian.clone(), usdc.clone(), xlm.clone()));
+    assert_eq!(margin.to_string().to_string(), WP8_ID, "deployed id differs from margin-ceremony.cjs addresses");
+    let r = Address::from_str(&e, REFLECTOR);
+    let assets: SVec<RAsset> = call(&e, &r, "assets", vec![]);
+    let mut base = std::vec::Vec::new();
+    for asset in assets.iter() { let pd: Option<RPriceData> = call(&e, &r, "lastprice", vec![asset.clone().into_val(&e)]); base.push(pd.map(|p| p.price)); }
+    let c = Ctx { e, fj, margin, admin, ctrl, xlm, usdc, xr, ur, pool, base, rows: RefCell::new(vec![]), log: RefCell::new(serde_json::Map::new()) };
+    let (e, m, ad) = (&c.e, c.m(), &c.admin);
+    assert!(m.opens_paused(), "M2: opens must start paused");
+    let mut rec = |id: &str, op: &str, class: &str| {
+        let mut row = c.res(op, if class == "setter" { "release" } else { class });
+        let keys = row["footprintKeys"].as_u64().unwrap();
+        let cpu = row["cpu"].as_i64().unwrap();
+        if class == "setter" { row["withinOwnerLimit"] = json!(keys <= 100 && cpu <= 100_000_000 && row["writeEntries"].as_u64().unwrap() <= 50); row["limit"] = json!("setter: <=100 keys, <=100M"); }
+        row["step"] = json!(id); row["class"] = json!(class);
+        assert!(row["withinOwnerLimit"].as_bool().unwrap(), "{id}: over its owner limit: {row}");
+        steps.push(row);
+    };
+    // G-account signers: mock_auths cannot mock an account address in SDK 30 ("not a contract address"), so the call runs
+    // under mock_all_auths and the RECORDED authorization tree is then checked to be exactly: one entry, by `who`, root =
+    // margin.f(args), direct sub-invocations = `subs` (contract, fn, args), nothing nested below them.
+    let s = |who: &Address, f: &str, args: SVec<Val>, subs: &[(&Address, &str, SVec<Val>)]| -> Result<Val, String> {
+        c.e.mock_all_auths();
+        let r = match c.e.try_invoke_contract::<Val, soroban_sdk::Error>(&c.margin, &Symbol::new(&c.e, f), args.clone()) {
+            Ok(Ok(v)) => v, Ok(Err(x)) => return Err(format!("{x:?}")), Err(x) => return Err(format!("{x:?}")),
+        };
+        let auths = c.e.auths();
+        assert_eq!(auths.len(), 1, "{f}: exactly one authorizer expected, got {auths:?}");
+        let (addr, inv) = &auths[0];
+        assert_eq!(addr, who, "{f}: authorizer");
+        let want_root = soroban_sdk::testutils::AuthorizedFunction::Contract((c.margin.clone(), Symbol::new(&c.e, f), args));
+        assert_eq!(inv.function, want_root, "{f}: authorized root");
+        assert_eq!(inv.sub_invocations.len(), subs.len(), "{f}: sub-invocations {:?}", inv.sub_invocations);
+        for (got, (ct, nm, a)) in inv.sub_invocations.iter().zip(subs.iter()) {
+            assert_eq!(got.function, soroban_sdk::testutils::AuthorizedFunction::Contract(((*ct).clone(), Symbol::new(&c.e, nm), a.clone())), "{f}: sub");
+            assert!(got.sub_invocations.is_empty(), "{f}: nothing nested below {nm}");
+        }
+        Ok(r)
+    };
+
+    // M3..M14 setters (admin, exact root-only auth)
+    let fees = mc::Fees { open_fee: 1_000, close_fee: CLOSE_FEE, funding_apr: 20_000, bonus_liquidator: BONUS_LIQ, bonus_backstop: BONUS_BS };
+    let caps = mc::Caps { per_position_equity_usd: 25 * R7, side_equity_usd: 100 * R7, side_oi_usd: 500 * R7, min_equity_usd: R7 };
+    let hr = mc::Headroom { hf_target: 1_250_000, hf_stress: 1_100_000, stress: 200_000, close_reserve_usd: 0, coef_long: 3_000_000, coef_short: 2_100_000, coef_largest: 4_600_000 };
+    let bsp = mc::BackstopParams { cooldown_s: 259_200, window_s: 172_800, min_deposit_pt: 1_000_000 };
+    assert!(m.get_headroom() == hr, "constructor headroom default == pilot");
+    let calls: std::vec::Vec<(&str, &str, SVec<Val>)> = vec![
+        ("set_market.XLM", "set_market", (ad.clone(), c.xlm.clone(), c.xr.clone()).into_val(e)),
+        ("set_market.USDC", "set_market", (ad.clone(), c.usdc.clone(), c.ur.clone()).into_val(e)),
+        ("enter_markets", "enter_markets", (ad.clone(), SVec::from_array(e, [c.xlm.clone(), c.usdc.clone()])).into_val(e)),
+        ("set_pool", "set_pool", (ad.clone(), c.pool.clone()).into_val(e)),
+        ("set_fees", "set_fees", (ad.clone(), fees.clone()).into_val(e)),
+        ("set_max_slippage", "set_max_slippage", (ad.clone(), 15_000u128).into_val(e)),
+        ("set_risk.XLM", "set_risk", (ad.clone(), c.xlm.clone(), 5_000_000u128).into_val(e)),
+        ("set_risk.USDC", "set_risk", (ad.clone(), c.usdc.clone(), 5_000_000u128).into_val(e)),
+        ("set_caps.XLM", "set_caps", (ad.clone(), c.xlm.clone(), caps.clone()).into_val(e)),
+        ("set_caps.USDC", "set_caps", (ad.clone(), c.usdc.clone(), caps.clone()).into_val(e)),
+        ("set_headroom", "set_headroom", (ad.clone(), hr.clone()).into_val(e)),
+        ("set_backstop_params", "set_backstop_params", (ad.clone(), bsp.clone()).into_val(e)),
+    ];
+    for (id, f, args) in calls {
+        s(ad, f, args, &[]).unwrap_or_else(|err| panic!("{id}: {err}"));
+        rec(id, f, "setter");
+    }
+    let um: SVec<Address> = call(e, &c.ctrl, "get_user_markets", vec![c.margin.into_val(e)]);
+    assert!(um.contains(&c.xr) && um.contains(&c.ur), "enter_markets read-back");
+    // FB1 (fallback, not needed: the admin holds 2,940 USDC pT) measured with 0.1 USDC; M15 seed from existing pTokens.
+    e.mock_all_auths();
+    let _: () = call(e, &c.ur, "deposit", vec![ad.into_val(e), (R7 / 10).into_val(e)]);
+    rec("mint.usdc-pt", "FB1 USDC receipt deposit 0.1 USDC (admin G)", "setter");
+    let seed_pt: u128 = 750 * R7;
+    assert!(c.pt_bal(&c.ur, ad) >= seed_pt);
+    let sub: SVec<Val> = (ad.clone(), c.margin.clone(), seed_pt as i128).into_val(e);
+    s(ad, "backstop_deposit", (ad.clone(), seed_pt, seed_pt).into_val(e), &[(&c.ur, "transfer", sub)]).expect("M15 seed");
+    rec("backstop_deposit.seed", "backstop_deposit (admin seed 750 pT, min_shares = seed)", "release");
+    assert!(m.get_backer(ad) == seed_pt && m.opens_paused());
+    c.note("requiredBackstopEmptyBookUsd7", json!(m.required_backstop().to_string()));
+    c.ledger_eq("after seed");
+    // guardian cannot unpause; M16 admin unpause (LAST M-step)
+    let g_un = s(&guardian, "set_opens_paused", (guardian.clone(), false).into_val(e), &[]);
+    assert!(g_un.as_ref().is_err_and(|x| x.contains("#2")), "guardian unpause must fail NotAdmin: {g_un:?}");
+    s(ad, "set_opens_paused", (ad.clone(), false).into_val(e), &[]).expect("M16");
+    rec("unpause", "set_opens_paused(admin, false)", "setter");
+
+    // C1..C4 canary: $5 equity at 3x, long then short, by the admin G-account; swap-close each.
+    for (long, nm) in [(true, "long"), (false, "short")] {
+        let (px, pu) = (c.price(&c.xlm), c.price(&c.usdc));
+        let eq: u128 = 5 * R7;
+        let debt_usd = eq * 2 * 995 / 1000;
+        let (held, debt, coll, borrow) = if long { (&c.xlm, &c.usdc, eq * px.1 / px.0, debt_usd * pu.1 / pu.0) } else { (&c.usdc, &c.xlm, eq * pu.1 / pu.0, debt_usd * px.1 / px.0) };
+        let nav0 = c.nav();
+        c.tick();
+        let sub: SVec<Val> = (ad.clone(), c.margin.clone(), coll as i128).into_val(e);
+        let args: SVec<Val> = (ad.clone(), held.clone(), debt.clone(), coll, borrow, 1u128, 1_000_000u128).into_val(e);
+        let id: u64 = u64::try_from_val(e, &s(ad, "open", args, &[(held, "transfer", sub)]).unwrap_or_else(|err| panic!("canary {nm} open: {err}"))).unwrap();
+        rec(&format!("canary.{nm}.open"), &format!("canary open {nm} $5 3x (admin G)"), "release");
+        let p = m.get_position(&id).unwrap();
+        c.note(&format!("canary.{nm}"), json!({"id": id, "collateral": coll.to_string(), "borrow": borrow.to_string(), "equityUsd7": p.equity_usd.to_string(),
+            "notionalUsd7": p.notional_usd.to_string(), "liqLtv": p.liq_ltv.to_string(), "openFeePt": (c.nav() - nav0).to_string()}));
+        c.tick();
+        s(ad, "close", (ad.clone(), id, 1u128).into_val(e), &[]).unwrap_or_else(|err| panic!("canary {nm} close: {err}"));
+        rec(&format!("canary.{nm}.close"), &format!("canary swap-close {nm} (admin G)"), "release");
+        assert!(!m.get_position(&id).unwrap().open);
+        c.ledger_eq(&format!("after canary {nm}"));
+    }
+    assert!(c.nav() as u128 >= seed_pt, "canary fees reach NAV");
+
+    // Kill switches and K-steps
+    s(&guardian, "set_opens_paused", (guardian.clone(), true).into_val(e), &[]).expect("K1 guardian pause");
+    rec("emergency.pause-opens.guardian", "K1 set_opens_paused(guardian, true)", "setter");
+    s(ad, "set_opens_paused", (ad.clone(), false).into_val(e), &[]).expect("K7 resume");
+    rec("emergency.resume-opens", "K7 set_opens_paused(admin, false)", "setter");
+    s(ad, "set_opens_paused", (ad.clone(), true).into_val(e), &[]).expect("K1 admin pause");
+    rec("emergency.pause-opens.admin", "K1 set_opens_paused(admin, true)", "setter");
+    let newly = s(ad, "reconcile", (ad.clone(),).into_val(e), &[]).expect("K2");
+    rec("emergency.reconcile", "K2 reconcile (no deficit)", "liquidation");
+    assert!(!bool::try_from_val(e, &newly).unwrap());
+    assert_eq!(m.settle_max_ptokens(&c.usdc), 0, "no bad debt: K3 settle has nothing to do (WP5/WP6 rows cover settle)");
+    let sub: SVec<Val> = (ad.clone(), c.margin.clone(), R7 as i128).into_val(e);
+    // K4: 1 pT from the admin's remaining USDC pTokens
+    s(ad, "admin_recapitalize", (ad.clone(), R7).into_val(e), &[(&c.ur, "transfer", sub)]).expect("K4");
+    rec("emergency.recapitalize", "K4 admin_recapitalize 1 pT", "release");
+    s(ad, "admin_resolve_impairment", (ad.clone(), 0u128, 0u128).into_val(e), &[]).expect("K5");
+    rec("emergency.resolve", "K5 admin_resolve_impairment(0, 0) (not impaired)", "liquidation");
+    s(ad, "set_caps", (ad.clone(), c.xlm.clone(), caps.clone()).into_val(e), &[]).expect("set-caps");
+    rec("emergency.set-caps", "set_caps (same values)", "setter");
+    s(ad, "set_guardian", (ad.clone(), guardian.clone()).into_val(e), &[]).expect("set-guardian");
+    rec("emergency.set-guardian", "set_guardian (same key)", "setter");
+    e.mock_all_auths();
+    let _: () = call(e, &c.margin, "bump_ttl", vec![SVec::<u64>::from_array(e, [1u64, 2]).into_val(e)]);
+    rec("emergency.bump-ttl", "bump_ttl([1, 2])", "setter");
+    // Rollback R3/R4: admin requests 10 pT of shares, 72 h, withdraws (empty book: pool check passes)
+    let (nav, shares) = m.backstop_nav();
+    let req = 10 * R7 * shares / nav as u128;
+    s(ad, "backstop_request_withdraw", (ad.clone(), req).into_val(e), &[]).expect("R3");
+    rec("emergency.bs-request", "R3 backstop_request_withdraw (10 pT of shares)", "setter");
+    let w = m.get_withdraw_req(ad).unwrap();
+    e.ledger().with_mut(|li| li.timestamp = w.ready_at + 1);
+    c.post(1, 1, 0, 120);
+    c.tick();
+    let got = s(ad, "backstop_withdraw", (ad.clone(), 0u128).into_val(e), &[]).expect("R4");
+    rec("emergency.bs-withdraw", "R4 backstop_withdraw after 72 h (empty book)", "release");
+    c.note("rollbackWithdrawPt", json!(format!("{:?}", got)));
+    c.ledger_eq("end");
+    let hook: Option<Address> = call(e, &c.xr, "get_margin_controller", vec![]);
+    let hook_u: Option<Address> = call(e, &c.ur, "get_margin_controller", vec![]);
+    assert!(hook.is_none() && hook_u.is_none(), "receipt MarginController hook must stay unset");
+    let out = json!({"test": "wp8-ceremony", "fork": fork_path(), "forkLedger": c.fj["ledger"], "forkFetchedAt": c.fj["fetchedAt"], "marginWasmSha256": MARGIN_SHA,
+        "deployedId": c.margin.to_string().to_string(), "receiptHooksUnset": true, "wp8Entries": extra, "log": Value::Object(c.log.borrow().clone()), "rows": steps,
+        "note": "admin and guardian are the real G-accounts (live entries from tools/fetch-wp8-entries.cjs); M2 deploy is not measured (deployer call from the test host); M1 is simulated live"});
+    let sj = serde_json::to_string_pretty(&out).unwrap();
+    println!("{sj}");
+    std::fs::write(format!("{}/.scratch/wp8-ceremony.json", dir()), &sj).unwrap();
+}
