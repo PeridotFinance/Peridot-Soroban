@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Peridot keeper-liveness watcher every minute (pause host)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=peridot-keeper-watch.service
+
+[Install]
+WantedBy=timers.target

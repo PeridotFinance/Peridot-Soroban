@@ -1,11 +1,24 @@
 # WP7: margin pass in the cash liquidator, Droplet rollout (written, NOT executed)
 
-Code: branch `feat/margin-keeper`, `peridot-contracts/bots/cash-liquidator`.
-- Commit 1, `5dedf2a`, is a verbatim import of deployed release 4f06aad, tree `230bad98`.
-- Commit 2 adds the margin pass. The README section "Margin pass" describes the behaviour.
+## Code and scope
 
-Host: liquidator Droplet `peridot-cashliq`, <keeper Droplet IP>, unit `peridot-cash-liquidator`, user `cashliq`. Logs go to
-`/mnt/cashliq/cash-liquidator/logs/liquidator.log`.
+Code is on branch `feat/margin-keeper`, under `peridot-contracts/bots/cash-liquidator`:
+1. `5dedf2a`: verbatim import of deployed release 4f06aad (tree `230bad98`).
+2. The margin pass.
+3. The fixes from the live-RPC smoke test.
+4. The prune fix (cherry-pick of `e742359`).
+5. The owner decisions of 25 Nov: Telegram alerts, the external dead-man, conversion of seized collateral, dust liquidations.
+
+The README section "Margin pass" describes the behaviour. "Alerts: Telegram, and an external dead-man" describes alert delivery.
+
+## Hosts
+
+- **Keeper Droplet:** `peridot-cashliq`, <keeper Droplet IP>, unit `peridot-cash-liquidator`, user `cashliq`. Logs go to
+  `/mnt/cashliq/cash-liquidator/logs/liquidator.log`.
+- **Pause host:** `peridot-pausewatch`, <pause host IP>, a separate machine. It runs the second dead-man watcher, unit
+  `peridot-keeper-watch.timer`, user `keeperwatch`. Its log is `/var/log/peridot-keeper-watch.log`.
+
+## Release process
 
 The release process mirrors `research/cash-borrowing-ops-20261118/COMMANDS-21NOV.md` A2 and A5:
 1. `git archive`;
@@ -13,32 +26,34 @@ The release process mirrors `research/cash-borrowing-ops-20261118/COMMANDS-21NOV
 3. `install_code`, which runs the host tests and switches `current`;
 4. restart.
 
-**Owner gate (25 Nov).** Margin opens stay paused until this keeper runs LIVE on the Droplet (not the Mac), after the dry stage below, with
-every alert shown firing. Nothing here signs a transaction except the switch to live (section 3), and even then it signs only when there is
-something to do.
+**Owner gate (25 Nov).** Margin opens stay paused until this keeper runs LIVE on the Droplet, after the dry stage, with every alert shown
+arriving on Telegram and the dead-man gate test passed. Telegram delivery is set up before M16.
 
-**Provenance caveat.** The deployed release `cb88d4dec23b4c82` = 4f06aad is taken from DROPLETS.md and COMMANDS-21NOV A2. It was not
-re-verified on the host while this was written (SSH inspection was not permitted). Step 1.3 checks it before anything changes.
+**Signing.** Nothing here signs a Stellar transaction, except the keeper itself after the switch to live (section 6).
 
-## 0. Prerequisites (all must hold before step 1)
+**Provenance caveat.** The deployed release `cb88d4dec23b4c82` = 4f06aad comes from DROPLETS.md and COMMANDS-21NOV A2. It was not
+re-verified on the host while this was written. Step 1.3 checks it before anything changes.
+
+## 0. Prerequisites
 
 1. **Contract.** The margin v2 contract is deployed from WASM `b1cb1cb21f02de1b1a9047d31fa60ffc066c2ddedc94c4dff2fcbdb0a7b1766f`, with opens
-   paused. You know its `C…` id.
-   - Its `Ctrl` is the cash controller `CBMRS7LK…7RK`, and its USDC/XLM markets are the pinned receipts. The keeper refuses anything else.
+   paused.
+   - Its `Ctrl` is the cash controller, its markets are the pinned USDC/XLM receipts, and its `Pool` is
+     `CBBMQBNHB2FYVZYV7VNHOJHUMTFJLR4PUMRVQYNW6RHIKZO2NQMIBUCV`. The keeper refuses anything else.
    - The keeper key `GDQARP…5B5G` is neither its admin nor its guardian.
-2. **Scan.** Almanax has scanned `5dedf2a..<WP7 commit>` with no open findings, and the branch is pushed. Releases are built from a
-   pushed commit only.
-3. **Inventory.** The margin pass draws on the same USDC/XLM inventory as cash liquidations.
-   - At the pilot caps ($25 equity, 5×, so at most about $100 of debt per position), one long liquidation needs at most about 102 USDC.
-   - One short needs at most about $100 of XLM, about 805 XLM at $0.124.
-   - The funded 500 USDC / 2,500 XLM covers this. The keeper alerts when it no longer does.
-4. **Alert delivery.** Alerts are JSON lines with `"level":"alert"` in the log above. There is **no off-box forwarding for this bot today**.
-   Decide who reads them, and how, before going live (open question in the WP7 report).
+2. **Scan.** Almanax has scanned the branch range with no open findings, and the branch is pushed.
+3. **Inventory.** It is shared with cash liquidations. The funded 500 USDC / 2,500 XLM covers the pilot caps (about 102 USDC per long and
+   about 805 XLM per short). The keeper alerts when it no longer does.
+4. **Owner accounts.** The owner has a Telegram account and a Healthchecks.io account (section 2).
 
 Shell variables on the Mac (no secrets):
 
 ```zsh
 export LQ="<keeper Droplet IP, from your own notes>"
+```
+
+```zsh
+export PW="<pause host IP, from your own notes>"
 ```
 
 ```zsh
@@ -50,19 +65,19 @@ export MARGIN=C...   # the deployed margin v2 contract id
 ```
 
 ```zsh
-export WP7=<full WP7 commit sha on feat/margin-keeper>
+export WP7=<full commit sha on feat/margin-keeper>
 ```
 
-## 1. Release and dry-run stage
+## 1. Release on the keeper Droplet, and the dry-run stage
 
 ### 1.1 Build the tarball (Mac)
 
 ```zsh
-mkdir -p ~/Peridot/releases && cd ~/Peridot/releases
+mkdir -p $HOME/Peridot/releases && cd $HOME/Peridot/releases
 ```
 
 ```zsh
-git -C ~/Peridot/Peridot-Soroban archive --format=tar.gz --prefix=cash-liquidator/ $WP7:peridot-contracts/bots/cash-liquidator > cash-liquidator-${WP7:0:7}.tgz
+git -C $HOME/Peridot/Peridot-Soroban archive --format=tar.gz --prefix=cash-liquidator/ $WP7:peridot-contracts/bots/cash-liquidator > cash-liquidator-${WP7:0:7}.tgz
 ```
 
 ```zsh
@@ -71,10 +86,14 @@ shasum -a 256 cash-liquidator-${WP7:0:7}.tgz
 
 Record the hash as `SRC_SHA256`. Keep this exact file: a rebuild gives the same contents but a different gzip hash.
 
-### 1.2 Copy it to the Droplet
+### 1.2 Copy it to both hosts
 
 ```zsh
 scp $=SSHQ cash-liquidator-${WP7:0:7}.tgz root@$LQ:/root/
+```
+
+```zsh
+scp $=SSHQ cash-liquidator-${WP7:0:7}.tgz root@$PW:/root/
 ```
 
 ### 1.3 Check what runs now (read-only)
@@ -85,28 +104,30 @@ ssh $=SSHQ root@$LQ 'readlink /opt/peridot-cash-liquidator/current; systemctl sh
 
 Expected:
 - `current -> …/releases/cb88d4dec23b4c82`;
-- `ActiveState=active`;
+- active;
 - no `MARGIN_` lines.
 
-Write down the `DRY_RUN` value. The margin stage leaves it **unchanged**, so cash liquidations keep running as they do now.
+Write down `DRY_RUN`. It stays **unchanged**, so cash liquidations keep running as they do now.
 
-### 1.4 Install the release (runs the host tests, then switches `current`)
+### 1.4 Install the release (host tests, then `current`)
 
 ```zsh
 ssh $=SSHQ root@$LQ 'SRC_TARBALL=/root/cash-liquidator-'${WP7:0:7}'.tgz NODE_VERSION=v22.23.5 SRC_SHA256=<SRC_SHA256> bash -c ". /root/lib.sh && install_code" && readlink /opt/peridot-cash-liquidator/current'
 ```
 
 Expected:
-- `sha256sum` prints OK;
-- the host `node --test` passes (65 tests);
-- `current` points to the new `releases/<first 16 hex of SRC_SHA256>`.
+- sha256 OK;
+- the host `node --test` passes (80 tests);
+- `current` points to the new release.
 
-On any failure `install_code` stops before switching `current`. Nothing has changed, so stop here.
+On failure nothing has changed, so stop.
 
-### 1.5 Margin overlay (enabled, contract id) and the margin dry-run flag
+### 1.5 Alert delivery before the restart
 
-The overlay sets only `enabled` and `contract`. The WASM pin stays in the release. Setting the contract id also turns on the cash-pass
-exclusion of the pooled account.
+Do section 2 (Telegram, then Healthchecks.io) now. The new release reports `alert delivery NOT configured` at start until the file from
+2.4 exists.
+
+### 1.6 Margin overlay and the margin dry-run flag
 
 ```zsh
 ssh $=SSHQ root@$LQ "printf '{\"enabled\": true, \"contract\": \"$MARGIN\"}\n' > /etc/peridot-cash-liquidator/margin.json && chown root:cashliq /etc/peridot-cash-liquidator/margin.json && chmod 0640 /etc/peridot-cash-liquidator/margin.json && cat /etc/peridot-cash-liquidator/margin.json"
@@ -116,50 +137,42 @@ ssh $=SSHQ root@$LQ "printf '{\"enabled\": true, \"contract\": \"$MARGIN\"}\n' >
 ssh $=SSHQ root@$LQ 'grep -q "^MARGIN_" /etc/peridot-cash-liquidator/liquidator.env || printf "MARGIN_CONFIG_FILE=/etc/peridot-cash-liquidator/margin.json\nMARGIN_DRY_RUN=true\n" >> /etc/peridot-cash-liquidator/liquidator.env; grep -E "^(DRY_RUN|MARGIN_)" /etc/peridot-cash-liquidator/liquidator.env'
 ```
 
-Expected:
-- `DRY_RUN` is unchanged from 1.3;
-- `MARGIN_CONFIG_FILE=/etc/peridot-cash-liquidator/margin.json`;
-- `MARGIN_DRY_RUN=true`.
-
-### 1.6 Restart and check the start lines
+### 1.7 Restart and check the start lines
 
 ```zsh
 ssh $=SSHQ root@$LQ 'systemctl restart peridot-cash-liquidator; sleep 60; systemctl show -p ActiveState -p ActiveEnterTimestamp -p NRestarts peridot-cash-liquidator'
 ```
 
 ```zsh
-ssh $=SSHQ root@$LQ 'grep -E "\"msg\":\"(start|margin pass enabled|margin pin check failed at start|margin state bootstrapped|margin heartbeat|heartbeat)\"" /mnt/cashliq/cash-liquidator/logs/liquidator.log | tail -n 8 | cut -c1-400'
+ssh $=SSHQ root@$LQ 'grep -E "\"msg\":\"(start|alert delivery: telegram|alert delivery NOT configured|external dead-man NOT configured|margin pass enabled|margin pin check failed at start|margin state bootstrapped|margin heartbeat|heartbeat)\"" /mnt/cashliq/cash-liquidator/logs/liquidator.log | tail -n 10 | cut -c1-400'
 ```
 
-Expected:
-- `start` (with the unchanged `dryRun`);
-- `margin pass enabled` with `wasm: b1cb1cb2…766f` and `dryRun: true`;
-- `margin state bootstrapped` with `counter` equal to the on-chain `get_position_counter` (0 before any open);
-- `heartbeat`;
-- `margin heartbeat`.
+Expected, in order:
+1. `alert delivery: telegram` with `prefix: [Stellar]` and `healthcheckPing: true`;
+2. `start`;
+3. `margin pass enabled` with `wasm: b1cb1cb2…766f` and `dryRun: true`;
+4. `margin state bootstrapped`;
+5. `heartbeat`;
+6. `margin heartbeat`.
 
-Any `margin pin check failed at start` line is an alert: stop, then roll back (section 4) or fix the overlay.
+There must be no `NOT configured` lines. Healthchecks shows the check as **up** within a minute.
 
 Record `ActiveEnterTimestamp`. **The dry stage clock starts there.**
 
-### 1.7 Dry-stage pass criterion (all must hold)
+### 1.8 Dry-stage pass criterion (all must hold, at least 12 h after `ActiveEnterTimestamp`)
 
-Run the checks below at least **12 h** after `ActiveEnterTimestamp`. The stage passes when all of the following hold:
-1. **Running.** The service is active with NRestarts=0.
-2. **Cycles.** There are at least 1,400 `margin heartbeat` lines since the start: 30 s cycles plus early wakes, so about 1,440 or more in 12 h.
-   Their `ledger` values strictly increase, with no repeats (CAP-88 key).
-3. **Errors.** There are 0 `margin cycle failed` lines, and 0 margin `warn`/`alert` lines. Alerts tagged `alertTest` are excluded, so run
-   section 2 after this criterion, or exclude them. While opens are paused and the book is empty, no real margin alert is expected.
+1. **Running.** The service is active with NRestarts=0, and the Healthchecks check has stayed up.
+2. **Cycles.** There are at least 1,400 `margin heartbeat` lines, whose `ledger` values strictly increase.
+3. **Errors.** There are 0 `margin cycle failed` lines, and 0 margin `warn`/`alert` lines that are not tagged `alertTest`.
 4. **No margin sends.** The journal has 0 `"kind":"margin_` entries.
-5. **No cash regression.** Cash `heartbeat` lines continue with no new cash `alert` lines (compare with the hours before the restart), and the
-   pooled account is never selected for a cash liquidation.
-6. **Reads are correct against the deployed contract.** These fields of the latest `margin heartbeat` must equal an independent read-only
-   simulation from the Mac:
-   - `active` = number of open positions (0 while opens are paused);
-   - `bsDebtShares` = `{USDC: 0, XLM: 0}`;
-   - `impaired` = `false`;
+5. **No cash regression.** Cash `heartbeat` lines continue with no new cash `alert` lines.
+6. **Reads are correct against the deployed contract.** These fields of the latest `margin heartbeat` must equal the read-only simulations
+   below:
+   - `active` (0 while opens are paused);
+   - `bsDebtShares` = 0/0;
+   - `impaired` = false;
    - `backstopNavPt` / `backstopShares` = `backstop_nav`;
-   - `hf` = `340282366920938463463374607431768211455` (u128::MAX, no pooled debt).
+   - `hf` = u128::MAX (no pooled debt).
 
 ```zsh
 ssh $=SSHQ root@$LQ 'systemctl show -p ActiveState -p ActiveEnterTimestamp -p NRestarts peridot-cash-liquidator'
@@ -185,7 +198,7 @@ ssh $=SSHQ root@$LQ 'grep -c "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/s
 ssh $=SSHQ root@$LQ 'grep "\"msg\":\"margin heartbeat\"" /mnt/cashliq/cash-liquidator/logs/liquidator.log | tail -n 1 | cut -c1-600'
 ```
 
-The independent reads below are simulations only (`--send=no`) with the keeper's public key as source. Nothing is signed.
+The independent reads are simulations only (`--send=no`), with the keeper's public key as source:
 
 ```zsh
 stellar contract invoke --id $MARGIN --network mainnet --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- get_position_counter
@@ -207,94 +220,235 @@ stellar contract invoke --id $MARGIN --network mainnet --source-account GDQARPHR
 stellar contract invoke --id $MARGIN --network mainnet --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- opens_paused
 ```
 
-`opens_paused` must be `true` throughout the stage.
+`opens_paused` must be `true` throughout.
 
-## 2. Alert test on the Droplet (no funds touched)
+## 2. Owner setup: Telegram, Healthchecks.io, pause-host watcher
 
-`src/margin-alert-check.mjs` forces `DRY_RUN=true` and `MARGIN_DRY_RUN=true`, and replaces `sign`/`submit` with functions that throw. It
-reads the state file but never writes it. Each run does two things:
-1. **Live read-only cycle.** One margin cycle against the deployed contract: pins, discovery, positions, backstop and `pooled_health`. It
-   logs `margin alert test: live read-only cycle ok`, plus any real alert.
-2. **Synthetic snapshot.** The synthetic snapshot goes through the **same** `marginAlerts` → `emitMarginAlerts` path as a live cycle. Every
-   line is tagged `"alertTest":true`.
+### 2.1 Telegram, option A: a new bot
 
-The run exits 1 if a requested alert did not fire. Output is appended to the service log, so the alerts land exactly where live alerts
-land: `"level":"alert"` lines in `liquidator.log`.
-
-Run each alert on its own, one block per alert, then confirm where it landed.
-
-**Liquidatable for more than 10 min** (owner rule):
+1. In Telegram, open **@BotFather** and send `/newbot`.
+2. Give it a name (for example "Peridot Stellar alerts") and a username ending in `bot`.
+3. BotFather replies with the **bot token**. Keep it in your password manager only.
+4. Open the new bot and press **Start**, or add the bot to the group chat that should receive alerts, and send it one message.
+5. Get the chat id on the Mac. The token is read silently, and is never echoed, put in argv or written to shell history:
 
 ```zsh
-ssh $=SSHQ root@$LQ 'systemd-run --uid=cashliq --gid=cashliq --wait --collect --property=EnvironmentFile=/etc/peridot-cash-liquidator/liquidator.env --property=StandardOutput=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --property=StandardError=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --working-directory=/opt/peridot-cash-liquidator/current /usr/local/bin/node src/margin-alert-check.mjs liquidatable'
-```
-
-**pooled_health below target** (hf < hf_target or hf_down < 1.10):
-
-```zsh
-ssh $=SSHQ root@$LQ 'systemd-run --uid=cashliq --gid=cashliq --wait --collect --property=EnvironmentFile=/etc/peridot-cash-liquidator/liquidator.env --property=StandardOutput=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --property=StandardError=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --working-directory=/opt/peridot-cash-liquidator/current /usr/local/bin/node src/margin-alert-check.mjs pooled_health'
-```
-
-**margin_impaired:**
-
-```zsh
-ssh $=SSHQ root@$LQ 'systemd-run --uid=cashliq --gid=cashliq --wait --collect --property=EnvironmentFile=/etc/peridot-cash-liquidator/liquidator.env --property=StandardOutput=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --property=StandardError=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --working-directory=/opt/peridot-cash-liquidator/current /usr/local/bin/node src/margin-alert-check.mjs impaired'
-```
-
-**Inventory below the largest debt** (USDC for longs, XLM for shorts; fires both):
-
-```zsh
-ssh $=SSHQ root@$LQ 'systemd-run --uid=cashliq --gid=cashliq --wait --collect --property=EnvironmentFile=/etc/peridot-cash-liquidator/liquidator.env --property=StandardOutput=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --property=StandardError=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --working-directory=/opt/peridot-cash-liquidator/current /usr/local/bin/node src/margin-alert-check.mjs inventory'
-```
-
-**Opens refused on unsettled bad debt** (#25):
-
-```zsh
-ssh $=SSHQ root@$LQ 'systemd-run --uid=cashliq --gid=cashliq --wait --collect --property=EnvironmentFile=/etc/peridot-cash-liquidator/liquidator.env --property=StandardOutput=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --property=StandardError=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --working-directory=/opt/peridot-cash-liquidator/current /usr/local/bin/node src/margin-alert-check.mjs opens_refused'
-```
-
-**Where they landed.** Each alert type shows as one `"level":"alert"` line with `"alertTest":true`, followed by
-`margin alert test done … "missing":[]`.
-
-```zsh
-ssh $=SSHQ root@$LQ 'grep "\"alertTest\":true" /mnt/cashliq/cash-liquidator/logs/liquidator.log | tail -n 20 | cut -c1-300'
+read -rs "TG_TOKEN?bot token: " && echo
 ```
 
 ```zsh
-ssh $=SSHQ root@$LQ 'grep "\"msg\":\"margin alert test: live read-only cycle ok\"" /mnt/cashliq/cash-liquidator/logs/liquidator.log | tail -n 5 | cut -c1-300'
+printf 'url = "https://api.telegram.org/bot%s/getUpdates"\n' "$TG_TOKEN" | curl -s --config - | python3 -c 'import json,sys; [print(u["message"]["chat"]["id"], u["message"]["chat"].get("title") or u["message"]["chat"].get("username")) for u in json.load(sys.stdin)["result"] if "message" in u]'
 ```
 
-**Optional real-data check of pooled_health.** This fires the alert from the deployed contract's real `pooled_health`, not the synthetic
-snapshot:
-- A one-off overlay raises `hfDownMin` above u128::MAX, so even the empty book's `hf_down` (u128::MAX) is "below" it.
-- The overlay is only used for this one run; the service keeps `margin.json`.
-- The line is a real alert (no `alertTest` tag) from the live read-only cycle.
+The number printed next to your user or group name is the **chat id** (groups are negative).
 
 ```zsh
-ssh $=SSHQ root@$LQ "printf '{\"enabled\": true, \"contract\": \"$MARGIN\", \"hfDownMin\": \"340282366920938463463374607431768211456\", \"realertSecs\": 0}\n' > /etc/peridot-cash-liquidator/margin-alertcheck.json && chown root:cashliq /etc/peridot-cash-liquidator/margin-alertcheck.json && chmod 0640 /etc/peridot-cash-liquidator/margin-alertcheck.json"
+unset TG_TOKEN
+```
+
+### 2.2 Telegram, option B: reuse the existing Avalanche bot
+
+Use the existing bot's token and chat id from where the owner keeps them for the Avalanche keeper. Do not copy them through the repo or a
+command line.
+- Every message from this keeper starts with **`[Stellar]`** (`alerts.prefix` in `config/mainnet.json`), so one bot and one chat serve
+  both chains.
+- To change the prefix, add `ALERT_PREFIX=[Stellar-mainnet]` to `/etc/peridot-cash-liquidator/liquidator.env` (not a secret) and restart.
+- If the Avalanche bot uses a webhook, `getUpdates` (2.1 step 5) is refused. That does not matter here, because the chat id is already
+  known.
+
+### 2.3 Healthchecks.io (external dead-man, first channel)
+
+1. Log in at healthchecks.io and create a project, for example "Peridot Stellar".
+2. **Add Check**:
+   - name `[Stellar] peridot-cashliq`, so its own messages carry the prefix too;
+   - schedule **Simple**, **Period 1 minute**, **Grace 3 minutes**. The proposal is 3 min of grace for the 30 s cycle; the keeper pings
+     after every healthy cycle, and the check goes down about 4 min after the last ping.
+3. **Integrations → Telegram**: follow the instructions to connect @HealthchecksBot to the same chat, or add it to the same group.
+   Enable that integration on the check.
+4. Copy the check's **Ping URL** (`https://hc-ping.com/<uuid>`). It goes into the keeper's secrets file in 2.4.
+5. **Settings → API Access → Create read-only API key.** It goes into the pause host's watcher file in 2.6. Use the **read-only** key,
+   never the read-write key.
+
+### 2.4 Write the keeper's secrets file on the Droplet (token, chat id, ping URL)
+
+The values are typed at hidden prompts on the Droplet. They never appear on a command line, in shell history or in a log. The file is
+`cashliq`-owned, chmod 600.
+
+```zsh
+ssh $=SSHQ -t root@$LQ 'umask 077; install -m 600 -o cashliq -g cashliq /dev/null /etc/peridot-cash-liquidator/telegram.env && read -rs -p "bot token: " T && echo && read -r -p "chat id: " C && read -rs -p "healthchecks ping URL: " P && echo && printf "TELEGRAM_BOT_TOKEN=%s\nTELEGRAM_CHAT_ID=%s\nHEALTHCHECK_PING_URL=%s\n" "$T" "$C" "$P" > /etc/peridot-cash-liquidator/telegram.env; unset T C P; stat -c "%a %U:%G %n" /etc/peridot-cash-liquidator/telegram.env'
+```
+
+Expected: `600 cashliq:cashliq /etc/peridot-cash-liquidator/telegram.env`.
+
+### 2.5 Test: all eight alert types to Telegram (never signs)
+
+The test sends one message per type through the real path: log → notifier → Telegram. It exits 0 only when Telegram confirmed all eight
+(`alerts.channel: "telegram"`). With margin enabled it first runs one read-only cycle against the deployed contract.
+
+```zsh
+ssh $=SSHQ root@$LQ 'systemd-run --uid=cashliq --gid=cashliq --wait --collect --property=EnvironmentFile=/etc/peridot-cash-liquidator/liquidator.env --property=StandardOutput=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --property=StandardError=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --working-directory=/opt/peridot-cash-liquidator/current /usr/local/bin/node src/margin-alert-check.mjs; echo "exit $?"'
 ```
 
 ```zsh
-ssh $=SSHQ root@$LQ 'systemd-run --uid=cashliq --gid=cashliq --wait --collect --property=EnvironmentFile=/etc/peridot-cash-liquidator/liquidator.env --setenv=MARGIN_CONFIG_FILE=/etc/peridot-cash-liquidator/margin-alertcheck.json --property=StandardOutput=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --property=StandardError=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --working-directory=/opt/peridot-cash-liquidator/current /usr/local/bin/node src/margin-alert-check.mjs pooled_health'
+ssh $=SSHQ root@$LQ 'grep "\"msg\":\"margin alert check done\"" /mnt/cashliq/cash-liquidator/logs/liquidator.log | tail -n 1 | cut -c1-400'
+```
+
+Expected:
+- `exit 0`, and `"channel":"telegram"` with all eight types under `delivered` and `"missing":[]`:
+  `liquidatableOver10min`, `pooledHealthLow`, `impaired`, `inventoryLow`, `opensRefusedBadDebt`, `keeperDown`, `conversionFailed`,
+  `dustLiquidation`.
+- On the phone: eight `[Stellar] ALERT [peridot-cashliq] <type>` messages.
+
+A single type can be re-sent on its own, for example:
+
+```zsh
+ssh $=SSHQ root@$LQ 'systemd-run --uid=cashliq --gid=cashliq --wait --collect --property=EnvironmentFile=/etc/peridot-cash-liquidator/liquidator.env --property=StandardOutput=append:/mnt/cashliq/cash-liquidator/logs/liquidator.log --working-directory=/opt/peridot-cash-liquidator/current /usr/local/bin/node src/margin-alert-check.mjs conversionFailed; echo "exit $?"'
+```
+
+### 2.6 Pause-host watcher (second, independent dead-man channel)
+
+**Least-privilege choice.** The watcher reads the keeper's Healthchecks check with a **read-only** API key:
+- that key cannot ping, pause or edit checks;
+- the watcher needs no Stellar key and no access to the keeper host;
+- the pause key volume is made inaccessible to it.
+
+Watching the keeper's on-chain activity through public RPC needs no secret at all. It was rejected because the keeper sends nothing on
+chain in steady state (dry run, or nothing to do), so it cannot tell "idle" from "down".
+
+The release is installed in its **own** directory, `/opt/peridot-keeper-watch`. The pause watcher's `/opt/peridot-cash-liquidator/current`
+is not touched.
+
+```zsh
+ssh $=SSHQ root@$PW 'echo "<SRC_SHA256>  /root/cash-liquidator-'${WP7:0:7}'.tgz" | sha256sum -c -'
 ```
 
 ```zsh
-ssh $=SSHQ root@$LQ 'grep "margin pooled_health below target" /mnt/cashliq/cash-liquidator/logs/liquidator.log | grep -v alertTest | tail -n 1 | cut -c1-300'
+ssh $=SSHQ root@$PW 'id keeperwatch >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin keeperwatch; id keeperwatch'
 ```
 
 ```zsh
-ssh $=SSHQ root@$LQ 'rm /etc/peridot-cash-liquidator/margin-alertcheck.json'
+ssh $=SSHQ root@$PW 'R=/opt/peridot-keeper-watch/releases/$(echo <SRC_SHA256> | cut -c1-16); mkdir -p $R.tmp && tar -xzf /root/cash-liquidator-'${WP7:0:7}'.tgz -C $R.tmp --strip-components=1 --no-same-owner && find $R.tmp -name "._*" -delete && (cd $R.tmp && PATH=/opt/node-v22.23.5/bin:$PATH npm ci --omit=dev --ignore-scripts --no-audit --no-fund && /usr/local/bin/node --test) && chown -R root:root $R.tmp && chmod -R go-w,a+rX $R.tmp && mv $R.tmp $R && ln -sfn $R /opt/peridot-keeper-watch/current && readlink /opt/peridot-keeper-watch/current'
 ```
 
-## 3. Switch the margin pass to live
+```zsh
+ssh $=SSHQ root@$PW 'readlink /opt/peridot-cash-liquidator/current'
+```
+
+That must still print the pause watcher's own release, unchanged.
+
+Secrets file: the Telegram token, the chat id and the read-only key, at hidden prompts. It is `keeperwatch`-owned, chmod 600:
+
+```zsh
+ssh $=SSHQ -t root@$PW 'install -d -m 750 -o root -g keeperwatch /etc/peridot-keeper-watch && umask 077 && install -m 600 -o keeperwatch -g keeperwatch /dev/null /etc/peridot-keeper-watch/keeper-watch.env && read -rs -p "bot token: " T && echo && read -r -p "chat id: " C && read -rs -p "healthchecks READ-ONLY api key: " K && echo && printf "TELEGRAM_BOT_TOKEN=%s\nTELEGRAM_CHAT_ID=%s\nHEALTHCHECKS_API_KEY=%s\nHEALTHCHECKS_CHECK=dummy-until-listed\n" "$T" "$C" "$K" > /etc/peridot-keeper-watch/keeper-watch.env; unset T C K; stat -c "%a %U:%G %n" /etc/peridot-keeper-watch/keeper-watch.env'
+```
+
+List the checks the key can see. This prints names, status and `unique_key`, never a secret:
+
+```zsh
+ssh $=SSHQ root@$PW 'systemd-run --uid=keeperwatch --gid=keeperwatch --wait --pipe --collect --setenv=KEEPER_WATCH_FILE=/etc/peridot-keeper-watch/keeper-watch.env --working-directory=/opt/peridot-keeper-watch/current /usr/local/bin/node src/keeper-watch.mjs --list'
+```
+
+Put the `unique_key` of `[Stellar] peridot-cashliq` into the file. This replaces the placeholder line:
+
+```zsh
+ssh $=SSHQ -t root@$PW 'read -r -p "unique_key of the keeper check: " U && sed -i "s/^HEALTHCHECKS_CHECK=.*/HEALTHCHECKS_CHECK=$U/" /etc/peridot-keeper-watch/keeper-watch.env; unset U; grep -c "^HEALTHCHECKS_CHECK=" /etc/peridot-keeper-watch/keeper-watch.env'
+```
+
+Install and start the timer:
+
+```zsh
+ssh $=SSHQ root@$PW 'cp /opt/peridot-keeper-watch/current/deploy/pausehost/peridot-keeper-watch.service /opt/peridot-keeper-watch/current/deploy/pausehost/peridot-keeper-watch.timer /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now peridot-keeper-watch.timer && systemctl list-timers peridot-keeper-watch.timer --no-pager'
+```
+
+```zsh
+ssh $=SSHQ root@$PW 'sleep 90; tail -n 3 /var/log/peridot-keeper-watch.log'
+```
+
+Expected: `keeper-watch ok` with `"status":"up"`.
+
+## 3. Dead-man gate test (stop the keeper, both alerts, restart, both recoveries)
+
+**Cost.** This stops cash liquidations for about 6–10 min. Run it while margin opens are paused and the cash markets are quiet.
+
+**Gate facts.** It produces exactly the gate facts
+`deadman: {service: "healthchecks", pauseHostWatcher: true, stopTestAt: <ISO>, alertsReceived: true}`.
+
+1. **Precondition.** Healthchecks shows the check **up**, and the watcher's last line is `keeper-watch ok … "status":"up"`:
+
+```zsh
+ssh $=SSHQ root@$PW 'tail -n 1 /var/log/peridot-keeper-watch.log'
+```
+
+2. **Stop the keeper.** The command prints the time it stops it. That printed ISO time is **`stopTestAt`**:
+
+```zsh
+ssh $=SSHQ root@$LQ 'date -u +%Y-%m-%dT%H:%M:%SZ; systemctl stop peridot-cash-liquidator; systemctl is-active peridot-cash-liquidator'
+```
+
+3. **Wait for both alerts** (within about 5 min: 1 min period + 3 min grace + the 1-min watcher timer). On Telegram:
+   - from **Healthchecks**: `[Stellar] peridot-cashliq` is **DOWN**;
+   - from the **pause-host watcher**: `[Stellar] ALERT [peridot-cashliq via pause host] keeperDown`.
+
+```zsh
+ssh $=SSHQ root@$PW 'grep "keeper-watch alert keeper_down delivered" /var/log/peridot-keeper-watch.log | tail -n 1'
+```
+
+4. **Restart the keeper:**
+
+```zsh
+ssh $=SSHQ root@$LQ 'systemctl start peridot-cash-liquidator; sleep 60; systemctl show -p ActiveState -p ActiveEnterTimestamp -p NRestarts peridot-cash-liquidator'
+```
+
+5. **Wait for both recoveries** (within about 2 min). On Telegram:
+   - Healthchecks: `[Stellar] peridot-cashliq` is **UP**;
+   - the watcher: `[Stellar] RESOLVED [peridot-cashliq via pause host] keeperDown`.
+
+```zsh
+ssh $=SSHQ root@$PW 'grep "keeper-watch resolved keeper_down delivered" /var/log/peridot-keeper-watch.log | tail -n 1'
+```
+
+6. **Record the gate.** It passes only if all four messages arrived:
+   - `service: "healthchecks"`;
+   - `pauseHostWatcher: true`;
+   - `stopTestAt`: the ISO time printed in step 2;
+   - `alertsReceived: true`.
+
+   If any message is missing, record `alertsReceived: false` and fix it before going live.
+
+The keeper restart in step 4 re-runs the start checks (pins, roles, allowances). Expect the same start lines as 1.7.
+
+## 4. Seized-collateral conversion and dust (behaviour to expect live)
+
+- **Long liquidation.** The keeper redeems exactly the seized XLM pTokens, then sells exactly the redeemed XLM for USDC on the pinned pool,
+  with `out_min` = Reflector value less 1.5 %.
+- **Short liquidation.** It redeems the seized USDC pTokens, and buys XLM only while XLM is below its funded minimum.
+- **Below the floor.** The lot is held and retried with backoff. `conversionFailed` alerts after 3 attempts or 15 min.
+- **Unknown outcome.** It is parked for operator review and never retried.
+- **Journal kinds:** `margin_redeem`, `margin_swap`.
+- **Dust.** A margin liquidation with an expected loss ≤ $2 (oracle USD, including the fee) is sent, with `dustLiquidation`. Above $2 it
+  is not sent, and an `unprofitableSkipped` alert fires.
+- **Cash pass.** It keeps its plain redeem, with no swap, and leaves margin lots' pTokens alone.
+
+## 5. Watch live actions
+
+```zsh
+ssh $=SSHQ root@$LQ 'tail -f /mnt/cashliq/cash-liquidator/logs/liquidator.log | grep --line-buffered -E "margin_(liquidate|redeem|swap|settle|reconcile|clear_expired) submitted|\"level\":\"alert\""'
+```
+
+```zsh
+ssh $=SSHQ root@$LQ 'grep "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/state/journal.jsonl | tail -n 10 | cut -c1-300'
+```
+
+## 6. Switch the margin pass to live
 
 Preconditions:
-- 1.7 passed;
-- section 2 showed every alert;
+- 1.8 passed;
+- 2.5 delivered all eight types;
+- 3 recorded `alertsReceived: true`;
 - the owner approved;
 - opens are still paused.
 
-Only `MARGIN_DRY_RUN` changes. `DRY_RUN` stays as it is.
+Only `MARGIN_DRY_RUN` changes.
 
 ```zsh
 ssh $=SSHQ root@$LQ 'sed -i "s/^MARGIN_DRY_RUN=true$/MARGIN_DRY_RUN=false/" /etc/peridot-cash-liquidator/liquidator.env && grep -E "^(DRY_RUN|MARGIN_)" /etc/peridot-cash-liquidator/liquidator.env'
@@ -308,44 +462,28 @@ ssh $=SSHQ root@$LQ 'systemctl restart peridot-cash-liquidator; sleep 60; system
 ssh $=SSHQ root@$LQ 'grep -E "\"msg\":\"(start|margin pass enabled|margin heartbeat)\"" /mnt/cashliq/cash-liquidator/logs/liquidator.log | tail -n 4 | cut -c1-400'
 ```
 
-Expected: `margin pass enabled … "dryRun":false`, then `margin heartbeat … "dryRun":false`.
-- With opens paused and an empty book, a live cycle signs nothing.
-- Reconcile is only simulated, and is sent only on `true`.
-- Settle and clear-expired send only when there is debt or an expired request.
+Expected: `margin pass enabled … "dryRun":false`. With opens paused and an empty book, a live cycle signs nothing. Only after this does the
+owner unpause opens; that is outside this runbook.
 
-Only after this does the owner unpause opens; that is outside this runbook.
+## 7. Rollback
 
-Watch live actions:
-
-```zsh
-ssh $=SSHQ root@$LQ 'tail -f /mnt/cashliq/cash-liquidator/logs/liquidator.log | grep --line-buffered -E "margin_(liquidate|settle|reconcile|clear_expired) submitted|\"level\":\"alert\""'
-```
-
-The journal records each intent hash before the send:
-
-```zsh
-ssh $=SSHQ root@$LQ 'grep "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/state/journal.jsonl | tail -n 10 | cut -c1-300'
-```
-
-## 4. Rollback
-
-**Level 1: margin back to dry run**, keeping the release. Use this when a margin send misbehaves; the cash pass is unaffected.
+**Level 1: margin back to dry run.** The cash pass and the alerts are unaffected.
 
 ```zsh
 ssh $=SSHQ root@$LQ 'sed -i "s/^MARGIN_DRY_RUN=false$/MARGIN_DRY_RUN=true/" /etc/peridot-cash-liquidator/liquidator.env && systemctl restart peridot-cash-liquidator'
 ```
 
-**Level 2: margin pass off**, keeping the release. The contract id stays in the overlay, so the cash exclusion of the pooled account
-remains.
+**Level 2: margin pass off.** The cash exclusion of the pooled account stays.
 
 ```zsh
 ssh $=SSHQ root@$LQ "printf '{\"enabled\": false, \"contract\": \"$MARGIN\"}\n' > /etc/peridot-cash-liquidator/margin.json && systemctl restart peridot-cash-liquidator"
 ```
 
-**Level 3: previous release.** Repoint `current` at release `cb88d4dec23b4c82` (4f06aad, kept by `install_code`).
-- The old release ignores the `MARGIN_*` variables and the `margin` / `lastRoundTs` keys in `state.json`. Its loader only reads `cursor`,
-  `startLedger`, `borrowers` and the refresh budget.
-- It does **not** exclude the pooled account from cash liquidation. While margin positions are open, prefer level 1 or 2.
+**Level 3: previous release** `cb88d4dec23b4c82`.
+- That release sends no Telegram alerts and no Healthchecks pings. Healthchecks and the watcher will report it **down**: pause the check
+  in Healthchecks first, or expect those alerts.
+- It does not exclude the pooled account from cash liquidation, and it does not know about open conversion lots. Prefer level 1 or 2
+  while margin positions or lots are open.
 
 ```zsh
 ssh $=SSHQ root@$LQ 'test -d /opt/peridot-cash-liquidator/releases/cb88d4dec23b4c82 && ln -sfn /opt/peridot-cash-liquidator/releases/cb88d4dec23b4c82 /opt/peridot-cash-liquidator/current && readlink /opt/peridot-cash-liquidator/current'
@@ -355,8 +493,14 @@ ssh $=SSHQ root@$LQ 'test -d /opt/peridot-cash-liquidator/releases/cb88d4dec23b4
 ssh $=SSHQ root@$LQ 'systemctl restart peridot-cash-liquidator; sleep 45; systemctl show -p ActiveState -p ActiveEnterTimestamp -p NRestarts peridot-cash-liquidator'
 ```
 
-If a margin transaction is in flight (`UNKNOWN` status in the log), first reconcile its hash from the journal against Horizon. Do not
-resend it.
+**Watcher off (pause host):**
+
+```zsh
+ssh $=SSHQ root@$PW 'systemctl disable --now peridot-keeper-watch.timer'
+```
+
+**In-flight transactions.** If a margin transaction is in flight (`UNKNOWN` in the log, or a lot in `review`), reconcile its hash from the
+journal against Horizon first. Do not resend it.
 
 ```zsh
 ssh $=SSHQ root@$LQ 'grep "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/state/journal.jsonl | tail -n 4'

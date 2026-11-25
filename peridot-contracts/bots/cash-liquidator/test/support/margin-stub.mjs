@@ -9,6 +9,7 @@ export const PINS = JSON.parse(fs.readFileSync(new URL('../../config/mainnet.jso
 export const MARGIN = 'CADQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQP5KR';
 export const KEEPER = 'GAAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQDZ7H';
 export const OWNER = 'GABAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEJXA';
+export const POOL = 'CBBMQBNHB2FYVZYV7VNHOJHUMTFJLR4PUMRVQYNW6RHIKZO2NQMIBUCV';
 export const BACKER = 'GABQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQHGPC';
 const M = PINS.markets;
 const nat = v => (v instanceof S.xdr.ScVal ? S.scValToNative(v) : v);
@@ -19,7 +20,9 @@ export function marginCfg(over = {}) {
     pins: PINS, publicKey: KEEPER, dryRun: false, journalFile: '/dev/null', stateFile: '/dev/null',
     margin: {enabled: true, contract: MARGIN, wasmAllowed: [FIX.source.marginWasmSha256], controller: PINS.controller, dryRun: true,
       cpuStop: 289_000_000, maxFeeStroops: 30_000_000, minProfitBps: 0, payBufferBps: 50, maxSettleIters: 8, hfDownMin: 1_100_000n,
-      liquidatableAlertMs: 600_000, realertMs: 600_000, backerLookbackLedgers: 100_000, backersSeed: [], roundPollMs: 5_000, ...over},
+      liquidatableAlertMs: 600_000, realertMs: 600_000, backerLookbackLedgers: 100_000, backersSeed: [], roundPollMs: 5_000,
+      pool: POOL, dustMaxLossUsd7: 20_000_000n,
+      convert: {enabled: true, maxSlippageBps: 150, backoffBaseMs: 60_000, backoffMaxMs: 900_000, alertAfterAttempts: 3, alertAfterMs: 900_000, dailyBudgetStroops: 50_000_000}, ...over},
   };
 }
 
@@ -34,6 +37,9 @@ export function stubChain(name, o = {}) {
     events: o.events ?? [], withdrawReq: o.withdrawReq ?? {},
     shortfall: o.shortfall ?? false, wasm: o.wasm ?? FIX.source.marginWasmSha256,
     adminKey: o.adminKey ?? 'GCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    // keeper SAC balances and pToken balances (by receipt); pool quote = oracle value less poolBelowBps
+    bal: {[M.USDC.underlying]: 0n, [M.XLM.underlying]: 0n, ...(o.bal || {})}, pt: {[M.USDC.receipt]: 0n, [M.XLM.receipt]: 0n, ...(o.pt || {})},
+    poolBelowBps: o.poolBelowBps ?? 50, failWithdraw: o.failWithdraw ?? false,
   };
   const prices = {[M.USDC.underlying]: FIX.pricesP0.usdc.map(BigInt), [M.XLM.underlying]: sc.priceXlm.map(BigInt)};
   const pos = id => state.positions[String(id)];
@@ -55,16 +61,22 @@ export function stubChain(name, o = {}) {
     get_withdraw_req: ([b]) => state.withdrawReq[b] ?? null,
     get_price_usd: ([t]) => prices[t] ?? null,
     get_exchange_rate: () => 1_000_000n,
-    balance: () => 0n,
+    balance: ([who], contract) => state.bal[contract] ?? 0n,
+    get_ptoken_balance: ([who], contract) => state.pt[contract] ?? 0n,
+    get_tokens: () => [M.XLM.underlying, M.USDC.underlying],
   };
+  const under = r => (r === M.XLM.receipt ? M.XLM.underlying : M.USDC.underlying);
+  const quote = (tin, tout, amt) => { const v = amt * prices[tin][0] / prices[tin][1]; return v * prices[tout][1] / prices[tout][0] * BigInt(10_000 - state.poolBelowBps) / 10_000n; };
   const fees = Object.fromEntries(Object.entries(FIX.fees).map(([k, v]) => [k, BigInt(v)]));
   const sym = s => S.xdr.ScVal.scvSymbol(s);
   const ik = (n, ...a) => S.xdr.ScVal.scvVec([sym(n), ...a.map(x => S.nativeToScVal(x, {type: 'address'}))]).toXDR('base64');
-  const inst = new Map([[ik('Ctrl'), PINS.controller], [ik('Usdc'), M.USDC.underlying], [ik('Xlm'), M.XLM.underlying],
+  const inst = new Map([[ik('Pool'), o.instPool ?? POOL], [ik('Ctrl'), PINS.controller], [ik('Usdc'), M.USDC.underlying], [ik('Xlm'), M.XLM.underlying],
     [ik('Market', M.USDC.underlying), M.USDC.receipt], [ik('Market', M.XLM.underlying), M.XLM.receipt], [ik('Fees'), fees], [ik('Admin'), state.adminKey]]);
   let n = 0;
-  const fakeTx = (method, args) => ({method, args, hash: () => Buffer.from(String(++n).padStart(64, '0'), 'hex')});
-  function simulate(method, args) {
+  const fakeTx = (method, args, contract, sim) => ({method, args, contract, sim, hash: () => Buffer.from(String(++n).padStart(64, '0'), 'hex')});
+  let contractOf = null;
+  function simulate(method, args, contract) {
+    contractOf = contract;
     const a = args.map(nat);
     if (method === 'liquidate') {
       const p = pos(a[1]);
@@ -74,7 +86,7 @@ export function stubChain(name, o = {}) {
       const heldTok = p.side === 'long' ? M.XLM.receipt : M.USDC.receipt;
       const debtTok = p.side === 'long' ? M.USDC.underlying : M.XLM.underlying;
       const pay = BigInt(o.liqPay?.[a[1]] ?? FIX.checks.L5_underwater_minus20.fork.paid);
-      const seize = BigInt(p.heldPt);
+      const seize = BigInt(o.liqSeize?.[a[1]] ?? p.heldPt);
       if (pay > BigInt(a[2])) return {ok: false, error: contractErr(32)};
       return {ok: true, retval: null, events: [
         {contract: debtTok, topics: ['transfer', a[0], MARGIN, 'USDC:G...'], data: pay},
@@ -94,18 +106,34 @@ export function stubChain(name, o = {}) {
       return {ok: true, retval: null};
     }
     if (method === 'reconcile') return {ok: true, retval: state.reconcile};
+    if (method === 'withdraw') {
+      if (state.failWithdraw) return {ok: false, error: 'HostError: Error(Contract, #400) cash lent out'};
+      return a[1] <= (state.pt[contractOf] ?? 0n) ? {ok: true, retval: null} : {ok: false, error: 'HostError: Error(Contract, #4)'};
+    }
+    if (method === 'swap') {
+      const [, ii, oi, amt, minOut] = a; const toks = views.get_tokens();
+      if (amt > state.bal[toks[ii]]) return {ok: false, error: 'HostError: Error(Contract, #10)'};
+      const out = quote(toks[ii], toks[oi], amt);
+      return out >= minOut ? {ok: true, retval: out} : {ok: false, error: 'HostError: Error(Contract, #2006) out_min not met'};
+    }
     return {ok: false, error: `unexpected ${method}`};
   }
   function apply(tx) {   // contract effects of a successful send
     const a = tx.args.map(nat);
-    if (tx.method === 'liquidate') { pos(a[1]).open = false; state.counter = state.counter; }
+    if (tx.method === 'liquidate') {
+      const p = pos(a[1]); p.open = false;
+      const heldR = p.side === 'long' ? M.XLM.receipt : M.USDC.receipt, debtT = p.side === 'long' ? M.USDC.underlying : M.XLM.underlying;
+      state.pt[heldR] += BigInt(tx.sim.events[2].data[4]); state.bal[debtT] -= BigInt(tx.sim.events[2].data[3]);
+    }
+    if (tx.method === 'withdraw') { state.pt[tx.contract] -= a[1]; state.bal[under(tx.contract)] += a[1]; }   // rate 1e6
+    if (tx.method === 'swap') { const toks = views.get_tokens(); state.bal[toks[a[1]]] -= a[3]; state.bal[toks[a[2]]] += tx.sim.retval; }
     if (tx.method === 'settle_backstop_debt') { const k = a[1] === M.USDC.underlying ? 'USDC' : 'XLM'; const step = o.settleStep ?? state.bs[k]; state.bs[k] = state.bs[k] > step ? state.bs[k] - step : 0n; }
     if (tx.method === 'backstop_clear_expired') delete state.withdrawReq[a[1]];
     if (tx.method === 'reconcile') { state.impaired = true; state.reconcile = false; }
   }
   return {
     calls, state,
-    addr: x => S.nativeToScVal(x, {type: 'address'}), u64: x => S.nativeToScVal(BigInt(x), {type: 'u64'}), u128: x => S.nativeToScVal(BigInt(x), {type: 'u128'}),
+    addr: x => S.nativeToScVal(x, {type: 'address'}), u32: x => S.nativeToScVal(Number(x), {type: 'u32'}), u64: x => S.nativeToScVal(BigInt(x), {type: 'u64'}), u128: x => S.nativeToScVal(BigInt(x), {type: 'u128'}),
     async latestLedger() { calls.push(['latestLedger']); return {sequence: state.seq, closeTime: state.closeTime}; },
     async instance(contract) { calls.push(['instance', contract]); return {wasm: state.wasm, get: k => inst.get(k.toXDR('base64')) ?? null}; },
     // Mirrors the Mainnet RPC: a ledger range and a cursor together are refused; offset cursors page by `limit`;
@@ -124,15 +152,20 @@ export function stubChain(name, o = {}) {
       calls.push(['view', method]);
       if (o.failView?.[method]) throw Error(`${method}: ${o.failView[method]}`);
       if (!views[method]) throw Error('unexpected view ' + method);
-      return views[method](args.map(nat));
+      return views[method](args.map(nat), contract);
     },
     async prepare(contract, method, args, opts) {
       calls.push(['prepare', method, opts]);
-      const r = simulate(method, args);
-      return r.ok ? {...r, prepared: fakeTx(method, args), metrics: {cpu: 100_000_000, fee: '2000000'}} : {...r, metrics: {cpu: 0, fee: '0'}};
+      const r = simulate(method, args, contract);
+      return r.ok ? {...r, prepared: fakeTx(method, args, contract, r), metrics: {cpu: 100_000_000, fee: '2000000'}} : {...r, metrics: {cpu: 0, fee: '0'}};
     },
     sign(tx) { calls.push(['sign', tx.method]); return tx; },
-    async submit(tx) { calls.push(['submit', tx.method]); apply(tx); return {hash: tx.hash().toString('hex'), status: o.submitStatus ?? 'SUCCESS', ledger: state.seq}; },
+    async submit(tx) {
+      calls.push(['submit', tx.method]);
+      const status = typeof o.submitStatus === 'function' ? o.submitStatus(tx.method) : (o.submitStatus ?? 'SUCCESS');
+      if (status === 'SUCCESS') apply(tx);
+      return {hash: tx.hash().toString('hex'), status, ledger: state.seq, feeCharged: '1000000'};
+    },
   };
 }
 

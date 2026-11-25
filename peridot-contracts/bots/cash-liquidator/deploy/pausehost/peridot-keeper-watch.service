@@ -1,0 +1,33 @@
+[Unit]
+Description=Peridot keeper-liveness watcher (reads the keeper's Healthchecks check, alerts Telegram); runs on the PAUSE host
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=keeperwatch
+Group=keeperwatch
+Environment=KEEPER_WATCH_FILE=/etc/peridot-keeper-watch/keeper-watch.env
+Environment=KEEPER_WATCH_STATE=/var/lib/peridot-keeper-watch/state.json
+StateDirectory=peridot-keeper-watch
+StateDirectoryMode=0700
+WorkingDirectory=/opt/peridot-keeper-watch/current
+ExecStart=/usr/local/bin/node src/keeper-watch.mjs
+TimeoutStartSec=90
+StandardOutput=append:/var/log/peridot-keeper-watch.log
+StandardError=append:/var/log/peridot-keeper-watch.log
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+InaccessiblePaths=-/mnt/pausewatch
+MemoryMax=128M

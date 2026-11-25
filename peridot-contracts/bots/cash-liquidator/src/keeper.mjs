@@ -2,9 +2,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as S from '@stellar/stellar-sdk';
 import {marginPass} from './margin.mjs';
+import {reservedPt} from './convert.mjs';
 import {planLiquidation, seizeIsProfitable, depegAlerts, mergeBorrowers, netInventory, refreshDecision, budgetFor, inventoryShortfalls, cachedPriceForLiquidation, pruneZeroDebt} from './plan.mjs';
 
-const log = (level, msg, extra = {}) => console.log(JSON.stringify({t: new Date().toISOString(), level, msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
+// Alert delivery: every 'alert' line also goes to the notifier (Telegram, src/notify.mjs) when one is set. The notifier is
+// asynchronous and never throws, so logging (and the keeper) is never blocked by delivery.
+let notifier = null;
+export function setNotifier(n) { notifier = n; }
+const log = (level, msg, extra = {}) => {
+  console.log(JSON.stringify({t: new Date().toISOString(), level, msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
+  if (notifier) notifier.notify(level, msg, extra);
+};
 
 export function loadState(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return {cursor: null, startLedger: null, borrowers: []}; }
@@ -163,7 +171,7 @@ export async function cycle(cfg, c, st) {
     journal(cfg.journalFile, {kind: 'liquidate', result: res.status, hash, ledger: res.ledger});
     log(res.status === 'SUCCESS' ? 'info' : 'alert', 'liquidate submitted', {...rec, ...res});
     results.push({...rec, ...res});
-    if (res.status === 'SUCCESS' && cfg.withdrawSeized) await withdrawSeized(cfg, c, cm, plan.collateralMarket, results);
+    if (res.status === 'SUCCESS' && cfg.withdrawSeized) await withdrawSeized(cfg, c, cm, plan.collateralMarket, results, st);
     inventory = await inventoryOf(cfg, c);
   }
   saveState(cfg.stateFile, st);
@@ -188,9 +196,10 @@ async function ensureAllowance(cfg, c, m, need) {
   return res.status === 'SUCCESS';
 }
 
-async function withdrawSeized(cfg, c, cm, market, results) {
-  const bal = BigInt(await c.view(cm.receipt, 'get_ptoken_balance', [c.addr(cfg.publicKey)]));
-  if (bal === 0n) return;
+async function withdrawSeized(cfg, c, cm, market, results, st = {}) {
+  // pTokens seized by margin liquidations still waiting for their own redeem (src/convert.mjs lots) are left alone.
+  const bal = BigInt(await c.view(cm.receipt, 'get_ptoken_balance', [c.addr(cfg.publicKey)])) - reservedPt(st, cm.receipt);
+  if (bal <= 0n) return;
   const sim = await c.prepare(cm.receipt, 'withdraw', [c.addr(cfg.publicKey), c.u128(bal)]);
   if (!sim.ok) { log('warn', 'withdraw of seized pTokens failed in simulation (cash may be lent out); retry next cycle', {market, bal, err: sim.error}); return; }
   if (cfg.dryRun) return;

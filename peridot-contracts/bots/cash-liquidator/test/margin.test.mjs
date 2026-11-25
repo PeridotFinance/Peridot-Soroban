@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {marginCycle, marginPass, marginAlertSelfTest} from '../src/margin.mjs';
+import {marginCycle, marginPass} from '../src/margin.mjs';
+import {syntheticAlerts, ALERT_TYPES} from '../src/margin-alert-check.mjs';
 import {cycle, waitForNextCycle, remainingMs} from '../src/keeper.mjs';
 import {loadConfig, loadMarginConfig} from '../src/config.mjs';
 import {makeChain} from '../src/chain.mjs';
@@ -176,12 +177,11 @@ test('price unavailable (#11) on a position view: alert for that position, the c
   assert.equal(r.positions, 0); assert.equal(alerts(q).filter(a => a.key?.startsWith('unavailable:')).length, 3);
 });
 
-test('alert self-test fires every required alert through the live alert path, tagged alertTest', () => {
-  const q = quietLog();
-  const keys = marginAlertSelfTest(q.log, {nowMs: 5_000_000});
-  for (const k of ['liquidatable:', 'pooled_health', 'impaired', 'opens_refused', 'inventory:USDC', 'inventory:XLM']) assert(keys.some(x => x.startsWith(k)), k);
-  assert(q.lines.every(l => l.level === 'alert' && l.alertTest === true));
-  assert.deepEqual(marginAlertSelfTest(quietLog().log, {names: ['impaired']}), ['impaired']);
+test('alert check: one synthetic alert per required type (all eight), live messages and types', () => {
+  const s = syntheticAlerts(5_000_000);
+  assert.deepEqual(s.map(a => a.type).sort(), [...ALERT_TYPES].sort());
+  assert.equal(ALERT_TYPES.length, 8);
+  for (const a of s) assert.equal(a.extra.type, a.type);
 });
 
 test('cash pass: the margin pooled account in shortfall is alerted, never planned or simulated', async () => {

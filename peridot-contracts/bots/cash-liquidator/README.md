@@ -71,10 +71,50 @@ with the same key would collide on sequence numbers, so it runs here, strictly a
 - **Caps.** `MARGIN_CPU_STOP` (289 M) and `MARGIN_MAX_FEE_STROOPS` (3 XLM). Margin flows run to 198 M instructions on the fork, above the cash `CPU_STOP`.
 - **SDK.** `@stellar/stellar-sdk` stays at 16.3.1. Latest ledger, transaction status and margin events are raw JSON-RPC, so no protocol-30
   header or meta is ever decoded by the SDK.
-- **Alert check:** `node src/margin-alert-check.mjs [names]`. It never signs: dry run is forced, and sign/submit throw. With margin enabled it
-  runs one real read-only margin cycle. It then sends a synthetic snapshot through the same alert path, with every line tagged
-  `alertTest:true`, and exits non-zero if any requested alert did not fire.
+- **Conversion of seized collateral** (`src/convert.mjs`, margin pass only). Each successful margin liquidation records a lot: exactly the
+  pTokens it seized.
+  - **Redeem:** the lot is redeemed on its receipt. It never takes more than the lot, and never more than the current balance.
+  - **Swap:** the redeemed amount is swapped on the pinned Aquarius XLM/USDC pool, with `out_min` = Reflector value less 1.5 %. Long
+    seizures (XLM) are sold for USDC. Short seizures (USDC) buy XLM only while XLM is below its funded minimum.
+  - **Holding:** below the floor, or on any failure, the lot is held and retried with backoff (60 s doubling, at most 15 min).
+    `conversionFailed` alerts after 3 attempts or 15 min.
+  - **Unknown outcomes:** an unknown outcome is parked for review, never retried.
+  - **Fees and journal:** every step is simulated and journaled. Each transaction respects the per-tx fee cap and a daily budget of 5 XLM.
+  - **Cash pass:** it keeps its existing plain redeem (`WITHDRAW_SEIZED`), with no swap. Its collateral can be EURC/USDC/XLM, only the
+    XLM/USDC pool is pinned, and it has no per-seizure accounting. The redeem now skips pTokens reserved by open margin lots.
+- **Dust:** an unprofitable margin liquidation is still sent when the expected loss is ≤ $2 per position (`dustMaxLossUsd7`; oracle USD,
+  including the tx fee), with a `dustLiquidation` alert. Above $2 it is not sent, and an `unprofitableSkipped` alert fires.
 - **Rollout:** `research/pooled-margin-20261124/WP7-KEEPER-ROLLOUT.md`.
+
+## Alerts: Telegram, and an external dead-man
+
+- **Telegram.** Every `alert` line, from the cash pass, the margin pass and startup, is also sent through the Telegram Bot API `sendMessage`
+  (`src/notify.mjs`).
+  - **Secrets:** the token, the chat id and the Healthchecks ping URL come ONLY from the chmod-600 file `alerts.telegramFile`
+    (`/etc/peridot-cash-liquidator/telegram.env`, owned by `cashliq`). They are never in the repo, the env file, logs or command lines,
+    and errors are scrubbed of them.
+  - **Prefix:** every message starts with `alerts.prefix` (default `[Stellar]`), so the owner's existing Avalanche bot and chat can be reused.
+  - **Dedupe:** the same alert key is sent at most once per 10 min. A resolved message is sent when the margin pass clears a key, or after
+    30 min without a recurrence (cash alerts).
+  - **Never blocking:** delivery is asynchronous, with 3 bounded retries (429 honoured, 4xx not retried) and a 10 s timeout. It never blocks
+    or stops the keeper.
+- **Dead-man, off this host.**
+  - **Healthchecks.io:** the keeper pings `HEALTHCHECK_PING_URL` after every healthy cycle, and `<url>/fail` after 3 consecutive cycle
+    failures. The check runs with a 1 min period and 3 min grace, and Healthchecks' own Telegram integration alerts.
+  - **Pause-host watcher:** `src/keeper-watch.mjs` runs on the PAUSE host every minute (`deploy/pausehost/*.service|timer`, user
+    `keeperwatch`). It reads that check with a read-only Healthchecks API key and sends its own `keeperDown` / resolved messages. If it
+    cannot read Healthchecks for 3 runs, it alerts that liveness is unknown.
+  - It needs no Stellar key, and the pause key volume is inaccessible to it.
+- **Alert check:** `node src/margin-alert-check.mjs [types]` sends all eight types through the real path (log → notifier → Telegram) and
+  exits non-zero unless Telegram confirmed each one. It never signs. The eight types are:
+  - `liquidatableOver10min`
+  - `pooledHealthLow`
+  - `impaired`
+  - `inventoryLow`
+  - `opensRefusedBadDebt`
+  - `keeperDown`
+  - `conversionFailed`
+  - `dustLiquidation`
 
 ## Pause watcher (separate process, separate key: `npm run start:pause`)
 

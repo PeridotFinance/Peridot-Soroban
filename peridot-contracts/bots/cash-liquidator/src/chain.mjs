@@ -5,6 +5,7 @@ import {loadKeyFile} from './keyfile.mjs';
 const addr = a => S.nativeToScVal(a, {type: 'address'});
 const u128 = x => S.nativeToScVal(BigInt(x), {type: 'u128'});
 const u64 = x => S.nativeToScVal(BigInt(x), {type: 'u64'});
+const u32 = x => S.nativeToScVal(Number(x), {type: 'u32'});
 
 // Decoded contract events from a simulation's diagnostic events: [{contract, topics, data}] (natives). Undecodable
 // entries are skipped; callers fall back to the contract-math model when the event they need is missing.
@@ -128,5 +129,5 @@ export function makeChain(cfg) {
     return {wasm: inst.executable().wasmHash().toString('hex'), get: key => { const v = m.get(key.toXDR('base64')); return v == null ? null : S.scValToNative(v); }};
   }
   const latestLedger = () => rpc.getLatestLedger();
-  return {rpc, view, raw, codeHash, prepare, sign, submit, borrowEvents, rawEvents, instance, latestLedger, addr, u128, u64, sym};
+  return {rpc, view, raw, codeHash, prepare, sign, submit, borrowEvents, rawEvents, instance, latestLedger, addr, u128, u64, u32, sym};
 }

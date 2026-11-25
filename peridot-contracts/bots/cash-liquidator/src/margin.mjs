@@ -4,9 +4,11 @@
 // debt until zero (self-sized, PooledShortfall #35 aware), clear expired backstop exit requests, reconcile (send only on
 // true), then alerts. Never throws past marginPass(); dry run (DRY_RUN || MARGIN_DRY_RUN) never signs.
 import * as S from '@stellar/stellar-sdk';
+import {convertPass, newLot} from './convert.mjs';
 import {E6, expectedLiquidation, maxPayFor, marginProfit, rankLiquidatable, applyMarginEvents, trackLiquidatable,
   isNewLedger, marginAlerts, gateAlerts, simErrorCode, ERR, liquidationFromEvents} from './margin-plan.mjs';
 
+export const DUST_MSG = 'dustLiquidation: liquidating at an expected loss within the $2 dust limit';
 const POS_EVENTS = ['margin_open', 'margin_close', 'margin_liquidate', 'margin_impaired'];
 const BS_EVENTS = ['bs_request', 'bs_cancel', 'bs_withdraw'];
 const keyVec = (name, ...addrs) => S.xdr.ScVal.scvVec([S.xdr.ScVal.scvSymbol(name), ...addrs.map(a => S.nativeToScVal(a, {type: 'address'}))]);
@@ -22,7 +24,7 @@ export async function verifyMargin(cfg, c) {
   const inst = await c.instance(m.contract);
   if (!m.wasmAllowed.includes(inst.wasm)) throw Error(`margin code not pinned: ${inst.wasm}`);
   const expect = [['Ctrl', [], m.controller], ['Usdc', [], M.USDC.underlying], ['Xlm', [], M.XLM.underlying],
-    ['Market', [M.USDC.underlying], M.USDC.receipt], ['Market', [M.XLM.underlying], M.XLM.receipt]];
+    ['Market', [M.USDC.underlying], M.USDC.receipt], ['Market', [M.XLM.underlying], M.XLM.receipt], ...(m.pool ? [['Pool', [], m.pool]] : [])];
   for (const [k, a, want] of expect) { const got = inst.get(keyVec(k, ...a)); if (got !== want) throw Error(`margin ${k}${a.length ? '(' + a[0].slice(0, 6) + ')' : ''} is ${got}, pinned ${want}`); }
   for (const k of ['Admin', 'Guardian']) if (inst.get(keyVec(k)) === cfg.publicKey) throw Error(`refused: keeper key is the margin ${k}`);
   const fees = inst.get(keyVec('Fees'));
@@ -169,10 +171,24 @@ async function liquidateOne(cfg, c, p, env, deps) {
   const prof = marginProfit({seizePt, rateHeld: ctx.rateHeld, priceHeld: ctx.priceHeld, pay, priceDebt: ctx.priceDebt,
     feeStroops: BigInt(sim.metrics.fee), priceXlm: env.prices.XLM, minProfitBps: m.minProfitBps});
   const rec = {...base, maxPay, pay, seizePt, source: ev ? (ev.paid != null ? 'sim events' : 'sim seize + model pay') : 'model', profitUsd7: prof.profitUsd, profitBps: prof.bps, feeUsd7: prof.feeUsd, metrics: sim.metrics};
-  if (!prof.ok) { log('warn', 'unprofitable margin liquidation (bonus - fees <= threshold)', rec); return {...rec, skipped: 'unprofitable'}; }
-  if (env.dry) { log('info', 'DRY_RUN would liquidate margin position', rec); return {...rec, dryRun: true}; }
-  const res = await send(cfg, c, sim, 'margin_liquidate', rec, deps);
-  return {...rec, ...res, stop: res.status !== 'SUCCESS'};
+  let dust = false;
+  if (!prof.ok) {
+    // Owner rule (25 Nov): liquidate at a loss when the expected loss (oracle USD, incl. the tx fee) is <= $2 per position.
+    const lossUsd7 = prof.profitUsd < 0n ? -prof.profitUsd : 0n;
+    if (lossUsd7 > m.dustMaxLossUsd7) {
+      log('alert', 'unprofitable margin liquidation: expected loss above the $2 dust limit; not sent', {type: 'unprofitableSkipped', key: `unprofitable:${p.id}`, ...rec, lossUsd7});
+      return {...rec, skipped: 'unprofitable', lossUsd7};
+    }
+    dust = true;
+    log('alert', DUST_MSG, {type: 'dustLiquidation', key: `dust:${p.id}`, ...rec, lossUsd7, dryRun: env.dry});
+  }
+  if (env.dry) { log('info', 'DRY_RUN would liquidate margin position', {...rec, dust}); return {...rec, dust, dryRun: true}; }
+  const res = await send(cfg, c, sim, 'margin_liquidate', {...rec, dust}, deps);
+  if (res.status === 'SUCCESS' && env.st) {
+    env.st.convert = {lots: [], budget: null, ...(env.st.convert || {})};
+    env.st.convert.lots.push(newLot({positionId: p.id, side: p.side, seizePt, ledger: res.ledger ?? env.ledger, nowMs: env.nowMs, cfg, inventory: env.inventory}));
+  }
+  return {...rec, ...res, dust, stop: res.status !== 'SUCCESS'};
 }
 
 async function settlePass(cfg, c, env, deps) {
@@ -266,8 +282,8 @@ export async function marginCycle(cfg, c, st, deps) {
   const ranked = rankLiquidatable(list);
   ms.liqSince = trackLiquidatable(ms.liqSince, ranked.map(p => p.id), L.sequence, nowMs, unavailable);
   let inventory = await deps.inventoryOf(cfg, c);
-  const env = {dry, fees, prices, rates, inventory, nowMs};
-  const actions = {liquidations: [], settles: [], cleared: [], reconcile: null};
+  const env = {dry, fees, prices, rates, inventory, nowMs, st, ledger: L.sequence};
+  const actions = {liquidations: [], conversions: [], settles: [], cleared: [], reconcile: null};
   let stop = false;
   if (prices.USDC && prices.XLM) {
     for (const p of ranked) {
@@ -277,6 +293,7 @@ export async function marginCycle(cfg, c, st, deps) {
       if (r.status === 'SUCCESS') env.inventory = inventory = await deps.inventoryOf(cfg, c);
     }
   } else if (ranked.length) log('alert', 'margin liquidations blocked: controller price unavailable', {usdc: !!prices.USDC, xlm: !!prices.XLM});
+  if (!stop) { const s = await convertPass(cfg, c, st, env, deps); actions.conversions = s.out; stop = !!s.stop; }
   if (!stop) { const s = await settlePass(cfg, c, env, deps); actions.settles = s.out; stop = !!s.stop; }
   if (!stop) { const s = await clearExpired(cfg, c, ms, L, env, deps); actions.cleared = s.out; stop = !!s.stop; }
   if (!stop) actions.reconcile = await reconcilePass(cfg, c, env, deps);
@@ -293,6 +310,7 @@ export async function marginCycle(cfg, c, st, deps) {
   const g = gateAlerts(ms.alertLast, alerts, nowMs, m.realertMs);
   ms.alertLast = g.last;
   emitMarginAlerts(g.fire, log, {margin: m.contract, ledger: L.sequence});
+  for (const key of g.resolved) log('info', 'alert resolved', {key, resolved: true, margin: m.contract, ledger: L.sequence});
   ms.lastCycleLedger = L.sequence;
   const view = {hf: snap.health?.hf, hfDown: snap.health?.hfDown, freeUsd7: snap.health?.freeUsd, impaired: snap.impaired, bsDebtShares: bsShares,
     backstopNavPt: nav ? nav[0] : undefined, backstopShares: nav ? nav[1] : undefined, backers: Object.keys(ms.backers).length, active: ms.active.length};
@@ -313,23 +331,6 @@ export async function marginPass(cfg, c, st, deps) {
     deps.log(st.margin.failures >= 3 ? 'alert' : 'warn', 'margin cycle failed', {err: e.message, failures: st.margin.failures});
     return {error: e.message};
   }
-}
-
-/**
- * Alert test (no chain writes): runs the synthetic snapshot below through the SAME marginAlerts + emitMarginAlerts path
- * as a live cycle, every line tagged alertTest:true, so each alert type can be shown landing in the log. names filters.
- */
-export function marginAlertSelfTest(log, {nowMs = Date.now(), names = null, thresholds = {liquidatableAlertMs: 600_000, hfDownMin: 1_100_000n}} = {}) {
-  const snap = {
-    positions: [{id: 'TEST-L', side: 'long', worstPay: 9_617_192_890n}, {id: 'TEST-S', side: 'short', worstPay: 69_027_881_770n}],
-    liqSince: {'TEST-L': {firstLedger: 1, firstSeenMs: nowMs - 11 * 60_000, lastLedger: 133, observations: 23}},
-    health: {hf: 1_200_000n, hfDown: 1_050_000n}, headroom: {hf_target: 1_250_000n},
-    impaired: true, impairedSeen: false, bsShares: {USDC: 29_005_989n, XLM: 0n}, inventory: {USDC: 0n, XLM: 0n}, unavailable: [],
-  };
-  const all = marginAlerts(snap, thresholds, nowMs);
-  const pick = all.filter(a => !names || names.some(n => a.key.startsWith(n)));
-  emitMarginAlerts(pick, log, {alertTest: true});
-  return pick.map(a => a.key);
 }
 
 export {E6};

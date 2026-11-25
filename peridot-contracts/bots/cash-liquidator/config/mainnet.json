@@ -81,6 +81,28 @@
     "payBufferBps": 50,
     "maxSettleIters": 8,
     "backerLookbackLedgers": 100000,
-    "backersSeed": []
+    "backersSeed": [],
+    "pool": "CBBMQBNHB2FYVZYV7VNHOJHUMTFJLR4PUMRVQYNW6RHIKZO2NQMIBUCV",
+    "convert": {
+      "note": "Seized margin collateral: redeem, then swap on the pinned Aquarius pool only at >= oracle less maxSlippageBps; else hold and retry with backoff.",
+      "enabled": true,
+      "maxSlippageBps": 150,
+      "backoffBaseSecs": 60,
+      "backoffMaxSecs": 900,
+      "alertAfterAttempts": 3,
+      "alertAfterSecs": 900,
+      "dailyBudgetStroops": 50000000
+    },
+    "dustMaxLossUsd7": 20000000
+  },
+  "alerts": {
+    "note": "Every alert line also goes to Telegram, prefixed so one bot/chat can serve several chains. Token, chat id and the Healthchecks ping URL ONLY from the chmod-600 file below (owned by the service user); never in the repo, env file, logs or command lines. Dead-man is external: Healthchecks.io (own Telegram integration) + the pause-host watcher (src/keeper-watch.mjs).",
+    "channel": "telegram",
+    "telegramFile": "/etc/peridot-cash-liquidator/telegram.env",
+    "prefix": "[Stellar]",
+    "host": "peridot-cashliq",
+    "dedupeSecs": 600,
+    "resolveQuietSecs": 1800,
+    "pingFailAfterFailures": 3
   }
 }

@@ -46,10 +46,30 @@ export function loadConfig(env = process.env) {
   if (cfg.network !== pins.network) throw Error('NETWORK_PASSPHRASE does not match pins');
   cfg.neverTouch = new Set(pins.neverTouch || []);
   cfg.margin = loadMarginConfig(pins, env);
+  cfg.alerts = loadAlertsConfig(pins, env, cfg.stateFile);
   // Cash-pass exclusion: never liquidate these borrowers (alert only). The margin pooled account is always added when
   // a margin contract id is configured, whether or not the margin pass itself is enabled.
   cfg.neverLiquidateBorrowers = new Set([...(pins.neverLiquidateBorrowers || []), ...(cfg.margin.contract ? [cfg.margin.contract] : [])]);
   return cfg;
+}
+
+/**
+ * Alert delivery. alerts.channel "telegram": token + chat id (+ optional Healthchecks ping URL) only from the chmod-600
+ * file alerts.telegramFile (override TELEGRAM_FILE, a path, never a secret). Messages start with alerts.prefix (default
+ * "[Stellar]", override ALERT_PREFIX) so the owner's existing bot/chat can be shared. Dead-man is external (Healthchecks.io
+ * + the pause-host watcher src/keeper-watch.mjs); nothing on this host watches itself.
+ */
+export function loadAlertsConfig(pins, env = process.env, stateFile = null) {
+  const a = pins.alerts || {};
+  return {
+    channel: a.channel ?? null,
+    telegramFile: env.TELEGRAM_FILE || a.telegramFile || null,
+    host: a.host ?? 'peridot-cashliq',
+    prefix: env.ALERT_PREFIX ?? a.prefix ?? '[Stellar]',
+    dedupeMs: (a.dedupeSecs ?? 600) * 1000,
+    resolveQuietMs: (a.resolveQuietSecs ?? 1800) * 1000,
+    pingFailAfter: a.pingFailAfterFailures ?? 3,   // consecutive cycle failures before pinging <url>/fail
+  };
 }
 
 const STRKEY_C = /^C[A-Z2-7]{55}$/;
@@ -65,13 +85,24 @@ const STRKEY_G = /^G[A-Z2-7]{55}$/;
 export function loadMarginConfig(pins, env = process.env) {
   const base = pins.margin || {};
   const overlay = env.MARGIN_CONFIG_FILE ? JSON.parse(fs.readFileSync(env.MARGIN_CONFIG_FILE, 'utf8')) : {};
-  for (const k of ['wasmAllowed', 'controller']) if (k in overlay) throw Error(`MARGIN_CONFIG_FILE may not override release pin margin.${k}`);
+  for (const k of ['wasmAllowed', 'controller', 'pool']) if (k in overlay) throw Error(`MARGIN_CONFIG_FILE may not override release pin margin.${k}`);
   const m = {...base, ...overlay};
   const out = {
     enabled: m.enabled === true && !!m.contract,
     contract: m.contract || null,
     wasmAllowed: base.wasmAllowed || [],
     controller: base.controller || pins.controller,
+    pool: base.pool || null,                                               // release pin: Aquarius XLM/USDC pool (must equal margin Key::Pool)
+    dustMaxLossUsd7: BigInt(m.dustMaxLossUsd7 ?? 20_000_000),             // liquidate at a loss up to $2 per position (oracle USD, incl. tx fee)
+    convert: {
+      enabled: (m.convert?.enabled ?? true) && !!base.pool,
+      maxSlippageBps: m.convert?.maxSlippageBps ?? 150,
+      backoffBaseMs: (m.convert?.backoffBaseSecs ?? 60) * 1000,
+      backoffMaxMs: (m.convert?.backoffMaxSecs ?? 900) * 1000,
+      alertAfterAttempts: m.convert?.alertAfterAttempts ?? 3,
+      alertAfterMs: (m.convert?.alertAfterSecs ?? 900) * 1000,
+      dailyBudgetStroops: m.convert?.dailyBudgetStroops ?? 50_000_000,
+    },
     dryRun: bool(env.MARGIN_DRY_RUN, true),
     cpuStop: int(env.MARGIN_CPU_STOP, m.cpuStop ?? 289_000_000),          // 85 % of the 340 M liquidation-flow limit (SPEC §7)
     maxFeeStroops: int(env.MARGIN_MAX_FEE_STROOPS, m.maxFeeStroops ?? 30_000_000),
@@ -87,6 +118,7 @@ export function loadMarginConfig(pins, env = process.env) {
   };
   if (out.contract && !STRKEY_C.test(out.contract)) throw Error('margin.contract must be a C... contract id');
   if (out.enabled && !out.wasmAllowed.length) throw Error('margin.enabled requires release pin margin.wasmAllowed');
+  if (out.convert.maxSlippageBps < 0 || out.convert.maxSlippageBps > 150) throw Error('margin.convert.maxSlippageBps must be 0..150 (owner: 1.5 % of the oracle)');
   for (const b of out.backersSeed) if (!STRKEY_G.test(b) && !STRKEY_C.test(b)) throw Error('margin.backersSeed entries must be addresses');
   return out;
 }

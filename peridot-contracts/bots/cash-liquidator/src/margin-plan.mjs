@@ -130,35 +130,37 @@ export function marginAlerts(snap, th, nowMs) {
   const out = [];
   for (const [id, s] of Object.entries(snap.liqSince ?? {})) {
     const ms = nowMs - s.firstSeenMs;
-    if (ms > th.liquidatableAlertMs) out.push({key: `liquidatable:${id}`, msg: 'margin position liquidatable for more than 10 min (owner rule)', id, minutes: Math.floor(ms / 60_000), firstLedger: s.firstLedger, observations: s.observations});
+    if (ms > th.liquidatableAlertMs) out.push({type: 'liquidatableOver10min', key: `liquidatable:${id}`, msg: 'margin position liquidatable for more than 10 min (owner rule)', id, minutes: Math.floor(ms / 60_000), firstLedger: s.firstLedger, observations: s.observations});
   }
   if (snap.health) {
     const hfT = snap.headroom ? BigInt(snap.headroom.hf_target) : null;
     if ((hfT != null && snap.health.hf < hfT) || snap.health.hfDown < BigInt(th.hfDownMin)) {
-      out.push({key: 'pooled_health', msg: 'margin pooled_health below target: hf < hf_target or hf_down < 1.10', hf: snap.health.hf, hfDown: snap.health.hfDown, hfTarget: hfT, hfDownMin: th.hfDownMin});
+      out.push({type: 'pooledHealthLow', key: 'pooled_health', msg: 'margin pooled_health below target: hf < hf_target or hf_down < 1.10', hf: snap.health.hf, hfDown: snap.health.hfDown, hfTarget: hfT, hfDownMin: th.hfDownMin});
     }
   }
-  if (snap.impaired || snap.impairedSeen) out.push({key: 'impaired', msg: 'margin_impaired: margin is Impaired, opens paused (admin_recapitalize / admin_resolve_impairment)', impaired: !!snap.impaired, eventSeen: !!snap.impairedSeen});
+  if (snap.impaired || snap.impairedSeen) out.push({type: 'impaired', key: 'impaired', msg: 'margin_impaired: margin is Impaired, opens paused (admin_recapitalize / admin_resolve_impairment)', impaired: !!snap.impaired, eventSeen: !!snap.impairedSeen});
   const bs = snap.bsShares ?? {};
-  if ((bs.USDC ?? 0n) > 0n || (bs.XLM ?? 0n) > 0n) out.push({key: 'opens_refused', msg: 'margin opens refused (#25 BackstopDebtOutstanding): backstop bad debt unsettled', bsDebtSharesUsdc: bs.USDC ?? 0n, bsDebtSharesXlm: bs.XLM ?? 0n});
+  if ((bs.USDC ?? 0n) > 0n || (bs.XLM ?? 0n) > 0n) out.push({type: 'opensRefusedBadDebt', key: 'opens_refused', msg: 'margin opens refused (#25 BackstopDebtOutstanding): backstop bad debt unsettled', bsDebtSharesUsdc: bs.USDC ?? 0n, bsDebtSharesXlm: bs.XLM ?? 0n});
   // Inventory vs the largest debt: USDC for longs (debt USDC), XLM for shorts (debt XLM).
   for (const [side, asset] of [['long', 'USDC'], ['short', 'XLM']]) {
     const largest = (snap.positions ?? []).filter(p => p.side === side && p.worstPay != null).reduce((m, p) => (p.worstPay > m ? p.worstPay : m), 0n);
     const have = snap.inventory?.[asset] ?? 0n;
-    if (largest > 0n && have < largest) out.push({key: `inventory:${asset}`, msg: `liquidator ${asset} inventory below the largest margin ${side} debt payment`, asset, haveRaw: have, largestPayRaw: largest});
+    if (largest > 0n && have < largest) out.push({type: 'inventoryLow', key: `inventory:${asset}`, msg: `liquidator ${asset} inventory below the largest margin ${side} debt payment`, asset, haveRaw: have, largestPayRaw: largest});
   }
-  for (const id of snap.unavailable ?? []) out.push({key: `unavailable:${id}`, msg: 'margin position views failed (price unavailable #11?): health unknown', id});
+  for (const id of snap.unavailable ?? []) out.push({type: 'positionUnavailable', key: `unavailable:${id}`, msg: 'margin position views failed (price unavailable #11?): health unknown', id});
   return out;
 }
 
-/** Re-alert gate: an alert key fires on first sight, then at most every `everyMs` while it persists. Keys that cleared are forgotten. */
+/** Re-alert gate: an alert key fires on first sight, then at most every `everyMs` while it persists. Keys that cleared are
+ *  forgotten and returned in `resolved` (the notifier sends a resolved message for them). */
 export function gateAlerts(last, alerts, nowMs, everyMs) {
   const next = {}, fire = [];
   for (const a of alerts) {
     const t = last?.[a.key];
     if (t == null || nowMs - t >= everyMs) { fire.push(a); next[a.key] = nowMs; } else next[a.key] = t;
   }
-  return {fire, last: next};
+  const resolved = Object.keys(last ?? {}).filter(k => !(k in next));
+  return {fire, last: next, resolved};
 }
 
 /** Classify a simulation error string by contract error code (margin Error enum, types.rs; SAC #10 = balance). */
