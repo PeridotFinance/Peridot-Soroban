@@ -1,8 +1,32 @@
 # Frontend handoff: leverage loop ("Open up to 2.5x short XLM / 1.7x long XLM") on Peridot cash markets
 
-**Date:** 24 Nov 2026 · **Network:** Stellar Mainnet · **Status:** contracts are live and unchanged; the loop was tested
-end to end on Mainnet today (long 1.70x and short 2.00x, opened and closed, 47 transactions, all SUCCESS).
-**Nothing on-chain is new.** This is a frontend-only feature built from existing calls.
+**Date:** 24 Nov 2026, **updated 25 Nov 2026** · **Network:** Stellar Mainnet · **Status:** contracts are live and
+unchanged; the loop was tested end to end on Mainnet (long 1.70x and short 2.00x, opened and closed, 47 transactions,
+all SUCCESS). **Nothing on-chain is new for this feature.** It is built from existing calls.
+
+## 0. Update 25 Nov: read first
+
+1. **Protocol 30 (live on Mainnet since 23 Nov).** The app's `@stellar/stellar-sdk` **17.4.0 is fine**: it decodes the
+   new ledger header (checked against Mainnet with the app's own `node_modules`). Don't downgrade it. If production
+   was built from a commit older than `390cf93` (25 Oct, the 13.3.0 -> 17.4.0 switch), redeploy from `main`.
+   Details and the raw-JSON fallback: `SDK-PROTOCOL30-NOTE.md` next to this file.
+2. **Urgent before the SDF test: the group-1 keeper** (`keeper/liquidator/margin` in `peridot-markets`, unit
+   `peridot-keeper-group1`) locks SDK **16.3.1** and calls `getLatestLedger()` every cycle (`stellar.mjs:61`, from
+   `keeper.mjs:49`/`:89` and `lending.mjs:160`). On protocol 30 that throws
+   `XDR Read Error: unknown StellarValueType member for value 3`, so `refresh_boosted_underlying` / `update_interest`
+   stop and borrows in the app can fail on stale state. Check its journal for that error; fix = bump to **16.4.1**
+   (drop-in for 16.x; don't jump to 17.x without rework) or use the raw `getLatestLedger` in `SDK-PROTOCOL30-NOTE.md`.
+3. **Addresses:** accept only `G...` user accounts (muxed `M...`/`W...` are rejected by every lending call). Use the
+   ledger `sequence`, never `closeTime`, to detect a new ledger (two ledgers can now share a `closeTime`).
+4. **Swap guard (section 6) in fast markets.** Measured 25 Nov: the Aquarius pool and the Reflector oracle usually agree
+   within ~0.1 % (median 8.7 bps, p99 63 bps), but right after a fast XLM move the oracle (5-min rounds) can lag the
+   pool by ~1 % for a few minutes. When the 1 % guard refuses a step, show "price moving, retry in a few minutes" and
+   re-quote after the next oracle round; never widen the guard automatically. The direct Aquarius concentrated pool is
+   the cheapest route at every size we tested (other Aquarius pools 2-5 bps worse; Soroswap/Phoenix ~1.3 % at $15).
+5. **Reference code** is on branch `docs/leverage-loop-frontend` in the Peridot-Soroban repo (this folder plus
+   `research/cash-borrowing-activation-20261117/tools/loop-core.cjs`).
+6. **Coming, not live yet: pooled margin up to 5x** (one-signature open/close, backstop pool). Don't build against it
+   yet; a separate handoff follows when it opens (default leverage in the UI will be 3x).
 
 ## 1. What to build
 
@@ -62,7 +86,7 @@ borrow APR USDC 8 %, XLM 6 %; oracle Reflector via `controller.get_price_usd`.
 **Reference implementation:** `research/cash-borrowing-activation-20261117/tools/loop-core.cjs` (137 lines, pure JS, no I/O)
 — `health`, `nextBorrow`, `nextWithdraw`, `swapGuard`, `bestPool`, `projectOpen`, `projectClose`, `maxSafeLeverage`.
 Port it unchanged. `loop.cjs` next to it shows the chain reads, simulation and transaction building.
-Branch: `feat/cash-leverage-loop-v0` in the Peridot-Soroban repo.
+Branch: `docs/leverage-loop-frontend` in the Peridot-Soroban repo (pushed).
 
 ## 5. Open flow (long XLM; short is the mirror: deposit USDC, borrow XLM, swap XLM→USDC, deposit USDC)
 

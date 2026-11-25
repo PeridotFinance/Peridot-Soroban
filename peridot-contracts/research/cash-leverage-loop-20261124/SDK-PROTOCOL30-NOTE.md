@@ -1,4 +1,4 @@
-# JS SDK and Protocol 30 — note for the frontend (24 Nov 2026)
+# JS SDK and Protocol 30 — note for the frontend (24 Nov 2026, updated 25 Nov)
 
 Stellar Mainnet and Testnet run **protocol 30** since 23 Nov. Its new ledger-header format breaks
 `@stellar/stellar-sdk` **16.3.x and older** on every call that decodes a ledger header:
@@ -42,3 +42,15 @@ async function latestLedger(rpcUrl) {
   muxed ones. SDK 16.4.x `Address` / `scValToNative` also throw on `W…`.
 - **Timestamps (CAP-88):** two consecutive ledgers can now have the same whole-second `closeTime`. Don't use
   `closeTime` to detect "a new ledger" or as a unique key — use the ledger `sequence`.
+
+## Update 25 Nov: verified status
+
+- **App (`peridot-markets`): OK.** `app/package-lock.json` locks 17.4.0 on `main` and every remote branch; the wallet kit
+  (`@creit.tech/stellar-wallets-kit` 2.7.1) dedupes to the same 17.4.0; `@stellar/freighter-api` 6.x carries no SDK.
+  A read-only Mainnet probe with the app's own install decodes the protocol-30 header (`baseReserve` 5000000,
+  `baseFee` 100, as `trustline.ts:82` needs). Header call sites `rpc.ts:193,238`, `control-client.ts:77`,
+  `trustline.ts:72/82` are fine on 17.4.0. User addresses are already G-only; `closeTime` is only a 120 s staleness bound.
+- **Group-1 keeper (`keeper/liquidator/margin`): broken by code.** It locks 16.3.1 on main, demo-merge,
+  keeper-all-groups and keeper-inclusion-fee, and calls `getLatestLedger()` every cycle (`stellar.mjs:61`). Reproduced
+  with its own install. Fix: 16.4.1, or the raw `getLatestLedger` above. Check its journal first.
+- **Legacy `peridot-dashboard`** is on 13.3.0 (also breaks `getTransaction`/`pollTransaction`); no deployment found.
