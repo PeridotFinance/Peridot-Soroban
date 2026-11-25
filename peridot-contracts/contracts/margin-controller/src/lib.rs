@@ -26,6 +26,8 @@ mod headroom;
 #[cfg(test)]
 mod test_positions;
 mod types;
+#[cfg(test)]
+mod test_headroom;
 
 #[cfg(test)]
 mod test_backstop;
