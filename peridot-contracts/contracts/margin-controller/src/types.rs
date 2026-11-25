@@ -41,9 +41,9 @@ pub enum Error {
     NotGuardian = 18,
     MaxLeverage = 19,
     OiCapExceeded = 20,
-    PoolCheck = 21,          // open would break the pooled HF / stress / free-liquidity check
-    BackstopHeadroom = 22,   // backstop exit would break the pool check
-    BackstopTooSmall = 23,   // open refused: backstop below required size
+    PoolCheck = 21, // open would break the pooled HF / stress / free-liquidity check
+    BackstopHeadroom = 22, // backstop exit would break the pool check
+    BackstopTooSmall = 23, // open refused: backstop below required size
     Impaired = 24,
     BackstopDebtOutstanding = 25, // XLM bad debt unsettled: backstop deposits/exits frozen
     Cooldown = 26,
@@ -52,8 +52,8 @@ pub enum Error {
     MinShares = 29,
     MinPtokens = 30,
     NoClaim = 31,
-    MaxPay = 32,             // liquidator's max_pay below the required payment
-    MaxFee = 33,             // open: fee above the user's max_fee
+    MaxPay = 32, // liquidator's max_pay below the required payment
+    MaxFee = 33, // open: fee above the user's max_fee
     BackstopEmpty = 34,
 }
 
@@ -67,29 +67,29 @@ pub enum Key {
     Pool,
     PoolTokens,
     OpensPaused,
-    MaxSlippage,          // u128, 1e6
-    Usdc,                 // Address: the backstop asset (USDC underlying)
-    Xlm,                  // Address: the traded asset (XLM underlying)
-    Market(Address),      // underlying -> receipt
-    Risk(Address),        // held underlying -> RiskParams (held XLM = long side, held USDC = short side)
-    Caps(Address),        // held underlying (side) -> Caps
-    Side(Address),        // held underlying (side) -> SideTotals
-    Fees,                 // Fees
-    DebtShares(Address),  // debt underlying -> total position debt shares (EXCLUDES backstop debt shares)
-    BsDebtShares(Address),// debt underlying -> debt shares owned by the backstop (bad debt)
-    Bs,                   // Backstop
-    BsParams,             // BackstopParams
-    Headroom,             // Headroom
-    Ledger(Address),      // underlying -> u128 pTokens the contract accounts for (positions + backstop + claims)
+    MaxSlippage,           // u128, 1e6
+    Usdc,                  // Address: the backstop asset (USDC underlying)
+    Xlm,                   // Address: the traded asset (XLM underlying)
+    Market(Address),       // underlying -> receipt
+    Risk(Address), // held underlying -> RiskParams (held XLM = long side, held USDC = short side)
+    Caps(Address), // held underlying (side) -> Caps
+    Side(Address), // held underlying (side) -> SideTotals
+    Fees,          // Fees
+    DebtShares(Address), // debt underlying -> total position debt shares (EXCLUDES backstop debt shares)
+    BsDebtShares(Address), // debt underlying -> debt shares owned by the backstop (bad debt)
+    Bs,                  // Backstop
+    BsParams,            // BackstopParams
+    Headroom,            // Headroom
+    Ledger(Address), // underlying -> u128 pTokens the contract accounts for (positions + backstop + claims)
     ClaimsTotal(Address), // underlying -> u128 pTokens owed to owners via claim()
-    Impaired,             // bool
-    Counter,              // u64
+    Impaired,        // bool
+    Counter,         // u64
     PendingUpgrade,
     // ---- persistent
     Position(u64),
-    Backer(Address),          // u128 backstop shares
-    WithdrawReq(Address),     // WithdrawReq
-    Claim(Address, Address),  // (owner, underlying) -> u128 pTokens
+    Backer(Address),         // u128 backstop shares
+    WithdrawReq(Address),    // WithdrawReq
+    Claim(Address, Address), // (owner, underlying) -> u128 pTokens
 }
 
 /// Per side, keyed by the held asset.
@@ -123,11 +123,11 @@ pub struct SideTotals {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Fees {
-    pub open_fee: u128,        // fraction of notional, paid in USDC to the backstop
-    pub close_fee: u128,       // fraction of notional, paid in USDC to the backstop
-    pub funding_apr: u128,     // simple APR on position debt (USD) since open, paid in USDC to the backstop
-    pub bonus_liquidator: u128,// fraction of repaid debt, paid to the liquidator in held pTokens
-    pub bonus_backstop: u128,  // fraction of repaid debt, paid to the backstop in USDC
+    pub open_fee: u128,         // fraction of notional, paid in USDC to the backstop
+    pub close_fee: u128,        // fraction of notional, paid in USDC to the backstop
+    pub funding_apr: u128, // simple APR on position debt (USD) since open, paid in USDC to the backstop
+    pub bonus_liquidator: u128, // fraction of repaid debt, paid to the liquidator in held pTokens
+    pub bonus_backstop: u128, // fraction of repaid debt, paid to the backstop in USDC
 }
 
 /// Backstop totals. Everything is USDC pTokens, tracked (never balanceOf).
@@ -142,8 +142,8 @@ pub struct Backstop {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BackstopParams {
-    pub cooldown_s: u64,     // 259_200 (72 h, owner)
-    pub window_s: u64,       // 172_800 (48 h to execute after the cooldown)
+    pub cooldown_s: u64, // 259_200 (72 h, owner)
+    pub window_s: u64,   // 172_800 (48 h to execute after the cooldown)
     pub min_deposit_pt: u128,
 }
 
@@ -159,13 +159,13 @@ pub struct WithdrawReq {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Headroom {
-    pub hf_target: u128,       // 1_250_000
-    pub hf_stress: u128,       // 1_100_000
-    pub stress: u128,          // 200_000 (XLM +-20 %)
+    pub hf_target: u128,         // 1_250_000
+    pub hf_stress: u128,         // 1_100_000
+    pub stress: u128,            // 200_000 (XLM +-20 %)
     pub close_reserve_usd: u128, // 0 = derive from caps (see INTERFACE.md); else this floor
-    pub coef_long: u128,       // 3_000_000: required backstop per $ long equity
-    pub coef_short: u128,      // 2_100_000
-    pub coef_largest: u128,    // 4_600_000: per $ of the largest allowed position (per_position_equity_usd cap)
+    pub coef_long: u128,         // 3_000_000: required backstop per $ long equity
+    pub coef_short: u128,        // 2_100_000
+    pub coef_largest: u128, // 4_600_000: per $ of the largest allowed position (per_position_equity_usd cap)
 }
 
 #[contracttype]
@@ -179,9 +179,9 @@ pub struct Position {
     pub collateral: u128,   // raw held units the trader posted
     pub equity_usd: u128,   // usd7 at open (collateral value) -> side equity / caps
     pub notional_usd: u128, // usd7 at open (held value after the trade) -> OI / fees
-    pub liq_ltv: u128,      // 1e6, fixed at open: (1e6 + open LTV) / 2  (maintenance = half the starting margin)
+    pub liq_ltv: u128, // 1e6, fixed at open: (1e6 + open LTV) / 2  (maintenance = half the starting margin)
     pub opened_at: u64,
-    pub funding_ts: u64,    // funding accrued up to here
+    pub funding_ts: u64, // funding accrued up to here
     pub open: bool,
 }
 

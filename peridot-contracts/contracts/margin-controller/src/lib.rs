@@ -14,10 +14,18 @@
 //! - `backstop` backstop shares, exits, fees in, bad debt (WP1)
 //! - `headroom` pool check, required backstop size, reconcile/Impaired (WP3)
 
+// The contract struct lives at the crate root so the generated client's private (testutils)
+// fields are visible to every module that adds a `#[contractimpl]` block (contract, backstop,
+// headroom are siblings; only descendants of the defining module can see private fields).
+#[soroban_sdk::contract]
+pub struct MarginController;
+
 mod backstop;
 mod common;
 mod contract;
 mod headroom;
+#[cfg(test)]
+mod test_positions;
 mod types;
 
 pub use common::*;

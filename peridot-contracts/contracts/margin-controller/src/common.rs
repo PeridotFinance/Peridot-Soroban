@@ -26,7 +26,8 @@ pub trait Ctrl {
     fn get_price_usd(env: Env, token: Address) -> Option<(u128, u128)>;
     fn get_market_cf(env: Env, market: Address) -> u128;
     /// (rows: (market, ptoken_balance, debt, collateral_usd_after_cf, debt_usd), (coll_total, debt_total))
-    fn portfolio(env: Env, user: Address) -> (Vec<(Address, u128, u128, u128, u128)>, (u128, u128));
+    fn portfolio(env: Env, user: Address)
+        -> (Vec<(Address, u128, u128, u128, u128)>, (u128, u128));
     fn account_liquidity(env: Env, user: Address) -> (u128, u128);
 }
 
@@ -35,18 +36,30 @@ pub trait Ctrl {
 #[contractclient(name = "PoolClient")]
 pub trait Pool {
     fn get_tokens(env: Env) -> Vec<Address>;
-    fn swap(env: Env, user: Address, in_idx: u32, out_idx: u32, amount_in: u128, out_min: u128) -> u128;
+    fn swap(
+        env: Env,
+        user: Address,
+        in_idx: u32,
+        out_idx: u32,
+        amount_in: u128,
+        out_min: u128,
+    ) -> u128;
 }
 
 // ---------------------------------------------------------------- helpers
-pub(crate) fn inst_get<T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>>(env: &Env, k: &Key) -> Option<T> {
+pub(crate) fn inst_get<T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>>(
+    env: &Env,
+    k: &Key,
+) -> Option<T> {
     env.storage().instance().get(k)
 }
 pub(crate) fn need<T: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>>(env: &Env, k: &Key) -> T {
     inst_get(env, k).unwrap_or_else(|| panic_with_error!(env, Error::NotConfigured))
 }
 pub(crate) fn bump(env: &Env) {
-    env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    env.storage()
+        .instance()
+        .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
 }
 pub(crate) fn me(env: &Env) -> Address {
     env.current_contract_address()
@@ -136,7 +149,13 @@ pub(crate) fn repay_self(env: &Env, asset: &Address, amount: u128) -> u128 {
     x
 }
 
-pub(crate) fn swap(env: &Env, t_in: &Address, t_out: &Address, amount_in: u128, min_out: u128) -> u128 {
+pub(crate) fn swap(
+    env: &Env,
+    t_in: &Address,
+    t_out: &Address,
+    amount_in: u128,
+    min_out: u128,
+) -> u128 {
     if amount_in == 0 || min_out == 0 {
         panic_with_error!(env, Error::BadAmount);
     }
@@ -186,7 +205,10 @@ pub(crate) fn swap(env: &Env, t_in: &Address, t_out: &Address, amount_in: u128, 
 pub(crate) fn oracle_min_out(env: &Env, t_in: &Address, t_out: &Address, amount_in: u128) -> u128 {
     let slip: u128 = inst_get(env, &Key::MaxSlippage).unwrap_or(10_000);
     let po = price(env, t_out);
-    let out = usd(amount_in, price(env, t_in)).checked_mul(po.1).expect("overflow") / po.0;
+    let out = usd(amount_in, price(env, t_in))
+        .checked_mul(po.1)
+        .expect("overflow")
+        / po.0;
     let m = out.checked_mul(SCALE_1E6 - slip).expect("overflow") / SCALE_1E6;
     if m == 0 {
         panic_with_error!(env, Error::BadAmount);
@@ -204,9 +226,16 @@ pub(crate) fn pooled_debt(env: &Env, debt: &Address) -> u128 {
     rc.update_interest();
     rc.get_user_borrow_balance(&me(env))
 }
-/// Position debt rounded up; the last share holder owes the whole pooled balance.
+/// Debt shares of all holders of `debt`: positions (`DebtShares`) + backstop (`BsDebtShares`).
+pub(crate) fn all_shares(env: &Env, debt: &Address) -> u128 {
+    let bs: u128 = inst_get(env, &Key::BsDebtShares(debt.clone())).unwrap_or(0);
+    total_shares(env, debt).checked_add(bs).expect("overflow")
+}
+/// Position debt rounded up. Debt per share = pooled / (DebtShares + BsDebtShares), so moving
+/// shares into the backstop bucket leaves every other position's debt unchanged. Only a holder
+/// of ALL shares (positions and backstop) owes the whole pooled balance.
 pub(crate) fn position_debt(env: &Env, p: &Position) -> u128 {
-    let ts = total_shares(env, &p.debt_asset);
+    let ts = all_shares(env, &p.debt_asset);
     if p.debt_shares == 0 || ts == 0 {
         return 0;
     }
@@ -242,13 +271,25 @@ pub(crate) fn load(env: &Env, id: u64) -> Position {
 pub(crate) fn store(env: &Env, id: u64, p: &Position) {
     let k = Key::Position(id);
     env.storage().persistent().set(&k, p);
-    env.storage().persistent().extend_ttl(&k, TTL_THRESHOLD, TTL_EXTEND_TO);
+    env.storage()
+        .persistent()
+        .extend_ttl(&k, TTL_THRESHOLD, TTL_EXTEND_TO);
 }
+/// Close the position: remove its remaining debt shares from `DebtShares`, take exactly what
+/// it added out of `SideTotals`, and store it closed. Never fails on aggregates (exits stay open).
 pub(crate) fn finish(env: &Env, id: u64, p: Position) {
     let ts = total_shares(env, &p.debt_asset);
-    env.storage()
-        .instance()
-        .set(&Key::DebtShares(p.debt_asset.clone()), &ts.saturating_sub(p.debt_shares));
+    env.storage().instance().set(
+        &Key::DebtShares(p.debt_asset.clone()),
+        &ts.saturating_sub(p.debt_shares),
+    );
+    let sk = Key::Side(p.held_asset.clone());
+    if let Some(mut s) = inst_get::<SideTotals>(env, &sk) {
+        s.equity_usd = s.equity_usd.saturating_sub(p.equity_usd);
+        s.oi_usd = s.oi_usd.saturating_sub(p.notional_usd);
+        s.open_positions = s.open_positions.saturating_sub(1);
+        env.storage().instance().set(&sk, &s);
+    }
     let mut q = p;
     q.open = false;
     q.held_ptokens = 0;
@@ -268,11 +309,17 @@ pub(crate) fn ledger(env: &Env, asset: &Address) -> u128 {
 }
 pub(crate) fn ledger_add(env: &Env, asset: &Address, pt: u128) {
     let v = ledger(env, asset).checked_add(pt).expect("overflow");
-    env.storage().instance().set(&Key::Ledger(asset.clone()), &v);
+    env.storage()
+        .instance()
+        .set(&Key::Ledger(asset.clone()), &v);
 }
 pub(crate) fn ledger_sub(env: &Env, asset: &Address, pt: u128) {
-    let v = ledger(env, asset).checked_sub(pt).unwrap_or_else(|| panic_with_error!(env, Error::BadAmount));
-    env.storage().instance().set(&Key::Ledger(asset.clone()), &v);
+    let v = ledger(env, asset)
+        .checked_sub(pt)
+        .unwrap_or_else(|| panic_with_error!(env, Error::BadAmount));
+    env.storage()
+        .instance()
+        .set(&Key::Ledger(asset.clone()), &v);
 }
 pub(crate) fn usdc(env: &Env) -> Address {
     need(env, &Key::Usdc)
