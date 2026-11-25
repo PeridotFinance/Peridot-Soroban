@@ -412,7 +412,7 @@ fn open_requires_backstop_size() {
     let side = SideTotals { equity_usd: 100 * E7, oi_usd: 500 * E7, open_positions: 4 };
     f.put(Key::Side(f.xlm.clone()), side.clone());
     f.put(Key::Side(f.usdc.clone()), side);
-    // Backstop value (shim: ptokens * rate * USDC price) exactly $625 -> passes.
+    // Backstop value (backstop::value_usd: nav_pt * rate * USDC price) exactly $625 -> passes.
     f.put(Key::Bs, Backstop { shares: E7, ptokens: 625 * E7, pending_shares: 0 });
     assert_eq!(f.check(true), Ok(()));
     f.put(Key::Bs, Backstop { shares: E7, ptokens: 625 * E7 - 1, pending_shares: 0 });
