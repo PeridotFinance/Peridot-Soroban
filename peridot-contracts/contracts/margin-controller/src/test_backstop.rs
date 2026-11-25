@@ -243,9 +243,10 @@ fn dead_shares_and_first_deposit_rules() {
     assert_eq!(b.shares, 10_000_000 + BS_DEAD_SHARES);
     assert_eq!(b.ptokens, 10_000_000);
     assert_eq!(f.m.get_backer(&f.admin), 10_000_000);
+    assert_eq!(f.m.get_backer(&f.m.address), BS_DEAD_SHARES);
     assert_eq!(f.ledger_u(), 10_000_000);
     assert_eq!(f.ru.get_ptoken_balance(&f.m.address), 10_000_000);
-    // Dead shares belong to no backer: the admin's full exit leaves them (and their value) in the pool.
+    // Dead shares sit with the contract: the admin's full exit leaves them (and their value) in the pool.
     f.params(3_600, 3_600);
     f.m.backstop_request_withdraw(&f.admin, &10_000_000);
     f.at(T0 + 3_600);

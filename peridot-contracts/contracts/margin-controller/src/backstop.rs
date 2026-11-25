@@ -201,12 +201,14 @@ impl MarginController {
         let u = usdc(&env);
         let mut b = bs_get(&env);
         let minted = if b.shares == 0 {
-            // Seed: admin only, 1:1, plus dead shares owned by nobody (inflation guard).
+            // Seed: admin only, 1:1, plus dead shares held by this contract (never redeemable).
             let admin: Address = need(&env, &Key::Admin);
             if backer != admin {
                 panic_with_error!(&env, Error::NotAdmin);
             }
             b.shares = add(&env, ptokens, BS_DEAD_SHARES);
+            let dead = add(&env, backer_shares(&env, &me(&env)), BS_DEAD_SHARES);
+            set_backer_shares(&env, &me(&env), dead);
             ptokens
         } else {
             let nav = nav_pt(&env, true);
