@@ -1,2 +1,4 @@
 target/
 test_snapshots/
+.scratch/
+tools/node_modules/
