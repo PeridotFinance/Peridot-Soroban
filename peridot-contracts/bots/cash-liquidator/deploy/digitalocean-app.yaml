@@ -1,0 +1,43 @@
+# SUPERSEDED 2026-11-18 by research/cash-borrowing-ops-20261118/droplet/ (Droplet + volume, key created on host). Kept for reference.
+# DigitalOcean App Platform spec for the cash-market liquidator. NOT applied by the agent.
+# The operator creates the Mainnet key, funds it (see ../README.md "Funding"), stores LIQUIDATOR_SECRET as an
+# encrypted RUN_TIME secret in the DO console, and creates the app with:
+#   doctl apps create --spec peridot-contracts/bots/cash-liquidator/deploy/digitalocean-app.yaml
+# Exactly one instance (one signing key, one sequence). Starts in DRY_RUN; flip to "false" only after the 48–72 h soak.
+name: peridot-cash-liquidator
+region: fra
+workers:
+  - name: mainnet-cash-liquidator
+    git:
+      repo_clone_url: https://github.com/PeridotFinance/Peridot-Soroban.git
+      branch: cash-liquidator-v0.1.0          # immutable release branch/tag created after review; never a moving branch
+    source_dir: peridot-contracts/bots/cash-liquidator
+    dockerfile_path: peridot-contracts/bots/cash-liquidator/Dockerfile
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    alerts:
+      - rule: RESTART_COUNT
+        operator: GREATER_THAN
+        value: 1
+        window: FIVE_MINUTES
+    envs:
+      - {key: RPC_URL, scope: RUN_TIME, value: https://soroban-rpc.mainnet.stellar.gateway.fm}
+      - {key: NETWORK_PASSPHRASE, scope: RUN_TIME, value: "Public Global Stellar Network ; September 2015"}
+      - {key: LIQUIDATOR_PUBLIC_KEY, scope: RUN_TIME, value: "OPERATOR_FILLS_IN_G_ADDRESS"}
+      - {key: LIQUIDATOR_SECRET, scope: RUN_TIME, type: SECRET}   # value set by the operator in the console only
+      - {key: DRY_RUN, scope: RUN_TIME, value: "true"}
+      - {key: POLL_INTERVAL_MS, scope: RUN_TIME, value: "30000"}
+      - {key: MIN_PROFIT_BPS, scope: RUN_TIME, value: "200"}
+      - {key: WITHDRAW_SEIZED, scope: RUN_TIME, value: "true"}
+      - {key: INCLUSION_FEE_STROOPS, scope: RUN_TIME, value: "100000"}
+      - {key: MAX_FEE_STROOPS, scope: RUN_TIME, value: "20000000"}
+      - {key: MIN_FEE_XLM_RAW, scope: RUN_TIME, value: "200000000"}
+      - {key: EVENTS_LOOKBACK_LEDGERS, scope: RUN_TIME, value: "17280"}
+      - {key: CPU_STOP, scope: RUN_TIME, value: "97000000"}
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DEPLOYMENT_LIVE
+# State (event cursor + borrower set) lives in /app/data inside the container. App Platform workers have no persistent
+# disk: on every restart the keeper re-scans EVENTS_LOOKBACK_LEDGERS (~24 h). Borrowers older than RPC retention (~7 d)
+# are only kept if the worker never restarts for longer than that; the README's "Borrower backfill" step (Horizon/Hubble
+# export -> data/state.json seed) or a Droplet with a volume (as bots/margin-liquidator/deploy/droplet) removes that gap.

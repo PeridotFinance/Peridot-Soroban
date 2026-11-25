@@ -1,0 +1,68 @@
+{
+  "network": "Public Global Stellar Network ; September 2015",
+  "admin": "GC4T5MP5ZKILC633IUL6GHWGSIUV6JREN7BKOM6X7XTSVYLNKWZIT7FP",
+  "controller": "CBMRS7LK6HIZHHPXZTRJLVWZ4HOKJDMZAZ3FKDNFHZKGHXEGN72IJ7RK",
+  "controllerWasm": "847894a65fb59675c74707ea8899633a7638aa2716a183b0b2efe35a8bc2b902",
+  "marketWasm": "4229b7ef9f40028a20e7bace2484f330dbbea625aa98f29f453861e0c498f79e",
+  "upgradeWasm": {
+    "note": "reviewed cash-borrow upgrade targets (uploaded 2026-11); either the pin or this hash is accepted",
+    "controller": "f41e5260513390abcb3c18d74f4c0e9e9d65b0638bc797d11ddaec45de5fe2d8",
+    "market": "5630a701bc7f29ea1334cfd1c12e349664da7376fd86df080d587ea9f685e452"
+  },
+  "markets": {
+    "USDC": {
+      "receipt": "CDW3GDNKLUEPPJLEUVGLJSKGYLB3YYDQBUY7NBHJILGQWNN55AYFHY3F",
+      "underlying": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      "borrowable": true
+    },
+    "XLM": {
+      "receipt": "CBHMG4CNJO2CRGADUMIO3UJ45C5MTWGCBFECMR6QE2TDDCDBB3N24WMS",
+      "underlying": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      "borrowable": true
+    },
+    "PYUSD": {
+      "receipt": "CD6OTGA6J6UIEKXTXA5CLPLSJA4VQ5HEOYP3CA375CZEHI3KMIL2OYZC",
+      "underlying": "CCCRWH6Q3FNP3I2I57BDLM5AFAT7O6OF6GKQOC6SSJNDAVRZ57SPHGU2",
+      "borrowable": false
+    },
+    "EURC": {
+      "receipt": "CAXWP5M2SF74DW22EQAYOXR4ZHN2FO2HGL737KQ2WFPEZTA4Z3W5E2M4",
+      "underlying": "CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV",
+      "borrowable": true
+    }
+  },
+  "neverTouch": [
+    "CCGKTKPAWQHKI3TMX4RHLLZ3WYFELHERVNWOWMAZUHTKIAU2ENMHXBCI"
+  ],
+  "depeg": {
+    "external": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "fiat": "CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC"
+  },
+  "oracle": {
+    "feed": "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+    "symbols": {
+      "USDC": "USDC",
+      "XLM": "XLM",
+      "EURC": "EURC"
+    },
+    "refreshMode": "every-round",
+    "decimals": 14
+  },
+  "pauseWatcher": {
+    "note": "pause-main.mjs only: pause_borrow_g on the borrowable markets, nothing else. Pauses ONLY on a fresh USDC price outside the band (on-chain get_price_band, else usdcBand1e6) or a fresh EURC/EUR deviation > eurcVsEurBps. Stale/missing prices and USDC deviations > usdcDepegBps inside the band are alerts only.",
+    "usdcBand1e6": [
+      980000,
+      1020000
+    ],
+    "usdcDepegBps": 50,
+    "eurcVsEurBps": 100,
+    "staleAfterSeconds": 900,
+    "confirmations": 2,
+    "clearCycles": 20
+  },
+  "minInventoryRaw": {
+    "USDC": "5000000000",
+    "XLM": "25000000000",
+    "EURC": "2500000000"
+  }
+}
