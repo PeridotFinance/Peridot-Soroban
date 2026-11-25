@@ -98,7 +98,7 @@ ssh $=SSHQ root@$LQ 'SRC_TARBALL=/root/cash-liquidator-'${WP7:0:7}'.tgz NODE_VER
 
 Expected:
 - `sha256sum` prints OK;
-- the host `node --test` passes (63 tests);
+- the host `node --test` passes (65 tests);
 - `current` points to the new `releases/<first 16 hex of SRC_SHA256>`.
 
 On any failure `install_code` stops before switching `current`. Nothing has changed, so stop here.

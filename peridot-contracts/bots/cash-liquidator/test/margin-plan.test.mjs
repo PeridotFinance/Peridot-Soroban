@@ -79,6 +79,7 @@ test('CAP-88: same timestamp + new sequence is a new observation; the same seque
   s = trackLiquidatable(s, ['1'], 102, t0 + 32_000);
   assert.equal(s['1'].observations, 3); assert.equal(s['1'].lastLedger, 102);
   assert.equal(trackLiquidatable(s, [], 103, t0)['1'], undefined);   // recovered: episode ends
+  assert.deepEqual(trackLiquidatable(s, [], 103, t0 + 99_000, ['1'])['1'], s['1']);   // views failed: timer kept, unchanged
   assert.equal(isNewLedger(null, 5), true); assert.equal(isNewLedger(5, 5), false); assert.equal(isNewLedger(5, 6), true);
   // repeated ledger timestamps never freeze the 10-minute timer: it is the keeper clock, not a ledger-timestamp delta
   const a = marginAlerts({liqSince: {'1': {firstSeenMs: t0, firstLedger: 100, observations: 3}}}, {liquidatableAlertMs: 600_000, hfDownMin: 1_100_000n}, t0 + 600_001);

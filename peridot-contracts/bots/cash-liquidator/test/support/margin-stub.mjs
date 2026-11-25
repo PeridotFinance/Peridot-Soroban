@@ -108,7 +108,18 @@ export function stubChain(name, o = {}) {
     addr: x => S.nativeToScVal(x, {type: 'address'}), u64: x => S.nativeToScVal(BigInt(x), {type: 'u64'}), u128: x => S.nativeToScVal(BigInt(x), {type: 'u128'}),
     async latestLedger() { calls.push(['latestLedger']); return {sequence: state.seq, closeTime: state.closeTime}; },
     async instance(contract) { calls.push(['instance', contract]); return {wasm: state.wasm, get: k => inst.get(k.toXDR('base64')) ?? null}; },
-    async rawEvents(req) { calls.push(['rawEvents', req.names[0], req.startLedger ?? 'cursor']); return {events: state.events.filter(e => req.names.includes(e.name) && (req.startLedger == null || e.ledger >= req.startLedger)), cursor: null}; },
+    // Mirrors the Mainnet RPC: a ledger range and a cursor together are refused; offset cursors page by `limit`;
+    // the events node's latestLedger may lag (o.eventsLag ledgers) behind getLatestLedger.
+    async rawEvents(req) {
+      calls.push(['rawEvents', req.names[0], req.startLedger ?? 'cursor']);
+      if (req.cursor && (req.startLedger != null || req.endLedger != null)) throw Error('{"code":-32602,"message":"ledger ranges and cursor cannot both be set"}');
+      const latestLedger = state.seq - (o.eventsLag ?? 0);
+      const all = state.events.filter(e => req.names.includes(e.name)).filter(e => e.ledger <= latestLedger);
+      const from = req.cursor ? Number(req.cursor) : all.findIndex(e => e.ledger >= req.startLedger);
+      const rest = from < 0 ? [] : all.slice(from);
+      const page = rest.slice(0, req.limit);
+      return {events: page, cursor: String((from < 0 ? all.length : from) + page.length), latestLedger};
+    },
     async view(contract, method, args = []) {
       calls.push(['view', method]);
       if (o.failView?.[method]) throw Error(`${method}: ${o.failView[method]}`);

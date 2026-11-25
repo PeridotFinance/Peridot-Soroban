@@ -115,6 +115,47 @@ test('discovery: events after bootstrap add/remove positions and track backer ex
   assert.equal(r.actions.cleared[0].status, 'SUCCESS'); assert.equal(st.margin.backers[BACKER], undefined);
 });
 
+test('discovery: >100 events page by cursor (no ledger range with it), a lagging events node bounds the checkpoint, counter catch-up finds a missed open', async () => {
+  const c = stubChain('minus20', {eventsLag: 0}), st = {};
+  await marginCycle(marginCfg(), c, st, deps().d);
+  const base = c.state.seq;
+  // 150 open/close pairs across two ledgers: needs cursor pages; ends with id 1 closed
+  c.state.events = Array.from({length: 150}, (_, i) => ({ledger: base + 1, name: i % 2 ? 'margin_close' : 'margin_open', data: [BigInt(100 + (i >> 1))]}));
+  c.state.events.push({ledger: base + 2, name: 'margin_close', data: [1n]});
+  c.state.seq = base + 2;
+  await marginCycle(marginCfg(), c, st, deps().d);
+  assert.deepEqual(st.margin.active.sort(), ['2', '3']); assert.equal(st.margin.lastEventLedger, base + 2);
+  assert(c.calls.some(x => x[0] === 'rawEvents' && x[2] === 'cursor'));
+  // events node lags 5 ledgers: an event in that window is not yet visible and the checkpoint stops at the node's ledger
+  const lag = stubChain('minus20', {eventsLag: 5}), st2 = {};
+  await marginCycle(marginCfg(), lag, st2, deps().d);
+  const b2 = lag.state.seq;
+  lag.state.events = [{ledger: b2 + 7, name: 'margin_close', data: [2n]}];
+  lag.state.seq = b2 + 10;
+  await marginCycle(marginCfg(), lag, st2, deps().d);
+  assert.equal(st2.margin.lastEventLedger, b2 + 5); assert(st2.margin.active.includes('2'));
+  lag.state.seq = b2 + 14;
+  await marginCycle(marginCfg(), lag, st2, deps().d);
+  assert(!st2.margin.active.includes('2'));   // picked up once the events node caught up: nothing skipped
+  // an open whose event never arrives is still found through the counter
+  lag.state.positions['4'] = {id: 4, side: 'short', ltv: '500000', liqLtv: '900000', heldPt: '1000', debt: '10', funding: '0', open: true};
+  lag.state.counter = 4; lag.state.seq += 1;
+  await marginCycle(marginCfg(), lag, st2, deps().d);
+  assert(st2.margin.active.includes('4')); assert.equal(st2.margin.maxSeenId, '4');
+});
+
+test('10-min timer survives a price outage on the position views (not observed healthy), and fires', async () => {
+  const c = stubChain('minus20'), st = {};
+  let t = 0;
+  await marginCycle(marginCfg(), c, st, deps({nowMs: t}).d);
+  assert(st.margin.liqSince['1']);
+  const out = stubChain('minus20', {failView: {get_position_ltv: 'HostError: Error(Contract, #11)'}});
+  out.state.seq = c.state.seq;
+  let fired = [];
+  for (let i = 1; i <= 25; i++) { out.state.seq += 1; t += 30_000; const {q, d} = deps({nowMs: t}); await marginCycle(marginCfg(), out, st, d); fired.push(...alerts(q).filter(a => a.key === 'liquidatable:1')); }
+  assert.equal(fired.length, 1); assert.equal(st.margin.liqSince['1'].firstSeenMs, 0);
+});
+
 test('pin checks: wrong WASM or keeper == margin admin -> margin pass does nothing (alerting), never throws', async () => {
   for (const o of [{wasm: 'ff'.repeat(32)}, {adminKey: KEEPER}]) {
     const c = stubChain('minus20', o), st = {}, {q, d} = deps();

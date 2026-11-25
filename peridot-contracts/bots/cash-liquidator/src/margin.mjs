@@ -30,20 +30,25 @@ export async function verifyMargin(cfg, c) {
   return {fees, wasm: inst.wasm};
 }
 
+// Pages events from startLedger. The RPC refuses a ledger range together with a cursor ("ledger ranges and cursor cannot
+// both be set", Mainnet 25 Nov), so no endLedger is sent; events past `endSeq` are filtered here. Returns the events and
+// `through` = min(endSeq, the events node's own latestLedger), so the checkpoint never runs ahead of a lagging events node.
 async function pageEvents(c, contractId, names, startLedger, endSeq) {
   const out = [];
-  let req = {contractId, names, startLedger, endLedger: endSeq + 1, limit: 100};
+  let req = {contractId, names, startLedger, limit: 100}, through = endSeq;
   for (let page = 0; page < 100; page++) {
     const r = await c.rawEvents(req);
-    const bounded = r.events.filter(e => e.ledger <= endSeq);
+    if (r.latestLedger != null && Number(r.latestLedger) < through) through = Number(r.latestLedger);
+    const bounded = r.events.filter(e => e.ledger <= through);
     out.push(...bounded);
-    if (bounded.length !== r.events.length || r.events.length < 100) return out;
+    if (bounded.length !== r.events.length || r.events.length < 100) return {events: out.filter(e => e.ledger <= through), through};
     if (!r.cursor) throw Error('event page full but RPC returned no cursor');
-    req = {contractId, names, cursor: r.cursor, endLedger: endSeq + 1, limit: 100};
+    req = {contractId, names, cursor: r.cursor, limit: 100};
   }
   throw Error('event paging did not finish in 100 pages');
 }
-const retention = e => /startLedger must be|before oldest|out of range|ledger range/i.test(e.message);
+// Only the retention error ("startLedger must be within the ledger range: a - b"); never the cursor/range refusal.
+const retention = e => /startLedger must be within|before oldest/i.test(e.message);
 
 function cachePosition(ms, id, p, cfg) {
   ms.positions[id] = {owner: p.owner, side: p.held_asset === cfg.pins.markets.XLM.underlying ? 'long' : 'short', heldAsset: p.held_asset,
@@ -64,21 +69,31 @@ export async function discoverMargin(cfg, c, ms, L, log) {
     }
     let backers = Object.fromEntries(m.backersSeed.map(b => [b, ms.backers[b] ?? '0']));
     try {
-      const ev = await pageEvents(c, m.contract, BS_EVENTS, Math.max(1, L.sequence - m.backerLookbackLedgers), L.sequence);
+      const {events: ev} = await pageEvents(c, m.contract, BS_EVENTS, Math.max(1, L.sequence - m.backerLookbackLedgers), L.sequence);
       backers = applyMarginEvents({active: [], backers}, ev).backers;
     } catch (e) {
       if (!retention(e)) throw e;
       log('alert', 'margin backer backfill outside RPC retention: list backers with an exit request in margin.backersSeed', {err: e.message});
     }
-    Object.assign(ms, {active, backers: {...ms.backers, ...backers}, lastEventLedger: L.sequence, initialized: true});
+    Object.assign(ms, {active, backers: {...ms.backers, ...backers}, lastEventLedger: L.sequence, maxSeenId: String(counter), initialized: true});
     log('info', 'margin state bootstrapped', {counter, active: active.length, backers: Object.keys(ms.backers).length, ledger: L.sequence});
     return {impairedSeen};
   }
+  // Counter catch-up every cycle (one view): an id above the last one seen is read directly, so an open whose event was
+  // missed (lagging events node, lost cursor) is still found. The counter + get_position stay the source of truth.
+  const counter = BigInt(await c.view(m.contract, 'get_position_counter'));
+  for (let id = BigInt(ms.maxSeenId ?? '0') + 1n; id <= counter; id++) {
+    const p = await c.view(m.contract, 'get_position', [c.u64(id)]);
+    if (p && p.open && !ms.active.includes(String(id))) { ms.active.push(String(id)); cachePosition(ms, String(id), p, cfg); }
+  }
+  ms.maxSeenId = String(counter);
   const start = ms.lastEventLedger + 1;
   if (start > L.sequence) return {impairedSeen};
-  let ev;
+  let ev, through;
   try {
-    ev = [...await pageEvents(c, m.contract, POS_EVENTS, start, L.sequence), ...await pageEvents(c, m.contract, BS_EVENTS, start, L.sequence)];
+    const a = await pageEvents(c, m.contract, POS_EVENTS, start, L.sequence), b = await pageEvents(c, m.contract, BS_EVENTS, start, L.sequence);
+    through = Math.min(a.through, b.through);
+    ev = [...a.events, ...b.events].filter(e => e.ledger <= through);
   } catch (e) {
     if (!retention(e)) throw e;
     log('alert', 'margin event cursor outside RPC retention: re-bootstrapping positions from the counter; check margin.backersSeed', {err: e.message});
@@ -88,7 +103,8 @@ export async function discoverMargin(cfg, c, ms, L, log) {
   ev.sort((a, b) => a.ledger - b.ledger || String(a.id).localeCompare(String(b.id)));
   const r = applyMarginEvents({active: ms.active, backers: ms.backers}, ev);
   for (const id of Object.keys(ms.positions)) if (!r.active.has(id)) delete ms.positions[id];
-  Object.assign(ms, {active: [...r.active], backers: r.backers, lastEventLedger: L.sequence});
+  if (through < start - 1) through = start - 1;   // a lagging events node never moves the checkpoint backwards
+  Object.assign(ms, {active: [...r.active], backers: r.backers, lastEventLedger: through});
   return {impairedSeen: r.impairedSeen};
 }
 
@@ -248,7 +264,7 @@ export async function marginCycle(cfg, c, st, deps) {
   const rates = {USDC: BigInt(await c.view(M.USDC.receipt, 'get_exchange_rate')), XLM: BigInt(await c.view(M.XLM.receipt, 'get_exchange_rate'))};
   const {list, unavailable} = await readPositions(cfg, c, ms, fees, log);
   const ranked = rankLiquidatable(list);
-  ms.liqSince = trackLiquidatable(ms.liqSince, ranked.map(p => p.id), L.sequence, nowMs);
+  ms.liqSince = trackLiquidatable(ms.liqSince, ranked.map(p => p.id), L.sequence, nowMs, unavailable);
   let inventory = await deps.inventoryOf(cfg, c);
   const env = {dry, fees, prices, rates, inventory, nowMs};
   const actions = {liquidations: [], settles: [], cleared: [], reconcile: null};

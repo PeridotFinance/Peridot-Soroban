@@ -100,11 +100,14 @@ export function applyMarginEvents({active, backers}, events) {
  * ledger SEQUENCE and durations use the keeper's own clock (never a ledger-timestamp delta).
  * - A new sequence counts once, even with the same timestamp as the previous ledger.
  * - The same sequence seen twice is not a new observation (no double count).
- * - A position that is no longer liquidatable is dropped (a later episode starts a new timer).
+ * - A position observed healthy or closed is dropped (a later episode starts a new timer); one whose views failed is kept.
  * since: {id: {firstLedger, firstSeenMs, lastLedger, observations, alerted}}. Returns a new object.
  */
-export function trackLiquidatable(since, ids, ledgerSeq, nowMs) {
+export function trackLiquidatable(since, ids, ledgerSeq, nowMs, unknown = []) {
   const out = {};
+  // A position whose views failed this cycle (price #11, RPC error) was not observed healthy: keep its timer running, so an
+  // oracle outage cannot silence the > 10 min alert.
+  for (const id of unknown.map(String)) if (since?.[id]) out[id] = since[id];
   for (const id of ids.map(String)) {
     const prev = since?.[id];
     if (!prev) { out[id] = {firstLedger: ledgerSeq, firstSeenMs: nowMs, lastLedger: ledgerSeq, observations: 1}; continue; }
