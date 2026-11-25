@@ -92,6 +92,34 @@ impl MockCtrl {
     pub fn get_price_usd(e: Env, token: Address) -> Option<(u128, u128)> {
         e.storage().persistent().get(&token)
     }
+    pub fn add_market(e: Env, market: Address, cf: u128) {
+        let mut v: Vec<(Address, u128)> = e.storage().instance().get(&rk(&e, "mk")).unwrap_or(Vec::new(&e));
+        v.push_back((market, cf));
+        e.storage().instance().set(&rk(&e, "mk"), &v);
+    }
+    pub fn get_market_cf(e: Env, market: Address) -> u128 {
+        let v: Vec<(Address, u128)> = e.storage().instance().get(&rk(&e, "mk")).unwrap_or(Vec::new(&e));
+        v.iter().find(|(m, _)| *m == market).map(|(_, cf)| cf).unwrap_or(0)
+    }
+    /// Live `portfolio` shape and truncation order, over the configured markets (the real
+    /// pool check runs on every backstop exit).
+    #[allow(clippy::type_complexity)]
+    pub fn portfolio(e: Env, user: Address) -> (Vec<(Address, u128, u128, u128, u128)>, (u128, u128)) {
+        let v: Vec<(Address, u128)> = e.storage().instance().get(&rk(&e, "mk")).unwrap_or(Vec::new(&e));
+        let mut rows = Vec::new(&e);
+        let (mut ct, mut dt) = (0u128, 0u128);
+        for (m, cf) in v.iter() {
+            let r = MockReceiptClient::new(&e, &m);
+            let (pbal, debt) = (r.get_ptoken_balance(&user), r.get_user_borrow_balance(&user));
+            let (p, sc) = Self::get_price_usd(e.clone(), r.get_underlying_token()).expect("price");
+            let coll = pbal * r.get_exchange_rate() / 1_000_000 * cf / 1_000_000 * p / sc;
+            let dusd = debt * p / sc;
+            rows.push_back((m, pbal, debt, coll, dusd));
+            ct += coll;
+            dt += dusd;
+        }
+        (rows, (ct, dt))
+    }
 }
 
 /// Exact-input pool: out = in * num / den. Pulls the input with `transfer(user -> pool)`
@@ -166,6 +194,8 @@ fn setup() -> F {
     m.set_market(&admin, &usdc, &ru_id);
     m.set_market(&admin, &xlm, &rx_id);
     m.set_pool(&admin, &pool);
+    ctrl.add_market(&ru_id, &750_000);
+    ctrl.add_market(&rx_id, &550_000);
     // Liquidity: receipt pays USDC on withdraw; pool pays XLM on swaps.
     token::StellarAssetClient::new(&env, &usdc).mint(&ru_id, &1_000_000_000_000);
     token::StellarAssetClient::new(&env, &xlm).mint(&pool, &1_000_000_000_000);

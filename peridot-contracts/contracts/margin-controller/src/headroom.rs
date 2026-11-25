@@ -10,39 +10,6 @@ use soroban_sdk::{contractevent, contractimpl, panic_with_error, Address, Env};
 /// Close-reserve safety margin when derived from caps (INTERFACE rule 5): 1.01x.
 const RESERVE_MARGIN: u128 = 1_010_000;
 
-// ---------------------------------------------------------------- backstop indirection
-// `crate::backstop::{value_usd, pending_pt}` belong to WP1. Native unit tests of this module
-// read the `Bs` key directly instead (shim below), so they do not depend on WP1's bodies.
-// The shim ignores BsDebtShares (bad debt) and values Bs.ptokens at the USDC receipt rate and
-// the USDC oracle price. The integrator should delete the cfg(test) arm once WP1 has landed.
-#[cfg(not(test))]
-fn bs_value_usd(env: &Env) -> u128 {
-    crate::backstop::value_usd(env)
-}
-#[cfg(not(test))]
-fn bs_pending_pt(env: &Env) -> u128 {
-    crate::backstop::pending_pt(env)
-}
-#[cfg(test)]
-fn bs_value_usd(env: &Env) -> u128 {
-    let bs: Option<Backstop> = inst_get(env, &Key::Bs);
-    let pt = bs.map(|b| b.ptokens).unwrap_or(0);
-    if pt == 0 {
-        return 0;
-    }
-    let u = usdc(env);
-    let rate = ReceiptClient::new(env, &receipt(env, &u)).get_exchange_rate();
-    usd(pt.checked_mul(rate).expect("overflow") / SCALE_1E6, price(env, &u))
-}
-#[cfg(test)]
-fn bs_pending_pt(env: &Env) -> u128 {
-    let bs: Option<Backstop> = inst_get(env, &Key::Bs);
-    match bs {
-        Some(b) if b.shares > 0 => b.pending_shares.checked_mul(b.ptokens).expect("overflow") / b.shares,
-        _ => 0,
-    }
-}
-
 // ---------------------------------------------------------------- events
 #[contractevent(topics = ["margin_impaired"], data_format = "vec")]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -179,7 +146,7 @@ pub(crate) fn pool_check(env: &Env, check: Check) {
     };
     let mut b = book(env);
     if check == Check::Open {
-        exclude_pending(&mut b, bs_pending_pt(env));
+        exclude_pending(&mut b, crate::backstop::pending_pt(env));
     }
     if !hf_ok(&b, SCALE_1E6, h.hf_target) {
         panic_with_error!(env, err);
@@ -194,7 +161,7 @@ pub(crate) fn pool_check(env: &Env, check: Check) {
     if c < need_free {
         panic_with_error!(env, err);
     }
-    if check == Check::Open && bs_value_usd(env) < required_backstop_usd(env) {
+    if check == Check::Open && crate::backstop::value_usd(env) < required_backstop_usd(env) {
         panic_with_error!(env, Error::BackstopTooSmall);
     }
 }

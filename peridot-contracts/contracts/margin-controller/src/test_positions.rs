@@ -1,7 +1,7 @@
 //! WP2 native tests: positions v2 against simple mock receipt / controller / pool contracts.
 //! The mock controller health-checks the pooled account with CFs, prices and exchange rates
-//! (receipt passes its own row, so there is no re-entry). Backstop and pool check use the
-//! test-only shims in contract.rs (see the WP2 report).
+//! (receipt passes its own row, so there is no re-entry). Backstop and pool check are the real
+//! modules (WP4: no shims); the mocks are shared with test_integration.rs.
 extern crate std;
 use crate::{Backstop, Caps, Error, Fees, Key, MarginController, MarginControllerClient, Position};
 use soroban_sdk::testutils::{Address as _, Ledger as _};
@@ -9,11 +9,11 @@ use soroban_sdk::token::{StellarAssetClient, TokenClient};
 use soroban_sdk::{vec, Address, Env};
 use std::vec::Vec as SVec;
 
-const U: u128 = 10_000_000; // one unit of a 7-decimal token / one usd7 dollar
-const PS: u128 = 10_000_000; // mock oracle price scale
-const YEAR: u64 = 31_536_000;
+pub(crate) const U: u128 = 10_000_000; // one unit of a 7-decimal token / one usd7 dollar
+pub(crate) const PS: u128 = 10_000_000; // mock oracle price scale
+pub(crate) const YEAR: u64 = 31_536_000;
 
-mod mrec {
+pub(crate) mod mrec {
     use super::mctrl::MockCtrlClient;
     use soroban_sdk::{contract, contractimpl, contracttype, token::TokenClient, Address, Env};
     #[contracttype]
@@ -138,10 +138,23 @@ mod mrec {
             let k = K::Pt(to);
             s(&env, &k, g(&env, &k) + amount);
         }
+        /// External seizure (e.g. the cash controller liquidating `from`): moves pTokens
+        /// without `from`'s auth or a health check.
+        pub fn seize(env: Env, from: Address, to: Address, amount: u128) {
+            let kf = K::Pt(from);
+            s(&env, &kf, g(&env, &kf) - amount);
+            let kt = K::Pt(to);
+            s(&env, &kt, g(&env, &kt) + amount);
+        }
+        /// External repayment of `user`'s debt (the seizing liquidator's repay).
+        pub fn sub_debt(env: Env, user: Address, amount: u128) {
+            let k = K::Debt(user);
+            s(&env, &k, g(&env, &k) - amount);
+        }
     }
 }
 
-mod mctrl {
+pub(crate) mod mctrl {
     use super::mrec::MockReceiptClient;
     use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Vec};
     #[contracttype]
@@ -197,16 +210,20 @@ mod mctrl {
             }
             0
         }
+        /// Live `portfolio` shape and truncation order (simple-peridottroller):
+        /// coll = ((pbal * rate / 1e6) * cf / 1e6) * price / scale, debt_usd = debt * price / scale.
         pub fn portfolio(
             env: Env,
-            _user: Address,
+            user: Address,
         ) -> (Vec<(Address, u128, u128, u128, u128)>, (u128, u128)) {
-            (Vec::new(&env), (0, 0))
+            rows(&env, &user, None)
         }
-        pub fn account_liquidity(_env: Env, _user: Address) -> (u128, u128) {
-            (0, 0)
+        pub fn account_liquidity(env: Env, user: Address) -> (u128, u128) {
+            let (_, (c, d)) = rows(&env, &user, None);
+            (c.saturating_sub(d), d.saturating_sub(c))
         }
-        /// Health check of `user`; the calling receipt passes its own row.
+        /// Health check of `user`; the calling receipt passes its own row (no re-entry).
+        /// Same rows as `portfolio`, so the pool check and the receipt health check agree.
         pub fn check(
             env: Env,
             user: Address,
@@ -216,29 +233,43 @@ mod mctrl {
             debt: u128,
             rate: u128,
         ) {
-            let (mut coll, mut dv) = (0u128, 0u128);
-            for (m, cf) in markets(&env).iter() {
-                let (u, p_, d_, r_) = if m == market {
-                    (und.clone(), pt, debt, rate)
-                } else {
-                    let c = MockReceiptClient::new(&env, &m);
-                    (
-                        c.get_underlying_token(),
-                        c.get_ptoken_balance(&user),
-                        c.get_user_borrow_balance(&user),
-                        c.get_exchange_rate(),
-                    )
-                };
-                let p = px(&env, &u);
-                coll += p_ * r_ / 1_000_000 * p / super::PS * cf / 1_000_000;
-                dv += d_ * p / super::PS;
-            }
+            let (_, (coll, dv)) = rows(&env, &user, Some((market, und, pt, debt, rate)));
             assert!(dv <= coll, "ctrl: insufficient liquidity");
         }
     }
+    #[allow(clippy::type_complexity)]
+    fn rows(
+        env: &Env,
+        user: &Address,
+        own: Option<(Address, Address, u128, u128, u128)>,
+    ) -> (Vec<(Address, u128, u128, u128, u128)>, (u128, u128)) {
+        let mut out = Vec::new(env);
+        let (mut ct, mut dt) = (0u128, 0u128);
+        for (m, cf) in markets(env).iter() {
+            let (u, pbal, debt, rate) = match &own {
+                Some((om, ou, p_, d_, r_)) if *om == m => (ou.clone(), *p_, *d_, *r_),
+                _ => {
+                    let c = MockReceiptClient::new(env, &m);
+                    (
+                        c.get_underlying_token(),
+                        c.get_ptoken_balance(user),
+                        c.get_user_borrow_balance(user),
+                        c.get_exchange_rate(),
+                    )
+                }
+            };
+            let p = px(env, &u);
+            let coll = pbal * rate / 1_000_000 * cf / 1_000_000 * p / super::PS;
+            let dusd = debt * p / super::PS;
+            out.push_back((m, pbal, debt, coll, dusd));
+            ct += coll;
+            dt += dusd;
+        }
+        (out, (ct, dt))
+    }
 }
 
-mod mpool {
+pub(crate) mod mpool {
     use super::mctrl::MockCtrlClient;
     use soroban_sdk::{
         contract, contractimpl, contracttype, token::TokenClient, Address, Env, Vec,
@@ -295,25 +326,25 @@ mod mpool {
     }
 }
 
-use mctrl::{MockCtrl, MockCtrlClient};
-use mpool::{MockPool, MockPoolClient};
-use mrec::{MockReceipt, MockReceiptClient};
+pub(crate) use mctrl::{MockCtrl, MockCtrlClient};
+pub(crate) use mpool::{MockPool, MockPoolClient};
+pub(crate) use mrec::{MockReceipt, MockReceiptClient};
 
-struct T {
-    env: Env,
-    m: MarginControllerClient<'static>,
-    ctrl: MockCtrlClient<'static>,
-    ru: MockReceiptClient<'static>,
-    rx: MockReceiptClient<'static>,
-    pool: MockPoolClient<'static>,
-    usdc: Address,
-    xlm: Address,
-    admin: Address,
-    user: Address,
-    liq: Address,
+pub(crate) struct T {
+    pub(crate) env: Env,
+    pub(crate) m: MarginControllerClient<'static>,
+    pub(crate) ctrl: MockCtrlClient<'static>,
+    pub(crate) ru: MockReceiptClient<'static>,
+    pub(crate) rx: MockReceiptClient<'static>,
+    pub(crate) pool: MockPoolClient<'static>,
+    pub(crate) usdc: Address,
+    pub(crate) xlm: Address,
+    pub(crate) admin: Address,
+    pub(crate) user: Address,
+    pub(crate) liq: Address,
 }
 
-fn caps(per: u128, side: u128, oi: u128) -> Caps {
+pub(crate) fn caps(per: u128, side: u128, oi: u128) -> Caps {
     Caps {
         per_position_equity_usd: per * U,
         side_equity_usd: side * U,
@@ -323,7 +354,7 @@ fn caps(per: u128, side: u128, oi: u128) -> Caps {
 }
 
 impl T {
-    fn new() -> T {
+    pub(crate) fn new() -> T {
         let env = Env::default();
         env.mock_all_auths();
         // Long sequences in one Env; resource measurement is WP5 (fork), not these unit tests.
@@ -394,58 +425,54 @@ impl T {
         t.seed_backstop(750 * U);
         t
     }
-    /// Stand-in for WP1's treasury seed: USDC pTokens owned by the backstop, in the Ledger.
-    fn seed_backstop(&self, pt: u128) {
-        self.ru.mint_pt(&self.m.address, &pt);
-        self.env.as_contract(&self.m.address, || {
-            let s = self.env.storage().instance();
-            let mut b: Backstop = s.get(&Key::Bs).unwrap_or(Backstop {
-                shares: 0,
-                ptokens: 0,
-                pending_shares: 0,
-            });
-            b.ptokens += pt;
-            b.shares += pt;
-            s.set(&Key::Bs, &b);
-            let l: u128 = s.get(&Key::Ledger(self.usdc.clone())).unwrap_or(0);
-            s.set(&Key::Ledger(self.usdc.clone()), &(l + pt));
-        });
+    /// Treasury seed through the real entrypoint: the admin supplies USDC to the receipt,
+    /// then deposits the minted pTokens into the backstop (the first deposit adds dead shares).
+    pub(crate) fn seed_backstop(&self, pt: u128) -> u128 {
+        self.backer_deposit(&self.admin, pt)
     }
-    fn get<V: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>>(&self, k: &Key) -> Option<V> {
+    /// `who` supplies `amount` USDC to the receipt and deposits the minted pTokens.
+    pub(crate) fn backer_deposit(&self, who: &Address, amount: u128) -> u128 {
+        StellarAssetClient::new(&self.env, &self.usdc).mint(who, &(amount as i128));
+        let before = self.ru.get_ptoken_balance(who);
+        self.ru.deposit(who, &amount);
+        let pt = self.ru.get_ptoken_balance(who) - before;
+        self.m.backstop_deposit(who, &pt, &0)
+    }
+    pub(crate) fn get<V: soroban_sdk::TryFromVal<Env, soroban_sdk::Val>>(&self, k: &Key) -> Option<V> {
         self.env
             .as_contract(&self.m.address, || self.env.storage().instance().get(k))
     }
-    fn bs_pt(&self) -> u128 {
+    pub(crate) fn bs_pt(&self) -> u128 {
         self.get::<Backstop>(&Key::Bs)
             .map(|b| b.ptokens)
             .unwrap_or(0)
     }
-    fn shares(&self, a: &Address) -> u128 {
+    pub(crate) fn shares(&self, a: &Address) -> u128 {
         self.get(&Key::DebtShares(a.clone())).unwrap_or(0)
     }
-    fn bs_shares(&self, a: &Address) -> u128 {
+    pub(crate) fn bs_shares(&self, a: &Address) -> u128 {
         self.get(&Key::BsDebtShares(a.clone())).unwrap_or(0)
     }
-    fn ledger(&self, a: &Address) -> u128 {
+    pub(crate) fn ledger(&self, a: &Address) -> u128 {
         self.get(&Key::Ledger(a.clone())).unwrap_or(0)
     }
-    fn claims_total(&self, a: &Address) -> u128 {
+    pub(crate) fn claims_total(&self, a: &Address) -> u128 {
         self.get(&Key::ClaimsTotal(a.clone())).unwrap_or(0)
     }
-    fn pooled(&self, a: &Address) -> u128 {
+    pub(crate) fn pooled(&self, a: &Address) -> u128 {
         self.rec(a).get_user_borrow_balance(&self.m.address)
     }
-    fn rec(&self, a: &Address) -> &MockReceiptClient<'static> {
+    pub(crate) fn rec(&self, a: &Address) -> &MockReceiptClient<'static> {
         if *a == self.usdc {
             &self.ru
         } else {
             &self.rx
         }
     }
-    fn set_xlm(&self, p: u128) {
+    pub(crate) fn set_xlm(&self, p: u128) {
         self.ctrl.set_price(&self.xlm, &p);
     }
-    fn fees(&self, open: u128, close: u128, funding: u128) {
+    pub(crate) fn fees(&self, open: u128, close: u128, funding: u128) {
         self.m.set_fees(
             &self.admin,
             &Fees {
@@ -457,7 +484,7 @@ impl T {
             },
         );
     }
-    fn long(&self, coll_xlm: u128, borrow_usdc: u128) -> u64 {
+    pub(crate) fn long(&self, coll_xlm: u128, borrow_usdc: u128) -> u64 {
         self.m.open(
             &self.user,
             &self.xlm,
@@ -468,7 +495,7 @@ impl T {
             &u128::MAX,
         )
     }
-    fn short(&self, coll_usdc: u128, borrow_xlm: u128) -> u64 {
+    pub(crate) fn short(&self, coll_usdc: u128, borrow_xlm: u128) -> u64 {
         self.m.open(
             &self.user,
             &self.usdc,
@@ -479,13 +506,13 @@ impl T {
             &u128::MAX,
         )
     }
-    fn pos(&self, id: u64) -> Position {
+    pub(crate) fn pos(&self, id: u64) -> Position {
         self.m.get_position(&id).unwrap()
     }
-    fn tbal(&self, t: &Address, a: &Address) -> i128 {
+    pub(crate) fn tbal(&self, t: &Address, a: &Address) -> i128 {
         TokenClient::new(&self.env, t).balance(a)
     }
-    fn assert_ledgers(&self) {
+    pub(crate) fn assert_ledgers(&self) {
         for a in [&self.usdc, &self.xlm] {
             assert_eq!(
                 self.ledger(a),
@@ -494,16 +521,16 @@ impl T {
             );
         }
     }
-    fn skip(&self, s: u64) {
+    pub(crate) fn skip(&self, s: u64) {
         let now = self.env.ledger().timestamp();
         self.env.ledger().set_timestamp(now + s);
     }
 }
 
-fn ce(e: Error) -> soroban_sdk::Error {
+pub(crate) fn ce(e: Error) -> soroban_sdk::Error {
     e.into()
 }
-fn err<T, E1, E2: core::fmt::Debug>(
+pub(crate) fn err<T, E1, E2: core::fmt::Debug>(
     r: Result<Result<T, E1>, Result<soroban_sdk::Error, E2>>,
 ) -> soroban_sdk::Error {
     match r {
@@ -709,9 +736,10 @@ fn open_order_paused_impaired_and_fee_limit() {
         )),
         ce(Error::OpensPaused)
     );
-    t.env.as_contract(&t.m.address, || {
-        t.env.storage().instance().set(&Key::Impaired, &true)
-    });
+    // Impaired through the real path: an external seizure of one backstop USDC pToken,
+    // detected by reconcile.
+    t.ru.seize(&t.m.address, &t.liq, &1);
+    assert!(t.m.reconcile(&t.liq));
     // Impaired is checked before the pause
     assert_eq!(
         err(t.m.try_open(
@@ -725,9 +753,8 @@ fn open_order_paused_impaired_and_fee_limit() {
         )),
         ce(Error::Impaired)
     );
-    t.env.as_contract(&t.m.address, || {
-        t.env.storage().instance().set(&Key::Impaired, &false)
-    });
+    t.m.admin_resolve_impairment(&t.admin, &1, &0); // the backstop absorbs the missing pToken
+    assert!(!t.m.is_impaired());
     t.m.set_opens_paused(&t.admin, &false);
     assert_eq!(
         err(t.m.try_open(
@@ -1112,20 +1139,20 @@ fn underwater_short_liquidation() {
 }
 
 // ------------------------------------------------------------------ property loop
-struct Rng(u64);
+pub(crate) struct Rng(u64);
 impl Rng {
-    fn next(&mut self) -> u64 {
+    pub(crate) fn next(&mut self) -> u64 {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 7;
         self.0 ^= self.0 << 17;
         self.0
     }
-    fn range(&mut self, lo: u128, hi: u128) -> u128 {
+    pub(crate) fn range(&mut self, lo: u128, hi: u128) -> u128 {
         lo + (self.next() as u128) % (hi - lo + 1)
     }
 }
 
-fn check_debt_invariant(t: &T, open: &[u64]) {
+pub(crate) fn check_debt_invariant(t: &T, open: &[u64]) {
     for a in [t.usdc.clone(), t.xlm.clone()] {
         let pooled = t.pooled(&a);
         let (ps, bs) = (t.shares(&a), t.bs_shares(&a));

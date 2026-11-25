@@ -5,53 +5,6 @@ use crate::common::*;
 use crate::types::*;
 use soroban_sdk::{contractimpl, panic_with_error, token, Address, BytesN, Env, Symbol, Vec};
 
-// ---------------------------------------------------------------- WP2 integration shims
-// WP1 (backstop.rs) and WP3 (headroom.rs) are written in parallel; until they land, unit tests
-// run against these test-only stand-ins. Outside `cfg(test)` every shim calls the real crate
-// API. INTEGRATOR: delete the `#[cfg(test)]` variants (and inline the calls) once WP1/WP3 merge.
-#[cfg(not(test))]
-fn shim_require_not_impaired(env: &Env) {
-    crate::headroom::require_not_impaired(env)
-}
-#[cfg(test)]
-fn shim_require_not_impaired(env: &Env) {
-    if is_impaired(env) {
-        panic_with_error!(env, Error::Impaired);
-    }
-}
-#[cfg(not(test))]
-fn shim_pool_check_open(env: &Env) {
-    crate::headroom::pool_check(env, Check::Open)
-}
-#[cfg(test)]
-fn shim_pool_check_open(_env: &Env) {}
-#[cfg(not(test))]
-fn shim_credit_pt(env: &Env, usdc_pt: u128) {
-    crate::backstop::credit_pt(env, usdc_pt)
-}
-#[cfg(test)]
-fn shim_credit_pt(env: &Env, usdc_pt: u128) {
-    let mut b: Backstop = inst_get(env, &Key::Bs).unwrap_or(Backstop {
-        shares: 0,
-        ptokens: 0,
-        pending_shares: 0,
-    });
-    b.ptokens = b.ptokens.checked_add(usdc_pt).expect("overflow");
-    env.storage().instance().set(&Key::Bs, &b);
-}
-#[cfg(not(test))]
-fn shim_assign_bad_debt(env: &Env, debt_asset: &Address, shares: u128) {
-    crate::backstop::assign_bad_debt(env, debt_asset, shares)
-}
-#[cfg(test)]
-fn shim_assign_bad_debt(env: &Env, debt_asset: &Address, shares: u128) {
-    let k = Key::BsDebtShares(debt_asset.clone());
-    let v: u128 = inst_get(env, &k).unwrap_or(0);
-    env.storage()
-        .instance()
-        .set(&k, &v.checked_add(shares).expect("overflow"));
-}
-
 // ---------------------------------------------------------------- WP2 helpers
 fn slippage(env: &Env) -> u128 {
     inst_get(env, &Key::MaxSlippage).unwrap_or(10_000)
@@ -169,7 +122,7 @@ fn deposit_to_backstop(env: &Env, amount: u128) -> u128 {
     }
     let pt = deposit_self(env, &u, amount);
     ledger_add(env, &u, pt);
-    shim_credit_pt(env, pt);
+    crate::backstop::credit_pt(env, pt);
     0
 }
 /// pTokens of `held` to sell for `amount` of `debt` (oracle price grossed up by the slippage bound).
@@ -437,7 +390,7 @@ impl MarginController {
     ) -> u64 {
         user.require_auth();
         bump(&env);
-        shim_require_not_impaired(&env);
+        crate::headroom::require_not_impaired(&env);
         if inst_get::<bool>(&env, &Key::OpensPaused).unwrap_or(true) {
             panic_with_error!(&env, Error::OpensPaused);
         }
@@ -565,7 +518,7 @@ impl MarginController {
         };
         if fee_pt > 0 {
             ledger_add(&env, &u, fee_pt);
-            shim_credit_pt(&env, fee_pt);
+            crate::backstop::credit_pt(&env, fee_pt);
         }
 
         // ---- post-trade checks on actual values
@@ -615,7 +568,7 @@ impl MarginController {
             (Symbol::new(&env, "margin_open"),),
             (id, user, held_asset, borrow, held_pt, fee, p.liq_ltv),
         );
-        shim_pool_check_open(&env); // last: sees the final pooled state
+        crate::headroom::pool_check(&env, Check::Open); // last: sees the final pooled state
         id
     }
 
@@ -673,7 +626,7 @@ impl MarginController {
             to_bs - dust
         } else {
             if bs_pt > 0 {
-                shim_credit_pt(&env, bs_pt);
+                crate::backstop::credit_pt(&env, bs_pt);
             }
             pt_to_amt(bs_pt, rate_h)
         };
@@ -727,7 +680,7 @@ impl MarginController {
             let rate_u = rate_of(&env, &u);
             let bs_pt = amt_to_pt_up(fee.checked_add(f).expect("overflow"), rate_u).min(held);
             if bs_pt > 0 {
-                shim_credit_pt(&env, bs_pt);
+                crate::backstop::credit_pt(&env, bs_pt);
             }
             send_ptokens(&env, &u, &user, held - bs_pt);
             ledger_sub(&env, &u, held - bs_pt);
@@ -789,7 +742,7 @@ impl MarginController {
                 &p.debt_asset,
                 total_shares(&env, &p.debt_asset).saturating_sub(s_res),
             );
-            shim_assign_bad_debt(&env, &p.debt_asset, s_res);
+            crate::backstop::assign_bad_debt(&env, &p.debt_asset, s_res);
             p.debt_shares = burned;
             send_ptokens(&env, &p.held_asset, &liquidator, held);
             ledger_sub(&env, &p.held_asset, held);
@@ -841,7 +794,7 @@ impl MarginController {
                 .expect("overflow");
             let bs_pt = amt_to_pt_up(usd_to_amt_up(bs_usd, pu), rate_h).min(held - seize);
             if bs_pt > 0 {
-                shim_credit_pt(&env, bs_pt);
+                crate::backstop::credit_pt(&env, bs_pt);
             }
             (repaid, seize, bs_pt)
         };

@@ -87,14 +87,9 @@ fn xlm_to_usdc_up(env: &Env, amount: u128) -> u128 {
     mul_div_up(usd_up, pu.1, pu.0)
 }
 
-/// Backstop exit pool check. `headroom::pool_check` belongs to WP3 and is still
-/// `unimplemented!` on this branch, so native unit tests of this crate skip it.
-/// The integrator removes the `cfg(test)` bypass once WP3 lands.
+/// Backstop exit pool check (headroom::pool_check, Check::BackstopExit), always.
 pub(crate) fn exit_check(env: &Env) {
-    #[cfg(not(test))]
     crate::headroom::pool_check(env, Check::BackstopExit);
-    #[cfg(test)]
-    let _ = env;
 }
 
 #[allow(deprecated)]
