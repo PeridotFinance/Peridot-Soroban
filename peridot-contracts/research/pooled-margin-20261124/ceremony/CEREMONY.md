@@ -84,6 +84,17 @@ otherwise. K3 `settle_backstop_debt` has no bad debt to settle in this sequence;
 - Short: 4.998 USDC collateral, 80.08 XLM borrowed.
 - The open fee was 0.0149 pT per open. Ledger == pToken balance after each canary.
 
+**Live results, 26 Nov 2026.**
+
+- **M1 sent:** `b4cbb349acf06e8b245d769107c36b92ac3686815511f4ba736d2ad6a0b16a85`, SUCCESS at ledger 65684211, fee charged
+  81.0479456 XLM (simulated 93.2041 min / 111.8469 max). Read-back `upload` done.
+- **M2 live simulation (the row the deploy rule requires, recorded before M2 is signed):** ledger 65684217, class setter,
+  1,726,513 instructions, 2 keys, 1 write, 1,284 write bytes, min resource fee 0.2472364 XLM, max fee 0.2986836 XLM. The host
+  returned id `CA6Q7HULJTGFMTB7YLJWFKPQVIIWAP46PQHAY3H5V2EZ2R7HBCW6N7NZ` (= pin). Decoded envelope: one authorization, root
+  `create_contract_v2` with no sub-invocations, wasm `b1cb1cb2…766f`, salt `e5592253…5bbe`, constructor arguments admin
+  `GC4T5MP5…T7FP`, controller `CBMRS7LK…7RK`, guardian `GBSK3FYC…PQX3`, USDC SAC `CCW67TSZ…MI75`, XLM SAC `CAS3J7GY…OWMA`.
+  Not signed or sent by this simulation; `step m02-deploy` re-simulates fresh before the Ledger signs.
+
 Raw outputs, outside the repo, in `/Users/joshua/Peridot/margin-v2-launch-20261125/sims/`:
 
 | File | sha256 |
