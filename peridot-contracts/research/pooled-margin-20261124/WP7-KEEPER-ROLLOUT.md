@@ -61,7 +61,7 @@ export SSHQ="-i <path to your keeper SSH key> -o UserKnownHostsFile=<path to you
 ```
 
 ```zsh
-export MARGIN=C...   # the deployed margin v2 contract id
+export MARGIN=CA6Q7HULJTGFMTB7YLJWFKPQVIIWAP46PQHAY3H5V2EZ2R7HBCW6N7NZ   # deployed 26 Nov (M2)
 ```
 
 ```zsh
@@ -206,23 +206,23 @@ ssh $=SSHQ root@$LQ 'grep "\"msg\":\"margin heartbeat\"" /mnt/cashliq/cash-liqui
 The independent reads are simulations only (`--send=no`), with the keeper's public key as source:
 
 ```zsh
-stellar contract invoke --id $MARGIN --network mainnet --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- get_position_counter
+stellar contract invoke --id $MARGIN --rpc-url https://soroban-rpc.mainnet.stellar.gateway.fm --network-passphrase "Public Global Stellar Network ; September 2015" --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- get_position_counter
 ```
 
 ```zsh
-stellar contract invoke --id $MARGIN --network mainnet --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- backstop_nav
+stellar contract invoke --id $MARGIN --rpc-url https://soroban-rpc.mainnet.stellar.gateway.fm --network-passphrase "Public Global Stellar Network ; September 2015" --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- backstop_nav
 ```
 
 ```zsh
-stellar contract invoke --id $MARGIN --network mainnet --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- pooled_health
+stellar contract invoke --id $MARGIN --rpc-url https://soroban-rpc.mainnet.stellar.gateway.fm --network-passphrase "Public Global Stellar Network ; September 2015" --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- pooled_health
 ```
 
 ```zsh
-stellar contract invoke --id $MARGIN --network mainnet --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- is_impaired
+stellar contract invoke --id $MARGIN --rpc-url https://soroban-rpc.mainnet.stellar.gateway.fm --network-passphrase "Public Global Stellar Network ; September 2015" --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- is_impaired
 ```
 
 ```zsh
-stellar contract invoke --id $MARGIN --network mainnet --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- opens_paused
+stellar contract invoke --id $MARGIN --rpc-url https://soroban-rpc.mainnet.stellar.gateway.fm --network-passphrase "Public Global Stellar Network ; September 2015" --source-account GDQARPHRQFU7K52XMESPNBSKZE6GPCORZV54EBGDVSXJQBOIDUMO5B5G --send=no -- opens_paused
 ```
 
 `opens_paused` must be `true` throughout.
@@ -568,3 +568,7 @@ ssh $=SSHQ root@$LQ 'grep "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/stat
   (`DRY_RUN=false` unchanged, `healthcheckPing: true`, no margin pass). Healthchecks check `[Stellar] peridot-cashliq`
   up; pause-host watcher installed (`/opt/peridot-keeper-watch/releases/fc83b902f96c1fa2`), `status: up` from 15:11:27 UTC.
   Rollback target: `releases/cb88d4dec23b4c82`. Next: ceremony M1-M15, then 1.6-1.7 (dry stage clock), section 3.
+- **26 Nov 2026, ceremony M1-M15 done** (M1 `b4cbb349…6a85`, M15 `e401c76f…7852`); `gate config` ok, backstop 750 pT /
+  7,501,000,000 shares, opens paused, 0 positions, not impaired. The `stellar contract invoke` checks now pass an explicit
+  `--rpc-url` (the CLI's built-in `mainnet` network has no RPC URL and fails with "Invalid URL").
+
