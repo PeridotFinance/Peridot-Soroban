@@ -111,8 +111,13 @@ Write down `DRY_RUN`. It stays **unchanged**, so cash liquidations keep running 
 
 ### 1.4 Install the release (host tests, then `current`)
 
+**`/root/lib.sh` is the CL liquidator's copy now** (the CL group bootstrap overwrote it; it refuses this tarball with
+"tarball is not bots/cl-liquidator", targets `/opt/peridot-cl-liquidator`, and leaves a `<sha16>.tmp` folder there). Copy the
+reviewed cash `lib.sh` (sha256 `93b64e0cfb9f86825b2fd5ba4b46a12a2e02187be71bc7ca147eccae5becfe27`, from
+`research/cash-borrowing-ops-20261118/droplet/lib.sh`) to `/root/lib-cash.sh`, check its hash, and leave `/root/lib.sh` alone.
+
 ```zsh
-ssh $=SSHQ root@$LQ 'SRC_TARBALL=/root/cash-liquidator-'${WP7:0:7}'.tgz NODE_VERSION=v22.23.5 SRC_SHA256=<SRC_SHA256> bash -c ". /root/lib.sh && install_code" && readlink /opt/peridot-cash-liquidator/current'
+ssh $=SSHQ root@$LQ 'SRC_TARBALL=/root/cash-liquidator-'${WP7:0:7}'.tgz NODE_VERSION=v22.23.5 SRC_SHA256=<SRC_SHA256> bash -c ". /root/lib-cash.sh && install_code" && readlink /opt/peridot-cash-liquidator/current'
 ```
 
 Expected:
@@ -553,3 +558,13 @@ journal against Horizon first. Do not resend it.
 ```zsh
 ssh $=SSHQ root@$LQ 'grep "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/state/journal.jsonl | tail -n 4'
 ```
+
+## Run log
+
+- **26 Nov 2026, stage 1 (cash only, margin off):** tarball `cash-liquidator-6004b54.tgz`, sha256
+  `fc83b902f96c1fa232e7080f3947a6ff9b8f846588d5fc92e4bfe203c908bacc` (81/81 tests). Installed as
+  `/opt/peridot-cash-liquidator/releases/fc83b902f96c1fa2` with `/root/lib-cash.sh`. Telegram bot: a new bot (owner),
+  chat "Peridot ONLY". Alert check 15:09:45 UTC: all eight types delivered, `missing: []`. Restarted 15:10:18 UTC
+  (`DRY_RUN=false` unchanged, `healthcheckPing: true`, no margin pass). Healthchecks check `[Stellar] peridot-cashliq`
+  up; pause-host watcher installed (`/opt/peridot-keeper-watch/releases/fc83b902f96c1fa2`), `status: up` from 15:11:27 UTC.
+  Rollback target: `releases/cb88d4dec23b4c82`. Next: ceremony M1-M15, then 1.6-1.7 (dry stage clock), section 3.
