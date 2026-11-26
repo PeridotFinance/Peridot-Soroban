@@ -572,3 +572,9 @@ ssh $=SSHQ root@$LQ 'grep "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/stat
   7,501,000,000 shares, opens paused, 0 positions, not impaired. The `stellar contract invoke` checks now pass an explicit
   `--rpc-url` (the CLI's built-in `mainnet` network has no RPC URL and fails with "Invalid URL").
 
+- **26 Nov 2026, dead-man test + margin dry start (section 3 done before 1.7, so the 12 h window has no stop in it):**
+  overlay `margin.json` + `MARGIN_DRY_RUN=true` written first; keeper stopped `stopTestAt` 2026-11-26T16:25:55Z; watcher
+  `keeper_down` delivered 16:29:35Z; restart = margin dry start, `ActiveEnterTimestamp` 2026-11-26T16:29:53Z (dry clock),
+  `margin pass enabled` wasm b1cb1cb2, `dryRun: true`, cash `dryRun: false`; watcher `resolved` delivered 16:30:38Z.
+  Keeper account keeps sending (cash refreshes), so the gate's 15-min activity check is met. Earliest dry-stage pass
+  2026-11-27T04:29:53Z, and only once `margin heartbeat` count >= 1,400.
