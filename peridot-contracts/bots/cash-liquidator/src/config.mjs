@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {resolveRpc} from './rpcurl.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bool = (v, d) => (v == null || v === '' ? d : /^(1|true|yes)$/i.test(v));
@@ -11,7 +12,7 @@ export function loadConfig(env = process.env) {
   const pins = JSON.parse(fs.readFileSync(pinsFile, 'utf8'));
   const cfg = {
     pins,
-    rpcUrl: env.RPC_URL || 'https://soroban-rpc.mainnet.stellar.gateway.fm',
+    ...(r => ({rpcUrl: r.url, rpcHost: r.host, rpcSource: r.source}))(resolveRpc(env)),   // RPC_URL_FILE (private, never logged) | RPC_URL | public default
     network: env.NETWORK_PASSPHRASE || pins.network,
     publicKey: env.LIQUIDATOR_PUBLIC_KEY,
     dryRun: bool(env.DRY_RUN, true),
@@ -133,7 +134,7 @@ export function loadPauseConfig(env = process.env) {
   const cfg = {
     pins,
     mode: 'pause-watcher',
-    rpcUrl: env.RPC_URL || 'https://soroban-rpc.mainnet.stellar.gateway.fm',
+    ...(r => ({rpcUrl: r.url, rpcHost: r.host, rpcSource: r.source}))(resolveRpc(env)),   // RPC_URL_FILE (private, never logged) | RPC_URL | public default
     network: env.NETWORK_PASSPHRASE || pins.network,
     publicKey: env.PAUSE_PUBLIC_KEY,
     keyFile: env.PAUSE_KEY_FILE,

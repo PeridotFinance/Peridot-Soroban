@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {scrubText} from './rpcurl.mjs';
 import path from 'node:path';
 import * as S from '@stellar/stellar-sdk';
 import {marginPass} from './margin.mjs';
@@ -10,8 +11,10 @@ import {planLiquidation, seizeIsProfitable, depegAlerts, mergeBorrowers, netInve
 let notifier = null;
 export function setNotifier(n) { notifier = n; }
 const log = (level, msg, extra = {}) => {
-  console.log(JSON.stringify({t: new Date().toISOString(), level, msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
-  if (notifier) notifier.notify(level, msg, extra);
+  const raw = JSON.stringify({t: new Date().toISOString(), level, msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v));
+  const line = scrubText(raw);   // a private RPC URL / key never reaches the log or Telegram
+  console.log(line);
+  if (notifier) { let x = extra; if (line !== raw) { const {t, level: _l, msg: _m, ...rest} = JSON.parse(line); x = rest; } notifier.notify(level, scrubText(msg), x); }
 };
 
 export function loadState(file) {

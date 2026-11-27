@@ -14,7 +14,7 @@ else if (!pinger) log('alert', 'external dead-man NOT configured: add HEALTHCHEC
 // Startup failures (e.g. a pin mismatch after an upgrade) are alerted to Telegram before the process exits.
 const startFail = async e => { log('alert', 'keeper start failed', {err: e.message}); await notifier?.flush(10_000); process.exit(1); };
 try { await verifyPins(cfg, c); await verifyRoles(cfg, c); } catch (e) { await startFail(e); }
-log('info', 'start', {network: cfg.network, publicKey: cfg.publicKey, dryRun: cfg.dryRun, pollMs: cfg.pollMs, signer: cfg.keyFile ? 'key file' : cfg.signerCliAlias ? 'cli alias' : 'LIQUIDATOR_SECRET (legacy) or none', refresh: cfg.refresh});
+log('info', 'start', {network: cfg.network, publicKey: cfg.publicKey, dryRun: cfg.dryRun, pollMs: cfg.pollMs, rpc: cfg.rpcSource, rpcHost: cfg.rpcHost, rpcReadRetries: cfg.rpcReadRetries, signer: cfg.keyFile ? 'key file' : cfg.signerCliAlias ? 'cli alias' : 'LIQUIDATOR_SECRET (legacy) or none', refresh: cfg.refresh});
 if (cfg.margin.enabled) {
   // A margin pin mismatch never stops the cash pass: the margin cycle re-verifies every time and does nothing until it passes.
   try { const v = await verifyMargin(cfg, c); log('info', 'margin pass enabled', {contract: cfg.margin.contract, wasm: v.wasm, dryRun: cfg.dryRun || cfg.margin.dryRun, cpuStop: cfg.margin.cpuStop, maxFeeStroops: cfg.margin.maxFeeStroops}); }

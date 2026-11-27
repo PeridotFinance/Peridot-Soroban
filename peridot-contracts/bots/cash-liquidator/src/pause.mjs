@@ -4,11 +4,12 @@
 // deposit pauses are deliberately unreachable from this code even though the guardian key could sign them. Unpausing
 // is the Ledger's job (research/cash-borrowing-activation-20261117/tools/ceremony.cjs unpause-borrow).
 import fs from 'node:fs';
+import {scrubText} from './rpcurl.mjs';
 import path from 'node:path';
 import * as S from '@stellar/stellar-sdk';
 import {pauseSignals, pauseRoundKey, pauseStep} from './plan.mjs';
 
-const log = (level, msg, extra = {}) => console.log(JSON.stringify({t: new Date().toISOString(), level, mode: 'pause-watcher', msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v)));
+const log = (level, msg, extra = {}) => console.log(scrubText(JSON.stringify({t: new Date().toISOString(), level, mode: 'pause-watcher', msg, ...extra}, (_, v) => (typeof v === 'bigint' ? String(v) : v))));
 const ALLOWED_FN = 'pause_borrow_g';
 
 export function pauseTargets(pins) {

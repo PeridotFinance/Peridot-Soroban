@@ -122,7 +122,7 @@ ssh $=SSHQ root@$LQ 'SRC_TARBALL=/root/cash-liquidator-'${WP7:0:7}'.tgz NODE_VER
 
 Expected:
 - sha256 OK;
-- the host `node --test` passes (81 tests for 6004b54, 90 for the read-retry release);
+- the host `node --test` passes (81 tests for 6004b54, 96 for the read-retry + private-RPC release);
 - `current` points to the new release.
 
 On failure nothing has changed, so stop.
@@ -141,6 +141,28 @@ ssh $=SSHQ root@$LQ "printf '{\"enabled\": true, \"contract\": \"$MARGIN\"}\n' >
 ```zsh
 ssh $=SSHQ root@$LQ 'grep -q "^MARGIN_" /etc/peridot-cash-liquidator/liquidator.env || printf "MARGIN_CONFIG_FILE=/etc/peridot-cash-liquidator/margin.json\nMARGIN_DRY_RUN=true\n" >> /etc/peridot-cash-liquidator/liquidator.env; grep -E "^(DRY_RUN|MARGIN_)" /etc/peridot-cash-liquidator/liquidator.env'
 ```
+
+### 1.6b Private RPC endpoint (owner 27 Nov: the public endpoint rate-limits the keeper)
+
+The keeper reads its endpoint from `RPC_URL_FILE`: one https URL in a regular file, mode 0600, owned by `cashliq`, whose
+host must equal `RPC_HOST`. The keeper refuses a symlink, a looser mode, another owner, another host, plain http, and
+`RPC_URL` set at the same time. The URL (and its key-bearing path) is scrubbed from every log line and Telegram message;
+the `start` line shows only `rpc: "file"` and `rpcHost`. The URL itself never goes into chat, a command line, the repo or a
+log: copy the owner's existing endpoint file with `scp`, and check it with `grep -c` (prints 0 or 1, never the content).
+
+```zsh
+scp $=SSHQ <owner endpoint file> root@$LQ:/etc/peridot-cash-liquidator/rpc-url
+```
+
+```zsh
+ssh $=SSHQ root@$LQ 'f=/etc/peridot-cash-liquidator/rpc-url; chown cashliq:cashliq $f && chmod 600 $f && stat -c "%U %a" $f && grep -c "^https://<provider host>/" $f'
+```
+
+```zsh
+ssh $=SSHQ root@$LQ 'e=/etc/peridot-cash-liquidator/liquidator.env; sed -i "/^RPC_URL=/d;/^RPC_URL_FILE=/d;/^RPC_HOST=/d" $e && printf "RPC_URL_FILE=/etc/peridot-cash-liquidator/rpc-url\nRPC_HOST=<provider host>\n" >> $e && grep -E "^(DRY_RUN|MARGIN_|RPC_)" $e'
+```
+
+Rollback to the public endpoint: delete the two `RPC_` lines (no `RPC_URL` means the public default) and restart.
 
 ### 1.7 Restart and check the start lines
 
@@ -604,5 +626,6 @@ ssh $=SSHQ root@$LQ 'grep "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/stat
   283 failed cycles, 11 runs of >= 3 in a row, worst 5. The section-6 switch was run in the same go as the checks; it
   signed nothing (opens paused, empty book) and was reverted at 13:02:49. Fix: bounded read retry on 429/503 (2 retries,
   jitter 0.4-1.6 s, never `sendTransaction`, each retry logged), `MARGIN_ROUND_POLL_MS=15000` (Reflector round check every
-  15 s instead of 5 s), checks now read both log files from `START`. The 26 Nov dry stage is void; `stopTestAt` 16:25:55Z
+  15 s instead of 5 s), checks now read both log files from `START`. Owner then chose the private endpoint (1.6b): `RPC_URL_FILE` +
+  `RPC_HOST`, host-pinned, scrubbed from logs. The 26 Nov dry stage is void; `stopTestAt` 16:25:55Z
   and `alerts.testedAt` 15:09:45Z stay valid until 3 Dec.

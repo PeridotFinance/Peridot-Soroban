@@ -97,6 +97,7 @@ export function makeChain(cfg, hooks = {}) {
       prepared.sign(keypair); return prepared;
     }
     if (cfg.signerCliAlias) {
+      if (cfg.rpcSource === 'file') throw Error('refused: the CLI signer would put the private RPC URL on a command line');
       // Testnet rehearsal: the Stellar CLI holds the Testnet-only identity; this process never sees the secret.
       const out = execFileSync('stellar', ['tx', 'sign', '--sign-with-key', cfg.signerCliAlias, '--rpc-url', cfg.rpcUrl, '--network-passphrase', cfg.network], {input: prepared.toXDR()}).toString().trim();
       return S.TransactionBuilder.fromXDR(out, cfg.network);
