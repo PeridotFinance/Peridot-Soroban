@@ -42,7 +42,7 @@ async function main() {
   if (!notifier) { log('warn', 'alert check: Telegram not configured', {problem, channel: cfg.alerts.channel}); process.exit(2); }
   notifier.force = true;   // bypass dedupe for the test
   setNotifier(notifier);
-  const c = makeChain(cfg);
+  const c = makeChain(cfg, {log});
   c.sign = () => { throw Error('alert check never signs'); };
   c.submit = async () => { throw Error('alert check never submits'); };
   log('info', 'margin alert check start', {contract: cfg.margin.contract, enabled: cfg.margin.enabled, types: want, channel: cfg.alerts.channel});

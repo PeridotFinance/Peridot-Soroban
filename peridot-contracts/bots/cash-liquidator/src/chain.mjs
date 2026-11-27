@@ -23,11 +23,32 @@ export function decodeSimEvents(diags) {
 }
 const sym = s => S.xdr.ScVal.scvSymbol(s);
 
-export function makeChain(cfg) {
+// Public RPC endpoints rate-limit (HTTP 429) or shed load (503). READ calls get a small bounded retry with jitter;
+// sendTransaction is never wrapped (an unknown send outcome must surface, not be resent). Every retry is logged.
+export const isRateLimited = e => { const s = e?.response?.status ?? e?.status; return s === 429 || s === 503 || /status code (429|503)\b/.test(String(e?.message ?? '')); };
+export async function withReadRetry(fn, {retries = 2, baseMs = 400, sleep = ms => new Promise(r => setTimeout(r, ms)), random = Math.random, onRetry} = {}) {
+  for (let i = 0; ; i++) {
+    try { return await fn(); } catch (e) {
+      if (i >= retries || !isRateLimited(e)) throw e;
+      const waitMs = Math.round(baseMs * 2 ** i * (1 + random()));   // 400-800 ms, then 800-1600 ms
+      onRetry?.(e, i + 1, waitMs);
+      await sleep(waitMs);
+    }
+  }
+}
+export const READ_RETRY_METHODS = ['simulateTransaction', 'getLedgerEntries', 'getEvents', 'getAccount'];
+
+export function makeChain(cfg, hooks = {}) {
   const rpc = new S.rpc.Server(cfg.rpcUrl, {timeout: 30, allowHttp: cfg.rpcUrl.startsWith('http://')});
-  // SDK 16.x cannot decode newer-protocol headers/metas: fetch latest ledger and tx status as raw JSON.
-  const call = async (method, params) => { const r = await (await fetch(cfg.rpcUrl, {method: 'POST', headers: {'content-type': 'application/json'},
-    body: JSON.stringify({jsonrpc: '2.0', id: 1, method, params})})).json(); if (r.error) throw Error(JSON.stringify(r.error)); return r.result; };
+  const retryOpts = method => ({retries: cfg.rpcReadRetries ?? 2, ...(hooks.retry || {}),
+    onRetry: (e, attempt, waitMs) => hooks.log?.('warn', 'rpc read rate-limited; retrying', {method, attempt, waitMs, err: String(e?.message ?? e).slice(0, 120)})});
+  for (const m of READ_RETRY_METHODS) { const f = rpc[m].bind(rpc); rpc[m] = (...a) => withReadRetry(() => f(...a), retryOpts(m)); }
+  // SDK 16.x cannot decode newer-protocol headers/metas: fetch latest ledger and tx status as raw JSON (read-only methods only).
+  const rawCall = async (method, params) => {
+    const res = await fetch(cfg.rpcUrl, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({jsonrpc: '2.0', id: 1, method, params})});
+    if (res.status === 429 || res.status === 503) throw Object.assign(Error(`Request failed with status code ${res.status}`), {status: res.status});
+    const r = await res.json(); if (r.error) throw Error(JSON.stringify(r.error)); return r.result; };
+  const call = (method, params) => withReadRetry(() => rawCall(method, params), retryOpts(method));
   // Protocol 30: never decode the header with SDK 16.3.x. closeTime (seconds) is read from the JSON when the RPC returns it.
   rpc.getLatestLedger = async () => { const r = await call('getLatestLedger'); return {sequence: Number(r.sequence), closeTime: r.closeTime != null ? Number(r.closeTime) : null}; };
   rpc.getTransaction = async hash => { const r = await call('getTransaction', {hash});

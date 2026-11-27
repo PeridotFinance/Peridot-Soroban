@@ -17,6 +17,7 @@ export function loadConfig(env = process.env) {
     dryRun: bool(env.DRY_RUN, true),
     runOnce: bool(env.RUN_ONCE, false),
     pollMs: int(env.POLL_INTERVAL_MS, 30_000),
+    rpcReadRetries: int(env.RPC_READ_RETRIES, 2),   // bounded retry of READ calls on HTTP 429/503 (0 = off); never sendTransaction
     pruneEveryMs: int(env.PRUNE_EVERY_MS, 3_600_000),
     minProfitBps: int(env.MIN_PROFIT_BPS, 200),
     inclusionFee: int(env.INCLUSION_FEE_STROOPS, 100_000),

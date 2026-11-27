@@ -122,7 +122,7 @@ ssh $=SSHQ root@$LQ 'SRC_TARBALL=/root/cash-liquidator-'${WP7:0:7}'.tgz NODE_VER
 
 Expected:
 - sha256 OK;
-- the host `node --test` passes (81 tests);
+- the host `node --test` passes (81 tests for 6004b54, 90 for the read-retry release);
 - `current` points to the new release.
 
 On failure nothing has changed, so stop.
@@ -166,9 +166,16 @@ Record `ActiveEnterTimestamp`. **The dry stage clock starts there.**
 
 ### 1.8 Dry-stage pass criterion (all must hold, at least 12 h after `ActiveEnterTimestamp`)
 
+The log rotates daily at 00:00 UTC, so a 12 h window spans `liquidator.log.1` and `liquidator.log`. Every count below reads
+both files and keeps only lines at or after `START`, the restart's `ActiveEnterTimestamp` in ISO form. Set it first, e.g.
+`export START=2026-11-27T14:00:00`.
+
 1. **Running.** The service is active with NRestarts=0, and the Healthchecks check has stayed up.
-2. **Cycles.** There are at least 1,400 `margin heartbeat` lines, whose `ledger` values strictly increase.
-3. **Errors.** There are 0 `margin cycle failed` lines, and 0 margin `warn`/`alert` lines that are not tagged `alertTest`.
+2. **Cycles.** At least 1,400 `margin heartbeat` lines since `START`, whose `ledger` values strictly increase.
+3. **Errors.** 0 `margin cycle failed` lines and 0 other margin `warn`/`alert` lines (e.g. `margin backstop_nav failed`) since
+   `START`, not counting `alertTest`. `rpc read rate-limited; retrying` lines are **not** errors (a retried read that then
+   succeeds); they are counted separately for the record. A read that still fails after its retries shows up as a margin
+   failure and fails this check.
 4. **No margin sends.** The journal has 0 `"kind":"margin_` entries.
 5. **No cash regression.** Cash `heartbeat` lines continue with no new cash `alert` lines.
 6. **Reads are correct against the deployed contract.** These fields of the latest `margin heartbeat` must equal the read-only simulations
@@ -179,21 +186,31 @@ Record `ActiveEnterTimestamp`. **The dry stage clock starts there.**
    - `backstopNavPt` / `backstopShares` = `backstop_nav`;
    - `hf` = u128::MAX (no pooled debt).
 
+**Never run section 6 in the same go as these checks.** Paste the results first; switch only after they are confirmed.
+
 ```zsh
 ssh $=SSHQ root@$LQ 'systemctl show -p ActiveState -p ActiveEnterTimestamp -p NRestarts peridot-cash-liquidator'
 ```
 
 ```zsh
-ssh $=SSHQ root@$LQ 'grep -c "\"msg\":\"margin heartbeat\"" /mnt/cashliq/cash-liquidator/logs/liquidator.log'
+ssh $=SSHQ root@$LQ "cd /mnt/cashliq/cash-liquidator/logs && cat liquidator.log.1 liquidator.log | awk -F'\"' -v s=$START '\$4>=s' | grep -c '\"msg\":\"margin heartbeat\"'"
 ```
 
 ```zsh
-ssh $=SSHQ root@$LQ 'grep "\"msg\":\"margin heartbeat\"" /mnt/cashliq/cash-liquidator/logs/liquidator.log | sed -E "s/.*\"ledger\":([0-9]+).*/\1/" | awk "NR>1 && \$1<=p {bad++} {p=\$1} END {print \"non-increasing ledgers:\", bad+0}"'
+ssh $=SSHQ root@$LQ "cd /mnt/cashliq/cash-liquidator/logs && cat liquidator.log.1 liquidator.log | awk -F'\"' -v s=$START '\$4>=s' | grep '\"msg\":\"margin heartbeat\"' | sed -E 's/.*\"ledger\":([0-9]+).*/\1/' | awk 'NR>1 && \$1<=p {bad++} {p=\$1} END {print \"non-increasing ledgers:\", bad+0}'"
 ```
 
 ```zsh
-ssh $=SSHQ root@$LQ 'grep -E "\"level\":\"(warn|alert)\"" /mnt/cashliq/cash-liquidator/logs/liquidator.log | grep -i margin | grep -vc alertTest'
+ssh $=SSHQ root@$LQ "cd /mnt/cashliq/cash-liquidator/logs && cat liquidator.log.1 liquidator.log | awk -F'\"' -v s=$START '\$4>=s' | grep -E '\"level\":\"(warn|alert)\"' | grep -i margin | grep -v alertTest | sed -E 's/.*\"msg\":\"([^\"]*)\".*/\1/' | sort | uniq -c"
 ```
+
+Expected: no output (no margin errors).
+
+```zsh
+ssh $=SSHQ root@$LQ "cd /mnt/cashliq/cash-liquidator/logs && cat liquidator.log.1 liquidator.log | awk -F'\"' -v s=$START '\$4>=s' | grep -E '\"msg\":\"(cycle failed|rpc read rate-limited; retrying)\"' | sed -E 's/.*\"msg\":\"([^\"]*)\".*/\1/' | sort | uniq -c"
+```
+
+For the record (not a margin error): retried reads, and cash cycle failures (cash 1-in-a-row failures are pre-existing).
 
 ```zsh
 ssh $=SSHQ root@$LQ 'grep -c "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/state/journal.jsonl || true'
@@ -578,3 +595,14 @@ ssh $=SSHQ root@$LQ 'grep "\"kind\":\"margin_" /mnt/cashliq/cash-liquidator/stat
   `margin pass enabled` wasm b1cb1cb2, `dryRun: true`, cash `dryRun: false`; watcher `resolved` delivered 16:30:38Z.
   Keeper account keeps sending (cash refreshes), so the gate's 15-min activity check is met. Earliest dry-stage pass
   2026-11-27T04:29:53Z, and only once `margin heartbeat` count >= 1,400.
+
+- **27 Nov 2026, dry stage FAILED; margin live 09:08:55-13:02:49 UTC, back to dry run, 0 margin sends.** Checks at 09:07:
+  all reads matched the chain, but 959 heartbeats in `liquidator.log` (the earlier part was in `liquidator.log.1`; the rate,
+  ~105/h, was short anyway) and 256 margin warn lines, all `Request failed with status code 429` from the public
+  gateway.fm RPC (the cash liquidator's `RPC_URL` is that endpoint; the CL liquidator on the same Droplet uses it by
+  default). 429s were 39-60/day before margin (cash 1-in-a-row failures), 11-36/h after the margin dry start. Margin:
+  283 failed cycles, 11 runs of >= 3 in a row, worst 5. The section-6 switch was run in the same go as the checks; it
+  signed nothing (opens paused, empty book) and was reverted at 13:02:49. Fix: bounded read retry on 429/503 (2 retries,
+  jitter 0.4-1.6 s, never `sendTransaction`, each retry logged), `MARGIN_ROUND_POLL_MS=15000` (Reflector round check every
+  15 s instead of 5 s), checks now read both log files from `START`. The 26 Nov dry stage is void; `stopTestAt` 16:25:55Z
+  and `alerts.testedAt` 15:09:45Z stay valid until 3 Dec.

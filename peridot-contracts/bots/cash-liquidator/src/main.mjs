@@ -5,7 +5,7 @@ import {makeNotifier} from './notify.mjs';
 import {verifyMargin} from './margin.mjs';
 
 const cfg = loadConfig();
-const c = makeChain(cfg);
+const c = makeChain(cfg, {log});
 // Alert delivery first, so even a failing start is reported. A missing/invalid Telegram file never stops the keeper.
 const {notifier, pinger, problem} = makeNotifier(cfg, {warn: (msg, extra) => log('warn', msg, extra)});
 if (notifier) { setNotifier(notifier); log('info', 'alert delivery: telegram', {prefix: cfg.alerts.prefix, dedupeSecs: cfg.alerts.dedupeMs / 1000, healthcheckPing: !!pinger}); }

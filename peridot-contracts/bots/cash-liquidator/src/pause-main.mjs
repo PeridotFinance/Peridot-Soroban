@@ -6,7 +6,7 @@ import {watchOnce, loadPauseState, guardianOf, log} from './pause.mjs';
 
 const cfg = loadPauseConfig();
 loadKeyFile(cfg.keyFile, {expectedPublicKey: cfg.publicKey});          // permission + public-key check; value discarded
-const c = makeChain(cfg);
+const c = makeChain(cfg, {log});
 await verifyPins(cfg, c);
 const guardian = await guardianOf(cfg, c);
 if (guardian !== cfg.publicKey) {
